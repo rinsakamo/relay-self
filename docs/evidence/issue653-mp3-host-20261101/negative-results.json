@@ -1,0 +1,53 @@
+{
+  "baseline_copy_pass": true,
+  "results": [
+    {
+      "case": "prediction",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "timestamp",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "ticket",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "source_digest",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "sample",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "missing_prediction",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "target_tick",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    },
+    {
+      "case": "arm_identity",
+      "rejected": true,
+      "error": "AssertionError",
+      "detail": ""
+    }
+  ]
+}

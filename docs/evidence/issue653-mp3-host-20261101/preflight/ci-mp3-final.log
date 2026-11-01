@@ -1,0 +1,832 @@
+archived-world-heldout-source-only	Set up job	﻿2026-11-01T00:35:49.2893553Z Current runner version: '2.338.2'
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2914563Z ##[group]Runner Image Provisioner
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2915359Z Hosted Compute Agent
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2915880Z Version: 20261021.618
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2916412Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2917212Z Build Date: 2026-10-21T00:45:21Z
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2917774Z Worker ID: {f83ee18e-fc0c-4ae6-93d0-28ee53a451cd}
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2918405Z Region: westus3
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2918942Z Cloud: Azure
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2919368Z ##[endgroup]
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2920521Z ##[group]Operating System
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2921030Z Ubuntu
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2921504Z 26.04.1
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2922003Z LTS
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2922455Z ##[endgroup]
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2922936Z ##[group]Runner Image
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2923432Z Image: ubuntu-26.04
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2923890Z Version: 20261025.179.1
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2924856Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2926709Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2927497Z ##[endgroup]
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2928447Z ##[group]GITHUB_TOKEN Permissions
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2930023Z Contents: read
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2930703Z Metadata: read
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2931177Z ##[endgroup]
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2933210Z Secret source: Actions
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2934077Z Cache mode: write
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.2934827Z Prepare workflow directory
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.3264296Z Prepare all required actions
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.3318457Z Getting action download info
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:49.6221313Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:50.0565544Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+archived-world-heldout-source-only	Set up job	2026-11-01T00:35:50.3749837Z Complete job name: archived-world-heldout-source-only
+archived-world-heldout-source-only	Run actions/checkout@v4	﻿2026-11-01T00:35:50.4543479Z ##[group]Run actions/checkout@v4
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4544274Z with:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4544723Z   ref: bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4545306Z   persist-credentials: false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4545773Z   fetch-depth: 0
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4546196Z   repository: rinsakamo/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4549842Z   token: ***
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4550235Z   ssh-strict: true
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4550638Z   ssh-user: git
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4551036Z   clean: true
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4551441Z   sparse-checkout-cone-mode: true
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4551908Z   fetch-tags: false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4552300Z   show-progress: true
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4552704Z   lfs: false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4553112Z   submodules: false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4553518Z   set-safe-directory: true
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4553967Z   allow-unsafe-pr-checkout: false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4554677Z env:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4555059Z   PYTHONPATH: src:tests:.
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4555511Z   PYTHONDONTWRITEBYTECODE: 1
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:50.4556017Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2394066Z Syncing repository: rinsakamo/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2397155Z ##[group]Getting Git version info
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2398546Z Working directory is '/home/runner/work/relay-self/relay-self'
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2400581Z [command]/usr/bin/git version
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2401726Z git version 2.56.0
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2417924Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2430618Z Temporarily overriding HOME='/home/runner/work/_temp/23a6875c-c7f8-42d4-a1a4-a00bb6c5ed29' before making global git config changes
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2433595Z Adding repository directory to the temporary git global config as a safe directory
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.2436181Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3511406Z Deleting the contents of '/home/runner/work/relay-self/relay-self'
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3524219Z ##[group]Initializing the repository
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3531781Z [command]/usr/bin/git init /home/runner/work/relay-self/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3605434Z hint: Using 'master' as the name for the initial branch. This default branch name
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3608831Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3611245Z hint: to use in all of your new repositories, which will suppress this warning,
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3613416Z hint: call:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3614750Z hint:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3616312Z hint: 	git config --global init.defaultBranch <name>
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3618269Z hint:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3619928Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3622640Z hint: 'development'. The just-created branch can be renamed via this command:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3624821Z hint:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3629569Z hint: 	git branch -m <name>
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3630993Z hint:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3632700Z hint: Disable this message with "git config set advice.defaultBranchName false"
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3635685Z Initialized empty Git repository in /home/runner/work/relay-self/relay-self/.git/
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3640601Z [command]/usr/bin/git remote add origin https://github.com/rinsakamo/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3682804Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3685118Z ##[group]Disabling automatic garbage collection
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3687278Z [command]/usr/bin/git config --local gc.auto 0
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3717812Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3719864Z ##[group]Setting up auth
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3722296Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.3753609Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4092580Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4121975Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4347810Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4379214Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4607202Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4641161Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4643097Z ##[group]Fetching the repository
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:51.4649115Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8372361Z From https://github.com/rinsakamo/relay-self
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8373253Z  * [new branch]        dev/issue651-route-b-20261031 -> origin/dev/issue651-route-b-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8374413Z  * [new branch]        dev/l-bcg-conditional-motion-shadow-20261101 -> origin/dev/l-bcg-conditional-motion-shadow-20261101
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8375405Z  * [new branch]        dev/l21-real-goal-observer-20261031 -> origin/dev/l21-real-goal-observer-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8376279Z  * [new branch]        dev/l22-post-s16-settling-20261031 -> origin/dev/l22-post-s16-settling-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8377360Z  * [new branch]        dev/l23-paper-settling-boundary-20261031 -> origin/dev/l23-paper-settling-boundary-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8378357Z  * [new branch]        dev/s50-l23-client-packet-integrated-20261031 -> origin/dev/s50-l23-client-packet-integrated-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8379243Z  * [new branch]        dev/s50-paper-input-witness-20261031 -> origin/dev/s50-paper-input-witness-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8380175Z  * [new branch]        dev/s50-selfbody-physical-observation-20261031 -> origin/dev/s50-selfbody-physical-observation-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8381482Z  * [new branch]        dev/self-product-passive-bodyworld-20261024 -> origin/dev/self-product-passive-bodyworld-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8382506Z  * [new branch]        dev/self-product-passive-pr634-adoption-20261024 -> origin/dev/self-product-passive-pr634-adoption-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8383625Z  * [new branch]        dev/selfbody-l1-motion-prediction-20261101 -> origin/dev/selfbody-l1-motion-prediction-20261101
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8384446Z  * [new branch]        dev/selfbody-l1-motion-shadow-20261031 -> origin/dev/selfbody-l1-motion-shadow-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8385003Z  * [new branch]        dev/selfbody-s16-s50-world-join-20261031 -> origin/dev/selfbody-s16-s50-world-join-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8385651Z  * [new branch]        dev/selfbody-s50-live-paper-window-20261031 -> origin/dev/selfbody-s50-live-paper-window-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8386294Z  * [new branch]        dev/selfbody-s50-motion-companion-20261031 -> origin/dev/selfbody-s50-motion-companion-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8387208Z  * [new branch]        dev/selfbody-s50-next-epoch-passive-20261031 -> origin/dev/selfbody-s50-next-epoch-passive-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8387807Z  * [new branch]        dev/selfbody-s50-original-closure-20261031 -> origin/dev/selfbody-s50-original-closure-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8388454Z  * [new branch]        dev/selfbody-s50-postworld-internal-epoch-20261031 -> origin/dev/selfbody-s50-postworld-internal-epoch-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8389144Z  * [new branch]        dev/w4-cognitive-evidence-use-offline-20261023 -> origin/dev/w4-cognitive-evidence-use-offline-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8389810Z  * [new branch]        dev/w4-goal-cost-orthogonality-offline-20261023 -> origin/dev/w4-goal-cost-orthogonality-offline-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8390433Z  * [new branch]        dev/w4-host-two-axis-offline-20261023 -> origin/dev/w4-host-two-axis-offline-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8391124Z  * [new branch]        dev/w4-normal-startup-observed-20261022T050205Z-a55a97b6 -> origin/dev/w4-normal-startup-observed-20261022T050205Z-a55a97b6
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8391924Z  * [new branch]        dev/w4-recovery-20261023 -> origin/dev/w4-recovery-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8392409Z  * [new branch]        dev/w4-rubric-semantics-audit-20261023 -> origin/dev/w4-rubric-semantics-audit-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8392952Z  * [new branch]        exp/published-reward-genetics -> origin/exp/published-reward-genetics
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8393643Z  * [new branch]        experiment/gemma-skill-narrowing-cost -> origin/experiment/gemma-skill-narrowing-cost
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8394485Z  * [new branch]        experiment/nld-gemma-cross-substrate -> origin/experiment/nld-gemma-cross-substrate
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8395697Z  * [new branch]        experiment/nld-native-path-trajectory -> origin/experiment/nld-native-path-trajectory
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8396627Z  * [new branch]        fix/173-think-protocol-evidence -> origin/fix/173-think-protocol-evidence
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8397621Z  * [new branch]        g-lane/g1-genesis-heredity-20261013 -> origin/g-lane/g1-genesis-heredity-20261013
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8398145Z  * [new branch]        infra/rsee-r1-shared-runtime-20261011 -> origin/infra/rsee-r1-shared-runtime-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8398676Z  * [new branch]        infra/rsee-r2-source-handoff-20261012 -> origin/infra/rsee-r2-source-handoff-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8399220Z  * [new branch]        infra/rsee-r3-sibling-compat-20261012 -> origin/infra/rsee-r3-sibling-compat-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8399786Z  * [new branch]        infra/rsee-r4-evidence-projection-20261012 -> origin/infra/rsee-r4-evidence-projection-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8400366Z  * [new branch]        infra/rsee-r5-pinned-s3-lineage-20261012 -> origin/infra/rsee-r5-pinned-s3-lineage-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8400986Z  * [new branch]        infra/rsee-r6-s9-native-original-readback-20261012 -> origin/infra/rsee-r6-s9-native-original-readback-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8401580Z  * [new branch]        infra/rsee-standard-env-v1-20261011 -> origin/infra/rsee-standard-env-v1-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8402437Z  * [new branch]        infra/rsee-wsl2-host-preparation-20261011 -> origin/infra/rsee-wsl2-host-preparation-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8403178Z  * [new branch]        integration/l10-sourcebound-worldbody-cue-learning-20261030 -> origin/integration/l10-sourcebound-worldbody-cue-learning-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8403961Z  * [new branch]        integration/l11-g413-real-original-goal-boundary-20261030 -> origin/integration/l11-g413-real-original-goal-boundary-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8404727Z  * [new branch]        integration/l12-g413-per-action-progress-no-reward-20261030 -> origin/integration/l12-g413-per-action-progress-no-reward-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8405507Z  * [new branch]        integration/l13-independent-goal-receipt-contract-20261030 -> origin/integration/l13-independent-goal-receipt-contract-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8406301Z  * [new branch]        integration/l14-original-bridge-goal-observer-20261030 -> origin/integration/l14-original-bridge-goal-observer-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8407343Z  * [new branch]        integration/l15-s49-original-goal-capture-preflight-20261031 -> origin/integration/l15-s49-original-goal-capture-preflight-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8408166Z  * [new branch]        integration/l16-s49-native-original-first-action-20261031 -> origin/integration/l16-s49-native-original-first-action-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8408944Z  * [new branch]        integration/l17-l16-l14-independent-goal-handoff-20261031 -> origin/integration/l17-l16-l14-independent-goal-handoff-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8409727Z  * [new branch]        integration/l18-s49-owner-s16-terminal-original-20261031 -> origin/integration/l18-s49-owner-s16-terminal-original-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8410563Z  * [new branch]        integration/l19-native-goal-interleaving-world-readiness-20261031 -> origin/integration/l19-native-goal-interleaving-world-readiness-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8411619Z  * [new branch]        integration/l20-preworld-external-goal-commitment-20261031 -> origin/integration/l20-preworld-external-goal-commitment-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8412487Z  * [new branch]        integration/l21-separate-client-physical-goal-observer-20261031 -> origin/integration/l21-separate-client-physical-goal-observer-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8413284Z  * [new branch]        integration/l9-world-body-s-epoch-shadow-20261030 -> origin/integration/l9-world-body-s-epoch-shadow-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8413922Z  * [new branch]        integration/s49-slm-passive-dev-20261031 -> origin/integration/s49-slm-passive-dev-20261031
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8414526Z  * [new branch]        issue-312-cross-world-motion-manipulation -> origin/issue-312-cross-world-motion-manipulation
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8415105Z  * [new branch]        issue-312-world-neutral-skill-basis -> origin/issue-312-world-neutral-skill-basis
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8415651Z  * [new branch]        learning/l-cf1-fatigue-meter-20261016 -> origin/learning/l-cf1-fatigue-meter-20261016
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8416227Z  * [new branch]        learning/l-cf4-s60-meter-source-20261016 -> origin/learning/l-cf4-s60-meter-source-20261016
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8417022Z  * [new branch]        learning/l2-forecast-observation-20261012 -> origin/learning/l2-forecast-observation-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8417613Z  * [new branch]        learning/l3-shadow-habit-review-20261012 -> origin/learning/l3-shadow-habit-review-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8418172Z  * [new branch]        learning/l4-matched-transfer-20261012 -> origin/learning/l4-matched-transfer-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8418726Z  * [new branch]        learning/l5-contextual-shadow-20261012 -> origin/learning/l5-contextual-shadow-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8419241Z  * [new branch]        learning/l6-next-epoch-20261030 -> origin/learning/l6-next-epoch-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8419750Z  * [new branch]        learning/l7-s-choice-shadow-20261030 -> origin/learning/l7-s-choice-shadow-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8420447Z  * [new branch]        learning/l8-epoch-result-observer-20261030 -> origin/learning/l8-epoch-result-observer-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8420921Z  * [new branch]        main                   -> origin/main
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8421315Z  * [new branch]        mvp/mineflayer-look-effect -> origin/mvp/mineflayer-look-effect
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8421939Z  * [new branch]        repair/220-apparatus-hardening -> origin/repair/220-apparatus-hardening
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8422922Z  * [new branch]        research/m616-m1-resource-cost-projection-20261030 -> origin/research/m616-m1-resource-cost-projection-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8423651Z  * [new branch]        research/m616-metabolism-m0-20261013 -> origin/research/m616-metabolism-m0-20261013
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8424187Z  * [new branch]        research/m616-metabolism-m1-20261013 -> origin/research/m616-metabolism-m1-20261013
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8424698Z  * [new branch]        research/m616-metabolism-m2-20261013 -> origin/research/m616-metabolism-m2-20261013
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8425344Z  * [new branch]        research/p1-fatigue-body-20261016 -> origin/research/p1-fatigue-body-20261016
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8425992Z  * [new branch]        research/p1-selfbody-readout-dev-20261024 -> origin/research/p1-selfbody-readout-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8426816Z  * [new branch]        self/ac-a-e1-epistemic-two-epoch-20261010 -> origin/self/ac-a-e1-epistemic-two-epoch-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8427492Z  * [new branch]        self/ac-a-e10-action-world-20261011 -> origin/self/ac-a-e10-action-world-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8428115Z  * [new branch]        self/ac-a-e11-sequential-avatar-handoff-20261011 -> origin/self/ac-a-e11-sequential-avatar-handoff-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8428821Z  * [new branch]        self/ac-a-e12-native-original-owner-20261011 -> origin/self/ac-a-e12-native-original-owner-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8429464Z  * [new branch]        self/ac-a-e2-main-contract-seam-20261010 -> origin/self/ac-a-e2-main-contract-seam-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8430269Z  * [new branch]        self/ac-a-e3-s29-s24-epistemic-20261010 -> origin/self/ac-a-e3-s29-s24-epistemic-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8430913Z  * [new branch]        self/ac-a-e4-s29-s26-action-closure-20261010 -> origin/self/ac-a-e4-s29-s26-action-closure-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8431866Z  * [new branch]        self/ac-a-e5-prospective-physical-gate-20261010 -> origin/self/ac-a-e5-prospective-physical-gate-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8432779Z  * [new branch]        self/ac-a-e6-native-feasibility-interlock-20261010 -> origin/self/ac-a-e6-native-feasibility-interlock-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8433594Z  * [new branch]        self/ac-a-e7-typed-native-geometry-trace-20261010 -> origin/self/ac-a-e7-typed-native-geometry-trace-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8434342Z  * [new branch]        self/ac-a-e8-operator-geometry-calibration-20261010 -> origin/self/ac-a-e8-operator-geometry-calibration-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8434990Z  * [new branch]        self/ac-a-e9-native-zombie-hurt-20261010 -> origin/self/ac-a-e9-native-zombie-hurt-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8435619Z  * [new branch]        self/ac-b-b10-observed-source-replay-20261010 -> origin/self/ac-b-b10-observed-source-replay-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8436295Z  * [new branch]        self/ac-b-b11-governed-habit-acquisition-20261010 -> origin/self/ac-b-b11-governed-habit-acquisition-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8437196Z  * [new branch]        self/ac-b-b12-independent-habit-grant-20261010 -> origin/self/ac-b-b12-independent-habit-grant-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8437811Z  * [new branch]        self/ac-b-b12-owner-snapshot-489-20261010 -> origin/self/ac-b-b12-owner-snapshot-489-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8438489Z  * [new branch]        self/ac-b-b13-shared-world-s10-s11-20261010 -> origin/self/ac-b-b13-shared-world-s10-s11-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8439169Z  * [new branch]        self/ac-b-b14-matched-readaptation-20261010 -> origin/self/ac-b-b14-matched-readaptation-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8439923Z  * [new branch]        self/ac-b-b15-delayed-noisy-silent-20261010 -> origin/self/ac-b-b15-delayed-noisy-silent-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8440505Z  * [new branch]        self/ac-b-b16-quorum-vs-count-20261010 -> origin/self/ac-b-b16-quorum-vs-count-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8441100Z  * [new branch]        self/ac-b-b17-voi-correlated-sources-20261010 -> origin/self/ac-b-b17-voi-correlated-sources-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8441681Z  * [new branch]        self/ac-b-b18-empirical-voi-20261010 -> origin/self/ac-b-b18-empirical-voi-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8442291Z  * [new branch]        self/ac-b-b19-resource-vs-epistemic-value-20261010 -> origin/self/ac-b-b19-resource-vs-epistemic-value-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8442938Z  * [new branch]        self/ac-b-b1b2-memory-distillation-20261010 -> origin/self/ac-b-b1b2-memory-distillation-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8443534Z  * [new branch]        self/ac-b-b20-frozen-grand-null-20261010 -> origin/self/ac-b-b20-frozen-grand-null-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8444216Z  * [new branch]        self/ac-b-b21-typed-physical-source-boundary-20261010 -> origin/self/ac-b-b21-typed-physical-source-boundary-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8444873Z  * [new branch]        self/ac-b-b22-sqlite-habit-owner-20261010 -> origin/self/ac-b-b22-sqlite-habit-owner-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8445430Z  * [new branch]        self/ac-b-b23-cognitive-loop-20261010 -> origin/self/ac-b-b23-cognitive-loop-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8446058Z  * [new branch]        self/ac-b-b24-novel-structural-transfer-20261010 -> origin/self/ac-b-b24-novel-structural-transfer-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8447002Z  * [new branch]        self/ac-b-b25-discriminating-first-action-20261010 -> origin/self/ac-b-b25-discriminating-first-action-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8447650Z  * [new branch]        self/ac-b-b26-local-l2-proposal-20261010 -> origin/self/ac-b-b26-local-l2-proposal-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8448297Z  * [new branch]        self/ac-b-b27-max2048-20261011 -> origin/self/ac-b-b27-max2048-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8449360Z  * [new branch]        self/ac-b-b28-reasoning-off-20261011 -> origin/self/ac-b-b28-reasoning-off-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8450238Z  * [new branch]        self/ac-b-b29-native-json-schema-20261011 -> origin/self/ac-b-b29-native-json-schema-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8451129Z  * [new branch]        self/ac-b-b4-relevant-heldout-20261010 -> origin/self/ac-b-b4-relevant-heldout-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8452089Z  * [new branch]        self/ac-b-b5-typed-transition-null-20261010 -> origin/self/ac-b-b5-typed-transition-null-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8453105Z  * [new branch]        self/ac-b-b6-main-memory-witness-20261010 -> origin/self/ac-b-b6-main-memory-witness-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8454026Z  * [new branch]        self/ac-b-b7-signed-handoff-20261010 -> origin/self/ac-b-b7-signed-handoff-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8455091Z  * [new branch]        self/ac-b-b8-exact-s17-stack-contract-20261010 -> origin/self/ac-b-b8-exact-s17-stack-contract-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8456154Z  * [new branch]        self/ac-b-b9-exact-s16-signed-source-20261010 -> origin/self/ac-b-b9-exact-s16-signed-source-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8457046Z  * [new branch]        self/ac-c-adaptive-allocation-20261010 -> origin/self/ac-c-adaptive-allocation-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8457630Z  * [new branch]        self/ac-c-c10-online-calibration-20261010 -> origin/self/ac-c-c10-online-calibration-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8458211Z  * [new branch]        self/ac-c-c11-selective-compute-20261010 -> origin/self/ac-c-c11-selective-compute-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8458790Z  * [new branch]        self/ac-c-c12-cue-calibration-20261010 -> origin/self/ac-c-c12-cue-calibration-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8459329Z  * [new branch]        self/ac-c-c13-goal-witness-20261010 -> origin/self/ac-c-c13-goal-witness-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8459825Z  * [new branch]        self/ac-c-c14-signed-goal-20261010 -> origin/self/ac-c-c14-signed-goal-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8460575Z  * [new branch]        self/ac-c-c15-mineflayer-goal-witness-20261010 -> origin/self/ac-c-c15-mineflayer-goal-witness-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8461233Z  * [new branch]        self/ac-c-c16-one-shot-physical-goal-20261010 -> origin/self/ac-c-c16-one-shot-physical-goal-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8461799Z  * [new branch]        self/ac-c-c3-causal-audit-20261010 -> origin/self/ac-c-c3-causal-audit-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8462317Z  * [new branch]        self/ac-c-c4-hidden-evidence-20261010 -> origin/self/ac-c-c4-hidden-evidence-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8462837Z  * [new branch]        self/ac-c-c5-distillation-20261010 -> origin/self/ac-c-c5-distillation-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8463374Z  * [new branch]        self/ac-c-c6-revocable-capsule-20261010 -> origin/self/ac-c-c6-revocable-capsule-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8463933Z  * [new branch]        self/ac-c-c7-ambiguous-evidence-20261010 -> origin/self/ac-c-c7-ambiguous-evidence-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8464495Z  * [new branch]        self/ac-c-c8-action-attribution-20261010 -> origin/self/ac-c-c8-action-attribution-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8465068Z  * [new branch]        self/ac-c-c9-postfail-epistemic-20261010 -> origin/self/ac-c-c9-postfail-epistemic-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8465741Z  * [new branch]        self/ac-integration-i0-readonly-evidence-gate-20261010 -> origin/self/ac-integration-i0-readonly-evidence-gate-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8466589Z  * [new branch]        self/ac-integration-i1-s29-readonly-owner-20261010 -> origin/self/ac-integration-i1-s29-readonly-owner-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8467327Z  * [new branch]        self/ac-integration-i2-s17-s10-s11-20261010 -> origin/self/ac-integration-i2-s17-s10-s11-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8467945Z  * [new branch]        self/ac-integration-i3-cross-source-20261010 -> origin/self/ac-integration-i3-cross-source-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8468662Z  * [new branch]        self/ac-integration-i4-simulator-action-closure-20261010 -> origin/self/ac-integration-i4-simulator-action-closure-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8469647Z  * [new branch]        self/ac-integration-i5-b16-quorum-action-closure-20261010 -> origin/self/ac-integration-i5-b16-quorum-action-closure-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8470414Z  * [new branch]        self/ac-integration-i6-native-habit-interlock-20261010 -> origin/self/ac-integration-i6-native-habit-interlock-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8471111Z  * [new branch]        self/ac-integration-i7-dual-s15-optin-20261010 -> origin/self/ac-integration-i7-dual-s15-optin-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8471742Z  * [new branch]        self/b0-cognition-epoch-trace-dev-20261024 -> origin/self/b0-cognition-epoch-trace-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8472303Z  * [new branch]        self/cf-d1-frozen-toy-world-20261010 -> origin/self/cf-d1-frozen-toy-world-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8472849Z  * [new branch]        self/cf-d2-episodic-xor-fixture-20261010 -> origin/self/cf-d2-episodic-xor-fixture-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8473458Z  * [new branch]        self/cf-d3-compositional-versionspace-20261010 -> origin/self/cf-d3-compositional-versionspace-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8474080Z  * [new branch]        self/cf-d4-216rule-cost-frontier-20261010 -> origin/self/cf-d4-216rule-cost-frontier-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8474625Z  * [new branch]        self/ci-fast-full-world-312-20261022 -> origin/self/ci-fast-full-world-312-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8475183Z  * [new branch]        self/dev-adaptive-world-time-t0-20261025 -> origin/self/dev-adaptive-world-time-t0-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8475771Z  * [new branch]        self/dev-g41-native-inflight-brake-20261029 -> origin/self/dev-g41-native-inflight-brake-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8476570Z  * [new branch]        self/dev-g410-in-action-evidence-quality-20261030 -> origin/self/dev-g410-in-action-evidence-quality-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8477426Z  * [new branch]        self/dev-g411-g1-unstable-pair-census-20261030 -> origin/self/dev-g411-g1-unstable-pair-census-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8478457Z  * [new branch]        self/dev-g412-original-control-boundary-dwell-20261030 -> origin/self/dev-g412-original-control-boundary-dwell-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8479490Z  * [new branch]        self/dev-g413-g1-generation-witness-20261030 -> origin/self/dev-g413-g1-generation-witness-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8480278Z  * [new branch]        self/dev-g42-native-clear-latency-drift-20261029 -> origin/self/dev-g42-native-clear-latency-drift-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8481114Z  * [new branch]        self/dev-g43-passive-native-tail-control-20261029 -> origin/self/dev-g43-passive-native-tail-control-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8481982Z  * [new branch]        self/dev-g44-intra-action-gait-transition-20261029 -> origin/self/dev-g44-intra-action-gait-transition-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8483060Z  * [new branch]        self/dev-g45-paper-gait-ack-join-hazard-20261029 -> origin/self/dev-g45-paper-gait-ack-join-hazard-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8483725Z  * [new branch]        self/dev-g46-paper-control-generation-20261029 -> origin/self/dev-g46-paper-control-generation-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8484368Z  * [new branch]        self/dev-g47-original-t2-gait-join-20261029 -> origin/self/dev-g47-original-t2-gait-join-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8485033Z  * [new branch]        self/dev-g48-direct-action-node-generation-20261029 -> origin/self/dev-g48-direct-action-node-generation-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8485684Z  * [new branch]        self/dev-g48-ordinary-action-gait-20261029 -> origin/self/dev-g48-ordinary-action-gait-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8486322Z  * [new branch]        self/dev-g48-ordinary-action-gait-epochs-20261029 -> origin/self/dev-g48-ordinary-action-gait-epochs-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8487411Z  * [new branch]        self/dev-g48-ordinary-jog-walk-generation-20261029 -> origin/self/dev-g48-ordinary-jog-walk-generation-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8488116Z  * [new branch]        self/dev-g49-original-action-gap-census-20261029 -> origin/self/dev-g49-original-action-gap-census-20261029
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8488942Z  * [new branch]        self/dev-goal-l0-inflight-preemption-20261028 -> origin/self/dev-goal-l0-inflight-preemption-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8489610Z  * [new branch]        self/dev-goal-l0-real-threat-interrupt-20261028 -> origin/self/dev-goal-l0-real-threat-interrupt-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8490219Z  * [new branch]        self/dev-goal-l0-turn-obstacle-20261028 -> origin/self/dev-goal-l0-turn-obstacle-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8490794Z  * [new branch]        self/dev-goal-l1-waypoint-bypass-20261028 -> origin/self/dev-goal-l1-waypoint-bypass-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8491373Z  * [new branch]        self/dev-l0-autonomous-goal-loop-20261028 -> origin/self/dev-l0-autonomous-goal-loop-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8491968Z  * [new branch]        self/dev-l0-native-xz-goal-feedback-20261028 -> origin/self/dev-l0-native-xz-goal-feedback-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8492587Z  * [new branch]        self/dev-l0-observed-motion-feedback-20261028 -> origin/self/dev-l0-observed-motion-feedback-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8493220Z  * [new branch]        self/dev-l0-s16-three-action-feedback-20261028 -> origin/self/dev-l0-s16-three-action-feedback-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8493820Z  * [new branch]        self/dev-l0-walk-stop-feedback-20261028 -> origin/self/dev-l0-walk-stop-feedback-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8494443Z  * [new branch]        self/dev-l1-conflicting-real-routes-defer-20261028 -> origin/self/dev-l1-conflicting-real-routes-defer-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8495082Z  * [new branch]        self/dev-l1-episodic-detour-reuse-20261028 -> origin/self/dev-l1-episodic-detour-reuse-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8495687Z  * [new branch]        self/dev-l1-grid-refresh-inflight-l0-20261028 -> origin/self/dev-l1-grid-refresh-inflight-l0-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8496287Z  * [new branch]        self/dev-l1-grid-waypoint-refresh-20261028 -> origin/self/dev-l1-grid-waypoint-refresh-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8497153Z  * [new branch]        self/dev-l1-l0-composite-swept-20261028 -> origin/self/dev-l1-l0-composite-swept-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8497857Z  * [new branch]        self/dev-l1-local-grid-search-20261028 -> origin/self/dev-l1-local-grid-search-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8498435Z  * [new branch]        self/dev-l1-local-voxel-waypoints-20261028 -> origin/self/dev-l1-local-voxel-waypoints-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8499065Z  * [new branch]        self/dev-l1-native-blocks-route-choice-20261028 -> origin/self/dev-l1-native-blocks-route-choice-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8499704Z  * [new branch]        self/dev-l1-selfworld-memory-choice-20261028 -> origin/self/dev-l1-selfworld-memory-choice-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8500295Z  * [new branch]        self/dev-l1-t2-action-boundary-20261028 -> origin/self/dev-l1-t2-action-boundary-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8500826Z  * [new branch]        self/dev-p1-attr-trace-ab-20261028 -> origin/self/dev-p1-attr-trace-ab-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8501374Z  * [new branch]        self/dev-p1-attr-trace-isolation-20261028 -> origin/self/dev-p1-attr-trace-isolation-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8501994Z  * [new branch]        self/dev-p1-attribute-boundary-pair-20261027 -> origin/self/dev-p1-attribute-boundary-pair-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8502584Z  * [new branch]        self/dev-p1-causal-wait-shadow-20261027 -> origin/self/dev-p1-causal-wait-shadow-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8503123Z  * [new branch]        self/dev-p1-dash-client-cap-20261026 -> origin/self/dev-p1-dash-client-cap-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8503677Z  * [new branch]        self/dev-p1-dash-directional-cap-20261026 -> origin/self/dev-p1-dash-directional-cap-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8504272Z  * [new branch]        self/dev-p1-dash-model-preload-pair-20261027 -> origin/self/dev-p1-dash-model-preload-pair-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8504856Z  * [new branch]        self/dev-p1-forward-dash-paper-20261025 -> origin/self/dev-p1-forward-dash-paper-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8505383Z  * [new branch]        self/dev-p1-gait-cognition-20261025 -> origin/self/dev-p1-gait-cognition-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8506050Z  * [new branch]        self/dev-p1-gait-net-recovery-dash-20261025 -> origin/self/dev-p1-gait-net-recovery-dash-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8507144Z  * [new branch]        self/dev-p1-matched-boost-7ticks-20261027 -> origin/self/dev-p1-matched-boost-7ticks-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8507975Z  * [new branch]        self/dev-p1-motor-envelope-reverse-pair-20261025 -> origin/self/dev-p1-motor-envelope-reverse-pair-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8508562Z  * [new branch]        self/dev-p1-motor-repeat-20261025 -> origin/self/dev-p1-motor-repeat-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8509107Z  * [new branch]        self/dev-p1-native-next-l0-review-20261027 -> origin/self/dev-p1-native-next-l0-review-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8509934Z  * [new branch]        self/dev-p1-node-hold-audit-20261028 -> origin/self/dev-p1-node-hold-audit-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8510651Z  * [new branch]        self/dev-p1-observed-wait-frames-20261027 -> origin/self/dev-p1-observed-wait-frames-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8511249Z  * [new branch]        self/dev-p1-original-motor-sixth-20261025 -> origin/self/dev-p1-original-motor-sixth-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8511826Z  * [new branch]        self/dev-p1-owner-worldtick-hold-20261027 -> origin/self/dev-p1-owner-worldtick-hold-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8512455Z  * [new branch]        self/dev-p1-pair-repeat-motor-interface-20261025 -> origin/self/dev-p1-pair-repeat-motor-interface-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8513047Z  * [new branch]        self/dev-p1-physical-pair-20261025 -> origin/self/dev-p1-physical-pair-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8513606Z  * [new branch]        self/dev-p1-physiology-calibration-20261028 -> origin/self/dev-p1-physiology-calibration-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8582032Z  * [new branch]        self/dev-p1-selfbody-next-epoch-20261027 -> origin/self/dev-p1-selfbody-next-epoch-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8582969Z  * [new branch]        self/dev-p1-steady-phase-motor-20261027 -> origin/self/dev-p1-steady-phase-motor-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8583990Z  * [new branch]        self/dev-p1-sync-two-model-motor-20261027 -> origin/self/dev-p1-sync-two-model-motor-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8584687Z  * [new branch]        self/dev-paper-dash-directional-cap-20261025 -> origin/self/dev-paper-dash-directional-cap-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8585385Z  * [new branch]        self/dev-s49-dash-forward-operator-world-20261026 -> origin/self/dev-s49-dash-forward-operator-world-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8586056Z  * [new branch]        self/dev-s49-forward-motor-admission-20261026 -> origin/self/dev-s49-forward-motor-admission-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8586895Z  * [new branch]        self/dev-s49-native-next-epoch-20261025 -> origin/self/dev-s49-native-next-epoch-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8587452Z  * [new branch]        self/dev-s49-p1-fifth-epoch-20261025 -> origin/self/dev-s49-p1-fifth-epoch-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8587999Z  * [new branch]        self/dev-s49-paper-input-edges-20261025 -> origin/self/dev-s49-paper-input-edges-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8588598Z  * [new branch]        self/dev-s49-s50-p1-world-first-20261025 -> origin/self/dev-s49-s50-p1-world-first-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8589205Z  * [new branch]        self/dev-selfbody-motion-feedback-v0-20261025 -> origin/self/dev-selfbody-motion-feedback-v0-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8589859Z  * [new branch]        self/dev-selfbody-motion-uncertainty-20261025 -> origin/self/dev-selfbody-motion-uncertainty-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8590535Z  * [new branch]        self/dev-selfbody-motor-clock-observe-20261025 -> origin/self/dev-selfbody-motor-clock-observe-20261025
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8591140Z  * [new branch]        self/dev-t1e-s49-l0-integration-20261026 -> origin/self/dev-t1e-s49-l0-integration-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8591624Z  * [new branch]        self/dev-t1f-s49-t2-20261026 -> origin/self/dev-t1f-s49-t2-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8592142Z  * [new branch]        self/dev-t1g-stop-disconnect-20261026 -> origin/self/dev-t1g-stop-disconnect-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8592807Z  * [new branch]        self/dev-t1h-s49-stop-20261026 -> origin/self/dev-t1h-s49-stop-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8593298Z  * [new branch]        self/dev-t1i-self-stop-eat-20261026 -> origin/self/dev-t1i-self-stop-eat-20261026
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8593836Z  * [new branch]        self/dev-t1j-explicit-resume-20261027 -> origin/self/dev-t1j-explicit-resume-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8594407Z  * [new branch]        self/dev-t1k-stop-resume-faults-20261027 -> origin/self/dev-t1k-stop-resume-faults-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8594981Z  * [new branch]        self/dev-t1l-source-continuity-20261027 -> origin/self/dev-t1l-source-continuity-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8595570Z  * [new branch]        self/dev-t1m-causal-age-instrument-20261027 -> origin/self/dev-t1m-causal-age-instrument-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8596175Z  * [new branch]        self/dev-t1n-emit-internal-timing-20261027 -> origin/self/dev-t1n-emit-internal-timing-20261027
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8596960Z  * [new branch]        self/dev-t1o-trace-optin-ab-20261028 -> origin/self/dev-t1o-trace-optin-ab-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8597511Z  * [new branch]        self/dev-t1p-l0-body-loop-20261028 -> origin/self/dev-t1p-l0-body-loop-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8598073Z  * [new branch]        self/dev-t1q-body-interoception-20261028 -> origin/self/dev-t1q-body-interoception-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8598644Z  * [new branch]        self/dev-t1r-fatigue-timecourse-20261028 -> origin/self/dev-t1r-fatigue-timecourse-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8599219Z  * [new branch]        self/dev-t1u-gait-t2-integration-20261028 -> origin/self/dev-t1u-gait-t2-integration-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8599823Z  * [new branch]        self/dev-t1v-physical-idle-boundary-20261028 -> origin/self/dev-t1v-physical-idle-boundary-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8600426Z  * [new branch]        self/dev-t1w-motion-step-receipts-20261028 -> origin/self/dev-t1w-motion-step-receipts-20261028
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8601038Z  * [new branch]        self/integration-p1-m0-bodyworld-dev-20261024 -> origin/self/integration-p1-m0-bodyworld-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8601767Z  * [new branch]        self/l-lane-l1-experience-reuse-20261012 -> origin/self/l-lane-l1-experience-reuse-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8602306Z  * [new branch]        self/lane-a-e13-root-owner-20261011 -> origin/self/lane-a-e13-root-owner-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8602859Z  * [new branch]        self/postmain-capability-s1-20261006 -> origin/self/postmain-capability-s1-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8603452Z  * [new branch]        self/postmain-capability-s10-learning-20261006 -> origin/self/postmain-capability-s10-learning-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8604083Z  * [new branch]        self/postmain-capability-s11-habit-20261006 -> origin/self/postmain-capability-s11-habit-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8604754Z  * [new branch]        self/postmain-capability-s2-descriptors-20261006 -> origin/self/postmain-capability-s2-descriptors-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8605426Z  * [new branch]        self/postmain-capability-s3-epoch-plan-20261006 -> origin/self/postmain-capability-s3-epoch-plan-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8606194Z  * [new branch]        self/postmain-capability-s4-profile-qualification-20261006 -> origin/self/postmain-capability-s4-profile-qualification-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8607139Z  * [new branch]        self/postmain-capability-s5-attention-20261006 -> origin/self/postmain-capability-s5-attention-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8607782Z  * [new branch]        self/postmain-capability-s6-belief-20261006 -> origin/self/postmain-capability-s6-belief-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8608409Z  * [new branch]        self/postmain-capability-s7-concept-20261006 -> origin/self/postmain-capability-s7-concept-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8609072Z  * [new branch]        self/postmain-capability-s8-prediction-20261006 -> origin/self/postmain-capability-s8-prediction-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8609733Z  * [new branch]        self/postmain-capability-s9-planning-20261006 -> origin/self/postmain-capability-s9-planning-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8610515Z  * [new branch]        self/postmain-feature-s44-reactive-l0-20261009 -> origin/self/postmain-feature-s44-reactive-l0-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8611178Z  * [new branch]        self/postmain-feature-s45-seek-waypoint-20261009 -> origin/self/postmain-feature-s45-seek-waypoint-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8611832Z  * [new branch]        self/postmain-feature-s46-eat-hunger-20261009 -> origin/self/postmain-feature-s46-eat-hunger-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8612526Z  * [new branch]        self/postmain-feature-s47-selective-cognition-20261009 -> origin/self/postmain-feature-s47-selective-cognition-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8613278Z  * [new branch]        self/postmain-feature-s48-interruption-fence-20261009 -> origin/self/postmain-feature-s48-interruption-fence-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8613997Z  * [new branch]        self/postmain-feature-s49-normal-runtime-20261009 -> origin/self/postmain-feature-s49-normal-runtime-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8614700Z  * [new branch]        self/postmain-feature-s50-seek-execution-20261009 -> origin/self/postmain-feature-s50-seek-execution-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8615371Z  * [new branch]        self/postmain-feature-s51-eat-execution-20261009 -> origin/self/postmain-feature-s51-eat-execution-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8616013Z  * [new branch]        self/postmain-feature-s52-local-llm-20261009 -> origin/self/postmain-feature-s52-local-llm-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8616891Z  * [new branch]        self/postmain-feature-s53-concurrent-cognition-20261009 -> origin/self/postmain-feature-s53-concurrent-cognition-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8617739Z  * [new branch]        self/postmain-feature-s54-world-l0-during-l2-http-20261009 -> origin/self/postmain-feature-s54-world-l0-during-l2-http-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8618579Z  * [new branch]        self/postmain-feature-s55-local-actual-model-probe-20261009 -> origin/self/postmain-feature-s55-local-actual-model-probe-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8619402Z  * [new branch]        self/postmain-feature-s56-live-model-world-overlap-20261009 -> origin/self/postmain-feature-s56-live-model-world-overlap-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8620373Z  * [new branch]        self/postmain-feature-s57-owned-local-llama-backend-20261009 -> origin/self/postmain-feature-s57-owned-local-llama-backend-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8621169Z  * [new branch]        self/postmain-feature-s58-all-action-timing-20261009 -> origin/self/postmain-feature-s58-all-action-timing-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8621970Z  * [new branch]        self/postmain-feature-s59a-backend-stop-feasibility-20261009 -> origin/self/postmain-feature-s59a-backend-stop-feasibility-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8622847Z  * [new branch]        self/postmain-feature-s59b-native-ack-receipt-contract-20261010 -> origin/self/postmain-feature-s59b-native-ack-receipt-contract-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8623619Z  * [new branch]        self/postmain-s12-route-integration-20261006 -> origin/self/postmain-s12-route-integration-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8624275Z  * [new branch]        self/postmain-s13-execution-admission-20261006 -> origin/self/postmain-s13-execution-admission-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8624909Z  * [new branch]        self/postmain-s14-execution-binding-20261006 -> origin/self/postmain-s14-execution-binding-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8625546Z  * [new branch]        self/postmain-s15-mineflayer-execution-20261006 -> origin/self/postmain-s15-mineflayer-execution-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8626199Z  * [new branch]        self/postmain-s16-action-outcome-20261006 -> origin/self/postmain-s16-action-outcome-20261006
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8627094Z  * [new branch]        self/postmain-s17-learning-feedback-closure-20261007 -> origin/self/postmain-s17-learning-feedback-closure-20261007
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8627812Z  * [new branch]        self/postmain-s18-architecture-freeze-20261007 -> origin/self/postmain-s18-architecture-freeze-20261007
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8628461Z  * [new branch]        self/postmain-s19-explicit-two-epoch-20261008 -> origin/self/postmain-s19-explicit-two-epoch-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8629244Z  * [new branch]        self/postmain-s20-second-action-outcome-20261008 -> origin/self/postmain-s20-second-action-outcome-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8629931Z  * [new branch]        self/postmain-s21-skill-terminal-closure-20261008 -> origin/self/postmain-s21-skill-terminal-closure-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8630584Z  * [new branch]        self/postmain-s22-skill-exit-routing-20261008 -> origin/self/postmain-s22-skill-exit-routing-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8631227Z  * [new branch]        self/postmain-s23-local-recovery-action-20261008 -> origin/self/postmain-s23-local-recovery-action-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8631908Z  * [new branch]        self/postmain-s24-postfailure-cognition-20261008 -> origin/self/postmain-s24-postfailure-cognition-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8632557Z  * [new branch]        self/postmain-s25-explicit-wait-gate-20261008 -> origin/self/postmain-s25-explicit-wait-gate-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8633197Z  * [new branch]        self/postmain-s26-wait-release-action-20261008 -> origin/self/postmain-s26-wait-release-action-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8633905Z  * [new branch]        self/postmain-s27-source-native-world-evidence-20261008 -> origin/self/postmain-s27-source-native-world-evidence-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8634650Z  * [new branch]        self/postmain-s28-explicit-probe-roundtrip-20261008 -> origin/self/postmain-s28-explicit-probe-roundtrip-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8635318Z  * [new branch]        self/postmain-s29-correlated-probe-20261008 -> origin/self/postmain-s29-correlated-probe-20261008
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8635955Z  * [new branch]        self/postmain-s30-node-bridge-process-20261009 -> origin/self/postmain-s30-node-bridge-process-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8636693Z  * [new branch]        self/postmain-s31a-ci-real-minecraft-20261009 -> origin/self/postmain-s31a-ci-real-minecraft-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8637337Z  * [new branch]        self/postmain-s31b-wsl2-reproduction-20261009 -> origin/self/postmain-s31b-wsl2-reproduction-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8638132Z  * [new branch]        self/postmain-s32-real-action-world-lineage-20261009 -> origin/self/postmain-s32-real-action-world-lineage-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8638886Z  * [new branch]        self/postmain-s33-three-real-actions-learning-20261009 -> origin/self/postmain-s33-three-real-actions-learning-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8639632Z  * [new branch]        self/postmain-s34-native-threat-skill-goal-20261009 -> origin/self/postmain-s34-native-threat-skill-goal-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8640396Z  * [new branch]        self/postmain-s35-native-event-cognition-trigger-20261009 -> origin/self/postmain-s35-native-event-cognition-trigger-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8641227Z  * [new branch]        self/postmain-s36-bounded-event-cognition-scheduler-20261009 -> origin/self/postmain-s36-bounded-event-cognition-scheduler-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8642025Z  * [new branch]        self/postmain-s37-bounded-host-loop-reconnect-20261009 -> origin/self/postmain-s37-bounded-host-loop-reconnect-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8642810Z  * [new branch]        self/postmain-s38-forced-node-loss-revalidation-20261009 -> origin/self/postmain-s38-forced-node-loss-revalidation-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8643528Z  * [new branch]        self/postmain-s39-fresh-source-action-20261009 -> origin/self/postmain-s39-fresh-source-action-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8644232Z  * [new branch]        self/postmain-s40-inflight-node-loss-unknown-20261009 -> origin/self/postmain-s40-inflight-node-loss-unknown-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8644995Z  * [new branch]        self/postmain-s41-post-unknown-new-world-action-20261009 -> origin/self/postmain-s41-post-unknown-new-world-action-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8645778Z  * [new branch]        self/postmain-s42-world-conditioned-wait-vs-move-20261009 -> origin/self/postmain-s42-world-conditioned-wait-vs-move-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8646629Z  * [new branch]        self/postmain-s43-reversed-native-world-choice-20261009 -> origin/self/postmain-s43-reversed-native-world-choice-20261009
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8647419Z  * [new branch]        self/product-lanec-spatial-link-20261011 -> origin/self/product-lanec-spatial-link-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8648004Z  * [new branch]        self/product-self-one-command-20261010 -> origin/self/product-self-one-command-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8648670Z  * [new branch]        self/product-self-one-command-cognitive-views-20261030 -> origin/self/product-self-one-command-cognitive-views-20261030
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8649402Z  * [new branch]        self/product-self-one-command-s49cleanup-20261021 -> origin/self/product-self-one-command-s49cleanup-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8650098Z  * [new branch]        self/product-self-one-command-s49nativeos-20261021 -> origin/self/product-self-one-command-s49nativeos-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8650938Z  * [new branch]        self/product-self-one-command-s49nativeos-independent-115641Z-0bb0826a -> origin/self/product-self-one-command-s49nativeos-independent-115641Z-0bb0826a
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8651882Z  * [new branch]        self/product-self-one-command-s49nativeos-wsl-evidence-20261021 -> origin/self/product-self-one-command-s49nativeos-wsl-evidence-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8652718Z  * [new branch]        self/product-self-one-command-s49nativeos-wsl-r2-20261021 -> origin/self/product-self-one-command-s49nativeos-wsl-r2-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8653454Z  * [new branch]        self/product-self-one-command-s49scoped-20261021 -> origin/self/product-self-one-command-s49scoped-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8654182Z  * [new branch]        self/product-self-one-command-s49scoped-fullreg-20261021 -> origin/self/product-self-one-command-s49scoped-fullreg-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8654914Z  * [new branch]        self/product-self-one-command-s49startup-20261021 -> origin/self/product-self-one-command-s49startup-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8655632Z  * [new branch]        self/product-self-one-command-s49startup-audit-20261021 -> origin/self/product-self-one-command-s49startup-audit-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8656672Z  * [new branch]        self/product-self-one-command-s49startup-bounded-20261021 -> origin/self/product-self-one-command-s49startup-bounded-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8657474Z  * [new branch]        self/product-self-one-command-selfbody-20261018 -> origin/self/product-self-one-command-selfbody-20261018
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8658275Z  * [new branch]        self/product-self-one-command-w4-normal-startup-pinned-20261022 -> origin/self/product-self-one-command-w4-normal-startup-pinned-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8659169Z  * [new branch]        self/product-self-one-command-w4-normal-startup-prehost-20261022 -> origin/self/product-self-one-command-w4-normal-startup-prehost-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8659986Z  * [new branch]        self/product-self-one-command-w4-observed-ci-20261022 -> origin/self/product-self-one-command-w4-observed-ci-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8660764Z  * [new branch]        self/product-self-one-command-w4-observed-pr635-ci-20261022 -> origin/self/product-self-one-command-w4-observed-pr635-ci-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8661634Z  * [new branch]        self/product-self-one-command-w4-offline-orchestration-20261022 -> origin/self/product-self-one-command-w4-offline-orchestration-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8662534Z  * [new branch]        self/product-self-one-command-w4-owner-preflight-offline-20261022 -> origin/self/product-self-one-command-w4-owner-preflight-offline-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8663447Z  * [new branch]        self/product-self-one-command-w4-owner-preflight-reviewed-20261022 -> origin/self/product-self-one-command-w4-owner-preflight-reviewed-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8664308Z  * [new branch]        self/product-self-one-command-w4-raw-owner-review-20261022 -> origin/self/product-self-one-command-w4-raw-owner-review-20261022
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8665040Z  * [new branch]        self/projectile-perception-audit-dev-20261024 -> origin/self/projectile-perception-audit-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8665762Z  * [new branch]        self/rsee-central-runtime-20261011 -> origin/self/rsee-central-runtime-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8666285Z  * [new branch]        self/rsee-golden-admission-20261011 -> origin/self/rsee-golden-admission-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8667053Z  * [new branch]        self/rsee-golden-host-readonly-gate-20261011 -> origin/self/rsee-golden-host-readonly-gate-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8667674Z  * [new branch]        self/rsee-live-binding-evidence-20261011 -> origin/self/rsee-live-binding-evidence-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8668273Z  * [new branch]        self/rsee-product-prelaunch-gate-20261011 -> origin/self/rsee-product-prelaunch-gate-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8668801Z  * [new branch]        self/rsee-props-1mib-20261011 -> origin/self/rsee-props-1mib-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8669319Z  * [new branch]        self/rsee-standard-product-optin-20261011 -> origin/self/rsee-standard-product-optin-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8669917Z  * [new branch]        self/rsee-world-binding-offline-20261011 -> origin/self/rsee-world-binding-offline-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8670460Z  * [new branch]        self/rsee-world-bootstrap-20261011 -> origin/self/rsee-world-bootstrap-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8670990Z  * [new branch]        self/rsee-world-bootstrap-once-20261011 -> origin/self/rsee-world-bootstrap-once-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8671546Z  * [new branch]        self/s-lane-s1-physical-wiring-20261011 -> origin/self/s-lane-s1-physical-wiring-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8672101Z  * [new branch]        self/s-lane-s10-memory-ablation-20261012 -> origin/self/s-lane-s10-memory-ablation-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8672660Z  * [new branch]        self/s-lane-s11-l5-shadow-intake-20261012 -> origin/self/s-lane-s11-l5-shadow-intake-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8673371Z  * [new branch]        self/s-lane-s12-behavioral-discrimination-preflight-20261012 -> origin/self/s-lane-s12-behavioral-discrimination-preflight-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8674261Z  * [new branch]        self/s-lane-s13-nonissued-world-interval-20261013 -> origin/self/s-lane-s13-nonissued-world-interval-20261013
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8674915Z  * [new branch]        self/s-lane-s2-decision-integration-20261012 -> origin/self/s-lane-s2-decision-integration-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8675522Z  * [new branch]        self/s-lane-s2-experience-readonly-20261012 -> origin/self/s-lane-s2-experience-readonly-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8676160Z  * [new branch]        self/s-lane-s4-world-observation-audit-20261012 -> origin/self/s-lane-s4-world-observation-audit-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8676905Z  * [new branch]        self/s-lane-s5-world-opportunity-gate-20261012 -> origin/self/s-lane-s5-world-opportunity-gate-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8677619Z  * [new branch]        self/s-lane-s6-controlled-target-contract-20261012 -> origin/self/s-lane-s6-controlled-target-contract-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8678332Z  * [new branch]        self/s-lane-s7-native-original-receipts-20261012 -> origin/self/s-lane-s7-native-original-receipts-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8679020Z  * [new branch]        self/s-lane-s8-two-epoch-controlled-loop-20261012 -> origin/self/s-lane-s8-two-epoch-controlled-loop-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8679674Z  * [new branch]        self/s-lane-s9-native-clearance-gate-20261012 -> origin/self/s-lane-s9-native-clearance-gate-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8680264Z  * [new branch]        self/s49-joint-passive-s10-dev-20261024 -> origin/self/s49-joint-passive-s10-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8680816Z  * [new branch]        self/s49-protected-owner-review-20261021 -> origin/self/s49-protected-owner-review-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8681392Z  * [new branch]        self/s49-startup-ownership-review-20261021 -> origin/self/s49-startup-ownership-review-20261021
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8681986Z  * [new branch]        self/s60a-best-effort-displacement-20261010 -> origin/self/s60a-best-effort-displacement-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8682554Z  * [new branch]        self/s60b1-loopback-adapter-20261010 -> origin/self/s60b1-loopback-adapter-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8683220Z  * [new branch]        self/s60b1-rsee-optin-controls-20261011 -> origin/self/s60b1-rsee-optin-controls-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8683691Z  * [new branch]        self/s60b2-p0-20261010 -> origin/self/s60b2-p0-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8684100Z  * [new branch]        self/s60b2-r2-offline-20261010 -> origin/self/s60b2-r2-offline-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8684602Z  * [new branch]        self/s60b2-r3-diagnostic-runner-20261010 -> origin/self/s60b2-r3-diagnostic-runner-20261010
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8685193Z  * [new branch]        self/s60b2-r3b-diagnostic-live-gate-20261011 -> origin/self/s60b2-r3b-diagnostic-live-gate-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8685756Z  * [new branch]        self/self1-bounded-session-20261011 -> origin/self/self1-bounded-session-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8686261Z  * [new branch]        self/self1-relayui-replay-20261011 -> origin/self/self1-relayui-replay-20261011
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8686955Z  * [new branch]        self/selfbody-anticipatory-timing-dev-20261024 -> origin/self/selfbody-anticipatory-timing-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8687609Z  * [new branch]        self/selfbody-host-clock-passive-dev-20261024 -> origin/self/selfbody-host-clock-passive-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8688281Z  * [new branch]        self/selfbody-host-clock-s49-liveprobe-dev-20261024 -> origin/self/selfbody-host-clock-s49-liveprobe-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8689019Z  * [new branch]        self/selfbody-m0-sourcebound-interoception-dev-20261024 -> origin/self/selfbody-m0-sourcebound-interoception-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8689678Z  * [new branch]        self/selfbody-p1-handoff-dev-20261024 -> origin/self/selfbody-p1-handoff-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8690246Z  * [new branch]        self/selfbody-p1-owner-receipt-dev-20261024 -> origin/self/selfbody-p1-owner-receipt-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8690927Z  * [new branch]        self/selfbody-s49-host-clock-product-optin-dev-20261024 -> origin/self/selfbody-s49-host-clock-product-optin-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8691742Z  * [new branch]        self/selfbody-timing-adoption-stage-20261024 -> origin/self/selfbody-timing-adoption-stage-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8692393Z  * [new branch]        self/selfbody-timing-fast-ci-ownerfix-20261024 -> origin/self/selfbody-timing-fast-ci-ownerfix-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8693075Z  * [new branch]        self/selfbody-timing-w4-prehost-historyfix-20261024 -> origin/self/selfbody-timing-w4-prehost-historyfix-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8693772Z  * [new branch]        self/selfbody-world-live-cognition-dev-20261024 -> origin/self/selfbody-world-live-cognition-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8694491Z  * [new branch]        self/selfworld-occlusion-counterfactual-audit-20261024 -> origin/self/selfworld-occlusion-counterfactual-audit-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8695247Z  * [new branch]        self/selfworld-occlusion-counterfactual-dev-20261024 -> origin/self/selfworld-occlusion-counterfactual-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8695958Z  * [new branch]        self/selfworld-regularity-transfer-dev-20261024 -> origin/self/selfworld-regularity-transfer-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8696759Z  * [new branch]        self/shared-model-only-runtime-20261023 -> origin/self/shared-model-only-runtime-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8697309Z  * [new branch]        self/w4-model-ab-pr634-dev-20261024 -> origin/self/w4-model-ab-pr634-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8697840Z  * [new branch]        self/w4-observation-dev-audit-20261023 -> origin/self/w4-observation-dev-audit-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8698404Z  * [new branch]        self/w4-pr634-integration-review-20261023 -> origin/self/w4-pr634-integration-review-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8698977Z  * [new branch]        self/w4-pr634-owner-cleanup-dev-20261023 -> origin/self/w4-pr634-owner-cleanup-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8699580Z  * [new branch]        self/w4-selfworld-cognition-input-dev-20261023 -> origin/self/w4-selfworld-cognition-input-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8700393Z  * [new branch]        self/w4-selfworld-epoch-replay-dev-20261023 -> origin/self/w4-selfworld-epoch-replay-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8701046Z  * [new branch]        self/w4-selfworld-host-semantic-probe-dev-20261023 -> origin/self/w4-selfworld-host-semantic-probe-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8701729Z  * [new branch]        self/w4-selfworld-metadata-ablation-dev-20261023 -> origin/self/w4-selfworld-metadata-ablation-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8702336Z  * [new branch]        self/w4-selfworld-model-ab-dev-20261023 -> origin/self/w4-selfworld-model-ab-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8702982Z  * [new branch]        self/w4-selfworld-neutral-metadata-length-dev-20261023 -> origin/self/w4-selfworld-neutral-metadata-length-dev-20261023
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8703648Z  * [new branch]        self/zombie-melee-perception-dev-20261024 -> origin/self/zombie-melee-perception-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8704222Z  * [new branch]        self/zombie-pattern-lineage-dev-20261024 -> origin/self/zombie-pattern-lineage-dev-20261024
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8704832Z  * [new branch]        validation/v1-independent-evaluation-20261012 -> origin/validation/v1-independent-evaluation-20261012
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8705403Z  * [new branch]        validation/v2-knockdown-m0-20261014 -> origin/validation/v2-knockdown-m0-20261014
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8705934Z  * [new branch]        work/31-embodiment-boundary-semantics -> origin/work/31-embodiment-boundary-semantics
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8707100Z [command]/usr/bin/git rev-parse --verify --quiet bd9115eeb3aa07a0554058124309c2f6b6cbbc14^{object}
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8707576Z bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8708170Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8708463Z ##[group]Determining the checkout info
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8708781Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8708971Z [command]/usr/bin/git sparse-checkout disable
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8709498Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8710289Z ##[group]Checking out the ref
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.8710630Z [command]/usr/bin/git checkout --progress --force bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9401595Z Note: switching to 'bd9115eeb3aa07a0554058124309c2f6b6cbbc14'.
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9401934Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9402122Z You are in 'detached HEAD' state. You can look around, make experimental
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9402514Z changes and commit them, and you can discard any commits you make in this
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9402897Z state without impacting any branches by switching back to a branch.
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9403125Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9403276Z If you want to create a new branch to retain commits you create, you may
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9403652Z do so (now or later) by using -c with the switch command. Example:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9403861Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9403949Z   git switch -c <new-branch-name>
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404099Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404191Z Or undo this operation with:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404412Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404492Z   git switch -
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404592Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9404772Z Turn off this advice by setting config variable advice.detachedHead to false
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9405013Z 
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9405243Z HEAD is now at bd9115ee fix(L1-MP3): retain protected collector bytes via per-run observed log sink
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9415042Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9454767Z [command]/usr/bin/git log -1 --format=%H
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9477145Z bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9489382Z ##[group]Removing auth
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9489910Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9518304Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9754455Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9775554Z http.https://github.com/.extraheader
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9781726Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:52.9811253Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:53.0042394Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:53.0071067Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+archived-world-heldout-source-only	Run actions/checkout@v4	2026-11-01T00:35:53.0299156Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/setup-python@v5	﻿2026-11-01T00:35:53.0514054Z ##[group]Run actions/setup-python@v5
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0514301Z with:
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0514473Z   python-version: 3.12
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0514670Z   check-latest: false
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0516988Z   token: ***
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0517197Z   update-environment: true
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0517400Z   allow-prereleases: false
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0517590Z   freethreaded: false
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0517766Z env:
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0517934Z   PYTHONPATH: src:tests:.
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0518139Z   PYTHONDONTWRITEBYTECODE: 1
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.0518338Z ##[endgroup]
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.1674303Z ##[group]Installed versions
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.2477485Z (node:2243) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.2478716Z (Use `node --trace-deprecation ...` to show where the warning was created)
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.2479246Z Successfully set up CPython (3.12.15)
+archived-world-heldout-source-only	Run actions/setup-python@v5	2026-11-01T00:35:53.2481046Z ##[endgroup]
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	﻿2026-11-01T00:35:53.2968874Z ##[group]Run set -euo pipefail
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2969286Z [36;1mset -euo pipefail[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2969656Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2971100Z [36;1mruff check adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py adapters/mineflayer/self_body_s50_l1_motion_live_dev.py tests/test_self_body_s50_l1_motion_live_dev.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2972597Z [36;1mruff check adapters/mineflayer/self_body_s50_l1_host_prediction.py tests/test_self_body_s50_l1_host_prediction.py adapters/mineflayer/self_body_s50_world_dev.py adapters/mineflayer/s31a_real_server_ci.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2974092Z [36;1mpython -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py adapters/mineflayer/self_body_s50_l1_motion_live_dev.py tests/test_self_body_s50_l1_motion_live_dev.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2975260Z [36;1mpython -m pytest -o addopts='' -q \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2975542Z [36;1m  tests/test_self_body_s50_l1_host_prediction.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2975845Z [36;1m  tests/test_self_body_s50_l1_motion_prediction.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2976155Z [36;1m  tests/test_self_body_s50_l1_motion_prequential.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2976668Z [36;1m  tests/test_self_body_s50_l1_motion_live_dev.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2976985Z [36;1m  tests/test_self_body_s50_l1_motion_shadow.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2977267Z [36;1m  tests/test_self_body_s50_route_b_dev.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2977537Z [36;1m  tests/test_self_body_s50_live_next_epoch.py \[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2977799Z [36;1m  tests/test_s50_live_paper_window.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2978089Z [36;1mpython tools/selfbody_l1_motion_prediction_replay.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.2978372Z [36;1mpython tools/check_repository.py[0m
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3020855Z shell: /usr/bin/bash -e {0}
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3021099Z env:
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3021283Z   PYTHONPATH: src:tests:.
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3021498Z   PYTHONDONTWRITEBYTECODE: 1
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3021759Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3022110Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3022456Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3022757Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3023060Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3023362Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.3023626Z ##[endgroup]
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.9297286Z Collecting pytest==9.1.1
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:53.9527950Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.1949490Z Collecting ruff==0.17.0
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.1983413Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2085816Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2115116Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2228038Z Collecting packaging>=22 (from pytest==9.1.1)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2260587Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2353858Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2383819Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2515490Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2547180Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2612553Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.2721925Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3475598Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 138.9 MB/s  0:00:00
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3508845Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3553496Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3609114Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3656812Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.3847302Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 57.8 MB/s  0:00:00
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:54.4534728Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:55.5789304Z 
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:55.5799938Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:55.6539276Z All checks passed!
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:55.6623602Z All checks passed!
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:35:57.7240887Z ........................................................................ [ 42%]
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.4127172Z ........................................................................ [ 85%]
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.4762344Z ........................                                                 [100%]
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.4762817Z 168 passed in 44.21s
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9680009Z {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9680521Z   "classification": "DEV_OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9680986Z   "goal": "UNDETERMINED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9681273Z   "mp2_frozen_ticket": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9681625Z     "capture_mode": "ARCHIVAL_REPLAY_ORDER_SIMULATION_ONLY",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9682018Z     "goal_admitted": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9682301Z     "issued_action": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9682574Z     "model": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9682824Z       "action_issues": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9683119Z       "learned_l1_policy": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9683447Z       "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9683683Z       "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9683952Z       "slope": 0.20331885786720635,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9684456Z       "train_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9685074Z       "train_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9685525Z       "train_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9685943Z       "trained_measured_mean_m": 0.002107773315376704,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9686286Z       "training_pairs": 7
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9686732Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9686958Z     "p1_wait_admitted": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9687236Z     "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9687476Z     "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9687793Z     "source_ceiling": "ARCHIVAL_READBACK_NOT_REAUTHENTICATED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9688147Z     "target": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9688405Z       "action_id": "s49-native-move-18",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9688844Z       "paper_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9689339Z       "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9689800Z       "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738"
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9690195Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9690655Z     "ticket_sha256": "d5e7ece4fd8c60c01f93dde85dd02447aebd125ba4880dafac918e5d1e6e1955"
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9691201Z   },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9691439Z   "mp2_next_world_untested": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9691727Z     "action_issues": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9692014Z     "cheap_equivalent": true,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9692354Z     "cheap_pooled_slope": 0.2033188578672077,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9692848Z     "classification": "CHEAP_POOLED_REFIT_EQUIVALENT_UNTESTED_NEXT_WORLD",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9693341Z     "distinct_worlds": 2,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9693643Z     "learning_admissions": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9694208Z     "newly_scored_source_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9695598Z     "predecessor_ticket_sha256": "d5e7ece4fd8c60c01f93dde85dd02447aebd125ba4880dafac918e5d1e6e1955",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9696223Z     "refitted_mean_m": 0.0021544437112471304,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9696960Z     "refitted_slope": 0.2033188578672077,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9697291Z     "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9697562Z     "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9697824Z     "training_pairs": 14,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9698327Z     "training_source_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1"
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9698874Z   },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9699101Z   "mp2_scored": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9699351Z     "errors": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9699609Z       "cheap_same_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9699913Z         "mae_m": 0.000723384425636194,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9700275Z         "rmse_m": 0.0013722649368450833
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9700560Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9700826Z       "classification": "CHEAP_LINEAR_EQUIVALENT",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9701182Z       "exact_cheap_equivalence": true,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9701492Z       "extra_actions": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9701772Z       "goal": "UNDETERMINED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9702245Z       "heldout_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9702895Z       "heldout_session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9703379Z       "heldout_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9703792Z       "l1_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9704068Z         "mae_m": 0.000723384425636194,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9704382Z         "rmse_m": 0.0013722649368450833
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9704677Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9704893Z       "last_value": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9705159Z         "mae_m": 0.007383414869103243,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9705455Z         "rmse_m": 0.015993066387665848
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9705760Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9706003Z       "learning_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9706328Z       "native_probes": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9706774Z       "no_memory_zero": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9707052Z         "mae_m": 0.002201114107117557,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9707378Z         "rmse_m": 0.0042917937115862035
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9707692Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9707936Z       "p1_wait_admitted": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9708388Z       "provenance_ceiling": "ARCHIVAL_READBACK_REPLAY_NOT_REAUTHENTICATED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9708875Z       "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9709154Z       "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9709432Z       "sample_pairs": 7,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9709732Z       "slope": 0.20331885786720635,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9710266Z       "train_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9710896Z       "train_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9711370Z       "train_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9711791Z       "training_mean": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9712100Z         "mae_m": 0.0031044455279932875,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9712435Z         "rmse_m": 0.003685553208632561
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9712738Z       }
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9712949Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9713431Z     "heldout_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9714006Z     "learned_l1_policy": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9735262Z     "original_paper_reauthenticated": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9735740Z     "prediction_committed_before_world_attested": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9736227Z     "scoring_status": "DEV_SOURCE_SHAPED_ORDER_ONLY",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9736773Z     "ticket": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9737120Z       "capture_mode": "ARCHIVAL_REPLAY_ORDER_SIMULATION_ONLY",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9737529Z       "goal_admitted": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9737838Z       "issued_action": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9738113Z       "model": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9738359Z         "action_issues": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9738961Z         "learned_l1_policy": false,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9739291Z         "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9739576Z         "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9739859Z         "slope": 0.20331885786720635,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9740586Z         "train_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9741256Z         "train_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9741761Z         "train_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9742239Z         "trained_measured_mean_m": 0.002107773315376704,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9742626Z         "training_pairs": 7
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9742907Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9743155Z       "p1_wait_admitted": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9743452Z       "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9743727Z       "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9744090Z       "source_ceiling": "ARCHIVAL_READBACK_NOT_REAUTHENTICATED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9744511Z       "target": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9744815Z         "action_id": "s49-native-move-18",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9745258Z         "paper_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9745758Z         "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9746221Z         "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738"
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9746812Z       },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9747257Z       "ticket_sha256": "d5e7ece4fd8c60c01f93dde85dd02447aebd125ba4880dafac918e5d1e6e1955"
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9747791Z     }
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9748013Z   },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9748247Z   "new_world_runs": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9748543Z   "primary_652_train_654_heldout": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9748884Z     "cheap_same_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9749174Z       "mae_m": 0.000723384425636194,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9749484Z       "rmse_m": 0.0013722649368450833
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9749674Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9749859Z     "classification": "CHEAP_LINEAR_EQUIVALENT",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9750118Z     "exact_cheap_equivalence": true,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9750334Z     "extra_actions": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9750517Z     "goal": "UNDETERMINED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9750856Z     "heldout_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9751290Z     "heldout_session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9751629Z     "heldout_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9751888Z     "l1_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9752065Z       "mae_m": 0.000723384425636194,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9752277Z       "rmse_m": 0.0013722649368450833
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9752471Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9752625Z     "last_value": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9752803Z       "mae_m": 0.007383414869103243,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753008Z       "rmse_m": 0.015993066387665848
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753195Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753353Z     "learning_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753557Z     "native_probes": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753740Z     "no_memory_zero": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9753911Z       "mae_m": 0.002201114107117557,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9754114Z       "rmse_m": 0.0042917937115862035
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9754311Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9754472Z     "p1_wait_admitted": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9754745Z     "provenance_ceiling": "ARCHIVAL_READBACK_REPLAY_NOT_REAUTHENTICATED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9755044Z     "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9755212Z     "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9755388Z     "sample_pairs": 7,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9755564Z     "slope": 0.20331885786720635,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9755901Z     "train_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9756290Z     "train_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9756811Z     "train_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9757068Z     "training_mean": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9757253Z       "mae_m": 0.0031044455279932875,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9757662Z       "rmse_m": 0.003685553208632561
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9757855Z     }
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9757997Z   },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9758157Z   "qualification": "NO_GO",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9758356Z   "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9758626Z   "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9758795Z   "science": "NOT_RUN",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9758982Z   "secondary_654_train_652_heldout": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9759196Z     "cheap_same_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9759386Z       "mae_m": 0.0006927084716710948,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9759581Z       "rmse_m": 0.0013140724536524816
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9759764Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9759944Z     "classification": "CHEAP_LINEAR_EQUIVALENT",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9760181Z     "exact_cheap_equivalence": true,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9760392Z     "extra_actions": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9760583Z     "goal": "UNDETERMINED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9760907Z     "heldout_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9761310Z     "heldout_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9761621Z     "heldout_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9761868Z     "l1_linear": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762034Z       "mae_m": 0.0006927084716710948,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762227Z       "rmse_m": 0.0013140724536524816
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762411Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762561Z     "last_value": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762731Z       "mae_m": 0.00707031261447482,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9762937Z       "rmse_m": 0.015314861893786688
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763122Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763271Z     "learning_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763454Z     "native_probes": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763628Z     "no_memory_zero": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763798Z       "mae_m": 0.002107773315376704,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9763995Z       "rmse_m": 0.004109795231029268
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9764180Z     },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9764332Z     "p1_wait_admitted": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9764604Z     "provenance_ceiling": "ARCHIVAL_READBACK_REPLAY_NOT_REAUTHENTICATED",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9764903Z     "s10_updates": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9765073Z     "s11_grants": 0,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9765243Z     "sample_pairs": 7,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9765422Z     "slope": 0.20331885786720888,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9765746Z     "train_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9766135Z     "train_session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9766597Z     "train_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9766878Z     "training_mean": {
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767056Z       "mae_m": 0.0030511079327128,
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767253Z       "rmse_m": 0.00352936552306213
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767448Z     }
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767581Z   },
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767726Z   "training_l10": 0
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:40.9767885Z }
+archived-world-heldout-source-only	Python3.12 focused FAST and owner regression	2026-11-01T00:36:41.1338866Z Repository contract check passed.
+archived-world-heldout-source-only	Strict non-learning DEV status	﻿2026-11-01T00:36:41.1412811Z ##[group]Run echo 'OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1413794Z [36;1mecho 'OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'[0m
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1441671Z shell: /usr/bin/bash -e {0}
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1441888Z env:
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1442061Z   PYTHONPATH: src:tests:.
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1442265Z   PYTHONDONTWRITEBYTECODE: 1
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1442510Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1442859Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1443196Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1443494Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1443784Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1444124Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1444386Z ##[endgroup]
+archived-world-heldout-source-only	Strict non-learning DEV status	2026-11-01T00:36:41.1490218Z OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN
+archived-world-heldout-source-only	Post Run actions/setup-python@v5	﻿2026-11-01T00:36:41.1565064Z Post job cleanup.
+archived-world-heldout-source-only	Post Run actions/setup-python@v5	2026-11-01T00:36:41.2510256Z (node:2319) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+archived-world-heldout-source-only	Post Run actions/setup-python@v5	2026-11-01T00:36:41.2510880Z (Use `node --trace-deprecation ...` to show where the warning was created)
+archived-world-heldout-source-only	Post Run actions/checkout@v4	﻿2026-11-01T00:36:41.2679456Z Post job cleanup.
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3403397Z [command]/usr/bin/git version
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3439344Z git version 2.56.0
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3474218Z Temporarily overriding HOME='/home/runner/work/_temp/6852cb85-ae44-47ad-8b6f-f136278aa38a' before making global git config changes
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3475298Z Adding repository directory to the temporary git global config as a safe directory
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3477910Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3512737Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3552884Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3819665Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.3878560Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.4153314Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+archived-world-heldout-source-only	Post Run actions/checkout@v4	2026-11-01T00:36:41.4183675Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+archived-world-heldout-source-only	Complete job	﻿2026-11-01T00:36:41.4558281Z Cleaning up orphan processes
+archived-world-heldout-source-only	Complete job	2026-11-01T00:36:41.4874000Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

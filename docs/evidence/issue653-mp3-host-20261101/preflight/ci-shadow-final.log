@@ -1,0 +1,626 @@
+original-l0-l1-source-shadow	Set up job	﻿2026-11-01T00:35:53.0325057Z Current runner version: '2.338.2'
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0347112Z ##[group]Runner Image Provisioner
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0347883Z Hosted Compute Agent
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0348702Z Version: 20261021.618
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0349236Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0349883Z Build Date: 2026-10-21T00:45:21Z
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0350438Z Worker ID: {83b22a7c-7212-465d-9672-931b5063c339}
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0351035Z Region: westus3
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0351498Z Cloud: Azure
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0351962Z ##[endgroup]
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0353202Z ##[group]Operating System
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0353711Z Ubuntu
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0354126Z 26.04.1
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0354649Z LTS
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0355104Z ##[endgroup]
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0355582Z ##[group]Runner Image
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0356085Z Image: ubuntu-26.04
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0356534Z Version: 20261025.179.1
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0357443Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0359181Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0359963Z ##[endgroup]
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0360909Z ##[group]GITHUB_TOKEN Permissions
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0362699Z Contents: read
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0363212Z Metadata: read
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0363754Z ##[endgroup]
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0365453Z Secret source: Actions
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0366310Z Cache mode: write
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0366905Z Prepare workflow directory
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0683350Z Prepare all required actions
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.0722647Z Getting action download info
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.3592253Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.5132076Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+original-l0-l1-source-shadow	Set up job	2026-11-01T00:35:53.6919561Z Complete job name: original-l0-l1-source-shadow
+original-l0-l1-source-shadow	Run actions/checkout@v4	﻿2026-11-01T00:35:53.7630764Z ##[group]Run actions/checkout@v4
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7631539Z with:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7631955Z   ref: bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7632473Z   persist-credentials: false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7632903Z   fetch-depth: 0
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7633293Z   repository: rinsakamo/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7636534Z   token: ***
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7636922Z   ssh-strict: true
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7637334Z   ssh-user: git
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7637701Z   clean: true
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7638288Z   sparse-checkout-cone-mode: true
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7638752Z   fetch-tags: false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7639134Z   show-progress: true
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7639522Z   lfs: false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7639876Z   submodules: false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7640258Z   set-safe-directory: true
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7640683Z   allow-unsafe-pr-checkout: false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7641272Z env:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7641624Z   PYTHONPATH: src:tests:.
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7642096Z   PYTHONDONTWRITEBYTECODE: 1
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:53.7642570Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0055147Z Syncing repository: rinsakamo/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0057561Z ##[group]Getting Git version info
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0058827Z Working directory is '/home/runner/work/relay-self/relay-self'
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0060369Z [command]/usr/bin/git version
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0098943Z git version 2.56.0
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0119650Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0131117Z Temporarily overriding HOME='/home/runner/work/_temp/dcc3bda3-49e5-4de5-9592-569181925ab5' before making global git config changes
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0133455Z Adding repository directory to the temporary git global config as a safe directory
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0137431Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0190671Z Deleting the contents of '/home/runner/work/relay-self/relay-self'
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0194369Z ##[group]Initializing the repository
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0198046Z [command]/usr/bin/git init /home/runner/work/relay-self/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0358083Z hint: Using 'master' as the name for the initial branch. This default branch name
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0359920Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0361213Z hint: to use in all of your new repositories, which will suppress this warning,
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0362247Z hint: call:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0362819Z hint:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0363920Z hint: 	git config --global init.defaultBranch <name>
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0364778Z hint:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0365568Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0366817Z hint: 'development'. The just-created branch can be renamed via this command:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0367793Z hint:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0368473Z hint: 	git branch -m <name>
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0369107Z hint:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0369934Z hint: Disable this message with "git config set advice.defaultBranchName false"
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0371345Z Initialized empty Git repository in /home/runner/work/relay-self/relay-self/.git/
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0378587Z [command]/usr/bin/git remote add origin https://github.com/rinsakamo/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0432076Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0433214Z ##[group]Disabling automatic garbage collection
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0435412Z [command]/usr/bin/git config --local gc.auto 0
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0476088Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0477351Z ##[group]Setting up auth
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0478910Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.0512281Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1065019Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1103857Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1364130Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1395523Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1635371Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1671382Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1672125Z ##[group]Fetching the repository
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:54.1678799Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4839517Z From https://github.com/rinsakamo/relay-self
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4841429Z  * [new branch]        dev/issue651-route-b-20261031 -> origin/dev/issue651-route-b-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4843626Z  * [new branch]        dev/l-bcg-conditional-motion-shadow-20261101 -> origin/dev/l-bcg-conditional-motion-shadow-20261101
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4845597Z  * [new branch]        dev/l21-real-goal-observer-20261031 -> origin/dev/l21-real-goal-observer-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4847631Z  * [new branch]        dev/l22-post-s16-settling-20261031 -> origin/dev/l22-post-s16-settling-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4849834Z  * [new branch]        dev/l23-paper-settling-boundary-20261031 -> origin/dev/l23-paper-settling-boundary-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4851392Z  * [new branch]        dev/s50-l23-client-packet-integrated-20261031 -> origin/dev/s50-l23-client-packet-integrated-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4852747Z  * [new branch]        dev/s50-paper-input-witness-20261031 -> origin/dev/s50-paper-input-witness-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4854073Z  * [new branch]        dev/s50-selfbody-physical-observation-20261031 -> origin/dev/s50-selfbody-physical-observation-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4855759Z  * [new branch]        dev/self-product-passive-bodyworld-20261024 -> origin/dev/self-product-passive-bodyworld-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4857182Z  * [new branch]        dev/self-product-passive-pr634-adoption-20261024 -> origin/dev/self-product-passive-pr634-adoption-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4859319Z  * [new branch]        dev/selfbody-l1-motion-prediction-20261101 -> origin/dev/selfbody-l1-motion-prediction-20261101
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4861036Z  * [new branch]        dev/selfbody-l1-motion-shadow-20261031 -> origin/dev/selfbody-l1-motion-shadow-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4862162Z  * [new branch]        dev/selfbody-s16-s50-world-join-20261031 -> origin/dev/selfbody-s16-s50-world-join-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4863494Z  * [new branch]        dev/selfbody-s50-live-paper-window-20261031 -> origin/dev/selfbody-s50-live-paper-window-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4864791Z  * [new branch]        dev/selfbody-s50-motion-companion-20261031 -> origin/dev/selfbody-s50-motion-companion-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4866015Z  * [new branch]        dev/selfbody-s50-next-epoch-passive-20261031 -> origin/dev/selfbody-s50-next-epoch-passive-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4867192Z  * [new branch]        dev/selfbody-s50-original-closure-20261031 -> origin/dev/selfbody-s50-original-closure-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4869150Z  * [new branch]        dev/selfbody-s50-postworld-internal-epoch-20261031 -> origin/dev/selfbody-s50-postworld-internal-epoch-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4871277Z  * [new branch]        dev/w4-cognitive-evidence-use-offline-20261023 -> origin/dev/w4-cognitive-evidence-use-offline-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4873275Z  * [new branch]        dev/w4-goal-cost-orthogonality-offline-20261023 -> origin/dev/w4-goal-cost-orthogonality-offline-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4874558Z  * [new branch]        dev/w4-host-two-axis-offline-20261023 -> origin/dev/w4-host-two-axis-offline-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4875876Z  * [new branch]        dev/w4-normal-startup-observed-20261022T050205Z-a55a97b6 -> origin/dev/w4-normal-startup-observed-20261022T050205Z-a55a97b6
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4877612Z  * [new branch]        dev/w4-recovery-20261023 -> origin/dev/w4-recovery-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4878857Z  * [new branch]        dev/w4-rubric-semantics-audit-20261023 -> origin/dev/w4-rubric-semantics-audit-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4879891Z  * [new branch]        exp/published-reward-genetics -> origin/exp/published-reward-genetics
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4880927Z  * [new branch]        experiment/gemma-skill-narrowing-cost -> origin/experiment/gemma-skill-narrowing-cost
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4882018Z  * [new branch]        experiment/nld-gemma-cross-substrate -> origin/experiment/nld-gemma-cross-substrate
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4883146Z  * [new branch]        experiment/nld-native-path-trajectory -> origin/experiment/nld-native-path-trajectory
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4884393Z  * [new branch]        fix/173-think-protocol-evidence -> origin/fix/173-think-protocol-evidence
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4885804Z  * [new branch]        g-lane/g1-genesis-heredity-20261013 -> origin/g-lane/g1-genesis-heredity-20261013
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4886859Z  * [new branch]        infra/rsee-r1-shared-runtime-20261011 -> origin/infra/rsee-r1-shared-runtime-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4888279Z  * [new branch]        infra/rsee-r2-source-handoff-20261012 -> origin/infra/rsee-r2-source-handoff-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4889373Z  * [new branch]        infra/rsee-r3-sibling-compat-20261012 -> origin/infra/rsee-r3-sibling-compat-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4890488Z  * [new branch]        infra/rsee-r4-evidence-projection-20261012 -> origin/infra/rsee-r4-evidence-projection-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4891618Z  * [new branch]        infra/rsee-r5-pinned-s3-lineage-20261012 -> origin/infra/rsee-r5-pinned-s3-lineage-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4892830Z  * [new branch]        infra/rsee-r6-s9-native-original-readback-20261012 -> origin/infra/rsee-r6-s9-native-original-readback-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4894021Z  * [new branch]        infra/rsee-standard-env-v1-20261011 -> origin/infra/rsee-standard-env-v1-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4895327Z  * [new branch]        infra/rsee-wsl2-host-preparation-20261011 -> origin/infra/rsee-wsl2-host-preparation-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4896679Z  * [new branch]        integration/l10-sourcebound-worldbody-cue-learning-20261030 -> origin/integration/l10-sourcebound-worldbody-cue-learning-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4898266Z  * [new branch]        integration/l11-g413-real-original-goal-boundary-20261030 -> origin/integration/l11-g413-real-original-goal-boundary-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4899765Z  * [new branch]        integration/l12-g413-per-action-progress-no-reward-20261030 -> origin/integration/l12-g413-per-action-progress-no-reward-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4901263Z  * [new branch]        integration/l13-independent-goal-receipt-contract-20261030 -> origin/integration/l13-independent-goal-receipt-contract-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4902747Z  * [new branch]        integration/l14-original-bridge-goal-observer-20261030 -> origin/integration/l14-original-bridge-goal-observer-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4904841Z  * [new branch]        integration/l15-s49-original-goal-capture-preflight-20261031 -> origin/integration/l15-s49-original-goal-capture-preflight-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4906332Z  * [new branch]        integration/l16-s49-native-original-first-action-20261031 -> origin/integration/l16-s49-native-original-first-action-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4908456Z  * [new branch]        integration/l17-l16-l14-independent-goal-handoff-20261031 -> origin/integration/l17-l16-l14-independent-goal-handoff-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4909948Z  * [new branch]        integration/l18-s49-owner-s16-terminal-original-20261031 -> origin/integration/l18-s49-owner-s16-terminal-original-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4911509Z  * [new branch]        integration/l19-native-goal-interleaving-world-readiness-20261031 -> origin/integration/l19-native-goal-interleaving-world-readiness-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4913872Z  * [new branch]        integration/l20-preworld-external-goal-commitment-20261031 -> origin/integration/l20-preworld-external-goal-commitment-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4916328Z  * [new branch]        integration/l21-separate-client-physical-goal-observer-20261031 -> origin/integration/l21-separate-client-physical-goal-observer-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4917776Z  * [new branch]        integration/l9-world-body-s-epoch-shadow-20261030 -> origin/integration/l9-world-body-s-epoch-shadow-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4919331Z  * [new branch]        integration/s49-slm-passive-dev-20261031 -> origin/integration/s49-slm-passive-dev-20261031
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4920501Z  * [new branch]        issue-312-cross-world-motion-manipulation -> origin/issue-312-cross-world-motion-manipulation
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4921611Z  * [new branch]        issue-312-world-neutral-skill-basis -> origin/issue-312-world-neutral-skill-basis
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4922665Z  * [new branch]        learning/l-cf1-fatigue-meter-20261016 -> origin/learning/l-cf1-fatigue-meter-20261016
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4923762Z  * [new branch]        learning/l-cf4-s60-meter-source-20261016 -> origin/learning/l-cf4-s60-meter-source-20261016
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4924889Z  * [new branch]        learning/l2-forecast-observation-20261012 -> origin/learning/l2-forecast-observation-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4926019Z  * [new branch]        learning/l3-shadow-habit-review-20261012 -> origin/learning/l3-shadow-habit-review-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4927099Z  * [new branch]        learning/l4-matched-transfer-20261012 -> origin/learning/l4-matched-transfer-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4928390Z  * [new branch]        learning/l5-contextual-shadow-20261012 -> origin/learning/l5-contextual-shadow-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4929393Z  * [new branch]        learning/l6-next-epoch-20261030 -> origin/learning/l6-next-epoch-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4930374Z  * [new branch]        learning/l7-s-choice-shadow-20261030 -> origin/learning/l7-s-choice-shadow-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4931637Z  * [new branch]        learning/l8-epoch-result-observer-20261030 -> origin/learning/l8-epoch-result-observer-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4932540Z  * [new branch]        main                   -> origin/main
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4933304Z  * [new branch]        mvp/mineflayer-look-effect -> origin/mvp/mineflayer-look-effect
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4934209Z  * [new branch]        repair/220-apparatus-hardening -> origin/repair/220-apparatus-hardening
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4935348Z  * [new branch]        research/m616-m1-resource-cost-projection-20261030 -> origin/research/m616-m1-resource-cost-projection-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4936518Z  * [new branch]        research/m616-metabolism-m0-20261013 -> origin/research/m616-metabolism-m0-20261013
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4937553Z  * [new branch]        research/m616-metabolism-m1-20261013 -> origin/research/m616-metabolism-m1-20261013
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4938769Z  * [new branch]        research/m616-metabolism-m2-20261013 -> origin/research/m616-metabolism-m2-20261013
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4939788Z  * [new branch]        research/p1-fatigue-body-20261016 -> origin/research/p1-fatigue-body-20261016
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4940849Z  * [new branch]        research/p1-selfbody-readout-dev-20261024 -> origin/research/p1-selfbody-readout-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4942002Z  * [new branch]        self/ac-a-e1-epistemic-two-epoch-20261010 -> origin/self/ac-a-e1-epistemic-two-epoch-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4943075Z  * [new branch]        self/ac-a-e10-action-world-20261011 -> origin/self/ac-a-e10-action-world-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4944228Z  * [new branch]        self/ac-a-e11-sequential-avatar-handoff-20261011 -> origin/self/ac-a-e11-sequential-avatar-handoff-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4945449Z  * [new branch]        self/ac-a-e12-native-original-owner-20261011 -> origin/self/ac-a-e12-native-original-owner-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4946601Z  * [new branch]        self/ac-a-e2-main-contract-seam-20261010 -> origin/self/ac-a-e2-main-contract-seam-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4947836Z  * [new branch]        self/ac-a-e3-s29-s24-epistemic-20261010 -> origin/self/ac-a-e3-s29-s24-epistemic-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4949043Z  * [new branch]        self/ac-a-e4-s29-s26-action-closure-20261010 -> origin/self/ac-a-e4-s29-s26-action-closure-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4950249Z  * [new branch]        self/ac-a-e5-prospective-physical-gate-20261010 -> origin/self/ac-a-e5-prospective-physical-gate-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4951556Z  * [new branch]        self/ac-a-e6-native-feasibility-interlock-20261010 -> origin/self/ac-a-e6-native-feasibility-interlock-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4953417Z  * [new branch]        self/ac-a-e7-typed-native-geometry-trace-20261010 -> origin/self/ac-a-e7-typed-native-geometry-trace-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4954970Z  * [new branch]        self/ac-a-e8-operator-geometry-calibration-20261010 -> origin/self/ac-a-e8-operator-geometry-calibration-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4956252Z  * [new branch]        self/ac-a-e9-native-zombie-hurt-20261010 -> origin/self/ac-a-e9-native-zombie-hurt-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4957434Z  * [new branch]        self/ac-b-b10-observed-source-replay-20261010 -> origin/self/ac-b-b10-observed-source-replay-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4958906Z  * [new branch]        self/ac-b-b11-governed-habit-acquisition-20261010 -> origin/self/ac-b-b11-governed-habit-acquisition-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4960186Z  * [new branch]        self/ac-b-b12-independent-habit-grant-20261010 -> origin/self/ac-b-b12-independent-habit-grant-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4961358Z  * [new branch]        self/ac-b-b12-owner-snapshot-489-20261010 -> origin/self/ac-b-b12-owner-snapshot-489-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4962674Z  * [new branch]        self/ac-b-b13-shared-world-s10-s11-20261010 -> origin/self/ac-b-b13-shared-world-s10-s11-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4963836Z  * [new branch]        self/ac-b-b14-matched-readaptation-20261010 -> origin/self/ac-b-b14-matched-readaptation-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4965183Z  * [new branch]        self/ac-b-b15-delayed-noisy-silent-20261010 -> origin/self/ac-b-b15-delayed-noisy-silent-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4966299Z  * [new branch]        self/ac-b-b16-quorum-vs-count-20261010 -> origin/self/ac-b-b16-quorum-vs-count-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4967436Z  * [new branch]        self/ac-b-b17-voi-correlated-sources-20261010 -> origin/self/ac-b-b17-voi-correlated-sources-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4968825Z  * [new branch]        self/ac-b-b18-empirical-voi-20261010 -> origin/self/ac-b-b18-empirical-voi-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4970005Z  * [new branch]        self/ac-b-b19-resource-vs-epistemic-value-20261010 -> origin/self/ac-b-b19-resource-vs-epistemic-value-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4971247Z  * [new branch]        self/ac-b-b1b2-memory-distillation-20261010 -> origin/self/ac-b-b1b2-memory-distillation-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4972393Z  * [new branch]        self/ac-b-b20-frozen-grand-null-20261010 -> origin/self/ac-b-b20-frozen-grand-null-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4973663Z  * [new branch]        self/ac-b-b21-typed-physical-source-boundary-20261010 -> origin/self/ac-b-b21-typed-physical-source-boundary-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4974919Z  * [new branch]        self/ac-b-b22-sqlite-habit-owner-20261010 -> origin/self/ac-b-b22-sqlite-habit-owner-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4976013Z  * [new branch]        self/ac-b-b23-cognitive-loop-20261010 -> origin/self/ac-b-b23-cognitive-loop-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4977171Z  * [new branch]        self/ac-b-b24-novel-structural-transfer-20261010 -> origin/self/ac-b-b24-novel-structural-transfer-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4978634Z  * [new branch]        self/ac-b-b25-discriminating-first-action-20261010 -> origin/self/ac-b-b25-discriminating-first-action-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4979880Z  * [new branch]        self/ac-b-b26-local-l2-proposal-20261010 -> origin/self/ac-b-b26-local-l2-proposal-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4980910Z  * [new branch]        self/ac-b-b27-max2048-20261011 -> origin/self/ac-b-b27-max2048-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4982111Z  * [new branch]        self/ac-b-b28-reasoning-off-20261011 -> origin/self/ac-b-b28-reasoning-off-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4983633Z  * [new branch]        self/ac-b-b29-native-json-schema-20261011 -> origin/self/ac-b-b29-native-json-schema-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4984751Z  * [new branch]        self/ac-b-b4-relevant-heldout-20261010 -> origin/self/ac-b-b4-relevant-heldout-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4985965Z  * [new branch]        self/ac-b-b5-typed-transition-null-20261010 -> origin/self/ac-b-b5-typed-transition-null-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4987229Z  * [new branch]        self/ac-b-b6-main-memory-witness-20261010 -> origin/self/ac-b-b6-main-memory-witness-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4988536Z  * [new branch]        self/ac-b-b7-signed-handoff-20261010 -> origin/self/ac-b-b7-signed-handoff-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4989670Z  * [new branch]        self/ac-b-b8-exact-s17-stack-contract-20261010 -> origin/self/ac-b-b8-exact-s17-stack-contract-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4990984Z  * [new branch]        self/ac-b-b9-exact-s16-signed-source-20261010 -> origin/self/ac-b-b9-exact-s16-signed-source-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4992269Z  * [new branch]        self/ac-c-adaptive-allocation-20261010 -> origin/self/ac-c-adaptive-allocation-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4993382Z  * [new branch]        self/ac-c-c10-online-calibration-20261010 -> origin/self/ac-c-c10-online-calibration-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4994513Z  * [new branch]        self/ac-c-c11-selective-compute-20261010 -> origin/self/ac-c-c11-selective-compute-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4995616Z  * [new branch]        self/ac-c-c12-cue-calibration-20261010 -> origin/self/ac-c-c12-cue-calibration-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4996656Z  * [new branch]        self/ac-c-c13-goal-witness-20261010 -> origin/self/ac-c-c13-goal-witness-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4997645Z  * [new branch]        self/ac-c-c14-signed-goal-20261010 -> origin/self/ac-c-c14-signed-goal-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.4999252Z  * [new branch]        self/ac-c-c15-mineflayer-goal-witness-20261010 -> origin/self/ac-c-c15-mineflayer-goal-witness-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5071947Z  * [new branch]        self/ac-c-c16-one-shot-physical-goal-20261010 -> origin/self/ac-c-c16-one-shot-physical-goal-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5074576Z  * [new branch]        self/ac-c-c3-causal-audit-20261010 -> origin/self/ac-c-c3-causal-audit-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5076044Z  * [new branch]        self/ac-c-c4-hidden-evidence-20261010 -> origin/self/ac-c-c4-hidden-evidence-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5077488Z  * [new branch]        self/ac-c-c5-distillation-20261010 -> origin/self/ac-c-c5-distillation-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5079224Z  * [new branch]        self/ac-c-c6-revocable-capsule-20261010 -> origin/self/ac-c-c6-revocable-capsule-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5080947Z  * [new branch]        self/ac-c-c7-ambiguous-evidence-20261010 -> origin/self/ac-c-c7-ambiguous-evidence-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5082726Z  * [new branch]        self/ac-c-c8-action-attribution-20261010 -> origin/self/ac-c-c8-action-attribution-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5084585Z  * [new branch]        self/ac-c-c9-postfail-epistemic-20261010 -> origin/self/ac-c-c9-postfail-epistemic-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5086619Z  * [new branch]        self/ac-integration-i0-readonly-evidence-gate-20261010 -> origin/self/ac-integration-i0-readonly-evidence-gate-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5088942Z  * [new branch]        self/ac-integration-i1-s29-readonly-owner-20261010 -> origin/self/ac-integration-i1-s29-readonly-owner-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5090279Z  * [new branch]        self/ac-integration-i2-s17-s10-s11-20261010 -> origin/self/ac-integration-i2-s17-s10-s11-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5091487Z  * [new branch]        self/ac-integration-i3-cross-source-20261010 -> origin/self/ac-integration-i3-cross-source-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5092820Z  * [new branch]        self/ac-integration-i4-simulator-action-closure-20261010 -> origin/self/ac-integration-i4-simulator-action-closure-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5094525Z  * [new branch]        self/ac-integration-i5-b16-quorum-action-closure-20261010 -> origin/self/ac-integration-i5-b16-quorum-action-closure-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5095937Z  * [new branch]        self/ac-integration-i6-native-habit-interlock-20261010 -> origin/self/ac-integration-i6-native-habit-interlock-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5097281Z  * [new branch]        self/ac-integration-i7-dual-s15-optin-20261010 -> origin/self/ac-integration-i7-dual-s15-optin-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5098695Z  * [new branch]        self/b0-cognition-epoch-trace-dev-20261024 -> origin/self/b0-cognition-epoch-trace-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5099793Z  * [new branch]        self/cf-d1-frozen-toy-world-20261010 -> origin/self/cf-d1-frozen-toy-world-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5100857Z  * [new branch]        self/cf-d2-episodic-xor-fixture-20261010 -> origin/self/cf-d2-episodic-xor-fixture-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5102043Z  * [new branch]        self/cf-d3-compositional-versionspace-20261010 -> origin/self/cf-d3-compositional-versionspace-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5103263Z  * [new branch]        self/cf-d4-216rule-cost-frontier-20261010 -> origin/self/cf-d4-216rule-cost-frontier-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5104332Z  * [new branch]        self/ci-fast-full-world-312-20261022 -> origin/self/ci-fast-full-world-312-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5105407Z  * [new branch]        self/dev-adaptive-world-time-t0-20261025 -> origin/self/dev-adaptive-world-time-t0-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5106534Z  * [new branch]        self/dev-g41-native-inflight-brake-20261029 -> origin/self/dev-g41-native-inflight-brake-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5107751Z  * [new branch]        self/dev-g410-in-action-evidence-quality-20261030 -> origin/self/dev-g410-in-action-evidence-quality-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5109202Z  * [new branch]        self/dev-g411-g1-unstable-pair-census-20261030 -> origin/self/dev-g411-g1-unstable-pair-census-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5110525Z  * [new branch]        self/dev-g412-original-control-boundary-dwell-20261030 -> origin/self/dev-g412-original-control-boundary-dwell-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5111956Z  * [new branch]        self/dev-g413-g1-generation-witness-20261030 -> origin/self/dev-g413-g1-generation-witness-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5113181Z  * [new branch]        self/dev-g42-native-clear-latency-drift-20261029 -> origin/self/dev-g42-native-clear-latency-drift-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5114481Z  * [new branch]        self/dev-g43-passive-native-tail-control-20261029 -> origin/self/dev-g43-passive-native-tail-control-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5115783Z  * [new branch]        self/dev-g44-intra-action-gait-transition-20261029 -> origin/self/dev-g44-intra-action-gait-transition-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5117068Z  * [new branch]        self/dev-g45-paper-gait-ack-join-hazard-20261029 -> origin/self/dev-g45-paper-gait-ack-join-hazard-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5118460Z  * [new branch]        self/dev-g46-paper-control-generation-20261029 -> origin/self/dev-g46-paper-control-generation-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5119671Z  * [new branch]        self/dev-g47-original-t2-gait-join-20261029 -> origin/self/dev-g47-original-t2-gait-join-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5120914Z  * [new branch]        self/dev-g48-direct-action-node-generation-20261029 -> origin/self/dev-g48-direct-action-node-generation-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5122141Z  * [new branch]        self/dev-g48-ordinary-action-gait-20261029 -> origin/self/dev-g48-ordinary-action-gait-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5123357Z  * [new branch]        self/dev-g48-ordinary-action-gait-epochs-20261029 -> origin/self/dev-g48-ordinary-action-gait-epochs-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5124642Z  * [new branch]        self/dev-g48-ordinary-jog-walk-generation-20261029 -> origin/self/dev-g48-ordinary-jog-walk-generation-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5125917Z  * [new branch]        self/dev-g49-original-action-gap-census-20261029 -> origin/self/dev-g49-original-action-gap-census-20261029
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5127282Z  * [new branch]        self/dev-goal-l0-inflight-preemption-20261028 -> origin/self/dev-goal-l0-inflight-preemption-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5128660Z  * [new branch]        self/dev-goal-l0-real-threat-interrupt-20261028 -> origin/self/dev-goal-l0-real-threat-interrupt-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5129814Z  * [new branch]        self/dev-goal-l0-turn-obstacle-20261028 -> origin/self/dev-goal-l0-turn-obstacle-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5130911Z  * [new branch]        self/dev-goal-l1-waypoint-bypass-20261028 -> origin/self/dev-goal-l1-waypoint-bypass-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5132046Z  * [new branch]        self/dev-l0-autonomous-goal-loop-20261028 -> origin/self/dev-l0-autonomous-goal-loop-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5133206Z  * [new branch]        self/dev-l0-native-xz-goal-feedback-20261028 -> origin/self/dev-l0-native-xz-goal-feedback-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5134383Z  * [new branch]        self/dev-l0-observed-motion-feedback-20261028 -> origin/self/dev-l0-observed-motion-feedback-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5135596Z  * [new branch]        self/dev-l0-s16-three-action-feedback-20261028 -> origin/self/dev-l0-s16-three-action-feedback-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5136734Z  * [new branch]        self/dev-l0-walk-stop-feedback-20261028 -> origin/self/dev-l0-walk-stop-feedback-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5138063Z  * [new branch]        self/dev-l1-conflicting-real-routes-defer-20261028 -> origin/self/dev-l1-conflicting-real-routes-defer-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5139293Z  * [new branch]        self/dev-l1-episodic-detour-reuse-20261028 -> origin/self/dev-l1-episodic-detour-reuse-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5140470Z  * [new branch]        self/dev-l1-grid-refresh-inflight-l0-20261028 -> origin/self/dev-l1-grid-refresh-inflight-l0-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5141642Z  * [new branch]        self/dev-l1-grid-waypoint-refresh-20261028 -> origin/self/dev-l1-grid-waypoint-refresh-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5142753Z  * [new branch]        self/dev-l1-l0-composite-swept-20261028 -> origin/self/dev-l1-l0-composite-swept-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5143969Z  * [new branch]        self/dev-l1-local-grid-search-20261028 -> origin/self/dev-l1-local-grid-search-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5145087Z  * [new branch]        self/dev-l1-local-voxel-waypoints-20261028 -> origin/self/dev-l1-local-voxel-waypoints-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5146281Z  * [new branch]        self/dev-l1-native-blocks-route-choice-20261028 -> origin/self/dev-l1-native-blocks-route-choice-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5147495Z  * [new branch]        self/dev-l1-selfworld-memory-choice-20261028 -> origin/self/dev-l1-selfworld-memory-choice-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5148812Z  * [new branch]        self/dev-l1-t2-action-boundary-20261028 -> origin/self/dev-l1-t2-action-boundary-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5149850Z  * [new branch]        self/dev-p1-attr-trace-ab-20261028 -> origin/self/dev-p1-attr-trace-ab-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5150920Z  * [new branch]        self/dev-p1-attr-trace-isolation-20261028 -> origin/self/dev-p1-attr-trace-isolation-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5152091Z  * [new branch]        self/dev-p1-attribute-boundary-pair-20261027 -> origin/self/dev-p1-attribute-boundary-pair-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5153229Z  * [new branch]        self/dev-p1-causal-wait-shadow-20261027 -> origin/self/dev-p1-causal-wait-shadow-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5154292Z  * [new branch]        self/dev-p1-dash-client-cap-20261026 -> origin/self/dev-p1-dash-client-cap-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5155366Z  * [new branch]        self/dev-p1-dash-directional-cap-20261026 -> origin/self/dev-p1-dash-directional-cap-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5156636Z  * [new branch]        self/dev-p1-dash-model-preload-pair-20261027 -> origin/self/dev-p1-dash-model-preload-pair-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5157785Z  * [new branch]        self/dev-p1-forward-dash-paper-20261025 -> origin/self/dev-p1-forward-dash-paper-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5159014Z  * [new branch]        self/dev-p1-gait-cognition-20261025 -> origin/self/dev-p1-gait-cognition-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5160282Z  * [new branch]        self/dev-p1-gait-net-recovery-dash-20261025 -> origin/self/dev-p1-gait-net-recovery-dash-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5161437Z  * [new branch]        self/dev-p1-matched-boost-7ticks-20261027 -> origin/self/dev-p1-matched-boost-7ticks-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5162639Z  * [new branch]        self/dev-p1-motor-envelope-reverse-pair-20261025 -> origin/self/dev-p1-motor-envelope-reverse-pair-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5163760Z  * [new branch]        self/dev-p1-motor-repeat-20261025 -> origin/self/dev-p1-motor-repeat-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5164817Z  * [new branch]        self/dev-p1-native-next-l0-review-20261027 -> origin/self/dev-p1-native-next-l0-review-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5165889Z  * [new branch]        self/dev-p1-node-hold-audit-20261028 -> origin/self/dev-p1-node-hold-audit-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5166956Z  * [new branch]        self/dev-p1-observed-wait-frames-20261027 -> origin/self/dev-p1-observed-wait-frames-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5168196Z  * [new branch]        self/dev-p1-original-motor-sixth-20261025 -> origin/self/dev-p1-original-motor-sixth-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5169314Z  * [new branch]        self/dev-p1-owner-worldtick-hold-20261027 -> origin/self/dev-p1-owner-worldtick-hold-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5170514Z  * [new branch]        self/dev-p1-pair-repeat-motor-interface-20261025 -> origin/self/dev-p1-pair-repeat-motor-interface-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5171649Z  * [new branch]        self/dev-p1-physical-pair-20261025 -> origin/self/dev-p1-physical-pair-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5172737Z  * [new branch]        self/dev-p1-physiology-calibration-20261028 -> origin/self/dev-p1-physiology-calibration-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5173886Z  * [new branch]        self/dev-p1-selfbody-next-epoch-20261027 -> origin/self/dev-p1-selfbody-next-epoch-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5174988Z  * [new branch]        self/dev-p1-steady-phase-motor-20261027 -> origin/self/dev-p1-steady-phase-motor-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5176290Z  * [new branch]        self/dev-p1-sync-two-model-motor-20261027 -> origin/self/dev-p1-sync-two-model-motor-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5177453Z  * [new branch]        self/dev-paper-dash-directional-cap-20261025 -> origin/self/dev-paper-dash-directional-cap-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5178798Z  * [new branch]        self/dev-s49-dash-forward-operator-world-20261026 -> origin/self/dev-s49-dash-forward-operator-world-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5180044Z  * [new branch]        self/dev-s49-forward-motor-admission-20261026 -> origin/self/dev-s49-forward-motor-admission-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5181181Z  * [new branch]        self/dev-s49-native-next-epoch-20261025 -> origin/self/dev-s49-native-next-epoch-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5182227Z  * [new branch]        self/dev-s49-p1-fifth-epoch-20261025 -> origin/self/dev-s49-p1-fifth-epoch-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5183271Z  * [new branch]        self/dev-s49-paper-input-edges-20261025 -> origin/self/dev-s49-paper-input-edges-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5184374Z  * [new branch]        self/dev-s49-s50-p1-world-first-20261025 -> origin/self/dev-s49-s50-p1-world-first-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5185518Z  * [new branch]        self/dev-selfbody-motion-feedback-v0-20261025 -> origin/self/dev-selfbody-motion-feedback-v0-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5186723Z  * [new branch]        self/dev-selfbody-motion-uncertainty-20261025 -> origin/self/dev-selfbody-motion-uncertainty-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5188087Z  * [new branch]        self/dev-selfbody-motor-clock-observe-20261025 -> origin/self/dev-selfbody-motor-clock-observe-20261025
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5189264Z  * [new branch]        self/dev-t1e-s49-l0-integration-20261026 -> origin/self/dev-t1e-s49-l0-integration-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5190229Z  * [new branch]        self/dev-t1f-s49-t2-20261026 -> origin/self/dev-t1f-s49-t2-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5191194Z  * [new branch]        self/dev-t1g-stop-disconnect-20261026 -> origin/self/dev-t1g-stop-disconnect-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5192293Z  * [new branch]        self/dev-t1h-s49-stop-20261026 -> origin/self/dev-t1h-s49-stop-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5193243Z  * [new branch]        self/dev-t1i-self-stop-eat-20261026 -> origin/self/dev-t1i-self-stop-eat-20261026
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5194301Z  * [new branch]        self/dev-t1j-explicit-resume-20261027 -> origin/self/dev-t1j-explicit-resume-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5195379Z  * [new branch]        self/dev-t1k-stop-resume-faults-20261027 -> origin/self/dev-t1k-stop-resume-faults-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5196510Z  * [new branch]        self/dev-t1l-source-continuity-20261027 -> origin/self/dev-t1l-source-continuity-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5197644Z  * [new branch]        self/dev-t1m-causal-age-instrument-20261027 -> origin/self/dev-t1m-causal-age-instrument-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5198917Z  * [new branch]        self/dev-t1n-emit-internal-timing-20261027 -> origin/self/dev-t1n-emit-internal-timing-20261027
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5199999Z  * [new branch]        self/dev-t1o-trace-optin-ab-20261028 -> origin/self/dev-t1o-trace-optin-ab-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5201006Z  * [new branch]        self/dev-t1p-l0-body-loop-20261028 -> origin/self/dev-t1p-l0-body-loop-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5202058Z  * [new branch]        self/dev-t1q-body-interoception-20261028 -> origin/self/dev-t1q-body-interoception-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5203200Z  * [new branch]        self/dev-t1r-fatigue-timecourse-20261028 -> origin/self/dev-t1r-fatigue-timecourse-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5204368Z  * [new branch]        self/dev-t1u-gait-t2-integration-20261028 -> origin/self/dev-t1u-gait-t2-integration-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5205535Z  * [new branch]        self/dev-t1v-physical-idle-boundary-20261028 -> origin/self/dev-t1v-physical-idle-boundary-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5206704Z  * [new branch]        self/dev-t1w-motion-step-receipts-20261028 -> origin/self/dev-t1w-motion-step-receipts-20261028
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5207890Z  * [new branch]        self/integration-p1-m0-bodyworld-dev-20261024 -> origin/self/integration-p1-m0-bodyworld-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5209269Z  * [new branch]        self/l-lane-l1-experience-reuse-20261012 -> origin/self/l-lane-l1-experience-reuse-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5210326Z  * [new branch]        self/lane-a-e13-root-owner-20261011 -> origin/self/lane-a-e13-root-owner-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5211347Z  * [new branch]        self/postmain-capability-s1-20261006 -> origin/self/postmain-capability-s1-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5212484Z  * [new branch]        self/postmain-capability-s10-learning-20261006 -> origin/self/postmain-capability-s10-learning-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5213685Z  * [new branch]        self/postmain-capability-s11-habit-20261006 -> origin/self/postmain-capability-s11-habit-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5214923Z  * [new branch]        self/postmain-capability-s2-descriptors-20261006 -> origin/self/postmain-capability-s2-descriptors-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5216209Z  * [new branch]        self/postmain-capability-s3-epoch-plan-20261006 -> origin/self/postmain-capability-s3-epoch-plan-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5217602Z  * [new branch]        self/postmain-capability-s4-profile-qualification-20261006 -> origin/self/postmain-capability-s4-profile-qualification-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5219123Z  * [new branch]        self/postmain-capability-s5-attention-20261006 -> origin/self/postmain-capability-s5-attention-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5220339Z  * [new branch]        self/postmain-capability-s6-belief-20261006 -> origin/self/postmain-capability-s6-belief-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5221529Z  * [new branch]        self/postmain-capability-s7-concept-20261006 -> origin/self/postmain-capability-s7-concept-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5222753Z  * [new branch]        self/postmain-capability-s8-prediction-20261006 -> origin/self/postmain-capability-s8-prediction-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5224011Z  * [new branch]        self/postmain-capability-s9-planning-20261006 -> origin/self/postmain-capability-s9-planning-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5225364Z  * [new branch]        self/postmain-feature-s44-reactive-l0-20261009 -> origin/self/postmain-feature-s44-reactive-l0-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5226614Z  * [new branch]        self/postmain-feature-s45-seek-waypoint-20261009 -> origin/self/postmain-feature-s45-seek-waypoint-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5227845Z  * [new branch]        self/postmain-feature-s46-eat-hunger-20261009 -> origin/self/postmain-feature-s46-eat-hunger-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5229296Z  * [new branch]        self/postmain-feature-s47-selective-cognition-20261009 -> origin/self/postmain-feature-s47-selective-cognition-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5230694Z  * [new branch]        self/postmain-feature-s48-interruption-fence-20261009 -> origin/self/postmain-feature-s48-interruption-fence-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5232038Z  * [new branch]        self/postmain-feature-s49-normal-runtime-20261009 -> origin/self/postmain-feature-s49-normal-runtime-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5233336Z  * [new branch]        self/postmain-feature-s50-seek-execution-20261009 -> origin/self/postmain-feature-s50-seek-execution-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5234603Z  * [new branch]        self/postmain-feature-s51-eat-execution-20261009 -> origin/self/postmain-feature-s51-eat-execution-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5235820Z  * [new branch]        self/postmain-feature-s52-local-llm-20261009 -> origin/self/postmain-feature-s52-local-llm-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5237124Z  * [new branch]        self/postmain-feature-s53-concurrent-cognition-20261009 -> origin/self/postmain-feature-s53-concurrent-cognition-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5238675Z  * [new branch]        self/postmain-feature-s54-world-l0-during-l2-http-20261009 -> origin/self/postmain-feature-s54-world-l0-during-l2-http-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5240164Z  * [new branch]        self/postmain-feature-s55-local-actual-model-probe-20261009 -> origin/self/postmain-feature-s55-local-actual-model-probe-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5241675Z  * [new branch]        self/postmain-feature-s56-live-model-world-overlap-20261009 -> origin/self/postmain-feature-s56-live-model-world-overlap-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5243348Z  * [new branch]        self/postmain-feature-s57-owned-local-llama-backend-20261009 -> origin/self/postmain-feature-s57-owned-local-llama-backend-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5244805Z  * [new branch]        self/postmain-feature-s58-all-action-timing-20261009 -> origin/self/postmain-feature-s58-all-action-timing-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5246249Z  * [new branch]        self/postmain-feature-s59a-backend-stop-feasibility-20261009 -> origin/self/postmain-feature-s59a-backend-stop-feasibility-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5247811Z  * [new branch]        self/postmain-feature-s59b-native-ack-receipt-contract-20261010 -> origin/self/postmain-feature-s59b-native-ack-receipt-contract-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5249323Z  * [new branch]        self/postmain-s12-route-integration-20261006 -> origin/self/postmain-s12-route-integration-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5250543Z  * [new branch]        self/postmain-s13-execution-admission-20261006 -> origin/self/postmain-s13-execution-admission-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5251744Z  * [new branch]        self/postmain-s14-execution-binding-20261006 -> origin/self/postmain-s14-execution-binding-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5252957Z  * [new branch]        self/postmain-s15-mineflayer-execution-20261006 -> origin/self/postmain-s15-mineflayer-execution-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5254146Z  * [new branch]        self/postmain-s16-action-outcome-20261006 -> origin/self/postmain-s16-action-outcome-20261006
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5255389Z  * [new branch]        self/postmain-s17-learning-feedback-closure-20261007 -> origin/self/postmain-s17-learning-feedback-closure-20261007
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5256693Z  * [new branch]        self/postmain-s18-architecture-freeze-20261007 -> origin/self/postmain-s18-architecture-freeze-20261007
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5257994Z  * [new branch]        self/postmain-s19-explicit-two-epoch-20261008 -> origin/self/postmain-s19-explicit-two-epoch-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5259358Z  * [new branch]        self/postmain-s20-second-action-outcome-20261008 -> origin/self/postmain-s20-second-action-outcome-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5260625Z  * [new branch]        self/postmain-s21-skill-terminal-closure-20261008 -> origin/self/postmain-s21-skill-terminal-closure-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5261862Z  * [new branch]        self/postmain-s22-skill-exit-routing-20261008 -> origin/self/postmain-s22-skill-exit-routing-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5263099Z  * [new branch]        self/postmain-s23-local-recovery-action-20261008 -> origin/self/postmain-s23-local-recovery-action-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5264359Z  * [new branch]        self/postmain-s24-postfailure-cognition-20261008 -> origin/self/postmain-s24-postfailure-cognition-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5265582Z  * [new branch]        self/postmain-s25-explicit-wait-gate-20261008 -> origin/self/postmain-s25-explicit-wait-gate-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5266795Z  * [new branch]        self/postmain-s26-wait-release-action-20261008 -> origin/self/postmain-s26-wait-release-action-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5268196Z  * [new branch]        self/postmain-s27-source-native-world-evidence-20261008 -> origin/self/postmain-s27-source-native-world-evidence-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5269580Z  * [new branch]        self/postmain-s28-explicit-probe-roundtrip-20261008 -> origin/self/postmain-s28-explicit-probe-roundtrip-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5270847Z  * [new branch]        self/postmain-s29-correlated-probe-20261008 -> origin/self/postmain-s29-correlated-probe-20261008
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5272040Z  * [new branch]        self/postmain-s30-node-bridge-process-20261009 -> origin/self/postmain-s30-node-bridge-process-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5273253Z  * [new branch]        self/postmain-s31a-ci-real-minecraft-20261009 -> origin/self/postmain-s31a-ci-real-minecraft-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5274459Z  * [new branch]        self/postmain-s31b-wsl2-reproduction-20261009 -> origin/self/postmain-s31b-wsl2-reproduction-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5275850Z  * [new branch]        self/postmain-s32-real-action-world-lineage-20261009 -> origin/self/postmain-s32-real-action-world-lineage-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5277229Z  * [new branch]        self/postmain-s33-three-real-actions-learning-20261009 -> origin/self/postmain-s33-three-real-actions-learning-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5278681Z  * [new branch]        self/postmain-s34-native-threat-skill-goal-20261009 -> origin/self/postmain-s34-native-threat-skill-goal-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5280069Z  * [new branch]        self/postmain-s35-native-event-cognition-trigger-20261009 -> origin/self/postmain-s35-native-event-cognition-trigger-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5281571Z  * [new branch]        self/postmain-s36-bounded-event-cognition-scheduler-20261009 -> origin/self/postmain-s36-bounded-event-cognition-scheduler-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5283030Z  * [new branch]        self/postmain-s37-bounded-host-loop-reconnect-20261009 -> origin/self/postmain-s37-bounded-host-loop-reconnect-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5284465Z  * [new branch]        self/postmain-s38-forced-node-loss-revalidation-20261009 -> origin/self/postmain-s38-forced-node-loss-revalidation-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5285793Z  * [new branch]        self/postmain-s39-fresh-source-action-20261009 -> origin/self/postmain-s39-fresh-source-action-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5287103Z  * [new branch]        self/postmain-s40-inflight-node-loss-unknown-20261009 -> origin/self/postmain-s40-inflight-node-loss-unknown-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5288601Z  * [new branch]        self/postmain-s41-post-unknown-new-world-action-20261009 -> origin/self/postmain-s41-post-unknown-new-world-action-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5290046Z  * [new branch]        self/postmain-s42-world-conditioned-wait-vs-move-20261009 -> origin/self/postmain-s42-world-conditioned-wait-vs-move-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5291475Z  * [new branch]        self/postmain-s43-reversed-native-world-choice-20261009 -> origin/self/postmain-s43-reversed-native-world-choice-20261009
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5292867Z  * [new branch]        self/product-lanec-spatial-link-20261011 -> origin/self/product-lanec-spatial-link-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5293958Z  * [new branch]        self/product-self-one-command-20261010 -> origin/self/product-self-one-command-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5295247Z  * [new branch]        self/product-self-one-command-cognitive-views-20261030 -> origin/self/product-self-one-command-cognitive-views-20261030
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5296604Z  * [new branch]        self/product-self-one-command-s49cleanup-20261021 -> origin/self/product-self-one-command-s49cleanup-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5298007Z  * [new branch]        self/product-self-one-command-s49nativeos-20261021 -> origin/self/product-self-one-command-s49nativeos-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5299537Z  * [new branch]        self/product-self-one-command-s49nativeos-independent-115641Z-0bb0826a -> origin/self/product-self-one-command-s49nativeos-independent-115641Z-0bb0826a
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5301226Z  * [new branch]        self/product-self-one-command-s49nativeos-wsl-evidence-20261021 -> origin/self/product-self-one-command-s49nativeos-wsl-evidence-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5302756Z  * [new branch]        self/product-self-one-command-s49nativeos-wsl-r2-20261021 -> origin/self/product-self-one-command-s49nativeos-wsl-r2-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5304131Z  * [new branch]        self/product-self-one-command-s49scoped-20261021 -> origin/self/product-self-one-command-s49scoped-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5305488Z  * [new branch]        self/product-self-one-command-s49scoped-fullreg-20261021 -> origin/self/product-self-one-command-s49scoped-fullreg-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5306868Z  * [new branch]        self/product-self-one-command-s49startup-20261021 -> origin/self/product-self-one-command-s49startup-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5308307Z  * [new branch]        self/product-self-one-command-s49startup-audit-20261021 -> origin/self/product-self-one-command-s49startup-audit-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5309856Z  * [new branch]        self/product-self-one-command-s49startup-bounded-20261021 -> origin/self/product-self-one-command-s49startup-bounded-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5311222Z  * [new branch]        self/product-self-one-command-selfbody-20261018 -> origin/self/product-self-one-command-selfbody-20261018
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5312660Z  * [new branch]        self/product-self-one-command-w4-normal-startup-pinned-20261022 -> origin/self/product-self-one-command-w4-normal-startup-pinned-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5314259Z  * [new branch]        self/product-self-one-command-w4-normal-startup-prehost-20261022 -> origin/self/product-self-one-command-w4-normal-startup-prehost-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5315742Z  * [new branch]        self/product-self-one-command-w4-observed-ci-20261022 -> origin/self/product-self-one-command-w4-observed-ci-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5317173Z  * [new branch]        self/product-self-one-command-w4-observed-pr635-ci-20261022 -> origin/self/product-self-one-command-w4-observed-pr635-ci-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5318850Z  * [new branch]        self/product-self-one-command-w4-offline-orchestration-20261022 -> origin/self/product-self-one-command-w4-offline-orchestration-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5320475Z  * [new branch]        self/product-self-one-command-w4-owner-preflight-offline-20261022 -> origin/self/product-self-one-command-w4-owner-preflight-offline-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5322115Z  * [new branch]        self/product-self-one-command-w4-owner-preflight-reviewed-20261022 -> origin/self/product-self-one-command-w4-owner-preflight-reviewed-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5323776Z  * [new branch]        self/product-self-one-command-w4-raw-owner-review-20261022 -> origin/self/product-self-one-command-w4-raw-owner-review-20261022
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5325419Z  * [new branch]        self/projectile-perception-audit-dev-20261024 -> origin/self/projectile-perception-audit-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5326823Z  * [new branch]        self/rsee-central-runtime-20261011 -> origin/self/rsee-central-runtime-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5327862Z  * [new branch]        self/rsee-golden-admission-20261011 -> origin/self/rsee-golden-admission-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5329175Z  * [new branch]        self/rsee-golden-host-readonly-gate-20261011 -> origin/self/rsee-golden-host-readonly-gate-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5330339Z  * [new branch]        self/rsee-live-binding-evidence-20261011 -> origin/self/rsee-live-binding-evidence-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5331470Z  * [new branch]        self/rsee-product-prelaunch-gate-20261011 -> origin/self/rsee-product-prelaunch-gate-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5332478Z  * [new branch]        self/rsee-props-1mib-20261011 -> origin/self/rsee-props-1mib-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5333491Z  * [new branch]        self/rsee-standard-product-optin-20261011 -> origin/self/rsee-standard-product-optin-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5334619Z  * [new branch]        self/rsee-world-binding-offline-20261011 -> origin/self/rsee-world-binding-offline-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5335690Z  * [new branch]        self/rsee-world-bootstrap-20261011 -> origin/self/rsee-world-bootstrap-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5336742Z  * [new branch]        self/rsee-world-bootstrap-once-20261011 -> origin/self/rsee-world-bootstrap-once-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5337862Z  * [new branch]        self/s-lane-s1-physical-wiring-20261011 -> origin/self/s-lane-s1-physical-wiring-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5339051Z  * [new branch]        self/s-lane-s10-memory-ablation-20261012 -> origin/self/s-lane-s10-memory-ablation-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5340165Z  * [new branch]        self/s-lane-s11-l5-shadow-intake-20261012 -> origin/self/s-lane-s11-l5-shadow-intake-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5341489Z  * [new branch]        self/s-lane-s12-behavioral-discrimination-preflight-20261012 -> origin/self/s-lane-s12-behavioral-discrimination-preflight-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5343018Z  * [new branch]        self/s-lane-s13-nonissued-world-interval-20261013 -> origin/self/s-lane-s13-nonissued-world-interval-20261013
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5344247Z  * [new branch]        self/s-lane-s2-decision-integration-20261012 -> origin/self/s-lane-s2-decision-integration-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5345427Z  * [new branch]        self/s-lane-s2-experience-readonly-20261012 -> origin/self/s-lane-s2-experience-readonly-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5346759Z  * [new branch]        self/s-lane-s4-world-observation-audit-20261012 -> origin/self/s-lane-s4-world-observation-audit-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5348117Z  * [new branch]        self/s-lane-s5-world-opportunity-gate-20261012 -> origin/self/s-lane-s5-world-opportunity-gate-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5349378Z  * [new branch]        self/s-lane-s6-controlled-target-contract-20261012 -> origin/self/s-lane-s6-controlled-target-contract-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5350657Z  * [new branch]        self/s-lane-s7-native-original-receipts-20261012 -> origin/self/s-lane-s7-native-original-receipts-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5351926Z  * [new branch]        self/s-lane-s8-two-epoch-controlled-loop-20261012 -> origin/self/s-lane-s8-two-epoch-controlled-loop-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5353154Z  * [new branch]        self/s-lane-s9-native-clearance-gate-20261012 -> origin/self/s-lane-s9-native-clearance-gate-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5354290Z  * [new branch]        self/s49-joint-passive-s10-dev-20261024 -> origin/self/s49-joint-passive-s10-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5355386Z  * [new branch]        self/s49-protected-owner-review-20261021 -> origin/self/s49-protected-owner-review-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5356514Z  * [new branch]        self/s49-startup-ownership-review-20261021 -> origin/self/s49-startup-ownership-review-20261021
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5357667Z  * [new branch]        self/s60a-best-effort-displacement-20261010 -> origin/self/s60a-best-effort-displacement-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5358881Z  * [new branch]        self/s60b1-loopback-adapter-20261010 -> origin/self/s60b1-loopback-adapter-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5360080Z  * [new branch]        self/s60b1-rsee-optin-controls-20261011 -> origin/self/s60b1-rsee-optin-controls-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5361007Z  * [new branch]        self/s60b2-p0-20261010 -> origin/self/s60b2-p0-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5361848Z  * [new branch]        self/s60b2-r2-offline-20261010 -> origin/self/s60b2-r2-offline-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5362856Z  * [new branch]        self/s60b2-r3-diagnostic-runner-20261010 -> origin/self/s60b2-r3-diagnostic-runner-20261010
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5363994Z  * [new branch]        self/s60b2-r3b-diagnostic-live-gate-20261011 -> origin/self/s60b2-r3b-diagnostic-live-gate-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5365077Z  * [new branch]        self/self1-bounded-session-20261011 -> origin/self/self1-bounded-session-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5366077Z  * [new branch]        self/self1-relayui-replay-20261011 -> origin/self/self1-relayui-replay-20261011
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5367205Z  * [new branch]        self/selfbody-anticipatory-timing-dev-20261024 -> origin/self/selfbody-anticipatory-timing-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5368528Z  * [new branch]        self/selfbody-host-clock-passive-dev-20261024 -> origin/self/selfbody-host-clock-passive-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5369804Z  * [new branch]        self/selfbody-host-clock-s49-liveprobe-dev-20261024 -> origin/self/selfbody-host-clock-s49-liveprobe-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5371181Z  * [new branch]        self/selfbody-m0-sourcebound-interoception-dev-20261024 -> origin/self/selfbody-m0-sourcebound-interoception-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5372437Z  * [new branch]        self/selfbody-p1-handoff-dev-20261024 -> origin/self/selfbody-p1-handoff-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5373544Z  * [new branch]        self/selfbody-p1-owner-receipt-dev-20261024 -> origin/self/selfbody-p1-owner-receipt-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5374839Z  * [new branch]        self/selfbody-s49-host-clock-product-optin-dev-20261024 -> origin/self/selfbody-s49-host-clock-product-optin-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5376251Z  * [new branch]        self/selfbody-timing-adoption-stage-20261024 -> origin/self/selfbody-timing-adoption-stage-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5377461Z  * [new branch]        self/selfbody-timing-fast-ci-ownerfix-20261024 -> origin/self/selfbody-timing-fast-ci-ownerfix-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5378830Z  * [new branch]        self/selfbody-timing-w4-prehost-historyfix-20261024 -> origin/self/selfbody-timing-w4-prehost-historyfix-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5380132Z  * [new branch]        self/selfbody-world-live-cognition-dev-20261024 -> origin/self/selfbody-world-live-cognition-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5381468Z  * [new branch]        self/selfworld-occlusion-counterfactual-audit-20261024 -> origin/self/selfworld-occlusion-counterfactual-audit-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5382854Z  * [new branch]        self/selfworld-occlusion-counterfactual-dev-20261024 -> origin/self/selfworld-occlusion-counterfactual-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5384179Z  * [new branch]        self/selfworld-regularity-transfer-dev-20261024 -> origin/self/selfworld-regularity-transfer-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5385353Z  * [new branch]        self/shared-model-only-runtime-20261023 -> origin/self/shared-model-only-runtime-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5386400Z  * [new branch]        self/w4-model-ab-pr634-dev-20261024 -> origin/self/w4-model-ab-pr634-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5387433Z  * [new branch]        self/w4-observation-dev-audit-20261023 -> origin/self/w4-observation-dev-audit-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5388627Z  * [new branch]        self/w4-pr634-integration-review-20261023 -> origin/self/w4-pr634-integration-review-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5389737Z  * [new branch]        self/w4-pr634-owner-cleanup-dev-20261023 -> origin/self/w4-pr634-owner-cleanup-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5390904Z  * [new branch]        self/w4-selfworld-cognition-input-dev-20261023 -> origin/self/w4-selfworld-cognition-input-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5392209Z  * [new branch]        self/w4-selfworld-epoch-replay-dev-20261023 -> origin/self/w4-selfworld-epoch-replay-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5393479Z  * [new branch]        self/w4-selfworld-host-semantic-probe-dev-20261023 -> origin/self/w4-selfworld-host-semantic-probe-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5394774Z  * [new branch]        self/w4-selfworld-metadata-ablation-dev-20261023 -> origin/self/w4-selfworld-metadata-ablation-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5395946Z  * [new branch]        self/w4-selfworld-model-ab-dev-20261023 -> origin/self/w4-selfworld-model-ab-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5397186Z  * [new branch]        self/w4-selfworld-neutral-metadata-length-dev-20261023 -> origin/self/w4-selfworld-neutral-metadata-length-dev-20261023
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5398532Z  * [new branch]        self/zombie-melee-perception-dev-20261024 -> origin/self/zombie-melee-perception-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5399651Z  * [new branch]        self/zombie-pattern-lineage-dev-20261024 -> origin/self/zombie-pattern-lineage-dev-20261024
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5400827Z  * [new branch]        validation/v1-independent-evaluation-20261012 -> origin/validation/v1-independent-evaluation-20261012
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5401938Z  * [new branch]        validation/v2-knockdown-m0-20261014 -> origin/validation/v2-knockdown-m0-20261014
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5402971Z  * [new branch]        work/31-embodiment-boundary-semantics -> origin/work/31-embodiment-boundary-semantics
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5404826Z [command]/usr/bin/git rev-parse --verify --quiet bd9115eeb3aa07a0554058124309c2f6b6cbbc14^{object}
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5405758Z bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5406927Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5407544Z ##[group]Determining the checkout info
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5408322Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5408776Z [command]/usr/bin/git sparse-checkout disable
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5409906Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5411385Z ##[group]Checking out the ref
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5412083Z [command]/usr/bin/git checkout --progress --force bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5905083Z Note: switching to 'bd9115eeb3aa07a0554058124309c2f6b6cbbc14'.
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5905644Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5906037Z You are in 'detached HEAD' state. You can look around, make experimental
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5906812Z changes and commit them, and you can discard any commits you make in this
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5907582Z state without impacting any branches by switching back to a branch.
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5908214Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5908561Z If you want to create a new branch to retain commits you create, you may
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5909308Z do so (now or later) by using -c with the switch command. Example:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5909716Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5909958Z   git switch -c <new-branch-name>
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5910254Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5910494Z Or undo this operation with:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5910829Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5911053Z   git switch -
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5911270Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5911655Z Turn off this advice by setting config variable advice.detachedHead to false
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5912110Z 
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5912573Z HEAD is now at bd9115ee fix(L1-MP3): retain protected collector bytes via per-run observed log sink
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5918668Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5959238Z [command]/usr/bin/git log -1 --format=%H
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5981440Z bd9115eeb3aa07a0554058124309c2f6b6cbbc14
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5990733Z ##[group]Removing auth
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.5993653Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6021470Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6260782Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6281607Z http.https://github.com/.extraheader
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6287286Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6317107Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6554214Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6585472Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+original-l0-l1-source-shadow	Run actions/checkout@v4	2026-11-01T00:35:55.6818965Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/setup-python@v5	﻿2026-11-01T00:35:55.7054398Z ##[group]Run actions/setup-python@v5
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7054883Z with:
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7055210Z   python-version: 3.12
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7055570Z   check-latest: false
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7058770Z   token: ***
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7059151Z   update-environment: true
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7059548Z   allow-prereleases: false
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7059924Z   freethreaded: false
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7060267Z env:
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7060589Z   PYTHONPATH: src:tests:.
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7060971Z   PYTHONDONTWRITEBYTECODE: 1
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.7061356Z ##[endgroup]
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.8197060Z ##[group]Installed versions
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.8345756Z (node:2235) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.8347075Z (Use `node --trace-deprecation ...` to show where the warning was created)
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.8347820Z Successfully set up CPython (3.12.15)
+original-l0-l1-source-shadow	Run actions/setup-python@v5	2026-11-01T00:35:55.8348793Z ##[endgroup]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	﻿2026-11-01T00:35:55.8512190Z ##[group]Run set -euo pipefail
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8512801Z [36;1mset -euo pipefail[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8513641Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8515174Z [36;1mruff check adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8516843Z [36;1mpython -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8517899Z [36;1mpython -m pytest -o addopts='' -q \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8518716Z [36;1m  tests/test_self_body_s50_l1_motion_shadow.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8519281Z [36;1m  tests/test_self_body_s50_route_b_dev.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8519814Z [36;1m  tests/test_self_body_s50_live_next_epoch.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8520328Z [36;1m  tests/test_s50_live_paper_window.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8520896Z [36;1m  tests/test_self_body_s50_postworld_epoch.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8521399Z [36;1m  tests/test_l1_s_choice_shadow.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8521903Z [36;1m  tests/test_l10_world_body_cue_learning.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8522426Z [36;1m  tests/test_self_body_s50_world_dev.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8522925Z [36;1m  tests/test_self_world_stage_w4_lease.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8523455Z [36;1m  tests/test_self_world_stage_w4_optin_offline.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8523997Z [36;1m  tests/test_w4_protected_recovery_audit.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8524485Z [36;1mpython tools/check_repository.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8572762Z shell: /usr/bin/bash -e {0}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8573550Z env:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8574046Z   PYTHONPATH: src:tests:.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8574645Z   PYTHONDONTWRITEBYTECODE: 1
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8575388Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8576390Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8577423Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8578357Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8579154Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8579895Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:55.8580605Z ##[endgroup]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.4566737Z Collecting pytest==9.1.1
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.4871095Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.7527887Z Collecting ruff==0.17.0
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.7564017Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.7750372Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.7778343Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.7968727Z Collecting packaging>=22 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8003044Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8167853Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8203716Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8578679Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8612618Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8679738Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.8799593Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9574610Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 135.0 MB/s  0:00:00
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9608678Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9667839Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9714385Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9769559Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:56.9875853Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 115.1 MB/s  0:00:00
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:57.0401058Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:58.0773989Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:58.0785139Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:35:58.1619793Z All checks passed!
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:36:43.0855887Z ........................................................................ [ 16%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:29.5719891Z ........................................................................ [ 33%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.0038238Z ........................................................................ [ 50%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.1695950Z ........................................................................ [ 67%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.2037547Z ........................................................................ [ 84%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.7509245Z ....................................................................     [100%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.7509876Z 428 passed in 352.28s (0:05:52)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:41:50.9898542Z Repository contract check passed.
+original-l0-l1-source-shadow	No learning qualification	﻿2026-11-01T00:41:50.9988452Z ##[group]Run echo 'DEV_OFFLINE_L1_ATTENTION_SHADOW_ONLY / REAL_NEW_WORLD_NOT_RUN / CHEAP_1BIT_EQUIVALENT / NO_GOAL_OR_L10 / NO_L0_POLICY_CHANGE / NO_S10_S11 / QUAL_NO_GO / SCIENCE_NOT_RUN'
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:50.9989421Z [36;1mecho 'DEV_OFFLINE_L1_ATTENTION_SHADOW_ONLY / REAL_NEW_WORLD_NOT_RUN / CHEAP_1BIT_EQUIVALENT / NO_GOAL_OR_L10 / NO_L0_POLICY_CHANGE / NO_S10_S11 / QUAL_NO_GO / SCIENCE_NOT_RUN'[0m
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0018982Z shell: /usr/bin/bash -e {0}
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0019216Z env:
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0019396Z   PYTHONPATH: src:tests:.
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0019605Z   PYTHONDONTWRITEBYTECODE: 1
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0019850Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0020188Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0020516Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0020814Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0021109Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0021499Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0021757Z ##[endgroup]
+original-l0-l1-source-shadow	No learning qualification	2026-11-01T00:41:51.0073635Z DEV_OFFLINE_L1_ATTENTION_SHADOW_ONLY / REAL_NEW_WORLD_NOT_RUN / CHEAP_1BIT_EQUIVALENT / NO_GOAL_OR_L10 / NO_L0_POLICY_CHANGE / NO_S10_S11 / QUAL_NO_GO / SCIENCE_NOT_RUN
+original-l0-l1-source-shadow	Post Run actions/setup-python@v5	﻿2026-11-01T00:41:51.0167619Z Post job cleanup.
+original-l0-l1-source-shadow	Post Run actions/setup-python@v5	2026-11-01T00:41:51.1207471Z (node:2862) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+original-l0-l1-source-shadow	Post Run actions/setup-python@v5	2026-11-01T00:41:51.1208562Z (Use `node --trace-deprecation ...` to show where the warning was created)
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	﻿2026-11-01T00:41:51.1349776Z Post job cleanup.
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2210373Z [command]/usr/bin/git version
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2249552Z git version 2.56.0
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2283253Z Temporarily overriding HOME='/home/runner/work/_temp/7abfb93f-3333-42e5-8216-a6da745a7215' before making global git config changes
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2284479Z Adding repository directory to the temporary git global config as a safe directory
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2288524Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2329467Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2363702Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2621316Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2653655Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2939148Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+original-l0-l1-source-shadow	Post Run actions/checkout@v4	2026-11-01T00:41:51.2980279Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+original-l0-l1-source-shadow	Complete job	﻿2026-11-01T00:41:51.3380369Z Cleaning up orphan processes
+original-l0-l1-source-shadow	Complete job	2026-11-01T00:41:51.3746159Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
