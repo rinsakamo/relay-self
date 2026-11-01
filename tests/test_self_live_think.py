@@ -594,3 +594,18 @@ def test_wb_opt_in_does_not_change_legacy_live_observer_or_allow_implicit_enable
             assert report["wb_l2_source_ref"] is None
             assert report["authorized_actions"] == 0
     asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_cli_requires_existing_selfworld_live_owner(capsys):
+    assert self_demo.main(["--wb-cognition-slice"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2"
+    )
+    assert self_demo.main(["--self-world-live", "--wb-cognition-slice"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2"
+    )
+    assert self_demo.main([
+        "--live-think", "--self-world-live", "--wb-cognition-slice",
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
