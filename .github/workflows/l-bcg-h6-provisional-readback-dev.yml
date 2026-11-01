@@ -1,10 +1,13 @@
-name: L-BCG H6 provisional readback DEV
+name: L-BCG H6 H7 provisional source readback DEV
 on:
   push:
     branches:
       - dev/l-bcg-conditional-motion-shadow-20261101
     paths:
       - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'src/relay_self/l_bcg_h7_preaction.py'
+      - 'tests/test_l_bcg_h7_preaction.py'
+      - 'docs/l-bcg-h7-preaction-20261101.md'
       - 'tests/test_l_bcg_h6_dev_proxy.py'
       - 'tools/l_bcg_h6_readback.py'
       - 'docs/l-bcg-h6-dev-proxy-20261101.md'
@@ -12,6 +15,9 @@ on:
   pull_request:
     paths:
       - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'src/relay_self/l_bcg_h7_preaction.py'
+      - 'tests/test_l_bcg_h7_preaction.py'
+      - 'docs/l-bcg-h7-preaction-20261101.md'
       - 'tests/test_l_bcg_h6_dev_proxy.py'
       - 'tools/l_bcg_h6_readback.py'
       - '.github/workflows/l-bcg-h6-provisional-readback-dev.yml'
@@ -32,13 +38,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Focused H6 DEV archived-original tests
+      - name: Focused H6/H7 DEV archived-original tests
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
-          python -m compileall -q src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
-          python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py
+          ruff check src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m compileall -q src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py
           python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101
       - name: Explicit evidence ceiling
         if: always()
