@@ -504,7 +504,8 @@ async def qualify(
             _write_config(root)
             if l1_mp8_surface_mode is not None:
                 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
-                    MP9_SEED, set_fixed_seed,
+                    MP9_SEED,
+                    set_fixed_seed,
                 )
                 report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
                     root, seed=MP9_SEED if l1_mp9_shadow_dev else
@@ -524,7 +525,8 @@ async def qualify(
             _write_config(root)
             if l1_mp8_surface_mode is not None:
                 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
-                    MP9_SEED, set_fixed_seed,
+                    MP9_SEED,
+                    set_fixed_seed,
                 )
                 report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
                     root, seed=MP9_SEED if l1_mp9_shadow_dev else
