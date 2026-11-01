@@ -1,0 +1,62 @@
+name: M #616 S49 original completion admission FAST
+on:
+  push:
+    branches:
+      - research/m616-s49-original-completion-admission-20261101
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  s49-m-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout M source only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install focused test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: M-owned static contracts
+        run: |
+          ruff check experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py
+          python -m compileall -q experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py
+          python tools/check_repository.py
+      - name: Checkout original actual S49 readback owner, pinned and read-only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 702f75c9fab3c42053ca0c89af670db1e306c892
+          path: product_s49_contract
+          persist-credentials: false
+      - name: S49 original typed batch and M owner passive admission same-process
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          s = root / "product_s49_contract"
+          for p in (root, s / "tests", s, s / "src"):
+              sys.path.insert(0, str(p))
+
+          import adapters.mineflayer.s49_completed_decision_bridge as original_s49
+          import adapters.mineflayer.self_action_evidence as original_evidence
+          assert Path(original_s49.__file__).resolve().is_relative_to(s)
+          assert Path(original_evidence.__file__).resolve().is_relative_to(s)
+          import experiments
+          experiments.__path__.append(str(root / "experiments"))
+          from experiments import metabolism_s49_owner_admission as m_admission
+          assert Path(m_admission.__file__).resolve().is_relative_to(root)
+
+          import pytest
+          raise SystemExit(pytest.main([
+              "-q",
+              "tests/test_metabolism_s49_owner_admission.py",
+              "tests/test_m616_s49_live_owner_dev.py",
+              "product_s49_contract/tests/test_s49_completed_decision_bridge.py",
+          ]))
+          PY
