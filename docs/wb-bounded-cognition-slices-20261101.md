@@ -67,3 +67,22 @@ Body health/food and UNKNOWN energy/fatigue, observer/source metadata and the co
 Original evidence is outside the checkout: `/home/rinsa/evidence/wb-669-20261101/` (failed initial CI log, local checks, received probes, prompts, tokenizer comparison, model process lifetime and backend log); World receipt/native report/logs and original manifest are `/home/rinsa/work/wb-669-world-20261101-01/`. Physical runtime HEAD was `bb4098666877808bf13aa5baa1f42aae584afa94`; `git_dirty=true` is retained, not silently changed: generated untracked Python caches existed at launch, and the later omission-only test was added during the run. Runtime source was not edited during execution. Later test/documentation commits are not represented as a new physical run.
 
 Java and Node exited 0, the fresh World directory was removed, and the owned Gemma process exited 0 after SIGTERM without SIGKILL. Native STOP ACK remains **UNATTESTED**; process cleanup is not physical idle or GPU-release qualification. Unresolved: usable S60 Gemma completion/rejection diagnosis, actual L0/L1 slice consumers (this change wires only advisory L2), grounded omission importance across larger scenes, controlled token/latency payoff, source-independent qualification and scientific evaluation. **DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.** Main and all other lanes/frozen evidence remain unchanged; no merge.
+
+
+## 2026-11-01 next WB step — S60 receipt-bound diagnostics (no new World)
+
+The prior actual World established that the Gemma backend executed inference but the existing S60 client returned `UNCONFIRMED` and `accepted_text=null`. It did **not** establish whether the first cause was HTTP envelope validation, a transport/host timeout, or invalidation by the next World observation. The original local raw evidence remains at `/home/rinsa/evidence/wb-669-20261101/`; GitHub alone cannot independently inspect that path.
+
+The opt-in `LiveL2Observer` now reports `wb_s60_diagnostic` in its existing read-only `l2_live_observer` row. No change is made to `LoopbackDisplacementAdapter`, `BestEffortDisplacement`, L0, or the provider acceptance gates.
+
+- `transport_events_before_cleanup` and `transport_events_after_cleanup` distinguish native model-result processing from cancellation performed by cleanup. They are the existing S60-B1 adapter event names, not packet or server logs.
+- `owner_events_before_cleanup` and bounded `source_advance_samples` (max eight) capture the existing S60-A receipt names and transport receipt names **before** the original owner observes the next native source. Each snapshot carries only the newer native sequence number and sanitized host event names.
+- `http_completion_observed_before_cleanup` is TRUE **only** if the existing transport emitted `HTTP_COMPLETION_OBSERVED` before cleanup. This is a host-side validated HTTP completion, not successful L2 acceptance or backend-idle attestation.
+- `accepted_current_text`, `root_cause=UNDETERMINED`, and `native_stop_ack=UNATTESTED` deliberately preserve the difference between valid source-scoped content, unknown failure cause and missing physical stop verification.
+- `wb_s60_diagnostic` is **absent when the WB feature is OFF**. There is no extra native read, model query, cancellation, or retry.
+
+Offline fake-server tests distinguish validated transport followed by later source invalidation from HTTP 503 failure; they require all Action/LRN counts to remain zero. These tests do not explain the **previous** real Gemma run. To distinguish that run, LocalCodex must inspect the already saved immutable callback/model receipts first. Only if an additional DEV real World is justified may the existing explicit disposable World lease be used, retaining all negative and cleanup evidence. No new real World or model inference was run for this diagnostics-only change.
+
+A follow-up comparison should separately count L2 prompt payload, completion acceptance, provider timing, source-advance ordering, omitted cues and no-action safety. The prior WB ON +278 tokenizer tokens remains a negative efficiency result; diagnostics alone does not demonstrate a token reduction.
+
+**Current label for this diagnostics change:** `DEV_ONLY / SOURCE_ORDER_DIAGNOSTIC_ONLY / ROOT_CAUSE_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
