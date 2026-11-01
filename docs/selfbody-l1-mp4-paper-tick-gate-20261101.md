@@ -74,3 +74,28 @@ Python3.12 synthetic fake console/JDK21 pure tick gate/Maven Paper compile/relat
 残る新規2 Worldは `--first-world-index 2 --worlds 2` の**新しい一回限りのworkflowタグ**で実施可能とし、最初の破損Source/invalid cleanupで残りを停止。**World1の予測0/7受付を後付け成功へ変更しない**。
 
 Goal UNDETERMINED / CHEAP_EQUIVALENT / L10/S10/S11=0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN。
+
+
+---
+
+## 2026-11-01 / World2・World3 実機結果 — 元owner DEV PASS、Paper予測受付0/14
+
+**実行HEAD `115efc724629fe7d37f194f42188f93936a71c52`**。#653本会話承認の最大3 WorldからWorld1を消費済みとし、今回 `--first-world-index 2 --worlds 2` で独立した使い捨てWorld 2/3を1回ずつ実行。World1の再試行0。GitHub [run #41267395545](https://github.com/rinsakamo/relay-self/actions/runs/41267395545) **SUCCESS**、原本 artifact `l1-mp4-remaining-two-world-dev-41267395545-1`、作成済みWorld総計 **3/3**。
+
+元S ownerの`S50_DEV_INPUT_TICK`を復元・pin configの入力witness=true化後、両Worldで`S50_DEV_WAIT_TICK` **8/8**、`S50_DEV_INPUT_TICK` **8/8**、host `PREDICTION_FIXED` **7/7**、`PAPER_COMMAND_QUEUED` **7/7**、`PAPER_CONSOLE_WRITE` **7/7**を観測。元S49/S16 Actionは各1件でOUTCOME、Node/Java exit0、runtime cleanup後port再bind PASS。元Paper raw stdout bytesと元collector server.log bytes完全一致、原S7/S16・full S50 Node readbackのproducer status PASS。合成fixtureではなく実Minecraft観測だが**正式L10学習例は0**。
+
+| world | Paper ACCEPT | Paper REJECT | target MATCH | host 7予測 MAE (m) | 同情報cheap linear |
+|---|---:|---:|---:|---:|---|
+| 2 | **0** | 5 | **0** | 0.003948126636 | 同値 |
+| 3 | **0** | 7 | **0** | 0.000692708472 | 同値 |
+
+Paperの拒否理由はWorld2 `LATE_TARGET_TICK=2`、`NOT_NEXT_OBSERVED_TICK=3`、World3 `LATE_TARGET_TICK=4`、`NOT_NEXT_OBSERVED_TICK=3`。World2ではhost console write7に対しPaper拒否5で、**残2件はPaperによる処理確認なし**。送信をacceptへ格上げしない。World1まで含めて**実World 3 / Paper受付成功 0 / 実物理prequential MATCH 0**。
+
+計算上の7対の事後診断（Paperで受付された物理予測ではない）：
+- World2：L1/cheap MAE 0.003948126636、RMSE 0.007305490840。zero MAE 0.002719539769、last MAE 0.012207518618、train-mean MAE 0.003622871190。**ZEROがL1より良い**。
+- World3：L1/cheap MAE 0.000692708472、RMSE 0.001314072454。zero MAE 0.002107773315、last MAE 0.007070312614、train-mean MAE 0.003011104736。L1と同情報cheapの完全同値は変わらない。
+- 同じmodel slope `0.20331885786720635` を過去Worldだけから固定。新World値で係数再fit・S10更新していない。World内のPaperサンプリング8 callbacksと、全tick input idle/eff clear/Goal資格は別。
+
+**解釈**：元MP3「host read前predict」は実worldで再現したが、Paper main-threadでの `target=t+1` 受付は今回一度も成立しない。これを`PAPER_PHYSICAL_PREQUENTIAL_PASS`と呼ぶのは禁止。1-tick以内のhost/stdout→console往復では受付が間に合わないという実機負例を得た。次案は、**World開始前にL1係数とモデルidentityをimmutableにPaperへ事前供給**し、Paperの `WAIT_TICK(t)` 観測callbackそのものの内部で `c*x[t]` を次tickに向けて固定する方式。これなら同一source tickのbefore/afterを順序化できるが、元ownerとの干渉を防ぐ隔離・negative controlsと別試験が必要であり、今回の結果として扱わない。
+
+**最終判定**：World1 `DEV_FAIL_MISSING_INPUT_WITNESS`（原本保存、再実行なし）、World2/3 `DEV_ORIGINAL_OWNER_PASS_PAPER_FORECAST_ACCEPTANCE_0`。実World計 **3/3 消費**、現行3-World bounded grant終了。L0 policy・Action issuer不変、L10/S10/S11=0、**CHEAP_EQUIVALENT / GOAL UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
