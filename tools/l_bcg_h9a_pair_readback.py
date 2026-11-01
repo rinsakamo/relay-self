@@ -14,6 +14,38 @@ from relay_self.l_bcg_h9a_pair import compare_h9a_pair, review_h9a_arm
 from tools.l_bcg_h8_world_readback import audit as independently_audit_h8
 
 
+_CRITICAL_ASSET_SUFFIXES = (
+    "/minecraft.jar",
+    "/server.properties",
+    "/plugins/relay-metabolism-paper-dev.jar",
+    "/plugins/RelayMetabolismDev/config.yml",
+)
+
+
+def _critical_runtime_assets(root: Path) -> tuple[str, ...]:
+    """Compare original Paper/Plugin/config asset bytes by stored SHA, not temp paths."""
+    path = root / "runtime-assets-sha256.json"
+    if not path.is_file() or path.is_symlink() or not 0 < path.stat().st_size <= 2_000_000:
+        raise ValueError("missing/unsafe source runtime-asset manifest")
+    manifest = json.loads(path.read_bytes())
+    if type(manifest) is not dict:
+        raise ValueError("runtime asset manifest must be object")
+    values = []
+    for suffix in _CRITICAL_ASSET_SUFFIXES:
+        matches = [
+            v.get("sha256") for k, v in manifest.items()
+            if type(k) is str and k.endswith(suffix) and type(v) is dict
+        ]
+        if (
+            len(matches) != 1 or type(matches[0]) is not str
+            or len(matches[0]) != 64
+            or any(ch not in "0123456789abcdef" for ch in matches[0])
+        ):
+            raise ValueError("missing/duplicate/invalid source critical runtime asset: " + suffix)
+        values.append(matches[0])
+    return tuple(values)
+
+
 def _world(root: Path, prereg_path: Path, expected_id: str):
     if not root.is_dir() or root.is_symlink():
         raise ValueError("missing/symlink independent World root")
@@ -51,6 +83,10 @@ def main() -> int:
     if args.arm_a_run_root.resolve() == args.arm_b_run_root.resolve():
         parser.error("cannot compare same World directory")
     try:
+        assets_a = _critical_runtime_assets(args.arm_a_run_root)
+        assets_b = _critical_runtime_assets(args.arm_b_run_root)
+        if assets_a != assets_b:
+            raise ValueError("critical Paper/plugin/config asset SHA differs between Worlds")
         a = _world(args.arm_a_run_root, args.arm_a_prereg, "A")
         b = _world(args.arm_b_run_root, args.arm_b_prereg, "B")
         pair = compare_h9a_pair(a, b)
