@@ -289,12 +289,12 @@ def summarize_h6_provisional_worlds(
     _require(type(episodes) is tuple and len(episodes) <= MAX_SAMPLES, "bounded episodes")
     worlds: set[str] = set()
     sessions: set[str] = set()
-    actions: set[str] = set()
+    receipts: set[tuple[str, str]] = set()
     for row in episodes:
         _require(type(row) is DevProxyEpisode, "typed DEV proxy required")
         _require(
             row.paper_world_id not in worlds and row.session_id not in sessions
-            and row.action_id not in actions
+            and (row.session_id, row.action_id) not in receipts
             and row.classification == "DEV_SAMPLED_LAST_REPORTED_INPUT_OFF_PROXY_ONLY"
             and not row.physical_training_eligible and not row.physical_effective_clear_attested
             and not row.goal_attested and row.learning_commits == row.extra_actions == 0,
@@ -302,7 +302,7 @@ def summarize_h6_provisional_worlds(
         )
         worlds.add(row.paper_world_id)
         sessions.add(row.session_id)
-        actions.add(row.action_id)
+        receipts.add((row.session_id, row.action_id))
     flags = [x.sampled_any_motion for x in episodes]
     return DevProxyComparison(
         distinct_provisional_worlds=len(episodes),
