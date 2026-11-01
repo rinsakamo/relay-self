@@ -1,0 +1,36 @@
+name: L MP11 cross-epoch retained shadow offline DEV
+on:
+  push:
+    branches: [dev/l-mp11-retained-condition-shadow-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_mp11_retained_shadow.py'
+      - 'tests/test_self_body_mp11_retained_shadow.py'
+      - '.github/workflows/l-mp11-retained-shadow-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  retained-epoch-prospective-forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned offline test tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Read-only source scope, freeze-before-heldout and cheap comparisons
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/self_body_mp11_retained_shadow.py tests/test_self_body_mp11_retained_shadow.py
+          python -m compileall -q adapters/mineflayer/self_body_mp11_retained_shadow.py
+          python -m pytest -o addopts='' -q tests/test_self_body_mp11_retained_shadow.py tests/test_self_body_s50_l2_mp11_experiment.py
+          python tools/check_repository.py
+      - name: Stage classification
+        run: echo 'L_MP11_PROVISIONAL_RETENTION_OFFLINE_ONLY / UNVERIFIED_OWNER_FIXTURES / NO_GEMMA / NO_MINECRAFT / LEARNING_0 / L0_PROMOTIONS_0 / R_NO_GO / V_NOT_RUN'
