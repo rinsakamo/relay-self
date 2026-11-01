@@ -12,6 +12,7 @@ from relay_self.l_bcg_h9a_config_forensics import (
     compare_h9a_archived_generated_timestamp,
 )
 from tools.l_bcg_h9a_config_forensics import _arm
+from tools.l_bcg_h9a_pair_readback import _critical_runtime_assets
 
 ROOT = (
     Path(__file__).resolve().parents[1] / "docs/evidence"
@@ -128,3 +129,12 @@ def test_previous_pair_rejection_record_remains_unchanged():
     assert reject["classification"] == "H9A_PAIR_REJECTED_RUNTIME_SHA_MISMATCH"
     assert reject["exploratory_pair_pass"] is False
     assert reject["qualified_training_worlds"] == 0
+
+
+def test_existing_strict_pair_asset_gate_still_rejects_preserved_worlds():
+    old_a = _critical_runtime_assets(ROOT / "a/run1")
+    old_b = _critical_runtime_assets(ROOT / "b/run1")
+    assert old_a != old_b
+    assert old_a[0] == old_b[0]
+    assert old_a[1] != old_b[1]
+    assert old_a[2:] == old_b[2:]
