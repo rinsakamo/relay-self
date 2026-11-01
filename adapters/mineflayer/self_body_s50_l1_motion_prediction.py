@@ -248,6 +248,13 @@ def evaluate_heldout(training: MotionSequence, heldout: MotionSequence) -> Motio
         or training.source_ceiling != heldout.source_ceiling
     ):
         raise MotionPredictionRejected("training and heldout source must be distinct matched Worlds")
+    return _compare_sequences(training, heldout)
+
+
+def _compare_sequences(
+    training: MotionSequence, heldout: MotionSequence,
+) -> MotionHeldoutComparison:
+    """Shared arithmetic; callers own source boundary validation."""
     model = freeze_forecast(training)
     xs = tuple(row.displacement_m for row in heldout.steps)
     actual = xs[1:]
