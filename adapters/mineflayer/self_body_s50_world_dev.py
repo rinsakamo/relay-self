@@ -112,6 +112,7 @@ from relay_self.l20_external_goal_commitment import (
     L20GoalCommitmentRejected,
     review_external_pre_world_criterion,
 )
+from relay_self.l_bcg_h9a_stimulus import H9aRejected, select_h9a_stimulus
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
@@ -240,6 +241,7 @@ async def qualify(
     live_next_epoch_dev: bool = False,
     l1_motion_shadow_dev: bool = False,
     l_bcg_shadow_dev: bool = False,
+    l_bcg_h9a_near_distance_m: float | None = None,
     l1_prediction_journal: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
@@ -285,6 +287,17 @@ async def qualify(
             l_bcg_shadow_dev and not live_next_epoch_dev
         ):
             raise S31ABlocked("L-BCG shadow DEV requires original route B")
+        try:
+            h9a_arm = select_h9a_stimulus(
+                l_bcg_h9a_near_distance_m,
+                l_bcg_shadow_dev=l_bcg_shadow_dev,
+                live_next_epoch_dev=live_next_epoch_dev,
+                l22_settling_probes=l22_settling_probes,
+            )
+        except H9aRejected as exc:
+            raise S31ABlocked(str(exc)) from exc
+        if h9a_arm is not None:
+            report["l_bcg_h9a_stimulus"] = asdict(h9a_arm)
         if type(live_next_epoch_dev) is not bool or (
             live_next_epoch_dev and postworld_internal_epoch_dev
         ):
@@ -837,8 +850,12 @@ async def qualify(
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
-            stages = ((10, 5), (2, 8)) if l22_settling_probes is not None else (
-                (10, 5), (2, 8), (2, 8),
+            # H9a varies the operator's already-existing second zombie
+            # stimulus ONLY. The S42 native probe is still the sole readback
+            # authority; requested 3.5m is not automatically observed 3.5m.
+            near = h9a_arm.requested_near_m if h9a_arm is not None else 2
+            stages = ((10, 5), (near, 8)) if l22_settling_probes is not None else (
+                (10, 5), (near, 8), (2, 8),
             )
             for distance_m, hold in stages:
                 _command(server, "kill @e[type=minecraft:zombie]")
@@ -1190,6 +1207,7 @@ def main() -> int:
     parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
     parser.add_argument("--l-bcg-shadow-dev", action="store_true")
+    parser.add_argument("--l-bcg-h9a-near-distance-m", type=float)
     parser.add_argument("--l1-prediction-journal", type=Path)
     args = parser.parse_args()
     goal = None
@@ -1239,6 +1257,7 @@ def main() -> int:
         live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
         l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
         l_bcg_shadow_dev=args.l_bcg_shadow_dev,
+        l_bcg_h9a_near_distance_m=args.l_bcg_h9a_near_distance_m,
         l1_prediction_journal=args.l1_prediction_journal,
     ))
 
