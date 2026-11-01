@@ -1,0 +1,46 @@
+{
+  "execution_head": "bfd8bbb486cc230d4191cdbca7358686c2b517ea",
+  "mode": "DEV_ONLY",
+  "purpose": "Genuine Gemma H1-P1 -> next real WAIT8 -> H1 assessment H2; future-only EOF",
+  "budget": {
+    "worlds": 1,
+    "sessions": 1,
+    "original_actions_max": 3,
+    "gemma_open_max": 2,
+    "retries": 0,
+    "l2_actions": 0,
+    "l2_condition_changes": 0,
+    "learning_admissions": 0,
+    "l0_promotions": 0
+  },
+  "eof_predeclared": true,
+  "file_sha256": {
+    "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101/docs/l-gemma-feedback-world-prereg-20261101.md": "1875ad84488591f51aafac88e3b3d4a90e4706ed39cd1f329e6724a64561e005",
+    "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "/home/rinsa/src/llama.cpp/build/bin/llama-server": "ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536",
+    "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "/home/rinsa/work/l-gemma-feedback-world-evidence-20261101/source-built-plugin.jar": "5c32b648c9d7ec7922a0920cc0b5f7e2a93dd29685041c46b6874d1efadb27c5",
+    "/home/rinsa/work/l-gemma-feedback-world-evidence-20261101/paper-active-config-original.yml": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d"
+  },
+  "flags": {
+    "S49_REAL_SERVER_CI": "1",
+    "MP11_S49_THREE_ACTION_DEV": "1",
+    "MP11_G3_PAPER_THREE_WINDOWS_DEV": "1",
+    "L_MP11_LIVE_PREFIX_DEV": "1",
+    "L_MP11_LIVE_L2_DEV": "1",
+    "L_MP11_PAPER_EOF_DEV": "1"
+  },
+  "ci_all_completed_success": [
+    41317304179,
+    41317304238,
+    41317304246,
+    41317304249,
+    41317304219
+  ],
+  "model_pid": 103190,
+  "ctx_size": 8192,
+  "output_tokens": 512,
+  "python": "Python 3.12.3\n",
+  "node": "v22.22.2\n",
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n"
+}

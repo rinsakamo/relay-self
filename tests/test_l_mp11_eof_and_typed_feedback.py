@@ -160,3 +160,13 @@ def test_exact_citations_and_duplicate_citation_denied():
         validate_numeric_citations(
             tuple(ledger.history), [ref, ref], feedback=None,
         )
+
+
+def test_envelope_boolean_count_cannot_equal_integer_length():
+    raw = b"\n"
+    # Nonempty printable complete source is required, so use a longer original.
+    raw = b"Paper original\n"
+    info = asdict(seal_after_shutdown(raw, predeclared=True))
+    info["post_shutdown"] = 1
+    with pytest.raises(PaperEOFRejected):
+        verified_complete_lines(raw, info, predeclared=True)

@@ -231,10 +231,12 @@ def test_live_request_contains_original_prediction_error_not_future():
 
 
 def test_real_provider_journals_http_response_and_explicit_budget(tmp_path, monkeypatch):
-    from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
     from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
     response = {"id": "fake-http-id", "model": "fake-model", "choices": []}
-    monkeypatch.setattr(LlamaCppRelayProvider, "_call", lambda *a, **k: response)
+    import io
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        lambda *a, **k: io.BytesIO(json.dumps(response).encode()))
     provider = JournaledLiveLlamaProvider(
         journal_root=tmp_path, endpoint="http://127.0.0.1:8080/v1/chat/completions",
         model="fake-model",

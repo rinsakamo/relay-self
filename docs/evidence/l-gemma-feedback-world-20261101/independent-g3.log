@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101/tools/mp11_g3_paper_one_world_audit.py", line 151, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101/tools/mp11_g3_paper_one_world_audit.py", line 141, in main
+    data=review(
+         ^^^^^^^
+  File "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101/tools/mp11_g3_paper_one_world_audit.py", line 30, in review
+    raise MP11PaperRejected("original single-World complete runtime not successful")
+adapters.mineflayer.self_body_s50_l2_mp11_paper_audit.MP11PaperRejected: original single-World complete runtime not successful

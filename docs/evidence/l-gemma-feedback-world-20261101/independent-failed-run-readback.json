@@ -1,0 +1,184 @@
+{
+  "classification": "FAILED_WORLD_REMAINS_FAIL_PARTIAL_ORIGINAL_FACTS_ONLY",
+  "mandatory_g3": "FAIL",
+  "mandatory_live_prefix": "FAIL",
+  "world_attempts": 1,
+  "retries": 0,
+  "sessions": 1,
+  "actual_original_actions_from_raw": 1,
+  "original_s15_clear": 1,
+  "typed_s16_outcome": 1,
+  "native_sequence": {
+    "before": 43,
+    "dispatch": 44,
+    "clear": 49,
+    "s16_after": 51
+  },
+  "movement_m": 0.7342911432182311,
+  "original_host_actual_native_actions_count": 0,
+  "host_list_incomplete_due_to_open_failure": true,
+  "world_uuid": "8bcb1db7-4e3c-4e73-88da-2c982cfe7ded",
+  "session_id": "2cd745a5-769a-4ea0-8f73-bd8963418af0",
+  "prefix_sha_matched": "1/1; 3/3 NOT_REACHED",
+  "wait_ticks": [
+    292,
+    293,
+    294,
+    295,
+    296,
+    297,
+    298,
+    299
+  ],
+  "wait8_total_m": 0.064246601508961,
+  "paper_forecast_pairs": 7,
+  "eof_shape_only": {
+    "schema": "L_MP11_PAPER_EOF_ENVELOPE_V1",
+    "original_sha256": "7dab6bf88c5bd83feb51157eb281d0b7787a52a016c93c5027720b8722b0f44c",
+    "original_length": 441640,
+    "complete_lines_sha256": "3e1b5877e708c15ed2ce2fe5aaa3b408c0f71bbf29c06457bd76aab9a83eff0c",
+    "complete_lines_length": 441638,
+    "suffix_hex": "3e20",
+    "end_state": "JLINE_PROMPT_2_BYTES",
+    "post_shutdown": true,
+    "admission": "FUTURE_RUN_OPT_IN_PAPER_SOURCE_SHAPE_ONLY"
+  },
+  "genuine_http_attempts": 1,
+  "validated_open_calls": 0,
+  "provider_finish_reason": "length",
+  "usage": {
+    "completion_tokens": 512,
+    "prompt_tokens": 2004,
+    "total_tokens": 2516,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "http_elapsed_s": 16.218483574,
+  "candidate_not_admitted": {
+    "referenced_prior_ordinals": [
+      1
+    ],
+    "reconsideration": "KEEP_UNRESOLVED",
+    "model_family": "OTHER_BOUNDED",
+    "next_test": "CHECK_PAPER_CALLBACK_PHASE",
+    "explanation": "Trial 1 shows a prediction error of 0.032m vs a cheap-zero of 0.002m, indicating a systematic offset in the paper's motion model.",
+    "falsification_test": "Test if the discrepancy persists across different block types to isolate whether the error is a global offset or a specific material interaction.",
+    "predicted_wait_total_m": 0.064246601508961,
+    "capability_assessment": "CONDITIONAL_HYPOTHESIS",
+    "prior_hypothesis_relation": "FIRST_HYPOTHESIS",
+    "numeric_evidence_refs": [
+      {
+        "metric_role": "PAPER_CHEAP_NEXT_TICK_MAE_M",
+        "trial_ordinal": 1,
+        "pair_index": 0,
+        "value_m": 0.0021077733153767
+      },
+      {
+        "metric_role": "PAPER_NEXT_TICK_PREDICTION_M",
+        "trial_ordinal": 1,
+        "pair_index": 1,
+        "value_m": 0.0062033431985539
+      },
+      {
+        "metric_role": "PAPER_NEXT_TICK_ABS_ERROR_M",
+        "trial_ordinal": 1,
+        "pair_index": 1,
+        "value_m": 0.0009925349117687
+      },
+      {
+        "metric_role": "PAPER_NEXT_TICK_PREDICTION_M",
+        "trial_ordinal": 1,
+        "pair_index": 2,
+        "value_m": 0.0033870253864104
+      }
+    ]
+  },
+  "numeric_citation_checks": [
+    {
+      "metric_role": "PAPER_CHEAP_NEXT_TICK_MAE_M",
+      "trial_ordinal": 1,
+      "pair_index": 0,
+      "value_m": 0.0021077733153767,
+      "expected_value_m": 0.0021077733153767675,
+      "matches_typed_source": true
+    },
+    {
+      "metric_role": "PAPER_NEXT_TICK_PREDICTION_M",
+      "trial_ordinal": 1,
+      "pair_index": 1,
+      "value_m": 0.0062033431985539,
+      "expected_value_m": 0.032169922395860355,
+      "matches_typed_source": false
+    },
+    {
+      "metric_role": "PAPER_NEXT_TICK_ABS_ERROR_M",
+      "trial_ordinal": 1,
+      "pair_index": 1,
+      "value_m": 0.0009925349117687,
+      "expected_value_m": 0.0226263174750082,
+      "matches_typed_source": false
+    },
+    {
+      "metric_role": "PAPER_NEXT_TICK_PREDICTION_M",
+      "trial_ordinal": 1,
+      "pair_index": 2,
+      "value_m": 0.0033870253864104,
+      "expected_value_m": 0.006203343198553902,
+      "matches_typed_source": false
+    }
+  ],
+  "free_text_error": "0.032m called prediction error, but it is pair1 predicted displacement 0.0321699224m; actual pair1 abs error 0.0226263175m. No global-offset causal evidence.",
+  "H1": "NOT_ADMITTED",
+  "H2": "NOT_REACHED",
+  "prior_prediction_next_observation_error": "NOT_AVAILABLE",
+  "A": "FAIL_VALID_OPEN_0_OF_2",
+  "B1": "NOT_REACHED",
+  "B2": "NOT_ESTABLISHED",
+  "C": "NOT_RUN_BY_DESIGN",
+  "cleanup": {
+    "owned_child_pids_absent": true,
+    "model_pid_absent": true,
+    "world_directory_absent": true,
+    "node_exit": 0,
+    "java_exit": 0,
+    "port_25565_bindable": true,
+    "port_8080_bindable": true
+  },
+  "child_identities": [
+    {
+      "pid": 103286,
+      "argv": [
+        "java",
+        "-Xms512M",
+        "-Xmx1536M",
+        "-jar",
+        "/tmp/relay-self-s49-ml2z6k9x/minecraft.jar",
+        "nogui"
+      ],
+      "cwd": "/tmp/relay-self-s49-ml2z6k9x",
+      "exe": "/home/rinsa/work/s50-p1-flat-native-evidence-20261017/jdk21/runtime/bin/java"
+    },
+    {
+      "pid": 103399,
+      "argv": [
+        "node",
+        "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101/adapters/mineflayer/bridge.mjs",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "25565",
+        "--username",
+        "RelaySelf",
+        "--version",
+        "1.21.8"
+      ],
+      "cwd": "/home/rinsa/work/relay-self-l-gemma-feedback-world-20261101",
+      "exe": "/home/rinsa/.nvm/versions/node/v22.22.2/bin/node"
+    }
+  ],
+  "learning_admissions": 0,
+  "l0_promotions": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}

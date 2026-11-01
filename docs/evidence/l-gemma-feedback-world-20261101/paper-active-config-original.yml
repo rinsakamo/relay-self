@@ -1,0 +1,40 @@
+# DEV ONLY: install in a fresh, disposable Paper 1.21.8 World.
+# This is a candidate, not an ecologically calibrated or R-qualified profile.
+dev-enabled: true
+s50-tick-meter-dev: true
+# Off unless an isolated DEV trial explicitly enables source-bound tick receipts.
+s50-forecast-gate-dev: false
+# MP5: Paper callback-only prequential, requires frozen prior-World model before S49 action.
+s50-paper-local-forecast-dev: true
+# MP11 bounded three consecutive per-Action S50 Paper windows; DEV only.
+s50-mp11-multitrial-dev: true
+# MP6 experimental intervention: actually changes physical body movement in disposable World.
+s50-changed-body-condition-dev: false
+# MP7: experimenter-controlled 5x5 packed-ice surface under original S49 MOVE.
+s50-ice-floor-dev: true
+s50-input-witness-dev: true
+version: M0.2
+minecraft-version: 1.21.8
+calibration-status: candidate_uncalibrated
+standard-food: cooked_beef
+target-player: RelaySelf
+# Per kind exhaustion = standard * multiplier + additional,
+# scaled by actual action quantity (tick / block / event).
+# Native means the *original event amount*, not a fictitious numeric constant.
+actions:
+  BASAL: {unit: tick, standard: 0.001, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK: {unit: block, standard: 0.01, multiplier: 1.0, additional: 0.0, enabled: true}
+  CROUCH: {unit: block, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: true}
+  SPRINT: {unit: block, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  SWIM: {unit: block, standard: 0.01, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK_ON_WATER: {unit: block, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK_UNDERWATER: {unit: block, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  JUMP: {unit: event, standard: 0.05, multiplier: 1.0, additional: 0.0, enabled: true}
+  JUMP_SPRINT: {unit: event, standard: 0.2, multiplier: 1.0, additional: 0.0, enabled: true}
+  ATTACK: {unit: event, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  DAMAGED: {unit: event, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  BLOCK_MINED: {unit: event, standard: 0.005, multiplier: 1.0, additional: 0.0, enabled: true}
+  REGEN: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  HUNGER_EFFECT: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  UNKNOWN: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  COGNITION: {unit: work, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: false}

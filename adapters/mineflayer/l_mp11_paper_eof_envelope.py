@@ -75,7 +75,9 @@ def verified_complete_lines(
     if type(report_envelope) is not dict:
         raise PaperEOFRejected("missing bounded original envelope report")
     expected = asdict(seal_after_shutdown(original, predeclared=predeclared))
-    if report_envelope != expected:
+    if (report_envelope != expected
+            or any(type(report_envelope[k]) is not type(v)
+                   for k, v in expected.items())):
         raise PaperEOFRejected("original Paper envelope changed or foreign")
     n = expected["complete_lines_length"]
     return original[:n]
