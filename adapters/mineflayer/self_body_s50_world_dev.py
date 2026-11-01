@@ -241,6 +241,7 @@ async def qualify(
     l1_paper_body_challenge_dev: bool = False,
     l1_paper_ice_floor_dev: bool = False,
     l1_mp8_surface_mode: str | None = None,
+    l1_mp9_shadow_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -271,8 +272,23 @@ async def qualify(
     window_ready = asyncio.Event()
     rc = 2
     predictor = None
+    mp9_prior = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if l1_mp9_shadow_dev:
+            if (type(l1_mp9_shadow_dev) is not bool
+                    or l1_mp8_surface_mode not in ("NORMAL", "ICE")
+                    or l1_prediction_journal is None):
+                raise S31ABlocked("MP9 requires opt-in original MP8 surface/Paper journal")
+            from adapters.mineflayer.self_body_s50_l1_mp9_selector import train_mp8_only
+            mp9_prior = train_mp8_only()
+            report["mp9_surface_shadow"] = {
+                "status": "PRIOR_FROZEN_BEFORE_WORLD",
+                "training_source_sha1": mp9_prior.source_sha1,
+                "same_information_cheap_equivalent": True,
+                "changed_original_l0_action": False,
+                "learning_admissions": 0,
+            }
         if l1_mp8_surface_mode is not None:
             if (l1_mp8_surface_mode not in ("NORMAL", "ICE")
                     or not l1_paper_ice_floor_dev
@@ -487,8 +503,13 @@ async def qualify(
             )
             _write_config(root)
             if l1_mp8_surface_mode is not None:
-                from adapters.mineflayer.self_body_s50_l1_mp8_physical import set_fixed_seed
-                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(root)
+                from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
+                    MP9_SEED, set_fixed_seed,
+                )
+                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
+                    root, seed=MP9_SEED if l1_mp9_shadow_dev else
+                    "RelaySelf-MP8-Matched-Surface-20261101",
+                )
         elif rsee_world is not None:
             report["stage"] = "RSEE_BIND_STOPPED_WORLD_BEFORE_JAVA"
             report["rsee_world_binding"] = await asyncio.to_thread(
@@ -502,8 +523,13 @@ async def qualify(
             ))
             _write_config(root)
             if l1_mp8_surface_mode is not None:
-                from adapters.mineflayer.self_body_s50_l1_mp8_physical import set_fixed_seed
-                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(root)
+                from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
+                    MP9_SEED, set_fixed_seed,
+                )
+                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
+                    root, seed=MP9_SEED if l1_mp9_shadow_dev else
+                    "RelaySelf-MP8-Matched-Surface-20261101",
+                )
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar",
             predictor.collector_log(server_log) if predictor is not None else server_log,
@@ -753,6 +779,26 @@ async def qualify(
                                 mode=l1_mp8_surface_mode,
                             )
                             report["mp8_matched_surface"]["preaction_surface_source"] = lock
+                            if l1_mp9_shadow_dev:
+                                from adapters.mineflayer.self_body_s50_l1_mp9_selector import (
+                                    freeze_from_paper_lock,
+                                )
+                                if mp9_prior is None or predictor is None:
+                                    raise S49PhysicalFailure("MP9 source prior unavailable")
+                                frozen = freeze_from_paper_lock(
+                                    mp9_prior, lock, mode=l1_mp8_surface_mode,
+                                )
+                                # Existing journal is write-only diagnostic, not
+                                # an S49 Action / L0 policy / S10 owner call.
+                                predictor.write(
+                                    "MP9_SHADOW_SELECTION_FIXED",
+                                    ticket=asdict(frozen),
+                                    source="ORIGINAL_PAPER_LOCK_BEFORE_S49_EXECUTE",
+                                )
+                                report["mp9_surface_shadow"].update({
+                                    "status": "SURFACE_MODEL_FROZEN_PRE_ACTION",
+                                    "ticket": asdict(frozen),
+                                })
                     if l1_paper_body_challenge_dev:
                         from adapters.mineflayer.self_body_s50_l1_body_condition import (
                             attest_condition_original,
@@ -1409,6 +1455,7 @@ def main() -> int:
     parser.add_argument("--l1-paper-body-challenge-dev", action="store_true")
     parser.add_argument("--l1-paper-ice-floor-dev", action="store_true")
     parser.add_argument("--l1-mp8-surface-mode", choices=["NORMAL", "ICE"])
+    parser.add_argument("--l1-mp9-shadow-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1462,6 +1509,7 @@ def main() -> int:
         l1_paper_body_challenge_dev=args.l1_paper_body_challenge_dev,
         l1_paper_ice_floor_dev=args.l1_paper_ice_floor_dev,
         l1_mp8_surface_mode=args.l1_mp8_surface_mode,
+        l1_mp9_shadow_dev=args.l1_mp9_shadow_dev,
     ))
 
 
