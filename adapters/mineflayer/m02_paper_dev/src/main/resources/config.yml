@@ -3,6 +3,7 @@
 dev-enabled: false
 # Off unless an isolated DEV trial explicitly enables source-bound tick receipts.
 s50-forecast-gate-dev: false
+s50-input-witness-dev: false
 version: M0.2
 minecraft-version: 1.21.8
 calibration-status: candidate_uncalibrated
