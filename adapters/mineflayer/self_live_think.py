@@ -10,6 +10,7 @@ import asyncio
 import json
 import math
 import time
+from collections import deque
 from dataclasses import replace
 from typing import Any
 
@@ -102,6 +103,9 @@ class LiveL2Observer:
         self._world_l1_candidate: str | None = None
         self._world_l2_bound: bool = False
         self._body_l2_bound: bool = False
+        # WB-only readout of pre-existing S60 receipts. No transport hooks,
+        # wall-clock conclusions or extra provider/model/native calls.
+        self._wb_source_advance: deque[dict[str, object]] = deque(maxlen=8)
 
     @property
     def model_attempts(self) -> int:
@@ -311,6 +315,19 @@ class LiveL2Observer:
         self._source_observations += 1
         context = CognitionContext(reading.session_id, reading.seq, 1, 1)
         if self._owner is not None:
+            if self.wb_cognition_slice:
+                # Snapshot existing receipts BEFORE original S60 observes the
+                # newer epoch. This is local host order, not backend stop ACK
+                # or independently verified Paper callback chronology.
+                self._wb_source_advance.append({
+                    "new_native_seq": reading.seq,
+                    "provider_receipts_before": [
+                        event for event, _ in self._adapter.receipts
+                    ] if self._adapter is not None else [],
+                    "owner_receipts_before": [
+                        event.event for event in self._owner.receipts
+                    ],
+                })
             # The next actual World source invalidates all prior L2 cognition;
             # even a completed old thought cannot authorize the new epoch.
             self._owner.observe(context)
@@ -421,6 +438,14 @@ class LiveL2Observer:
                 await self._poll_task
             except asyncio.CancelledError:
                 pass
+        wb_pre_close_transport = (
+            [event for event, _ in self._adapter.receipts]
+            if self.wb_cognition_slice and self._adapter is not None else []
+        )
+        wb_pre_close_owner = (
+            [event.event for event in self._owner.receipts]
+            if self.wb_cognition_slice and self._owner is not None else []
+        )
         if self._adapter is not None:
             await self._adapter.aclose()
         if self._owner is not None and self._accepted_text is not None:
@@ -429,7 +454,7 @@ class LiveL2Observer:
         elif self._phase == "IN_FLIGHT":
             # Local task cancellation is NOT proof of backend stop/slot release.
             self._phase = "UNCONFIRMED_LOCAL_CLIENT_CLOSED"
-        return {
+        result = {
             "kind": "l2_live_observer",
             "source_type": "SELF_DEMO_S60B1_LIVE_L2",
             "status": self._phase,
@@ -471,3 +496,23 @@ class LiveL2Observer:
                 if self._owner is not None else []
             ),
         }
+        if self.wb_cognition_slice:
+            # Existing owner and adapter events are evidence, not a root-cause
+            # verdict. Transport completion can be real yet stale for S60.
+            result["wb_s60_diagnostic"] = {
+                "classification": "HOST_RECEIPT_ONLY_NOT_PHYSICAL_ATTESTATION",
+                "transport_events_before_cleanup": wb_pre_close_transport,
+                "transport_events_after_cleanup": (
+                    [event for event, _ in self._adapter.receipts]
+                    if self._adapter is not None else []
+                ),
+                "owner_events_before_cleanup": wb_pre_close_owner,
+                "source_advance_samples": list(self._wb_source_advance),
+                "http_completion_observed_before_cleanup": (
+                    "HTTP_COMPLETION_OBSERVED" in wb_pre_close_transport
+                ),
+                "accepted_current_text": result["text_current"],
+                "root_cause": "UNDETERMINED",
+                "native_stop_ack": "UNATTESTED",
+            }
+        return result
