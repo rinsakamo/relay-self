@@ -6,17 +6,17 @@ from dataclasses import replace
 
 import pytest
 
-from adapters.mineflayer.self_body_s50_l1_mp10_revision import (
-    MP10Rejected,
-    propose_from_typed_next_epoch,
-)
 from adapters.mineflayer.self_body_s50_l1_mp9_selector import (
     freeze_from_paper_lock,
     train_mp8_only,
 )
+from adapters.mineflayer.self_body_s50_l1_mp10_revision import (
+    MP10Rejected,
+    propose_from_typed_next_epoch,
+)
 from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochLease
-from test_self_body_s50_live_next_epoch import next_source, prior_body
 from test_s50_live_paper_window import capture
+from test_self_body_s50_live_next_epoch import next_source, prior_body
 
 
 def typed_source():
