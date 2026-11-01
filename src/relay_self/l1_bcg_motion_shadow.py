@@ -84,6 +84,7 @@ class BCGShadow:
     cheap_one_bit: Attention
     cheap_fixed_clearance: Attention
     cheap_recent: Attention
+    cheap_exact_cue: Attention
     learning_updates: int = 0
     habit_grants: int = 0
     action_issues: int = 0
@@ -167,6 +168,7 @@ def _validate_training(
             or c.session_id == current.session_id
             or c.world_id == current.world_id
             or c.regime != current.regime
+            or c.world_revision >= current.world_revision
             or c.world_id in seen_worlds
             or c.session_id in seen_sessions
             or row.action_id in seen_receipts
@@ -208,7 +210,7 @@ def compare_conditional_motion_shadow(
     if not memory_enabled:
         return BCGShadow(
             Attention.DEFER, "MEMORY_OFF", (), 0, 0,
-            Attention.DEFER, Attention.DEFER, Attention.DEFER,
+            Attention.DEFER, Attention.DEFER, Attention.DEFER, Attention.DEFER,
         )
     data = _validate_training(training, admission, current)
     current_features = _features(current)
@@ -222,18 +224,28 @@ def compare_conditional_motion_shadow(
     cheap_recent = (
         Attention.RECHECK if data[-1][1] else Attention.CONTINUE
     ) if data else Attention.DEFER
+    # Same admitted inputs: cheapest full-cue memory lookup, not induced abstraction.
+    exact = tuple(
+        risk for features, risk in data
+        if all(features[axis] == current_features[axis] for axis in _AXES)
+    )
+    cheap_exact = (
+        Attention.RECHECK if exact and all(exact)
+        else Attention.CONTINUE if exact and not any(exact)
+        else Attention.DEFER
+    )
 
     if not data:
         return BCGShadow(
             Attention.DEFER, "NO_ADMITTED_TRAINING", (), 0, 0,
-            cheap_one_bit, cheap_fixed, cheap_recent,
+            cheap_one_bit, cheap_fixed, cheap_recent, cheap_exact,
         )
     # Do not generalize a new environmental/safety dimension by dropping it.
     for axis in _AXES:
         if current_features[axis] not in {features[axis] for features, _ in data}:
             return BCGShadow(
                 Attention.DEFER, "UNSEEN_CUE_VALUE", (), 0, len(data),
-                cheap_one_bit, cheap_fixed, cheap_recent,
+                cheap_one_bit, cheap_fixed, cheap_recent, cheap_exact,
             )
 
     best: tuple[int, int, tuple[str, ...], dict[tuple[bool, ...], bool]] | None = None
@@ -257,14 +269,14 @@ def compare_conditional_motion_shadow(
     if best is None:
         return BCGShadow(
             Attention.DEFER, "NO_STABLE_CONDITIONAL_RULE", (), 0, len(data),
-            cheap_one_bit, cheap_fixed, cheap_recent,
+            cheap_one_bit, cheap_fixed, cheap_recent, cheap_exact,
         )
     _, _, axes, stable = best
     key = tuple(current_features[axis] for axis in axes)
     if key not in stable:
         return BCGShadow(
             Attention.DEFER, "UNSUPPORTED_CUE_COMBINATION", axes, 0, len(data),
-            cheap_one_bit, cheap_fixed, cheap_recent,
+            cheap_one_bit, cheap_fixed, cheap_recent, cheap_exact,
         )
     support = sum(
         tuple(features[axis] for axis in axes) == key for features, _ in data
@@ -272,5 +284,5 @@ def compare_conditional_motion_shadow(
     return BCGShadow(
         Attention.RECHECK if stable[key] else Attention.CONTINUE,
         "TRAINED_RESIDUAL_RISK_PROXY_ONLY", axes, support, len(data),
-        cheap_one_bit, cheap_fixed, cheap_recent,
+        cheap_one_bit, cheap_fixed, cheap_recent, cheap_exact,
     )
