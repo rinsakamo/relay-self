@@ -114,3 +114,35 @@ non-force two-parent mergeで取り込み、既存親ファイルの変更を尊
 **BCG-H1 evidence ceiling:** `OFFLINE_TYPED_HANDOFF_ONLY`。
 追加されたhost entrypointは実Worldで未実行。
 `QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / REAL_WORLD_BCG_0`。
+
+## BCG-H2 — 現在の認知入力のsource-preserving可用性監査（2026-11-01）
+
+既存 `LiveNextEpochReadout`、元`WorldConditionedChoice` を
+#653 のsource束縛で再検査した後、`inventory_original_bcg_cues` が
+今ある事実の所在を `BCGCueInventory` に残す。**新たなWorld Truth、
+Learning owner、観測、Actionは作らない**。
+
+- **現在のnative観測**: SelfBodyの position(x/y/z)、health、
+  Minecraft food、food_saturation；S42 ownerが既に読んだ
+  `s42_threat_distance_m`。数値はそれぞれ元native参照付き。
+- **現在のSelfWorld観測**: 同一world sourceのEntityが実際に可視の
+  場合のみ `world_observed_target_distance_m` を記録。
+  coverage scopeとtruncationを保存。Entity不在やcoverage不足から
+  `verified_obstacle=False` を生成しない。
+- **L-BCGに不足**: 原目標の `goal_remaining_m` / tolerance、
+  選択歩容、P1疲労、M実エネルギー、障害物の独立観測、World revision、
+  実効clear後の複数World物理残留量のowner-admitted training。
+  **Minecraft food≠M energy、敵距離≠Goal残距離、
+  Paperのlast_reported_input_off≠実効clear**。
+- 現hostの `report["l_bcg_shadow"]["cue_inventory"]` では
+  `missing_required` と `observed` を分離し、
+  学習器向け完全cueはまだ**不成立**。
+- source完全性を偽る `current` の文字列束縛は別件で外部物理originalを
+  認証しない。外部入力経路の返却上限も
+  `EXTERNAL_TYPED_CUES_NOT_ORIGINAL_BYTE_ATTESTED` として明示。
+  本接続の DEV判定は read-only `DEFER` まで。
+
+#655の[独立実World DEV原本](https://github.com/rinsakamo/relay-self/blob/774c06965f83058ff0c55589f4369b5b82615ba3/docs/evidence/issue653-mp3-host-20261101/verdict.json)
+はhost順序PASS / 物理prequential chronology **未認証** / 新World
+更新保留、Goal UNDETERMINED。親レーンのこのWorldをL-BCG用の
+`PHYSICAL_POST_CLEAR_VERIFIED` 訓練原本へ無断転用しない。
