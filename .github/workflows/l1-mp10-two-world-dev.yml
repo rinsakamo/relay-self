@@ -1,7 +1,7 @@
 name: L1-MP10 two typed SelfBody next epoch physical revision DEV
 # Explicit once-only physical owner opt-in commit.
 # MP10 guarded source-only preflight then 2 original Worlds maximum; stop on first failure.
-# Fresh exact-head MP10 first physical DEV release after source-only 55 PASS; run_attempt == 1.
+# MP10 physical release only after typed native source CI PASS; new original disposable Worlds, no retry.
 on:
   push:
     branches: [dev/l1-mp10-body-error-revision-20261101]
