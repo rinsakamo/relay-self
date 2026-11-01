@@ -10,6 +10,7 @@ from adapters.mineflayer.self_body_s50_l2_mp11_experiment import (
     L2ExperimentLoop,
     MP11Rejected,
     WorldTrialReceipt,
+    EXPERIMENTS,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
@@ -54,6 +55,8 @@ def owner_fixture(loop, proposal, *, movement=0.02, tick=100):
         session_id=loop.session_id, proposal_sha256=proposal.proposal_sha256,
         experiment_id=proposal.experiment_id, action_id=f"s49-original-{proposal.round}",
         action_outcome="S16_OUTCOME",
+        actual_floor_material=EXPERIMENTS[proposal.experiment_id][0],
+        actual_input_regime=EXPERIMENTS[proposal.experiment_id][1],
         wait_ticks=tuple(range(tick,tick+8)),
         wait_motion_m=(movement,)*8,
         paper_original_sha256="a"*64,
@@ -101,7 +104,7 @@ def test_four_rounds_one_world_hypothesis_changes_but_no_actual_action_or_learni
     "forged_world","foreign_session","foreign_subject","wrong_ticket",
     "mismatched_condition","bad_outcome","missing_sample",
     "noncontiguous_ticks","nan_motion","wrong_sha","duplicate_action",
-    "nonmonotonic_trial",
+    "nonmonotonic_trial","wrong_floor","wrong_input",
 ])
 def test_fake_original_owner_receipt_fail_closed(case):
     loop=new_loop()
@@ -127,6 +130,10 @@ def test_fake_original_owner_receipt_fail_closed(case):
         r=replace(r,wait_motion_m=(float("nan"),)*8)
     elif case=="wrong_sha":
         r=replace(r,paper_original_sha256="source-not-verified")
+    elif case=="wrong_floor":
+        r=replace(r,actual_floor_material="LAVA")
+    elif case=="wrong_input":
+        r=replace(r,actual_input_regime="UNBOUNDED")
     else:
         loop.record_owner_result(r)
         p2=loop.propose(fake_open)
