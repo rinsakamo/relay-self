@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -19,6 +20,14 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.l23_paper_live_assets import (
+    L23PaperAssets,
+    paper_marker,
+    stage_paper_assets,
+    verify_paper_assets,
+    wait_paper_line,
+)
+from adapters.mineflayer.l23_paper_s7_settling import _paper_rows
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -270,6 +279,7 @@ async def qualify(
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
     mp11_three_actions_dev: bool = False,
+    mp11_g3_paper_assets: L23PaperAssets | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -313,12 +323,45 @@ async def qualify(
                 "typed_s16_actions": [],
                 "real_l2_autonomous_experiment": False,
             }
+        if mp11_g3_paper_assets is not None:
+            if (not mp11_three_actions_dev
+                    or os.environ.get("MP11_G3_PAPER_THREE_WINDOWS_DEV") != "1"):
+                raise S31ABlocked("MP11 G3 requires owner-bound G2 and extra Paper grant")
+            from adapters.mineflayer.self_body_s50_l1_paper_local import (
+                check_local_paper_config,
+            )
+            review = verify_paper_assets(mp11_g3_paper_assets)
+            check_local_paper_config(
+                mp11_g3_paper_assets.plugin_config, mp11_g3_paper_assets.config_sha256)
+            config = mp11_g3_paper_assets.plugin_config.read_text(encoding="utf-8")
+            flags = (
+                "s50-mp11-multitrial-dev: true",
+                "s50-ice-floor-dev: true",
+                "s50-changed-body-condition-dev: false",
+            )
+            if any(config.count(flag) != 1 for flag in flags):
+                raise S31ABlocked("MP11 G3 requires exact Paper multi-window isolated flags")
+            report["mp11_g3"] = {
+                "classification": "DEV_PAPER_THREE_WINDOWS_PREPARED",
+                "paper_assets": review,
+                "paper_markers": [],
+                "prior_slope": 0.65,
+                "model_source": "FIXED_OPERATOR_UNLEARNED_SHADOW_ONLY",
+                "paper_windows_attested": 0,
+                "l2_calls": 0,
+                "learning_updates": 0,
+            }
         if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
             raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        report.update(await asyncio.to_thread(_fetch_official_server, root / "minecraft.jar"))
+        if mp11_g3_paper_assets is None:
+            report.update(await asyncio.to_thread(_fetch_official_server, root / "minecraft.jar"))
+        else:
+            report["mp11_g3"]["staged"] = await asyncio.to_thread(
+                stage_paper_assets, mp11_g3_paper_assets, root,
+            )
         _write_config(root)
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar", server_log,
@@ -359,6 +402,21 @@ async def qualify(
             stage_r = StageRDevSingleWriter(host, executor, intent, learning_issuer)
             report["stage_r_dev_enabled"] = True
         probes = {}
+        g3_previous_marker = None
+
+        async def g3_paper_line(marker: str, *, kind: str, timeout_s: float = 5) -> None:
+            if kind != "S50_MP11_NEXT_ACCEPT":
+                raise S49PhysicalFailure("MP11 G3 unknown previous-window marker")
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + timeout_s
+            while loop.time() < deadline:
+                if server_log.is_file():
+                    for line in server_log.read_text(errors="replace").splitlines():
+                        if (f"S50_MP11_NEXT_ACCEPT prior_marker={marker} " in line
+                                and "status=PRIOR_PAPER_WAIT_EIGHT_SEALED_NO_ACTION_AUTHORITY" in line):
+                            return
+                await asyncio.sleep(0.05)
+            raise S49PhysicalFailure("no real Paper completed prior-window transition")
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -411,6 +469,7 @@ async def qualify(
             )
 
         async def on_action(step):
+            nonlocal g3_previous_marker
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -445,6 +504,31 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
+            if mp11_g3_paper_assets is not None:
+                if server is None or server.stdin is None:
+                    raise S49PhysicalFailure("G3 pre-Action Paper process unavailable")
+                marker = paper_marker(step.action_request_id, sid)
+                if g3_previous_marker is not None:
+                    _command(server, f"relaydevmp11next {g3_previous_marker} {marker}")
+                    await server.stdin.drain()
+                    await g3_paper_line(g3_previous_marker, kind="S50_MP11_NEXT_ACCEPT")
+                _command(server, f"relaydevphase {marker} PRE_FORWARD")
+                await server.stdin.drain()
+                await wait_paper_line(
+                    server_log, marker=marker,
+                    kind="M02_DEV_S50_PHASE", phase="PRE_FORWARD",
+                )
+                # Operator-frozen deliberately simple/cheap 0.65 model for
+                # prequential source chronology, NOT a learned L1 improvement.
+                ticket_sha = hashlib.sha256(
+                    f"MP11-G3-UNLEARNED-FIXED-COEFF:{sid}:{marker}".encode()
+                ).hexdigest()
+                _command(server, f"relaydevlocalmodel {marker} 0.65 {ticket_sha}")
+                await server.stdin.drain()
+                await wait_paper_line(server_log, marker=marker, kind="S50_DEV_LOCAL_MODEL_ARM")
+                _command(server, f"relaydevicefloor {marker} GRASS_BLOCK_5X5_READONLY")
+                await server.stdin.drain()
+                await wait_paper_line(server_log, marker=marker, kind="S50_DEV_SURFACE_LOCK")
             if stage_r is None and mp11_three_actions_dev:
                 from adapters.mineflayer.self_body_s50_original_closure import (
                     SelfBodyS50ClosedOwnerLease,
@@ -521,6 +605,23 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
+            if mp11_g3_paper_assets is not None:
+                assert server is not None and server.stdin is not None
+                _command(server, f"relaydevphase {marker} POST_CLEAR")
+                await server.stdin.drain()
+                await wait_paper_line(
+                    server_log, marker=marker,
+                    kind="M02_DEV_S50_PHASE", phase="POST_CLEAR",
+                )
+                _command(server, f"relaydevwait {marker}")
+                await server.stdin.drain()
+                await wait_paper_line(server_log, marker=marker, kind="S50_DEV_WAIT_BEGIN")
+                from adapters.mineflayer.self_body_s50_world_dev import (
+                    wait_live_paper_window,
+                )
+                await wait_live_paper_window(server_log, marker=marker)
+                report["mp11_g3"]["paper_markers"].append(marker)
+                g3_previous_marker = marker
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -538,6 +639,12 @@ async def qualify(
 
         async def stage_world():
             assert server is not None and server.stdin is not None
+            if mp11_g3_paper_assets is not None:
+                # Experimenter places real original player above a FLAT floor,
+                # NOT an L2 instruction or an independent Self action.
+                _command(server, "tp RelaySelf 0.5 -58 0.5 0 0")
+                await server.stdin.drain()
+                await asyncio.sleep(2)
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
@@ -597,6 +704,11 @@ async def qualify(
             or host.events != expected_events
         ):
             raise S49PhysicalFailure("bounded original L0 and S16 Action closure count mismatch")
+        if mp11_g3_paper_assets is not None and (
+            len(report["mp11_g3"]["paper_markers"]) != 3
+            or len(set(report["mp11_g3"]["paper_markers"])) != 3
+        ):
+            raise S49PhysicalFailure("MP11 G3 failed to observe three live Paper windows")
         if mp11_three_actions_dev:
             typed = report["mp11_g2"]["typed_s16_actions"]
             if (len(typed) != expected_actions
@@ -677,6 +789,48 @@ async def qualify(
             report["cleanup_supervisor_error"] = f"{type(exc).__name__}: {exc}"
             if isinstance(exc, asyncio.CancelledError):
                 cancellations.append(exc)
+        if (mp11_g3_paper_assets is not None
+                and report.get("status") == "PASS"):
+            try:
+                from adapters.mineflayer.self_body_s50_l2_mp11_paper_audit import (
+                    audit_multi_trial_paper,
+                )
+                markers = tuple(report["mp11_g3"]["paper_markers"])
+                raw = server_log.read_bytes()
+                locks = [
+                    row for row in _paper_rows(raw, "S50_DEV_SURFACE_LOCK ")
+                    if row.get("marker_id") in markers
+                ]
+                if (len(locks) != 3
+                        or [r.get("marker_id") for r in locks] != list(markers)):
+                    raise S49PhysicalFailure("no three unique real original Paper locks")
+                uuid = locks[0]["world"]
+                subject = locks[0]["subject_uuid"]
+                review = audit_multi_trial_paper(
+                    raw, action_markers=markers, world_uuid=uuid,
+                    subject_uuid=subject,
+                    surfaces=("GRASS_BLOCK",) * 3,
+                )
+                if (len(review) != 3
+                        or len({x.paper_sha256 for x in review}) != 1):
+                    raise S49PhysicalFailure("MP11 G3 actual Paper three-window chronology failure")
+                report["mp11_g3"]["paper_windows_attested"] = len(review)
+                report["mp11_g3"]["paper_world_uuid"] = uuid
+                report["mp11_g3"]["subject_uuid"] = subject
+                report["mp11_g3"]["original_sha256"] = review[0].paper_sha256
+                report["mp11_g3"]["wait_ticks"] = [list(x.wait_ticks) for x in review]
+                report["mp11_g3"]["motion_m"] = [list(x.wait_motion_m) for x in review]
+                report["mp11_g3"]["source_status"] = (
+                    "THREE_ORIGINAL_PAPER_CALLBACK_WINDOWS_AFTER_SERVER_SHUTDOWN"
+                )
+                report["classification"] = (
+                    "DEV_ONLY_MP11_G3_THREE_S49_S16_PAPER_S50_WINDOWS_SAME_WORLD"
+                )
+            except Exception as exc:
+                report["mp11_g3"]["paper_audit_error"] = f"{type(exc).__name__}: {exc}"
+                report["status"] = "FAIL"
+                report["classification"] = "MP11_G3_ORIGINAL_PAPER_NOT_QUALIFIED"
+                rc = 1
         if cancellations:
             report["cancellation_count"] = len(cancellations)
             report["first_cancellation"] = str(cancellations[0])
@@ -754,11 +908,31 @@ def main() -> int:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--mp11-three-actions-dev", action="store_true")
     parser.add_argument("--raw-capture-root", type=Path)
+    parser.add_argument("--mp11-g3-paper-jar", type=Path)
+    parser.add_argument("--mp11-g3-plugin-jar", type=Path)
+    parser.add_argument("--mp11-g3-config", type=Path)
     args = parser.parse_args()
+    scope = (args.mp11_g3_paper_jar, args.mp11_g3_plugin_jar, args.mp11_g3_config)
+    if any(x is not None for x in scope) and not all(x is not None for x in scope):
+        parser.error("MP11 G3 requires exact Paper jar, plugin jar and config")
+    assets = None
+    if all(x is not None for x in scope):
+        def sha(path):
+            assert path is not None
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        assets = L23PaperAssets(
+            server_jar=args.mp11_g3_paper_jar,
+            server_sha256=sha(args.mp11_g3_paper_jar),
+            plugin_jar=args.mp11_g3_plugin_jar,
+            plugin_sha256=sha(args.mp11_g3_plugin_jar),
+            plugin_config=args.mp11_g3_config,
+            config_sha256=sha(args.mp11_g3_config),
+        )
     return asyncio.run(qualify(
         args.report, args.server_log,
         raw_capture_root=args.raw_capture_root,
         mp11_three_actions_dev=args.mp11_three_actions_dev,
+        mp11_g3_paper_assets=assets,
     ))
 
 

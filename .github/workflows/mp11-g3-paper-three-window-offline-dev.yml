@@ -1,0 +1,61 @@
+name: MP11 G3 Paper three independent windows source-only CI
+on:
+  push:
+    branches: [dev/mp11-g3-paper-three-window-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - 'adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py'
+      - 'tools/mp11_g3_paper_one_world_audit.py'
+      - '.github/workflows/mp11-g3-paper-three-window-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  original-owner-and-paper-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Python original S49/S16, Paper marker source and cleanup offline tests
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/s49_normal_session_real_ci.py \
+            adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py \
+            tools/mp11_g2_s49_original_audit.py tools/mp11_g3_paper_one_world_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py
+          python -m compileall -q adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/mp11_g3_paper_one_world_audit.py
+          python -m pytest -o addopts='' -q \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_feature_s49_normal_runtime.py \
+            tests/test_self_body_s50_original_closure.py \
+            tests/test_s49_cleanup.py \
+            tests/test_s49_native_os_custody.py
+          python tools/check_repository.py
+      - name: Full Paper Java plugin and original offline self-tests
+        run: |
+          set -euo pipefail
+          grep -qx 's50-mp11-multitrial-dev: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          for n in S50PaperLocalForecast S50IceFloorGate; do
+            javac --release 21 -d "$OUT" "$SRC/main/java/io/github/rinsakamo/relaymetabolism/$n.java" "$SRC/test/java/io/github/rinsakamo/relaymetabolism/${n}SelfTest.java"
+            java -cp "$OUT" "io.github.rinsakamo.relaymetabolism.${n}SelfTest"
+          done
+      - run: echo 'MP11_G3_OFFLINE_ONLY / PAPER_REAL_WORLD_NOT_STARTED / S49 OWNER UNCHANGED / REAL_L2_CALLS 0 / SCIENCE NOT_RUN'
