@@ -77,6 +77,7 @@ def test_unseen_combination_uses_learned_gait_and_differs_from_baselines() -> No
     assert result.advice is Attention.RECHECK
     assert result.matched_worlds == 4
     assert result.cheap_fixed_clearance is Attention.CONTINUE
+    assert result.cheap_exact_cue is Attention.DEFER
     assert result.cheap_one_bit is Attention.RECHECK
     assert result.cheap_recent is Attention.RECHECK
     assert result.action_issues == result.learning_updates == result.habit_grants == 0
@@ -84,6 +85,7 @@ def test_unseen_combination_uses_learned_gait_and_differs_from_baselines() -> No
     safe = _review(_ctx(91, fast=False, near=False), rows, admission)
     assert safe.advice is Attention.CONTINUE
     assert safe.cheap_one_bit is Attention.RECHECK
+    assert safe.cheap_exact_cue is Attention.DEFER
 
 
 def test_training_learns_two_axis_interaction_instead_of_embedded_recheck_bit() -> None:
@@ -93,6 +95,7 @@ def test_training_learns_two_axis_interaction_instead_of_embedded_recheck_bit() 
     assert a.selected_axes == ("clearance_band", "fast_gait")
     assert a.advice is Attention.RECHECK
     assert b.advice is Attention.CONTINUE
+    assert a.cheap_exact_cue is Attention.DEFER
 
 
 def test_no_memory_and_empty_training_abstain() -> None:
@@ -124,6 +127,7 @@ def test_unseen_world_hazard_and_changed_regime_defer_or_reject() -> None:
     "not_observed",
     "missing_digest",
     "nan_settling",
+    "future_revision",
 ])
 def test_source_and_goal_leakage_fences(change: str) -> None:
     rows, admission = _fixture()
@@ -146,6 +150,8 @@ def test_source_and_goal_leakage_fences(change: str) -> None:
         rows = (replace(first, original_settling_sha256=""), *rows[1:])
     elif change == "nan_settling":
         rows = (replace(first, settling_m=float("nan")), *rows[1:])
+    elif change == "future_revision":
+        c = replace(c, world_revision=4)
     with pytest.raises(BCGRejected):
         _review(c, rows, admission)
 
@@ -174,3 +180,14 @@ def test_conflicting_observations_abstain_instead_of_auto_promote() -> None:
     result = _review(_ctx(90, fast=True, near=False), spoiled, admission)
     assert result.advice is Attention.DEFER
     assert result.reason == "NO_STABLE_CONDITIONAL_RULE"
+
+def test_exact_cue_lookup_uses_same_history_but_cannot_infer_new_combination() -> None:
+    rows, admission = _fixture()
+    trained = _review(_ctx(90, fast=False, near=True, fatigue=True), rows, admission)
+    assert trained.cheap_exact_cue is Attention.CONTINUE
+    new_cues = _review(
+        _ctx(91, fast=True, near=False, fatigue=True, energy=False),
+        rows, admission,
+    )
+    assert new_cues.cheap_exact_cue is Attention.DEFER
+    assert new_cues.advice is Attention.RECHECK
