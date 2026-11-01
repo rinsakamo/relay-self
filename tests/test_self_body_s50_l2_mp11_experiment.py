@@ -7,10 +7,10 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.self_body_s50_l2_mp11_experiment import (
+    EXPERIMENTS,
     L2ExperimentLoop,
     MP11Rejected,
     WorldTrialReceipt,
-    EXPERIMENTS,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
