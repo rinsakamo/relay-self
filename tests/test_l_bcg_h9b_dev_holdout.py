@@ -231,3 +231,42 @@ def test_existing_h9a_originals_parse_as_timestamp_example_but_cannot_be_h9b_dat
     assert len(shas) == 2 and shas[0] != shas[1]
     old = json.loads((ARCHIVE / "pair/result-rejected.json").read_bytes())
     assert old["exploratory_pair_pass"] is False
+
+
+def test_eval_outcome_cannot_change_frozen_fit_predictions():
+    plan, raw, records, frozen = _example()
+    first = compare_h9b_dev_holdout(
+        plan=plan, plan_original=raw,
+        records=records, frozen_model_original=frozen,
+    )
+    rows = list(records)
+    rows[6] = replace(rows[6], arm=replace(
+        rows[6].arm,
+        sampled_reported_input_off_motion_m=0.2,
+    ))
+    after = compare_h9b_dev_holdout(
+        plan=plan, plan_original=raw,
+        records=tuple(rows), frozen_model_original=frozen,
+    )
+    assert [x.candidate_linear_pred_m for x in first.scores] == [
+        x.candidate_linear_pred_m for x in after.scores
+    ]
+    assert [x.cheap_threshold_bin_pred_m for x in first.scores] == [
+        x.cheap_threshold_bin_pred_m for x in after.scores
+    ]
+    assert first.candidate_linear_mae_m != after.candidate_linear_mae_m
+    assert first.cheap_threshold_bin_mae_m != after.cheap_threshold_bin_mae_m
+
+
+def test_fit_outcome_rewrite_after_freeze_refused_even_with_same_world_ids():
+    plan, raw, records, frozen = _example()
+    rows = list(records)
+    rows[1] = replace(rows[1], arm=replace(
+        rows[1].arm,
+        sampled_reported_input_off_motion_m=0.12,
+    ))
+    with pytest.raises(H9bRejected, match="frozen DEV model bytes differ"):
+        compare_h9b_dev_holdout(
+            plan=plan, plan_original=raw,
+            records=tuple(rows), frozen_model_original=frozen,
+        )
