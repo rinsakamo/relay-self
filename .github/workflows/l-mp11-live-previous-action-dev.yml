@@ -7,6 +7,8 @@ on:
       - 'adapters/mineflayer/l_mp11_live_previous_action.py'
       - 'adapters/mineflayer/s49_normal_session_real_ci.py'
       - 'tests/test_l_mp11_live_previous_action.py'
+      - 'tests/test_l_mp11_live_paper_postrun_audit.py'
+      - 'tools/l_mp11_live_paper_postrun_audit.py'
       - '.github/workflows/l-mp11-live-previous-action-dev.yml'
 permissions:
   contents: read
@@ -31,11 +33,15 @@ jobs:
           set -euo pipefail
           ruff check adapters/mineflayer/l_mp11_live_previous_action.py \
             adapters/mineflayer/s49_normal_session_real_ci.py \
-            tests/test_l_mp11_live_previous_action.py
+            tests/test_l_mp11_live_previous_action.py \
+            tools/l_mp11_live_paper_postrun_audit.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py
           python -m compileall -q adapters/mineflayer/l_mp11_live_previous_action.py \
-            adapters/mineflayer/s49_normal_session_real_ci.py
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/l_mp11_live_paper_postrun_audit.py
           python -m pytest -o addopts='' -q \
             tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
             tests/test_self_body_s50_l2_mp11_paper_audit.py \
             tests/test_mp11_g2_s49_original_audit.py \
             tests/test_feature_s49_normal_runtime.py \
