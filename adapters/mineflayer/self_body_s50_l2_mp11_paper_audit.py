@@ -10,9 +10,6 @@ import hashlib
 import math
 from dataclasses import dataclass
 
-from tools.l1_mp7_ice_floor_world_dev import parse_lines
-
-
 class MP11PaperRejected(ValueError):
     """Original Paper sequence cannot be bound to one World and multiple trials."""
 
@@ -53,7 +50,15 @@ def audit_multi_trial_paper(
             or any(s not in ("GRASS_BLOCK", "PACKED_ICE") for s in surfaces)):
         raise MP11PaperRejected("unbounded, foreign or incomplete original Paper input")
 
-    lines = parse_lines(original.decode("utf-8", errors="strict"))
+    try:
+        decoded = original.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise MP11PaperRejected("non UTF-8 original Paper") from exc
+    lines = []
+    for line in decoded.splitlines():
+        payload = dict(part.split("=", 1) for part in line.split()
+                       if part.count("=") == 1)
+        lines.append((line, payload))
     kinds = (
         "M02_DEV_S50_PHASE", "S50_DEV_SURFACE_LOCK", "S50_DEV_WAIT_BEGIN",
         "S50_DEV_WAIT_TICK", "S50_DEV_INPUT_TICK",
