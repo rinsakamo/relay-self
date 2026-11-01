@@ -90,6 +90,9 @@ def review(
         subject_uuid=g3["subject_uuid"],
         surfaces=("GRASS_BLOCK",)*3,
     )
+    if expected_l2_calls and report.get("mp11_paper_eof_predeclared") is True:
+        from tools.l_mp11_feedback_original_audit import audit_feedback_originals
+        audit_feedback_originals(report, paper_bytes)
     sha=original_sha
     if (sha != g3.get("original_sha256")
             or g3.get("wait_ticks") != [list(x.wait_ticks) for x in paper]):

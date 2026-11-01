@@ -10,7 +10,10 @@ import asyncio
 import hashlib
 import json
 import math
+import os
 import time
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
@@ -69,7 +72,25 @@ class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
                  "started_monotonic_ns": time.monotonic_ns()}
         self.calls.append(entry)
         try:
-            response = super()._call(body, endpoint=endpoint)
+            # Same canonical HTTP request, with original bytes retained before
+            # decoding so malformed JSON/HTTP errors cannot erase the response.
+            target = self.endpoint if endpoint is None else endpoint
+            wire = json.dumps(body, ensure_ascii=False, sort_keys=True,
+                              separators=(",", ":")).encode("utf-8")
+            self._save_bytes(f"llama-request-{len(self.calls)}.raw.json", wire)
+            request = urllib.request.Request(target, data=wire, headers={
+                "Content-Type": "application/json", "Accept": "application/json",
+            }, method="POST")
+            try:
+                with urllib.request.urlopen(request, timeout=self._timeout) as source:
+                    raw = source.read()
+            except urllib.error.HTTPError as exc:
+                self._save_bytes(f"llama-response-{len(self.calls)}.raw.json", exc.read())
+                raise
+            self._save_bytes(f"llama-response-{len(self.calls)}.raw.json", raw)
+            response = json.loads(raw.decode("utf-8"))
+            if type(response) is not dict:
+                raise LiveL2Rejected("original HTTP response must be an object")
             entry["response"] = response
             return response
         except Exception as exc:
@@ -79,6 +100,12 @@ class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
             entry["finished_monotonic_ns"] = time.monotonic_ns()
             with (self.journal_root / f"llama-http-{len(self.calls)}.json").open("x") as out:
                 json.dump(entry, out, ensure_ascii=False, indent=2, allow_nan=False)
+
+    def _save_bytes(self, name: str, data: bytes) -> None:
+        with (self.journal_root / name).open("xb") as out:
+            out.write(data)
+            out.flush()
+            os.fsync(out.fileno())
 
 
 class LiveL2Rejected(ValueError):
@@ -192,6 +219,9 @@ def request_for_live_l2(
         "Values must match the prior typed source, and these roles CANNOT "
         "be compared across targets. Do not call MAE a threshold or "
         "confuse predicted displacement and absolute error. "
+        "On second call explicitly assess previous_explanation and its forecast; "
+        "cite both WAIT8_TOTAL_M trial 2 and PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M "
+        "trial 2 (pair_index 0) when a forecast exists. "
         "For REVISE_PRIOR, cite at least one new trial measurement. "
         "Keep explanations brief enough for 512 output tokens."
     )
@@ -337,7 +367,9 @@ class BoundedLiveL2:
         self.failed_closed = False
         self.attempts: list[dict] = []
 
-    async def propose_after(self, ledger: LivePriorLedger) -> LiveL2Proposal:
+    async def propose_after(
+        self, ledger: LivePriorLedger, *, freeze_root: Path | None = None,
+    ) -> LiveL2Proposal:
         if (
             self.failed_closed or len(self.proposals) >= MAX_CALLS
             or type(ledger) is not LivePriorLedger
@@ -362,7 +394,7 @@ class BoundedLiveL2:
                 ledger, req, observed, require_real_llama=self.require_real_llama,
                 previous_proposal=previous,
             )
-        except Exception as exc:
+        except (Exception, asyncio.CancelledError) as exc:
             # A timed-out HTTP thread might finish later, but its result is
             # never read, admitted, retried, or used to grant a future Action.
             self.failed_closed = True
@@ -370,6 +402,18 @@ class BoundedLiveL2:
             raise
         finally:
             entry["finished_monotonic_ns"] = time.monotonic_ns()
+        if freeze_root is not None:
+            # Durable original H1/H2 before releasing the next World stimulus.
+            # Exclusive creation: a reused namespace fails, with no retry.
+            try:
+                with (freeze_root / f"l2-frozen-{len(self.proposals)+1}.json").open("x") as out:
+                    json.dump({"attempt": entry, "proposal": asdict(proposed)}, out,
+                              ensure_ascii=False, sort_keys=True, allow_nan=False)
+                    out.flush()
+                    os.fsync(out.fileno())
+            except Exception:
+                self.failed_closed = True
+                raise
         self.proposals.append(proposed)
         return proposed
 

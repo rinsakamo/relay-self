@@ -391,9 +391,17 @@ async def qualify(
                 stage_paper_assets, mp11_g3_paper_assets, root,
             )
         _write_config(root)
-        server, collector, _ = await _ready_server(
-            root, root / "minecraft.jar", server_log,
-        )
+        if l_mp11_paper_eof_dev:
+            raw_paper_path = server_log.with_name(server_log.name + ".raw")
+            report["mp11_paper_raw_stdout_path"] = str(raw_paper_path)
+            server, collector, _ = await _ready_server(
+                root, root / "minecraft.jar", server_log,
+                raw_stdout_path=raw_paper_path,
+            )
+        else:
+            server, collector, _ = await _ready_server(
+                root, root / "minecraft.jar", server_log,
+            )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
         session = await (
             _new_session() if raw_capture_root is None
@@ -732,7 +740,9 @@ async def qualify(
                         # Model output is a shadow hypothesis, NOT a new test
                         # or input into the existing L0 Action selection.
                         try:
-                            hypothesis = await live_l2.propose_after(live_l_prior)
+                            hypothesis = await live_l2.propose_after(
+                                live_l_prior, freeze_root=report_path.parent,
+                            )
                         finally:
                             report["l_mp11_live_l2"] = live_l2.public_report()
                         if not hypothesis.provider_source == "llama.cpp":
@@ -939,6 +949,9 @@ async def qualify(
                         verified_complete_lines,
                     )
 
+                    raw = Path(report["mp11_paper_raw_stdout_path"]).read_bytes()
+                    if raw != server_log.read_bytes():
+                        raise S49PhysicalFailure("raw Paper bytes differ from live log view")
                     eof = asdict(seal_after_shutdown(
                         raw, predeclared=report.get("mp11_paper_eof_predeclared") is True,
                     ))

@@ -1,7 +1,7 @@
 name: L Paper EOF and typed prior hypothesis feedback offline DEV
 on:
   push:
-    branches: [dev/l-eof-and-typed-hypothesis-feedback-20261101]
+    branches: [dev/l-eof-and-typed-hypothesis-feedback-20261101, dev/l-gemma-feedback-world-20261101]
   pull_request:
     paths:
       - 'adapters/mineflayer/l_mp11_paper_eof_envelope.py'
@@ -9,6 +9,8 @@ on:
       - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
       - 'adapters/mineflayer/s49_normal_session_real_ci.py'
       - 'tools/mp11_g3_paper_one_world_audit.py'
+      - 'tools/l_mp11_feedback_original_audit.py'
+      - 'tests/test_l_mp11_feedback_original_audit.py'
       - 'tests/test_l_mp11_eof_and_typed_feedback.py'
       - '.github/workflows/l-eof-typed-feedback-dev.yml'
 permissions:
@@ -38,12 +40,15 @@ jobs:
             adapters/mineflayer/s49_normal_session_real_ci.py \
             tools/mp11_g3_paper_one_world_audit.py \
             tests/test_l_mp11_eof_and_typed_feedback.py \
-            tests/test_l_mp11_live_l2_shadow.py
+            tests/test_l_mp11_live_l2_shadow.py \
+            tools/l_mp11_feedback_original_audit.py \
+            tests/test_l_mp11_feedback_original_audit.py
           python -m compileall -q adapters/mineflayer/l_mp11_paper_eof_envelope.py \
             adapters/mineflayer/l_mp11_typed_feedback.py \
             adapters/mineflayer/l_mp11_live_l2_shadow.py \
             adapters/mineflayer/s49_normal_session_real_ci.py
           python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_feedback_original_audit.py \
             tests/test_l_mp11_eof_and_typed_feedback.py \
             tests/test_l_mp11_live_l2_shadow.py \
             tests/test_l_mp11_live_previous_action.py \
