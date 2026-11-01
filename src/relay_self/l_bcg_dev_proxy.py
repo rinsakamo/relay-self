@@ -110,7 +110,7 @@ def read_h6_provisional_world(
         hashes = audit["original_sha256"]
         l22 = audit["original"]["route_b"]["l22"]
         l23 = audit["original"]["route_b"]["l23"]
-        audit_window = audit["original"]["live_window"]
+        audit_window = audit["original"]["route_b"]["live_window"]
         action = report["actual_native_actions"][0]
         evidence = action["execution_evidence"]
         before = evidence["before_observation"]
