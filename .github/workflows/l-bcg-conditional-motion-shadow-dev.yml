@@ -1,0 +1,49 @@
+name: L-BCG conditional motion shadow DEV
+on:
+  push:
+    branches:
+      - dev/l-bcg-conditional-motion-shadow-20261101
+    paths:
+      - 'src/relay_self/l1_bcg_motion_shadow.py'
+      - 'tests/test_l1_bcg_motion_shadow.py'
+      - 'docs/l-bcg-conditional-motion-shadow-20261101.md'
+      - '.github/workflows/l-bcg-conditional-motion-shadow-dev.yml'
+  pull_request:
+    paths:
+      - 'src/relay_self/l1_bcg_motion_shadow.py'
+      - 'tests/test_l1_bcg_motion_shadow.py'
+      - 'docs/l-bcg-conditional-motion-shadow-20261101.md'
+      - '.github/workflows/l-bcg-conditional-motion-shadow-dev.yml'
+permissions:
+  contents: read
+jobs:
+  conditional-source-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python 3.12 focused and owner regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py
+          python -m compileall -q src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l1_bcg_motion_shadow.py \
+            tests/test_learning_epoch.py \
+            tests/test_l10_world_body_cue_learning.py \
+            tests/test_l1_s_choice_shadow.py \
+            tests/test_self_body_s50_l1_motion_shadow.py
+          python tools/check_repository.py
+      - name: Explicit ceiling
+        if: always()
+        run: echo 'SYNTHETIC_OFFLINE_ONLY / ACTION_0 / S10_0 / S11_0 / WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
