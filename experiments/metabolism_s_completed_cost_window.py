@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 from experiments.metabolism_cognitive_lifecycle import (
+    CognitionCostSample,
     CognitiveLifecycleRejected,
     CognitiveLifecycleSummary,
-    CognitionCostSample,
     Outcome,
     Phase,
     summarize_cognitive_lifecycle,
