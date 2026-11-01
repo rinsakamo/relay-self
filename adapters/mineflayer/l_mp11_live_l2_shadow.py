@@ -21,6 +21,14 @@ from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     RECONSIDERATIONS,
 )
 from adapters.mineflayer.l_mp11_live_previous_action import LivePriorLedger
+from adapters.mineflayer.l_mp11_typed_feedback import (
+    RELATIONS,
+    NumericRoleRejected,
+    previous_feedback,
+    validate_numeric_citations,
+)
+from relay_self.provenance import Provenance
+from relay_self.relay_engine import CognitionDatum
 from relay_self.relay_engine import (
     OpenCognitionRequest,
     OpenCognitionResult,
@@ -36,6 +44,8 @@ PROPOSAL_FIELDS = frozenset({
     "falsification_test",
     "predicted_wait_total_m",
     "capability_assessment",
+    "prior_hypothesis_relation",
+    "numeric_evidence_refs",
 })
 ABILITY = frozenset({"UNKNOWN", "CONDITIONAL_HYPOTHESIS"})
 MAX_OPEN_BYTES = 2300
@@ -92,6 +102,9 @@ class LiveL2Proposal:
     falsification_test: str
     predicted_wait_total_m: float | None
     capability_assessment: str
+    prior_hypothesis_relation: str
+    prior_proposal_sha256: str | None
+    numeric_evidence_refs: tuple[dict, ...]
     proposal_sha256: str
     provider_source: str
     provider_prompt_tokens: int | None
@@ -105,11 +118,47 @@ class LiveL2Proposal:
     l0_promotions: int = 0
 
 
-def request_for_live_l2(ledger: LivePriorLedger) -> OpenCognitionRequest:
+def request_for_live_l2(
+    ledger: LivePriorLedger, *, previous_proposal: LiveL2Proposal | None = None,
+) -> OpenCognitionRequest:
     """Create a finite-shape hypothesis prompt with no later Action evidence."""
     if type(ledger) is not LivePriorLedger or not 1 <= len(ledger.history) <= 2:
         raise LiveL2Rejected("one or two previous completed original trials required")
+    if len(ledger.history) == 1 and previous_proposal is not None:
+        raise LiveL2Rejected("future L2 model cannot be visible on first trial")
+    if len(ledger.history) == 2 and (
+        type(previous_proposal) is not LiveL2Proposal
+        or previous_proposal.source_world_uuid != ledger.world_uuid
+        or previous_proposal.source_subject_uuid != ledger.subject_uuid
+        or previous_proposal.source_session_id != ledger.session_id
+        or previous_proposal.source_last_action_id != ledger.history[0].action_id
+        or previous_proposal.source_last_prefix_sha256 != ledger.history[0].paper_prefix_sha256
+    ):
+        raise LiveL2Rejected("second proposal requires exact prior frozen L2 hypothesis")
     previous = ledger.model_request()
+    feedback = None
+    if previous_proposal is not None:
+        try:
+            feedback = previous_feedback(previous_proposal, ledger.history[-1])
+        except NumericRoleRejected as exc:
+            raise LiveL2Rejected("invalid prior L2 feedback") from exc
+    previous = replace(
+        previous,
+        context=previous.context + (
+            CognitionDatum.from_value(
+                "previous_L2_hypothesis_typed_feedback",
+                feedback if feedback is not None else {
+                    "status": "FIRST_HYPOTHESIS_NOT_YET_TESTED",
+                    "previous_proposal_sha256": None,
+                    "model_revised_and_admitted": False,
+                },
+                Provenance(
+                    "l.mp11.live.previous.hypothesis.feedback.readonly",
+                    ledger.history[-1].paper_prefix_sha256,
+                ),
+            ),
+        ),
+    )
     schema = (
         "Respond in ONE JSON object with EXACT keys: "
         "referenced_prior_ordinals (sorted unique integer array of only "
@@ -129,7 +178,22 @@ def request_for_live_l2(ledger: LivePriorLedger) -> OpenCognitionRequest:
         "Do not state that the proposal has been executed or learned."
         " Explain the numeric observed prediction error and cheap-zero comparison "
         "from the completed trials; distinguish these measurements from generic "
-        "prior knowledge. Keep explanations brief enough for 512 output tokens."
+        "prior knowledge. Prior L2 feedback targets the FOLLOWING trial's "
+        "WAIT8 TOTAL (m), NOT seven pair MAE (m). "
+        "Return prior_hypothesis_relation: FIRST_HYPOTHESIS on first call; "
+        "KEEP_PRIOR/REVISE_PRIOR/REJECT_PRIOR/ABSTAIN_ON_PRIOR on second. "
+        "Return numeric_evidence_refs as 1..4 exact objects: metric_role, "
+        "trial_ordinal, pair_index, value_m. Allowed role and pair index: "
+        "WAIT8_TOTAL_M(0); PAPER_NEXT_TICK_PREDICTION_M(1..7); "
+        "PAPER_NEXT_TICK_ABS_ERROR_M(1..7); "
+        "PAPER_CHEAP_NEXT_TICK_MAE_M(0); "
+        "PRIOR_L2_NEXT_WAIT8_PREDICTION_M(0, second call only); "
+        "PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M(0, second call only). "
+        "Values must match the prior typed source, and these roles CANNOT "
+        "be compared across targets. Do not call MAE a threshold or "
+        "confuse predicted displacement and absolute error. "
+        "For REVISE_PRIOR, cite at least one new trial measurement. "
+        "Keep explanations brief enough for 512 output tokens."
     )
     return replace(previous, instruction=previous.instruction + "\n" + schema)
 
