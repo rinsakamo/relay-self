@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import asdict, replace
+from dataclasses import asdict
 
 import pytest
 
@@ -29,6 +29,7 @@ from test_self_body_s50_l2_mp11_paper_audit import (
     WORLD,
     original,
 )
+
 
 def test_future_predeclared_eof_exact_prompt_keeps_unmodified_original_sha():
     lines = original()
