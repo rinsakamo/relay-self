@@ -1,6 +1,8 @@
 # DEV ONLY: install in a fresh, disposable Paper 1.21.8 World.
 # This is a candidate, not an ecologically calibrated or R-qualified profile.
 dev-enabled: false
+# Off unless an isolated DEV trial explicitly enables source-bound tick receipts.
+s50-forecast-gate-dev: false
 version: M0.2
 minecraft-version: 1.21.8
 calibration-status: candidate_uncalibrated
