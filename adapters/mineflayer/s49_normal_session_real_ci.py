@@ -280,6 +280,7 @@ async def qualify(
     raw_capture_root: Path | None = None,
     mp11_three_actions_dev: bool = False,
     mp11_g3_paper_assets: L23PaperAssets | None = None,
+    l_mp11_live_prefix_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -323,6 +324,14 @@ async def qualify(
                 "typed_s16_actions": [],
                 "real_l2_autonomous_experiment": False,
             }
+        if l_mp11_live_prefix_dev and (
+            mp11_g3_paper_assets is None
+            or not mp11_three_actions_dev
+            or os.environ.get("L_MP11_LIVE_PREFIX_DEV") != "1"
+        ):
+            raise S31ABlocked(
+                "L MP11 live prefix requires explicit gated original G3 World"
+            )
         if mp11_g3_paper_assets is not None:
             if (not mp11_three_actions_dev
                     or os.environ.get("MP11_G3_PAPER_THREE_WINDOWS_DEV") != "1"):
@@ -373,6 +382,21 @@ async def qualify(
         )
         sid = session.started.session_id
         report["session_id"] = sid
+        live_l_prior = None
+        if l_mp11_live_prefix_dev:
+            # Read-only L-owned diagnostic; never a model/action executor.
+            from adapters.mineflayer.l_mp11_live_previous_action import (
+                LivePriorLedger,
+            )
+            # First physical Paper World/subject identity is fixed by original
+            # pre-Action surface witness; defer typed ledger creation to it.
+            report["l_mp11_live_prefix"] = {
+                "status": "PREPARED_NOT_ATTESTED",
+                "observations": [],
+                "l2_open_calls": 0,
+                "learning_admissions": 0,
+                "action_issuers_added": 0,
+            }
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
@@ -620,6 +644,61 @@ async def qualify(
                     wait_live_paper_window,
                 )
                 await wait_live_paper_window(server_log, marker=marker)
+                if l_mp11_live_prefix_dev:
+                    from adapters.mineflayer.l_mp11_live_previous_action import (
+                        LivePriorLedger,
+                    )
+                    from adapters.mineflayer.l23_paper_s7_settling import (
+                        _paper_rows,
+                    )
+                    if (server.returncode is not None
+                            or session.process_returncode is not None):
+                        raise S49PhysicalFailure(
+                            "L live source not sampled from active Paper/native session"
+                        )
+                    original = server_log.read_bytes()
+                    prefix = original[:original.rfind(b"\n") + 1]
+                    locks = [
+                        row for row in _paper_rows(
+                            prefix, "S50_DEV_SURFACE_LOCK "
+                        ) if row.get("marker_id") == marker
+                    ]
+                    if len(locks) != 1:
+                        raise S49PhysicalFailure(
+                            "L live source missing one original Paper surface witness"
+                        )
+                    lock = locks[0]
+                    if live_l_prior is None:
+                        live_l_prior = LivePriorLedger(
+                            session_id=sid, world_uuid=lock["world"],
+                            subject_uuid=lock["subject_uuid"],
+                        )
+                    typed_actions = report["mp11_g2"]["typed_s16_actions"]
+                    latest = typed_actions[-1]
+                    if latest["action_id"] != step.action_request_id:
+                        raise S49PhysicalFailure("L live prefix wrong typed S16 owner")
+                    witness = live_l_prior.accept_completed(
+                        prefix, action_id=step.action_request_id,
+                        marker_id=marker, native_s16_seq=latest["native_seq"],
+                        native_outcome="S16_OUTCOME"
+                        if latest["outcome"] == "outcome" else "NOT_S16_OUTCOME",
+                    )
+                    read_request = live_l_prior.model_request()
+                    report["l_mp11_live_prefix"]["observations"].append({
+                        "action_id": witness.action_id,
+                        "native_s16_seq": witness.native_s16_seq,
+                        "paper_first_tick": witness.paper_wait_ticks[0],
+                        "paper_last_tick": witness.paper_wait_ticks[-1],
+                        "paper_prefix_sha256": witness.paper_prefix_sha256,
+                        "paper_prefix_length": witness.paper_prefix_length,
+                        "l2_request_id": read_request.request_id,
+                        "visible_previous_trials": len(live_l_prior.history),
+                        "l2_calls": 0,
+                        "source_status": witness.source_status,
+                    })
+                    report["l_mp11_live_prefix"]["status"] = (
+                        "PROVISIONAL_LIVE_PREFIX_READ_ONLY"
+                    )
                 report["mp11_g3"]["paper_markers"].append(marker)
                 g3_previous_marker = marker
             report["actual_native_actions"].append({
@@ -907,6 +986,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--mp11-three-actions-dev", action="store_true")
+    parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
     parser.add_argument("--raw-capture-root", type=Path)
     parser.add_argument("--mp11-g3-paper-jar", type=Path)
     parser.add_argument("--mp11-g3-plugin-jar", type=Path)
@@ -933,6 +1013,7 @@ def main() -> int:
         raw_capture_root=args.raw_capture_root,
         mp11_three_actions_dev=args.mp11_three_actions_dev,
         mp11_g3_paper_assets=assets,
+        l_mp11_live_prefix_dev=args.l_mp11_live_prefix_dev,
     ))
 
 
