@@ -236,6 +236,7 @@ async def qualify(
     live_next_epoch_dev: bool = False,
     l1_motion_shadow_dev: bool = False,
     l1_prediction_journal: Path | None = None,
+    l1_paper_forecast_gate_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -266,12 +267,32 @@ async def qualify(
     window_ready = asyncio.Event()
     rc = 2
     predictor = None
+    paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if type(l1_paper_forecast_gate_dev) is not bool:
+            raise S31ABlocked("MP4 opt-in must be boolean")
+        if l1_paper_forecast_gate_dev:
+            if l1_prediction_journal is None or not live_next_epoch_dev or l23_paper_assets is None:
+                raise S31ABlocked("MP4 requires MP3 journal, route B and owned Paper assets")
+            from adapters.mineflayer.self_body_s50_l1_paper_dispatch import (
+                require_paper_gate_config,
+            )
+            # Config SHA and opt-in are verified before starting the Java World.
+            require_paper_gate_config(
+                l23_paper_assets.plugin_config, l23_paper_assets.config_sha256,
+            )
         if l1_prediction_journal is not None:
             if not live_next_epoch_dev:
                 raise S31ABlocked("MP3 requires route B")
             from adapters.mineflayer.self_body_s50_l1_host_prediction import HostPrediction
             predictor = HostPrediction(l1_prediction_journal)
+            if l1_paper_forecast_gate_dev:
+                predictor.enable_paper_gate()
+                report["l1_paper_forecast_gate"] = {
+                    "classification": "DEV_PAPER_CONSOLE_DISPATCH_OPT_IN_NOT_ACCEPTANCE",
+                    "paper_acceptances_attested": False,
+                    "real_world_qualification": "NO_GO",
+                }
         if type(l1_motion_shadow_dev) is not bool or (
             l1_motion_shadow_dev and not live_next_epoch_dev
         ):
@@ -507,6 +528,7 @@ async def qualify(
             )
 
         async def on_action(step):
+            nonlocal paper_forecast_task
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -568,6 +590,24 @@ async def qualify(
                 )
                 report["l23_paper"]["marker_id"] = l23_marker_id
                 report["l23_paper"]["status"] = "PRE_ACTION_PAPER_MARKER_OBSERVED"
+                if l1_paper_forecast_gate_dev:
+                    if predictor is None or predictor.dispatch is None:
+                        raise S49PhysicalFailure("MP4 Paper forecast not bound to PRE_FORWARD")
+                    dispatcher = predictor.dispatch
+
+                    def on_console_sent(request):
+                        predictor.write(
+                            "PAPER_CONSOLE_WRITE",
+                            marker=request.marker,
+                            prior_tick=request.prior_tick,
+                            target_tick=request.target_tick,
+                            ticket_sha256=request.ticket_sha256,
+                            status="CONSOLE_WRITTEN_NOT_PAPER_ACCEPTED",
+                        )
+
+                    paper_forecast_task = asyncio.create_task(
+                        dispatcher.pump(server, on_sent=on_console_sent)
+                    )
             nonlocal lease, original_closure, original_body
 
             class OriginalLease(SelfBodyS50ClosedOwnerLease):
@@ -925,6 +965,23 @@ async def qualify(
         print("S49 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
+        # Stop diagnostic Paper queue before original Node/Java shutdown.
+        # Preserve any send fault separately; never claim Paper ACCEPT on write.
+        if paper_forecast_task is not None:
+            assert predictor is not None and predictor.dispatch is not None
+            predictor.dispatch.close()
+            try:
+                await asyncio.wait_for(paper_forecast_task, timeout=3)
+                report["l1_paper_forecast_gate"]["queued"] = predictor.dispatch.queued
+                report["l1_paper_forecast_gate"]["console_written"] = predictor.dispatch.sent
+                report["l1_paper_forecast_gate"]["paper_acceptances_attested"] = False
+            except Exception as exc:
+                report["l1_paper_forecast_gate"]["dispatch_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+                if report.get("status") == "PASS":
+                    report["status"] = "FAIL"
+                rc = 1
         if l21_observer is not None and not l21_closed:
             try:
                 await l21_observer.terminate()
@@ -1155,6 +1212,7 @@ def main() -> int:
     parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
     parser.add_argument("--l1-prediction-journal", type=Path)
+    parser.add_argument("--l1-paper-forecast-gate-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1203,6 +1261,7 @@ def main() -> int:
         live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
         l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
         l1_prediction_journal=args.l1_prediction_journal,
+        l1_paper_forecast_gate_dev=args.l1_paper_forecast_gate_dev,
     ))
 
 
