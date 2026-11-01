@@ -54,11 +54,7 @@ def audit_live_prefixes(report: dict, complete_paper: bytes) -> dict:
             or type(digest) is not str or len(digest) != 64
             or digest != hashlib.sha256(complete_paper[:size]).hexdigest()
             or complete_paper[size-1:size] != b"\n"
-            or p.get("action_id") != g3["s49_actions"] and
-            type(g3["s49_actions"]) is str
         ):
-            # The original G3 auditor uses integer Action count, not IDs;
-            # match IDs below with the authoritative per-Action typed ledger.
             raise LivePostrunRejected("original complete Paper prefix hash mismatch")
         action_ids = [x.get("action_id") for x in native]
         if (
