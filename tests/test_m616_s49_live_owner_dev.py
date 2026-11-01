@@ -17,7 +17,6 @@ import pytest
 import test_metabolism_s49_owner_admission as m_fixture
 import test_s49_completed_decision_bridge as s49_owner_test
 
-from experiments.metabolism_s49_owner_admission import S49MAdmissionRejected
 from tools.m616_s49_live_owner_dev import (
     M616OriginalS49CompletedTap,
     run_original_s49_with_m_readback,
