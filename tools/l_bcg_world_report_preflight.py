@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from math import isfinite
 from pathlib import Path
 
 
@@ -22,6 +23,24 @@ _REQUIRED = frozenset({
 })
 
 
+def _reject_qualification_promotion(value: object) -> None:
+    """Check recognized qualification claims wherever existing owners emit them."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in {"goal_success_attested", "goal_admitted", "learning_feedback_qualified"}:
+                if item is not False:
+                    raise BCGReportRejected("unjustified Goal or learning qualification")
+            elif key in {"s10_updates", "s11_grants", "s10_updates_admitted", "s11_grants_admitted"}:
+                if type(item) is not int or item != 0:
+                    raise BCGReportRejected("unjustified S10/S11 update or grant")
+            elif key == "accepted_goal_status" and item != "UNDETERMINED":
+                raise BCGReportRejected("unjustified accepted Goal")
+            _reject_qualification_promotion(item)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_qualification_promotion(item)
+
+
 def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
     """Verify the report's own typed S49/readout/shadow cross references.
 
@@ -30,6 +49,7 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
     """
     if not isinstance(report, dict):
         raise BCGReportRejected("JSON object report required")
+    _reject_qualification_promotion(report)
     try:
         session = report["session_id"]
         actions = report["actual_native_actions"]
@@ -45,9 +65,28 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
     except (KeyError, TypeError) as exc:
         raise BCGReportRejected("missing S49/Body/World host report field") from exc
     if (
+        not all(isinstance(x, dict) for x in (live, body, world, bo, wo, shadow, inventory))
+        or not isinstance(actions, list)
+        or not all(isinstance(x, dict) for x in actions)
+        or not isinstance(decisions, list)
+        or not all(isinstance(x, dict) for x in decisions)
+    ):
+        raise BCGReportRejected("malformed host object or Action/L0 rows")
+    entities = wo.get("entities")
+    if not isinstance(entities, list) or not all(isinstance(e, dict) for e in entities):
+        raise BCGReportRejected("invalid original World entity coverage")
+    for action in actions:
+        evidence = action.get("execution_evidence", {})
+        if not isinstance(evidence, dict) or any(
+            evidence.get(key, False) is not False
+            for key in ("goal_success_attested", "learning_feedback_qualified")
+        ):
+            raise BCGReportRejected("unjustified Action Goal or learning qualification")
+    if (
         type(session) is not str or not session
         or report.get("status") != "PASS" or report.get("stage") != "CLOSED"
         or report.get("learning_in_world") is not False
+        or type(report.get("real_model_calls")) is not int
         or report.get("real_model_calls") != 0
         or not isinstance(actions, list) or len(actions) != 1
         or actions[0].get("terminal") != "outcome"
@@ -88,11 +127,12 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
         or shadow.get("reason") != "CURRENT_GOAL_GAIT_P1_M_OBSTACLE_SOURCE_NOT_ADMITTED"
         or shadow.get("conditional") is not None
         or shadow.get("source_ceiling") != "ROUTE_B_PROVISIONAL_PAPER_NOT_POST_CLEAR_ATTESTED"
+        or type(shadow.get("used_physical_training_worlds")) is not int
         or shadow.get("used_physical_training_worlds") != 0
         or shadow.get("original_l0_choice_kept") is not True
         or shadow.get("goal_success_attested") is not False
         or shadow.get("action_authority") is not False
-        or any(shadow.get(k) != 0 for k in (
+        or any(type(shadow.get(k)) is not int or shadow.get(k) != 0 for k in (
             "action_issues", "extra_native_reads", "learning_updates", "habit_grants"
         ))
         or inventory.get("full_conditional_context_available") is not False
@@ -113,6 +153,8 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
     for row in observed:
         if not isinstance(row, dict) or type(row.get("name")) is not str:
             raise BCGReportRejected("invalid observed cue")
+        if type(row.get("value")) not in (int, float) or not isfinite(row["value"]):
+            raise BCGReportRejected("observed cue must be a finite numeric measurement")
         name = row["name"]
         if name in names:
             raise BCGReportRejected("duplicate observed cue")

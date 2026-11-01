@@ -164,3 +164,88 @@ Goal/Policy改善、`PHYSICAL_POST_CLEAR_VERIFIED`、QUAL/SCIENCE
 根拠として使わない。既存のWorld owner外ではnative Actionを発行しない。
 
 **専用L-BCG World grantは未取得**。#655の消費済み1 World grantは流用不可。
+
+## BCG-H4 — LocalCodex source監査と実World前準備（2026-11-01）
+
+**WORLD_GRANT_REQUIRED / 新規実World 0回**。
+最新remote子HEAD `618bd307b65ac81cc2b217fc7ef77c58f361080b` を隔離worktreeへ取得。
+Issue #431/#537/#653とDraft #654/#655/#656の本文・既存コメントを再確認したが、
+L-BCG専用の未消費grantは確認できない。#653 MP3専用grant
+[6551090255](https://github.com/rinsakamo/relay-self/issues/653#issuecomment-6551090255)
+は[消費済み](https://github.com/rinsakamo/relay-self/issues/653#issuecomment-6551338030)。
+#537のSLM grantも別対象なので適用しない。World起動・再試行は行わない。
+
+先行[H1 CI](https://github.com/rinsakamo/relay-self/actions/runs/41258096294)はSUCCESS。
+[H2/H3 CI](https://github.com/rinsakamo/relay-self/actions/runs/41261320168)は
+exact `618bd307…` にて **Python 3.12 129 PASS / Ruff / compileall / contracts PASS**
+と確定し、同HEADの関連4 workflowもSUCCESS。
+親#655のremote `774c06965f83058ff0c55589f4369b5b82615ba3` は
+既取り込み親 `bd9115ee…` から **docs内80ファイルのみ**の追加・更新。
+実装依存は増えていないため、この実測原本群を子へmergeしない。
+親の実WorldはL-BCG実行数・訓練数へ加算しない。
+
+### H4で修正したhost JSONゲート
+
+追加否定テストは修正前 **8 FAIL / 17 PASS**。初回FAILログを保存。
+`false == 0` による回数型の混同、Action原本表現のGoal/学習資格の過大申告、
+不正なAction/decision/entity型、非有限観測値を拒否する。
+既存ownerが入れ子に出す `goal_admitted` / `accepted_goal_status` /
+`learning_feedback_qualified` / S10/S11更新・grantも過大申告を拒否する。
+正常な合成host JSONのPASSは維持する。元S49 runner、L0、S16、
+source reader、Action issuer、cue projectionや条件学習器自体の変更はない。
+**この強化も一つのhost JSONの自己整合性だけで、原本の真正性認証ではない。**
+
+### runtimeの実測preflight
+
+WSL2 / Ubuntu 24.04.4、Python 3.12.3、OpenJDK 21.0.12.1、
+Node 22.22.2、Mineflayer 4.39.0を確認。Windows build `10.0.26300.9711`。
+Minecraft 1.21.8 Paper資材とplugin/configの3 SHA256は既存pinに一致。
+port 25565 bind可能、`/tmp/relay-self-s49-*` 残存なし。
+RTX 3060は検査時707 MiB使用 / GPU利用率0%。モデル起動・呼出し0。
+既存pluginは **ACTIVE_METABOLISM_NOT_PASSIVE** profileであり、
+foodをM energyの認証済み入力へ読み替える根拠にはならない。
+Java/Nodeのversionコマンドのみ実行し、Minecraft server/bridgeは未起動。
+今回所有するWorld/PIDはなく、World削除・server停止の物理試験は対象外。
+
+許可後も既存 `adapters.mineflayer.self_body_s50_world_dev` のみを使う。
+route Bと `--l-bcg-shadow-dev` を有効化し、元第3 L0判断完了後に評価。
+S49 WAIT→MOVE_AWAY→WAIT、Action 1・S16 OUTCOME 1が予定条件だが、
+**今回は未実測**。追加Action/probe、learning/S10/S11、model callは0を維持する。
+L-BCGの予想は `DEFER_UNKNOWN`、Goal UNDETERMINED。
+観測可能cueは位置・health・food/saturation・S42距離・実在観測Entity距離とcoverage。
+欠落する8条件はH2のまま。実WorldでのCHEAP比較・L1改善は未測定。
+原S7/S16/Paper照合、session/World/marker、exit/STOP/port/World削除は
+将来1回の実行終了後に別監査し、effective clearは証明されるまでNOT_ATTESTED。
+
+### 次段階の条件学習計画（未許可・未実施）
+
+各値のproducer、型、native source、同時点性・鮮度を既存ownerで確認できるまで
+該当cellは `SOURCE_NOT_ADMITTED`。欠損を推定値で補わない。
+
+| 条件軸 | 実測sourceの必要条件 | 将来比較する条件 |
+| --- | --- | --- |
+| Goal残距離・tolerance | 既存Goal ownerと同時点位置の認証済み結合 | 小/大clearance |
+| 歩容 | Motor ownerの選択と実行区間、native確認 | 低速/高速 |
+| P1疲労 | 既存P1 ownerの時点付き実状態 | 低/高 |
+| M energy | 既存M ownerの時点付き実状態 | 低/高 |
+| 障害物 | 独立に検証された対象範囲と鮮度 | 有/無 |
+
+初回はshadow比較に限定。計画例は5軸二値の32 cellについて、
+各cellで独立training World ≥2、別の独立heldout World ≥2
+（例示下限64+64 World、**今回の実行権限や実行予約ではない**）。
+実際の数値境界・World数・割付・停止条件はsource資格と専用grant成立後、
+観測前に凍結する。初期の縮小計画なら対象軸と未検証cellを明記し、
+除外cellへ汎化主張を拡大しない。
+現APIの最大48 training Worldを越す64件一括投入は不可。
+48以内の事前固定された有界比較に分割し、全cellを学習済みと表示しない。
+
+World/sessionの重複を除き、同一Worldの8 tickは1 Worldとして数える。
+訓練凍結後にheldoutを評価し、未知cue値/組合せ・障害物・regime変更・矛盾で
+ABSTAIN/DEFERするか確認する。各cellの独立World数、source可用性、
+支持/拒否/欠測、Memory OFF・1bit・fixed clearance・recent・exact lookupと
+同情報のshadow比較を保存する。残留変位リスクはGoal改善ではない。
+将来のAction比較は別途独立Goal証拠・権限が成立した場合のみ。
+L0自動昇格、S10/S11 production更新は許可しない。
+
+H4の最終上限は **DEV_OFFLINE_READONLY_PREFLIGHT_READY /
+WORLD_GRANT_REQUIRED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。

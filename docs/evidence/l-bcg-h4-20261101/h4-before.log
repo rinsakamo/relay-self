@@ -1,0 +1,405 @@
+................FFFF.FFFF                                                [100%]
+=================================== FAILURES ===================================
+____ test_h4_reject_malformed_and_overclaimed_reports[boolean_model_count] _____
+
+case = 'boolean_model_count'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+>       with pytest.raises(BCGReportRejected):
+E       Failed: DID NOT RAISE BCGReportRejected
+
+tests/test_l_bcg_world_report_preflight.py:148: Failed
+____ test_h4_reject_malformed_and_overclaimed_reports[boolean_shadow_count] ____
+
+case = 'boolean_shadow_count'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+>       with pytest.raises(BCGReportRejected):
+E       Failed: DID NOT RAISE BCGReportRejected
+
+tests/test_l_bcg_world_report_preflight.py:148: Failed
+___ test_h4_reject_malformed_and_overclaimed_reports[action_goal_promotion] ____
+
+case = 'action_goal_promotion'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+>       with pytest.raises(BCGReportRejected):
+E       Failed: DID NOT RAISE BCGReportRejected
+
+tests/test_l_bcg_world_report_preflight.py:148: Failed
+_ test_h4_reject_malformed_and_overclaimed_reports[action_learning_promotion] __
+
+case = 'action_learning_promotion'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+>       with pytest.raises(BCGReportRejected):
+E       Failed: DID NOT RAISE BCGReportRejected
+
+tests/test_l_bcg_world_report_preflight.py:148: Failed
+______ test_h4_reject_malformed_and_overclaimed_reports[malformed_action] ______
+
+case = 'malformed_action'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+        with pytest.raises(BCGReportRejected):
+>           review_bcg_host_report(report)
+
+tests/test_l_bcg_world_report_preflight.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+report = {'status': 'PASS', 'stage': 'CLOSED', 'session_id': '3148d4a1-1a2a-4475-9f70-f3363a356be4', 'real_model_calls': 0, ...}
+
+    
+    def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
+        """Verify the report's own typed S49/readout/shadow cross references.
+    
+        This is a ONE-FILE diagnostic, NOT independent S7/S16/Paper original-byte
+        checking. Reject missing fields rather than guessing physical World state.
+        """
+        if not isinstance(report, dict):
+            raise BCGReportRejected("JSON object report required")
+        try:
+            session = report["session_id"]
+            actions = report["actual_native_actions"]
+            decisions = report["decisions"]
+            shadow = report["l_bcg_shadow"]
+            live = report["live_next_epoch"]
+            body = live["current_body"]
+            world = live["current_world"]
+            bo = body["observation"]
+            wo = world["observation"]
+            inventory = shadow["cue_inventory"]
+            observed = inventory["observed"]
+        except (KeyError, TypeError) as exc:
+            raise BCGReportRejected("missing S49/Body/World host report field") from exc
+        if (
+            not all(isinstance(x, dict) for x in (live, body, world, bo, wo, shadow, inventory))
+            or not isinstance(actions, list)
+            or not all(isinstance(x, dict) for x in actions)
+            or not isinstance(decisions, list)
+>           or not all(isinstance(x, dict) for x in decisions)
+               ^^^^^^^^^^^^^^
+        ):
+E       AttributeError: 'NoneType' object has no attribute 'get'
+
+tools/l_bcg_world_report_preflight.py:53: AttributeError
+_____ test_h4_reject_malformed_and_overclaimed_reports[malformed_decision] _____
+
+case = 'malformed_decision'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+        with pytest.raises(BCGReportRejected):
+>           review_bcg_host_report(report)
+
+tests/test_l_bcg_world_report_preflight.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+report = {'status': 'PASS', 'stage': 'CLOSED', 'session_id': '3148d4a1-1a2a-4475-9f70-f3363a356be4', 'real_model_calls': 0, ...}
+
+    
+    def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
+        """Verify the report's own typed S49/readout/shadow cross references.
+    
+        This is a ONE-FILE diagnostic, NOT independent S7/S16/Paper original-byte
+        checking. Reject missing fields rather than guessing physical World state.
+        """
+        if not isinstance(report, dict):
+            raise BCGReportRejected("JSON object report required")
+        try:
+            session = report["session_id"]
+            actions = report["actual_native_actions"]
+            decisions = report["decisions"]
+            shadow = report["l_bcg_shadow"]
+            live = report["live_next_epoch"]
+            body = live["current_body"]
+            world = live["current_world"]
+            bo = body["observation"]
+            wo = world["observation"]
+            inventory = shadow["cue_inventory"]
+            observed = inventory["observed"]
+        except (KeyError, TypeError) as exc:
+            raise BCGReportRejected("missing S49/Body/World host report field") from exc
+        if (
+            not all(isinstance(x, dict) for x in (live, body, world, bo, wo, shadow, inventory))
+            or not isinstance(actions, list)
+            or not all(isinstance(x, dict) for x in actions)
+            or not isinstance(decisions, list)
+            or not all(isinstance(x, dict) for x in decisions)
+        ):
+>           raise BCGReportRejected("malformed host object or Action/L0 rows")
+                ^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'get'
+
+tools/l_bcg_world_report_preflight.py:55: AttributeError
+______ test_h4_reject_malformed_and_overclaimed_reports[malformed_entity] ______
+
+case = 'malformed_entity'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+        with pytest.raises(BCGReportRejected):
+>           review_bcg_host_report(report)
+
+tests/test_l_bcg_world_report_preflight.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tools/l_bcg_world_report_preflight.py:136: in review_bcg_host_report
+    raise BCGReportRejected("invalid observed cue")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x7f29c09d5720>
+
+>   raise BCGReportRejected("invalid observed cue")
+                   ^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get'
+
+tools/l_bcg_world_report_preflight.py:136: AttributeError
+_____ test_h4_reject_malformed_and_overclaimed_reports[nonfinite_observed] _____
+
+case = 'nonfinite_observed'
+
+    @pytest.mark.parametrize("case", [
+        "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+        "action_learning_promotion", "malformed_shadow", "malformed_action",
+        "malformed_decision", "malformed_entity", "nonfinite_observed",
+    ])
+    def test_h4_reject_malformed_and_overclaimed_reports(case):
+        report = _report()
+        if case == "boolean_model_count":
+            report["real_model_calls"] = False
+        elif case == "boolean_shadow_count":
+            report["l_bcg_shadow"]["learning_updates"] = False
+        elif case in ("action_goal_promotion", "action_learning_promotion"):
+            field = ("goal_success_attested" if case == "action_goal_promotion"
+                     else "learning_feedback_qualified")
+            report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+        elif case == "malformed_shadow":
+            report["l_bcg_shadow"] = []
+        elif case == "malformed_action":
+            report["actual_native_actions"] = [None]
+        elif case == "malformed_decision":
+            report["decisions"][0] = None
+        elif case == "malformed_entity":
+            report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+        elif case == "nonfinite_observed":
+            for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+                if row["name"] == "food":
+                    row["value"] = float("inf")
+            for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+                if row["key"] == "food":
+                    row["value"] = float("inf")
+>       with pytest.raises(BCGReportRejected):
+E       Failed: DID NOT RAISE BCGReportRejected
+
+tests/test_l_bcg_world_report_preflight.py:148: Failed
+=========================== short test summary info ============================
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[boolean_model_count]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[boolean_shadow_count]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[action_goal_promotion]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[action_learning_promotion]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[malformed_action]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[malformed_decision]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[malformed_entity]
+FAILED tests/test_l_bcg_world_report_preflight.py::test_h4_reject_malformed_and_overclaimed_reports[nonfinite_observed]
+8 failed, 17 passed in 35.76s

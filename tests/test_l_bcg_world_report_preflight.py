@@ -113,3 +113,48 @@ def test_no_bcg_record_rejected_even_if_s49_parent_is_real():
     del report["l_bcg_shadow"]
     with pytest.raises(BCGReportRejected):
         review_bcg_host_report(report)
+
+
+@pytest.mark.parametrize("case", [
+    "boolean_model_count", "boolean_shadow_count", "action_goal_promotion",
+    "action_learning_promotion", "malformed_shadow", "malformed_action",
+    "malformed_decision", "malformed_entity", "nonfinite_observed",
+])
+def test_h4_reject_malformed_and_overclaimed_reports(case):
+    report = _report()
+    if case == "boolean_model_count":
+        report["real_model_calls"] = False
+    elif case == "boolean_shadow_count":
+        report["l_bcg_shadow"]["learning_updates"] = False
+    elif case in ("action_goal_promotion", "action_learning_promotion"):
+        field = ("goal_success_attested" if case == "action_goal_promotion"
+                 else "learning_feedback_qualified")
+        report["actual_native_actions"][0]["execution_evidence"] = {field: True}
+    elif case == "malformed_shadow":
+        report["l_bcg_shadow"] = []
+    elif case == "malformed_action":
+        report["actual_native_actions"] = [None]
+    elif case == "malformed_decision":
+        report["decisions"][0] = None
+    elif case == "malformed_entity":
+        report["live_next_epoch"]["current_world"]["observation"]["entities"] = [None]
+    elif case == "nonfinite_observed":
+        for row in report["l_bcg_shadow"]["cue_inventory"]["observed"]:
+            if row["name"] == "food":
+                row["value"] = float("inf")
+        for row in report["live_next_epoch"]["current_body"]["observation"]["fields"]:
+            if row["key"] == "food":
+                row["value"] = float("inf")
+    with pytest.raises(BCGReportRejected):
+        review_bcg_host_report(report)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("goal_admitted", True), ("accepted_goal_status", "SUCCESS"),
+    ("s10_updates", 1), ("s11_grants_admitted", 1),
+])
+def test_h4_reject_existing_owner_nested_qualification_promotion(field, value):
+    report = _report()
+    report["existing_owner"] = {"nested": [{field: value}]}
+    with pytest.raises(BCGReportRejected):
+        review_bcg_host_report(report)
