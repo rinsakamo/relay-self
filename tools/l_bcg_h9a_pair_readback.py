@@ -13,7 +13,6 @@ from pathlib import Path
 from relay_self.l_bcg_h9a_pair import compare_h9a_pair, review_h9a_arm
 from tools.l_bcg_h8_world_readback import audit as independently_audit_h8
 
-
 _CRITICAL_ASSET_SUFFIXES = (
     "/minecraft.jar",
     "/server.properties",
