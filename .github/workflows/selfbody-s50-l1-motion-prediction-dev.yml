@@ -6,6 +6,10 @@ on:
     paths:
       - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
       - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_l1_host_prediction.py'
+      - 'tests/test_self_body_s50_l1_host_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/s31a_real_server_ci.py'
       - 'adapters/mineflayer/self_body_s50_l1_motion_live_dev.py'
       - 'tests/test_self_body_s50_l1_motion_live_dev.py'
       - 'adapters/mineflayer/self_body_s50_l1_motion_prequential.py'
@@ -17,6 +21,10 @@ on:
     paths:
       - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
       - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_l1_host_prediction.py'
+      - 'tests/test_self_body_s50_l1_host_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/s31a_real_server_ci.py'
       - 'adapters/mineflayer/self_body_s50_l1_motion_live_dev.py'
       - 'tests/test_self_body_s50_l1_motion_live_dev.py'
       - 'adapters/mineflayer/self_body_s50_l1_motion_prequential.py'
@@ -47,8 +55,10 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
           ruff check adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py adapters/mineflayer/self_body_s50_l1_motion_live_dev.py tests/test_self_body_s50_l1_motion_live_dev.py
+          ruff check adapters/mineflayer/self_body_s50_l1_host_prediction.py tests/test_self_body_s50_l1_host_prediction.py adapters/mineflayer/self_body_s50_world_dev.py adapters/mineflayer/s31a_real_server_ci.py
           python -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py adapters/mineflayer/self_body_s50_l1_motion_live_dev.py tests/test_self_body_s50_l1_motion_live_dev.py
           python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_host_prediction.py \
             tests/test_self_body_s50_l1_motion_prediction.py \
             tests/test_self_body_s50_l1_motion_prequential.py \
             tests/test_self_body_s50_l1_motion_live_dev.py \

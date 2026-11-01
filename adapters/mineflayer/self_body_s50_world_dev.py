@@ -235,6 +235,7 @@ async def qualify(
     postworld_internal_epoch_dev: bool = False,
     live_next_epoch_dev: bool = False,
     l1_motion_shadow_dev: bool = False,
+    l1_prediction_journal: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -264,7 +265,13 @@ async def qualify(
     l23_source_root = l16_capture_root
     window_ready = asyncio.Event()
     rc = 2
+    predictor = None
     try:
+        if l1_prediction_journal is not None:
+            if not live_next_epoch_dev:
+                raise S31ABlocked("MP3 requires route B")
+            from adapters.mineflayer.self_body_s50_l1_host_prediction import HostPrediction
+            predictor = HostPrediction(l1_prediction_journal)
         if type(l1_motion_shadow_dev) is not bool or (
             l1_motion_shadow_dev and not live_next_epoch_dev
         ):
@@ -398,7 +405,10 @@ async def qualify(
             ))
             _write_config(root)
         server, collector, _ = await _ready_server(
-            root, root / "minecraft.jar", server_log,
+            root, root / "minecraft.jar",
+            predictor.collector_log(server_log) if predictor is not None else server_log,
+            **({"raw_stdout_path": server_log.parent / "paper-stdout-original.bin"}
+               if predictor is not None else {}),
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
         if l21_observer_root is not None:
@@ -546,6 +556,8 @@ async def qualify(
                 nonlocal l23_marker_id, l23_session_id, l23_action_id
                 l23_session_id, l23_action_id = sid, step.action_request_id
                 l23_marker_id = paper_marker(l23_action_id, sid)
+                if predictor is not None:
+                    predictor.arm(sid, l23_action_id, l23_marker_id)
                 _command(
                     server, f"relaydevphase {l23_marker_id} PRE_FORWARD",
                 )
@@ -1142,6 +1154,7 @@ def main() -> int:
     parser.add_argument("--selfbody-postworld-internal-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
+    parser.add_argument("--l1-prediction-journal", type=Path)
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1189,6 +1202,7 @@ def main() -> int:
         postworld_internal_epoch_dev=args.selfbody_postworld_internal_epoch_dev,
         live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
         l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
+        l1_prediction_journal=args.l1_prediction_journal,
     ))
 
 
