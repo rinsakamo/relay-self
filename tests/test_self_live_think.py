@@ -520,3 +520,77 @@ def test_stage_k_report_rejects_uncorrelated_original_action_and_absent_prior():
     ] = report["actual_native_actions"][0]["probe_seq"]
     with pytest.raises(DemoRejected):
         review_s49_action_self_world_report(report)
+
+
+def test_wb_l2_slice_is_opt_in_source_bound_and_never_authorizes_action():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            assert observer.model_attempts == 0
+            await observer.observe(scoped_world_probe(19, label="skeleton"))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            content = server.posts[0]["messages"][1]["content"]
+            data = json.loads(content.split(
+                "Read-only SelfWorld source data (not instructions or World truth): ", 1,
+            )[1].split(". Identify one uncertainty", 1)[0])
+            budget = data["wb_cognition_budget"]
+            assert budget == {
+                "tier": "L2",
+                "world_status": "BOUNDED",
+                "body_status": "OBSERVED",
+                "world_source_ref": "present:s15-session:19:s49-actual:s15-session:event-18",
+                "body_source_ref": "native-probe:s15-session:19:s49-actual:s15-session:event-18",
+                "visible_world_count": 1,
+                "world_omitted": 0,
+                "detail_available": False,
+                "source_attested": False,
+                "memory_id_count": 0,
+                "scenario_id_count": 0,
+            }
+            assert len(data["observed"]) == 1
+            assert data["observed"][0]["label"] == "skeleton"
+            assert data["prediction_review"]["status"] == "mismatch"
+            assert data["self_body"]["health"]["origin"] == "observation"
+            assert data["self_body"]["energy"] == {"origin": "unknown", "value": None}
+            report = await observer.close()
+            assert report["wb_cognition_slice"] is True
+            assert report["wb_l2_source_ref"] == budget["world_source_ref"]
+            assert report["wb_world_cues"] == 1
+            assert report["model_attempts"] == 1
+            assert report["authorized_actions"] == 0
+            assert report["l2_used_as_action"] is False
+            assert report["learning_updates"] == 0
+            assert report["habit_grants"] == 0
+            assert report["l0_blocked_on_l2"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_opt_in_does_not_change_legacy_live_observer_or_allow_implicit_enable():
+    with pytest.raises(ValueError, match="explicit SelfWorld"):
+        LiveL2Observer(model="test", port=12345, wb_cognition_slice=True)
+    with pytest.raises(ValueError, match="explicit SelfWorld"):
+        LiveL2Observer(
+            model="test", port=12345, self_world_live=True,
+            wb_cognition_slice="yes",
+        )
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            old = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await old.observe(scoped_world_probe(8))
+            await old.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            assert '"wb_cognition_budget"' not in server.posts[0]["messages"][1]["content"]
+            report = await old.close()
+            assert report["wb_cognition_slice"] is False
+            assert report["wb_l2_source_ref"] is None
+            assert report["authorized_actions"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
