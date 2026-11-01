@@ -14,9 +14,9 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-import test_metabolism_s49_owner_admission as m_fixture
 import test_s49_completed_decision_bridge as s49_owner_test
 
+import test_metabolism_s49_owner_admission as m_fixture
 from tools.m616_s49_live_owner_dev import (
     M616OriginalS49CompletedTap,
     run_original_s49_with_m_readback,
