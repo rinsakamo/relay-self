@@ -64,12 +64,12 @@ def _synthetic_original_shape():
     )
     dispatch = MineflayerEffectResult(
         session_id=probe1.session_id, seq=probe1.seq + 1,
-        provenance=probe1.provenance, action_id=move.action_request_id,
+        action_id=move.action_request_id,
         effect="set_control", result="applied", error=None,
     )
     cleanup = MineflayerEffectResult(
         session_id=probe1.session_id, seq=probe1.seq + 2,
-        provenance=probe1.provenance, action_id=move.action_request_id,
+        action_id=move.action_request_id,
         effect="clear_controls", result="applied", error=None,
     )
     physical = WorldConsequence(
