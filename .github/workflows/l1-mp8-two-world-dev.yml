@@ -1,6 +1,7 @@
 name: L1-MP8 two real disposable matched surface Worlds DEV
 # Explicit once-only physical owner opt-in commit.
-# MP8 activation: preflight first, normal then ice; abort at first failed World. DO NOT rerun old attempts.
+# MP8 activation: preflight first, normal then ice; abort at first failed World.
+# Fresh release after source-only test correction; previous physical workflow started zero Worlds. DO NOT rerun old attempts.
 on:
   push:
     branches: [dev/l1-mp8-matched-transfer-20261101]
