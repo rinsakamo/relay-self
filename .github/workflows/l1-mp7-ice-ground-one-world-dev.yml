@@ -1,5 +1,6 @@
 name: L1-MP7 one physical packed-ice Paper World DEV
 # Single MP7 DEV World under standing lane grant; MP4 historical 3 Worlds unchanged.
+# 2026-11-01 one experimental 5x5 packed-ice World after exact-head offline CI SUCCESS.
 # One-time physical release after MP7 offline CI success; original data retained on failure.
 on:
   push:
