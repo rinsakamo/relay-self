@@ -70,7 +70,7 @@ def test_archived_completed_prefix_only_no_future_exposure(n):
     req = make_l2_request(prefix)
     history = json.loads(req.context[1].value_json)
     assert [item["action_id"] for item in history] == [
-        x["action_id"] for x in trials[:n]
+        x.action_id for x in trials[:n]
     ]
     for t in trials[n:]:
         assert t.action_id not in req.context[1].value_json
