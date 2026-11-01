@@ -53,3 +53,26 @@ H6のSHA照合とH7のnative参照結合は、保存済み原本の相互整合�
 **H7_DEV_PRE_ACTION_NATIVE_SOURCE_CUES /
 H5_ORIGINAL_WORLD_REUSED / H7_NEW_WORLD_0 /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
+
+## 実原本read-only CLIと検証
+
+`tools/l_bcg_h7_readback.py` では次を実行する。
+
+```bash
+PYTHONPATH=src:. python tools/l_bcg_h7_readback.py \
+  docs/evidence/l-bcg-h5-20261101
+```
+
+元S49 event20/probe21とS15 before23、Action後30／次epoch56を
+タイムスタンプでなく**元native sequenceとrequest_id**に束縛し、
+異なるsource時点を混ぜない。
+`cheap_native_food_low`／`cheap_native_threat_near` はあくまでDEV cheap予測入力。
+raw bytesのSHA一致は原本の独立した物理認証とは異なる。
+
+H7の初回CIで `l_bcg_shadow.cue_inventory.missing_required` の
+`m_energy_low` が消えても拒否しない穴を発見
+（35 PASS / 1 FAIL）。未知cueの全8項目と
+`full_conditional_context_available=False`・clear/training権限Falseを
+明示的に検査する修正を行い、次のH7専用CIで**36 PASS / 0 FAIL**を確認。
+[H7 source CI #41272688744](https://github.com/rinsakamo/relay-self/actions/runs/41272688744)
+は、H7 CLI追加前の同一ロジックの検証済みHEADに対応する。
