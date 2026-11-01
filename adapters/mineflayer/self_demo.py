@@ -803,11 +803,12 @@ def _dev_run(args: argparse.Namespace) -> int:
                     extra["self_world_typed_closure"] = True
                 if retained_handoff:
                     extra["self_world_retained_handoff"] = True
+                if wb_slice:
+                    extra["wb_cognition_slice"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     self_world_live=True,
-                    wb_cognition_slice=wb_slice,
                     **extra,
                 ))
             else:

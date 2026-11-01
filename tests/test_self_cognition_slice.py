@@ -143,4 +143,4 @@ def test_tiers_cannot_promote_unobserved_hypotheses_or_old_memory_as_truth():
         assert x.world_status == "BOUNDED"
         assert all(c.entity.label == "zombie" for c in x.visible_world)
         assert x.remembered_ids == x.scenario_ids == ()
-        assert x.body_source_ref == "present:s:9:p9"
+        assert x.body_source_ref == "native-probe:s:9:p9"
