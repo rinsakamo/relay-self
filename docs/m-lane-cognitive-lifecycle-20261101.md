@@ -40,3 +40,17 @@ Next dependency: S/model owner must expose a bounded source-linked cognitive usa
 - **Measured original RelayEngine return ≠ physical/world source qualification ≠ actual Gemma usage.** Current tests execute a real `RelayEngine` class against a deterministic fixture provider, no model/GPU/World. This is compatible with later S-authorized capture of actual Gemma results but does not attest such capture yet.
 
 Run `python -m pytest -q tests/test_metabolism_cognitive_lifecycle.py tests/test_metabolism_relay_engine_usage.py`. No changes to S/model owner, B0/M0.1/M0.2, L8, P1, S49 or main.
+
+## S owner post-epoch identity gate (next M increment; 2026-11-01)
+
+New M-only `experiments/metabolism_s_owner_engine_handoff.py` accepts an opt-in `SLMDevTapResult` already produced by the existing S/L8/M passive tap, together with the **same exact S `DecisionEpochResult` or `PlannedDecisionEpochResult` object**. It examines the original `cognition_result`, not merely `cognition_requested`.
+
+**Critical discovered boundary:** The original S42 `coordinate_decision_epoch` can set `cognition_requested=True` after a deterministic `select_world_conditioned_choice` call. That is **not** evidence of a RelayEngine provider invocation. Such existing S42 WorldConditionedChoice results yield `UNMEASURED`, with all provider/token costs **unknown**, never zero. Injecting an unrelated Engine result into that original S result is `DEFERRED`.
+
+When the original S coordinator's own cognition result **is** an actual `RelayEngineResult` or `OpenCognitionResult` by object identity, and the previously admitted M tap refers to that very original epoch, M can derive exactly one owner-declared cognition receipt using the prior Engine extractor. Disabled and missing/foreign/mismatched/unsafe cases do not read or call providers, produce no usage, and cannot modify S decisions, B0/P1/Action or L8 learning. `bounded_s_owner_engine_cost_row` emits only allowlisted metrics and statuses.
+
+**Testing limit:** The pinned original S/B0 and L8 same-process CI executes the actual original S coordinator and the real RelayEngine class against a fixture provider. Existing S42's genuine M tap yields `UNMEASURED`. The positive model-result scenario requires an **explicitly synthetic re-bound M tap**, because the deployed original S42 M tap still expects WorldConditionedChoice and cannot provide an integrated model epoch. Passing that unit contract is not proof of any actual S49/LLM/World integration. S owner must supply a *real* completed source-joined model epoch from its existing execution path before M can record live cognition use.
+
+Tested in M FAST by `tests/test_metabolism_s_owner_engine_product.py` only in the pinned separate S and L8 original-source overlay, **never in the standalone M test step**.
+
+Next legitimate cross-lane step: S owner explicitly installs an optional post-completion, default-OFF handoff of its *actual* model return tied to the original native S epoch and source admission. Until that exists the M observer cannot claim measurements for actual S49 gameplay or actual Gemma calls. R/V conclusions and main ownership remain unchanged.
