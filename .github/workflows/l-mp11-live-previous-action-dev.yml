@@ -1,0 +1,52 @@
+name: L MP11 live prior Action Paper source offline DEV
+on:
+  push:
+    branches: [dev/l-mp11-live-previous-action-prefix-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_live_previous_action.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tests/test_l_mp11_live_previous_action.py'
+      - 'tests/test_l_mp11_live_paper_postrun_audit.py'
+      - 'tools/l_mp11_live_paper_postrun_audit.py'
+      - '.github/workflows/l-mp11-live-previous-action-dev.yml'
+permissions:
+  contents: read
+jobs:
+  live-source-capture-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned source test tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Test live capture and original S49 owner with no physical World
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_live_previous_action.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tests/test_l_mp11_live_previous_action.py \
+            tools/l_mp11_live_paper_postrun_audit.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py
+          python -m compileall -q adapters/mineflayer/l_mp11_live_previous_action.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/l_mp11_live_paper_postrun_audit.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py \
+            tests/test_s49_cleanup.py \
+            tests/test_l_mp11_g3_archived_l2_prefix.py
+          python tools/check_repository.py
+      - name: Stage classification
+        run: echo 'L_MP11_LIVE_PAPER_PREFIX_OFFLINE_PREPARED / NO_NEW_WORLD / NO_L2_OPEN_CALL / S49_SINGLE_OWNER_UNCHANGED / NO_LEARNING / R_NO_GO / V_NOT_RUN'
