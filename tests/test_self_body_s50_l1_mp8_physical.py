@@ -7,7 +7,6 @@ from adapters.mineflayer.l23_paper_live_assets import (
     L23PaperBlocked,
     wait_paper_line,
 )
-
 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
     SEED,
     attest_surface_lock,
