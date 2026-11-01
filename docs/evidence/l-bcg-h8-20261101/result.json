@@ -1,0 +1,121 @@
+{
+  "classification": "DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+  "branch": "dev/l-bcg-conditional-motion-shadow-20261101",
+  "executor_exact_head": "a244f5b2ae92878b337297398f5ff3cb48afbdb5",
+  "new_worlds": 1,
+  "original_actions": 1,
+  "s16_outcomes": 1,
+  "retries": 0,
+  "decisions": [
+    {
+      "distance_m": 10.0,
+      "entity_id": 25,
+      "event_seq": 8,
+      "issued": false,
+      "probe_seq": 10,
+      "selected": "WAIT"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 27,
+      "event_seq": 20,
+      "issued": true,
+      "probe_seq": 21,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 10.0,
+      "entity_id": 29,
+      "event_seq": 56,
+      "issued": false,
+      "probe_seq": 57,
+      "selected": "WAIT"
+    }
+  ],
+  "session_id": "928fb68a-5582-485c-9f3d-2de7e80f7ac0",
+  "world_uuid": "5a7423d9-6c57-4eb0-a814-690faa54824f",
+  "preaction_native_seq": 21,
+  "s15_before": 23,
+  "s16_after": 30,
+  "next_native_seq": 57,
+  "movement_m": 0.6269065734210608,
+  "acquired_sources": [
+    "original S49 native Present",
+    "source-bound SelfBody projection",
+    "source-bound SelfWorld bounded entity projection",
+    "original S42 hostile distance"
+  ],
+  "unavailable_conditions": [
+    "goal_remaining_m",
+    "goal_tolerance_m",
+    "selected_gait",
+    "p1_fatigue_high",
+    "m_energy_low",
+    "verified_obstacle",
+    "world_revision",
+    "verified_post_clear_training"
+  ],
+  "preaction_advice": "DEFER_UNKNOWN",
+  "next_epoch_bcg_advice": "DEFER_UNKNOWN",
+  "original_l0_choice_modified": false,
+  "additional_actions": 0,
+  "additional_native_probes": 0,
+  "learning_updates": 0,
+  "s10_s11_updates": 0,
+  "memory_updates": 0,
+  "model_calls": 0,
+  "host_preflight": "DEV_BCG_HOST_REPORT_SELF_CONSISTENT_ONLY",
+  "independent_original_audit": "DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+  "node_exit": 0,
+  "java_exit": 0,
+  "cleanup": {
+    "runner_exit": 0,
+    "owned_processes": [
+      {
+        "pid": 68836,
+        "ppid": 68835,
+        "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-vxpezbn0/minecraft.jar nogui ",
+        "cwd": "/tmp/relay-self-s49-vxpezbn0",
+        "first_seen_utc": "2026-11-01T04:55:55.436412+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 68888,
+        "ppid": 68836,
+        "argv": "lshw -class processor ",
+        "cwd": "/tmp/relay-self-s49-vxpezbn0",
+        "first_seen_utc": "2026-11-01T04:56:01.821581+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 68892,
+        "ppid": 68836,
+        "argv": "lshw -C display ",
+        "cwd": "/tmp/relay-self-s49-vxpezbn0",
+        "first_seen_utc": "2026-11-01T04:56:01.922877+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 68946,
+        "ppid": 68835,
+        "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+        "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+        "first_seen_utc": "2026-11-01T04:56:15.351907+00:00",
+        "pid_gone": true
+      }
+    ],
+    "world_roots": [
+      {
+        "path": "/tmp/relay-self-s49-vxpezbn0",
+        "removed": true
+      }
+    ],
+    "port_rebind": true
+  },
+  "effective_clear": "EFFECTIVE_CLEAR_NOT_ATTESTED",
+  "goal": "GOAL_UNDETERMINED",
+  "qualified_training_worlds": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "h9_candidate": "Independent World: original S42 pre-action hostile distance 2.0m vs3.5m; native DEV cue only; fixed cheap threshold3m; separate provisional/heldout Worlds; no H9 execution"
+}

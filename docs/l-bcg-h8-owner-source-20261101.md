@@ -113,3 +113,26 @@ packet/元L0/cleanup監査を実行し、preaction sidecarを元native prefix
 から再計算する。prefixの最終seqがS15-beforeより前であることも検査する。
 その後、別CLIでH6/H7/H8を読み戻す。host report自己整合性、保存原本
 照合、外部物理認証は別の保証である。
+
+## H8実Minecraft結果（2026-11-01）
+
+実行HEAD `a244f5b2ae92878b337297398f5ff3cb48afbdb5`。
+新World1 / 元Action1 / S16 Outcome1 / retry0、追加probe・Action・
+model・Learning/S10/S11/Memory更新は各0。
+元L0 `WAIT(8→10) → MOVE_AWAY(20→21) → WAIT(56→57)`。
+Action前native21と次epoch57を分離し、H5のnative56や座標を転用していない。
+Body/World元source、位置(-9.5,-60,-3.5)、health20、food20、saturation5、
+S42敵距離2mを取得。独立Goal/gait/P1/M0/G4/revision/post-clearの
+8条件はUNKNOWN、preaction/next-epoch両方の診断がDEFER_UNKNOWN。
+
+独立processのS7/S16/Paper/packet/元L0/command全件/source/cleanup監査PASS。
+Node/Java exit0、所有PID消滅、World削除、port解放PASS。
+Paper ticks254–261はreported-input sampleだけであり、
+EFFECTIVE_CLEAR_NOT_ATTESTED / GOAL_UNDETERMINED /
+QUALIFIED_TRAINING_WORLDS=0。DEV PASS / QUALIFICATION NO_GO / SCIENCE NOT_RUN。
+
+原本とH9候補・失敗検証ログの詳細は
+[H8 evidence](evidence/l-bcg-h8-20261101/README.md)を参照。
+H9は元S42が既に提供できる敵距離2.0m/3.5mの1軸を独立Worldで
+変える候補とし、同じnative sourceのCHEAP比較、training/heldout World分離を
+事前固定する。正式学習資格やL0自動昇格は与えない。今回はH9 World0。

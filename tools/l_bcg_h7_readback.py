@@ -12,10 +12,10 @@ from relay_self.l_bcg_h7_preaction import audit_h7_pre_action, compare_h7_cheap_
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("archived_h5_root", type=Path)
+    parser.add_argument("evidence_root", type=Path)
     parser.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = parser.parse_args()
-    root = args.archived_h5_root
+    root = args.evidence_root
     names = {
         "host_report_original": "run1/s49-report.json",
         "independent_audit_original": "independent-audit.json",

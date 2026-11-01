@@ -65,7 +65,7 @@ def audit_h7_pre_action(
     paper_server_original: bytes,
     audit_classification: str = "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
 ) -> H7PreActionAudit:
-    """Retain PRE-action event-20 and S15-before identity, not future epoch-55.
+    """Retain original PRE-action and S15-before identity, excluding future epochs.
 
     H6 first verifies all original digest and source-bound ceilings. H7 only
     extracts existing measured native values, never fills absent Goal or Body.
@@ -219,7 +219,7 @@ def compare_h7_cheap_pre_action(
         "cheap_food_low_worlds": sum(a.cheap_native_food_low for a in audits),
         "cheap_threat_near_worlds": sum(a.cheap_native_threat_near for a in audits),
         "cheap_sampled_motion_worlds": sum(a.episode.sampled_any_motion for a in audits),
-        "source_ceiling": "DEV_ARCHIVED_H5_PRE_ACTION_NATIVE_NOT_GOAL_OR_P1_M",
+        "source_ceiling": "DEV_ARCHIVED_PRE_ACTION_NATIVE_NOT_GOAL_OR_P1_M",
         "learned_l1_attention": "DEFER_UNKNOWN",
         "physical_training_worlds": 0,
         "action_issues": 0,

@@ -1,0 +1,68 @@
+25:from adapters.mineflayer.l16_first_action_goal_originals import (
+33:from adapters.mineflayer.l21_goal_observer_source import (
+36:from adapters.mineflayer.l21_goal_observer_source import (
+55:from adapters.mineflayer.m02_paper_dev.s50_live_paper_window import (
+111:from relay_self.l20_external_goal_commitment import (
+233:    l16_goal_plan: L16GoalPlan | None = None,
+234:    l20_external_goal_original: Path | None = None,
+255:        "automatic_goal_selection": False,
+300:        if (l16_capture_root is None) != (l16_goal_plan is None):
+302:        if (l20_external_goal_original is None) != (l20_admitted_sha256 is None):
+308:            or not isinstance(l16_goal_plan, L16GoalPlan)
+315:                    or l16_goal_plan is None or l16_capture_root is None):
+327:                l20_external_goal_original is None
+329:                or not isinstance(l16_goal_plan, L16GoalPlan)
+344:        if l20_external_goal_original is not None:
+347:                not isinstance(l16_goal_plan, L16GoalPlan)
+349:                or not isinstance(l20_external_goal_original, Path)
+350:                or not l20_external_goal_original.is_absolute()
+351:                or l20_external_goal_original.is_symlink()
+352:                or not l20_external_goal_original.is_file()
+353:                or l20_external_goal_original.resolve(strict=True)
+354:                != l20_external_goal_original
+355:                or l20_external_goal_original.is_relative_to(l16_capture_root)
+356:                or not 0 < l20_external_goal_original.stat().st_size <= 4096
+362:                original=l20_external_goal_original.read_bytes(),
+364:                operator_plan=l16_goal_plan,
+366:            report["l20_external_goal_preflight"] = asdict(l20_preflight)
+367:            report["l20_external_goal_preflight_status"] = (
+371:            if (not isinstance(l16_goal_plan, L16GoalPlan)
+377:            plan_file = l16_capture_root / "l16_pre_world_goal_plan.json"
+378:            original_plan = l16_goal_plan.original_bytes()
+390:                "goal_owner_independent": False,
+424:            assert l20_external_goal_original is not None
+428:                criterion_path=l20_external_goal_original,
+665:                assert l16_goal_plan is not None and l16_capture_root is not None
+667:                first_id = f"l16:{sid}:{action_id}:goal-1"
+668:                second_id = f"l16:{sid}:{action_id}:goal-2"
+677:                        drift_limit_m=l16_goal_plan.stable_probe_delta_max_m,
+682:                        "accepted_goal_status": "UNDETERMINED",
+711:                        for name in (S16_FILE, "l16_pre_world_goal_plan.json"):
+732:                            plan=l16_goal_plan, action_id=action_id, session_id=sid,
+757:                            plan=l16_goal_plan,
+759:                                l16_capture_root / "l16_pre_world_goal_plan.json"
+772:                        assert l20_external_goal_original is not None
+776:                            criterion_original=l20_external_goal_original.read_bytes(),
+778:                            plan=l16_goal_plan,
+780:                            native_goal_status=(
+781:                                window.observed_goal_status
+806:                        "external_goal_owner_independent": False,
+921:            # lacks certified goal, gait, P1/M and obstacle cues, so do not
+1046:                    plan=l16_goal_plan, action_id=l23_action_id,
+1174:    parser.add_argument("--l16-goal-target-x", type=float)
+1175:    parser.add_argument("--l16-goal-target-z", type=float)
+1176:    parser.add_argument("--l16-goal-tolerance-m", type=float, default=0.49)
+1177:    parser.add_argument("--l16-goal-stability-m", type=float, default=0.05)
+1179:    parser.add_argument("--l20-external-goal-original", type=Path)
+1195:    goal = None
+1197:            or args.l16_goal_target_x is not None
+1198:            or args.l16_goal_target_z is not None
+1202:                or args.l16_goal_target_x is None
+1203:                or args.l16_goal_target_z is None):
+1205:        goal = L16GoalPlan(
+1206:            args.l16_goal_target_x, args.l16_goal_target_z,
+1207:            args.l16_goal_tolerance_m, args.l16_goal_stability_m,
+1210:        (args.l20_external_goal_original is None)
+1214:    if args.l20_external_goal_original is not None and goal is None:
+1232:        l16_capture_root=args.l16_capture_root, l16_goal_plan=goal,
+1233:        l20_external_goal_original=args.l20_external_goal_original,

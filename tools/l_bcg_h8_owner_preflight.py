@@ -12,7 +12,7 @@ from relay_self.l_bcg_h8_owner_availability import inspect_h8_owner_sources
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("archived_h5_root", type=Path)
+    p.add_argument("evidence_root", type=Path)
     p.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = p.parse_args()
     names = {
@@ -27,7 +27,7 @@ def main() -> int:
     try:
         inp = {}
         for key, value in names.items():
-            path = args.archived_h5_root / value
+            path = args.evidence_root / value
             if not path.is_file() or path.is_symlink() or not 0 < path.stat().st_size <= 2_000_000:
                 raise DevProxyRejected("missing, symlink or oversized H5 source: " + key)
             inp[key] = path.read_bytes()

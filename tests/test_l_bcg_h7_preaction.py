@@ -50,7 +50,7 @@ def test_cheap_baselines_are_observed_flags_not_l1_action():
     assert result == {
         "observed_worlds": 1, "cheap_food_low_worlds": 0,
         "cheap_threat_near_worlds": 1, "cheap_sampled_motion_worlds": 1,
-        "source_ceiling": "DEV_ARCHIVED_H5_PRE_ACTION_NATIVE_NOT_GOAL_OR_P1_M",
+        "source_ceiling": "DEV_ARCHIVED_PRE_ACTION_NATIVE_NOT_GOAL_OR_P1_M",
         "learned_l1_attention": "DEFER_UNKNOWN",
         "physical_training_worlds": 0, "action_issues": 0,
         "learning_updates": 0,

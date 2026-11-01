@@ -168,3 +168,37 @@ def test_independent_command_audit_rejects_an_extra_probe_or_effect():
                   b'{"type":"effect","action_id":"extra","effect":"clear_controls"}\n'):
         with pytest.raises(AssertionError):
             check_original_commands(report, sent + extra)
+
+
+def test_real_h8_world_is_not_h5_and_never_uses_next_epoch_for_preaction():
+    from relay_self.l_bcg_h7_preaction import audit_h7_pre_action
+
+    root = ROOT.parent / "l-bcg-h8-20261101"
+    files = {
+        "host_report_original": "run1/s49-report.json",
+        "independent_audit_original": "independent-audit.json",
+        "s16_original": "run1/capture/l18_s16_terminal_original.jsonl",
+        "s7_received_prefix_original":
+            "run1/capture/pre-next-l0-prefix/native_bridge_received_original.jsonl",
+        "paper_server_original": "run1/server.log",
+        "operator_goal_plan_original": "run1/capture/l16_pre_world_goal_plan.json",
+    }
+    originals = {key: (root / path).read_bytes() for key, path in files.items()}
+    result = inspect_h8_owner_sources(
+        **originals, audit_classification="DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+    )
+    old = inspect_h8_owner_sources(**_originals())
+    assert result.session_id != old.session_id and result.paper_world_id != old.paper_world_id
+    assert result.operator_plan_horizontal_distance_m != old.operator_plan_horizontal_distance_m
+    h7 = audit_h7_pre_action(
+        **{key: value for key, value in originals.items() if key != "operator_goal_plan_original"},
+        audit_classification="DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+    )
+    report = json.loads(originals["host_report_original"])
+    assert h7.original_choice_probe_seq == report["decisions"][1]["probe_seq"]
+    assert h7.original_next_epoch_probe_seq == report["decisions"][2]["probe_seq"]
+    assert h7.original_next_epoch_probe_seq != audit_h7_pre_action(**_inputs()).original_next_epoch_probe_seq
+    assert all(cue.native_seq < h7.episode.action_after_native_seq for cue in h7.pre_action_observed)
+    assert result.learned_l1_attention == "DEFER_UNKNOWN"
+    assert result.missing_required == old.missing_required
+    assert result.source_qualified_training_worlds == 0

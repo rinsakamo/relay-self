@@ -1,0 +1,241 @@
+conditional-source-shadow	Set up job	﻿2026-11-01T04:48:57.5112118Z Current runner version: '2.338.2'
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5138414Z ##[group]Runner Image Provisioner
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5139379Z Hosted Compute Agent
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5140047Z Version: 20261021.618
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5140692Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5141568Z Build Date: 2026-10-21T00:45:21Z
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5142784Z Worker ID: {43ff3df7-939c-4a97-b674-382714bda179}
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5143538Z Region: westus2
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5144230Z Cloud: Azure
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5144821Z ##[endgroup]
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5146409Z ##[group]Operating System
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5147086Z Ubuntu
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5147604Z 26.04.1
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5148230Z LTS
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5148756Z ##[endgroup]
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5149348Z ##[group]Runner Image
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5149986Z Image: ubuntu-26.04
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5150620Z Version: 20261025.179.1
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5152008Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5153836Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5154855Z ##[endgroup]
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5156116Z ##[group]GITHUB_TOKEN Permissions
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5158051Z Contents: read
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5158694Z Metadata: read
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5159403Z ##[endgroup]
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5161523Z Secret source: Actions
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5163053Z Cache mode: write
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5163792Z Prepare workflow directory
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5571242Z Prepare all required actions
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.5619437Z Getting action download info
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.8796559Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+conditional-source-shadow	Set up job	2026-11-01T04:48:57.9639905Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+conditional-source-shadow	Set up job	2026-11-01T04:48:58.1230253Z Complete job name: conditional-source-shadow
+conditional-source-shadow	Run actions/checkout@v4	﻿2026-11-01T04:48:58.2121332Z ##[group]Run actions/checkout@v4
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2122755Z with:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2123310Z   ref: a244f5b2ae92878b337297398f5ff3cb48afbdb5
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2123972Z   persist-credentials: false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2124542Z   repository: rinsakamo/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2128600Z   token: ***
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2129059Z   ssh-strict: true
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2129535Z   ssh-user: git
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2129988Z   clean: true
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2130466Z   sparse-checkout-cone-mode: true
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2131023Z   fetch-depth: 1
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2131486Z   fetch-tags: false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2132259Z   show-progress: true
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2132748Z   lfs: false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2133187Z   submodules: false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2133663Z   set-safe-directory: true
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2134197Z   allow-unsafe-pr-checkout: false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2135018Z env:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2135484Z   PYTHONPATH: src:tests:.
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2136070Z   PYTHONDONTWRITEBYTECODE: 1
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.2136638Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4834968Z Syncing repository: rinsakamo/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4837513Z ##[group]Getting Git version info
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4838357Z Working directory is '/home/runner/work/relay-self/relay-self'
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4840189Z [command]/usr/bin/git version
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4863259Z git version 2.56.0
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4897597Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4918955Z Temporarily overriding HOME='/home/runner/work/_temp/05d82cbd-681f-4861-aacc-95af536f6c85' before making global git config changes
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4921518Z Adding repository directory to the temporary git global config as a safe directory
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.4926265Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5000624Z Deleting the contents of '/home/runner/work/relay-self/relay-self'
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5005040Z ##[group]Initializing the repository
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5009894Z [command]/usr/bin/git init /home/runner/work/relay-self/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5121361Z hint: Using 'master' as the name for the initial branch. This default branch name
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5123735Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5125715Z hint: to use in all of your new repositories, which will suppress this warning,
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5127156Z hint: call:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5128265Z hint:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5129347Z hint: 	git config --global init.defaultBranch <name>
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5130665Z hint:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5132251Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5134145Z hint: 'development'. The just-created branch can be renamed via this command:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5135664Z hint:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5136562Z hint: 	git branch -m <name>
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5137457Z hint:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5138739Z hint: Disable this message with "git config set advice.defaultBranchName false"
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5140694Z Initialized empty Git repository in /home/runner/work/relay-self/relay-self/.git/
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5148667Z [command]/usr/bin/git remote add origin https://github.com/rinsakamo/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5203489Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5204863Z ##[group]Disabling automatic garbage collection
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5209724Z [command]/usr/bin/git config --local gc.auto 0
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5249933Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5251305Z ##[group]Setting up auth
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5259083Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5300866Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5833250Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.5872021Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6165201Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6210404Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6497712Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6538116Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6539242Z ##[group]Fetching the repository
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:58.6555770Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin a244f5b2ae92878b337297398f5ff3cb48afbdb5
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4444571Z From https://github.com/rinsakamo/relay-self
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4447011Z  * branch            a244f5b2ae92878b337297398f5ff3cb48afbdb5 -> FETCH_HEAD
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4452485Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4454844Z ##[group]Determining the checkout info
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4457333Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4458845Z [command]/usr/bin/git sparse-checkout disable
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4509813Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4541418Z ##[group]Checking out the ref
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.4544981Z [command]/usr/bin/git checkout --progress --force a244f5b2ae92878b337297398f5ff3cb48afbdb5
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5682844Z Note: switching to 'a244f5b2ae92878b337297398f5ff3cb48afbdb5'.
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5692153Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5693465Z You are in 'detached HEAD' state. You can look around, make experimental
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5696385Z changes and commit them, and you can discard any commits you make in this
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5699952Z state without impacting any branches by switching back to a branch.
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5701967Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5703631Z If you want to create a new branch to retain commits you create, you may
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5705798Z do so (now or later) by using -c with the switch command. Example:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5706828Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5707266Z   git switch -c <new-branch-name>
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5708121Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5708713Z Or undo this operation with:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5709598Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5710249Z   git switch -
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5710973Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5712291Z Turn off this advice by setting config variable advice.detachedHead to false
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5713822Z 
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5715069Z HEAD is now at a244f5b test(l-bcg): audit exact original probe and primitive command inventory
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5720103Z ##[endgroup]
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5746371Z [command]/usr/bin/git log -1 --format=%H
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5771845Z a244f5b2ae92878b337297398f5ff3cb48afbdb5
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5784055Z ##[group]Removing auth
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5788072Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.5822641Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6099761Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6124112Z http.https://github.com/.extraheader
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6135126Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6173162Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6444185Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6485813Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+conditional-source-shadow	Run actions/checkout@v4	2026-11-01T04:48:59.6767569Z ##[endgroup]
+conditional-source-shadow	Run actions/setup-python@v5	﻿2026-11-01T04:48:59.7117236Z ##[group]Run actions/setup-python@v5
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7117645Z with:
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7117917Z   python-version: 3.12
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7118210Z   check-latest: false
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7121155Z   token: ***
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7121454Z   update-environment: true
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7122068Z   allow-prereleases: false
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7122415Z   freethreaded: false
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7122696Z env:
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7122955Z   PYTHONPATH: src:tests:.
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7123268Z   PYTHONDONTWRITEBYTECODE: 1
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.7123574Z ##[endgroup]
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.8526731Z ##[group]Installed versions
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.8632388Z (node:2695) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.8633686Z (Use `node --trace-deprecation ...` to show where the warning was created)
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.8634574Z Successfully set up CPython (3.12.15)
+conditional-source-shadow	Run actions/setup-python@v5	2026-11-01T04:48:59.8635325Z ##[endgroup]
+conditional-source-shadow	Python 3.12 focused and owner regression	﻿2026-11-01T04:48:59.8849695Z ##[group]Run set -euo pipefail
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8850462Z [36;1mset -euo pipefail[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8851281Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8856011Z [36;1mruff check tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h7_preaction.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h7_readback.py tools/l_bcg_h8_owner_preflight.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8863965Z [36;1mpython -m compileall -q tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h7_preaction.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h7_readback.py tools/l_bcg_h8_owner_preflight.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8868509Z [36;1mpython -m pytest -o addopts='' -q \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8869135Z [36;1m  tests/test_l1_bcg_motion_shadow.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8869765Z [36;1m  tests/test_l_bcg_h6_dev_proxy.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8870374Z [36;1m  tests/test_l_bcg_h7_preaction.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8871023Z [36;1m  tests/test_l_bcg_h8_owner_availability.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8871870Z [36;1m  tests/test_l_bcg_live_handoff.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8872536Z [36;1m  tests/test_l_bcg_world_report_preflight.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8873200Z [36;1m  tests/test_experience_bridge.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8873837Z [36;1m  tests/test_l10_world_body_cue_learning.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8874481Z [36;1m  tests/test_l1_s_choice_shadow.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8875153Z [36;1m  tests/test_self_body_s50_l1_motion_shadow.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.8875826Z [36;1mpython tools/check_repository.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9060479Z shell: /usr/bin/bash -e {0}
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9060939Z env:
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9061243Z   PYTHONPATH: src:tests:.
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9061896Z   PYTHONDONTWRITEBYTECODE: 1
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9062381Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9062954Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9063486Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9063985Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9064470Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9064944Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:48:59.9065343Z ##[endgroup]
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:02.6790179Z Collecting pytest==9.1.1
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:02.7186976Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.0577224Z Collecting ruff==0.17.0
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.0668497Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.0835446Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.0923639Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1106581Z Collecting packaging>=22 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1191343Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1340421Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1427887Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1637271Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1723135Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.1844557Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.2090407Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.2811075Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 147.8 MB/s  0:00:00
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.2888631Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.2998085Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.3093758Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.3187838Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.3252999Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 235.9 MB/s  0:00:00
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:03.4878482Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:04.7136603Z 
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:04.7151021Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:04.7802748Z All checks passed!
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:49:09.0755615Z ........................................................................ [ 36%]
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:53:09.9461962Z ........................................................................ [ 73%]
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:55:25.8882411Z ....................................................                     [100%]
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:55:25.8883001Z 196 passed in 380.50s (0:06:20)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T04:55:26.0861919Z Repository contract check passed.
+conditional-source-shadow	Explicit ceiling	﻿2026-11-01T04:55:26.1033449Z ##[group]Run echo 'SYNTHETIC_OFFLINE_ONLY / ACTION_0 / S10_0 / S11_0 / WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1034289Z [36;1mecho 'SYNTHETIC_OFFLINE_ONLY / ACTION_0 / S10_0 / S11_0 / WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'[0m
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1069163Z shell: /usr/bin/bash -e {0}
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1069580Z env:
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1069902Z   PYTHONPATH: src:tests:.
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1070336Z   PYTHONDONTWRITEBYTECODE: 1
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1070893Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1071800Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1072409Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1073081Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1073640Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1074072Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1074460Z ##[endgroup]
+conditional-source-shadow	Explicit ceiling	2026-11-01T04:55:26.1140296Z SYNTHETIC_OFFLINE_ONLY / ACTION_0 / S10_0 / S11_0 / WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN
+conditional-source-shadow	Post Run actions/setup-python@v5	﻿2026-11-01T04:55:26.1254741Z Post job cleanup.
+conditional-source-shadow	Post Run actions/setup-python@v5	2026-11-01T04:55:26.2497084Z (node:2891) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+conditional-source-shadow	Post Run actions/setup-python@v5	2026-11-01T04:55:26.2498458Z (Use `node --trace-deprecation ...` to show where the warning was created)
+conditional-source-shadow	Post Run actions/checkout@v4	﻿2026-11-01T04:55:26.2794587Z Post job cleanup.
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3774526Z [command]/usr/bin/git version
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3823549Z git version 2.56.0
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3869079Z Temporarily overriding HOME='/home/runner/work/_temp/0478d8f6-4b0d-401e-ad52-de84a9bff2fa' before making global git config changes
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3870182Z Adding repository directory to the temporary git global config as a safe directory
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3875860Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3920546Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.3984320Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.4303901Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.4346336Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.4676160Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+conditional-source-shadow	Post Run actions/checkout@v4	2026-11-01T04:55:26.4735867Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+conditional-source-shadow	Complete job	﻿2026-11-01T04:55:26.5187629Z Cleaning up orphan processes
+conditional-source-shadow	Complete job	2026-11-01T04:55:26.5683919Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

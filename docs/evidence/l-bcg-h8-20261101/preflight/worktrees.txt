@@ -1,0 +1,593 @@
+worktree /home/rinsa/relay-self
+HEAD 32fe105fc12cbf54abd11bfba7c8a75d319939df
+branch refs/heads/main
+
+worktree /home/rinsa/.codex/worktrees/lane-a-e10/relay-self
+HEAD 42bf12e238692d35b156a4d7c30f176942914b53
+branch refs/heads/self/ac-a-e10-action-world-20261011
+
+worktree /home/rinsa/.codex/worktrees/lane-a-e13-root-owner/relay-self
+HEAD d6d64b2978cef88aca365e201c4066ba6d3bdf02
+branch refs/heads/self/lane-a-e13-root-owner-20261011
+
+worktree /home/rinsa/.codex/worktrees/regularity-transfer-audit/relay-self
+HEAD 62b6f9742e995190efbaae5de99717780b3165b4
+detached
+
+worktree /home/rinsa/.codex/worktrees/relay-self-b28-real-20261011/relay-self
+HEAD b191acb760a205e2b3e5a3af159b730260ce39a1
+detached
+
+worktree /home/rinsa/.codex/worktrees/rsee-host-preparation/relay-self
+HEAD e4e6b5f412921db882807e1b8afe6f1874e9ac69
+branch refs/heads/infra/rsee-wsl2-host-preparation-20261011
+
+worktree /home/rinsa/.codex/worktrees/rsee586-host-runtime/relay-self
+HEAD cbf8c40d83e149ec438a9af024c5416cff4df0dc
+detached
+
+worktree /home/rinsa/.codex/worktrees/self-11-physical/relay-self
+HEAD 4ad8fcb22ca6dba42d8ba00b2fb450ad3db97058
+detached
+
+worktree /home/rinsa/.codex/worktrees/w4-prehost-owner-integration/relay-self
+HEAD 0a46a4107ece338891f36a3cb85dabb82c88cadf
+detached
+
+worktree /home/rinsa/relay-self-585-readonly-c553ebb3
+HEAD c553ebb3e824dd9cbe61a470fe97408fdf4ebaf8
+detached
+
+worktree /home/rinsa/relay-self-b0-r-audit-f443170-20261014
+HEAD f443170e9d6c3ecf1340b1d1b0478249534a3e0f
+detached
+
+worktree /home/rinsa/relay-self-s31b-wsl2-20261009
+HEAD f7e3973c19752f208d2a21c61b765f02c2444f37
+branch refs/heads/self/postmain-s31b-wsl2-reproduction-20261009
+
+worktree /home/rinsa/relay-self-s60a
+HEAD 71d7daeaade1562a0f0c9684d18f88cc6383e7ff
+branch refs/heads/self/s60a-best-effort-displacement-20261010
+
+worktree /home/rinsa/relay-self-w2-964fa38
+HEAD 964fa38f156be5fac47105d8984786d5c815d4c5
+detached
+
+worktree /home/rinsa/relay-self-w4-20261019
+HEAD 55f24464ea265e3993ff8ee52bd3b4a4166967f8
+branch refs/heads/self/product-self-one-command-selfbody-20261018
+
+worktree /home/rinsa/relay-self-w4-cognitive-independent-20261023
+HEAD 9240af4fc3e27ab531677a28c6447c95eeae8621
+branch refs/heads/dev/w4-cognitive-evidence-use-offline-20261023
+
+worktree /home/rinsa/relay-self-w4-lease-20261020
+HEAD 3e08e226d48c58fbde24a7cbf06aa41206826240
+branch refs/heads/dev/w4-s49-lease-20261020
+
+worktree /home/rinsa/relay-self-w4-observation-dev-20261023
+HEAD 1b221d845e42ea0e8be003239525c50de20e7fef
+branch refs/heads/self/w4-observation-dev-audit-20261023
+
+worktree /home/rinsa/relay-self-w4-pr634-final-20261023
+HEAD 78899df900f03119139d5da46d870ac66f57c449
+detached
+
+worktree /home/rinsa/s49-scoped-wsl2-20261021T231959Z-1e6182fe-wt
+HEAD 5851f4c97fbb100ef0b23115c4645ebfc49e75a8
+detached
+
+worktree /home/rinsa/s49-scoped-wsl2-20261021T232315Z-243f4137-wt
+HEAD 5851f4c97fbb100ef0b23115c4645ebfc49e75a8
+detached
+
+worktree /home/rinsa/selfbody-clock-dev-20261024-verify
+HEAD 5a64df726a9afad995e193ad1092c6c23e270327
+detached
+
+worktree /home/rinsa/selfbody-liveprobe-dev-20261024-run1
+HEAD 6753fc260437cb1836149ccefd3ec03480174203
+detached
+
+worktree /home/rinsa/selfbody-product-optin-dev-20261024-verify
+HEAD 542838d190d0a2c6e583a9e0ddfc719d756ffa9e
+detached
+
+worktree /home/rinsa/work/occlusion-counterfactual-audit-20261024/worktree
+HEAD 91fe0b1867748d98970c65f315bd4743ac2bbec0
+branch refs/heads/self/selfworld-occlusion-counterfactual-audit-20261024
+
+worktree /home/rinsa/work/relay-self-409
+HEAD a15dee1009707067b2fb1640c9c2c98fab9baefe
+branch refs/heads/repair-409-nonexecuting-tests
+
+worktree /home/rinsa/work/relay-self-545-physical-20261011-new
+HEAD 4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
+detached
+
+worktree /home/rinsa/work/relay-self-545-review-20261011
+HEAD 4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
+detached
+
+worktree /home/rinsa/work/relay-self-551
+HEAD 66afcc2017d12b760e21539bf698baf176d3dd68
+branch refs/heads/self/s60b2-r2-offline-20261010
+
+worktree /home/rinsa/work/relay-self-557
+HEAD 82988fb889079ae8e420d76f4436fa9ff2b88397
+branch refs/heads/self/s60b2-r3-diagnostic-runner-20261010
+
+worktree /home/rinsa/work/relay-self-563
+HEAD 578338110c8bb01309c154fba19c93f3edddfd3e
+branch refs/heads/self/s60b2-r3b-diagnostic-live-gate-20261011
+
+worktree /home/rinsa/work/relay-self-583-bootstrap-ca4afee
+HEAD ca4afee5c78102ed3f917ea6011b6bef124d98e3
+detached
+
+worktree /home/rinsa/work/relay-self-588-golden-third-34820f6
+HEAD 34820f6bf391c77f325d7c29d3b779a33e3ca835
+detached
+
+worktree /home/rinsa/work/relay-self-651-route-b-20261031
+HEAD e6be517f0b25dcfddbeb035ccef7830705989efe
+branch refs/heads/dev/issue651-route-b-20261031
+
+worktree /home/rinsa/work/relay-self-b0-452a69a-20261013
+HEAD b22eeeb6e3e758c39843a48b715cc2dc74b936d6
+detached
+
+worktree /home/rinsa/work/relay-self-b0-dev-20261015
+HEAD ec02b414d09fb0885eb481b1488f1a861ed73edb
+detached
+
+worktree /home/rinsa/work/relay-self-b0-ground-b384bde-20261013
+HEAD b384bde0c3e5d8c993adc4171080eef35474a5ca
+detached
+
+worktree /home/rinsa/work/relay-self-b0-ground2-2c26590-20261014
+HEAD 2c2659010e79529f897da5c75b1974b3bd3bb57a
+detached
+
+worktree /home/rinsa/work/relay-self-b0-nofood-9975bcc-20261013
+HEAD 9975bccb277e551568ef58f530d1c02c3e944d85
+detached
+
+worktree /home/rinsa/work/relay-self-b1-dev-20261015
+HEAD d062f80a644fe6d02d27aab6c1a9d77a32c4f21d
+detached
+
+worktree /home/rinsa/work/relay-self-b26-owned-20261010
+HEAD 0c7f73c593f3ab642ac175ef7481dd748db87f6e
+branch refs/heads/self/ac-b-b26-local-l2-proposal-20261010
+
+worktree /home/rinsa/work/relay-self-b27-owned-20261011
+HEAD d1d8f894668184dd978edee73e72287ef8867b34
+detached
+
+worktree /home/rinsa/work/relay-self-b29-shared-49bd629
+HEAD 49bd629982095d4ec132799f755a30c354dc1c0b
+detached
+
+worktree /home/rinsa/work/relay-self-demo-be852fb-20261010
+HEAD be852fb64e1174507a72ae9a6d9de9e3321778cc
+detached
+
+worktree /home/rinsa/work/relay-self-dev-20261014
+HEAD 106c7cfd7bd5f48f383f95ae06da1d2200f707a3
+detached
+
+worktree /home/rinsa/work/relay-self-e8-local-a476fd9
+HEAD a476fd94609f0148be23bd05163ff862f30b09cf
+detached
+
+worktree /home/rinsa/work/relay-self-e9-p4-527da15
+HEAD 527da1585f24df65694937b12b8b8dafca578ba6
+detached
+
+worktree /home/rinsa/work/relay-self-flat-four-20261017
+HEAD fc7cdcf1d57278e57cdde8061c3f5595a256b7fb
+detached
+
+worktree /home/rinsa/work/relay-self-golden-approved-cbf8c40-20261011
+HEAD cbf8c40d83e149ec438a9af024c5416cff4df0dc
+detached
+
+worktree /home/rinsa/work/relay-self-golden-second-784df44-20261011
+HEAD 784df44a668b7c5f0b0367588ce59aa796b2a817
+detached
+
+worktree /home/rinsa/work/relay-self-l-bcg-h4-20261101
+HEAD a244f5b2ae92878b337297398f5ff3cb48afbdb5
+branch refs/heads/dev/l-bcg-conditional-motion-shadow-20261101
+
+worktree /home/rinsa/work/relay-self-l1-l0-composite-20261028
+HEAD d505e25706e71dea62b3f570d5bf515b3dbd9beb
+branch refs/heads/self/dev-l1-l0-composite-swept-20261028
+
+worktree /home/rinsa/work/relay-self-l1-motion-shadow-20261031
+HEAD 731737e4a9d12574a9e03826f5e4bcf37ae4e880
+branch refs/heads/dev/selfbody-l1-motion-shadow-20261031
+
+worktree /home/rinsa/work/relay-self-l1-mp3-20261101
+HEAD 84adf1ae03a94bc5cce35bee37a12608ca01abea
+branch refs/heads/dev/l1-mp3-forward-20261101
+
+worktree /home/rinsa/work/relay-self-l1-mp3-host-20261101
+HEAD 774c06965f83058ff0c55589f4369b5b82615ba3
+branch refs/heads/dev/l1-mp3-host-20261101
+
+worktree /home/rinsa/work/relay-self-l21-real-20261031
+HEAD 477e045984e6eda3e91a33a8befe6443d988c8a3
+branch refs/heads/dev/l21-real-goal-observer-20261031
+
+worktree /home/rinsa/work/relay-self-l22-real-20261031
+HEAD 451270faa1281889494f933a5eda33a71e88834f
+branch refs/heads/dev/l22-post-s16-settling-20261031
+
+worktree /home/rinsa/work/relay-self-l23-real-20261031
+HEAD d51b34b859cb18c4965681422163f9a1cfad3a8d
+branch refs/heads/dev/l23-paper-settling-boundary-20261031
+
+worktree /home/rinsa/work/relay-self-postworld-epoch-20261031
+HEAD 7aac3e73828895a646671ce2874c701e7f1e9594
+branch refs/heads/dev/selfbody-s50-postworld-internal-epoch-20261031
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-20261015
+HEAD 10ce9758119372b071f3b48108a1ee1b84fe40ae
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/l1
+HEAD 40db58d548ea31c4a70acabcc71b0954c7b6ce42
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/r2
+HEAD 0ab360375a797141e8bc0f2a9c04188a2db9e650
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/r3
+HEAD 10ce9758119372b071f3b48108a1ee1b84fe40ae
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/s3
+HEAD 6f493b7a559dd72ea365998b9eadbd35fd7eb9b4
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/s4
+HEAD 7c2818c940f94f0112035dadc88101bee84c8cc7
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/s7
+HEAD d23378d0c2d8271997389f6296a9bd018e488327
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/s9
+HEAD 916814742567f8ff396b5c078d22f897d8418927
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/sv6
+HEAD 67c03400a16d0170264e16884b8d82439e3a3194
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/sv6atomic
+HEAD 37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/sv6start
+HEAD 2aaff0b921bcbd47a61d563b52d502596f896924
+detached
+
+worktree /home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015/sibling-source-copies/v1
+HEAD fc76b89638487eadda752e61e9bd7913e67088e5
+detached
+
+worktree /home/rinsa/work/relay-self-r-flat-four-20261017
+HEAD 81d43400f8cba489744b001da345085f930e8817
+detached
+
+worktree /home/rinsa/work/relay-self-r-flat-original-audit-20261017
+HEAD 6ea26b898a901021b94d9c6ca681135c48a17fd5
+detached
+
+worktree /home/rinsa/work/relay-self-r6-audit-b5ca2af-20261012
+HEAD b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a
+detached
+
+worktree /home/rinsa/work/relay-self-s2-c12a7bb-20261012
+HEAD c12a7bbc0fd0af4359c55926a0a22ea8c6ef9da6
+detached
+
+worktree /home/rinsa/work/relay-self-s4-7c2818c-20261012
+HEAD 7c2818c940f94f0112035dadc88101bee84c8cc7
+detached
+
+worktree /home/rinsa/work/relay-self-s49-baseline-52fda192
+HEAD 52fda1926991ca41695327746d7b918337ef6118
+detached
+
+worktree /home/rinsa/work/relay-self-s49-cancellation-20261021
+HEAD c8edb2d42ab31934feda5f30024e68eeb016e100
+branch refs/heads/self/product-self-one-command-s49cleanup-20261021
+
+worktree /home/rinsa/work/relay-self-s49-cleanup-review-20261021
+HEAD 52fda1926991ca41695327746d7b918337ef6118
+detached
+
+worktree /home/rinsa/work/relay-self-s49-current-w4-readback-1473
+HEAD 1473c74e4448bb9a527747de0619c8e55ffbd827
+detached
+
+worktree /home/rinsa/work/relay-self-s49-slm-20261031
+HEAD ac178513174872975740398d83fa2d36d03e39cd
+branch refs/heads/integration/s49-slm-passive-dev-20261031
+
+worktree /home/rinsa/work/relay-self-s50-boundary-20261016
+HEAD dc4228041c49efa371cab14292ea1421ffe989db
+detached
+
+worktree /home/rinsa/work/relay-self-s50-flat-orientation-20261017
+HEAD 973a9eaa9b65ff39bd02bd804aa5b7b2e30dd356
+detached
+
+worktree /home/rinsa/work/relay-self-s50-flat-orientation-run002-20261017
+HEAD 973a9eaa9b65ff39bd02bd804aa5b7b2e30dd356
+detached
+
+worktree /home/rinsa/work/relay-self-s50-input-20261031
+HEAD 3bb79ed57c4a0940bdc586c72976c7ece079319f
+branch refs/heads/dev/s50-paper-input-witness-20261031
+
+worktree /home/rinsa/work/relay-self-s50-p1-flat-independent-20261017
+HEAD 81d43400f8cba489744b001da345085f930e8817
+detached
+
+worktree /home/rinsa/work/relay-self-s50-p1-flat-native-20261017
+HEAD 07ce0899abe309fda1dbcb67152f7443983e24d9
+detached
+
+worktree /home/rinsa/work/relay-self-s50-packet-real-20261031
+HEAD 2afb7250952ae490bcddc8244c19264ff1f73bf5
+branch refs/heads/dev/s50-l23-client-packet-integrated-20261031
+
+worktree /home/rinsa/work/relay-self-s6-a6ed8ed-20261012
+HEAD a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f
+detached
+
+worktree /home/rinsa/work/relay-self-s7-d23378d-audit-20261012
+HEAD d23378d0c2d8271997389f6296a9bd018e488327
+detached
+
+worktree /home/rinsa/work/relay-self-s8-eac0808-20261012
+HEAD eac08081d497b11f8386edd1229704c816d1a78d
+detached
+
+worktree /home/rinsa/work/relay-self-s9-9168147-20261012
+HEAD 916814742567f8ff396b5c078d22f897d8418927
+detached
+
+worktree /home/rinsa/work/relay-self-selfbody-world-join-20261031
+HEAD 0ee72bc7fdabf26be905ba51779ecb1a1b1f1a99
+branch refs/heads/dev/selfbody-s16-s50-world-join-20261031
+
+worktree /home/rinsa/work/relay-self-t1e-20261026
+HEAD 85a2aa48e46f113315bcf89c3599b29e3b441908
+branch refs/heads/self/dev-t1e-s49-l0-integration-20261026
+
+worktree /home/rinsa/work/relay-self-t1f-20261026
+HEAD 488fcd3576bb4f4f147dc37434bf71b51f0b02e4
+branch refs/heads/self/dev-t1f-s49-t2-20261026
+
+worktree /home/rinsa/work/relay-self-t1g-20261026
+HEAD 9f97473227bc839413f5ee31bc5469dcb425fa5b
+branch refs/heads/self/dev-t1g-stop-disconnect-20261026
+
+worktree /home/rinsa/work/relay-self-t1h-20261026
+HEAD 2531ba0a08ac77aca79f4d939122784e8556f3e5
+branch refs/heads/self/dev-t1h-s49-stop-20261026
+
+worktree /home/rinsa/work/relay-self-t1i-20261027
+HEAD 0c77688ade3e028aead023d1454375e9dda5a4f5
+branch refs/heads/self/dev-t1i-self-stop-eat-20261026
+
+worktree /home/rinsa/work/relay-self-t1j-20261027
+HEAD 8b02e27bf9ec11a10077b39e41bfa850c52a5f9d
+branch refs/heads/self/dev-t1j-explicit-resume-20261027
+
+worktree /home/rinsa/work/relay-self-t1k-20261027
+HEAD 2efabc7b901189418ac99e3a0ce37661568ccd35
+branch refs/heads/self/dev-t1k-stop-resume-faults-20261027
+
+worktree /home/rinsa/work/relay-self-t1l-20261027
+HEAD 59092920ff91678ed3589646857890619d9ec546
+branch refs/heads/self/dev-t1l-source-continuity-20261027
+
+worktree /home/rinsa/work/relay-self-t1m-20261027
+HEAD 037d37325b5019ae9c28156ef8cacf6a1828a304
+branch refs/heads/self/dev-t1m-causal-age-instrument-20261027
+
+worktree /home/rinsa/work/relay-self-t1n-20261027
+HEAD 9e5b98e5379cf89efb86dabe2383c94fd536993e
+branch refs/heads/self/dev-t1n-emit-internal-timing-20261027
+
+worktree /home/rinsa/work/relay-self-t1o-20261028
+HEAD ef1cd01a36e8ca9e9621e470ce64e3cde9db60b8
+branch refs/heads/self/dev-t1o-trace-optin-ab-20261028
+
+worktree /home/rinsa/work/relay-self-t1p-20261028
+HEAD 56dd88698dbff7f1ed3a40c8c33aaa12c8067d0b
+branch refs/heads/self/dev-t1p-l0-body-loop-20261028
+
+worktree /home/rinsa/work/relay-self-t1q-20261028
+HEAD 4c82333e6015db423ce631674dc6907081a2ba30
+branch refs/heads/self/dev-t1q-body-interoception-20261028
+
+worktree /home/rinsa/work/relay-self-t1r-20261028
+HEAD 61990393d29b4bdb18ec1361096ddf30f3efbd22
+branch refs/heads/self/dev-t1r-fatigue-timecourse-20261028
+
+worktree /home/rinsa/work/relay-self-t1s-20261028
+HEAD 946708c2daab0741b34f3b669efafb4622262a43
+branch refs/heads/self/dev-p1-physiology-calibration-20261028
+
+worktree /home/rinsa/work/relay-self-t1u-20261028
+HEAD 754602008010d6cd719a866d54be2df65c8d748a
+branch refs/heads/self/dev-t1u-gait-t2-integration-20261028
+
+worktree /home/rinsa/work/relay-self-t1v-20261028
+HEAD 0cbe20125b84d05398b80e1ec358ff8c4fb7be9a
+branch refs/heads/self/dev-t1v-physical-idle-boundary-20261028
+
+worktree /home/rinsa/work/relay-self-v6-food-frozen-37f9365-20261014
+HEAD 37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc
+detached
+
+worktree /home/rinsa/work/relay-self-v6-start-frozen-2aaff0b-20261014
+HEAD 2aaff0b921bcbd47a61d563b52d502596f896924
+detached
+
+worktree /home/rinsa/work/relay-self-w4-audit-20261021
+HEAD 1473c74e4448bb9a527747de0619c8e55ffbd827
+detached
+
+worktree /home/rinsa/work/relay-self-w4-observation-20261022
+HEAD 1ecbe83fc22049c5854a390800f35f67698e6455
+branch refs/heads/self/product-self-one-command-w4-offline-orchestration-20261022
+
+worktree /home/rinsa/work/relay-self-w4-recovery-20261023
+HEAD 5a91fef110f98533fa223fcf5d0254d5539f3a58
+branch refs/heads/dev/w4-recovery-20261023
+
+worktree /home/rinsa/work/relay-self-worldqual-r-4959291-20261014
+HEAD 49592916c141bdcc58b373efeb7f3130351ed641
+detached
+
+worktree /home/rinsa/work/relay-self-worldqual-s-55822d0-20261014
+HEAD fff84ad791440eb843a6cec042cb3cb4b4c9affb
+detached
+
+worktree /home/rinsa/work/relay-self-worldqual-s-995eab0-20261014
+HEAD 995eab0a395883c4f5be57ba4515b307cd472437
+detached
+
+worktree /home/rinsa/work/rsee-model-only-20261023
+HEAD 39174816c20e42d99c7eae96731eb9d5e3af5f0c
+branch refs/heads/self/shared-model-only-runtime-20261023
+
+worktree /home/rinsa/work/s49-independent-20261021T115604Z-3a7926b3
+HEAD a76e1a71e5ecfd4158ccd3918c42f05c03100804
+detached
+
+worktree /home/rinsa/work/s49-independent-20261021T115641Z-0bb0826a
+HEAD b8a51ac369a31399349d5401cf802304f63e522c
+detached
+
+worktree /home/rinsa/work/s49-native-os-20261021T105238Z-d89f745e
+HEAD 6299dcbfad1e6cddd67359bf9f3afa30dff0d272
+branch refs/heads/self/product-self-one-command-s49nativeos-wsl-evidence-20261021
+
+worktree /home/rinsa/work/s49-native-os-20261021T105853Z-af24ea47
+HEAD 606f46564d768ee7f749435e51e7c478c623d064
+branch refs/heads/self/product-self-one-command-s49nativeos-wsl-r2-20261021
+
+worktree /home/rinsa/work/self-passive-adoption-review-20261024
+HEAD 5b91aafcad2bc891ca65ce6ccfad31b1d734796b
+detached
+
+worktree /home/rinsa/work/self-passive-physical-20261024
+HEAD 2bf5f66c54b813b9a02b95878fe1527cf22df889
+detached
+
+worktree /home/rinsa/work/self-passive-validation-20261024
+HEAD 2bf5f66c54b813b9a02b95878fe1527cf22df889
+detached
+
+worktree /home/rinsa/work/selfbody-timing-adoption-20261024
+HEAD 3b643acd05f382ee46f26d203692eeb98d0bf69d
+detached
+
+worktree /home/rinsa/work/selfbody-timing-validation-20261024
+HEAD f4cc70e5278ed8ab0cb26785ce28e64621a7bcdf
+branch refs/heads/self/selfbody-anticipatory-timing-dev-20261024
+
+worktree /home/rinsa/work/v8-five-world-20261017/r-source
+HEAD 51fe6eebcd889f3a40ef0e4584c795608d638010
+detached
+
+worktree /home/rinsa/work/v8-five-world-20261017/source
+HEAD 17436c8374235b7b69a304a7d7e19b4ea93bcf83
+detached
+
+worktree /home/rinsa/work/w4-cognition-validation-20261023/repo
+HEAD f0751b915411e89f1d3dffe941461a308fcf2512
+detached
+
+worktree /home/rinsa/work/w4-epoch-validation-20261023/repo
+HEAD 7b434099aa7f19853fb9ebbba9ee32fd89611945
+detached
+
+worktree /home/rinsa/work/w4-goal-cost-orthogonality-20261023
+HEAD c9e03963a20289dc58307053114b9a866e2397e0
+branch refs/heads/dev/w4-goal-cost-orthogonality-offline-20261023
+
+worktree /home/rinsa/work/w4-host-two-axis-offline-dev-20261023
+HEAD ca0f95ef4cf879fa571cb6c97c6747c5e58a1607
+branch refs/heads/dev/w4-host-two-axis-offline-20261023
+
+worktree /home/rinsa/work/w4-model-ab-dev-20261024/worktree
+HEAD 0ceb75bbc41066b63d84037271e2b69159fc86df
+branch refs/heads/self/w4-model-ab-pr634-dev-20261024
+
+worktree /home/rinsa/work/w4-model-ab-execution-20261023
+HEAD 1630efa964a83c42c20f299896d24b38626f9889
+branch refs/heads/self/w4-selfworld-model-ab-dev-20261023
+
+worktree /home/rinsa/work/w4-normal-20261022T045944Z-d31fd6a4
+HEAD f218624f55450937f65c0d5949484b8c595c04e4
+detached
+
+worktree /home/rinsa/work/w4-normal-20261022T050205Z-a55a97b6
+HEAD c1bc2d64d3cadb272e577cc4be919d8a9c64ff94
+branch refs/heads/dev/w4-normal-startup-observed-20261022T050205Z-a55a97b6
+
+worktree /home/rinsa/work/w4-rubric-semantics-audit-dev-20261023
+HEAD 09b35e49f6319ff64e4ed0f4e6e9e925dea1291b
+branch refs/heads/dev/w4-rubric-semantics-audit-20261023
+
+worktree /home/rinsa/work/w4-selfworld-host-semantic-probe-dev-20261023
+HEAD 3e2b04ef0877a1b272a7ee60a43e7e76c80b66bb
+branch refs/heads/self/w4-selfworld-host-semantic-probe-dev-20261023
+
+worktree /home/rinsa/work/w4-selfworld-metadata-ablation-dev-20261023
+HEAD 126e62ebd85eef2731b49cff46678c1b6a983562
+branch refs/heads/self/w4-selfworld-metadata-ablation-dev-20261023
+
+worktree /home/rinsa/work/w4-selfworld-neutral-metadata-length-dev-20261023
+HEAD b208a67cf54235293f67ae7b8bcdfd0d50751ba8
+branch refs/heads/self/w4-selfworld-neutral-metadata-length-dev-20261023
+
+worktree /tmp/relay-self-220-apparatus-current-v7B5Cn
+HEAD 6e9a302f6796479e319a35a5d1c6837cceb95edd
+detached
+prunable gitdir file points to non-existent location
+
+worktree /tmp/relay-self-220-apparatus-pYfdbE
+HEAD 6fe7520d8ad404edc7fb914636b44347323d2e06
+detached
+prunable gitdir file points to non-existent location
+
+worktree /tmp/relay-self-220-subject-4oNdm0
+HEAD 27e1d8fe554bf49562e857fab1cb7b04a0992bdb
+detached
+prunable gitdir file points to non-existent location
+
+worktree /tmp/relay-self-b12-489
+HEAD 257c3cea54bb8d92bb8640e823a27bb43c71496d
+branch refs/heads/self/ac-b-b12-owner-snapshot-489-20261010
+prunable gitdir file points to non-existent location
+
+worktree /tmp/relay-self-b12-491-audit
+HEAD 33686285cd2ffe5865538fd11113c8736f6c36a4
+detached
+prunable gitdir file points to non-existent location
+

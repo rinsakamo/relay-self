@@ -1,0 +1,30 @@
+[
+  {
+    "pid": 68836,
+    "ppid": 68835,
+    "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-vxpezbn0/minecraft.jar nogui ",
+    "cwd": "/tmp/relay-self-s49-vxpezbn0",
+    "first_seen_utc": "2026-11-01T04:55:55.436412+00:00"
+  },
+  {
+    "pid": 68888,
+    "ppid": 68836,
+    "argv": "lshw -class processor ",
+    "cwd": "/tmp/relay-self-s49-vxpezbn0",
+    "first_seen_utc": "2026-11-01T04:56:01.821581+00:00"
+  },
+  {
+    "pid": 68892,
+    "ppid": 68836,
+    "argv": "lshw -C display ",
+    "cwd": "/tmp/relay-self-s49-vxpezbn0",
+    "first_seen_utc": "2026-11-01T04:56:01.922877+00:00"
+  },
+  {
+    "pid": 68946,
+    "ppid": 68835,
+    "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+    "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+    "first_seen_utc": "2026-11-01T04:56:15.351907+00:00"
+  }
+]

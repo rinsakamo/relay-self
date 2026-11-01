@@ -15,10 +15,10 @@ from relay_self.l_bcg_dev_proxy import (
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("h5_evidence_root", type=Path)
+    parser.add_argument("evidence_root", type=Path)
     parser.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = parser.parse_args()
-    root = args.h5_evidence_root
+    root = args.evidence_root
     try:
         names = {
             "host_report_original": "run1/s49-report.json",

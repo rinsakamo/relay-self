@@ -1,0 +1,2 @@
+First broad pytest invocation selected a literal nonexistent tests/test_l18*.py and exited 4 before collection. No tests deleted or relaxed. Rerun selects existing files via glob and records full result in owner-regression.log. This is an offline command-selection error, not a World attempt.
+Focused pre-World 99 PASS precedes final additional exact-command hostile test; final H8-only 18 PASS includes that test. Latest exact-head CI also covers it. Final post-World focused and owner regressions will use final test set.

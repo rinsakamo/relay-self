@@ -60,6 +60,9 @@ jobs:
           python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h5-20261101
+          python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
+          python tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
+          python tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
       - name: Explicit evidence ceiling
         if: always()
         run: echo 'DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'

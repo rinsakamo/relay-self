@@ -1,0 +1,30 @@
+{
+  "617": {
+    "baseRefName": "main",
+    "headRefName": "research/m616-metabolism-m0-20261013",
+    "headRefOid": "4c2f549c6b9ed3fbe2ee04230526ac5577da8feb",
+    "isDraft": true,
+    "state": "OPEN"
+  },
+  "626": {
+    "baseRefName": "main",
+    "headRefName": "research/p1-fatigue-body-20261016",
+    "headRefOid": "56600977fb730918ac67769df0ad9ab45f2e9d49",
+    "isDraft": true,
+    "state": "OPEN"
+  },
+  "655": {
+    "baseRefName": "dev/selfbody-l1-motion-shadow-20261031",
+    "headRefName": "dev/selfbody-l1-motion-prediction-20261101",
+    "headRefOid": "774c06965f83058ff0c55589f4369b5b82615ba3",
+    "isDraft": true,
+    "state": "OPEN"
+  },
+  "656": {
+    "baseRefName": "dev/selfbody-l1-motion-prediction-20261101",
+    "headRefName": "dev/l-bcg-conditional-motion-shadow-20261101",
+    "headRefOid": "a244f5b2ae92878b337297398f5ff3cb48afbdb5",
+    "isDraft": true,
+    "state": "OPEN"
+  }
+}
