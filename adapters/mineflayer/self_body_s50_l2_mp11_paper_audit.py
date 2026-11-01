@@ -95,6 +95,9 @@ def audit_multi_trial_paper(
                 or len(waits) != 8 or len(inputs) != 8
                 or len(fixed) != 7 or len(scored) != 7):
             raise MP11PaperRejected("wrong per-action phases, WAIT or forecast count")
+        if (any(row.get("world") != world_uuid for _, row in phases)
+                or begins[0][1].get("world") != world_uuid):
+            raise MP11PaperRejected("foreign Paper phase or WAIT begin World")
         lock = locks[0][1]
         expected_mode = ("GRASS_BLOCK_5X5_READONLY" if surface=="GRASS_BLOCK"
                          else "PACKED_ICE_5X5")
