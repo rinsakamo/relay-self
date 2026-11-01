@@ -30,10 +30,6 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEntityHurt,
     MineflayerObservation,
 )
-from adapters.mineflayer.s49_completed_decision_bridge import (
-    S49OriginalCompletedBatch,
-    read_original_s49_completions,
-)
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
@@ -49,6 +45,10 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_epoch_two,
     _native_threat,
     _new_session,
+)
+from adapters.mineflayer.s49_completed_decision_bridge import (
+    S49OriginalCompletedBatch,
+    read_original_s49_completions,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
