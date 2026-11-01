@@ -65,6 +65,7 @@ from relay_self.execution_binding import (
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
+from relay_self.relay_engine import RelayEngine
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
 
@@ -281,7 +282,7 @@ async def qualify(
     mp11_three_actions_dev: bool = False,
     mp11_g3_paper_assets: L23PaperAssets | None = None,
     l_mp11_live_prefix_dev: bool = False,
-    l_mp11_live_l2_engine: "RelayEngine | None" = None,
+    l_mp11_live_l2_engine: RelayEngine | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
