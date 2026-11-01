@@ -281,6 +281,7 @@ async def qualify(
     mp11_three_actions_dev: bool = False,
     mp11_g3_paper_assets: L23PaperAssets | None = None,
     l_mp11_live_prefix_dev: bool = False,
+    l_mp11_live_l2_engine: "RelayEngine | None" = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -324,6 +325,13 @@ async def qualify(
                 "typed_s16_actions": [],
                 "real_l2_autonomous_experiment": False,
             }
+        if l_mp11_live_l2_engine is not None and (
+            not l_mp11_live_prefix_dev
+            or os.environ.get("L_MP11_LIVE_L2_DEV") != "1"
+        ):
+            raise S31ABlocked(
+                "live L2 OPEN must be separately opted in with prior source"
+            )
         if l_mp11_live_prefix_dev and (
             mp11_g3_paper_assets is None
             or not mp11_three_actions_dev
@@ -383,6 +391,18 @@ async def qualify(
         sid = session.started.session_id
         report["session_id"] = sid
         live_l_prior = None
+        live_l2 = None
+        l2_stage_release = {}
+        if l_mp11_live_l2_engine is not None:
+            from adapters.mineflayer.l_mp11_live_l2_shadow import (
+                BoundedLiveL2,
+            )
+            live_l2 = BoundedLiveL2(
+                l_mp11_live_l2_engine, require_real_llama=True,
+                timeout_s=45.0,
+            )
+            l2_stage_release = {1: asyncio.Event(), 2: asyncio.Event()}
+            report["l_mp11_live_l2"] = live_l2.public_report()
         if l_mp11_live_prefix_dev:
             # Read-only L-owned diagnostic; never a model/action executor.
             # First physical Paper World/subject identity is fixed by original
@@ -695,6 +715,26 @@ async def qualify(
                     report["l_mp11_live_prefix"]["status"] = (
                         "PROVISIONAL_LIVE_PREFIX_READ_ONLY"
                     )
+                    if live_l2 is not None and len(live_l_prior.history) <= 2:
+                        # Must finish after previous original S16+WAIT8 and
+                        # BEFORE the owner stages the next known hazard.
+                        # Model output is a shadow hypothesis, NOT a new test
+                        # or input into the existing L0 Action selection.
+                        try:
+                            hypothesis = await live_l2.propose_after(live_l_prior)
+                        finally:
+                            report["l_mp11_live_l2"] = live_l2.public_report()
+                        if not hypothesis.provider_source == "llama.cpp":
+                            raise S49PhysicalFailure("not a real local L2 provider")
+                        count = len(live_l2.proposals)
+                        report["real_model_calls"] = count
+                        report["mp11_g2"]["l2_provider_calls"] = count
+                        report["mp11_g3"]["l2_calls"] = count
+                        report["l_mp11_live_prefix"]["l2_open_calls"] = count
+                        report["l_mp11_live_prefix"]["observations"][-1][
+                            "l2_calls"
+                        ] = 1
+                        l2_stage_release[count].set()
                 report["mp11_g3"]["paper_markers"].append(marker)
                 g3_previous_marker = marker
             report["actual_native_actions"].append({
@@ -727,7 +767,14 @@ async def qualify(
                 ((10, 5), (2, 8), (2, 8), (2, 8))
                 if mp11_three_actions_dev else ((10, 5), (2, 8), (2, 8))
             )
-            for distance_m, hold in stimulus:
+            for stage_i, (distance_m, hold) in enumerate(stimulus):
+                if live_l2 is not None and stage_i in (2, 3):
+                    # No experimenter stimulus is emitted while L2 is still
+                    # reading the previous original closed Action. Abort on
+                    # timeout; there is NO fallback to a fabricated proposal.
+                    await asyncio.wait_for(
+                        l2_stage_release[stage_i - 1].wait(), timeout=50,
+                    )
                 _command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
@@ -747,7 +794,7 @@ async def qualify(
                 observation_source, probe=reprobe, grant=decide_grant,
                 on_action_request=on_action, max_frames=320,
             ),
-            timeout=95,
+            timeout=205 if live_l2 is not None else 95,
         )
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
@@ -983,6 +1030,8 @@ def main() -> int:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--mp11-three-actions-dev", action="store_true")
     parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
+    parser.add_argument("--l-mp11-live-l2-endpoint")
+    parser.add_argument("--l-mp11-live-l2-model")
     parser.add_argument("--raw-capture-root", type=Path)
     parser.add_argument("--mp11-g3-paper-jar", type=Path)
     parser.add_argument("--mp11-g3-plugin-jar", type=Path)
@@ -1004,12 +1053,47 @@ def main() -> int:
             plugin_config=args.mp11_g3_config,
             config_sha256=sha(args.mp11_g3_config),
         )
+    l2_engine = None
+    if (args.l_mp11_live_l2_endpoint is None) != (
+        args.l_mp11_live_l2_model is None
+    ):
+        parser.error("live L2 requires both the exact endpoint and model alias")
+    if args.l_mp11_live_l2_endpoint is not None:
+        from urllib.parse import urlsplit
+
+        from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+        from relay_self.relay_engine import RelayEngine
+
+        if not args.l_mp11_live_prefix_dev:
+            parser.error("live L2 requires original per-Action Paper prefix mode")
+        url = urlsplit(args.l_mp11_live_l2_endpoint)
+        try:
+            local_port = url.port
+        except ValueError:
+            parser.error("malformed live L2 port")
+        if (
+            url.scheme != "http"
+            or url.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or local_port is None
+            or url.path != "/v1/chat/completions"
+            or url.username is not None
+            or url.password is not None
+            or url.query or url.fragment
+            or not args.l_mp11_live_l2_model.strip()
+        ):
+            parser.error("only exact loopback llama.cpp endpoint and model allowed")
+        l2_engine = RelayEngine(LlamaCppRelayProvider(
+            endpoint=args.l_mp11_live_l2_endpoint,
+            model=args.l_mp11_live_l2_model,
+            timeout=40.0,
+        ))
     return asyncio.run(qualify(
         args.report, args.server_log,
         raw_capture_root=args.raw_capture_root,
         mp11_three_actions_dev=args.mp11_three_actions_dev,
         mp11_g3_paper_assets=assets,
         l_mp11_live_prefix_dev=args.l_mp11_live_prefix_dev,
+        l_mp11_live_l2_engine=l2_engine,
     ))
 
 
