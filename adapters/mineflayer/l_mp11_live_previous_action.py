@@ -41,6 +41,9 @@ class LivePriorObservation:
     paper_prefix_sha256: str
     paper_prefix_length: int
     original_paper_last_complete_line: int
+    paper_predicted_next_m: tuple[float, ...]
+    paper_next_abs_error_m: tuple[float, ...]
+    paper_cheap_zero_next_mae_m: float
     source_status: str = "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM"
     real_paper_original_postrun_reauthenticated: bool = False
     physically_controlled_conditions_varied: bool = False
@@ -207,6 +210,7 @@ class LivePriorLedger:
             finish = [_float_field(wait, ax) for ax in "xyz"]
             ticks.append(tick)
             motions.append(math.dist(start, finish))
+        predictions, errors = [], []
         for i in range(7):
             fixed_line, a = fixed[i]
             score_line, b = scores[i]
@@ -220,6 +224,18 @@ class LivePriorLedger:
                 and a.get("ticket_sha256") == b.get("ticket_sha256")
             ):
                 raise LivePriorRejected("Paper next-tick model not frozen before target")
+            predicted = _float_field(a, "predicted_m")
+            actual = _float_field(b, "actual_m")
+            error = _float_field(b, "abs_error_m")
+            if (
+                predicted < 0 or error < 0
+                or predicted != _float_field(b, "predicted_m")
+                or not math.isclose(actual, motions[i+1], abs_tol=1e-9)
+                or not math.isclose(error, abs(predicted-actual), abs_tol=1e-9)
+            ):
+                raise LivePriorRejected("original prediction/observed/error mismatch")
+            predictions.append(predicted)
+            errors.append(error)
         entry = LivePriorObservation(
             ordinal=len(self.history)+1,
             action_id=action_id, marker_id=marker_id,
@@ -230,6 +246,9 @@ class LivePriorLedger:
             paper_prefix_sha256=hashlib.sha256(raw_prefix).hexdigest(),
             paper_prefix_length=len(raw_prefix),
             original_paper_last_complete_line=raw_prefix.count(b"\n"),
+            paper_predicted_next_m=tuple(predictions),
+            paper_next_abs_error_m=tuple(errors),
+            paper_cheap_zero_next_mae_m=sum(motions[1:])/7,
         )
         self.history.append(entry)
         self._previous_prefix = raw_prefix
@@ -246,7 +265,7 @@ class LivePriorLedger:
                 "L2 read-only hypothesis input from S49-host-sampled live Paper "
                 "prefix. Suggest tests but DO NOT order any Action or claim a "
                 "physical mechanism, learned model, capability limit or goal. "
-                "The prior three G3 actions are identically GRASS/MOVE_BACKWARD; "
+                "All completed prior actions are GRASS/MOVE_BACKWARD; "
                 "physical clear tick/input duration are NOT attested. "
                 "This input is provisional until independent postrun source audit."
             ),

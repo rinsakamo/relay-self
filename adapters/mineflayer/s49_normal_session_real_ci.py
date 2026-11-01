@@ -1062,7 +1062,7 @@ def main() -> int:
     if args.l_mp11_live_l2_endpoint is not None:
         from urllib.parse import urlsplit
 
-        from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+        from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
         from relay_self.relay_engine import RelayEngine
 
         if not args.l_mp11_live_prefix_dev:
@@ -1083,11 +1083,13 @@ def main() -> int:
             or not args.l_mp11_live_l2_model.strip()
         ):
             parser.error("only exact loopback llama.cpp endpoint and model allowed")
-        l2_engine = RelayEngine(LlamaCppRelayProvider(
+        l2_provider = JournaledLiveLlamaProvider(
+            journal_root=args.report.parent,
             endpoint=args.l_mp11_live_l2_endpoint,
             model=args.l_mp11_live_l2_model,
             timeout=40.0,
-        ))
+        )
+        l2_engine = RelayEngine(l2_provider)
     return asyncio.run(qualify(
         args.report, args.server_log,
         raw_capture_root=args.raw_capture_root,

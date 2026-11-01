@@ -25,7 +25,10 @@ def snapshot(n: int = 1) -> bytes:
     text = []
     for i in range(n):
         text.extend(segment(MARKERS[i], "GRASS_BLOCK", start=100 + i*100))
-    return ("\n".join(text) + "\n").encode()
+    return ("\n".join(text) + "\n").replace(
+        "ticket_sha256=aa", "predicted_m=0.0325 actual_m=0.05 "
+        "abs_error_m=0.0175 ticket_sha256=aa",
+    ).encode()
 
 
 def new_ledger() -> LivePriorLedger:
@@ -65,6 +68,16 @@ def test_three_sequential_bounded_live_previous_action_sources():
         assert limits["paper_original_verified_after_exit"] is False
     with pytest.raises(LivePriorRejected):
         accept(ledger, 3)
+
+
+@pytest.mark.parametrize("old,new", [
+    ("predicted_m=0.0325", "predicted_m=nan"),
+    ("actual_m=0.05", "actual_m=0.5"),
+    ("abs_error_m=0.0175", "abs_error_m=0.9"),
+])
+def test_original_prediction_values_must_match_observation(old, new):
+    with pytest.raises(LivePriorRejected):
+        accept(new_ledger(), 1, raw=snapshot(1).replace(old.encode(), new.encode()))
 
 
 @pytest.mark.parametrize("bad", [

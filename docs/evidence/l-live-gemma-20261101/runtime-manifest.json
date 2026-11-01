@@ -1,0 +1,43 @@
+{
+  "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+  "/home/rinsa/work/relay-self-l-live-gemma-runtime-20261101/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar": "3be4d5827f24f163617c0848f665ff1f4d01daa96ae10eb41c9450ec9a19ef00",
+  "/home/rinsa/work/l-live-gemma-evidence-20261101/paper-active-config-original.yml": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+  "/home/rinsa/src/llama.cpp/build/bin/llama-server": "ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536",
+  "gguf_sha256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+  "gguf_path": "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf",
+  "model_process": {
+    "pid": 98374,
+    "exe": "/home/rinsa/src/llama.cpp/build/bin/llama-server",
+    "argv": [
+      "/home/rinsa/src/llama.cpp/build/bin/llama-server",
+      "--model",
+      "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf",
+      "--alias",
+      "relay-self-gemma4-12b-q4km",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "--ctx-size",
+      "8192",
+      "--parallel",
+      "1",
+      "--gpu-layers",
+      "all",
+      "--flash-attn",
+      "on",
+      "--jinja"
+    ]
+  },
+  "gguf_mapping_observed": true,
+  "execution_head": "f51e7e6b2ffb6908b433ce9920ad0492411fe170",
+  "original_run_status": "FAIL",
+  "world_attempts": 1,
+  "retries": 0,
+  "node_pid": 98997,
+  "java_pid": 98865,
+  "ports_free": {
+    "25565": true,
+    "8080": true
+  }
+}
