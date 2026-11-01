@@ -35,10 +35,18 @@ def _owner_batch():
         rid = f"s49-actual:{native.session_id}:event-{step.event_seq}"
         new_probe = replace(native, request_id=rid)
         new_step = replace(step, choice=replace(step.choice, request_id=rid))
+        if step.asks_for_action:
+            # S49 runtime uses event-specific native Action identifiers,
+            # unlike this original S42 fixture's generic test ID.
+            action_id = f"s49-native-move-{step.event_seq}"
+            new_step = replace(
+                new_step, action_request_id=action_id,
+                grant=replace(step.grant, action_id=action_id),
+            )
         new_steps.append(new_step)
         new_probes[new_probe.seq] = new_probe
     move = new_steps[0]
-    original = receipts[move.action_request_id]
+    original = receipts[steps[0].action_request_id]
     # Same structurally valid S16 receipt, but original S49 source frames
     # require an Action-specific clear ID and a matching true x/z movement.
     consequence = original.consequence
@@ -56,14 +64,23 @@ def _owner_batch():
     )
     consequence = replace(
         consequence,
+        action_id=move.action_request_id,
         before_observation=before,
         after_observation=shifted,
+        dispatch_receipt=replace(
+            consequence.dispatch_receipt,
+            action_id=move.action_request_id,
+        ),
         cleanup_receipt=replace(
             consequence.cleanup_receipt,
             action_id=move.action_request_id + "-s15-clear",
         ),
     )
-    new_receipt = replace(original, consequence=consequence)
+    new_receipt = replace(
+        original,
+        terminal=replace(original.terminal, action_id=move.action_request_id),
+        consequence=consequence,
+    )
     new_receipts = {move.action_request_id: new_receipt}
     batch = read_original_s49_completions(
         tuple(new_steps), new_probes, new_receipts,
