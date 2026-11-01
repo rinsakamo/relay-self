@@ -1,8 +1,7 @@
-"""Offline-only S49 report intake for M #616, never starts a World/model.
+"""Offline-only S49 saved JSON M intake with automatic pinned source bootstrap.
 
-Example:
- PYTHONPATH=src:. python -m tools.m616_s49_saved_report_check \
-   --report /absolute/path/to/s49-report.json --admit-dev
+No manual sys.path shims, World, server, LLM, native read or Action.
+Requires an existing clean original S49 #674 checkout at the exact SHA.
 """
 from __future__ import annotations
 
@@ -10,25 +9,43 @@ import argparse
 import json
 from pathlib import Path
 
-from experiments.metabolism_s49_owner_admission import (
-    S49MAdmissionLease,
-    bounded_s49_m_admission_row,
+from tools.m616_s49_owner_bootstrap import (
+    S49OwnerBootstrapRejected,
+    bootstrap_original_s49_owner,
 )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="M DEV read-only S49 report intake")
+    parser = argparse.ArgumentParser(description="M #616 DEV original S49 report")
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--s49-owner-dir", type=Path)
     parser.add_argument("--admit-dev", action="store_true")
     args = parser.parse_args()
-
-    # Default-off even for the CLI. No new native/LLM/Action operations.
     if not args.admit_dev:
         print(json.dumps({
             "schema": "M_S49_ORIGINAL_COMPLETION_DEV_V1",
             "status": "DISABLED", "reason": "explicit_admit_dev_required",
         }, sort_keys=True))
         return 2
+    if args.s49_owner_dir is None:
+        print(json.dumps({
+            "schema": "M_S49_ORIGINAL_COMPLETION_DEV_V1",
+            "status": "DEFERRED", "reason": "original_s49_owner_dir_required",
+        }, sort_keys=True))
+        return 2
+    try:
+        bootstrap_original_s49_owner(args.s49_owner_dir)
+    except S49OwnerBootstrapRejected:
+        print(json.dumps({
+            "schema": "M_S49_ORIGINAL_COMPLETION_DEV_V1",
+            "status": "DEFERRED", "reason": "original_s49_checkout_unverified",
+        }, sort_keys=True))
+        return 2
+    from experiments.metabolism_s49_owner_admission import (
+        S49MAdmissionLease,
+        bounded_s49_m_admission_row,
+    )
+
     try:
         report = json.loads(args.report.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError) as exc:
