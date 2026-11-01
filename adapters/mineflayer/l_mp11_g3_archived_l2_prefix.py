@@ -319,8 +319,11 @@ def shadow_l2_preview(
                for x in ordinals)
         or len(set(ordinals)) != len(ordinals)
         or ordinals != sorted(ordinals)
+        or type(raw["reconsideration"]) is not str
         or raw["reconsideration"] not in RECONSIDERATIONS
+        or type(raw["model_family"]) is not str
         or raw["model_family"] not in MODEL_FAMILIES
+        or type(raw["next_test"]) is not str
         or raw["next_test"] not in NEXT_TESTS
         or any(not isinstance(raw[k], str) or not 16 <= len(raw[k]) <= 360
                for k in ("explanation", "falsification_test"))
