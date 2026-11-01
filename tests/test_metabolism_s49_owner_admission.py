@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
-
 import test_s49_completed_decision_bridge as s49_original_test
 from adapters.mineflayer.s49_completed_decision_bridge import (
     bounded_original_s49_completion_row,
