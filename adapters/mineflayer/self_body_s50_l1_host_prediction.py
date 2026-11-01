@@ -10,14 +10,14 @@ from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.self_body_s50_l1_motion_prediction import from_archival_readback
+from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
+    TargetWorldIdentity,
+    freeze_for_target,
+)
 from adapters.mineflayer.self_body_s50_l1_paper_dispatch import (
     ForecastCommand,
     ForecastDispatchRejected,
     PaperForecastDispatch,
-)
-from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
-    TargetWorldIdentity,
-    freeze_for_target,
 )
 
 
