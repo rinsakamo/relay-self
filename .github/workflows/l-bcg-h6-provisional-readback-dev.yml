@@ -1,4 +1,4 @@
-name: L-BCG H6 H7 H8 owner source readback DEV
+name: L-BCG H6 H7 H8 H9a source readback DEV
 on:
   push:
     branches:
@@ -7,11 +7,17 @@ on:
       - 'src/relay_self/l_bcg_dev_proxy.py'
       - 'src/relay_self/l_bcg_h7_preaction.py'
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
+      - 'src/relay_self/l_bcg_h9a_stimulus.py'
+      - 'src/relay_self/l_bcg_h9a_pair.py'
+      - 'tests/test_l_bcg_h9a_pair.py'
+      - 'tools/l_bcg_h9a_pair_readback.py'
+      - 'docs/l-bcg-h9a-two-world-dev-20261101.md'
       - 'tests/test_l_bcg_h8_owner_availability.py'
       - 'tools/l_bcg_h8_owner_preflight.py'
       - 'tools/l_bcg_h8_world_readback.py'
       - 'docs/l-bcg-h8-owner-source-20261101.md'
       - 'tools/l_bcg_h7_readback.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
       - 'tests/test_l_bcg_h7_preaction.py'
       - 'docs/l-bcg-h7-preaction-20261101.md'
       - 'tests/test_l_bcg_h6_dev_proxy.py'
@@ -23,11 +29,17 @@ on:
       - 'src/relay_self/l_bcg_dev_proxy.py'
       - 'src/relay_self/l_bcg_h7_preaction.py'
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
+      - 'src/relay_self/l_bcg_h9a_stimulus.py'
+      - 'src/relay_self/l_bcg_h9a_pair.py'
+      - 'tests/test_l_bcg_h9a_pair.py'
+      - 'tools/l_bcg_h9a_pair_readback.py'
+      - 'docs/l-bcg-h9a-two-world-dev-20261101.md'
       - 'tests/test_l_bcg_h8_owner_availability.py'
       - 'tools/l_bcg_h8_owner_preflight.py'
       - 'tools/l_bcg_h8_world_readback.py'
       - 'docs/l-bcg-h8-owner-source-20261101.md'
       - 'tools/l_bcg_h7_readback.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
       - 'tests/test_l_bcg_h7_preaction.py'
       - 'docs/l-bcg-h7-preaction-20261101.md'
       - 'tests/test_l_bcg_h6_dev_proxy.py'
@@ -50,7 +62,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Focused H6/H7/H8 DEV archived-original tests
+      - name: Focused H6/H7/H8/H9a DEV archived-original tests
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
