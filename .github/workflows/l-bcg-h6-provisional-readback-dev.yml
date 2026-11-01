@@ -9,6 +9,7 @@ on:
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
       - 'tests/test_l_bcg_h8_owner_availability.py'
       - 'tools/l_bcg_h8_owner_preflight.py'
+      - 'tools/l_bcg_h8_world_readback.py'
       - 'docs/l-bcg-h8-owner-source-20261101.md'
       - 'tools/l_bcg_h7_readback.py'
       - 'tests/test_l_bcg_h7_preaction.py'
@@ -24,6 +25,7 @@ on:
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
       - 'tests/test_l_bcg_h8_owner_availability.py'
       - 'tools/l_bcg_h8_owner_preflight.py'
+      - 'tools/l_bcg_h8_world_readback.py'
       - 'docs/l-bcg-h8-owner-source-20261101.md'
       - 'tools/l_bcg_h7_readback.py'
       - 'tests/test_l_bcg_h7_preaction.py'
@@ -52,8 +54,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
-          python -m compileall -q src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          ruff check tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m compileall -q tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
           python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py
           python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h5-20261101

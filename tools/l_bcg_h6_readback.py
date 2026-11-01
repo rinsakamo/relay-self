@@ -16,6 +16,7 @@ from relay_self.l_bcg_dev_proxy import (
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("h5_evidence_root", type=Path)
+    parser.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = parser.parse_args()
     root = args.h5_evidence_root
     try:
@@ -33,12 +34,12 @@ def main() -> int:
             if not path.is_file() or path.is_symlink() or path.stat().st_size > 2_000_000:
                 raise DevProxyRejected(f"missing/symlink/oversized {name}")
             evidence[name] = path.read_bytes()
-        episode = read_h6_provisional_world(**evidence)
+        episode = read_h6_provisional_world(**evidence, audit_classification=args.audit_classification)
         comparison = summarize_h6_provisional_worlds((episode,))
         print(json.dumps({
             "episode": asdict(episode),
             "comparison": asdict(comparison),
-            "evidence_ceiling": "EXISTING_H5_DIGEST_MATCHED_NO_PHYSICAL_CLEAR",
+            "evidence_ceiling": "PER_WORLD_DIGEST_MATCHED_NO_PHYSICAL_CLEAR",
             "qualified_training": False,
             "l1_action_authority": False,
             "qualification": "NO_GO",

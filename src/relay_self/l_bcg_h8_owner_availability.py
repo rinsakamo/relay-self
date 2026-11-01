@@ -60,6 +60,7 @@ def inspect_h8_owner_sources(
     *, host_report_original: bytes, independent_audit_original: bytes,
     s16_original: bytes, s7_received_prefix_original: bytes,
     paper_server_original: bytes, operator_goal_plan_original: bytes,
+    audit_classification: str = "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
 ) -> H8SourceAvailability:
     """Use H7 byte-gated actual H5 receipt, then classify the operator plan.
 
@@ -71,6 +72,7 @@ def inspect_h8_owner_sources(
         s16_original=s16_original,
         s7_received_prefix_original=s7_received_prefix_original,
         paper_server_original=paper_server_original,
+        audit_classification=audit_classification,
     )
     _check(
         type(operator_goal_plan_original) is bytes

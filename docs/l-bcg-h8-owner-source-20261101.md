@@ -89,3 +89,27 @@ new native probe0 / provider calls0**。この文書の作成・CIだけで
 
 **H8_DEV_OWNER_SOURCE_AVAILABILITY_ONLY /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
+
+## H8実World用の事前実装
+
+H6→H7→H8は既定のH5原本回帰を維持し、`--audit-classification
+DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED`を指定した場合だけ
+H8独立監査分類を受理する。session、native seq、Action ID、Paper tick、
+World UUID、SHAは当該Worldの元原本から照合し、H5数値を期待しない。
+現在の読戻しはroute Bの1 Action/3 decisions/8 callbacks形状に限定する。
+0 Actionや途中終了はこのPASS形状へ変換せず、原本と失敗結果を保存する。
+
+`--l-bcg-shadow-dev`時だけ、元L0がMOVE_AWAYを選択した後、
+唯一のExecutor実行前に、既に受信された同一probeとS7 prefixを診断する。
+`capture/h8_preaction_sources.json`をexclusive作成し、元Body/World
+projection、session/request/seq、元行SHAとprefix SHAを保存する。
+診断は新native probe、ownerセンサー計算、Action権限を持たない。
+Goal/gait/P1/M/G4/revision/qualified-trainingのreceiptはroute Bから
+渡されていないため8条件をUNKNOWNのまま保持する。
+診断エラーも記録し元L0/Executorは継続する。これをDEV PASSとはしない。
+
+独立プロセスの`tools/l_bcg_h8_world_readback.py`は既存S7/S16/Paper/
+packet/元L0/cleanup監査を実行し、preaction sidecarを元native prefix
+から再計算する。prefixの最終seqがS15-beforeより前であることも検査する。
+その後、別CLIでH6/H7/H8を読み戻す。host report自己整合性、保存原本
+照合、外部物理認証は別の保証である。

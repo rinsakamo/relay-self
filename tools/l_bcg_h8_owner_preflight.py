@@ -13,6 +13,7 @@ from relay_self.l_bcg_h8_owner_availability import inspect_h8_owner_sources
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("archived_h5_root", type=Path)
+    p.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = p.parse_args()
     names = {
         "host_report_original": "run1/s49-report.json",
@@ -30,7 +31,7 @@ def main() -> int:
             if not path.is_file() or path.is_symlink() or not 0 < path.stat().st_size <= 2_000_000:
                 raise DevProxyRejected("missing, symlink or oversized H5 source: " + key)
             inp[key] = path.read_bytes()
-        result = inspect_h8_owner_sources(**inp)
+        result = inspect_h8_owner_sources(**inp, audit_classification=args.audit_classification)
         print(json.dumps(asdict(result), ensure_ascii=False, allow_nan=False, sort_keys=True))
         return 0
     except (OSError, ValueError) as exc:

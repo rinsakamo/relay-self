@@ -118,3 +118,41 @@ def test_cannot_forge_new_pre_action_record_while_reusing_old_digest():
     originals["s7_received_prefix_original"] = bad
     with pytest.raises(DevProxyRejected):
         inspect_h8_owner_sources(**originals)
+
+
+def test_world_classification_is_explicit_and_cannot_bypass_ceiling():
+    originals = _originals()
+    audit = json.loads(originals["independent_audit_original"])
+    audit["classification"] = "DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED"
+    originals["independent_audit_original"] = json.dumps(audit).encode()
+    with pytest.raises(DevProxyRejected):
+        inspect_h8_owner_sources(**originals)
+    result = inspect_h8_owner_sources(
+        **originals, audit_classification=audit["classification"],
+    )
+    assert result.learned_l1_attention == "DEFER_UNKNOWN"
+    audit["qualified_training_worlds"] = 1
+    originals["independent_audit_original"] = json.dumps(audit).encode()
+    with pytest.raises(DevProxyRejected):
+        inspect_h8_owner_sources(**originals, audit_classification=audit["classification"])
+
+
+def test_live_preaction_diagnostic_uses_only_existing_native_source():
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+    from adapters.mineflayer.self_body_s50_l_bcg_handoff import capture_h8_preaction_sources
+
+    raw = _originals()["s7_received_prefix_original"]
+    decoder = MineflayerStreamDecoder()
+    frames = [decoder.decode(line.decode()) for line in raw.splitlines()]
+    reading = next(frame for frame in frames if frame.seq == 21)
+    prefix = b"\n".join(raw.splitlines()[:22]) + b"\n"
+    result = capture_h8_preaction_sources(reading, event_seq=20, native_prefix=prefix)
+    assert result["native_seq"] == result["body"]["native_seq"] == result["world"]["native_seq"]
+    assert result["native_prefix_sha256"] == hashlib.sha256(prefix).hexdigest()
+    assert set(result["conditions"].values()) == {"UNKNOWN"}
+    assert result["owner_receipts"] == {}
+    assert result["advice"] == "DEFER_UNKNOWN" and not result["action_authority"]
+    with pytest.raises(ValueError):
+        capture_h8_preaction_sources(reading, event_seq=55, native_prefix=prefix)
+    with pytest.raises(ValueError):
+        capture_h8_preaction_sources(reading, event_seq=20, native_prefix=prefix[:-len(prefix.splitlines()[-1])-1])

@@ -13,6 +13,7 @@ from relay_self.l_bcg_h7_preaction import audit_h7_pre_action, compare_h7_cheap_
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("archived_h5_root", type=Path)
+    parser.add_argument("--audit-classification", default="DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED")
     args = parser.parse_args()
     root = args.archived_h5_root
     names = {
@@ -30,11 +31,11 @@ def main() -> int:
             if not p.is_file() or p.is_symlink() or not (0 < p.stat().st_size <= 2_000_000):
                 raise DevProxyRejected("missing/symlink/oversized original: " + name)
             originals[name] = p.read_bytes()
-        result = audit_h7_pre_action(**originals)
+        result = audit_h7_pre_action(**originals, audit_classification=args.audit_classification)
         print(json.dumps({
             "pre_action": asdict(result),
             "cheap_compare": compare_h7_cheap_pre_action((result,)),
-            "evidence_ceiling": "DEV_SOURCE_TIED_H5_NO_NEW_WORLD_NO_PHYSICAL_CLEAR",
+            "evidence_ceiling": "DEV_SOURCE_TIED_READBACK_NO_NEW_WORLD_NO_PHYSICAL_CLEAR",
             "qualification": "NO_GO",
             "science": "NOT_RUN",
         }, ensure_ascii=False, sort_keys=True, allow_nan=False))

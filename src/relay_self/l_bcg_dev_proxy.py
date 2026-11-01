@@ -97,6 +97,7 @@ def read_h6_provisional_world(
     *, host_report_original: bytes, independent_audit_original: bytes,
     s16_original: bytes, s7_received_prefix_original: bytes,
     paper_server_original: bytes,
+    audit_classification: str = "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
 ) -> DevProxyEpisode:
     """Join ORIGINAL bytes and preserved audit, without minting physical admission.
 
@@ -139,7 +140,11 @@ def read_h6_provisional_world(
     _require(all(type(v) is str and _sha(raw) == v for raw, v in expected.values()),
              "original byte digest mismatch")
     _require(
-        audit.get("classification") == "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED"
+        audit_classification in (
+            "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+            "DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
+        )
+        and audit.get("classification") == audit_classification
         and audit.get("qualified_training_worlds") == 0
         and audit.get("effective_clear") == "NOT_ATTESTED"
         and audit.get("goal") == "UNDETERMINED"
@@ -147,7 +152,7 @@ def read_h6_provisional_world(
         and audit.get("science") == "NOT_RUN"
         and audit.get("worlds") == 1 and audit.get("actions") == 1
         and audit.get("retries") == 0 and audit.get("model_calls") == 0,
-        "missing H5-only audit ceiling",
+        "missing per-World DEV audit ceiling",
     )
     _require(
         report.get("status") == "PASS" and report.get("stage") == "CLOSED"

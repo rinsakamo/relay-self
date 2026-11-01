@@ -84,7 +84,10 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.self_body_s50_l1_motion_shadow import compare_l1_motion_attention_shadow
-from adapters.mineflayer.self_body_s50_l_bcg_handoff import review_l_bcg_after_original_l0
+from adapters.mineflayer.self_body_s50_l_bcg_handoff import (
+    capture_h8_preaction_sources,
+    review_l_bcg_after_original_l0,
+)
 from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochLease
 from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_original_closure import (
@@ -514,6 +517,23 @@ async def qualify(
 
         async def on_action(step):
             probe = probes[step.choice.probe_seq]
+            if l_bcg_shadow_dev:
+                # Original L0 already chose. Passive diagnostic cannot replace
+                # the choice or acquire a new observation/owner sensor.
+                try:
+                    assert recorder is not None and l16_capture_root is not None
+                    h8 = capture_h8_preaction_sources(
+                        probe, event_seq=step.event_seq,
+                        native_prefix=recorder.received.read_bytes(),
+                    )
+                    with (l16_capture_root / "h8_preaction_sources.json").open("x") as out:
+                        json.dump(h8, out, sort_keys=True, allow_nan=False)
+                        out.write("\n")
+                        out.flush()
+                        os.fsync(out.fileno())
+                    report["l_bcg_h8_preaction"] = h8
+                except (OSError, ValueError, AssertionError) as exc:
+                    report["l_bcg_h8_preaction"] = {"diagnostic_error": str(exc)}
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
             )

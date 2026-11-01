@@ -183,3 +183,51 @@ def review_l_bcg_after_original_l0(
         conditional=shadow, used_physical_training_worlds=shadow.training_worlds,
         source_ceiling="EXTERNAL_TYPED_CUES_NOT_ORIGINAL_BYTE_ATTESTED",
     )
+
+
+def capture_h8_preaction_sources(reading, *, event_seq: int, native_prefix: bytes):
+    """Inventory an already-selected L0 source; no owner sensors are invented.
+
+    This seam receives only original native Present. No Goal/P1/M0/gait/G4
+    owner receipt is supplied by route B; those conditions remain UNKNOWN.
+    """
+    import hashlib
+    import json
+    from dataclasses import asdict
+
+    from adapters.mineflayer.present_projection import project_mineflayer_present
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+    from adapters.mineflayer.self_body_projection import project_body_present
+    from adapters.mineflayer.self_world_projection import project_self_world_present
+
+    decoder = MineflayerStreamDecoder()
+    frames = [decoder.decode(line.decode()) for line in native_prefix.splitlines()]
+    matches = [frame for frame in frames if frame.seq == reading.seq]
+    if len(matches) != 1 or matches[0] != reading or reading.request_id != (
+        f"s49-actual:{reading.session_id}:event-{event_seq}"
+    ):
+        raise BCGRejected("H8 pre-action original source mismatch")
+    present = project_mineflayer_present(reading)
+    body = project_body_present(present)
+    world = project_self_world_present(present, observer_id="RelaySelf")
+    row = next(line for line in native_prefix.splitlines()
+               if json.loads(line)["seq"] == reading.seq)
+    return {
+        "schema": "L_BCG_H8_PREACTION_NATIVE_INVENTORY_V1",
+        "phase": "AFTER_ORIGINAL_L0_BEFORE_SOLE_EXECUTOR",
+        "session_id": reading.session_id, "event_seq": event_seq,
+        "native_seq": reading.seq, "request_id": reading.request_id,
+        "native_source_ref": body.source_ref,
+        "native_row_sha256_without_newline": hashlib.sha256(row).hexdigest(),
+        "native_prefix_sha256": hashlib.sha256(native_prefix).hexdigest(),
+        "native_prefix_bytes": len(native_prefix),
+        "body": asdict(body), "world": asdict(world),
+        "owner_receipts": {},
+        "conditions": {key: "UNKNOWN" for key in _REQUIRED},
+        "reason": "NO_CORRELATED_PRE_ACTION_OWNER_RECEIPTS_SUPPLIED_BY_ROUTE_B",
+        "advice": "DEFER_UNKNOWN", "action_authority": False,
+        "extra_native_probes": 0, "extra_actions": 0,
+        "learning_updates": 0, "model_calls": 0,
+        "effective_clear": "EFFECTIVE_CLEAR_NOT_ATTESTED",
+        "goal": "GOAL_UNDETERMINED", "qualified_training_worlds": 0,
+    }

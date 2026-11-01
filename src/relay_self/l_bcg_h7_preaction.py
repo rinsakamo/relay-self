@@ -63,6 +63,7 @@ def audit_h7_pre_action(
     *, host_report_original: bytes, independent_audit_original: bytes,
     s16_original: bytes, s7_received_prefix_original: bytes,
     paper_server_original: bytes,
+    audit_classification: str = "DEV_H5_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED",
 ) -> H7PreActionAudit:
     """Retain PRE-action event-20 and S15-before identity, not future epoch-55.
 
@@ -75,6 +76,7 @@ def audit_h7_pre_action(
         s16_original=s16_original,
         s7_received_prefix_original=s7_received_prefix_original,
         paper_server_original=paper_server_original,
+        audit_classification=audit_classification,
     )
     report = json.loads(host_report_original)
     inventory = report["l_bcg_shadow"]["cue_inventory"]
