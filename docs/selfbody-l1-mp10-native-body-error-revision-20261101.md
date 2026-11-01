@@ -25,3 +25,26 @@ Max exactly two new disposable Paper 1.21.8 + Mineflayer 4.39.0 Worlds, ordered 
 - Stage 1 physical DEV PASS only if two new real Worlds and original source audit, native typed reader, correction candidate and journal chronology are verified. It does **not** mean revised predictions improve.
 - All outcomes must report previous selected slope, proposed slope, original seven-pair MAE and new **in-sample** MAE, status, and cheap OLS identity. Future heldout remains `NOT_TESTED`.
 - Ceiling: `DEV_TYPED_NEXT_EPOCH_REVISION_PROPOSAL_ONLY / L0_UNCHANGED / LEARNING_ADMISSION_0 / CHEAP_OLS_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`. No main merge.
+
+---
+
+## Stage 1 actual native Minecraft result — DEV PASS, effective repair FAIL
+
+[Exact physical GitHub Actions run #41283504071](https://github.com/rinsakamo/relay-self/actions/runs/41283504071) **SUCCESS**, original execution HEAD `e77b3a4c56b4c1b1406e190538f8c9c0b0ad2037`. Artifact `mp10-two-world-originals-41283504071-1` artifact ID `13074168354`, zip SHA256 `1772faf91ad6939319d76520261494a032efaeb0b3c6f5b8a92f9d084dda3a5a`. [Independent original readback](evidence/issue653-mp10-body-revision-20261101/run1/independent-physical-readback.json).
+
+**Actual source audit:** two new disposable Paper 1.21.8/Mineflayer4.39.0 Worlds, 1 original S49 native Action, S16 OUTCOME, original Paper WAIT8/old Paper FIXED+SCORE7 each. Java and Node exit0, cleanup/port released. Underfoot NORMAL 25 original grass blocks; ICE 25 originally-grass blocks changed to PACKED_ICE before Action. Same real Paper sampled seed `-1373892876`, body pose (0.5, -60, 0.5), velocity (0, -0.0784000015258789, 0), food20, health20, original floor25/5×5, and exact sampled pose/velocity match, but lock ticks NORMAL285/ICE286; do **not** claim identical timing or randomized effect. World UUID normal `3a6c11da-45aa-4260-bb0a-8cbb66936e1a` / ice `e1501158-fe09-4185-8437-fdf65a769d7f`. Native MOVE distances normal `0.6269065734210613m` vs ice `0.2924715215939989m`.
+
+The original host actually generated **one** journal `MP10_L1_REVISION_NEXT_EPOCH` AFTER original WAIT 8 and original native L0 decisions per World. Native `current_body.observation.source_ref`, original Paper prior-window prefix SHA, exact MP9 surface model ticket, original world/action/subject, and canonical revision SHA were independently verified after normal shutdown. No new Action, learning admissions, Goal qualification, or original L0 policy mutation.
+
+| Original source condition | Selected pre-Action slope | In-sample fitted slope | Old MAE (m) | Fitted in-sample MAE (m) |
+|---|---:|---:|---:|---:|
+| NORMAL | 0.5701332477105613 | 0.5701332477105613 | 0.005419837182518898 | 0.005419837182518898 |
+| ICE | 0.6052193469653747 | 0.6052193469653746 | 0.014376540020744788 | 0.01437654002074479 |
+
+**Critical negative result:** error trigger `0.002m` fired on both, so the **executing code** emitted status `REVISE_CANDIDATE_IN_SAMPLE_ONLY`, yet actual proposed slopes were unchanged to floating point and no meaningful MAE improvement occurred. Hence **the typed next-epoch interface is demonstrated, but effective repair is NOT**. The residual structure (early normal sign alternation and ICE large first negative residual with subsequent positive residuals) cannot be fixed by the same one-parameter coefficient in these heldout World sources. Same-information ordinary least squares (OLS) is mathematically equivalent; no distinct L1 architecture advantage.
+
+### Post-execution safety correction (not the original physical run)
+
+After independently auditing those original results, the MP10 code was tightened to `ABSTAIN_NO_EFFECTIVE_COEFFICIENT_CHANGE` when slope change is less than `1e-5`, and `ABSTAIN_NO_IN_SAMPLE_MAE_GAIN` when candidate MAE gain is less than `1e-5m`. The independent auditor uses the same explicit numerical eligibility bounds. Focused synthetic tests cover both abstention and genuine in-sample repair. **The original real World run remains exactly as it happened and is not reclassified as having executed these new safeguards.** No new physical run with this updated safeguard is claimed. Further independently scoped heldout Worlds needed for generalization or real effective correction.
+
+**Stage 1 final:** `MP10_DEV_TWO_WORLD_TYPED_NEXT_EPOCH_SOURCE_PASS / MODEL_ERROR_DETECTED / EFFECTIVE_SLOPE_REVISION_NO_GAIN / POSTRUN_FAIL_CLOSED_GUARD_OFFLINE_ONLY / CHEAP_OLS_EQUIVALENT / ORIGINAL_L0_UNCHANGED / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`. Draft only, no main merge.
