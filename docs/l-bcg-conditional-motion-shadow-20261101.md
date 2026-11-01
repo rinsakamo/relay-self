@@ -146,3 +146,21 @@ Learning owner、観測、Actionは作らない**。
 はhost順序PASS / 物理prequential chronology **未認証** / 新World
 更新保留、Goal UNDETERMINED。親レーンのこのWorldをL-BCG用の
 `PHYSICAL_POST_CLEAR_VERIFIED` 訓練原本へ無断転用しない。
+
+## BCG-H3 — 初回実World後のhost-only整合性ゲート
+
+既存S49 hostで専用grantを使ったDEV Worldを実行した**後**、
+`python tools/l_bcg_world_report_preflight.py <s49-report.json>` で
+`DEV_BCG_HOST_REPORT_SELF_CONSISTENT_ONLY` を得るread-only検査を追加。
+元L0の `WAIT→MOVE_AWAY→WAIT`、元native/SelfBody/SelfWorld
+source相互参照、元の数値観測とreportの `cue_inventory` の完全性、
+L-BCG `DEFER`、Action/learning/S10/S11非増加、coverageと原Entity
+参照をreport内部で照合する。改ざんした報告・予測値への観測昇格はFAIL。
+
+**重大な上限**: この検査はhostが自身で書いた一つのJSONの自己整合性のみ。
+元S7のraw受信・S16原本・Paper binary・Java/Node process cleanup・
+操作grantの独立監査は別途行う。この検査結果を物理の実効clear、
+Goal/Policy改善、`PHYSICAL_POST_CLEAR_VERIFIED`、QUAL/SCIENCE
+根拠として使わない。既存のWorld owner外ではnative Actionを発行しない。
+
+**専用L-BCG World grantは未取得**。#655の消費済み1 World grantは流用不可。
