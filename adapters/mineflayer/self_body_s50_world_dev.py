@@ -1035,8 +1035,9 @@ async def qualify(
             assert server is not None and server.stdin is not None
             if l1_mp8_surface_mode is not None:
                 # Experimenter initialization, NOT a Self Action or L0 decision.
-                # Flat grass World: block y=-61, standing feet y=-60.
-                _command(server, "tp RelaySelf 0.5 -60 0.5 0 0")
+                # Flat grass World: teleport above floor and let REAL gravity settle.
+                # Directly teleporting onto grass can leave Paper onGround=false.
+                _command(server, "tp RelaySelf 0.5 -58 0.5 0 0")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
             _command(server, "gamerule doMobSpawning false")
