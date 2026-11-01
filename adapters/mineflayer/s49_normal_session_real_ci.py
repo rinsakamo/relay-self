@@ -935,6 +935,37 @@ async def qualify(
             report["cleanup_supervisor_error"] = f"{type(exc).__name__}: {exc}"
             if isinstance(exc, asyncio.CancelledError):
                 cancellations.append(exc)
+        if l_mp11_live_l2_engine is not None:
+            # Report partial original Action/EOF witnesses after cleanup,
+            # BEFORE running the all-three-Action qualifying G3 review.
+            # Do not change FAIL to PASS or treat shape as a qualification.
+            from adapters.mineflayer.l_mp11_failure_source_snapshot import (
+                summarize_closed_partial,
+            )
+
+            try:
+                original_path = report.get("mp11_paper_raw_stdout_path")
+                original_bytes = (
+                    Path(original_path).read_bytes()
+                    if isinstance(original_path, str)
+                    else None
+                )
+                report["l_mp11_postshutdown_partial_evidence"] = (
+                    summarize_closed_partial(
+                        report, original_bytes,
+                        predeclared=report.get("mp11_paper_eof_predeclared") is True,
+                    )
+                )
+                if original_bytes is not None and (
+                    server_log.read_bytes() != original_bytes
+                ):
+                    report["l_mp11_postshutdown_partial_evidence"][
+                        "paper_raw_vs_log_mismatch"
+                    ] = True
+            except Exception as exc:
+                report["l_mp11_postshutdown_partial_evidence_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
         if (mp11_g3_paper_assets is not None
                 and report.get("status") == "PASS"):
             try:
