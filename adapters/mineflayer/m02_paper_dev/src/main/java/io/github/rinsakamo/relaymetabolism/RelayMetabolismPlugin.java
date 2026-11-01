@@ -107,14 +107,19 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private final S50ForecastGate s50ForecastGate = new S50ForecastGate();
     // MP5 Paper-local shadow: pre-armed before original S49 Action, no RTT per tick.
     private boolean s50PaperLocalForecastDev = false;
-    private final S50PaperLocalForecast s50PaperLocalForecast = new S50PaperLocalForecast();
+    private S50PaperLocalForecast s50PaperLocalForecast = new S50PaperLocalForecast();
     // MP6 opt-in, experimenter-controlled real body intervention (NOT readonly).
     private boolean s50ChangedBodyConditionDev = false;
     private final S50BodyConditionGate s50BodyConditionGate = new S50BodyConditionGate();
     private boolean s50NativeMoveStarted = false;
     private boolean s50IceFloorDev = false;
     private String s50SurfaceMode = "NONE";
-    private final S50IceFloorGate s50IceFloorGate = new S50IceFloorGate();
+    private S50IceFloorGate s50IceFloorGate = new S50IceFloorGate();
+    // MP11 G3 only: explicit operator-granted per-Action Paper source windows.
+    // Never changes the native S49 owner or grants any action.
+    private boolean s50MP11MultiTrialDev = false;
+    private int s50MP11CompletedTrials = 0;
+    private final Set<String> s50MP11UsedMarkers = new HashSet<>();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -282,6 +287,18 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     || s50ChangedBodyConditionDev || s50ForecastGateDev)) {
                 throw new IllegalStateException(
                     "MP7 requires MP5 and excludes MP6 potion/MP4 gates");
+            }
+            if (getConfig().contains("s50-mp11-multitrial-dev")
+                    && !getConfig().isBoolean("s50-mp11-multitrial-dev")) {
+                throw new IllegalStateException("MP11 multitrial config must be boolean");
+            }
+            s50MP11MultiTrialDev = getConfig().getBoolean(
+                "s50-mp11-multitrial-dev", false);
+            if (s50MP11MultiTrialDev && (!s50PaperLocalForecastDev
+                    || !s50IceFloorDev || !s50InputWitnessCandidate
+                    || s50ForecastGateDev || s50ChangedBodyConditionDev)) {
+                throw new IllegalStateException(
+                    "MP11 multi-window DEV requires MP5+MP7 source with no MP4/MP6");
             }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
@@ -948,6 +965,65 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " status=" + decision.reason());
             return decision.accepted();
         }
+        if (command.getName().equalsIgnoreCase("relaydevmp11next")) {
+            // Experimenter-only transition AFTER complete prior eight Paper WAIT
+            // callback samples. This does not reset original S49 Action owner,
+            // issue a control command or counterfeit a new native epoch.
+            if (!devActive || !s50MP11MultiTrialDev
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 2
+                    || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !args[1].matches("[A-Za-z0-9_-]{1,128}")
+                    || !args[0].equals(s50Marker)
+                    || args[0].equals(args[1])
+                    || s50MP11UsedMarkers.contains(args[1])
+                    || s50MP11CompletedTrials >= 2
+                    || !s50ClearObserved || s50WaitObserveActive
+                    || s50WaitSourceRows != 8
+                    || s50PaperLocalForecast.count() != 8) {
+                getLogger().warning("S50_MP11_NEXT_REJECT reason=NOT_SEALED_OR_FOREIGN");
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            s50MP11UsedMarkers.add(args[0]);
+            s50MP11CompletedTrials++;
+            String previous = s50Marker;
+            s50Marker = "NONE";
+            s50ObserveUntil = -1;
+            s50TickMeterArmed = false;
+            s50TickMeterLast = null;
+            s50TickMeterRows = 0;
+            s50TickMeterBlocks = 0;
+            s50TickMeterCharged = 0;
+            s50ClearObserved = false;
+            s50WaitObserveActive = false;
+            s50WaitSourceRows = 0;
+            s50WaitStartWorldTick = -1;
+            s50WaitLast = null;
+            s50NativeMoveStarted = false;
+            s50SurfaceMode = "NONE";
+            s50InputEvents = 0;
+            s50InputLastUpdateTick = -1;
+            s50InputCoverageOverflow = false;
+            s50WaitCombatEvents = 0;
+            s50WaitSwingEvents = 0;
+            s50WaitAllMovementEvents = 0;
+            s50WaitTeleportEvents = 0;
+            s50WaitVelocityEvents = 0;
+            s50WaitDamageEvents = 0;
+            s50WaitInteractEvents = 0;
+            s50PaperLocalForecast = new S50PaperLocalForecast();
+            s50IceFloorGate = new S50IceFloorGate();
+            getLogger().info("S50_MP11_NEXT_ACCEPT prior_marker=" + previous
+                + " next_marker=" + args[1]
+                + " completed_trials=" + s50MP11CompletedTrials
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " world_full_time=" + p.getWorld().getFullTime()
+                + " status=PRIOR_PAPER_WAIT_EIGHT_SEALED_NO_ACTION_AUTHORITY");
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("relaydevwait")) {
             if (!devActive || !s50TickMeterCandidate
                     || !(sender instanceof ConsoleCommandSender)
@@ -1020,6 +1096,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         if (args[1].equals("PRE_FORWARD")) {
             if (!s50Marker.equals("NONE")) {
                 return false;
+            }
+            if (s50MP11MultiTrialDev) {
+                if (s50MP11CompletedTrials >= 3
+                        || !s50MP11UsedMarkers.add(args[0])) {
+                    return false;
+                }
             }
             s50Marker = args[0];
             s50InputEvents = 0;
