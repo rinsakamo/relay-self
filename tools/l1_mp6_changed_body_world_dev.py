@@ -193,6 +193,26 @@ def audit(root: Path, rc: int, expired: bool) -> dict:
         movement is not None and math.isfinite(movement)
         and abs(movement - baseline_m) >= 0.06
     )
+    original_motions = [
+        math.dist(
+            [float(row["from_" + a]) for a in "xyz"],
+            [float(row[a]) for a in "xyz"],
+        ) for _, row in wait
+    ] if len(wait) == 8 else []
+    zero_mae = (
+        sum(abs(x) for x in original_motions[1:]) / 7
+        if len(original_motions) == 8 else None
+    )
+    last_mae = (
+        sum(abs(original_motions[i+1] - original_motions[i])
+            for i in range(7)) / 7
+        if len(original_motions) == 8 else None
+    )
+    train_mean = ticket.get("model", {}).get("trained_measured_mean_m") if ticket else None
+    training_mean_mae = (
+        sum(abs(x - train_mean) for x in original_motions[1:]) / 7
+        if len(original_motions) == 8 and isinstance(train_mean, float) else None
+    )
     source_ok = (
         original_condition_confirmed and
         rc == 0 and not expired and report.get("status") == "PASS"
@@ -236,6 +256,10 @@ def audit(root: Path, rc: int, expired: bool) -> dict:
         "local_model_mae_m": sum(errors) / 7 if len(errors) == 7 else None,
         "local_model_rmse_m": math.sqrt(sum(x*x for x in errors)/7)
         if len(errors) == 7 else None,
+        "original_paper_wait_motions_m": original_motions,
+        "zero_baseline_mae_m": zero_mae,
+        "last_baseline_mae_m": last_mae,
+        "training_mean_baseline_mae_m": training_mean_mae,
         "same_info_cheap": "MATHEMATICALLY_EQUIVALENT",
         "novel_generalization_proven": False,
         "experimenter_environment_intervention": True,
