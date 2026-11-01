@@ -7,6 +7,10 @@ on:
       - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
       - 'adapters/mineflayer/l_mp11_live_previous_action.py'
       - 'tests/test_l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tools/mp11_g2_s49_original_audit.py'
+      - 'tools/mp11_g3_paper_one_world_audit.py'
+      - 'tools/l_mp11_live_paper_postrun_audit.py'
       - '.github/workflows/l-live-l2-shadow-source-dev.yml'
 permissions:
   contents: read
@@ -29,14 +33,24 @@ jobs:
       - name: Validate live L2 shadow and L source/owner regression
         run: |
           set -euo pipefail
-          ruff check adapters/mineflayer/l_mp11_live_l2_shadow.py tests/test_l_mp11_live_l2_shadow.py
-          python -m compileall -q adapters/mineflayer/l_mp11_live_l2_shadow.py
+          ruff check adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/mp11_g2_s49_original_audit.py \
+            tools/mp11_g3_paper_one_world_audit.py \
+            tools/l_mp11_live_paper_postrun_audit.py \
+            tests/test_l_mp11_live_l2_shadow.py
+          python -m compileall -q adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py
           python -m pytest -o addopts='' -q \
             tests/test_l_mp11_live_l2_shadow.py \
             tests/test_l_mp11_live_previous_action.py \
             tests/test_l_mp11_live_paper_postrun_audit.py \
             tests/test_l_mp11_g3_archived_l2_prefix.py \
-            tests/test_self_body_mp11_retained_shadow.py
+            tests/test_self_body_mp11_retained_shadow.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_feature_s49_normal_runtime.py \
+            tests/test_s49_cleanup.py
           python tools/check_repository.py
       - name: Evidence scope
         run: echo 'L_LIVE_OPEN_SCHEMA_AND_CHEAP_CONTROL_ONLY / FAKE_MODEL / REAL_GEMMA_NOT_RUN / NO_PHYSICAL_EXPERIMENT / NO_ACTION_ISSUER / NO_LEARNING / NO_L0_PROMOTION'
