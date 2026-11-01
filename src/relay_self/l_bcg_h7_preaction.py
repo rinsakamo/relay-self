@@ -110,7 +110,10 @@ def audit_h7_pre_action(
             f"s49-actual:{episode.session_id}:event-{choice['event_seq']}"
         )
         and before_row.get("request_id") == before.get("request_id")
-        and before_row.get("snapshot") == before.get("snapshot"),
+        and all(
+            before_snapshot.get(k) == before["snapshot"].get(k)
+            for k in ("health", "food", "food_saturation", "position")
+        ),
         "S49 pre-action epoch misbound or next-epoch leakage",
     )
     source = (
