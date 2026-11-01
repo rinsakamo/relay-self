@@ -84,7 +84,7 @@ def test_reject_unmatched_server_config(tmp_path):
 
 def surface(mode):
     return {"lock": confirm(original(mode,
-                 "PACKED_ICE" if mode == "ICE" else "GRASS_BLOCK")),
+                 "PACKED_ICE" if mode == "ICE" else "GRASS_BLOCK"), mode),
             "world_uuid": "world-" + mode}
 
 
