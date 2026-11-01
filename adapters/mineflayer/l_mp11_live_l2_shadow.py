@@ -10,8 +10,11 @@ import asyncio
 import hashlib
 import json
 import math
+import time
 from dataclasses import asdict, dataclass, replace
+from pathlib import Path
 
+from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
@@ -39,6 +42,33 @@ MAX_OPEN_BYTES = 2300
 MAX_CALLS = 2
 MAX_OPEN_DEADLINE_S = 50.0
 SOURCE_CLASS = "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED"
+
+
+class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
+    """Canonical HTTP provider with L-only bounded output and original journal."""
+
+    def __init__(self, *, journal_root: Path, **kwargs):
+        super().__init__(**kwargs)
+        self.calls: list[dict] = []
+        self.journal_root = journal_root
+
+    def _call(self, request_body, *, endpoint=None):
+        request_body.update(max_tokens=512, response_format={"type": "json_object"})
+        body = request_body
+        entry = {"request": body, "endpoint": self.endpoint,
+                 "started_monotonic_ns": time.monotonic_ns()}
+        self.calls.append(entry)
+        try:
+            response = super()._call(body, endpoint=endpoint)
+            entry["response"] = response
+            return response
+        except Exception as exc:
+            entry["error"] = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            entry["finished_monotonic_ns"] = time.monotonic_ns()
+            with (self.journal_root / f"llama-http-{len(self.calls)}.json").open("x") as out:
+                json.dump(entry, out, ensure_ascii=False, indent=2, allow_nan=False)
 
 
 class LiveL2Rejected(ValueError):
@@ -97,6 +127,9 @@ def request_for_live_l2(ledger: LivePriorLedger) -> OpenCognitionRequest:
         "an UNAPPROVED next experiment. No Minecraft command, no "
         "performance superiority claim, no physical capability limit claim. "
         "Do not state that the proposal has been executed or learned."
+        " Explain the numeric observed prediction error and cheap-zero comparison "
+        "from the completed trials; distinguish these measurements from generic "
+        "prior knowledge. Keep explanations brief enough for 512 output tokens."
     )
     return replace(previous, instruction=previous.instruction + "\n" + schema)
 
@@ -210,6 +243,7 @@ class BoundedLiveL2:
         self.proposals: list[LiveL2Proposal] = []
         self.attempted_request_ids: set[str] = set()
         self.failed_closed = False
+        self.attempts: list[dict] = []
 
     async def propose_after(self, ledger: LivePriorLedger) -> LiveL2Proposal:
         if (
@@ -222,19 +256,26 @@ class BoundedLiveL2:
         if req.request_id in self.attempted_request_ids:
             raise LiveL2Rejected("OPEN request already attempted")
         self.attempted_request_ids.add(req.request_id)
+        entry = {"request": asdict(req),
+                 "started_monotonic_ns": time.monotonic_ns()}
+        self.attempts.append(entry)
         try:
             observed = await asyncio.wait_for(
                 asyncio.to_thread(self.engine.open, req),
                 timeout=self.timeout_s,
             )
+            entry["result"] = asdict(observed)
             proposed = parse_live_l2(
                 ledger, req, observed, require_real_llama=self.require_real_llama,
             )
-        except Exception:
+        except Exception as exc:
             # A timed-out HTTP thread might finish later, but its result is
             # never read, admitted, retried, or used to grant a future Action.
             self.failed_closed = True
+            entry["error"] = f"{type(exc).__name__}: {exc}"
             raise
+        finally:
+            entry["finished_monotonic_ns"] = time.monotonic_ns()
         self.proposals.append(proposed)
         return proposed
 
@@ -246,6 +287,7 @@ class BoundedLiveL2:
             ),
             "proposals": [asdict(x) for x in self.proposals],
             "attempts": len(self.attempted_request_ids),
+            "attempt_originals": self.attempts,
             "validated_open_calls": len(self.proposals),
             "provider_label_is_not_model_weights_attestation": True,
             "experiments_selected_and_executed_by_l2": 0,

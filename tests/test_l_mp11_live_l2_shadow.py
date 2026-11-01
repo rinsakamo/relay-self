@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import replace
 
 import pytest
@@ -182,3 +183,55 @@ def test_invalid_call_budget_rejected():
         BoundedLiveL2(engine, timeout_s=60)
     with pytest.raises(LiveL2Rejected):
         BoundedLiveL2(engine, timeout_s=True)
+
+
+def test_timeout_preserves_attempt_and_never_releases_next_query():
+    def provider(req, *, mode):
+        time.sleep(.03)
+        return ProviderExpression(text=json.dumps(output(req)),
+                                  provenance=Provenance("fake.fixture", "late"))
+    gate = BoundedLiveL2(RelayEngine(provider), require_real_llama=False,
+                         timeout_s=.001)
+    with pytest.raises(TimeoutError):
+        asyncio.run(gate.propose_after(one()))
+    assert gate.failed_closed and len(gate.attempts) == 1
+    assert "TimeoutError" in gate.attempts[0]["error"]
+    assert not gate.proposals
+    with pytest.raises(LiveL2Rejected):
+        asyncio.run(gate.propose_after(one()))
+
+
+def test_invalid_json_original_remains_in_failed_attempt():
+    def provider(req, *, mode):
+        return ProviderExpression(text="{invalid-original",
+                                  provenance=Provenance("fake.fixture", "original"))
+    gate = BoundedLiveL2(RelayEngine(provider), require_real_llama=False)
+    with pytest.raises(LiveL2Rejected):
+        asyncio.run(gate.propose_after(one()))
+    assert gate.public_report()["attempt_originals"][0]["result"]["text"] == "{invalid-original"
+
+
+def test_live_request_contains_original_prediction_error_not_future():
+    ledger = one()
+    history = json.loads(request_for_live_l2(ledger).context[1].value_json)
+    assert len(history) == 1
+    assert history[0]["paper_predicted_next_m"] == [.0325] * 7
+    assert history[0]["paper_next_abs_error_m"] == [.0175] * 7
+    assert history[0]["paper_cheap_zero_next_mae_m"] == pytest.approx(.05)
+
+
+def test_real_provider_journals_http_response_and_explicit_budget(tmp_path, monkeypatch):
+    from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+    from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
+    response = {"id": "fake-http-id", "model": "fake-model", "choices": []}
+    monkeypatch.setattr(LlamaCppRelayProvider, "_call", lambda *a, **k: response)
+    provider = JournaledLiveLlamaProvider(
+        journal_root=tmp_path, endpoint="http://127.0.0.1:8080/v1/chat/completions",
+        model="fake-model",
+    )
+    body = {"max_tokens": 256}
+    assert provider._call(body) == response
+    saved = json.loads((tmp_path / "llama-http-1.json").read_text())
+    assert saved["request"]["max_tokens"] == body["max_tokens"] == 512
+    assert saved["response"] == response
+    assert saved["finished_monotonic_ns"] >= saved["started_monotonic_ns"]
