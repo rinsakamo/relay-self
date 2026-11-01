@@ -48,8 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py adapters/mineflayer/l23_paper_live_assets.py tests/test_self_body_s50_l1_body_condition.py
-          python -m compileall -q adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py
+          ruff check tools/l1_mp6_changed_body_world_dev.py adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py adapters/mineflayer/l23_paper_live_assets.py tests/test_self_body_s50_l1_body_condition.py
+          python -m compileall -q tools/l1_mp6_changed_body_world_dev.py adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py
           python -m pytest -o addopts='' -q \
             tests/test_self_body_s50_l1_body_condition.py \
             tests/test_self_body_s50_l1_paper_local.py \
