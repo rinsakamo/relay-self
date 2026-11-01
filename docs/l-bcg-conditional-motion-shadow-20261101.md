@@ -33,13 +33,15 @@ ownerがprojectした後に渡す前提であり、**この型はS16やPaper原�
 - 今回の `RECHECK` / `CONTINUE` は非実行の **L1注意仮説**。
   どちらもS49 ActionやGoal outcomeを発行しない。
 - Memory OFF、固定clearanceしきい値、1-bit「過去に危険あり」、
-  最終経験の単純参照を同じ入力上のcheap controlとして併記。
+  最終経験の単純参照に加え、全cue完全一致の単純経験検索を同じ入力上のcheap controlとして併記。
+  完全一致検索がDEFERし条件抽象化だけが候補を出せても、正解は未証明。
   複雑な学習がcheapと同等なら `CHEAP_EQUIVALENT` を受理。
 - currentが古い・推論由来、外国Self、違う物理regime、
   未知障害物条件、未知特徴値、矛盾・支持不足はDEFER/REJECT。
   学習した仮説は物理的真実ではない。
 - 定型監査：過去と今のsession/World分離、S16とsettling別digest、
-  owner-admitted digest membership、post-clear物理検証gradeを必須。
+  owner-admitted digest membership、post-clear物理検証grade、
+  **訓練World revision < 現在revision**を必須。
   **digestの形とmembershipは原本の独立認証ではない**。
 
 ## 実装・テストの証明範囲
