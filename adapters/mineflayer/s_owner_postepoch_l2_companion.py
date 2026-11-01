@@ -57,6 +57,9 @@ class SPostEpochL2CompanionLease:
         if not self.enabled:
             return SPostEpochL2Companion(original_s_epoch, "DISABLED", "not_enabled")
         try:
+            from relay_self.epoch_plan import PlannedDecisionEpochResult
+            from relay_self.world_conditioned_choice import WorldConditionedChoice
+
             from experiments.metabolism_cognitive_lifecycle import _check_audit
             from experiments.metabolism_relay_engine_usage import (
                 OwnerEngineCall,
@@ -67,10 +70,8 @@ class SPostEpochL2CompanionLease:
                 SLMDevTapResult,
                 bounded_s_l_m_audit_row,
             )
-            from relay_self.epoch_plan import PlannedDecisionEpochResult
             from relay_self.relay_engine import OpenCognitionRequest, OpenCognitionResult
             from relay_self.runtime_coordination import DecisionEpochResult
-            from relay_self.world_conditioned_choice import WorldConditionedChoice
 
             if (
                 not isinstance(original_slm_tap, SLMDevTapResult)
