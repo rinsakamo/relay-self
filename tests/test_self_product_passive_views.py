@@ -212,6 +212,7 @@ def test_joint_dev_receipt_requires_native_s10_and_matching_later_body_world(
     monkeypatch, tmp_path, attack,
 ):
     from types import SimpleNamespace
+
     from test_self_dev import args
 
     monkeypatch.setattr(self_demo.shutil, "which", lambda _: "/tool")
