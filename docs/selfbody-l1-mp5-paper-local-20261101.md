@@ -51,7 +51,7 @@ Status ceiling: `MP5_PAPER_LOCAL_OFFLINE_ONLY / PRIOR_MODEL_CHEAP_EQUIVALENT / P
 - 元 `S50_DEV_WAIT_TICK` と `S50_DEV_INPUT_TICK` **各8件**、tick252–259。各tickで元WAIT観測 `x[t]` → `S50_DEV_LOCAL_FORECAST_FIXED` (次tick対象) と後続callbackで `S50_DEV_LOCAL_FORECAST_SCORE` の照合 **7/7**。原stdoutで `WAIT[t] < FIXED[t→t+1] < WAIT[t+1] < SCORE[t+1]` を独立readback。stdout-original==server.log byte-level SHA256 `efb0c0e42a7db8a42f17117043ad5a64c6dc68101a4477c1ebe4bf79db154966`。
 - 7件の平均絶対誤差 **MAE 0.0006927084716710721m**、RMSE 0.0013140724536525347m。同じx[t]から同じ係数を適用するcheap linearとは数学的に**完全同値**。zero baseline MAE 0.0021077733153767675m、last baseline MAE 0.0070703126144747875m。
 - **重要**：今回の変位の時間系列は既存学習Worldとほぼ同一（`0.0494921883m → 0.0095436049m → 0.0052108083m → 以後ゼロ`）。別Worldであるが、未知条件への汎化・適応やL1固有の学習優越を示さない。**Paper内の次callback前予測固定のみが新たに実証された**。
-- 元S49/S16/S50 owner DEV PASS、Node exit0 / Java exit0、ポート再bind/cleanup PASS。Original Packet/S16/S7/host journal/原Paper stdoutをGitHub artifact `mp5-paper-local-one-world-41269170943-1` に保存。各ファイルのSHAと再解析出力は[独立readback JSON](../evidence/issue653-mp5-paper-local-20261101/run1/independent-mp5-readback.json)。
+- 元S49/S16/S50 owner DEV PASS、Node exit0 / Java exit0、ポート再bind/cleanup PASS。Original Packet/S16/S7/host journal/原Paper stdoutをGitHub artifact `mp5-paper-local-one-world-41269170943-1` に保存。各ファイルのSHAと再解析出力は[独立readback JSON](evidence/issue653-mp5-paper-local-20261101/run1/independent-mp5-readback.json)。
 - 科学・学習資格：元Goal `UNDETERMINED`、L10/S10/S11/学習更新0。tick内部物理積分順序 / effective clear / full-tick input idle / 異条件の汎化は NOT_ATTESTED。
 
 **判定：`DEV_WORLD_PASS_PAPER_LOCAL_CALLBACK_PREQUENTIAL_7_OF_7 / SAME_INFORMATION_CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。** 今回のMP5新規Worldは1/1消費済み、再実行していない。
