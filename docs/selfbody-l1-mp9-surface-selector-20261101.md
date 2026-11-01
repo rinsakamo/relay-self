@@ -29,3 +29,29 @@ Always report a deterministic same-information one-bit material→coefficient lo
 ## Acceptance ceiling
 
 `MP9_TWO_WORLD_DEV_ONLY` if both actual original Worlds and source audits pass; next-world performance and negative controls shown without selective omission. `L0_UNCHANGED / MEMORY_ADMISSION_0 / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`. No main merge. No R/V promotion. A genuine SelfBody→L1 **runtime** read interface, policy impact, learning admission and real-world generality remain separate later stages.
+
+---
+
+## Stage 1 actual original Minecraft heldout pair — DEV PASS, routing margin FAIL
+
+[Actions run #41282040300](https://github.com/rinsakamo/relay-self/actions/runs/41282040300) **SUCCESS**, execution HEAD `0c80064bb23ebab115e888376d662cb28e1f5c62`. New disposable World NORMAL 1 + ICE 1; one original S49 Action and S16 OUTCOME each, original Paper WAIT8 / original prior local Paper FIXED/SCORE7 each; Java/Node exits0; no intra-run retries. Full original ZIP artifact `mp9-two-world-originals-41282040300-1` ID `13074061185`, SHA256 `e0d62a458ffd7bcfbcdb652a7cea8814463b94f96a0105525ed06e7772637b42`; [independent source readback](evidence/issue653-mp9-surface-selector-20261101/run1/independent-physical-readback.json).
+
+All 2 World initial Paper-sampled pose/velocity/health/food/ground comparisons matched, with independent new seed `114230270`; Paper lock fullTime NORMAL 291 and ICE 289, **not temporally identical**. NORMAL original MOVE `0.6269065734210613m`, ICE original MOVE `0.703745088643206m`. This **reversal versus MP8** confirms that the numerical size/direction of native movement contrast is not stable enough to infer a friction-only causal effect.
+
+The exact MP8 prior was sealed before the first MP9 World; original Paper source material lock for each World preceded S49 Action; `MP9_SHADOW_SELECTION_FIXED` exact ticket appeared in host original prediction journal before the first WAIT sample. New MP9 selected coefficient was not emitted as seven independent Paper-internal FIXED events. We score those pre-Action frozen functions on the later verified actual 7 WAIT transitions (prospective model / retrospective target scoring, clearly distinct from the original Paper MP5 prequential sequence).
+
+### 7-transition heldout MAE (m)
+
+| Predictor | NORMAL | ICE | Pair mean |
+|---|---:|---:|---:|
+| Material-selected MP8 coefficient | **0.0031249586** | **0.0128973895** | **0.0080111741** |
+| Always NORMAL coefficient | 0.0031249586 | 0.0134680349 | 0.0082964968 |
+| Always ICE coefficient | 0.0034469819 | 0.0128973895 | 0.0081721857 |
+| Last observation | 0.0070703126 | 0.0137771442 | 0.0104237284 |
+| Zero | **0.0021077733** | 0.0374312081 | not used in pair benchmark |
+
+The selected coefficient was directionally better than the wrong-surface coefficient **in each of these two Worlds**, but its margin was only `0.0003220232m` on NORMAL and `0.0005706454m` on ICE. The pair-mean improvement versus best global constant was only `0.0001610116m`. Therefore BOTH preregistered `0.001m` gates **FAIL**. This is a legitimate negative/weak result, not demonstrated environment-specific knowledge transfer. The deterministic cheap material lookup is **exactly equivalent** to the shadow selector; unique L1 advantage is absent. On NORMAL, Zero predicts better than the selected model.
+
+Preflight: Python3.12 **75 PASS**, Java21 ice gate **15 PASS**, Ruff/contracts PASS, Maven BUILD SUCCESS, original assets SHA verified; original source audit and process cleanup PASS. Source of prior = MP8 heldout real pair (not World reuse). Original S49/L0 owner, L10/S10/S11, Goal, R/V unchanged.
+
+**Final classification:** `MP9_DEV_TWO_NEW_MATCHED_PREACTION_WORLD_PASS / DIRECTIONAL_SURFACE_MAE_GAIN_SMALL / PREREGISTERED_SPECIFICITY_GATE_FAIL / SAME_INFO_CHEAP_EQUIVALENT / L1_UNIQUE_ADVANTAGE_NOT_PROVEN / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
