@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from relay_self.self_body import BodyOrigin
+from relay_self.self_world import WorldOrigin, WorldEntityObservation
+
 from adapters.mineflayer.self_body_s50_l1_motion_shadow import (
     compare_l1_motion_attention_shadow,
 )
@@ -25,6 +28,90 @@ from relay_self.world_conditioned_choice import WorldConditionedChoice
 
 
 @dataclass(frozen=True, slots=True)
+class ObservedOriginalCue:
+    """Source-addressed native fact, not a qualified L-BCG feature."""
+
+    name: str
+    value: float | int | str
+    source_ref: str
+
+
+@dataclass(frozen=True, slots=True)
+class BCGCueInventory:
+    """Conservative inventory of existing typed original observation only."""
+
+    native_source_ref: str
+    world_source_ref: str
+    observed: tuple[ObservedOriginalCue, ...]
+    missing_required: tuple[str, ...]
+    target_seen_in_limited_coverage: bool
+    coverage_truncated: bool
+    coverage_scope: str
+    full_conditional_context_available: bool = False
+    paper_effective_input_clear_attested: bool = False
+    post_clear_training_admitted: bool = False
+
+
+_REQUIRED = (
+    "goal_remaining_m", "goal_tolerance_m", "selected_gait",
+    "p1_fatigue_high", "m_energy_low", "verified_obstacle",
+    "world_revision", "verified_post_clear_training",
+)
+
+
+def inventory_original_bcg_cues(
+    readout: LiveNextEpochReadout,
+    choice: WorldConditionedChoice,
+) -> BCGCueInventory:
+    """Use the established #653 typed identity checks before projecting facts.
+
+    Hunger is NOT metabolism energy, nearest zombie is NOT an action goal.
+    Absence in a bounded entity registry does NOT mean obstacle-free World.
+    """
+    compare_l1_motion_attention_shadow(readout, choice)
+    body = readout.current_body
+    world = readout.current_world
+    assert body.observation is not None and world.observation is not None
+    body_ref = body.observation.source_ref
+    world_ref = world.observation.source_ref
+    known: list[ObservedOriginalCue] = []
+    for key in (
+        "position_x", "position_y", "position_z",
+        "health", "food", "food_saturation",
+    ):
+        reading = body.observed(key)
+        if (
+            reading.origin is BodyOrigin.OBSERVATION
+            and reading.source_refs == (body_ref,)
+            and type(reading.value) in (int, float)
+        ):
+            known.append(ObservedOriginalCue(key, reading.value, body_ref))
+    # This is the original S42 native threat measurement, not Goal distance.
+    known.append(ObservedOriginalCue(
+        "s42_threat_distance_m", choice.distance_m, body_ref,
+    ))
+    target = world.observed_entity(f"entity-{choice.entity_id}")
+    target_seen = (
+        target.origin is WorldOrigin.OBSERVED
+        and target.source_refs == (world_ref,)
+        and isinstance(target.value, WorldEntityObservation)
+    )
+    if target_seen and target.value.distance_m is not None:
+        known.append(ObservedOriginalCue(
+            "world_observed_target_distance_m", target.value.distance_m, world_ref,
+        ))
+    return BCGCueInventory(
+        native_source_ref=body_ref,
+        world_source_ref=world_ref,
+        observed=tuple(known),
+        missing_required=_REQUIRED,
+        target_seen_in_limited_coverage=target_seen,
+        coverage_truncated=world.observation.coverage_truncated,
+        coverage_scope=world.observation.coverage_scope,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class LiveBCGHandoff:
     session_id: str
     original_native_ref: str
@@ -32,6 +119,7 @@ class LiveBCGHandoff:
     advice: Attention
     reason: str
     conditional: BCGShadow | None = None
+    cue_inventory: BCGCueInventory | None = None
     used_physical_training_worlds: int = 0
     original_l0_choice_kept: bool = True
     action_issues: int = 0
@@ -61,7 +149,9 @@ def review_l_bcg_after_original_l0(
     if type(memory_enabled) is not bool or not isinstance(training, tuple):
         raise BCGRejected("typed bounded shadow inputs required")
     original = compare_l1_motion_attention_shadow(readout, original_choice)
+    inventory = inventory_original_bcg_cues(readout, original_choice)
     base = dict(
+        cue_inventory=inventory,
         session_id=original.session_id,
         original_native_ref=original.current_native_source_ref,
         original_selection=original.current_s_choice.value,
@@ -92,5 +182,5 @@ def review_l_bcg_after_original_l0(
     return LiveBCGHandoff(
         **base, advice=shadow.advice, reason=shadow.reason,
         conditional=shadow, used_physical_training_worlds=shadow.training_worlds,
-        source_ceiling="EXTERNALLY_ADMITTED_TYPED_CUES_PHYSICAL_PROOF_EXTERNAL",
+        source_ceiling="EXTERNAL_TYPED_CUES_NOT_ORIGINAL_BYTE_ATTESTED",
     )
