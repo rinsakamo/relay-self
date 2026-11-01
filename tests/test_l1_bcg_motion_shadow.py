@@ -164,7 +164,7 @@ def test_conflicting_observations_abstain_instead_of_auto_promote() -> None:
     # Reverse one outcome per speed to spoil stable single-axis cells;
     # no stable two-axis cell may invent a majority from one World.
     spoiled = tuple(
-        replace(row, settling_m=1.0 if (i % 2 == 0) else 0.0)
+        replace(\n            row,\n            context=replace(row.context, fatigue_high=False),\n            settling_m=1.0 if (i % 2 == 0) else 0.0,\n        )
         for i, row in enumerate(rows)
     )
     result = _review(_ctx(90, fast=True, near=False), spoiled, admission)
