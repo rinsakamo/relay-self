@@ -23,7 +23,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
       - name: Ruff and repository contracts
         run: |
-          ruff check adapters/mineflayer/s_owner_postepoch_l2_companion.py tests/test_s_owner_postepoch_l2_companion.py
+          ruff check adapters/mineflayer/s_owner_postepoch_l2_companion.py tests/test_s_owner_postepoch_l2_companion.py adapters/mineflayer/s_owner_postepoch_l2_runtime.py tests/test_s_owner_postepoch_l2_runtime.py
           python tools/check_repository.py
       - name: Checkout original S product (read-only separate tree)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,6 +71,7 @@ jobs:
           raise SystemExit(pytest.main([
               "-q",
               "tests/test_s_owner_postepoch_l2_companion.py",
+              "tests/test_s_owner_postepoch_l2_runtime.py",
               "tests/test_metabolism_same_process_slm_product.py",
               "tests/test_metabolism_s_owner_engine_product.py",
               "tests/test_metabolism_s_completed_cost_window.py",
