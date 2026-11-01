@@ -270,3 +270,88 @@ def test_fit_outcome_rewrite_after_freeze_refused_even_with_same_world_ids():
             plan=plan, plan_original=raw,
             records=tuple(rows), frozen_model_original=frozen,
         )
+
+
+def test_saved_coefficients_are_deserialized_after_integrity_audit(monkeypatch):
+    plan, raw, records, original = _example()
+    import relay_self.l_bcg_h9b_freeze as module
+
+    def forbidden_fit(**kwargs):
+        raise AssertionError("evaluation must not call fit API")
+
+    monkeypatch.setattr(module, "freeze_h9b_dev_proxy", forbidden_fit)
+    loaded, digest = validate_frozen_original(
+        plan=plan, plan_original=raw, fit_records=records[:4],
+        frozen_original=original,
+    )
+    assert serialize_frozen(loaded) == original
+    assert loaded.candidate_slope == json.loads(original)["candidate_slope"]
+    assert digest == source_digest(original)
+
+
+def test_actual_executor_and_runtime_assets_checked_against_prereg(tmp_path):
+    import shutil
+    from datetime import datetime
+
+    from tools.l_bcg_h9b_dev_holdout import _runtime_source_audit
+
+    root = tmp_path / "world"
+    shutil.copytree(ARCHIVE / "a", root)
+    prereg = json.loads((root / "predeclared.json").read_bytes())
+    prereg["declared_utc"] = "2026-11-01T07:00:00+00:00"
+    attempt = datetime.fromisoformat("2026-11-01T07:10:00+00:00")
+    _runtime_source_audit(root, prereg, attempt)
+    prereg["executor_head"] = "b" * 40
+    with pytest.raises(ValueError, match="actual executor HEAD"):
+        _runtime_source_audit(root, prereg, attempt)
+    prereg["executor_head"] = json.loads((root / "predeclared.json").read_bytes())["executor_head"]
+    prereg["runtime_assets"]["plugin"]["sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="actual runtime asset"):
+        _runtime_source_audit(root, prereg, attempt)
+
+
+def test_original_mutation_and_delayed_declaration_rejected(tmp_path):
+    import shutil
+    from datetime import datetime
+
+    from tools.l_bcg_h9b_dev_holdout import _runtime_source_audit
+
+    root = tmp_path / "world"
+    shutil.copytree(ARCHIVE / "a", root)
+    prereg = json.loads((root / "predeclared.json").read_bytes())
+    prereg["declared_utc"] = "2026-11-01T08:00:00+00:00"
+    attempt = datetime.fromisoformat("2026-11-01T07:10:00+00:00")
+    with pytest.raises(ValueError, match="chronology"):
+        _runtime_source_audit(root, prereg, attempt)
+    prereg["declared_utc"] = "2026-11-01T07:00:00+00:00"
+    with (root / "run1/server.log").open("ab") as out:
+        out.write(b"mutated")
+    with pytest.raises(ValueError, match="original bytes changed"):
+        _runtime_source_audit(root, prereg, attempt)
+
+
+def test_freeze_boundary_rejects_early_eval_or_late_fit_audit(tmp_path):
+    from tools.l_bcg_h9b_dev_holdout import _check_freeze_boundary
+
+    model = tmp_path / "frozen-model.json"
+    model.write_bytes(b"frozen original")
+    boundary = {
+        "frozen_original_sha256": source_digest(model.read_bytes()),
+        "plan_sha256": "a" * 64,
+        "frozen_utc": "2026-11-01T07:05:00+00:00",
+    }
+    model.with_suffix(".boundary.json").write_text(json.dumps(boundary))
+    for slot, _, role in SLOTS:
+        root = tmp_path / slot
+        (root / "run1").mkdir(parents=True)
+        marker = {"launcher_entered_utc": "2026-11-01T07:00:00+00:00" if role == "dev_fit"
+                  else "2026-11-01T07:06:00+00:00"}
+        (root / "run1/WORLD_ATTEMPT_STARTED.json").write_text(json.dumps(marker))
+        (root / "audited-complete.json").write_text(json.dumps({
+            "completed_utc": "2026-11-01T07:04:00+00:00",
+        }))
+    _check_freeze_boundary(tmp_path, model, "a" * 64)
+    path = tmp_path / "B-E1/run1/WORLD_ATTEMPT_STARTED.json"
+    path.write_text(json.dumps({"launcher_entered_utc": "2026-11-01T07:03:00+00:00"}))
+    with pytest.raises(ValueError, match="EVAL World"):
+        _check_freeze_boundary(tmp_path, model, "a" * 64)

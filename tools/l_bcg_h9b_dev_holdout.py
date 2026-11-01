@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from relay_self.l_bcg_h9a_config_forensics import (
@@ -32,10 +32,10 @@ from relay_self.l_bcg_h9b_freeze import (
 from tools.l_bcg_h9a_pair_readback import _world
 
 
-def _read_file(path: Path, max_bytes: int = 2_000_000) -> bytes:
+def _read_file(path: Path, max_bytes: int = 2_000_000, *, allow_empty: bool = False) -> bytes:
     if (
         not path.is_file() or path.is_symlink()
-        or not 0 < path.stat().st_size <= max_bytes
+        or not (0 if allow_empty else 1) <= path.stat().st_size <= max_bytes
     ):
         raise ValueError(f"missing/unsafe bounded original: {path}")
     return path.read_bytes()
@@ -77,6 +77,54 @@ def _prospective_config_audit(roots: tuple[Path, ...]) -> tuple[str, ...]:
     return tuple(references)
 
 
+def _utc(value: str) -> datetime:
+    tick = datetime.fromisoformat(value)
+    if tick.utcoffset() is None:
+        raise ValueError("timezone-aware original timestamp required")
+    return tick
+
+
+def _runtime_source_audit(root: Path, prereg: dict, attempt: datetime) -> None:
+    run = root / "run1"
+    env = json.loads(_read_file(run / "environment.json"))
+    if env.get("head") != prereg["executor_head"] or env.get("executor_head") != prereg["executor_head"]:
+        raise ValueError("actual executor HEAD differs from predeclared HEAD")
+    if not _utc(prereg["declared_utc"]) <= _utc(env["utc"]) <= attempt:
+        raise ValueError("predeclared/runtime/start chronology changed")
+    manifest = json.loads(_read_file(root / "original-sha256.json"))
+    for name, digest in manifest.items():
+        path = Path(name)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("unsafe original manifest path")
+        if source_digest(_read_file(run / path, 20_000_000, allow_empty=True)) != digest:
+            raise ValueError("original bytes changed: " + name)
+    assets = json.loads(_read_file(run / "runtime-assets-sha256.json"))
+    for key, suffix in (("server", "/minecraft.jar"),
+                        ("plugin", "/plugins/relay-metabolism-paper-dev.jar"),
+                        ("config", "/plugins/RelayMetabolismDev/config.yml")):
+        expected = prereg["runtime_assets"][key]["sha256"]
+        matches = [v["sha256"] for k, v in assets.items() if k.endswith(suffix)]
+        if matches != [expected] or env["assets"][key]["sha256"] != expected:
+            raise ValueError("actual runtime asset differs from prereg: " + key)
+
+
+def _check_freeze_boundary(root: Path, frozen_path: Path, plan_sha: str) -> None:
+    receipt = json.loads(_read_file(frozen_path.with_suffix(".boundary.json")))
+    if (receipt["frozen_original_sha256"] != source_digest(_read_file(frozen_path, 4096))
+            or receipt["plan_sha256"] != plan_sha):
+        raise ValueError("frozen boundary SHA mismatch")
+    frozen_at = _utc(receipt["frozen_utc"])
+    for slot, _arm, role in SLOTS:
+        world = root / slot
+        marker = json.loads(_read_file(world / "run1/WORLD_ATTEMPT_STARTED.json"))
+        if role == "dev_fit":
+            cleanup = json.loads(_read_file(world / "audited-complete.json"))
+            if not _utc(marker["launcher_entered_utc"]) < _utc(cleanup["completed_utc"]) < frozen_at:
+                raise ValueError("FIT audit not complete before model freeze")
+        elif not frozen_at < _utc(marker["launcher_entered_utc"]):
+            raise ValueError("EVAL World began before model freeze")
+
+
 def _predeclared_record(
     *, slot: str, arm: str, role: str, evidence_root: Path,
     plan_sha: str, executor_head: str, frozen_sha: str | None,
@@ -113,6 +161,7 @@ def _predeclared_record(
         raise ValueError("missing marker start timestamp") from exc
     if attempt_utc.utcoffset() is None:
         raise ValueError("World attempt marker must be timezone-aware")
+    _runtime_source_audit(evidence_root, prereg, attempt_utc)
     # Existing _world verifies original H8 independent S7/S16/Paper/packet/
     # cleanup, then H9a original native 2m/3.5m owner readback.
     reviewed = _world(evidence_root / "run1", evidence_root / "predeclared.json", arm)
@@ -171,12 +220,28 @@ def main() -> int:
                 plan=plan, plan_sha=plan_sha,
                 root=args.eight_slot_evidence_root, frozen_sha=None, how_many=4,
             )
+            now = datetime.now(timezone.utc)
+            for slot, _arm, role in SLOTS:
+                world = args.eight_slot_evidence_root / slot
+                if role == "dev_eval" and (world / "run1/WORLD_ATTEMPT_STARTED.json").exists():
+                    raise ValueError("EVAL already started; cannot freeze")
+                if role == "dev_fit":
+                    complete = json.loads(_read_file(world / "audited-complete.json"))
+                    if not _utc(complete["completed_utc"]) < now:
+                        raise ValueError("FIT audit must precede freeze")
             frozen = freeze_h9b_dev_proxy(
                 plan=plan, plan_original=plan_raw, fit_records=fit,
             )
             result = serialize_frozen(frozen)
             with args.output.open("xb") as out:
                 out.write(result)
+            receipt = {
+                "frozen_utc": datetime.now(timezone.utc).isoformat(),
+                "frozen_original_sha256": source_digest(result),
+                "plan_sha256": plan_sha,
+            }
+            with args.output.with_suffix(".boundary.json").open("x") as out:
+                out.write(json.dumps(receipt, sort_keys=True) + "\n")
             print(json.dumps({
                 "classification": frozen.classifier,
                 "frozen_original_sha256": source_digest(result),
@@ -191,6 +256,7 @@ def main() -> int:
                 raise ValueError("--evaluate requires --frozen-original")
             frozen_bytes = _read_file(args.frozen_original, 4096)
             frozen_sha = source_digest(frozen_bytes)
+            _check_freeze_boundary(args.eight_slot_evidence_root, args.frozen_original, plan_sha)
             records = _load_records(
                 plan=plan, plan_sha=plan_sha, root=args.eight_slot_evidence_root,
                 frozen_sha=frozen_sha, how_many=8,

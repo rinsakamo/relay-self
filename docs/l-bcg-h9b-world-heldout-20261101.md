@@ -167,3 +167,17 @@ QUALIFIED_TRAINING_WORLDS=0`を維持。
 最終分類（準備段階）：
 `H9B_OFFLINE_WORLD_HELDOUT_PROTOCOL_PREPARED /
 DEV_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
+
+## Local integration audit additions (before World1)
+
+H9b readback binds each `environment.json` actual HEAD and pinned runtime
+assets to its preregistration, and verifies all preserved run files against
+`original-sha256.json` (including valid empty runtime config files).
+`declared_utc <= environment.utc <= launcher_entered_utc` is required.
+Each separately audited World has an exclusive `audited-complete.json`.
+Freeze refuses existing EVAL start markers and incomplete FIT audits, and saves
+`frozen-model.boundary.json` with original SHA and UTC. Evaluation requires
+all FIT audit completions before freeze and every EVAL marker after freeze.
+The frozen model is deserialized for scoring; FIT-only arithmetic reconstruction
+is an integrity audit of unchanged coefficients, never an EVAL-dependent fit.
+All records and coefficients stay DEV diagnostics outside formal Memory/L1.

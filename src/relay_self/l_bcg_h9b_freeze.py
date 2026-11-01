@@ -126,11 +126,42 @@ def validate_frozen_original(
         type(frozen_original) is bytes and 0 < len(frozen_original) <= 4096,
         "bounded frozen model bytes required",
     )
-    expected = freeze_h9b_dev_proxy(
-        plan=plan, plan_original=plan_original, fit_records=fit_records,
-    )
+    saved = json.loads(frozen_original)
+    saved["fit_source_report_shas"] = tuple(saved["fit_source_report_shas"])
+    saved["fit_source_prereg_shas"] = tuple(saved["fit_source_prereg_shas"])
+    model = H9bFrozenDevProxy(**saved)
+    plan_sha = validate_plan(plan, raw=plan_original)
     _require(
-        frozen_original == serialize_frozen(expected),
+        len(fit_records) == 4
+        and tuple(r.slot_id for r in fit_records) == tuple(s for s, _, _ in SLOTS[:4])
+        and all(r.frozen_plan_sha256 == plan_sha and r.frozen_model_sha256 is None
+                and r.arm.executor_head == plan["executor_head"] for r in fit_records)
+        and model.plan_sha256 == plan_sha
+        and model.executor_head == plan["executor_head"]
+        and model.fit_source_report_shas == tuple(r.arm.original_report_sha256 for r in fit_records)
+        and model.fit_source_prereg_shas == tuple(r.prereg_sha256 for r in fit_records)
+        and model.cheap_threshold_m == CHEAP_CUTOFF_M
+        and model.classifier == "H9B_FROZEN_4_WORLD_DEV_PROXY_NOT_FORMAL_L1"
+        and model.formal_training_worlds == 0
+        and model.action_authority is False and model.goal_attested is False
+        and model.effective_clear_attested is False,
+        "frozen DEV model provenance differs from fit-only source reconstruction",
+    )
+    # Integrity checks on saved coefficients, not a call to the fitting API.
+    # No new model is fitted/serialized and EVAL targets never enter here.
+    aa = tuple(r.arm for r in fit_records if r.arm.arm_id == "A")
+    bb = tuple(r.arm for r in fit_records if r.arm.arm_id == "B")
+    _require(len(aa) == len(bb) == 2, "two FIT sources per arm required")
+    _require(
+        model.x_a_mean_m == sum(a.observed_s42_distance_m for a in aa) / 2
+        and model.x_b_mean_m == sum(a.observed_s42_distance_m for a in bb) / 2
+        and model.y_a_mean_m == sum(a.sampled_reported_input_off_motion_m for a in aa) / 2
+        and model.y_b_mean_m == sum(a.sampled_reported_input_off_motion_m for a in bb) / 2
+        and model.y_global_mean_m == (model.y_a_mean_m + model.y_b_mean_m) / 2
+        and model.x_b_mean_m - model.x_a_mean_m >= 1.0
+        and model.candidate_slope == ((model.y_b_mean_m - model.y_a_mean_m)
+                                      / (model.x_b_mean_m - model.x_a_mean_m))
+        and frozen_original == serialize_frozen(model),
         "frozen DEV model bytes differ from fit-only source reconstruction",
     )
-    return expected, source_digest(frozen_original)
+    return model, source_digest(frozen_original)
