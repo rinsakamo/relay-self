@@ -12,6 +12,27 @@ from tools.l_bcg_world_report_preflight import review_bcg_host_report
 from tools.selfbody_l1_shadow_readback import review
 
 
+def check_original_commands(report: dict, sent_original: bytes) -> None:
+    """Exact original route-B requests only; reject extra reads or effects."""
+    sid = report["session_id"]
+    action = report["actual_native_actions"][0]["action"]
+    settling = report["l22_settling"]["runtime"]["request_ids"]
+    assert 3 <= len(settling) <= 6
+    assert settling == [f"l22:{sid}:{action}:settle-{i + 1}" for i in range(len(settling))]
+    expected = [
+        {"type": "observe", "request_id": f"s49-actual:{sid}:event-{d['event_seq']}"}
+        for d in report["decisions"][:2]
+    ] + [
+        {"type": "observe", "request_id": f"s15:{sid}:{action}:before"},
+        {"type": "effect", "action_id": action, "effect": "set_control", "control": "back", "state": True},
+        {"type": "effect", "action_id": action + "-s15-clear", "effect": "clear_controls"},
+        {"type": "observe", "request_id": f"s15:{sid}:{action}:after"},
+    ] + [{"type": "observe", "request_id": req} for req in settling] + [
+        {"type": "observe", "request_id": f"l16:{sid}:{action}:goal-{i}"} for i in (1, 2)
+    ] + [{"type": "observe", "request_id": f"s49-actual:{sid}:event-{report['decisions'][2]['event_seq']}"}]
+    assert [json.loads(line) for line in sent_original.splitlines()] == expected
+
+
 def audit(root: Path) -> dict[str, object]:
     original = review(root)
     report = json.loads((root / "s49-report.json").read_bytes())
@@ -37,6 +58,7 @@ def audit(root: Path) -> dict[str, object]:
     assert sidecar["owner_receipts"] == {} and set(sidecar["conditions"].values()) == {"UNKNOWN"}
     # The saved prefix ends before the physical action's native controls and
     # before S15/S16. Separate source order from the later report write time.
+    check_original_commands(report, (capture / "native_bridge_sent_original.jsonl").read_bytes())
     sent = [json.loads(line) for line in (capture / "native_bridge_sent_original.jsonl").read_bytes().splitlines()]
     observes = [row["request_id"] for row in sent if row["type"] == "observe"]
     assert len(observes) == len(set(observes))

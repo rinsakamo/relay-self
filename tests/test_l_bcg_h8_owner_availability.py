@@ -156,3 +156,15 @@ def test_live_preaction_diagnostic_uses_only_existing_native_source():
         capture_h8_preaction_sources(reading, event_seq=55, native_prefix=prefix)
     with pytest.raises(ValueError):
         capture_h8_preaction_sources(reading, event_seq=20, native_prefix=prefix[:-len(prefix.splitlines()[-1])-1])
+
+
+def test_independent_command_audit_rejects_an_extra_probe_or_effect():
+    from tools.l_bcg_h8_world_readback import check_original_commands
+
+    report = json.loads((ROOT / "run1/s49-report.json").read_bytes())
+    sent = (ROOT / "run1/capture/native_bridge_sent_original.jsonl").read_bytes()
+    check_original_commands(report, sent)
+    for extra in (b'{"type":"observe","request_id":"extra"}\n',
+                  b'{"type":"effect","action_id":"extra","effect":"clear_controls"}\n'):
+        with pytest.raises(AssertionError):
+            check_original_commands(report, sent + extra)
