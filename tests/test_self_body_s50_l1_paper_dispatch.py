@@ -65,7 +65,7 @@ def test_config_true_pinned_and_no_ambiguous_duplicate(tmp_path):
     path = tmp_path / "config.yml"
     baseline = (
         "dev-enabled: true\ns50-tick-meter-dev: true\n"
-        "s50-forecast-gate-dev: true\n"
+        "s50-forecast-gate-dev: true\ns50-input-witness-dev: true\n"
     )
     path.write_text(baseline)
     sha = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -79,6 +79,7 @@ def test_config_true_pinned_and_no_ambiguous_duplicate(tmp_path):
         baseline.replace("dev-enabled: true", "dev-enabled: false"),
         baseline.replace("s50-tick-meter-dev: true", "s50-tick-meter-dev: false"),
         baseline + "s50-forecast-gate-dev: true\n",
+        baseline.replace("s50-input-witness-dev: true", "s50-input-witness-dev: false"),
         baseline.replace("s50-forecast-gate-dev: true", "s50-forecast-gate-dev: maybe"),
     ]:
         path.write_text(modified)
