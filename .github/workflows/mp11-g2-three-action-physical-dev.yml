@@ -1,0 +1,77 @@
+name: MP11 G2 one genuine vanilla World three S49 Actions DEV
+on:
+  push:
+    branches: [dev/mp11-g2-s49-three-actions-one-world-20261101]
+    paths: ['.github/workflows/mp11-g2-three-action-physical-dev.yml']
+permissions:
+  contents: read
+jobs:
+  one-world-three-original-actions:
+    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp11-g2-real-world]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      MP11_S49_THREE_ACTION_DEV: '1'
+      NODE_OPTIONS: ''
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPATH: src:tests:.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Source CI before any new physical World
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/s49_normal_session_real_ci.py tools/mp11_g2_s49_original_audit.py tests/test_mp11_g2_s49_original_audit.py
+          python -m compileall -q adapters/mineflayer/s49_normal_session_real_ci.py tools/mp11_g2_s49_original_audit.py
+          python -m pytest -o addopts='' -q \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py \
+            tests/test_self_body_s50_original_closure.py \
+            tests/test_s49_cleanup.py \
+            tests/test_s49_native_os_custody.py
+          python tools/check_repository.py
+      - name: Original Java and Mineflayer pinned runtime
+        run: |
+          set -euo pipefail
+          java -version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: Exactly one new vanilla World one native S49 session max three Actions
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          mkdir -p mp11-g2-originals/native-stdout
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --mp11-three-actions-dev \
+            --raw-capture-root "$PWD/mp11-g2-originals/native-stdout" \
+            --report mp11-g2-originals/report.json \
+            --server-log mp11-g2-originals/minecraft-original.log
+          python tools/mp11_g2_s49_original_audit.py \
+            --report mp11-g2-originals/report.json \
+            --output mp11-g2-originals/independent-readback.json
+      - name: Always save original stdout, Java, Node and failure evidence no retry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp11-g2-one-world-three-action-originals-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 90
+          include-hidden-files: true
+          path: mp11-g2-originals/
+      - name: No L2 model, Paper S50, or scientific learning authorization
+        if: always()
+        run: echo 'MP11 G2 S49 DEV / 1 VANILLA WORLD / MAX THREE ACTIONS / REAL L2 CALLS 0 / S50 PAPER 0 / QUAL NO_GO / SCIENCE NOT_RUN'
