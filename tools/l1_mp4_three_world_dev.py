@@ -133,11 +133,16 @@ def run() -> int:
     cli.add_argument("--node-runtime", type=Path, required=True)
     cli.add_argument("--config-default", type=Path, required=True)
     cli.add_argument("--worlds", type=int, required=True)
+    cli.add_argument("--first-world-index", type=int, default=1)
     cli.add_argument("--confirm", required=True)
     cli.add_argument("--preflight-only", action="store_true")
     args = cli.parse_args()
-    if args.confirm != CONFIRM or args.worlds != 3 or not args.output.is_absolute():
-        cli.error("MP4 lane requires 3 distinct disposable DEV Worlds and explicit confirmation")
+    if (
+        args.confirm != CONFIRM
+        or (args.first_world_index, args.worlds) not in ((1, 3), (2, 2))
+        or not args.output.is_absolute()
+    ):
+        cli.error("MP4 lane 3-world budget: (1,3) or remaining (2,2) only")
     if args.output.exists() or args.output.is_symlink():
         cli.error("output must be new, not shared or prior evidence")
     if not args.node_runtime.is_absolute() or args.node_runtime.is_symlink():
@@ -157,7 +162,9 @@ def run() -> int:
     if not port_is_free():
         raise RuntimeError("port 25565 occupied before first World")
     write_exclusive(args.output / "preflight.json", dict(
-        created_utc=utc(), worlds_authorized=3, physical_worlds_started=0,
+        created_utc=utc(), worlds_authorized=args.worlds,
+        previously_consumed_worlds=args.first_world_index - 1,
+        physical_worlds_started=0,
         owner="S49-original", runtime="Paper 1.21.8 / Mineflayer 4.39.0",
         git_head=os.environ.get("GITHUB_SHA"), server_sha=PAPER_SHA,
         plugin_sha=assets.plugin_sha256, config_sha=assets.config_sha256,
@@ -176,7 +183,7 @@ def run() -> int:
     if env.get("NODE_OPTIONS"):
         raise RuntimeError("Node shims forbidden")
     results = []
-    for i in range(1, 4):
+    for i in range(args.first_world_index, args.first_world_index + args.worlds):
         if not port_is_free():
             results.append(dict(world=i, status="ABORT_UNCLEAN_PORT"))
             break
@@ -246,9 +253,10 @@ def run() -> int:
     result = dict(
         end_utc=utc(),
         worlds_started=sum((args.output / f"world{i}/WORLD_ATTEMPT_STARTED.json").is_file()
-                           for i in range(1, 4)),
+                           for i in range(args.first_world_index, args.first_world_index + args.worlds)),
+        previously_consumed_worlds=args.first_world_index - 1,
         reports=results,
-        global_status="DEV_3_WORLDS_COMPLETED" if len(results) == 3 and
+        global_status="DEV_AUTHORIZED_WORLDS_COMPLETED" if len(results) == args.worlds and
                       all(x.get("complete_dev_source_shape") for x in results)
                       else "DEV_PARTIAL_OR_BLOCKED",
         grant="USER_LANE_CONTINUING",
@@ -256,7 +264,7 @@ def run() -> int:
     )
     write_exclusive(args.output / "summary.json", result)
     print("MP4_THREE_WORLD_SUMMARY=" + json.dumps(result, sort_keys=True))
-    return 0 if result["global_status"] == "DEV_3_WORLDS_COMPLETED" else 1
+    return 0 if result["global_status"] == "DEV_AUTHORIZED_WORLDS_COMPLETED" else 1
 
 
 if __name__ == "__main__":
