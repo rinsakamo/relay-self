@@ -612,7 +612,8 @@ async def qualify(
                 report["l23_paper"]["status"] = "PRE_ACTION_PAPER_MARKER_OBSERVED"
                 if l1_paper_local_forecast_dev:
                     from adapters.mineflayer.self_body_s50_l1_paper_local import (
-                        confirm_original_local_arm, local_model_command,
+                        confirm_original_local_arm,
+                        local_model_command,
                     )
                     if predictor is None or predictor.ticket is None:
                         raise S49PhysicalFailure(
