@@ -8,7 +8,6 @@ independent postrun source qualification, online Gemma, or Action authority.
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 from dataclasses import asdict, dataclass
 
