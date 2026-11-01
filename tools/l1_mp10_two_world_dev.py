@@ -73,6 +73,14 @@ def review_revision(root: Path, condition: str, paper: dict, prior) -> dict:
     if not math.isfinite(fitted) or fitted < 0 or fitted > 2:
         status = "ABSTAIN_OUT_OF_MODEL_DOMAIN"
         fitted = old
+    elif status == "REVISE_CANDIDATE_IN_SAMPLE_ONLY":
+        candidate_mae = sum(abs(fitted*x-y) for x,y in zip(xs,ys))/7
+        if abs(fitted - old) < 1e-5:
+            status = "ABSTAIN_NO_EFFECTIVE_COEFFICIENT_CHANGE"
+            fitted = old
+        elif mae - candidate_mae < 1e-5:
+            status = "ABSTAIN_NO_IN_SAMPLE_MAE_GAIN"
+            fitted = old
     insample = sum(abs(fitted*x-y) for x,y in zip(xs,ys))/7
     expected = {
         "world_uuid": paper["world_uuid"],
