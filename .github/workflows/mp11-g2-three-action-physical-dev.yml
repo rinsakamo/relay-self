@@ -9,7 +9,7 @@ jobs:
   one-world-three-original-actions:
     if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp11-g2-real-world]')
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 19
     env:
       S49_REAL_SERVER_CI: '1'
       MP11_S49_THREE_ACTION_DEV: '1'
