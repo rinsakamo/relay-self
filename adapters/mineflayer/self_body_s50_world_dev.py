@@ -84,6 +84,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.self_body_s50_l1_motion_shadow import compare_l1_motion_attention_shadow
+from adapters.mineflayer.self_body_s50_l_bcg_handoff import review_l_bcg_after_original_l0
 from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochLease
 from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_original_closure import (
@@ -235,6 +236,7 @@ async def qualify(
     postworld_internal_epoch_dev: bool = False,
     live_next_epoch_dev: bool = False,
     l1_motion_shadow_dev: bool = False,
+    l_bcg_shadow_dev: bool = False,
     l1_prediction_journal: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
@@ -276,6 +278,10 @@ async def qualify(
             l1_motion_shadow_dev and not live_next_epoch_dev
         ):
             raise S31ABlocked("L1 motion shadow DEV requires existing route B")
+        if type(l_bcg_shadow_dev) is not bool or (
+            l_bcg_shadow_dev and not live_next_epoch_dev
+        ):
+            raise S31ABlocked("L-BCG shadow DEV requires original route B")
         if type(live_next_epoch_dev) is not bool or (
             live_next_epoch_dev and postworld_internal_epoch_dev
         ):
@@ -889,6 +895,15 @@ async def qualify(
                 "DEV_L1_PRIOR_MOTION_ATTENTION_SHADOW_CHEAP_EQUIVALENT"
             )
             report["l1_motion_shadow"]["original_l0_decision_modified"] = False
+        if l_bcg_shadow_dev:
+            assert next_epoch_readout is not None
+            # The original third S49 L0 decision already completed. Route B
+            # lacks certified goal, gait, P1/M and obstacle cues, so do not
+            # fabricate a MotorContext or retrain on provisional Paper ticks.
+            bcg = review_l_bcg_after_original_l0(
+                next_epoch_readout, trace[-1].choice,
+            )
+            report["l_bcg_shadow"] = asdict(bcg)
         if l23_paper_assets is not None:
             assert l23_marker_id is not None
             # L22 may finish after only three quiet probes. Keep the existing
@@ -1154,6 +1169,7 @@ def main() -> int:
     parser.add_argument("--selfbody-postworld-internal-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
+    parser.add_argument("--l-bcg-shadow-dev", action="store_true")
     parser.add_argument("--l1-prediction-journal", type=Path)
     args = parser.parse_args()
     goal = None
@@ -1202,6 +1218,7 @@ def main() -> int:
         postworld_internal_epoch_dev=args.selfbody_postworld_internal_epoch_dev,
         live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
         l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
+        l_bcg_shadow_dev=args.l_bcg_shadow_dev,
         l1_prediction_journal=args.l1_prediction_journal,
     ))
 
