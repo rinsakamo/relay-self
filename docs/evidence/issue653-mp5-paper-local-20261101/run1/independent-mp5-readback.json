@@ -1,0 +1,67 @@
+{
+  "schema": "RELAYSELF_L1_MP5_PAPER_LOCAL_ONE_WORLD_DEV_READBACK_V1",
+  "source": "GITHUB_ACTIONS_ORIGINAL_ARTIFACT_AND_INDEPENDENT_BYTE_READBACK",
+  "run_id": 41269170943,
+  "artifact_id": 13068487104,
+  "artifact_name": "mp5-paper-local-one-world-41269170943-1",
+  "execution_head": "ded5076a752751cf38e8e42d94ef4c484919d9fe",
+  "local_callback_sequence": {
+    "model_arm_world_tick": 244,
+    "wait_begin_world_tick": 251,
+    "original_wait_tick_sequence": [
+      252,
+      253,
+      254,
+      255,
+      256,
+      257,
+      258,
+      259
+    ],
+    "original_input_ticks": 8,
+    "models_prearmed": 1,
+    "local_forecast_fixed": 7,
+    "local_forecast_scored": 7,
+    "causal_order": "EACH_FIXED_LOG_AFTER_PAPER_SAMPLE_T_BEFORE_ORIGINAL_SAMPLE_T_PLUS_1",
+    "ticket_sha256": "c72cecfcd80cd8e7a3b69a9d39ca2fa1d60f5f5d7e23ae0486761826ff2d1775",
+    "world_uuid": "8344f804-672f-4115-acf3-202852b5b098",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "heldout_slope": 0.20331885786720635,
+    "same_information_cheap_equivalent": true
+  },
+  "heldout_diagnostic": {
+    "mae_m": 0.0006927084716710721,
+    "rmse_m": 0.0013140724536525347,
+    "zero_baseline_mae_m": 0.0021077733153767675,
+    "last_baseline_mae_m": 0.0070703126144747875,
+    "training_world_dynamics": "VERY_SIMILAR_NOT_NOVEL",
+    "no_unique_l1_improvement": true
+  },
+  "real_worlds": 1,
+  "native_actions": 1,
+  "native_goal": "UNDETERMINED",
+  "dev_original_owner": "PASS",
+  "node_exit": 0,
+  "java_exit": 0,
+  "world_cleanup": "PASS",
+  "port_rebind": true,
+  "learning_updates": 0,
+  "l0_policy_changes": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "original_sha256": {
+    "paper-stdout-original.bin": "efb0c0e42a7db8a42f17117043ad5a64c6dc68101a4477c1ebe4bf79db154966",
+    "server.log": "efb0c0e42a7db8a42f17117043ad5a64c6dc68101a4477c1ebe4bf79db154966",
+    "prediction-original.jsonl": "62c77dba924cc2f945076db16b275cda69ca055606e54c367e0ba24377aface1",
+    "s49-report.json": "5dab08084c1a1d7d371b00c3b890dee1873a762619d04dc5b8d4b878d2cf561a",
+    "client-packet-original.jsonl": "07735ab5619d4d0d332ce4b5e65d504d5cf158aa715b85a34473aeb833f0c3ad",
+    "independent-mp5-dev-readback.json": "94628739f0824bf8d461ecbb686008affafe71d865f928253f67824960a889d1"
+  },
+  "scope_caveats": [
+    "Paper callback order does not establish integration order inside target tick",
+    "Last-reported Paper input witness does not prove effective S15 clear or all-tick idle",
+    "Only a separate heldout World in nearly identical physical conditions",
+    "Mathematically cheap linear equivalent; no distinct learning intelligence",
+    "DEV_ONLY; no qualification or SCIENCE"
+  ]
+}

@@ -237,6 +237,7 @@ async def qualify(
     l1_motion_shadow_dev: bool = False,
     l1_prediction_journal: Path | None = None,
     l1_paper_forecast_gate_dev: bool = False,
+    l1_paper_local_forecast_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -269,6 +270,25 @@ async def qualify(
     predictor = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if type(l1_paper_local_forecast_dev) is not bool:
+            raise S31ABlocked("MP5 opt-in must be boolean")
+        if l1_paper_local_forecast_dev:
+            if (l1_paper_forecast_gate_dev or l1_prediction_journal is None
+                    or not live_next_epoch_dev or l23_paper_assets is None):
+                raise S31ABlocked(
+                    "MP5 is exclusive with MP4 and requires MP3, route B and Paper")
+            from adapters.mineflayer.self_body_s50_l1_paper_local import (
+                check_local_paper_config,
+            )
+            check_local_paper_config(
+                l23_paper_assets.plugin_config, l23_paper_assets.config_sha256,
+            )
+            report["l1_paper_local_forecast"] = {
+                "classification": "DEV_ONLY_MODEL_PREARM_NOT_PHYSICAL_PREQUENTIAL",
+                "local_model_armed_before_action": False,
+                "paper_scored_predictions_attested": False,
+                "model_updates": 0,
+            }
         if type(l1_paper_forecast_gate_dev) is not bool:
             raise S31ABlocked("MP4 opt-in must be boolean")
         if l1_paper_forecast_gate_dev:
@@ -590,6 +610,36 @@ async def qualify(
                 )
                 report["l23_paper"]["marker_id"] = l23_marker_id
                 report["l23_paper"]["status"] = "PRE_ACTION_PAPER_MARKER_OBSERVED"
+                if l1_paper_local_forecast_dev:
+                    from adapters.mineflayer.self_body_s50_l1_paper_local import (
+                        confirm_original_local_arm,
+                        local_model_command,
+                    )
+                    if predictor is None or predictor.ticket is None:
+                        raise S49PhysicalFailure(
+                            "MP5 prior-World frozen model missing at PRE_FORWARD")
+                    ticket = predictor.ticket
+                    _command(server, local_model_command(
+                        l23_marker_id, float(ticket.model.slope), ticket.ticket_sha256,
+                    ))
+                    await server.stdin.drain()
+                    await wait_paper_line(
+                        server_log, marker=l23_marker_id,
+                        kind="S50_DEV_LOCAL_MODEL_ARM",
+                    )
+                    confirm_original_local_arm(
+                        server_log.read_bytes(), marker=l23_marker_id,
+                        paper_world_uuid=ticket.target.paper_world_uuid,
+                        subject_uuid=ticket.target.subject_uuid,
+                        ticket_sha256=ticket.ticket_sha256,
+                        slope=float(ticket.model.slope),
+                    )
+                    report["l1_paper_local_forecast"].update({
+                        "local_model_armed_before_action": True,
+                        "model_ticket_sha256": ticket.ticket_sha256,
+                        "slope": ticket.model.slope,
+                        "status": "PAPER_PRE_ACTION_MODEL_ARM_SOURCE_CONFIRMED",
+                    })
                 if l1_paper_forecast_gate_dev:
                     if predictor is None or predictor.dispatch is None:
                         raise S49PhysicalFailure("MP4 Paper forecast not bound to PRE_FORWARD")
@@ -1213,6 +1263,7 @@ def main() -> int:
     parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
     parser.add_argument("--l1-prediction-journal", type=Path)
     parser.add_argument("--l1-paper-forecast-gate-dev", action="store_true")
+    parser.add_argument("--l1-paper-local-forecast-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1262,6 +1313,7 @@ def main() -> int:
         l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
         l1_prediction_journal=args.l1_prediction_journal,
         l1_paper_forecast_gate_dev=args.l1_paper_forecast_gate_dev,
+        l1_paper_local_forecast_dev=args.l1_paper_local_forecast_dev,
     ))
 
 
