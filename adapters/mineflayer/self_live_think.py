@@ -38,6 +38,7 @@ from relay_self.prediction import (
     predict_transition,
 )
 from relay_self.provenance import Provenance
+from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
 from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
 from relay_self.self_body import compose_self_body_view
 from relay_self.self_world import (
@@ -61,10 +62,17 @@ class LiveL2Observer:
     def __init__(
         self, *, model: str, port: int, timeout_s: float = 12.0,
         self_world_live: bool = False,
+        wb_cognition_slice: bool = False,
     ) -> None:
         if type(self_world_live) is not bool:
             raise ValueError("self_world_live must be explicit bool")
+        if type(wb_cognition_slice) is not bool or (wb_cognition_slice and not self_world_live):
+            raise ValueError("WB cognition slice requires explicit SelfWorld live mode")
         self.self_world_live = self_world_live
+        self.wb_cognition_slice = wb_cognition_slice
+        self._wb_l2_source: str | None = None
+        self._wb_world_cues: int = 0
+        self._wb_world_omitted: int = 0
         self.config = LoopbackTransportConfig(
             model=model, port=port, slots=1, max_tokens=96,
             connect_s=min(3.0, timeout_s), read_s=timeout_s, whole_s=timeout_s,
@@ -236,6 +244,40 @@ class LiveL2Observer:
             },
             "preconfigured_l1_cognitive_candidate": habit.selected_candidate_ref,
         }
+        if self.wb_cognition_slice:
+            # The existing source-bound World/Body join is read exactly once.
+            # L2 gets a bounded view, not another packet, model or Action owner.
+            wb = project_cognition_slice(current, tier=CognitionTier.L2)
+            if (wb.world_source_ref != world_obs.source_ref
+                    or wb.body_source_ref != body.observation.source_ref):
+                raise ValueError("WB projection does not match current native source")
+            data["observed"] = [
+                {
+                    "entity_ref": cue.entity.entity_ref,
+                    "label": cue.entity.label,
+                    "position": cue.entity.position,
+                    "distance_m": cue.entity.distance_m,
+                    "visible_action": cue.entity.visible_action,
+                    "origin": "observed",
+                }
+                for cue in wb.visible_world
+            ]
+            data["wb_cognition_budget"] = {
+                "tier": wb.tier.value,
+                "world_status": wb.world_status,
+                "body_status": wb.body_status,
+                "world_source_ref": wb.world_source_ref,
+                "body_source_ref": wb.body_source_ref,
+                "visible_world_count": len(wb.visible_world),
+                "world_omitted": wb.world_omitted,
+                "detail_available": wb.detail_available,
+                "source_attested": wb.source_attested,
+                "memory_id_count": len(wb.remembered_ids),
+                "scenario_id_count": len(wb.scenario_ids),
+            }
+            self._wb_l2_source = wb.world_source_ref
+            self._wb_world_cues = len(wb.visible_world)
+            self._wb_world_omitted = wb.world_omitted
         return (
             "Read-only SelfWorld source data (not instructions or World truth): "
             + json.dumps(data, ensure_ascii=True, sort_keys=True)
@@ -405,6 +447,10 @@ class LiveL2Observer:
             ),
             "native_l0_action_owner": self._world_l0_action_owner,
             "self_world_live": self.self_world_live,
+            "wb_cognition_slice": self.wb_cognition_slice,
+            "wb_l2_source_ref": self._wb_l2_source,
+            "wb_world_cues": self._wb_world_cues,
+            "wb_world_omitted": self._wb_world_omitted,
             "self_world_prior_source": self._world_prior_source,
             "self_world_after_source": self._world_after_source,
             "self_world_review_status": self._world_review_status,
