@@ -284,6 +284,7 @@ async def qualify(
     l_mp11_live_prefix_dev: bool = False,
     l_mp11_live_l2_engine: RelayEngine | None = None,
     l_mp11_paper_eof_dev: bool = False,
+    l_mp11_evidence_ids_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -336,6 +337,15 @@ async def qualify(
             raise S31ABlocked("future Paper EOF envelope must be explicitly predeclared")
         if l_mp11_paper_eof_dev:
             report["mp11_paper_eof_predeclared"] = True
+        if l_mp11_evidence_ids_dev and (
+            type(l_mp11_evidence_ids_dev) is not bool
+            or l_mp11_live_l2_engine is None
+            or not l_mp11_live_prefix_dev
+            or os.environ.get("L_MP11_EVIDENCE_IDS_DEV") != "1"
+        ):
+            raise S31ABlocked(
+                "evidence-ID L2 requires exact explicit real live source grant"
+            )
         if l_mp11_live_l2_engine is not None and (
             not l_mp11_live_prefix_dev
             or os.environ.get("L_MP11_LIVE_L2_DEV") != "1"
@@ -418,7 +428,7 @@ async def qualify(
             )
             live_l2 = BoundedLiveL2(
                 l_mp11_live_l2_engine, require_real_llama=True,
-                timeout_s=45.0,
+                timeout_s=45.0, evidence_ids=l_mp11_evidence_ids_dev,
             )
             l2_stage_release = {1: asyncio.Event(), 2: asyncio.Event()}
             report["l_mp11_live_l2"] = live_l2.public_report()
@@ -1105,6 +1115,7 @@ def main() -> int:
     parser.add_argument("--mp11-three-actions-dev", action="store_true")
     parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
     parser.add_argument("--l-mp11-paper-eof-dev", action="store_true")
+    parser.add_argument("--l-mp11-evidence-ids-dev", action="store_true")
     parser.add_argument("--l-mp11-live-l2-endpoint")
     parser.add_argument("--l-mp11-live-l2-model")
     parser.add_argument("--raw-capture-root", type=Path)
@@ -1172,6 +1183,7 @@ def main() -> int:
         l_mp11_live_prefix_dev=args.l_mp11_live_prefix_dev,
         l_mp11_paper_eof_dev=args.l_mp11_paper_eof_dev,
         l_mp11_live_l2_engine=l2_engine,
+        l_mp11_evidence_ids_dev=args.l_mp11_evidence_ids_dev,
     ))
 
 

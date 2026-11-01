@@ -19,6 +19,11 @@ from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from adapters.mineflayer.l_mp11_compact_role_table import compact_role_table
+from adapters.mineflayer.l_mp11_evidence_id_selection import (
+    EvidenceIDRejected,
+    model_evidence_catalog,
+    resolve_evidence_ids,
+)
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
@@ -138,6 +143,7 @@ class LiveL2Proposal:
     provider_prompt_tokens: int | None
     provider_completion_tokens: int | None
     provider_elapsed_ns: int
+    selected_evidence_ids: tuple[str, ...] = ()
     classification: str = SOURCE_CLASS
     next_test_owner_approved: bool = False
     action_authority: bool = False
@@ -148,6 +154,7 @@ class LiveL2Proposal:
 
 def request_for_live_l2(
     ledger: LivePriorLedger, *, previous_proposal: LiveL2Proposal | None = None,
+    evidence_ids: bool = False,
 ) -> OpenCognitionRequest:
     """Create a finite-shape hypothesis prompt with no later Action evidence."""
     if type(ledger) is not LivePriorLedger or not 1 <= len(ledger.history) <= 2:
@@ -170,7 +177,12 @@ def request_for_live_l2(
             feedback = previous_feedback(previous_proposal, ledger.history[-1])
         except NumericRoleRejected as exc:
             raise LiveL2Rejected("invalid prior L2 feedback") from exc
-    role_table = compact_role_table(ledger, feedback=feedback)
+    if type(evidence_ids) is not bool:
+        raise LiveL2Rejected("evidence-ID selection must be explicit")
+    role_table = (
+        model_evidence_catalog(ledger, previous=previous_proposal)
+        if evidence_ids else compact_role_table(ledger, feedback=feedback)
+    )
     previous = replace(
         previous,
         context=previous.context + (
@@ -187,7 +199,10 @@ def request_for_live_l2(
                 ),
             ),
             CognitionDatum.from_value(
-                "exact_Paper_numeric_roles_index_table",
+                (
+                    "typed_Paper_evidence_ID_catalog"
+                    if evidence_ids else "exact_Paper_numeric_roles_index_table"
+                ),
                 role_table,
                 Provenance(
                     "l.mp11.live.paper.numeric.role-table.readonly",
@@ -226,6 +241,27 @@ def request_for_live_l2(
         "UNAPPROVED experiment proposal only, no Minecraft command, no learned "
         "model or Action authority. Output just JSON, terminate before 512 tokens."
     )
+    if evidence_ids:
+        schema = (
+            "Produce only one short JSON object with EXACT ten keys: "
+            "referenced_prior_ordinals (observed trial numbers), reconsideration "
+            "(KEEP_UNRESOLVED|QUESTION_APPLICABILITY|PROPOSE_STRUCTURAL_REVISION|ABSTAIN), "
+            "model_family (SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|"
+            "INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED), next_test "
+            "(CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|"
+            "VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE), explanation, "
+            "falsification_test (each 16..60 chars), predicted_wait_total_m "
+            "(NEXT trial WAIT8 TOTAL m in [0,3] or null), capability_assessment "
+            "(UNKNOWN|CONDITIONAL_HYPOTHESIS), prior_hypothesis_relation "
+            "(FIRST_HYPOTHESIS for first; KEEP_PRIOR|REVISE_PRIOR|"
+            "REJECT_PRIOR|ABSTAIN_ON_PRIOR for second), evidence_ids "
+            "(ONE on first call, 1..2 on second; sorted distinct strings). "
+            "Select IDs ONLY from typed_Paper_evidence_ID_catalog. Never "
+            "transcribe numeric values into output. ID selection is a cited "
+            "claim, not proof of causal interpretation. No unobserved future, "
+            "no Action authority, no learned-model or surface-causality claim; "
+            "all observed surfaces are GRASS. Finish JSON within 512 tokens."
+        )
     return replace(previous, instruction=previous.instruction + "\n" + schema)
 
 
@@ -235,9 +271,12 @@ def parse_live_l2(
     result: OpenCognitionResult,
     *, require_real_llama: bool,
     previous_proposal: LiveL2Proposal | None = None,
+    evidence_ids: bool = False,
 ) -> LiveL2Proposal:
     """Parse strict observed OPEN response, not a World command."""
-    expected = request_for_live_l2(ledger, previous_proposal=previous_proposal)
+    expected = request_for_live_l2(
+        ledger, previous_proposal=previous_proposal, evidence_ids=evidence_ids,
+    )
     if (
         type(result) is not OpenCognitionResult
         or type(request) is not OpenCognitionRequest
@@ -252,7 +291,11 @@ def parse_live_l2(
         raw = json.loads(result.text)
     except (ValueError, TypeError) as exc:
         raise LiveL2Rejected("OPEN response is not JSON") from exc
-    if type(raw) is not dict or set(raw) != PROPOSAL_FIELDS:
+    required_fields = (
+        PROPOSAL_FIELDS - {"numeric_evidence_refs"} | {"evidence_ids"}
+        if evidence_ids else PROPOSAL_FIELDS
+    )
+    if type(raw) is not dict or set(raw) != required_fields:
         raise LiveL2Rejected("extra executable instructions or missing fields")
     refs = raw["referenced_prior_ordinals"]
     n = len(ledger.history)
@@ -293,16 +336,22 @@ def parse_live_l2(
         n == 2 and relation == "FIRST_HYPOTHESIS"
     ):
         raise LiveL2Rejected("incorrect previous hypothesis relation")
+    selected_ids: tuple[str, ...] = ()
     try:
         feedback = (
             previous_feedback(previous_proposal, ledger.history[-1])
             if previous_proposal is not None else None
         )
-        citations = validate_numeric_citations(
-            tuple(ledger.history), raw["numeric_evidence_refs"], feedback=feedback,
-        )
-    except NumericRoleRejected as exc:
-        raise LiveL2Rejected("model numeric evidence is ungrounded") from exc
+        if evidence_ids:
+            selected_ids, citations = resolve_evidence_ids(
+                ledger, raw["evidence_ids"], previous=previous_proposal,
+            )
+        else:
+            citations = validate_numeric_citations(
+                tuple(ledger.history), raw["numeric_evidence_refs"], feedback=feedback,
+            )
+    except (NumericRoleRejected, EvidenceIDRejected) as exc:
+        raise LiveL2Rejected("model source evidence is ungrounded") from exc
     if len(citations) > (1 if n == 1 else 2):
         raise LiveL2Rejected("model emitted more numeric claims than compact budget")
     if relation == "REVISE_PRIOR" and (
@@ -339,6 +388,8 @@ def parse_live_l2(
         "provider_completion_tokens": result.observed_completion_tokens,
         "provider_elapsed_ns": result.elapsed_ns,
     }
+    if evidence_ids:
+        details["selected_evidence_ids"] = selected_ids
     digest = hashlib.sha256(json.dumps(
         details, sort_keys=True, ensure_ascii=False,
         separators=(",", ":"), allow_nan=False,
@@ -352,9 +403,13 @@ class BoundedLiveL2:
     def __init__(
         self,
         engine: RelayEngine, *, require_real_llama: bool = True,
-        timeout_s: float = 45.0,
+        timeout_s: float = 45.0, evidence_ids: bool = False,
     ):
-        if type(engine) is not RelayEngine or type(require_real_llama) is not bool:
+        if (
+            type(engine) is not RelayEngine
+            or type(require_real_llama) is not bool
+            or type(evidence_ids) is not bool
+        ):
             raise LiveL2Rejected("one existing RelayEngine and explicit source mode required")
         if (
             type(timeout_s) not in (float, int)
@@ -364,6 +419,7 @@ class BoundedLiveL2:
             raise LiveL2Rejected("strict bounded wall time required")
         self.engine = engine
         self.require_real_llama = require_real_llama
+        self.evidence_ids = evidence_ids
         self.timeout_s = float(timeout_s)
         self.proposals: list[LiveL2Proposal] = []
         self.attempted_request_ids: set[str] = set()
@@ -380,7 +436,9 @@ class BoundedLiveL2:
         ):
             raise LiveL2Rejected("duplicate, over-budget or gap in previous experience")
         previous = self.proposals[-1] if self.proposals else None
-        req = request_for_live_l2(ledger, previous_proposal=previous)
+        req = request_for_live_l2(
+            ledger, previous_proposal=previous, evidence_ids=self.evidence_ids,
+        )
         if req.request_id in self.attempted_request_ids:
             raise LiveL2Rejected("OPEN request already attempted")
         self.attempted_request_ids.add(req.request_id)
@@ -395,7 +453,7 @@ class BoundedLiveL2:
             entry["result"] = asdict(observed)
             proposed = parse_live_l2(
                 ledger, req, observed, require_real_llama=self.require_real_llama,
-                previous_proposal=previous,
+                previous_proposal=previous, evidence_ids=self.evidence_ids,
             )
         except (Exception, asyncio.CancelledError) as exc:
             # A timed-out HTTP thread might finish later, but its result is
@@ -430,6 +488,7 @@ class BoundedLiveL2:
             "attempts": len(self.attempted_request_ids),
             "attempt_originals": self.attempts,
             "validated_open_calls": len(self.proposals),
+            "evidence_id_mode": self.evidence_ids,
             "provider_label_is_not_model_weights_attestation": True,
             "experiments_selected_and_executed_by_l2": 0,
             "new_action_issuers": 0,
