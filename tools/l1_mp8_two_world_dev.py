@@ -88,21 +88,24 @@ def review_world(root: Path, mode: str, rc: int, timed_out: bool) -> dict:
         "S50_DEV_NORMAL_FLOOR_VERIFIED" if mode == "NORMAL"
         else "S50_DEV_ICE_FLOOR_APPLIED"
     ))
-    _must(len(lock_rows) == len(arm) == len(origin) == 1 and len(phase) == 4,
-          "missing unique preaction lock/old prior/Paper phase")
+    # The original S49 host emits PRE_FORWARD and POST_CLEAR, not extra
+    # diagnostic POST_FORWARD / PRE_CLEAR phases. Preserve real source scope.
+    _must(len(lock_rows) == len(arm) == len(origin) == 1
+          and len(phase) == 2
+          and {row.get("phase") for _, row in phase}
+              == {"PRE_FORWARD", "POST_CLEAR"},
+          "missing unique preaction lock/old prior/original Paper phases")
     _must(all(len(v) == n for v, n in ((waits, 8), (inputs, 8), (floors, 8),
                                         (fixed, 7), (scores, 7))),
           "missing Paper eight samples and seven prediction pairs")
     before_action = next((n for n, fields in phase
                           if fields.get("phase") == "PRE_FORWARD"), -1)
-    after_action = next((n for n, fields in phase
-                         if fields.get("phase") == "POST_FORWARD"), -1)
     after_clear = next((n for n, fields in phase
                         if fields.get("phase") == "POST_CLEAR"), -1)
     lock_index, raw_lock = lock_rows[0]
-    _must(before_action < arm[0][0] < origin[0][0] <= lock_index < after_action
+    _must(before_action < arm[0][0] < origin[0][0] <= lock_index
           < after_clear < waits[0][0],
-          "Paper condition/model/Action causal order wrong")
+          "Paper model/ground preaction or post-clear/WAIT order wrong")
     marker = raw_lock["marker_id"]
     world = raw_lock["world"]
     subject = raw_lock["subject_uuid"]
