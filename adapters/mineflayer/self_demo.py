@@ -409,6 +409,7 @@ async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
     self_world_live: bool = False,
+    wb_cognition_slice: bool = False,
     self_world_prospective: bool = False,
     self_world_typed_closure: bool = False,
     self_world_retained_handoff: bool = False,
@@ -436,6 +437,7 @@ async def _run_disposable(
         live_observer = LiveL2Observer(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             self_world_live=self_world_live,
+            wb_cognition_slice=wb_cognition_slice,
         )
     stage_n = None
     if self_world_typed_closure:
@@ -661,6 +663,9 @@ def _dev_run(args: argparse.Namespace) -> int:
         stage_r = getattr(args, "self_world_stage_r_dev", False)
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
         passive_views = getattr(args, "self_passive_views", False)
+        wb_slice = getattr(args, "wb_cognition_slice", False)
+        if wb_slice and (not live_selfworld or not args.live_think):
+            raise DemoRejected("WB slice requires native-selfworld live L2 DEV")
         if type(passive_views) is not bool or (
             passive_views and (
                 scenario != "native" or stage_w3
@@ -802,6 +807,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     self_world_live=True,
+                    wb_cognition_slice=wb_slice,
                     **extra,
                 ))
             else:
@@ -1529,6 +1535,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="one L2 model attempt DURING native World; L0 remains independent")
     parser.add_argument("--self-world-live", action="store_true",
                         help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
+    parser.add_argument("--wb-cognition-slice", action="store_true",
+                        help="DEV-only opt-in bounded L2 context; requires SelfWorld live")
     parser.add_argument("--self-world-prospective", action="store_true",
                         help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
     parser.add_argument("--self-world-typed-closure", action="store_true",
@@ -1572,6 +1580,12 @@ def main(argv: list[str] | None = None) -> int:
     ) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.wb_cognition_slice and not (args.self_world_live and args.live_think):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2",
             model_calls=0, actual_actions=0,
         ), sort_keys=True))
         return 2
@@ -1740,6 +1754,7 @@ def main(argv: list[str] | None = None) -> int:
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     self_world_live=args.self_world_live,
+                    wb_cognition_slice=args.wb_cognition_slice,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))
