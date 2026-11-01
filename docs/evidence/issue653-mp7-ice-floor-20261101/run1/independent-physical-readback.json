@@ -1,0 +1,103 @@
+{
+  "schema": "RELAYSELF_MP7_ICE_FLOOR_REAL_WORLD_ORIGINAL_READBACK_V1",
+  "source": "ACTUAL_PAPER_1_21_8_WORLD_ORIGINALS_IN_ACTIONS_ARTIFACT_AND_INDEPENDENT_ZIP_READING",
+  "physical_actions_run_id": 41274077794,
+  "artifact_id": 13070278903,
+  "artifact_name": "mp7-packed-ice-one-world-41274077794-1",
+  "executing_head": "49ba1f5f1d2d0c255fc471542c9f7c062229641c",
+  "actual_world_count": 1,
+  "actual_native_action_count": 1,
+  "retry_count": 0,
+  "paper_condition": {
+    "original_change_count": 1,
+    "original_material": "GRASS_BLOCK",
+    "new_material": "PACKED_ICE",
+    "affected_blocks": 25,
+    "dimension": "5x5",
+    "before_action_world_tick": 251,
+    "world_uuid": "ad49ff13-fa30-4577-ae27-33176601f48f",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "original_wait_underfoot_ice_samples": 8,
+    "each_sample_material": "PACKED_ICE",
+    "is_experimenter_world_modification": true,
+    "is_self_action": false
+  },
+  "old_control": {
+    "trial": "MP5_GRASS_BLOCK_WORLD",
+    "original_native_move_m": 0.6269065734210615,
+    "original_paper_wait_displacements_m": [
+      0.049492188301323736,
+      0.009543604920851934,
+      0.00521080828678544,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "original_mae_m": 0.0006927084716710721,
+    "source_sha256": "efb0c0e42a7db8a42f17117043ad5a64c6dc68101a4477c1ebe4bf79db154966"
+  },
+  "new_ice_world": {
+    "native_move_m": 0.36725501102687663,
+    "original_wait_displacements_m": [
+      0.13818884506489493,
+      0.0580941901719787,
+      0,
+      0.09801112884108187,
+      0.04120359465476531,
+      0.03674536571312004,
+      0.03276951714296006,
+      0.029223855388091913
+    ],
+    "original_wait_world_ticks": [
+      258,
+      259,
+      260,
+      261,
+      262,
+      263,
+      264,
+      265
+    ],
+    "original_paper_local_model_arms": 1,
+    "wait_samples": 8,
+    "input_samples": 8,
+    "paper_local_future_predictions_frozen": 7,
+    "paper_local_future_predictions_scored": 7,
+    "original_log_forecast_sequence_verified": true,
+    "mae_m": 0.0339034618559081,
+    "rmse_m": 0.04318067423116191,
+    "zero_baseline_mae_m": 0.042292521701713985,
+    "last_baseline_mae_m": 0.04356960676556668,
+    "training_mean_baseline_mae_m": 0.04078696933358777,
+    "same_information_cheap_linear": "EXACT_MATHEMATICAL_EQUIVALENCE",
+    "real_world_dev_owner": "PASS",
+    "node_exit": 0,
+    "java_exit": 0,
+    "port_rebind": true,
+    "cleanup": "PASS"
+  },
+  "predeclared_effect_size": {
+    "absolute_native_move_delta_m": 0.25965156239418485,
+    "minimum_shift_m": 0.06,
+    "observed_distinct_native_motion": true,
+    "causal_ice_effect_identified": false
+  },
+  "original_sha256": {
+    "paper-stdout-original.bin": "6729c0c1eb8d55893a2d1487758969d3fc68c4b23a657eb956bc400a1edeb9d7",
+    "server.log": "6729c0c1eb8d55893a2d1487758969d3fc68c4b23a657eb956bc400a1edeb9d7",
+    "prediction-original.jsonl": "3cb83d362e6231dd3f00722eb74addbb6e4745ea257ba049207dff8eaaff2edc",
+    "s49-report.json": "fbfc6ff5a2112dd4814be55d2fd41d781c5144f4d43facdd280d289acd9b94d7"
+  },
+  "caveats": [
+    "Only 1 ice World versus a prior separate control World; spawn coordinates and World start state may differ",
+    "Actual floor changed but a matched same-position same-seed control has not been run; do not attribute full 0.25965m delta solely to ice",
+    "One recorded WAIT tick displacement was 0; do not claim nonzero displacement all 8 ticks",
+    "Reused prior-world frozen slope and predicted in Paper main thread, no refit/learning",
+    "Same-information cheap linear identical; unique L1 advantage absent",
+    "Paper callback-before-next-callback ordering is not before-internal-physics timing attestation",
+    "Goal UNDETERMINED, QUALIFICATION NO_GO, SCIENCE NOT_RUN"
+  ],
+  "classification": "MP7_DEV_WORLD_PASS_OBSERVED_DISTINCT_ICE_CONDITION_NATIVE_MOTION_WITHOUT_CAUSAL_ATTRIBUTION_OR_GENERALIZATION"
+}
