@@ -1,0 +1,43 @@
+name: MP11 L2 autonomous experiment planner source-only DEV
+on:
+  push:
+    branches: [dev/l2-mp11-experiment-choice-loop-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l2_mp11_experiment.py'
+      - 'adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py'
+      - 'tests/test_self_body_s50_l2_mp11_experiment.py'
+      - 'tests/test_self_body_s50_l2_mp11_paper_audit.py'
+      - '.github/workflows/l2-mp11-experiment-loop-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  l2-open-typed-planning-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin source-only Python validation
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Test L2 generated experiments, one-World same-id chronology, source/Action denials
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/self_body_s50_l2_mp11_experiment.py adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py tests/test_self_body_s50_l2_mp11_experiment.py tests/test_self_body_s50_l2_mp11_paper_audit.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l2_mp11_experiment.py adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l2_mp11_experiment.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_self_body_s50_l1_mp10_revision.py \
+            tests/test_self_body_s50_l1_mp9_selector.py \
+            tests/test_self_body_s50_live_next_epoch.py
+          python tools/check_repository.py
+      - name: No physical World or real LLM claimed
+        run: echo 'MP11_OFFLINE_ONLY / FAKE_L2_PROVIDER / UNVERIFIED_OWNER_FIXTURES / SAME_WORLD_REAL_ACTIONS_NOT_RUN / R_NO_GO / V_NOT_RUN'
