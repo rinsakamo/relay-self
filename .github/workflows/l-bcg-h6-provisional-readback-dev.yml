@@ -1,0 +1,45 @@
+name: L-BCG H6 provisional readback DEV
+on:
+  push:
+    branches:
+      - dev/l-bcg-conditional-motion-shadow-20261101
+    paths:
+      - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'tests/test_l_bcg_h6_dev_proxy.py'
+      - 'tools/l_bcg_h6_readback.py'
+      - 'docs/l-bcg-h6-dev-proxy-20261101.md'
+      - '.github/workflows/l-bcg-h6-provisional-readback-dev.yml'
+  pull_request:
+    paths:
+      - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'tests/test_l_bcg_h6_dev_proxy.py'
+      - 'tools/l_bcg_h6_readback.py'
+      - '.github/workflows/l-bcg-h6-provisional-readback-dev.yml'
+permissions:
+  contents: read
+jobs:
+  source-only-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Focused H6 DEV archived-original tests
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m compileall -q src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py
+          python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101
+      - name: Explicit evidence ceiling
+        if: always()
+        run: echo 'DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
