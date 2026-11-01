@@ -77,6 +77,17 @@ def audit_h7_pre_action(
         paper_server_original=paper_server_original,
     )
     report = json.loads(host_report_original)
+    inventory = report["l_bcg_shadow"]["cue_inventory"]
+    _require(
+        isinstance(inventory, dict)
+        and inventory.get("missing_required") == list(_MISSING)
+        and inventory.get("full_conditional_context_available") is False
+        and inventory.get("paper_effective_input_clear_attested") is False
+        and inventory.get("post_clear_training_admitted") is False
+        and report["l_bcg_shadow"].get("source_ceiling")
+        == "ROUTE_B_PROVISIONAL_PAPER_NOT_POST_CLEAR_ATTESTED",
+        "unknown pre-action Goal/gait/P1/M/hazard/source not eligible for promotion",
+    )
     _require(
         hashlib.sha256(s7_received_prefix_original).hexdigest()
         == episode.s7_prefix_sha256,
