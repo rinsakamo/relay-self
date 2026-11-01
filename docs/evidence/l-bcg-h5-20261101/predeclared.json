@@ -1,0 +1,17 @@
+{
+  "executor_head": "9eb335fb82892a8d1d15579e09af42ebfcd710a5",
+  "purpose": "H5 original S49 route B to L-BCG read-only source inventory",
+  "worlds": 1,
+  "max_original_actions": 1,
+  "retries": 0,
+  "additional_native_probes": 0,
+  "model_calls": 0,
+  "learning_updates": 0,
+  "expected": "DEFER_UNKNOWN",
+  "goal": "UNDETERMINED",
+  "effective_clear": "NOT_ATTESTED",
+  "training_worlds": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "paper_source": "Existing sole collector UTF-8 server.log; not independent TCP nor raw binary attestation"
+}
