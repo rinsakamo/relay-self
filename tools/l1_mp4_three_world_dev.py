@@ -52,7 +52,7 @@ def port_is_free() -> bool:
 
 def prepare_config(base_config: Path, output: Path) -> str:
     raw = base_config.read_text(encoding="utf-8")
-    for key in ("dev-enabled", "s50-forecast-gate-dev"):
+    for key in ("dev-enabled", "s50-forecast-gate-dev", "s50-input-witness-dev"):
         old = f"{key}: false"
         if raw.count(old) != 1:
             raise ValueError(f"unexpected off/default config: {key}")
