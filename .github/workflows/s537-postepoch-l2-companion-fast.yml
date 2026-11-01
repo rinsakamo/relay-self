@@ -1,0 +1,78 @@
+name: S #537 post-S42 L2 companion cost FAST
+on:
+  push:
+    branches:
+      - dev/s537-postepoch-l2-companion-cost-20261101
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  s-postepoch-l2-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact S integration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install focused test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Ruff and repository contracts
+        run: |
+          ruff check adapters/mineflayer/s_owner_postepoch_l2_companion.py tests/test_s_owner_postepoch_l2_companion.py
+          python tools/check_repository.py
+      - name: Checkout original S product (read-only separate tree)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 087fe095a87594505392262da1d341cf0c65b2b2
+          path: product_s_contract
+          persist-credentials: false
+      - name: Checkout original L8 learning (read-only separate tree)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 4defb6e8b78f2e050921b521eb2253a14bc260c4
+          path: product_l8_contract
+          persist-credentials: false
+      - name: Same-process original S42 + L8/M tap + separate L2 return
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          s = root / "product_s_contract"
+          l8 = root / "product_l8_contract"
+          for p in (root, l8 / "src", l8, s / "tests", l8 / "tests", s, s / "src"):
+              sys.path.insert(0, str(p))
+          import experiments
+          experiments.__path__.extend((
+              str(root / "experiments"),
+              str(l8 / "experiments"),
+          ))
+          import relay_self
+          relay_self.__path__.append(str(l8 / "src" / "relay_self"))
+          import adapters.mineflayer as mineflayer
+          mineflayer.__path__.append(str(root / "adapters" / "mineflayer"))
+
+          from adapters.mineflayer import b0_energy_bridge, python_protocol
+          from relay_self import l1_epoch_observer, self_body
+          from adapters.mineflayer import s_owner_postepoch_l2_companion
+          assert Path(b0_energy_bridge.__file__).resolve().is_relative_to(s)
+          assert Path(python_protocol.__file__).resolve().is_relative_to(s)
+          assert Path(self_body.__file__).resolve().is_relative_to(s)
+          assert Path(l1_epoch_observer.__file__).resolve().is_relative_to(l8)
+          assert Path(s_owner_postepoch_l2_companion.__file__).resolve().is_relative_to(root)
+
+          import pytest
+          raise SystemExit(pytest.main([
+              "-q",
+              "tests/test_s_owner_postepoch_l2_companion.py",
+              "tests/test_metabolism_same_process_slm_product.py",
+              "tests/test_metabolism_s_owner_engine_product.py",
+              "tests/test_metabolism_s_completed_cost_window.py",
+          ]))
+          PY
