@@ -1,0 +1,160 @@
+{
+  "schema": "RELAYSELF_MP8_MATCHED_SURFACE_REAL_WORLD_DEV_READBACK_V1",
+  "date": "2026-11-01",
+  "run_id": 41279293497,
+  "executing_head": "180967d162481336e9b306dcebc7dac06e312db6",
+  "artifact_id": 13072796381,
+  "artifact_name": "mp8-two-world-originals-41279293497-1",
+  "artifact_zip_sha256": "b9e51bffd1975a395d98475c5981e5607c29fb144c7ef18661544e18bf81da12",
+  "accepted_new_worlds": 2,
+  "original_s49_actions": 2,
+  "retry_count_within_run": 0,
+  "source_readback": {
+    "normal": {
+      "paper_stdout_sha256": "708f0309ce25d6a1c956eaaac4e39a59f072fac2d5932065799662c050020457",
+      "world_uuid": "c544ba7a-39d2-4307-905c-56308e2b4193",
+      "native_move_m": 0.6269065734210613,
+      "mode": "GRASS_BLOCK_5X5_READONLY",
+      "paper_wait_ticks": 8,
+      "forecasts_fixed": 7,
+      "forecasts_scored": 7,
+      "original_material": "GRASS_BLOCK",
+      "actual_underfoot": "GRASS_BLOCK",
+      "action_terminal": "outcome",
+      "node_exit": 0,
+      "java_exit": 0
+    },
+    "ice": {
+      "paper_stdout_sha256": "2ecf4f0e4e426ceeb773071d3bab078a551a0d61fcf5973e93672a3ed092d1bc",
+      "world_uuid": "24f901f1-1251-4760-a12c-0101e5a89c40",
+      "native_move_m": 0.20185953448696364,
+      "mode": "PACKED_ICE_5X5",
+      "paper_wait_ticks": 8,
+      "forecasts_fixed": 7,
+      "forecasts_scored": 7,
+      "original_material": "GRASS_BLOCK",
+      "actual_underfoot": "PACKED_ICE",
+      "action_terminal": "outcome",
+      "node_exit": 0,
+      "java_exit": 0
+    },
+    "original_stdout_equals_reported_log": true,
+    "physical_pair_lock_match": true,
+    "match_source": "original S50_DEV_SURFACE_LOCK from each original Paper stdout",
+    "seed": "-228090540",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "sampled_preaction_pose_xyz": [
+      0.5,
+      -60,
+      0.5
+    ],
+    "sampled_preaction_velocity_xyz": [
+      0,
+      -0.0784000015258789,
+      0
+    ],
+    "matched_geometry": "5x5 GRASS_BLOCK at floor y=-61 pre-intervention",
+    "original_world_ticks_at_lock": [
+      292,
+      293
+    ],
+    "sampled_state_differences_zero": [
+      "x",
+      "y",
+      "z",
+      "yaw",
+      "pitch",
+      "vx",
+      "vy",
+      "vz",
+      "health"
+    ],
+    "timing_world_ticks_identical": false,
+    "physical_match_scope": "matched source-sampled state, not identical entire trajectory"
+  },
+  "motion": {
+    "native_move_abs_delta_m": 0.4250470389340976,
+    "ice_wait_m": [
+      0.1149280217026955,
+      0.04831540741041912,
+      0.043087680328611766,
+      0.03842559331705597,
+      0.034267944120150495,
+      0.03056015256635025,
+      0.027253544058671142,
+      0.024304710591522893
+    ],
+    "normal_wait_m": [
+      0.058631975109254664,
+      0.049492188301323625,
+      0.009543604920852156,
+      0.005210808286785218,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "trained_prior": {
+    "source": "MP7 original",
+    "source_git_blob_sha1": "7458cbee8f830507cbded9ad9f64894afc35637c",
+    "trained_ice_coefficient": 0.43487855972244066,
+    "old_normal_coefficient": 0.20331885786720635,
+    "training_pairs": 7,
+    "frozen_before_target_world": true,
+    "target_identity_ticket_postrun": true
+  },
+  "scoring": {
+    "normal_old_mae_m": 0.006060023055615575,
+    "normal_ice_prior_mae_m": 0.005614350569180029,
+    "ice_old_mae_m": 0.025389920729382277,
+    "ice_ice_prior_mae_m": 0.014722844141326614,
+    "ice_last_mae_m": 0.012946187301596088,
+    "ice_zero_mae_m": 0.03517357605611166,
+    "ice_vs_old_improvement_m": 0.010667076588055662,
+    "ice_vs_old_improvement_pct": 42.01303620342255,
+    "old_model_is_better_than_ice_prior_on_normal": false,
+    "ice_prior_is_better_than_last_on_ice": false,
+    "prespecified_ice_improvement_threshold_m": 0.005,
+    "prespecified_ice_env_specificity_gate_passed": false,
+    "same_information_cheap_linear": "EXACT_EQUIVALENCE",
+    "classification": "PARTIAL_HELDOUT_ICE_MAE_IMPROVEMENT_WITHOUT_ENVIRONMENT_SPECIFIC_TRANSFER"
+  },
+  "original_dev_failures_preserved": [
+    {
+      "run_id": 41278575086,
+      "worlds_started": 0,
+      "reason": "offline test fixture fails, no physical World"
+    },
+    {
+      "run_id": 41278666310,
+      "worlds_started": 1,
+      "native_actions": 0,
+      "reason": "new Paper marker not in host whitelist"
+    },
+    {
+      "run_id": 41278867712,
+      "worlds_started": 1,
+      "native_actions": 0,
+      "reason": "same whitelist issue, explicit Paper SUBJECT_UNAVAILABLE after host abort"
+    },
+    {
+      "run_id": 41279083951,
+      "worlds_started": 1,
+      "native_actions": 1,
+      "reason": "false-negative offline auditor assumed four phases instead of original two"
+    }
+  ],
+  "caveats": [
+    "Source-sampled matching and fixed seed do not prove exact tick timing or randomized causal attribution.",
+    "Only one accepted DEV pair; external R qualification and V science not run.",
+    "Old normal prior also lost slightly to ice prior on normal surface; no demonstrated correct environment discriminator.",
+    "Last baseline beats ice prior on ICE; cheap same-info linear remains exactly equivalent.",
+    "Offline score_pair source_authenticity NOT_AUDITED is internal scorer scope; enclosing run independently authenticated original Paper stdout (DEV only).",
+    "Original S49/L0 and S10/S11/L10 unchanged; no training admission or policy decision."
+  ],
+  "goal": "UNDETERMINED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "classification": "MP8_DEV_TWO_MATCHED_PREACTION_WORLD_PASS / PHYSICAL_MOTION_SHIFT_OBSERVED / ICE_PRIOR_MAE_IMPROVEMENT_PARTIAL / ENVIRONMENT_SPECIFIC_TRANSFER_NOT_ESTABLISHED / CHEAP_EQUIVALENT / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+}

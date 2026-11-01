@@ -1,0 +1,44 @@
+name: L1-MP8 source-only matched-transfer offline DEV
+on:
+  push:
+    branches: [dev/l1-mp8-matched-transfer-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_mp8_transfer.py'
+      - 'tests/test_self_body_s50_l1_mp8_transfer.py'
+      - 'tests/test_self_body_s50_l1_mp8_physical.py'
+      - 'adapters/mineflayer/self_body_s50_l1_mp8_physical.py'
+      - 'tools/l1_mp8_two_world_dev.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
+      - '.github/workflows/l1-mp8-matched-transfer-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  no-world-source-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned Python dev test dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Source-only MP8 and MP7 regression; NO physical World
+        run: |
+          set -euo pipefail
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_mp8_transfer.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp8_two_world_dev.py tests/test_self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_physical.py
+          ruff check adapters/mineflayer/self_body_s50_l1_mp8_transfer.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp8_two_world_dev.py tests/test_self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_physical.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_mp8_transfer.py \
+            tests/test_self_body_s50_l1_ice_floor.py
+          python tools/check_repository.py
+      - name: Explicit physical and science exclusion
+        run: |
+          echo 'MP8_OFFLINE_ONLY / NO_WORLD / NO_ACTION / TRANSFER_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'

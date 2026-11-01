@@ -147,6 +147,7 @@ async def wait_paper_line(
     if kind not in (
         "M02_DEV_S50_PHASE", "S50_DEV_WAIT_BEGIN", "S50_DEV_WAIT_TICK",
         "S50_DEV_LOCAL_MODEL_ARM", "S50_DEV_BODY_CONDITION_APPLIED", "S50_DEV_ICE_FLOOR_APPLIED",
+        "S50_DEV_NORMAL_FLOOR_VERIFIED", "S50_DEV_SURFACE_LOCK",
     ):
         raise L23PaperBlocked("unapproved Paper observation marker")
     if kind == "M02_DEV_S50_PHASE" and phase not in (

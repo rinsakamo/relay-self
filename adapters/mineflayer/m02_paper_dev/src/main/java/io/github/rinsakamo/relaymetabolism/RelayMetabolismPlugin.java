@@ -113,6 +113,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private final S50BodyConditionGate s50BodyConditionGate = new S50BodyConditionGate();
     private boolean s50NativeMoveStarted = false;
     private boolean s50IceFloorDev = false;
+    private String s50SurfaceMode = "NONE";
     private final S50IceFloorGate s50IceFloorGate = new S50IceFloorGate();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
@@ -459,7 +460,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                                 + " subject_uuid=" + p.getUniqueId()
                                 + " tick=" + tick + " index=" + (s50WaitSourceRows+1)
                                 + " floor_material=" + directlyBelow.getType()
-                                + " mode=PACKED_ICE_5X5"
+                                + " mode=" + s50SurfaceMode
                                 + " status=REAL_PAPER_FLOOR_SAMPLE");
                         }
                         if (s50ChangedBodyConditionDev) {
@@ -703,12 +704,21 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     || !(sender instanceof ConsoleCommandSender)
                     || args.length != 2 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
                     || !args[0].equals(s50Marker)
-                    || !args[1].equals("PACKED_ICE_5X5")
+                    || !(args[1].equals("PACKED_ICE_5X5")
+                        || args[1].equals("GRASS_BLOCK_5X5_READONLY"))
                     || s50ClearObserved || s50WaitObserveActive) {
                 return false;
             }
             Player p = Bukkit.getPlayerExact(target);
-            if (p == null || !p.isOnline() || p.isDead() || !p.isOnGround()) {
+            if (p == null || !p.isOnline() || p.isDead()) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=SUBJECT_UNAVAILABLE");
+                return false;
+            }
+            if (!p.isOnGround()) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=NOT_ON_GROUND"
+                    + " y=" + p.getLocation().getY()
+                    + " vy=" + p.getVelocity().getY()
+                    + " tick=" + p.getWorld().getFullTime());
                 return false;
             }
             long tick = p.getWorld().getFullTime();
@@ -716,9 +726,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     p.getUniqueId().toString(), tick, !s50Marker.equals("NONE"),
                     s50PaperLocalForecast.model() != null, s50NativeMoveStarted,
                     s50ChangedBodyConditionDev)) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=GATE_NOT_ARMABLE"
+                    + " pre_forward=" + !s50Marker.equals("NONE")
+                    + " prior_armed=" + (s50PaperLocalForecast.model() != null)
+                    + " native_move_started=" + s50NativeMoveStarted
+                    + " other_condition=" + s50ChangedBodyConditionDev);
                 return false;
             }
             Location at = p.getLocation();
+            boolean iceMode = args[1].equals("PACKED_ICE_5X5");
             int baseX = at.getBlockX();
             int baseY = at.getBlockY() - 1;
             int baseZ = at.getBlockZ();
@@ -736,7 +752,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     }
                     Block floor = p.getWorld().getBlockAt(x, baseY, z);
                     if (!floor.getType().isSolid()
-                            || floor.getType() == Material.PACKED_ICE
+                            || floor.getType() != Material.GRASS_BLOCK
                             || floor.isLiquid()
                             || floor.getState() instanceof org.bukkit.block.Container) {
                         getLogger().warning("S50_DEV_ICE_FLOOR_REJECT reason=INVALID_FLOOR");
@@ -750,31 +766,64 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     verified.add(floor);
                 }
             }
-            // New World only. Set block updates so Mineflayer has a chance to
-            // receive normal Paper block-change packets before original MOVE.
-            for (Block floor : verified) {
-                floor.setType(Material.PACKED_ICE, true);
-            }
-            for (Block floor : verified) {
-                if (floor.getType() != Material.PACKED_ICE) {
-                    getLogger().severe("S50_DEV_ICE_FLOOR_REJECT reason=POST_SET_MISMATCH");
-                    devActive = false;
-                    Bukkit.getPluginManager().disablePlugin(this);
-                    return false;
+            // Both conditions start from the exact same 5x5 GRASS_BLOCK.
+            // NORMAL is strictly read-only, ICE changes only 25 floor blocks.
+            if (iceMode) {
+                for (Block floor : verified) {
+                    floor.setType(Material.PACKED_ICE, true);
                 }
+                for (Block floor : verified) {
+                    if (floor.getType() != Material.PACKED_ICE) {
+                        getLogger().severe("S50_DEV_ICE_FLOOR_REJECT reason=POST_SET_MISMATCH");
+                        devActive = false;
+                        Bukkit.getPluginManager().disablePlugin(this);
+                        return false;
+                    }
+                }
+                s50IceFloorGate.commit(args[0], p.getWorld().getUID().toString(),
+                    p.getUniqueId().toString(), tick, verified.size());
+                getLogger().info("S50_DEV_ICE_FLOOR_APPLIED marker_id=" + args[0]
+                    + " world=" + p.getWorld().getUID()
+                    + " subject_uuid=" + p.getUniqueId()
+                    + " before_action_world_tick=" + tick
+                    + " mode=PACKED_ICE_5X5 original_material=" + original
+                    + " target_material=" + Material.PACKED_ICE
+                    + " blocks_verified=" + verified.size()
+                    + " center_x=" + baseX + " floor_y=" + baseY
+                    + " center_z=" + baseZ
+                    + " status=REAL_PAPER_WORLD_BLOCK_INTERVENTION_PRE_S49_ACTION");
+            } else {
+                s50IceFloorGate.seal();
+                getLogger().info("S50_DEV_NORMAL_FLOOR_VERIFIED marker_id=" + args[0]
+                    + " world=" + p.getWorld().getUID()
+                    + " subject_uuid=" + p.getUniqueId()
+                    + " mode=GRASS_BLOCK_5X5_READONLY"
+                    + " material=GRASS_BLOCK blocks_verified=" + verified.size()
+                    + " status=REAL_PAPER_READONLY_PRE_S49_ACTION");
             }
-            s50IceFloorGate.commit(args[0], p.getWorld().getUID().toString(),
-                p.getUniqueId().toString(), tick, verified.size());
-            getLogger().info("S50_DEV_ICE_FLOOR_APPLIED marker_id=" + args[0]
+            s50SurfaceMode = args[1];
+            org.bukkit.util.Vector v = p.getVelocity();
+            // Source-bound pre-action state. A later independent auditor compares
+            // actual values, not self-reported string hashes.
+            getLogger().info("S50_DEV_SURFACE_LOCK marker_id=" + args[0]
                 + " world=" + p.getWorld().getUID()
                 + " subject_uuid=" + p.getUniqueId()
-                + " before_action_world_tick=" + tick
-                + " mode=PACKED_ICE_5X5 original_material=" + original
-                + " target_material=" + Material.PACKED_ICE
+                + " seed=" + p.getWorld().getSeed()
+                + " mode=" + s50SurfaceMode
+                + " original_material=GRASS_BLOCK"
+                + " target_material=" + (iceMode ? "PACKED_ICE" : "GRASS_BLOCK")
                 + " blocks_verified=" + verified.size()
-                + " center_x=" + baseX + " floor_y=" + baseY
-                + " center_z=" + baseZ
-                + " status=REAL_PAPER_WORLD_BLOCK_INTERVENTION_PRE_S49_ACTION");
+                + " full_time=" + tick
+                + " x=" + at.getX() + " y=" + at.getY() + " z=" + at.getZ()
+                + " yaw=" + at.getYaw() + " pitch=" + at.getPitch()
+                + " vx=" + v.getX() + " vy=" + v.getY() + " vz=" + v.getZ()
+                + " on_ground=" + p.isOnGround()
+                + " food=" + p.getFoodLevel()
+                + " health=" + p.getHealth()
+                + " game_mode=" + p.getGameMode()
+                + " floor_x=" + baseX + " floor_y=" + baseY
+                + " floor_z=" + baseZ
+                + " status=REAL_PAPER_PRE_ACTION_SURFACE_LOCK");
             return true;
         }
         if (command.getName().equalsIgnoreCase("relaydevcondition")) {

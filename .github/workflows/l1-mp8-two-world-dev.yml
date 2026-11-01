@@ -1,0 +1,117 @@
+name: L1-MP8 two real disposable matched surface Worlds DEV
+# Explicit once-only physical owner opt-in commit.
+# MP8 activation: preflight first, normal then ice; abort at first failed World.
+# Fresh release after source-only test correction; previous physical workflow started zero Worlds.
+# New DEV attempt after one NORMAL World rejected pre-action; fixed gravity landing and Paper reject reasons.
+# Third fresh DEV release: MP8 original Paper marker whitelist regression passed before launch.
+# Fourth fresh DEV release: real two-phase Paper audit corrected using preserved NORMAL originals. DO NOT rerun old attempts.
+on:
+  push:
+    branches: [dev/l1-mp8-matched-transfer-20261101]
+    paths: ['.github/workflows/l1-mp8-two-world-dev.yml']
+permissions:
+  contents: read
+jobs:
+  matched-world-pair-dev:
+    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp8-two-world-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+      PREP: /tmp/mp8-two-preflight-${{ github.run_id }}
+      EVIDENCE: /tmp/mp8-two-worlds-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source/owner tests BEFORE Minecraft
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check tools/l1_mp8_two_world_dev.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_l1_mp8_transfer.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_mp8_physical.py tests/test_self_body_s50_l1_mp8_transfer.py
+          python -m compileall -q tools/l1_mp8_two_world_dev.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_mp8_transfer.py \
+            tests/test_self_body_s50_l1_mp8_physical.py \
+            tests/test_self_body_s50_l1_ice_floor.py \
+            tests/test_self_body_s50_l1_paper_local.py \
+            tests/test_self_body_s50_l1_host_prediction.py \
+            tests/test_self_body_s50_route_b_dev.py
+          python tools/check_repository.py
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50IceFloorGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50IceFloorGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50IceFloorGateSelfTest
+      - name: Build original Paper plugin and pinned Node runtime
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -p "require('./adapters/mineflayer/node_modules/mineflayer/package.json').version" | grep -x '4.39.0'
+      - name: Fetch exact official Paper 1.21.8 build 60 by SHA and size
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          sha='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          url='https://fill-data.papermc.io/v1/objects/'+sha+'/paper-1.21.8-60.jar'
+          request=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-MP8-DEV (https://github.com/rinsakamo/relay-self)'})
+          dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'mp8-paper-pinned.jar'
+          digest=hashlib.sha256();size=0
+          with urllib.request.urlopen(request,timeout=120) as src,dst.open('xb') as sink:
+              while chunk:=src.read(1024*1024):
+                  size+=len(chunk)
+                  if size>52811717:raise ValueError('Paper oversized')
+                  sink.write(chunk);digest.update(chunk)
+          assert size==52811717 and digest.hexdigest()==sha
+          PY
+      - name: Preflight pinned source and both-World plan without World
+        run: |
+          set -euo pipefail
+          python tools/l1_mp8_two_world_dev.py \
+            --output "$PREP" \
+            --paper-jar "$RUNNER_TEMP/mp8-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --confirm MP8-TWO-FRESH-MATCHED-WORLDS-DEV-20261101 --preflight-only
+      - name: At most two fresh original S49 native Action Worlds; abort on failure
+        timeout-minutes: 17
+        run: |
+          set -euo pipefail
+          python tools/l1_mp8_two_world_dev.py \
+            --output "$EVIDENCE" \
+            --paper-jar "$RUNNER_TEMP/mp8-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --confirm MP8-TWO-FRESH-MATCHED-WORLDS-DEV-20261101
+      - name: Always retain all originals including failure; NEVER retry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp8-two-world-originals-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: warn
+          include-hidden-files: true
+          path: |
+            ${{ env.PREP }}/
+            ${{ env.EVIDENCE }}/
+      - name: Qualification and SCIENCE not granted
+        if: always()
+        run: |
+          echo 'MP8_DEV_ONLY / MAX_TWO_FRESH_WORLDS / NO_AUTORETRY / R_NO_GO / V_NOT_RUN'
