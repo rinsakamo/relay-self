@@ -6,9 +6,9 @@ from dataclasses import replace
 import pytest
 
 from experiments.metabolism_cognitive_lifecycle import (
+    CognitionCostSample,
     CognitiveLifecycleRejected,
     CognitiveWorkReceipt,
-    CognitionCostSample,
     summarize_cognitive_lifecycle,
 )
 
