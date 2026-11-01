@@ -42,6 +42,7 @@ class H9bRecord:
     arm: H9aArmResult
     frozen_plan_sha256: str
     prereg_sha256: str
+    frozen_model_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +139,7 @@ def validate_plan(plan: dict[str, object], *, raw: bytes) -> str:
 def validate_records(
     plan: dict[str, object], plan_original: bytes,
     records: tuple[H9bRecord, ...],
+    *, frozen_model_sha256: str,
 ) -> str:
     digest = validate_plan(plan, raw=plan_original)
     _require(
@@ -158,6 +160,7 @@ def validate_records(
             and type(row.prereg_sha256) is str and len(row.prereg_sha256) == 64
             and all(c in "0123456789abcdef" for c in row.prereg_sha256)
             and row.prereg_sha256 not in preregs
+            and row.frozen_model_sha256 == (None if slot.endswith(("F1", "F2")) else frozen_model_sha256)
             and a.executor_head == plan["executor_head"]
             and type(a.original_session_id) is str and bool(a.original_session_id)
             and type(a.original_paper_world_id) is str and bool(a.original_paper_world_id)
@@ -195,6 +198,7 @@ def _mean(values: tuple[float, ...]) -> float:
 def compare_h9b_dev_holdout(
     *, plan: dict[str, object], plan_original: bytes,
     records: tuple[H9bRecord, ...],
+    frozen_model_original: bytes,
 ) -> H9bComparison:
     """Models trained on four DEV proxy fit Worlds and scored on four unseen Worlds.
 
@@ -206,27 +210,29 @@ def compare_h9b_dev_holdout(
     With exactly two discrete S42 settings it often matches CHEAP; this is
     intended and forbids claiming intelligence from merely splitting bins.
     """
-    plan_sha = validate_records(plan, plan_original, records)
+    from relay_self.l_bcg_h9b_freeze import validate_frozen_original
+
     fit = records[:4]
     evaluation = records[4:]
+    frozen, frozen_sha = validate_frozen_original(
+        plan=plan, plan_original=plan_original,
+        fit_records=fit, frozen_original=frozen_model_original,
+    )
+    plan_sha = validate_records(
+        plan, plan_original, records, frozen_model_sha256=frozen_sha,
+    )
     _require(
         all(row.slot_id.endswith(("F1", "F2")) for row in fit)
         and all(row.slot_id.endswith(("E1", "E2")) for row in evaluation),
         "H9b World chronological fit/eval partition changed",
     )
-    y_fit = tuple(row.arm.sampled_reported_input_off_motion_m for row in fit)
-    global_pred = _mean(y_fit)
-    groups = {
-        "A": tuple(row.arm for row in fit if row.arm.arm_id == "A"),
-        "B": tuple(row.arm for row in fit if row.arm.arm_id == "B"),
-    }
-    _require(len(groups["A"]) == len(groups["B"]) == 2, "H9b two fit Worlds each")
-    x_a = _mean(tuple(x.observed_s42_distance_m for x in groups["A"]))
-    x_b = _mean(tuple(x.observed_s42_distance_m for x in groups["B"]))
-    _require(x_b - x_a >= 1.0, "H9b distance centroids collapsed")
-    y_a = _mean(tuple(x.sampled_reported_input_off_motion_m for x in groups["A"]))
-    y_b = _mean(tuple(x.sampled_reported_input_off_motion_m for x in groups["B"]))
-    slope = (y_b - y_a) / (x_b - x_a)
+    # ALL coefficients came from a serialized original frozen after FIT Worlds.
+    # EVAL targets are used only for error scoring, never re-fitting.
+    global_pred = frozen.y_global_mean_m
+    x_a = frozen.x_a_mean_m
+    y_a = frozen.y_a_mean_m
+    y_b = frozen.y_b_mean_m
+    slope = frozen.candidate_slope
     # Frozen fit-only parameters; no parameter tuning, interpolation selection,
     # or thresholds based on heldout target observations.
     out: list[H9bScore] = []
