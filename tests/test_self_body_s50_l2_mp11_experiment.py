@@ -12,7 +12,13 @@ from adapters.mineflayer.self_body_s50_l2_mp11_experiment import (
     WorldTrialReceipt,
 )
 from relay_self.provenance import Provenance
-from relay_self.relay_engine import OpenCognitionRequest, OpenCognitionResult
+from relay_self.relay_engine import (
+    CognitionMode,
+    OpenCognitionRequest,
+    OpenCognitionResult,
+    ProviderExpression,
+    RelayEngine,
+)
 
 
 def fake_open(request: OpenCognitionRequest) -> OpenCognitionResult:
@@ -212,3 +218,35 @@ def test_model_input_carries_last_trial_errors_not_assumed_world_truth():
     assert limits["training_admission"] is False
     assert history[0]["absolute_error_m"]==pytest.approx(.3)
     assert history[0]["source_status"]=="UNVERIFIED_OWNER_SUPPLIED_FIXTURE"
+
+
+def test_real_relayengine_open_contract_routes_exactly_one_l2_provider_call():
+    """Adapter integration only; provider here is synthetic, NOT an LLM."""
+    calls=[]
+    def provider(request, *, mode):
+        assert mode is CognitionMode.OPEN
+        assert isinstance(request, OpenCognitionRequest)
+        calls.append(request.request_id)
+        model_fixture=fake_open(request)
+        return ProviderExpression(
+            text=model_fixture.text,
+            provenance=Provenance("fixture.provider","relay-open-integration"),
+        )
+    engine=RelayEngine(provider)
+    loop=new_loop()
+    proposal=loop.propose(engine.open)
+    assert calls == [f"mp11:{loop.world_uuid}:round-1"]
+    assert proposal.model_family=="SINGLE_DECAY"
+    assert proposal.provider_source=="fixture.provider"
+    assert proposal.executable_action is False
+
+
+def test_unhashable_model_fields_cannot_leak_as_unhandled_runtime_errors():
+    loop=new_loop()
+    def bad(req):
+        answer=fake_open(req)
+        obj=json.loads(answer.text)
+        obj["experiment_id"]=["GRASS_SHORT"]
+        return replace(answer,text=json.dumps(obj))
+    with pytest.raises(MP11Rejected):
+        loop.propose(bad)
