@@ -238,6 +238,7 @@ async def qualify(
     l1_prediction_journal: Path | None = None,
     l1_paper_forecast_gate_dev: bool = False,
     l1_paper_local_forecast_dev: bool = False,
+    l1_paper_body_challenge_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -270,6 +271,25 @@ async def qualify(
     predictor = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if type(l1_paper_body_challenge_dev) is not bool:
+            raise S31ABlocked("MP6 condition opt-in must be boolean")
+        if l1_paper_body_challenge_dev:
+            if not l1_paper_local_forecast_dev or l23_paper_assets is None:
+                raise S31ABlocked("MP6 requires MP5 pre-Action frozen model and original Paper")
+            from adapters.mineflayer.self_body_s50_l1_body_condition import (
+                verify_condition_config,
+            )
+            verify_condition_config(
+                l23_paper_assets.plugin_config, l23_paper_assets.config_sha256,
+            )
+            report["l1_paper_body_challenge"] = {
+                "mode": "SLOWNESS_II",
+                "original_paper_effect_before_s49": False,
+                "environment_physics_intervention": True,
+                "not_self_action": True,
+                "l1_training_updates": 0,
+                "classification": "EXPERIMENTER_PHYSICAL_CHALLENGE_NOT_PASSIVE",
+            }
         if type(l1_paper_local_forecast_dev) is not bool:
             raise S31ABlocked("MP5 opt-in must be boolean")
         if l1_paper_local_forecast_dev:
@@ -640,6 +660,28 @@ async def qualify(
                         "slope": ticket.model.slope,
                         "status": "PAPER_PRE_ACTION_MODEL_ARM_SOURCE_CONFIRMED",
                     })
+                    if l1_paper_body_challenge_dev:
+                        from adapters.mineflayer.self_body_s50_l1_body_condition import (
+                            attest_condition_original,
+                            condition_command,
+                        )
+                        # Experimenter changes the ACTUAL Paper player's movement
+                        # physics before original S49 Action. This is not Self motor I/O.
+                        _command(server, condition_command(l23_marker_id, "SLOWNESS_II"))
+                        await server.stdin.drain()
+                        await wait_paper_line(
+                            server_log, marker=l23_marker_id,
+                            kind="S50_DEV_BODY_CONDITION_APPLIED",
+                        )
+                        condition_source = attest_condition_original(
+                            server_log.read_bytes(), marker=l23_marker_id,
+                            paper_world_uuid=ticket.target.paper_world_uuid,
+                            subject_uuid=ticket.target.subject_uuid,
+                        )
+                        report["l1_paper_body_challenge"].update({
+                            "original_paper_effect_before_s49": True,
+                            "paper_original_condition": condition_source,
+                        })
                 if l1_paper_forecast_gate_dev:
                     if predictor is None or predictor.dispatch is None:
                         raise S49PhysicalFailure("MP4 Paper forecast not bound to PRE_FORWARD")
@@ -1264,6 +1306,7 @@ def main() -> int:
     parser.add_argument("--l1-prediction-journal", type=Path)
     parser.add_argument("--l1-paper-forecast-gate-dev", action="store_true")
     parser.add_argument("--l1-paper-local-forecast-dev", action="store_true")
+    parser.add_argument("--l1-paper-body-challenge-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1314,6 +1357,7 @@ def main() -> int:
         l1_prediction_journal=args.l1_prediction_journal,
         l1_paper_forecast_gate_dev=args.l1_paper_forecast_gate_dev,
         l1_paper_local_forecast_dev=args.l1_paper_local_forecast_dev,
+        l1_paper_body_challenge_dev=args.l1_paper_body_challenge_dev,
     ))
 
 
