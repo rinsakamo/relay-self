@@ -85,6 +85,7 @@ def read_original_s49_completions(
             or probe.kind != "probe"
             or probe.provenance.source != "mineflayer"
             or probe.request_id != choice.request_id
+            or probe.provenance != choice.provenance
             or probe.session_id != choice.session_id
             or probe.seq != choice.probe_seq
             or probe.seq <= step.event_seq
@@ -112,10 +113,17 @@ def read_original_s49_completions(
             if (
                 not step.asks_for_action
                 or not isinstance(action_id, str) or not action_id
+                or step.grant is None or not step.grant.granted
+                or step.grant.action_id != action_id
+                or step.grant.session_id != session_id
+                or step.grant.event_seq != step.event_seq
+                or step.grant.probe_seq != probe.seq
+                or step.grant.entity_id != choice.entity_id
                 or action_id in used_action_ids
                 or not isinstance(receipt, NormalActionReceipt)
                 or receipt.terminal.state is not ActionState.OUTCOME
                 or receipt.terminal.action_id != action_id
+                or receipt.terminal.intent_id != step.grant.intent_id
                 or receipt.consequence.action_id != action_id
                 or receipt.consequence.session_id != session_id
                 or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
