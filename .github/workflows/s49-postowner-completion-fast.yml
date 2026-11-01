@@ -1,0 +1,27 @@
+name: S49 original completed L0 and S16 passive DEV FAST
+on:
+  push:
+    branches:
+      - dev/s49-postowner-completion-readback-20261101
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  s49-completion-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install focused tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Static contracts
+        run: |
+          ruff check adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_completed_decision_bridge.py
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py
+      - name: Original S49 and completion focused tests (offline)
+        run: |
+          python -m pytest -q tests/test_s49_completed_decision_bridge.py tests/test_feature_s49_normal_runtime.py tests/test_postmain_s42_world_contrast.py
