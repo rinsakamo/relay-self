@@ -303,6 +303,8 @@ def parse_live_l2(
         )
     except NumericRoleRejected as exc:
         raise LiveL2Rejected("model numeric evidence is ungrounded") from exc
+    if len(citations) > (1 if n == 1 else 2):
+        raise LiveL2Rejected("model emitted more numeric claims than compact budget")
     if relation == "REVISE_PRIOR" and (
         feedback is None or feedback["previous_prediction_m"] is None
         or not any(c.trial_ordinal == 2 for c in citations)
