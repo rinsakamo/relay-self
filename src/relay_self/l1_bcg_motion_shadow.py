@@ -251,7 +251,7 @@ def compare_conditional_motion_shadow(
                 continue  # no learned conditional discrimination
             coverage = sum(len(cells[key]) for key in stable)
             candidate = (coverage, -size, axes, stable)
-            if best is None or candidate[:3] > best[:3]:
+            if best is None or candidate[:2] > best[:2]:
                 best = candidate
 
     if best is None:
