@@ -289,7 +289,7 @@ def main() -> int:
             "time": timestamp(), "run_head": os.environ.get("GITHUB_SHA"),
             "prior": prior.__dict__, "worlds": ["NORMAL", "ICE"],
             "seed": "RelaySelf-MP8-Matched-Surface-20261101",
-            "tp": [0.5, -60, 0.5, 0, 0],
+            "tp": [0.5, -58, 0.5, 0, 0],
             "frozen_prior_before_world": True,
             "mp8_ice_l1_same_information_cheap_equivalent": True,
             "max_worlds": 2, "max_native_actions": 2,
