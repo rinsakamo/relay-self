@@ -55,7 +55,9 @@ def test_real_typed_next_epoch_view_can_propose_without_l0_change():
     assert c.old_mae_m >= 0
     assert 0 <= c.proposed_slope <= 2
     assert c.status in ("REVISE_CANDIDATE_IN_SAMPLE_ONLY",
-                        "ABSTAIN_INSUFFICIENT_MOTION")
+                        "ABSTAIN_INSUFFICIENT_MOTION",
+                        "ABSTAIN_NO_EFFECTIVE_COEFFICIENT_CHANGE",
+                        "ABSTAIN_NO_IN_SAMPLE_MAE_GAIN")
     assert c.future_heldout_mae_m == "NOT_OBSERVED"
     assert c.durable_learning_admissions == 0
     assert not c.current_l0_action_modified
@@ -122,3 +124,36 @@ def test_inappropriate_thresholds_fail_closed():
         with pytest.raises(MP10Rejected):
             propose_from_typed_next_epoch(r, t, train_mp8_only(),
                                           trigger_threshold_m=value)
+
+def test_exact_same_slope_should_abstain_even_when_threshold_zero():
+    r = typed_source()
+    prior = train_mp8_only()
+    slope = prior.normal_slope
+    current = 0.1
+    seq = []
+    for tick in r.prior_window.ticks:
+        seq.append(replace(tick, displacement_m=float(current)))
+        current *= slope
+    r = replace(r, prior_window=replace(r.prior_window, ticks=tuple(seq)))
+    c = propose_from_typed_next_epoch(
+        r, ticket_for(r), prior, trigger_threshold_m=0.0,
+    )
+    assert c.status == "ABSTAIN_NO_EFFECTIVE_COEFFICIENT_CHANGE"
+    assert c.proposed_slope == c.previous_slope
+    assert c.durable_learning_admissions == 0
+
+
+def test_7_pairs_with_real_improvement_generate_only_in_sample_candidate():
+    r = typed_source()
+    seq = []
+    current = 0.1
+    for tick in r.prior_window.ticks:
+        seq.append(replace(tick, displacement_m=float(current)))
+    r = replace(r, prior_window=replace(r.prior_window, ticks=tuple(seq)))
+    c = propose_from_typed_next_epoch(
+        r, ticket_for(r), train_mp8_only(), trigger_threshold_m=0.002,
+    )
+    assert c.status == "REVISE_CANDIDATE_IN_SAMPLE_ONLY"
+    assert c.proposed_slope == pytest.approx(1.0)
+    assert c.proposed_in_sample_mae_m < c.old_mae_m
+    assert c.future_heldout_mae_m == "NOT_OBSERVED"
