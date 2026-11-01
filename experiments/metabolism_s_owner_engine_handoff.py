@@ -50,11 +50,12 @@ def observe_s_owner_engine_usage(
     if type(enabled) is not bool or not enabled:
         return skipped("DISABLED", "not_enabled_or_invalid_flag")
     try:
+        from relay_self.epoch_plan import PlannedDecisionEpochResult
+
         from experiments.metabolism_slm_dev_host_tap import (
             SLMDevTapResult,
             bounded_s_l_m_audit_row,
         )
-        from relay_self.epoch_plan import PlannedDecisionEpochResult
         from relay_self.relay_engine import OpenCognitionResult, RelayEngineResult
         from relay_self.runtime_coordination import DecisionEpochResult
 
