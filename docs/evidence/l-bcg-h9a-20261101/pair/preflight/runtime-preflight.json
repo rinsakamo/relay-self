@@ -1,0 +1,60 @@
+{
+  "world_grant": "L_BCG_CONTINUING_DEV_GRANT_6552384315",
+  "world_runs": 0,
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "windows": {
+    "exit": 0,
+    "stdout": "\nMicrosoft Windows [Version 10.0.26300.9711]\n",
+    "stderr": "'\\\\wsl.localhost\\Ubuntu-24.04\\home\\rinsa\\relay-self'\n\ufffd\ufffdL\ufffd\u030c\ufffd\ufffd\u0742\u0303f\ufffdB\ufffd\ufffd\ufffdN\ufffdg\ufffd\ufffd\ufffd\ufffd CMD.EXE \ufffd\ufffd\ufffdJ\ufffdn\ufffd\ufffd\ufffd\u0702\ufffd\ufffd\ufffd\ufffdB\nUNC \ufffdp\ufffdX\ufffd\u0343T\ufffd|\ufffd[\ufffdg\ufffd\ufffd\ufffd\ufffd\u0702\ufffd\ufffd\ufffdBWindows \ufffdf\ufffdB\ufffd\ufffd\ufffdN\ufffdg\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u014eg\ufffdp\ufffd\ufffd\ufffd\u0702\ufffd\ufffdB\n"
+  },
+  "python": {
+    "exit": 0,
+    "stdout": "Python 3.12.3\n",
+    "stderr": ""
+  },
+  "java": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n"
+  },
+  "node": {
+    "exit": 0,
+    "stdout": "v22.22.2\n",
+    "stderr": ""
+  },
+  "mineflayer": "4.39.0",
+  "assets": {
+    "server": {
+      "path": "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+      "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "actual_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "matches": true
+    },
+    "plugin": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+      "sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a",
+      "actual_sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a",
+      "matches": true
+    },
+    "config": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/config.yml",
+      "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0",
+      "actual_sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0",
+      "matches": true
+    }
+  },
+  "port_25565_bindable": true,
+  "gpu": {
+    "exit": 0,
+    "stdout": "NVIDIA GeForce RTX 3060, 706 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "node_options_present": false,
+  "existing_s49_world_dirs": [],
+  "runner": "adapters.mineflayer.self_body_s50_world_dev",
+  "world_creation": "existing TemporaryDirectory; only after dedicated grant",
+  "paper_profile": "ACTIVE_METABOLISM_NOT_PASSIVE",
+  "effective_clear": "NOT_ATTESTED",
+  "cleanup": "NO_WORLD_OR_OWNED_NODE_JAVA_SERVER_STARTED"
+}

@@ -1,0 +1,14 @@
+{
+  "adapters/mineflayer/self_body_s50_world_dev.py": "f8352f9ce55484a78c7a080203c506c8251619ae7b3a535333d0e82c0dfd66cb",
+  "src/relay_self/l_bcg_dev_proxy.py": "60b606ae83e051244889297e0d5e4b1f70d95ba080af0e88bd8c54dec10e7812",
+  "src/relay_self/l_bcg_h7_preaction.py": "307f7cb5042800d094fcc4c472bcda2e1e1b5bfd9ff908bc8e52fca4188b77f9",
+  "src/relay_self/l_bcg_h8_owner_availability.py": "57f2072e29816cb4304c640bf487afdc2aac775ed0da77f85aec704fbc173a53",
+  "src/relay_self/l_bcg_h9a_pair.py": "13f4496121d6b5dd95170d1e5aee465203d6411727ee7173e86c5dd12baf9e02",
+  "src/relay_self/l_bcg_h9a_stimulus.py": "b56099fef0b45327783d23711bcb87516cc4a56853482197b192b6db15ac1fa6",
+  "tools/l_bcg_h6_readback.py": "5d95fc7a3bd55cac01d1ed09ae13ebacc2a38db4e4c94761d0ca269e9e6aa122",
+  "tools/l_bcg_h7_readback.py": "61206836a76274aecb9d9a6ac97a3007645fbc0c61732e5ee5ca8b629007f4e0",
+  "tools/l_bcg_h8_owner_preflight.py": "3fd6c727da02283655b2c03c3c52f241060035cc56aa4c608ef13165872c0e46",
+  "tools/l_bcg_h8_world_readback.py": "c0c6d0f0a4d147ac96a30f13d53f06623b517e1d1073a3056748dfb189625e63",
+  "tools/l_bcg_h9a_pair_readback.py": "84c6c89f20ab7292c559c0977d6271da93b5710ef8285a544bf57533ea4ef041",
+  "tools/l_bcg_world_report_preflight.py": "858a9c1303129d9744c188115bd2b2448db6575135827ee6912ee49d4f5d9513"
+}

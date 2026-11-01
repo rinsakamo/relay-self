@@ -1,0 +1,71 @@
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	﻿2026-11-01T06:50:50.7899541Z ##[group]Run set -euo pipefail
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7900182Z [36;1mset -euo pipefail[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7900817Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7903898Z [36;1mruff check src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7907789Z [36;1mpython -m compileall -q src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7910969Z [36;1mpython -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tests/test_l_bcg_h9a_pair.py[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7911966Z [36;1mpython tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7912649Z [36;1mpython tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7913337Z [36;1mpython tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7914623Z [36;1mpython tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7915782Z [36;1mpython tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7916916Z [36;1mpython tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED[0m
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7967284Z shell: /usr/bin/bash -e {0}
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7967729Z env:
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7968082Z   PYTHONPATH: src:tests:.
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7968496Z   PYTHONDONTWRITEBYTECODE: 1
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7968968Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7969592Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7970188Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7970729Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7971289Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7971849Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:50.7972333Z ##[endgroup]
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.5479995Z Collecting pytest==9.1.1
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.5830037Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.9519682Z Collecting ruff==0.17.0
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.9596761Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.9774024Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:51.9853996Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0033994Z Collecting packaging>=22 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0106336Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0264108Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0338799Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0538308Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0614533Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0732428Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.0993675Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1428910Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 249.7 MB/s  0:00:00
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1506833Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1600064Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1697398Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1795084Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.1866279Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 220.3 MB/s  0:00:00
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:52.2529658Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.4569713Z 
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.4583747Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5258355Z I001 [*] Import block is un-sorted or un-formatted
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5259506Z   --> tools/l_bcg_h9a_pair_readback.py:6:1
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5260341Z    |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5260918Z  4 |   Each World must have an independently frozen pre-World declaration.
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5261630Z  5 |   """
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5262021Z  6 | / from __future__ import annotations
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5262597Z  7 | |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5262926Z  8 | | import argparse
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5263319Z  9 | | import json
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5263925Z 10 | | from dataclasses import asdict
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5264404Z 11 | | from pathlib import Path
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5264817Z 12 | |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5265295Z 13 | | from relay_self.l_bcg_h9a_pair import compare_h9a_pair, review_h9a_arm
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5265884Z 14 | | from tools.l_bcg_h8_world_readback import audit as independently_audit_h8
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5266357Z    | |_________________________________________________________________________^
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5266704Z help: Organize imports
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5266922Z    |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267111Z 15 |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267282Z    -
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267481Z 16 | _CRITICAL_ASSET_SUFFIXES = (
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267728Z    |
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267832Z 
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5267937Z Found 1 error.
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5268171Z [*] 1 fixable with `--fix`.
+source-only-proxy	Focused H6/H7/H8/H9a DEV archived-original tests	2026-11-01T06:50:53.5282565Z ##[error]Process completed with exit code 1.

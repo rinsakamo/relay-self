@@ -1,0 +1,77 @@
+conditional-source-shadow	Python 3.12 focused and owner regression	﻿2026-11-01T06:51:02.3575878Z ##[group]Run set -euo pipefail
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3576995Z [36;1mset -euo pipefail[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3578421Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3587596Z [36;1mruff check src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h7_preaction.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h7_readback.py tools/l_bcg_h8_owner_preflight.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3611815Z [36;1mpython -m compileall -q src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h7_preaction.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h7_readback.py tools/l_bcg_h8_owner_preflight.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3624823Z [36;1mpython -m pytest -o addopts='' -q \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3626556Z [36;1m  tests/test_l1_bcg_motion_shadow.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3628136Z [36;1m  tests/test_l_bcg_h6_dev_proxy.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3629706Z [36;1m  tests/test_l_bcg_h7_preaction.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3631448Z [36;1m  tests/test_l_bcg_h8_owner_availability.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3633137Z [36;1m  tests/test_l_bcg_h9a_pair.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3634682Z [36;1m  tests/test_l_bcg_live_handoff.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3636455Z [36;1m  tests/test_l_bcg_world_report_preflight.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3638201Z [36;1m  tests/test_experience_bridge.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3639792Z [36;1m  tests/test_l10_world_body_cue_learning.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3641404Z [36;1m  tests/test_l1_s_choice_shadow.py \[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3642997Z [36;1m  tests/test_self_body_s50_l1_motion_shadow.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3644578Z [36;1mpython tools/check_repository.py[0m
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3698187Z shell: /usr/bin/bash -e {0}
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3699534Z env:
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3700657Z   PYTHONPATH: src:tests:.
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3701967Z   PYTHONDONTWRITEBYTECODE: 1
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3703578Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3706325Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3708798Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3710722Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3712723Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3714171Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.3715313Z ##[endgroup]
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.9148053Z Collecting pytest==9.1.1
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:02.9350746Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.1750287Z Collecting ruff==0.17.0
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.1781514Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.1902960Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.1932002Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2040052Z Collecting packaging>=22 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2073973Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2169710Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2197871Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2325148Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2354762Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2420389Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.2516519Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3372053Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 121.6 MB/s  0:00:00
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3400517Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3443337Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3485303Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3530079Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.3635704Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 110.9 MB/s  0:00:00
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:03.4197704Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.3961369Z 
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.3973048Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4548524Z I001 [*] Import block is un-sorted or un-formatted
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4549175Z   --> tools/l_bcg_h9a_pair_readback.py:6:1
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4549528Z    |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4549927Z  4 |   Each World must have an independently frozen pre-World declaration.
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4550394Z  5 |   """
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4550706Z  6 | / from __future__ import annotations
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4551398Z  7 | |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4551695Z  8 | | import argparse
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4552012Z  9 | | import json
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4552285Z 10 | | from dataclasses import asdict
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4552649Z 11 | | from pathlib import Path
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4552931Z 12 | |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4553293Z 13 | | from relay_self.l_bcg_h9a_pair import compare_h9a_pair, review_h9a_arm
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4553914Z 14 | | from tools.l_bcg_h8_world_readback import audit as independently_audit_h8
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4554485Z    | |_________________________________________________________________________^
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4554912Z help: Organize imports
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4555163Z    |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4555751Z 15 |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4555944Z    -
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4556116Z 16 | _CRITICAL_ASSET_SUFFIXES = (
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4556325Z    |
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4556415Z 
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4556483Z Found 1 error.
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4556664Z [*] 1 fixable with `--fix`.
+conditional-source-shadow	Python 3.12 focused and owner regression	2026-11-01T06:51:04.4568707Z ##[error]Process completed with exit code 1.
