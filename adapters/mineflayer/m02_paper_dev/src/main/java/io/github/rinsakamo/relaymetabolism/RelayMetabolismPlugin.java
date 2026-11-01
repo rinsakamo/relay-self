@@ -41,6 +41,8 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 /**
  * DEV-only Paper 1.21.8 M0.2 body-physics candidate.
@@ -105,6 +107,10 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // MP5 Paper-local shadow: pre-armed before original S49 Action, no RTT per tick.
     private boolean s50PaperLocalForecastDev = false;
     private final S50PaperLocalForecast s50PaperLocalForecast = new S50PaperLocalForecast();
+    // MP6 opt-in, experimenter-controlled real body intervention (NOT readonly).
+    private boolean s50ChangedBodyConditionDev = false;
+    private final S50BodyConditionGate s50BodyConditionGate = new S50BodyConditionGate();
+    private boolean s50NativeMoveStarted = false;
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -253,6 +259,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     || !s50InputWitnessCandidate || s50ForecastGateDev)) {
                 throw new IllegalStateException(
                     "MP5 requires existing WAIT and input witness; MP4 console gate OFF");
+            }
+            if (getConfig().contains("s50-changed-body-condition-dev")
+                    && !getConfig().isBoolean("s50-changed-body-condition-dev")) {
+                throw new IllegalStateException("invalid MP6 physical intervention flag");
+            }
+            s50ChangedBodyConditionDev = getConfig().getBoolean(
+                "s50-changed-body-condition-dev", false);
+            if (s50ChangedBodyConditionDev && !s50PaperLocalForecastDev) {
+                throw new IllegalStateException("MP6 requires MP5 Paper-local before Action");
             }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
@@ -420,6 +435,17 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                                 Bukkit.getPluginManager().disablePlugin(this);
                                 return;
                             }
+                        }
+                        if (s50ChangedBodyConditionDev) {
+                            PotionEffect effect = p.getPotionEffect(PotionEffectType.SLOWNESS);
+                            getLogger().info("S50_DEV_BODY_CONDITION_TICK marker_id="
+                                + s50Marker + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
+                                + " condition=SLOWNESS_II"
+                                + " amplifier=" + (effect == null ? -1 : effect.getAmplifier())
+                                + " active=" + (effect != null)
+                                + " status=REAL_PAPER_EFFECT_SAMPLE");
                         }
                         s50WaitSourceRows++;
                         s50WaitLast = where.clone();
@@ -645,6 +671,56 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " motion_billed=" + chargedMotionExhaustion);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("relaydevcondition")) {
+            // MP6 experimenter-owned real physical change, console only.
+            // Must precede the sole original S49 Action, never an extra Self action.
+            if (!devActive || !s50ChangedBodyConditionDev
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 2 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !args[0].equals(s50Marker)
+                    || s50ClearObserved || s50WaitObserveActive) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            S50BodyConditionGate.Receipt accepted = s50BodyConditionGate.arm(
+                args[0], p.getWorld().getUID().toString(),
+                p.getUniqueId().toString(), args[1],
+                p.getWorld().getFullTime(),
+                !s50Marker.equals("NONE"),
+                s50PaperLocalForecast.model() != null,
+                s50NativeMoveStarted,
+                p.hasPotionEffect(PotionEffectType.SLOWNESS));
+            if (accepted == null) {
+                getLogger().warning("S50_DEV_BODY_CONDITION_REJECT marker_id=" + args[0]
+                    + " reason=DUPLICATE_OR_BAD_PREACTION_SCOPE");
+                return false;
+            }
+            // This is a deliberate physical intervention. No silent source
+            // mutation: the exact effect is read back from the real Paper body.
+            boolean applied = p.addPotionEffect(
+                new PotionEffect(PotionEffectType.SLOWNESS, 400, 1,
+                                 false, false, false), true);
+            PotionEffect actual = p.getPotionEffect(PotionEffectType.SLOWNESS);
+            if (!applied || actual == null || actual.getAmplifier() != 1
+                    || actual.getDuration() < 350) {
+                getLogger().severe("S50_DEV_BODY_CONDITION_REJECT marker_id=" + args[0]
+                    + " reason=PHYSICAL_EFFECT_NOT_APPLIED");
+                devActive = false;
+                Bukkit.getPluginManager().disablePlugin(this);
+                return false;
+            }
+            getLogger().info("S50_DEV_BODY_CONDITION_APPLIED marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " before_action_world_tick=" + accepted.beforeActionWorldTick()
+                + " condition=SLOWNESS_II"
+                + " paper_effect=SLOWNESS"
+                + " amplifier=" + actual.getAmplifier()
+                + " effect_ticks=" + actual.getDuration()
+                + " status=EXPERIMENTER_PHYSICAL_INTERVENTION_PRE_S49_ACTION");
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("relaydevlocalmodel")) {
             // Source-bound one-shot model registration before native S49 MOVE.
             // Console-only diagnostic configuration, NOT an Action command.
@@ -823,6 +899,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             + " billed=" + chargedMotionExhaustion
             + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ());
         if (args[1].equals("POST_FORWARD")) {
+            s50NativeMoveStarted = true;
+            s50BodyConditionGate.close();
             // Pure time gate, not a player movement command or Action issuer.
             // The existing S50 native client clear remains the exclusive clear.
             // Duplicated marker IDs cannot reschedule a second clock gate.
