@@ -203,9 +203,10 @@ def parse_live_l2(
     request: OpenCognitionRequest,
     result: OpenCognitionResult,
     *, require_real_llama: bool,
+    previous_proposal: LiveL2Proposal | None = None,
 ) -> LiveL2Proposal:
     """Parse strict observed OPEN response, not a World command."""
-    expected = request_for_live_l2(ledger)
+    expected = request_for_live_l2(ledger, previous_proposal=previous_proposal)
     if (
         type(result) is not OpenCognitionResult
         or type(request) is not OpenCognitionRequest
@@ -236,6 +237,8 @@ def parse_live_l2(
         or raw["next_test"] not in NEXT_TESTS
         or type(raw["capability_assessment"]) is not str
         or raw["capability_assessment"] not in ABILITY
+        or type(raw["prior_hypothesis_relation"]) is not str
+        or raw["prior_hypothesis_relation"] not in RELATIONS
         or any(type(raw[k]) is not str
                or not 16 <= len(raw[k]) <= 200 for k in (
                    "explanation", "falsification_test",
@@ -254,6 +257,26 @@ def parse_live_l2(
         ) and not refs
     ):
         raise LiveL2Rejected("model revision without referenced prior observation")
+    relation = raw["prior_hypothesis_relation"]
+    if (n == 1 and relation != "FIRST_HYPOTHESIS") or (
+        n == 2 and relation == "FIRST_HYPOTHESIS"
+    ):
+        raise LiveL2Rejected("incorrect previous hypothesis relation")
+    try:
+        feedback = (
+            previous_feedback(previous_proposal, ledger.history[-1])
+            if previous_proposal is not None else None
+        )
+        citations = validate_numeric_citations(
+            tuple(ledger.history), raw["numeric_evidence_refs"], feedback=feedback,
+        )
+    except NumericRoleRejected as exc:
+        raise LiveL2Rejected("model numeric evidence is ungrounded") from exc
+    if relation == "REVISE_PRIOR" and (
+        feedback is None or feedback["previous_prediction_m"] is None
+        or not any(c.trial_ordinal == 2 for c in citations)
+    ):
+        raise LiveL2Rejected("revision candidate lacks new-epoch observed evidence")
     source = ledger.history[-1]
     details = {
         "source_world_uuid": ledger.world_uuid,
@@ -273,6 +296,11 @@ def parse_live_l2(
             float(prediction) if prediction is not None else None
         ),
         "capability_assessment": raw["capability_assessment"],
+        "prior_hypothesis_relation": relation,
+        "prior_proposal_sha256": (
+            previous_proposal.proposal_sha256 if previous_proposal is not None else None
+        ),
+        "numeric_evidence_refs": tuple(asdict(c) for c in citations),
         "provider_source": result.provenance.source,
         "provider_prompt_tokens": result.observed_prompt_tokens,
         "provider_completion_tokens": result.observed_completion_tokens,
@@ -316,7 +344,8 @@ class BoundedLiveL2:
             or len(ledger.history) != len(self.proposals) + 1
         ):
             raise LiveL2Rejected("duplicate, over-budget or gap in previous experience")
-        req = request_for_live_l2(ledger)
+        previous = self.proposals[-1] if self.proposals else None
+        req = request_for_live_l2(ledger, previous_proposal=previous)
         if req.request_id in self.attempted_request_ids:
             raise LiveL2Rejected("OPEN request already attempted")
         self.attempted_request_ids.add(req.request_id)
@@ -331,6 +360,7 @@ class BoundedLiveL2:
             entry["result"] = asdict(observed)
             proposed = parse_live_l2(
                 ledger, req, observed, require_real_llama=self.require_real_llama,
+                previous_proposal=previous,
             )
         except Exception as exc:
             # A timed-out HTTP thread might finish later, but its result is
