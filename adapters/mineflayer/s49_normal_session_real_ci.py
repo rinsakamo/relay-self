@@ -665,6 +665,22 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
+            # Original native S16 closure exists BEFORE Paper WAIT/L2 OPEN.
+            # Keep it in the failure report even if a later L2 model aborts.
+            report["actual_native_actions"].append({
+                "action": receipt.terminal.action_id,
+                "terminal": receipt.terminal.state.value,
+                "source": receipt.consequence.session_id,
+                "movement_m": receipt.consequence.movement_distance,
+                "event_seq": step.event_seq,
+                "probe_seq": step.choice.probe_seq,
+                # Decoded original before/after observations and exact effect
+                # receipts, captured BEFORE the immutable consequence is lost.
+                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
+                "execution_evidence": capture_native_action_evidence(
+                    receipt.consequence
+                ),
+            })
             if mp11_g3_paper_assets is not None:
                 assert server is not None and server.stdin is not None
                 _command(server, f"relaydevphase {marker} POST_CLEAR")
@@ -758,20 +774,7 @@ async def qualify(
                         l2_stage_release[count].set()
                 report["mp11_g3"]["paper_markers"].append(marker)
                 g3_previous_marker = marker
-            report["actual_native_actions"].append({
-                "action": receipt.terminal.action_id,
-                "terminal": receipt.terminal.state.value,
-                "source": receipt.consequence.session_id,
-                "movement_m": receipt.consequence.movement_distance,
-                "event_seq": step.event_seq,
-                "probe_seq": step.choice.probe_seq,
-                # Decoded original before/after observations and exact effect
-                # receipts, captured BEFORE the immutable consequence is lost.
-                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
-                "execution_evidence": capture_native_action_evidence(
-                    receipt.consequence
-                ),
-            })
+
 
         async def stage_world():
             assert server is not None and server.stdin is not None
