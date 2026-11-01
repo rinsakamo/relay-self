@@ -7,7 +7,8 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.l_mp11_live_previous_action import (
-    LivePriorLedger, LivePriorRejected,
+    LivePriorLedger,
+    LivePriorRejected,
 )
 from test_self_body_s50_l2_mp11_paper_audit import segment
 
