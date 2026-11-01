@@ -17,9 +17,9 @@ from typing import Any
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s60b1_loopback_adapter import (
+    S60_WB_ADVISORY_JSON_FORMAT,
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
-    S60_WB_ADVISORY_JSON_FORMAT,
 )
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
