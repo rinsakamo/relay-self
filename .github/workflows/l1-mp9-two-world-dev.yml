@@ -1,10 +1,6 @@
 name: L1-MP9 heldout material-selected original two Paper Worlds DEV
 # Explicit once-only physical owner opt-in commit.
 # MP9 activation: preflight first, normal then ice; abort at first failed World.
-# Fresh release after source-only test correction; previous physical workflow started zero Worlds.
-# New DEV attempt after one NORMAL World rejected pre-action; fixed gravity landing and Paper reject reasons.
-# Third fresh DEV release: MP9 original Paper marker whitelist regression passed before launch.
-# Fourth fresh DEV release: real two-phase Paper audit corrected using preserved NORMAL originals. DO NOT rerun old attempts.
 on:
   push:
     branches: [dev/l1-mp9-surface-selector-shadow-20261101]
@@ -40,11 +36,11 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check tools/l1_mp9_two_world_dev.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_l1_mp9_selector.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_mp9_physical.py tests/test_self_body_s50_l1_mp9_selector.py
+          ruff check tools/l1_mp9_two_world_dev.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_l1_mp9_selector.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_mp8_physical.py tests/test_self_body_s50_l1_mp9_selector.py
           python -m compileall -q tools/l1_mp9_two_world_dev.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py
           python -m pytest -o addopts='' -q \
             tests/test_self_body_s50_l1_mp9_selector.py \
-            tests/test_self_body_s50_l1_mp9_physical.py \
+            tests/test_self_body_s50_l1_mp8_physical.py \
             tests/test_self_body_s50_l1_ice_floor.py \
             tests/test_self_body_s50_l1_paper_local.py \
             tests/test_self_body_s50_l1_host_prediction.py \
