@@ -45,3 +45,63 @@ def test_no_reuse(tmp_path):
         hook.arm('new', 'new', 'new')
     with pytest.raises(FileExistsError):
         HostPrediction(path)
+
+
+def test_original_collector_sink_flush_notifies_synchronously(tmp_path):
+    hook = HostPrediction(tmp_path / 'journal')
+    hook.arm('new-session', 'new-action', 'marker')
+    path = tmp_path / 'server.log'
+    observed = hook.collector_log(path)
+    assert observed == path and observed.parent == path.parent
+    line = 'M02_DEV_S50_PHASE marker_id=marker phase=PRE_FORWARD world=new-world\n'
+    with observed.open('w', encoding='utf-8') as sink:
+        sink.write(line)
+        assert hook.ticket is None
+        sink.flush()
+        assert hook.ticket is not None
+        assert path.read_text() == line
+    assert path.read_text() == line
+
+
+def test_protected_sole_collector_commits_before_reading_next_callback(monkeypatch, tmp_path):
+    import asyncio
+    from types import SimpleNamespace
+
+    from adapters.mineflayer.s31a_real_server_ci import _ready_server
+
+    async def run():
+        hook = HostPrediction(tmp_path / 'journal')
+        hook.arm('new-session', 'new-action', 'marker')
+        raw_lines = [
+            b'Done (1s)! For help\n',
+            b'M02_DEV_S50_PHASE marker_id=marker phase=PRE_FORWARD world=new-world\n',
+            b'S50_DEV_WAIT_TICK marker_id=marker world=new-world tick=1 index=1 from_x=0 from_y=0 from_z=0 x=0.01 y=0 z=0\n',
+        ]
+
+        class Stream:
+            count = 0
+
+            async def readline(self):
+                if self.count == 3:
+                    rows = [json.loads(x) for x in hook.path.read_text().splitlines()]
+                    assert rows[-1]['kind'] == 'PREDICTION_FIXED'
+                    return b''
+                line = raw_lines[self.count]
+                self.count += 1
+                return line
+
+        process = SimpleNamespace(stdout=Stream(), returncode=None)
+
+        async def fixture_java(*args, **kwargs):
+            return process
+
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', fixture_java)
+        log = tmp_path / 'server.log'
+        raw = tmp_path / 'raw.bin'
+        _, collector, _ = await _ready_server(
+            tmp_path, tmp_path / 'unused.jar', hook.collector_log(log), raw_stdout_path=raw,
+        )
+        await collector
+        assert raw.read_bytes() == log.read_bytes() == b''.join(raw_lines)
+
+    asyncio.run(run())

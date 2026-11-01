@@ -16,6 +16,38 @@ from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
 )
 
 
+class _ObservedLogPath(type(Path())):
+    """Per-call sink capability; leaves protected collector and Path global intact."""
+    def open(self, mode='r', *args, **kwargs):
+        sink = super().open(mode, *args, **kwargs)
+        if mode != 'w':
+            return sink
+        observer = self.observer
+
+        class Sink:
+            pending = ''
+
+            def __enter__(inner):
+                sink.__enter__()
+                return inner
+
+            def write(inner, line):
+                result = sink.write(line)
+                inner.pending += line
+                return result
+
+            def flush(inner):
+                sink.flush()
+                pending, inner.pending = inner.pending, ''
+                if pending:
+                    observer(pending.encode('utf-8'))
+
+            def __exit__(inner, *exc):
+                return sink.__exit__(*exc)
+
+        return Sink()
+
+
 class HostPrediction:
     def __init__(self, path: Path):
         archive = Path(__file__).resolve().parents[2] / (
@@ -30,6 +62,11 @@ class HostPrediction:
         self.last_tick = None
         self.count = 0
         self.write('TRAINING_FIXED', training=asdict(self.training))
+
+    def collector_log(self, path):
+        observed = _ObservedLogPath(path)
+        observed.observer = self.observe
+        return observed
 
     def write(self, kind, **payload):
         with self.path.open('ab') as out:

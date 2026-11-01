@@ -19,7 +19,6 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -181,7 +180,6 @@ _STARTUP_COLLECTOR_SETTLE_S = 5.0
 async def _ready_server(
     root: Path, jar: Path, log_path: Path, *,
     raw_stdout_path: Path | None = None,
-    line_observer: Callable[[bytes], None] | None = None,
 ) -> tuple[asyncio.subprocess.Process, asyncio.Task[None], asyncio.Event]:
     # Explicit DEV-only capture: the original single collector remains sole
     # stdout reader. The default path preserves its historical UTF-8 log.
@@ -221,8 +219,6 @@ async def _ready_server(
                         if raw_sink is not None:
                             raw_sink.write(raw)
                             raw_sink.flush()
-                        if line_observer is not None:
-                            line_observer(raw)
                         line = raw.decode("utf-8", errors="replace")
                         logfile.write(line)
                         logfile.flush()

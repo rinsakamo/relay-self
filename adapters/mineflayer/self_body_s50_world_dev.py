@@ -405,9 +405,9 @@ async def qualify(
             ))
             _write_config(root)
         server, collector, _ = await _ready_server(
-            root, root / "minecraft.jar", server_log,
-            **({"line_observer": predictor.observe,
-                "raw_stdout_path": server_log.parent / "paper-stdout-original.bin"}
+            root, root / "minecraft.jar",
+            predictor.collector_log(server_log) if predictor is not None else server_log,
+            **({"raw_stdout_path": server_log.parent / "paper-stdout-original.bin"}
                if predictor is not None else {}),
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
