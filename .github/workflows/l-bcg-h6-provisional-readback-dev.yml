@@ -9,6 +9,10 @@ on:
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
       - 'src/relay_self/l_bcg_h9a_stimulus.py'
       - 'src/relay_self/l_bcg_h9a_pair.py'
+      - 'src/relay_self/l_bcg_h9a_config_forensics.py'
+      - 'tests/test_l_bcg_h9a_config_forensics.py'
+      - 'tools/l_bcg_h9a_config_forensics.py'
+      - 'docs/l-bcg-h9a-posthoc-config-forensics-20261101.md'
       - 'tests/test_l_bcg_h9a_pair.py'
       - 'tools/l_bcg_h9a_pair_readback.py'
       - 'docs/l-bcg-h9a-two-world-dev-20261101.md'
@@ -31,6 +35,10 @@ on:
       - 'src/relay_self/l_bcg_h8_owner_availability.py'
       - 'src/relay_self/l_bcg_h9a_stimulus.py'
       - 'src/relay_self/l_bcg_h9a_pair.py'
+      - 'src/relay_self/l_bcg_h9a_config_forensics.py'
+      - 'tests/test_l_bcg_h9a_config_forensics.py'
+      - 'tools/l_bcg_h9a_config_forensics.py'
+      - 'docs/l-bcg-h9a-posthoc-config-forensics-20261101.md'
       - 'tests/test_l_bcg_h9a_pair.py'
       - 'tools/l_bcg_h9a_pair_readback.py'
       - 'docs/l-bcg-h9a-two-world-dev-20261101.md'
@@ -66,15 +74,16 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
-          python -m compileall -q src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
-          python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tests/test_l_bcg_h9a_pair.py
+          ruff check src/relay_self/l_bcg_h9a_config_forensics.py tests/test_l_bcg_h9a_config_forensics.py tools/l_bcg_h9a_config_forensics.py src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m compileall -q src/relay_self/l_bcg_h9a_config_forensics.py tests/test_l_bcg_h9a_config_forensics.py tools/l_bcg_h9a_config_forensics.py src/relay_self/l_bcg_h9a_stimulus.py src/relay_self/l_bcg_h9a_pair.py tests/test_l_bcg_h9a_pair.py tools/l_bcg_h9a_pair_readback.py adapters/mineflayer/self_body_s50_world_dev.py tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py
+          python -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py tests/test_l_bcg_h9a_pair.py tests/test_l_bcg_h9a_config_forensics.py
           python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h5-20261101
           python tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
           python tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
           python tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h8-20261101 --audit-classification DEV_H8_ORIGINAL_CHAIN_AND_BCG_DEFER_VERIFIED
+          python tools/l_bcg_h9a_config_forensics.py docs/evidence/l-bcg-h9a-20261101/a docs/evidence/l-bcg-h9a-20261101/b
       - name: Explicit evidence ceiling
         if: always()
         run: echo 'DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
