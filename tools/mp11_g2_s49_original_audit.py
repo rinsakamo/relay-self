@@ -13,7 +13,12 @@ class MP11G2Rejected(ValueError):
     """No three source-linked original S49/S15/S16 closures in one session."""
 
 
-def audit_original(report: dict, *, require_completed_cleanup: bool = True) -> dict:
+def audit_original(
+    report: dict, *, require_completed_cleanup: bool = True,
+    expected_l2_calls: int = 0,
+) -> dict:
+    if type(expected_l2_calls) is not int or expected_l2_calls not in (0, 2):
+        raise MP11G2Rejected("only zero or two bounded live L2 shadow calls")
     if not isinstance(report, dict):
         raise MP11G2Rejected("original report required")
     sid=report.get("session_id")
@@ -25,7 +30,7 @@ def audit_original(report: dict, *, require_completed_cleanup: bool = True) -> d
             or not isinstance(mp,dict) or not isinstance(actions,list)
             or not isinstance(decisions,list) or not isinstance(traces,list)
             or mp.get("action_budget") != 3
-            or mp.get("l2_provider_calls") != 0
+            or mp.get("l2_provider_calls") != expected_l2_calls
             or mp.get("l2_selected_trials") != 0
             or mp.get("l10_s10_s11_admissions") != 0
             or mp.get("paper_s50_windows") != 0
@@ -104,7 +109,7 @@ def audit_original(report: dict, *, require_completed_cleanup: bool = True) -> d
         or report.get("node_exit") != 0
         or report.get("server_exit") != 0
         or report.get("learning_in_world") is not False
-        or report.get("real_model_calls") != 0
+        or report.get("real_model_calls") != expected_l2_calls
     ):
         raise MP11G2Rejected("qualified finished original Java/Node session absent")
     return {
@@ -119,7 +124,7 @@ def audit_original(report: dict, *, require_completed_cleanup: bool = True) -> d
         "single_server_process_session": True,
         "minecraft_world_uuid":"NOT_AVAILABLE_FROM_VANILLA_SOURCE",
         "paper_s50_windows":0,
-        "real_l2_provider_calls":0,
+        "real_l2_provider_calls":expected_l2_calls,
         "autonomous_l2_experiment_selection":False,
         "s10_s11_l10_admissions":0,
         "qualification":"DEV_ONLY",
