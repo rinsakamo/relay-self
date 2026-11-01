@@ -14,6 +14,10 @@ commands:
     description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
     usage: '/relaydevwait <marker_id>'
 
+  relaydevicefloor:
+    description: 'Console-only MP7 physical packed-ice floor pre-S49 Action'
+    usage: '/relaydevicefloor <marker_id> PACKED_ICE_5X5'
+
   relaydevcondition:
     description: 'Console-only MP6 experimenter-owned Slowness II before original S49 Action'
     usage: '/relaydevcondition <marker_id> SLOWNESS_II'
