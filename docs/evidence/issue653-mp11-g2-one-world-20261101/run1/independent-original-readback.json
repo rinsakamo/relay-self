@@ -1,0 +1,108 @@
+{
+  "schema": "MP11_G2_ONE_WORLD_THREE_ORIGINAL_S49_S16_INDEPENDENT_READBACK_V1",
+  "date": "2026-11-01",
+  "physical": {
+    "github_run": 41288351137,
+    "url": "https://github.com/rinsakamo/relay-self/actions/runs/41288351137",
+    "executing_head": "fe64a8616ec2ae344ac2b21f7a8d275a9b50e28f",
+    "status": "SUCCESS",
+    "artifact_id": 13074954873,
+    "artifact_name": "mp11-g2-one-world-three-action-originals-41288351137-1",
+    "artifact_zip_sha256": "aa80fc6c2da68a5b1748260729df788aac349ea5081fc87f3edce9eed3fb24f7",
+    "original_server_log_sha256": "14cc850ed1464803232e15d246ea701ba9eda78bba492f7ed82b2c15398ce820",
+    "original_node_stdout_sha256": "518497849f6867400abdcab37dfc98025fa456a8875929d763d5739f2509fc09",
+    "original_node_bytes": 59677,
+    "original_node_frames": 90,
+    "raw_capture_sealed": true,
+    "stdout_eof_observed": true,
+    "shutdown_ack_count": 1,
+    "raw_node_match_receipt": true,
+    "java_exit": 0,
+    "node_exit": 0,
+    "run_attempt": 1,
+    "retry_count": 0,
+    "minecraft_version": "1.21.8",
+    "mineflayer_version": "4.39.0",
+    "server_identity": "SINGLE_ORIGINAL_VANILLA_JAVA_SERVER_PROCESS",
+    "world_uuid": "NOT_AVAILABLE_FROM_VANILLA_SOURCE",
+    "source_status": "NATIVE_NODE_BRIDGE_JSONL_NOT_MINECRAFT_TCP_PACKET"
+  },
+  "session": {
+    "session_id": "ff30a86c-383f-4b86-bed7-36b0f1d49d60",
+    "l0_decisions": [
+      "WAIT",
+      "MOVE_AWAY",
+      "MOVE_AWAY",
+      "MOVE_AWAY"
+    ],
+    "actual_original_action_count": 3,
+    "unique_target_entity_ids": [
+      2,
+      4,
+      6,
+      8
+    ],
+    "l0_decisions_unmodified": true,
+    "actual_original_actions": [
+      {
+        "id": "s49-native-move-20",
+        "move_m": 0.6269065734210617,
+        "before_seq": 22,
+        "dispatch_seq": 23,
+        "clear_seq": 28,
+        "after_seq": 29
+      },
+      {
+        "id": "s49-native-move-48",
+        "move_m": 0.6269065734210617,
+        "before_seq": 50,
+        "dispatch_seq": 51,
+        "clear_seq": 56,
+        "after_seq": 57
+      },
+      {
+        "id": "s49-native-move-77",
+        "move_m": 0.6269065734210617,
+        "before_seq": 79,
+        "dispatch_seq": 80,
+        "clear_seq": 85,
+        "after_seq": 86
+      }
+    ],
+    "all_typed_original_selfbody_s16_outcome": true,
+    "all_S15_clear_applied": true,
+    "original_action_supervisor_single_owner": true,
+    "paper_s50_windows": 0,
+    "actual_llm_calls": 0,
+    "actual_l2_choices": 0,
+    "learning_admissions": 0
+  },
+  "independent_postrun": {
+    "original_zip_inspected": true,
+    "raw_zip_entries": [
+      "report.json",
+      "minecraft-original.log",
+      "native-stdout/w3-node-stdout.raw.jsonl",
+      "native-stdout/w3-node-stdout-receipt.json",
+      "independent-readback.json"
+    ],
+    "source_w3_sha_recomputed_and_matched": true,
+    "decoded_receipts_crosschecked": true,
+    "source_variations": "NONE_OPERATOR_STAGE_APPLIED_THREE_IDENTICAL_S49_MOVE_BACKWARD",
+    "source_only_tests": 83,
+    "source_only_ruff_compile_contracts": "PASS",
+    "original_source_outcomes": "PASS",
+    "newer_source_changes_run_in_original_physical_world": false
+  },
+  "interpretation": {
+    "g2_original_same_server_multiple_actions": "DEV_PASS",
+    "g2_full_same_world_autonomous_experiment": "NOT_YET",
+    "g1_real_l2": "NOT_RUN",
+    "g3_separate_paper_s50_windows": "NOT_RUN",
+    "g4_independent_holdout": "NOT_RUN",
+    "goal": "UNDETERMINED",
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "classification": "MP11_G2_ONE_SERVER_ONE_SESSION_THREE_AUTHENTIC_S49_S16_DEV_PASS / AUTONOMOUS_L2_EXPERIMENT_NOT_ESTABLISHED"
+  }
+}

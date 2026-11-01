@@ -1,0 +1,40 @@
+name: MP11 G2 original S49 three-Action one-World source DEV
+on:
+  push:
+    branches: [dev/mp11-g2-s49-three-actions-one-world-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tools/mp11_g2_s49_original_audit.py'
+      - 'tests/test_mp11_g2_s49_original_audit.py'
+      - '.github/workflows/mp11-g2-three-action-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  no-new-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Source, typed S16, Action and original cleanup contracts
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/s49_normal_session_real_ci.py tools/mp11_g2_s49_original_audit.py tests/test_mp11_g2_s49_original_audit.py
+          python -m compileall -q adapters/mineflayer/s49_normal_session_real_ci.py tools/mp11_g2_s49_original_audit.py tests/test_mp11_g2_s49_original_audit.py
+          python -m pytest -o addopts='' -q \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py \
+            tests/test_self_body_s50_original_closure.py \
+            tests/test_s49_cleanup.py \
+            tests/test_s49_native_os_custody.py
+          python tools/check_repository.py
+      - run: echo 'NO_REAL_WORLD / S49 original 3-action DEV opt-in default OFF / L2 provider 0 / S50 Paper 0'
