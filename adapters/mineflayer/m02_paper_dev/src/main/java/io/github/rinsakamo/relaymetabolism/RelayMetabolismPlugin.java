@@ -710,7 +710,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 return false;
             }
             Player p = Bukkit.getPlayerExact(target);
-            if (p == null || !p.isOnline() || p.isDead() || !p.isOnGround()) {
+            if (p == null || !p.isOnline() || p.isDead()) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=SUBJECT_UNAVAILABLE");
+                return false;
+            }
+            if (!p.isOnGround()) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=NOT_ON_GROUND"
+                    + " y=" + p.getLocation().getY()
+                    + " vy=" + p.getVelocity().getY()
+                    + " tick=" + p.getWorld().getFullTime());
                 return false;
             }
             long tick = p.getWorld().getFullTime();
@@ -718,6 +726,11 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     p.getUniqueId().toString(), tick, !s50Marker.equals("NONE"),
                     s50PaperLocalForecast.model() != null, s50NativeMoveStarted,
                     s50ChangedBodyConditionDev)) {
+                getLogger().warning("S50_DEV_SURFACE_REJECT reason=GATE_NOT_ARMABLE"
+                    + " pre_forward=" + !s50Marker.equals("NONE")
+                    + " prior_armed=" + (s50PaperLocalForecast.model() != null)
+                    + " native_move_started=" + s50NativeMoveStarted
+                    + " other_condition=" + s50ChangedBodyConditionDev);
                 return false;
             }
             Location at = p.getLocation();
