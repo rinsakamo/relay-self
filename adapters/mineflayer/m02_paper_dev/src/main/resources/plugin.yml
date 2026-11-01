@@ -10,6 +10,10 @@ commands:
     description: 'Console-only S DEV Paper tick marker; no Action authorization'
     usage: '/relaydevphase <marker_id> <phase>'
 
+  relaydevmp11next:
+    description: 'Console-only MP11 next observation window after prior WAIT8; never issues Action'
+    usage: '/relaydevmp11next <previous_marker> <next_marker>'
+
   relaydevwait:
     description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
     usage: '/relaydevwait <marker_id>'
