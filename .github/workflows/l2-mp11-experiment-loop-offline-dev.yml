@@ -5,7 +5,9 @@ on:
   pull_request:
     paths:
       - 'adapters/mineflayer/self_body_s50_l2_mp11_experiment.py'
+      - 'adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py'
       - 'tests/test_self_body_s50_l2_mp11_experiment.py'
+      - 'tests/test_self_body_s50_l2_mp11_paper_audit.py'
       - '.github/workflows/l2-mp11-experiment-loop-offline-dev.yml'
 permissions:
   contents: read
@@ -28,10 +30,11 @@ jobs:
       - name: Test L2 generated experiments, one-World same-id chronology, source/Action denials
         run: |
           set -euo pipefail
-          ruff check adapters/mineflayer/self_body_s50_l2_mp11_experiment.py tests/test_self_body_s50_l2_mp11_experiment.py
-          python -m compileall -q adapters/mineflayer/self_body_s50_l2_mp11_experiment.py tests/test_self_body_s50_l2_mp11_experiment.py
+          ruff check adapters/mineflayer/self_body_s50_l2_mp11_experiment.py adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py tests/test_self_body_s50_l2_mp11_experiment.py tests/test_self_body_s50_l2_mp11_paper_audit.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l2_mp11_experiment.py adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py
           python -m pytest -o addopts='' -q \
             tests/test_self_body_s50_l2_mp11_experiment.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
             tests/test_self_body_s50_l1_mp10_revision.py \
             tests/test_self_body_s50_l1_mp9_selector.py \
             tests/test_self_body_s50_live_next_epoch.py
