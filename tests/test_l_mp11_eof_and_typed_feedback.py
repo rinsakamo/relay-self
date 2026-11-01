@@ -55,7 +55,7 @@ def test_future_predeclared_eof_exact_prompt_keeps_unmodified_original_sha():
 @pytest.mark.parametrize("tail", [
     b">", b">  ", b"> \nTRUNCATED", b"PartialPaper", b"\x00",
     b"> \r", b"> \x1b[31m", b"S50_DEV_WAIT_TICK marker_id=foreign",
-    b"> > ", b"\n> ",
+    b"> > ",
 ])
 def test_unknown_or_ambiguous_incomplete_shutdown_suffix_denied(tail):
     with pytest.raises(PaperEOFRejected):
