@@ -410,6 +410,7 @@ async def _run_disposable(
     live_model: tuple[str, int, float] | None = None,
     self_world_live: bool = False,
     wb_cognition_slice: bool = False,
+    structured_json_off: bool = False,
     self_world_prospective: bool = False,
     self_world_typed_closure: bool = False,
     self_world_retained_handoff: bool = False,
@@ -438,6 +439,7 @@ async def _run_disposable(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             self_world_live=self_world_live,
             wb_cognition_slice=wb_cognition_slice,
+            **({"structured_json_off": True} if structured_json_off else {}),
         )
     stage_n = None
     if self_world_typed_closure:
@@ -664,6 +666,9 @@ def _dev_run(args: argparse.Namespace) -> int:
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
         passive_views = getattr(args, "self_passive_views", False)
         wb_slice = getattr(args, "wb_cognition_slice", False)
+        wb_structured = getattr(args, "wb_structured_l2", False)
+        if wb_structured and (not wb_slice or not live_selfworld or not args.live_think):
+            raise DemoRejected("WB JSON L2 requires native-selfworld WB live DEV")
         if wb_slice and (not live_selfworld or not args.live_think):
             raise DemoRejected("WB slice requires native-selfworld live L2 DEV")
         if type(passive_views) is not bool or (
@@ -805,6 +810,8 @@ def _dev_run(args: argparse.Namespace) -> int:
                     extra["self_world_retained_handoff"] = True
                 if wb_slice:
                     extra["wb_cognition_slice"] = True
+                if wb_structured:
+                    extra["structured_json_off"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
@@ -1538,6 +1545,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
     parser.add_argument("--wb-cognition-slice", action="store_true",
                         help="DEV-only opt-in bounded L2 context; requires SelfWorld live")
+    parser.add_argument("--wb-structured-l2", action="store_true",
+                        help="DEV opt-in schema JSON and attested Thinking OFF; requires WB L2")
     parser.add_argument("--self-world-prospective", action="store_true",
                         help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
     parser.add_argument("--self-world-typed-closure", action="store_true",
@@ -1581,6 +1590,14 @@ def main(argv: list[str] | None = None) -> int:
     ) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.wb_structured_l2 and not (
+        args.wb_cognition_slice and args.self_world_live and args.live_think
+    ):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="WB_JSON_L2_REQUIRES_WB_LIVE_L2",
             model_calls=0, actual_actions=0,
         ), sort_keys=True))
         return 2
