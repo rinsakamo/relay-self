@@ -10,7 +10,16 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+
 import test_metabolism_same_process_slm_product as slm
+from experiments.metabolism_relay_engine_usage import (
+    OwnerEngineCall,
+    OwnerEpochEngineBinding,
+)
+from experiments.metabolism_s_owner_engine_handoff import (
+    bounded_s_owner_engine_cost_row,
+    observe_s_owner_engine_usage,
+)
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
@@ -21,15 +30,6 @@ from relay_self.relay_engine import (
     RelayEngine,
 )
 from relay_self.runtime_coordination import coordinate_decision_epoch
-
-from experiments.metabolism_relay_engine_usage import (
-    OwnerEngineCall,
-    OwnerEpochEngineBinding,
-)
-from experiments.metabolism_s_owner_engine_handoff import (
-    bounded_s_owner_engine_cost_row,
-    observe_s_owner_engine_usage,
-)
 
 
 def fake_model_epoch():
