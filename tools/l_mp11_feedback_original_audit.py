@@ -19,6 +19,9 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
                              world_uuid=g3["paper_world_uuid"],
                              subject_uuid=g3["subject_uuid"])
     shadow = report["l_mp11_live_l2"]
+    evidence_ids = shadow.get("evidence_id_mode", False)
+    if type(evidence_ids) is not bool:
+        raise ValueError("invalid original evidence mode")
     attempts = shadow["attempt_originals"]
     windows = report["l_mp11_live_prefix"]["observations"]
     if type(attempts) is not list or len(attempts) != 2:
@@ -34,7 +37,9 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
             marker_id=g3["paper_markers"][i],
             native_s16_seq=native["native_seq"], native_outcome="S16_OUTCOME",
         )
-        request = request_for_live_l2(ledger, previous_proposal=previous)
+        request = request_for_live_l2(
+            ledger, previous_proposal=previous, evidence_ids=evidence_ids,
+        )
         # JSON-normalize tuple fields without accepting altered source values.
         import json
         if json.loads(json.dumps(asdict(request))) != attempt["request"]:
@@ -51,7 +56,8 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
             call_facts=ProviderCallFacts(**raw["call_facts"]),
         )
         proposal = parse_live_l2(ledger, request, result, require_real_llama=True,
-                                 previous_proposal=previous)
+                                 previous_proposal=previous,
+                                 evidence_ids=evidence_ids)
         if json.loads(json.dumps(asdict(proposal))) != shadow["proposals"][i]:
             raise ValueError("original model text/proposal SHA/numeric citation mismatch")
         previous = proposal
@@ -59,4 +65,5 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
     return {"two_prior_only_requests_reconstructed": True,
             "h1_to_feedback_to_h2_sha_verified": True,
             "numeric_citations_reparsed": True,
+            "evidence_ids_resolved_from_original": evidence_ids,
             "causal_interpretation_attested": False}
