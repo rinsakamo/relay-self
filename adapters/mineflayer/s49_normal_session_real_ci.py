@@ -385,9 +385,6 @@ async def qualify(
         live_l_prior = None
         if l_mp11_live_prefix_dev:
             # Read-only L-owned diagnostic; never a model/action executor.
-            from adapters.mineflayer.l_mp11_live_previous_action import (
-                LivePriorLedger,
-            )
             # First physical Paper World/subject identity is fixed by original
             # pre-Action surface witness; defer typed ledger creation to it.
             report["l_mp11_live_prefix"] = {
@@ -645,11 +642,11 @@ async def qualify(
                 )
                 await wait_live_paper_window(server_log, marker=marker)
                 if l_mp11_live_prefix_dev:
-                    from adapters.mineflayer.l_mp11_live_previous_action import (
-                        LivePriorLedger,
-                    )
                     from adapters.mineflayer.l23_paper_s7_settling import (
                         _paper_rows,
+                    )
+                    from adapters.mineflayer.l_mp11_live_previous_action import (
+                        LivePriorLedger,
                     )
                     if (server.returncode is not None
                             or session.process_returncode is not None):
