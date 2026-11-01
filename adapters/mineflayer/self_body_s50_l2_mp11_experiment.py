@@ -67,6 +67,8 @@ class WorldTrialReceipt:
     experiment_id: str
     action_id: str
     action_outcome: str
+    actual_floor_material: str
+    actual_input_regime: str
     wait_ticks: tuple[int, ...]
     wait_motion_m: tuple[float, ...]
     paper_original_sha256: str
@@ -223,6 +225,8 @@ class L2ExperimentLoop:
             or receipt.session_id != self.session_id
             or receipt.proposal_sha256 != p.proposal_sha256
             or receipt.experiment_id != p.experiment_id
+            or receipt.actual_floor_material != EXPERIMENTS[p.experiment_id][0]
+            or receipt.actual_input_regime != EXPERIMENTS[p.experiment_id][1]
             or not _token(receipt.action_id)
             or receipt.action_outcome != "S16_OUTCOME"
             or len(receipt.wait_ticks) != 8
