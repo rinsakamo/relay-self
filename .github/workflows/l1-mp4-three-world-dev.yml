@@ -1,0 +1,111 @@
+name: L1-MP4 exactly three disposable Minecraft Worlds DEV
+on:
+  push:
+    branches: [dev/l1-mp4-paper-tick-gate-20261101]
+    paths:
+      - '.github/workflows/l1-mp4-three-world-dev.yml'
+permissions:
+  contents: read
+jobs:
+  explicitly-authorized-three-world-dev:
+    # New run is only caused by a one-time dedicated commit with this exact
+    # trigger marker. Rerun of workflow/job attempt 2+ cannot spawn a World.
+    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp4-three-world-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+      MP4_PREFLIGHT: ${{ runner.temp }}/mp4-offline-preflight-${{ github.run_id }}
+      MP4_ROOT: ${{ runner.temp }}/mp4-three-worlds-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/m02_paper_dev/pom.xml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline lint/test/contracts BEFORE any JVM World startup
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check tools/l1_mp4_three_world_dev.py adapters/mineflayer/self_body_s50_l1_paper_dispatch.py adapters/mineflayer/self_body_s50_l1_host_prediction.py tests/test_self_body_s50_l1_paper_dispatch.py
+          python -m compileall -q tools/l1_mp4_three_world_dev.py
+          python -m pytest -o addopts='' -q tests/test_self_body_s50_l1_paper_dispatch.py tests/test_self_body_s50_l1_host_prediction.py tests/test_self_body_s50_l1_motion_prequential.py tests/test_s50_live_paper_window.py
+          python tools/check_repository.py
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50ForecastGateSelfTest
+      - name: Build original S Paper plugin and install pinned native Mineflayer runtime
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -p "require('./adapters/mineflayer/node_modules/mineflayer/package.json').version" | grep -x '4.39.0'
+      - name: Fetch pinned genuine Paper 1.21.8 build 60, refuse unexpected SHA
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          sha='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          url='https://fill-data.papermc.io/v1/objects/'+sha+'/paper-1.21.8-60.jar'
+          request=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-MP4-DEV (https://github.com/rinsakamo/relay-self)'})
+          dest=pathlib.Path(os.environ['RUNNER_TEMP'])/'mp4-paper-pinned.jar'
+          h=hashlib.sha256();size=0
+          with urllib.request.urlopen(request,timeout=120) as src,dest.open('xb') as out:
+              while chunk:=src.read(1024*1024):
+                  size+=len(chunk)
+                  if size>52811717:raise ValueError('unexpected Paper bytes')
+                  out.write(chunk);h.update(chunk)
+          assert size==52811717 and h.hexdigest()==sha
+          PY
+      - name: Verify triple-World assets and opt-in runtime config WITHOUT starting World
+        run: |
+          set -euo pipefail
+          python tools/l1_mp4_three_world_dev.py \
+            --output "$MP4_PREFLIGHT" \
+            --paper-jar "$RUNNER_TEMP/mp4-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --worlds 3 --confirm MP4-THREE-DISPOSABLE-PAPER-WORLDS-DEV-ONLY \
+            --preflight-only
+      - name: Three INDEPENDENT disposable DEV Worlds in sequence; never retry one World
+        timeout-minutes: 19
+        run: |
+          set -euo pipefail
+          python tools/l1_mp4_three_world_dev.py \
+            --output "$MP4_ROOT" \
+            --paper-jar "$RUNNER_TEMP/mp4-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --worlds 3 --confirm MP4-THREE-DISPOSABLE-PAPER-WORLDS-DEV-ONLY
+      - name: Preserve ORIGINALS even if any World fails (no auto-retry)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l1-mp4-three-world-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: warn
+          include-hidden-files: true
+          path: |
+            ${{ env.MP4_PREFLIGHT }}/
+            ${{ env.MP4_ROOT }}/
+      - name: Never authorize qualification or science from World DEV
+        if: always()
+        run: |
+          echo 'THREE_WORLD_DEV_ONLY / L0_UNCHANGED / L10_S10_S11=0 / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
