@@ -1,0 +1,69 @@
+name: L1-MP6 changed body condition offline DEV
+on:
+  push:
+    branches: [dev/l1-mp6-changed-body-condition-20261101]
+  pull_request:
+    paths:
+      - '.github/workflows/l1-mp6-body-challenge-dev.yml'
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - 'adapters/mineflayer/self_body_s50_l1_body_condition.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/l23_paper_live_assets.py'
+      - 'tests/test_self_body_s50_l1_body_condition.py'
+      - 'docs/selfbody-l1-mp6-changed-body-condition-20261101.md'
+permissions:
+  contents: read
+jobs:
+  offline-challenge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Java 21 one-time physical-World condition gate, MP5 baseline and MP4
+        run: |
+          set -euo pipefail
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50BodyConditionGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50BodyConditionGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50BodyConditionGateSelfTest
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecast.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecastSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50PaperLocalForecastSelfTest
+      - name: Python 3.12 validation, source contracts, no Minecraft World
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py adapters/mineflayer/l23_paper_live_assets.py tests/test_self_body_s50_l1_body_condition.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_body_condition.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_body_condition.py \
+            tests/test_self_body_s50_l1_paper_local.py \
+            tests/test_self_body_s50_l1_host_prediction.py \
+            tests/test_self_body_s50_route_b_dev.py \
+            tests/test_s50_live_paper_window.py \
+            tests/test_s50_input_witness_source.py
+          python tools/check_repository.py
+      - name: Real Paper API complete plugin compile
+        run: |
+          set -euo pipefail
+          grep -qx 's50-changed-body-condition-dev: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Not a future generalization claim
+        if: always()
+        run: |
+          echo 'MP6_OFFLINE_ONLY / PHYSICAL_BODY_INTERVENTION_DISABLED_DEFAULT / LEARNING_0 / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
