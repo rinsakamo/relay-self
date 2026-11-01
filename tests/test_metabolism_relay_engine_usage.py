@@ -15,10 +15,6 @@ from experiments.metabolism_relay_engine_usage import (
     OwnerEpochEngineBinding,
     cognitive_receipt_from_engine_results,
 )
-from experiments.metabolism_slm_dev_host_tap import (
-    SLMDevTapResult,
-    bounded_s_l_m_audit_row,
-)
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -36,12 +32,20 @@ from relay_self.relay_engine import (
 
 
 def audit(seq=9):
-    return bounded_s_l_m_audit_row(SLMDevTapResult(
-        original_s_epoch=object(), status="RECORDED", reason="complete",
-        session_id="native-session", probe_seq=seq,
-        request_id=f"native-request-{seq}", s_choice="WAIT",
-        m_model_tension="NO_MODEL_TENSION",
-    ))
+    # Standalone M-layer allowlisted row fixture. The source-producing S
+    # serializer is independently exercised by the pinned S cross-contract CI.
+    return {
+        "schema": "SLM_PASSIVE_DEV_AUDIT_V1",
+        "status": "RECORDED", "reason": "complete",
+        "session_id": "native-session", "probe_seq": seq,
+        "request_id": f"native-request-{seq}",
+        "s_choice": "WAIT", "l1_candidate": None, "l1_status": None,
+        "m_model_tension": "NO_MODEL_TENSION", "l1_model_status": None,
+        "source_scope": "DEV_OPTIONAL_S_L_M_AUDIT_NOT_ACTION_INPUT",
+        "native_source_attested": False, "action_authority": False,
+        "new_native_reads": 0, "new_cognition_calls": 0, "action_issues": 0,
+        "learning_updates": 0, "habit_grants": 0, "food_credits": 0,
+    }
 
 
 def binding(seq=9):
