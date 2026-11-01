@@ -1,5 +1,6 @@
 name: L1-MP6 one physical changed-body Paper World DEV
 # Single MP6 DEV World under standing lane grant; MP4 historical 3 Worlds unchanged.
+# One-time physical release after MP6 offline CI success; original data retained on failure.
 on:
   push:
     branches: [dev/l1-mp6-changed-body-condition-20261101]
