@@ -1,0 +1,61 @@
+{
+  "request": {
+    "model": "relay-self-gemma4-12b-q4km",
+    "temperature": 0,
+    "max_tokens": 512,
+    "reasoning_effort": "none",
+    "cache_prompt": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the open cognition provider for RelaySelf. Use only the supplied transient context to generate one expression. Return expression text only. The generated text is transient cognition: it does not itself establish World truth, mutate Current Intent, persist Memory, authorize an Action, or prove external delivery. Do not add a hidden decision or THINK escalation."
+      },
+      {
+        "role": "user",
+        "content": "{\"context\":[{\"key\":\"evidence_limits\",\"provenance\":{\"reference\":\"39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a\",\"source\":\"l.mp11.live.paper.provisional\"},\"value\":{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}},{\"key\":\"completed_prior_s49_s16_s50_trials\",\"provenance\":{\"reference\":\"39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a\",\"source\":\"l.mp11.live.paper.prefix\"},\"value\":[{\"action_id\":\"s49-native-move-33\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-33-9aea8e8f-b224-412f-8301-fb2d0054f364\",\"native_s16_seq\":42,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":625,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":178460,\"paper_prefix_sha256\":\"a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[293,294,295,296,297,298,299,300],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"9aea8e8f-b224-412f-8301-fb2d0054f364\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"c692a108-1aeb-46f8-85d1-339bcbb21464\"},{\"action_id\":\"s49-native-move-60\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-60-9aea8e8f-b224-412f-8301-fb2d0054f364\",\"native_s16_seq\":70,\"ordinal\":2,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":1344,\"paper_cheap_zero_next_mae_m\":0.0007444011838264597,\"paper_next_abs_error_m\":[0.012353969341354545,0.0033870253864103916,0.0,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.017564777628139763,0.0033870253864103916,0.0,0.0,0.0,0.0,0.0],\"paper_prefix_length\":441948,\"paper_prefix_sha256\":\"39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a\",\"paper_wait_motion_m\":[0.02702273481252271,0.005210808286785218,0.0,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[493,494,495,496,497,498,499,500],\"paper_wait_total_m\":0.032233543099307926,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"9aea8e8f-b224-412f-8301-fb2d0054f364\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"c692a108-1aeb-46f8-85d1-339bcbb21464\"}]}],\"focus\":\"LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY\",\"instruction\":\"L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\\nRespond in ONE JSON object with EXACT keys: referenced_prior_ordinals (sorted unique integer array of only previous completed trial numbers), reconsideration (KEEP_UNRESOLVED / QUESTION_APPLICABILITY / PROPOSE_STRUCTURAL_REVISION / ABSTAIN), model_family (SINGLE_DECAY / PHASE_DEPENDENT / SURFACE_DEPENDENT / INITIAL_SPEED_DEPENDENT / OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY / CHECK_PAPER_CALLBACK_PHASE / VARY_INPUT_DURATION / COMPARE_GRASS_AND_ICE), explanation (16..200 characters), falsification_test (16..200 characters), predicted_wait_total_m (0..3 finite number or null), capability_assessment (UNKNOWN or CONDITIONAL_HYPOTHESIS). Cite only prior trial ordinals actually available, distinguish evidence from conjecture, and propose an UNAPPROVED next experiment. No Minecraft command, no performance superiority claim, no physical capability limit claim. Do not state that the proposal has been executed or learned. Explain the numeric observed prediction error and cheap-zero comparison from the completed trials; distinguish these measurements from generic prior knowledge. Keep explanations brief enough for 512 output tokens.\",\"intent_id\":\"investigate-motion-mismatch\",\"request_id\":\"l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2\"}"
+      }
+    ],
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "started_monotonic_ns": 117031102051819,
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"referenced_prior_ordinals\": [1, 2],\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"model_family\": \"SURFACE_DEPENDENT\",\n  \"next_test\": \"CHECK_PAPER_CALLBACK_PHASE\",\n  \"explanation\": \"Trial 1 and 2 show prediction errors (0.022m, 0.012m) exceeding cheap-zero thresholds (0.002m, 0.0007m), suggesting inconsistent state synchronization.\",\n  \"falsification_test\": \"Compare motion delta across different surface types to determine if the error is a consistent engine tick mismatch or a specific surface interaction.\",\n  \"predicted_wait_total_m\": 0.048,\n  \"capability_assessment\": \"CONDITIONAL_HYPOTHESIS\"\n}"
+        }
+      }
+    ],
+    "created": 1793540072,
+    "model": "relay-self-gemma4-12b-q4km",
+    "system_fingerprint": "b10874-e2d2c0d6a",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 196,
+      "prompt_tokens": 2250,
+      "total_tokens": 2446,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "id": "chatcmpl-irf4Tl1QAVPHqK47SUCvhx9q2cUYY4ye",
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 2250,
+      "prompt_ms": 2132.071,
+      "prompt_per_token_ms": 0.947587111111111,
+      "prompt_per_second": 1055.3119478666517,
+      "predicted_n": 196,
+      "predicted_ms": 5462.815,
+      "predicted_per_token_ms": 28.014435897435895,
+      "predicted_per_second": 35.69588206812788
+    }
+  },
+  "finished_monotonic_ns": 117039410697143
+}

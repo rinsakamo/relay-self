@@ -1,0 +1,60 @@
+{
+  "classification": "PARTIAL_DEV_SOURCE_RECONCILED_ORIGINAL_RUN_REMAINS_FAIL",
+  "original_run_status": "FAIL",
+  "required_g3_audit": "FAIL",
+  "required_live_prefix_audit": "FAIL",
+  "original_paper_sha256": "faf648c3654fc6cafdbd9542dc2f5b30cde408973dcd9c9cf30713148d9b7777",
+  "diagnostic_complete_line_prefix_sha256": "e96fc23002a1213440e35a6abbe16652f3362568e0947695466bcea9195a64af",
+  "uninterpreted_eof_suffix_hex": "3e20",
+  "original_report_sha256": "4cb47257fbdbf36e175181d35499b0c5f53f1c46b5cd0b1bba3da2cf239aa7f4",
+  "native_w3_sha256": "4d626a9e765240981950564d35575098fedf71bbf0707fd9dfd913eb0b945066",
+  "all_three_live_prefix_hashes_match": true,
+  "s49_s16_clear_receipts": 3,
+  "wait_ticks": [
+    [
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      299,
+      300
+    ],
+    [
+      493,
+      494,
+      495,
+      496,
+      497,
+      498,
+      499,
+      500
+    ],
+    [
+      722,
+      723,
+      724,
+      725,
+      726,
+      727,
+      728,
+      729
+    ]
+  ],
+  "paper_forecast_pairs": 21,
+  "real_open_calls": 2,
+  "model_request_matches_reconstructed_prior_only_context": true,
+  "independent_common_clock_attested": false,
+  "cleanup": {
+    "node_pid_absent": true,
+    "java_pid_absent": true,
+    "owned_llama_pid_absent": true,
+    "world_directory_absent": true
+  },
+  "A": "REAL_GEMMA_LIVE_INPUT_AND_TWO_RESPONSES_OBSERVED_PARTIAL_DEV",
+  "B": "PROPOSAL_FAMILY_AND_FALSIFICATION_CHANGED_CAUSAL_REVISION_UNDETERMINED",
+  "C": "NOT_IMPLEMENTED",
+  "learning_admissions": 0,
+  "l0_promotions": 0
+}

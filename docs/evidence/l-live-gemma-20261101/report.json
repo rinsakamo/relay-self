@@ -1,0 +1,888 @@
+{
+  "actual_native_actions": [
+    {
+      "action": "s49-native-move-33",
+      "event_seq": 33,
+      "execution_evidence": {
+        "action_id": "s49-native-move-33",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:42",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-33:after",
+          "seq": 42,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0959512999586933,
+                "entity_id": 33,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": 0.5
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 1,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -0.12690657342106132
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 272
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:35",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-33:before",
+          "seq": 35,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 33,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": 0.5
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 1,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": 0.5
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 272
+            }
+          }
+        },
+        "binding_id": "s49-binding-33",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-33-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:41",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 41,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-33",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:36",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 36,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.6269065734210613,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "status": "executed"
+      },
+      "movement_m": 0.6269065734210613,
+      "probe_seq": 34,
+      "source": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+      "terminal": "outcome"
+    },
+    {
+      "action": "s49-native-move-60",
+      "event_seq": 60,
+      "execution_evidence": {
+        "action_id": "s49-native-move-60",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:70",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-60:after",
+          "seq": 70,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.130535961444617,
+                "entity_id": 34,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -0.3571697198364468
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 1,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -1.091460863054678
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 472
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:62",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-60:before",
+          "seq": 62,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 34,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -0.3571697198364468
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 1,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -0.3571697198364468
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 472
+            }
+          }
+        },
+        "binding_id": "s49-binding-60",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-60-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:68",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 68,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-60",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:63",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 63,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.7342911432182313,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "status": "executed"
+      },
+      "movement_m": 0.7342911432182313,
+      "probe_seq": 61,
+      "source": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+      "terminal": "outcome"
+    },
+    {
+      "action": "s49-native-move-89",
+      "event_seq": 89,
+      "execution_evidence": {
+        "action_id": "s49-native-move-89",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:98",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-89:after",
+          "seq": 98,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 1.7898134020875074,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 2.20029440685452,
+                  "y": -60.0,
+                  "z": -1.2822907874172518
+                }
+              },
+              {
+                "distance": 2.0959512999586933,
+                "entity_id": 36,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -1.2143394396728937
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -1.841246013093955
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 712
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:91",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-89:before",
+          "seq": 91,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 1.7016516845820822,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 2.20029440685452,
+                  "y": -60.0,
+                  "z": -1.2822907874172518
+                }
+              },
+              {
+                "distance": 2.0,
+                "entity_id": 36,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -1.2143394396728937
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -1.2143394396728937
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 712
+            }
+          }
+        },
+        "binding_id": "s49-binding-89",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-89-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:97",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 97,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-89",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "9aea8e8f-b224-412f-8301-fb2d0054f364:92",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 92,
+          "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.6269065734210613,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "status": "executed"
+      },
+      "movement_m": 0.6269065734210613,
+      "probe_seq": 90,
+      "source": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+      "terminal": "outcome"
+    }
+  ],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "MP11_G3_ORIGINAL_PAPER_NOT_QUALIFIED",
+  "cleanup_steps": [
+    "node_cleanup",
+    "node_reap",
+    "server_cleanup",
+    "server_reap",
+    "collector_cleanup"
+  ],
+  "decisions": [
+    {
+      "distance_m": 10.0,
+      "entity_id": 32,
+      "event_seq": 22,
+      "issued": false,
+      "probe_seq": 23,
+      "selected": "WAIT"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 33,
+      "event_seq": 33,
+      "issued": true,
+      "probe_seq": 34,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 34,
+      "event_seq": 60,
+      "issued": true,
+      "probe_seq": 61,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 36,
+      "event_seq": 89,
+      "issued": true,
+      "probe_seq": 90,
+      "selected": "MOVE_AWAY"
+    }
+  ],
+  "ignored_duplicate_target_updates": 4,
+  "ignored_hurt_frames": 3,
+  "ignored_non_target_entities": 4,
+  "l_mp11_live_l2": {
+    "attempt_originals": [
+      {
+        "finished_monotonic_ns": 117027911435821,
+        "request": {
+          "context": [
+            {
+              "key": "evidence_limits",
+              "provenance": {
+                "reference": "a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e",
+                "source": "l.mp11.live.paper.provisional"
+              },
+              "value_json": "{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}"
+            },
+            {
+              "key": "completed_prior_s49_s16_s50_trials",
+              "provenance": {
+                "reference": "a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e",
+                "source": "l.mp11.live.paper.prefix"
+              },
+              "value_json": "[{\"action_id\":\"s49-native-move-33\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-33-9aea8e8f-b224-412f-8301-fb2d0054f364\",\"native_s16_seq\":42,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":625,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":178460,\"paper_prefix_sha256\":\"a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[293,294,295,296,297,298,299,300],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"9aea8e8f-b224-412f-8301-fb2d0054f364\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"c692a108-1aeb-46f8-85d1-339bcbb21464\"}]"
+            }
+          ],
+          "focus": "LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY",
+          "identity_context": null,
+          "instruction": "L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\nRespond in ONE JSON object with EXACT keys: referenced_prior_ordinals (sorted unique integer array of only previous completed trial numbers), reconsideration (KEEP_UNRESOLVED / QUESTION_APPLICABILITY / PROPOSE_STRUCTURAL_REVISION / ABSTAIN), model_family (SINGLE_DECAY / PHASE_DEPENDENT / SURFACE_DEPENDENT / INITIAL_SPEED_DEPENDENT / OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY / CHECK_PAPER_CALLBACK_PHASE / VARY_INPUT_DURATION / COMPARE_GRASS_AND_ICE), explanation (16..200 characters), falsification_test (16..200 characters), predicted_wait_total_m (0..3 finite number or null), capability_assessment (UNKNOWN or CONDITIONAL_HYPOTHESIS). Cite only prior trial ordinals actually available, distinguish evidence from conjecture, and propose an UNAPPROVED next experiment. No Minecraft command, no performance superiority claim, no physical capability limit claim. Do not state that the proposal has been executed or learned. Explain the numeric observed prediction error and cheap-zero comparison from the completed trials; distinguish these measurements from generic prior knowledge. Keep explanations brief enough for 512 output tokens.",
+          "intent_id": "investigate-motion-mismatch",
+          "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-1"
+        },
+        "result": {
+          "call_facts": {
+            "completion_tokens": 184,
+            "finish_reason": "stop",
+            "prompt_tokens": 1568,
+            "requested_max_output_tokens": 512,
+            "total_tokens": 1752
+          },
+          "elapsed_ns": 6835495726,
+          "provenance": {
+            "reference": "request:l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-1:model:relay-self-gemma4-12b-q4km",
+            "source": "llama.cpp"
+          },
+          "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-1",
+          "text": "{\n  \"referenced_prior_ordinals\": [1],\n  \"reconsideration\": \"QUESTION_APPLICABILITY\",\n  \"model_family\": \"PHASE_DEPENDENT\",\n  \"next_test\": \"CHECK_PAPER_CALLBACK_PHASE\",\n  \"explanation\": \"The prediction error of 0.032m vs 0.022m and low cheap_zero_mae suggest phase-specific variance in the motion model.\",\n  \"falsification_test\": \"Test if motion variance correlates with specific game-loop phases rather than input duration or surface friction.\",\n  \"predicted_wait_total_m\": 0.064246601508961,\n  \"capability_assessment\": \"CONDITIONAL_HYPOTHESIS\"\n}"
+        },
+        "started_monotonic_ns": 117021075361608
+      },
+      {
+        "finished_monotonic_ns": 117039411501998,
+        "request": {
+          "context": [
+            {
+              "key": "evidence_limits",
+              "provenance": {
+                "reference": "39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a",
+                "source": "l.mp11.live.paper.provisional"
+              },
+              "value_json": "{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}"
+            },
+            {
+              "key": "completed_prior_s49_s16_s50_trials",
+              "provenance": {
+                "reference": "39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a",
+                "source": "l.mp11.live.paper.prefix"
+              },
+              "value_json": "[{\"action_id\":\"s49-native-move-33\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-33-9aea8e8f-b224-412f-8301-fb2d0054f364\",\"native_s16_seq\":42,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":625,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":178460,\"paper_prefix_sha256\":\"a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[293,294,295,296,297,298,299,300],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"9aea8e8f-b224-412f-8301-fb2d0054f364\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"c692a108-1aeb-46f8-85d1-339bcbb21464\"},{\"action_id\":\"s49-native-move-60\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-60-9aea8e8f-b224-412f-8301-fb2d0054f364\",\"native_s16_seq\":70,\"ordinal\":2,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":1344,\"paper_cheap_zero_next_mae_m\":0.0007444011838264597,\"paper_next_abs_error_m\":[0.012353969341354545,0.0033870253864103916,0.0,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.017564777628139763,0.0033870253864103916,0.0,0.0,0.0,0.0,0.0],\"paper_prefix_length\":441948,\"paper_prefix_sha256\":\"39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a\",\"paper_wait_motion_m\":[0.02702273481252271,0.005210808286785218,0.0,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[493,494,495,496,497,498,499,500],\"paper_wait_total_m\":0.032233543099307926,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"9aea8e8f-b224-412f-8301-fb2d0054f364\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"c692a108-1aeb-46f8-85d1-339bcbb21464\"}]"
+            }
+          ],
+          "focus": "LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY",
+          "identity_context": null,
+          "instruction": "L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\nRespond in ONE JSON object with EXACT keys: referenced_prior_ordinals (sorted unique integer array of only previous completed trial numbers), reconsideration (KEEP_UNRESOLVED / QUESTION_APPLICABILITY / PROPOSE_STRUCTURAL_REVISION / ABSTAIN), model_family (SINGLE_DECAY / PHASE_DEPENDENT / SURFACE_DEPENDENT / INITIAL_SPEED_DEPENDENT / OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY / CHECK_PAPER_CALLBACK_PHASE / VARY_INPUT_DURATION / COMPARE_GRASS_AND_ICE), explanation (16..200 characters), falsification_test (16..200 characters), predicted_wait_total_m (0..3 finite number or null), capability_assessment (UNKNOWN or CONDITIONAL_HYPOTHESIS). Cite only prior trial ordinals actually available, distinguish evidence from conjecture, and propose an UNAPPROVED next experiment. No Minecraft command, no performance superiority claim, no physical capability limit claim. Do not state that the proposal has been executed or learned. Explain the numeric observed prediction error and cheap-zero comparison from the completed trials; distinguish these measurements from generic prior knowledge. Keep explanations brief enough for 512 output tokens.",
+          "intent_id": "investigate-motion-mismatch",
+          "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2"
+        },
+        "result": {
+          "call_facts": {
+            "completion_tokens": 196,
+            "finish_reason": "stop",
+            "prompt_tokens": 2250,
+            "requested_max_output_tokens": 512,
+            "total_tokens": 2446
+          },
+          "elapsed_ns": 8309112840,
+          "provenance": {
+            "reference": "request:l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2:model:relay-self-gemma4-12b-q4km",
+            "source": "llama.cpp"
+          },
+          "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2",
+          "text": "{\n  \"referenced_prior_ordinals\": [1, 2],\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"model_family\": \"SURFACE_DEPENDENT\",\n  \"next_test\": \"CHECK_PAPER_CALLBACK_PHASE\",\n  \"explanation\": \"Trial 1 and 2 show prediction errors (0.022m, 0.012m) exceeding cheap-zero thresholds (0.002m, 0.0007m), suggesting inconsistent state synchronization.\",\n  \"falsification_test\": \"Compare motion delta across different surface types to determine if the error is a consistent engine tick mismatch or a specific surface interaction.\",\n  \"predicted_wait_total_m\": 0.048,\n  \"capability_assessment\": \"CONDITIONAL_HYPOTHESIS\"\n}"
+        },
+        "started_monotonic_ns": 117031101719335
+      }
+    ],
+    "attempts": 2,
+    "classification": "LIVE_L2_OPEN_SHADOW_PROPOSALS_NOT_EXECUTED",
+    "experiments_selected_and_executed_by_l2": 0,
+    "l0_promotions": 0,
+    "learning_admissions": 0,
+    "new_action_issuers": 0,
+    "proposals": [
+      {
+        "action_authority": false,
+        "capability_assessment": "CONDITIONAL_HYPOTHESIS",
+        "classification": "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED",
+        "explanation": "The prediction error of 0.032m vs 0.022m and low cheap_zero_mae suggest phase-specific variance in the motion model.",
+        "falsification_test": "Test if motion variance correlates with specific game-loop phases rather than input duration or surface friction.",
+        "l0_promotions": 0,
+        "learning_admissions": 0,
+        "model_family": "PHASE_DEPENDENT",
+        "model_structure_admitted": false,
+        "next_test": "CHECK_PAPER_CALLBACK_PHASE",
+        "next_test_owner_approved": false,
+        "predicted_wait_total_m": 0.064246601508961,
+        "proposal_sha256": "14e76faa6d23c3ad9f37e287a27f3557eed1979b06cc57ad8309d79d2e17500a",
+        "provider_completion_tokens": 184,
+        "provider_elapsed_ns": 6835495726,
+        "provider_prompt_tokens": 1568,
+        "provider_source": "llama.cpp",
+        "reconsideration": "QUESTION_APPLICABILITY",
+        "referenced_prior_ordinals": [
+          1
+        ],
+        "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-1",
+        "source_last_action_id": "s49-native-move-33",
+        "source_last_prefix_sha256": "a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e",
+        "source_prior_count": 1,
+        "source_session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "source_subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source_world_uuid": "c692a108-1aeb-46f8-85d1-339bcbb21464"
+      },
+      {
+        "action_authority": false,
+        "capability_assessment": "CONDITIONAL_HYPOTHESIS",
+        "classification": "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED",
+        "explanation": "Trial 1 and 2 show prediction errors (0.022m, 0.012m) exceeding cheap-zero thresholds (0.002m, 0.0007m), suggesting inconsistent state synchronization.",
+        "falsification_test": "Compare motion delta across different surface types to determine if the error is a consistent engine tick mismatch or a specific surface interaction.",
+        "l0_promotions": 0,
+        "learning_admissions": 0,
+        "model_family": "SURFACE_DEPENDENT",
+        "model_structure_admitted": false,
+        "next_test": "CHECK_PAPER_CALLBACK_PHASE",
+        "next_test_owner_approved": false,
+        "predicted_wait_total_m": 0.048,
+        "proposal_sha256": "faa75428c2952ce030dfa5c224e9d8da57e7dc3967779585a861d01c0c3263e8",
+        "provider_completion_tokens": 196,
+        "provider_elapsed_ns": 8309112840,
+        "provider_prompt_tokens": 2250,
+        "provider_source": "llama.cpp",
+        "reconsideration": "KEEP_UNRESOLVED",
+        "referenced_prior_ordinals": [
+          1,
+          2
+        ],
+        "request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2",
+        "source_last_action_id": "s49-native-move-60",
+        "source_last_prefix_sha256": "39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a",
+        "source_prior_count": 2,
+        "source_session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "source_subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source_world_uuid": "c692a108-1aeb-46f8-85d1-339bcbb21464"
+      }
+    ],
+    "provider_label_is_not_model_weights_attestation": true,
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "validated_open_calls": 2
+  },
+  "l_mp11_live_prefix": {
+    "action_issuers_added": 0,
+    "l2_open_calls": 2,
+    "learning_admissions": 0,
+    "observations": [
+      {
+        "action_id": "s49-native-move-33",
+        "l2_calls": 1,
+        "l2_request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-1",
+        "native_s16_seq": 42,
+        "paper_first_tick": 293,
+        "paper_last_tick": 300,
+        "paper_prefix_length": 178460,
+        "paper_prefix_sha256": "a4c3e88c9a107622f91e621b5e8f397a8481934b9ec196c4aef81f0b1dc7e04e",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 1
+      },
+      {
+        "action_id": "s49-native-move-60",
+        "l2_calls": 1,
+        "l2_request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-2",
+        "native_s16_seq": 70,
+        "paper_first_tick": 493,
+        "paper_last_tick": 500,
+        "paper_prefix_length": 441948,
+        "paper_prefix_sha256": "39fe117e07ab3f793423b163c43a9fd245df14080970eb83bd7784276502a98a",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 2
+      },
+      {
+        "action_id": "s49-native-move-89",
+        "l2_calls": 0,
+        "l2_request_id": "l-mp11-live:c692a108-1aeb-46f8-85d1-339bcbb21464:after-3",
+        "native_s16_seq": 98,
+        "paper_first_tick": 722,
+        "paper_last_tick": 729,
+        "paper_prefix_length": 667269,
+        "paper_prefix_sha256": "5583ba7c64ed847f8867a95413b7e5e219bd361c0fb507dae6fee8567c34ccaf",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 3
+      }
+    ],
+    "status": "PROVISIONAL_LIVE_PREFIX_READ_ONLY"
+  },
+  "learning_in_world": false,
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "mp11_g2": {
+    "action_budget": 3,
+    "classification": "DEV_ONLY_ONE_WORLD_THREE_ORIGINAL_S49_ACTIONS",
+    "l10_s10_s11_admissions": 0,
+    "l2_provider_calls": 2,
+    "l2_selected_trials": 0,
+    "paper_s50_windows": 0,
+    "real_l2_autonomous_experiment": false,
+    "status": "THREE_TYPED_S16_ACTIONS_PROVISIONAL_BEFORE_CLEANUP",
+    "typed_s16_actions": [
+      {
+        "action_id": "s49-native-move-33",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:9aea8e8f-b224-412f-8301-fb2d0054f364:42:s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-33:after",
+        "native_seq": 42,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "source_status": "executed"
+      },
+      {
+        "action_id": "s49-native-move-60",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:9aea8e8f-b224-412f-8301-fb2d0054f364:70:s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-60:after",
+        "native_seq": 70,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "source_status": "executed"
+      },
+      {
+        "action_id": "s49-native-move-89",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:9aea8e8f-b224-412f-8301-fb2d0054f364:98:s15:9aea8e8f-b224-412f-8301-fb2d0054f364:s49-native-move-89:after",
+        "native_seq": 98,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+        "source_status": "executed"
+      }
+    ]
+  },
+  "mp11_g3": {
+    "classification": "DEV_PAPER_THREE_WINDOWS_PREPARED",
+    "l2_calls": 2,
+    "learning_updates": 0,
+    "model_source": "FIXED_OPERATOR_UNLEARNED_SHADOW_ONLY",
+    "paper_assets": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "3be4d5827f24f163617c0848f665ff1f4d01daa96ae10eb41c9450ec9a19ef00",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    },
+    "paper_audit_error": "MP11PaperRejected: unbounded, foreign or incomplete original Paper input",
+    "paper_markers": [
+      "s49-native-move-33-9aea8e8f-b224-412f-8301-fb2d0054f364",
+      "s49-native-move-60-9aea8e8f-b224-412f-8301-fb2d0054f364",
+      "s49-native-move-89-9aea8e8f-b224-412f-8301-fb2d0054f364"
+    ],
+    "paper_windows_attested": 0,
+    "prior_slope": 0.65,
+    "staged": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "3be4d5827f24f163617c0848f665ff1f4d01daa96ae10eb41c9450ec9a19ef00",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    }
+  },
+  "node_exit": 0,
+  "real_model_calls": 2,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+  "source_pair_trace": [
+    {
+      "event_entities": [
+        {
+          "d": 10.0,
+          "id": 32,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 22,
+      "probe_entities": [
+        {
+          "d": 10.0,
+          "id": 32,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 23
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 33,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 33,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 33,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 34
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 34,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 60,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 34,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 61
+    },
+    {
+      "event_entities": [
+        {
+          "d": 1.7016516845820822,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 2.0,
+          "id": 36,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 89,
+      "probe_entities": [
+        {
+          "d": 1.7016516845820822,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 2.0,
+          "id": 36,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 90
+    }
+  ],
+  "stage": "CLOSED",
+  "status": "FAIL",
+  "w3_node_stdout_capture": {
+    "byte_count": 56284,
+    "capture_fault": null,
+    "eof_observed": true,
+    "external_source_independence_attested": false,
+    "first_seq": 0,
+    "frame_count": 107,
+    "last_seq": 106,
+    "minecraft_tcp_packets_attested": false,
+    "physical_wait_permitted": false,
+    "process_exit_code": 0,
+    "s10_commit_permitted": false,
+    "schema": "relay-self-w3-node-stdout-v0",
+    "science_qualified": false,
+    "scope": "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP",
+    "seal_reason": "clean_shutdown",
+    "session_id": "9aea8e8f-b224-412f-8301-fb2d0054f364",
+    "shutdown_ack_count": 1,
+    "status": "COMPLETE_NODE_STDOUT",
+    "stdout_sha256": "4d626a9e765240981950564d35575098fedf71bbf0707fd9dfd913eb0b945066"
+  }
+}
