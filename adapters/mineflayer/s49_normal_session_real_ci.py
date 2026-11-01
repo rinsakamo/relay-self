@@ -269,6 +269,7 @@ async def qualify(
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
+    mp11_three_actions_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -290,6 +291,28 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if type(mp11_three_actions_dev) is not bool or (
+            mp11_three_actions_dev and (
+                os.environ.get("MP11_S49_THREE_ACTION_DEV") != "1"
+                or stage_r_dev
+                or raw_capture_root is None
+            )
+        ):
+            raise S31ABlocked(
+                "MP11 three original Actions require explicit DEV env, source capture "
+                "and no Stage-R ownership mutation"
+            )
+        if mp11_three_actions_dev:
+            report["mp11_g2"] = {
+                "classification": "DEV_ONLY_ONE_WORLD_THREE_ORIGINAL_S49_ACTIONS",
+                "action_budget": 3,
+                "paper_s50_windows": 0,
+                "l2_provider_calls": 0,
+                "l2_selected_trials": 0,
+                "l10_s10_s11_admissions": 0,
+                "typed_s16_actions": [],
+                "real_l2_autonomous_experiment": False,
+            }
         if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
             raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
@@ -317,7 +340,9 @@ async def qualify(
             provenance=source("committed-existing-intent"),
         )
         host = NormalWorldL0(
-            sid, "escape-threat", retained, max_events=3, max_action_requests=2,
+            sid, "escape-threat", retained,
+            max_events=4 if mp11_three_actions_dev else 3,
+            max_action_requests=3 if mp11_three_actions_dev else 2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
         if stage_r_dev:
@@ -420,7 +445,54 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
-            if stage_r is None:
+            if stage_r is None and mp11_three_actions_dev:
+                from adapters.mineflayer.self_body_s50_original_closure import (
+                    SelfBodyS50ClosedOwnerLease,
+                    observe_original_s49_selfbody_closure,
+                )
+                # One fresh existing S16 readonly lease PER original Action.
+                # The same S49 executor and ActionSupervisor remain sole owner.
+                typed = SelfBodyS50ClosedOwnerLease(
+                    self_id="self", expected_action_id=step.action_request_id,
+                )
+                with observe_original_s49_selfbody_closure(typed):
+                    receipt = await executor.execute(
+                        session, step, bound, probe,
+                        authorize(step, NormalActionStage.PROPOSE),
+                        authorize(step, NormalActionStage.ISSUE),
+                        correlate_native_probes_dev=True,
+                    )
+                status = typed.status()
+                body = typed._body
+                if (status["original_closures_seen"] != 1
+                        or not status["typed_original_ready"]
+                        or body is None or body.observation is None
+                        or body.outcome is None
+                        or body.session_id != sid
+                        or body.observation.action_id != receipt.terminal.action_id):
+                    raise S49PhysicalFailure(
+                        "MP11 per-Action original typed S16 receipt was not observed"
+                    )
+                previous = report["mp11_g2"]["typed_s16_actions"]
+                if (previous and (
+                    body.observation.native_seq <= previous[-1]["native_seq"]
+                    or previous[-1]["action_id"] == receipt.terminal.action_id
+                )):
+                    raise S49PhysicalFailure(
+                        "MP11 replayed or non-increasing original native S16"
+                    )
+                previous.append({
+                    "action_id": receipt.terminal.action_id,
+                    "session_id": body.session_id,
+                    "native_seq": body.observation.native_seq,
+                    "native_ref": body.observation.source_ref,
+                    "outcome": body.outcome.disposition.value,
+                    "source_status": body.outcome.source_status,
+                    "before_after_source_original": True,
+                    "new_action_issuers": 0,
+                })
+                typed.close()
+            elif stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
                     authorize(step, NormalActionStage.PROPOSE),
@@ -469,7 +541,11 @@ async def qualify(
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
-            for distance_m, hold in ((10, 5), (2, 8), (2, 8)):
+            stimulus = (
+                ((10, 5), (2, 8), (2, 8), (2, 8))
+                if mp11_three_actions_dev else ((10, 5), (2, 8), (2, 8))
+            )
+            for distance_m, hold in stimulus:
                 _command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
@@ -502,20 +578,33 @@ async def qualify(
             "selected": s.choice.selection.value,
             "issued": s.asks_for_action,
         } for s in trace]
+        expected_actions = 3 if mp11_three_actions_dev else 2
+        expected_events = expected_actions + 1
         if (
-            len(trace) != 3
+            len(trace) != expected_events
             or [s.choice.selection.value for s in trace]
-            != ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
-            or len({s.choice.entity_id for s in trace}) != 3
-            or len(report["actual_native_actions"]) != 2
+            != ["WAIT"] + ["MOVE_AWAY"] * expected_actions
+            or len({s.choice.entity_id for s in trace}) != expected_events
+            or len(report["actual_native_actions"]) != expected_actions
             or executor.supervisor.open_actions
-            or executor.supervisor.get(trace[1].action_request_id).state is not ActionState.OUTCOME
-            or executor.supervisor.get(trace[2].action_request_id).state is not ActionState.OUTCOME
+            or any(
+                executor.supervisor.get(step.action_request_id).state
+                is not ActionState.OUTCOME
+                for step in trace if step.asks_for_action
+            )
             or trace[0].asks_for_action
-            or host.action_requests != 2
-            or host.events != 3
+            or host.action_requests != expected_actions
+            or host.events != expected_events
         ):
-            raise S49PhysicalFailure("not three unattended decisions and two real closures")
+            raise S49PhysicalFailure("bounded original L0 and S16 Action closure count mismatch")
+        if mp11_three_actions_dev:
+            typed = report["mp11_g2"]["typed_s16_actions"]
+            if (len(typed) != expected_actions
+                    or [x["action_id"] for x in typed]
+                    != [x["action"] for x in report["actual_native_actions"]]
+                    or len({x["native_ref"] for x in typed}) != expected_actions):
+                raise S49PhysicalFailure("MP11 authentic original S16 3x source audit failed")
+            report["mp11_g2"]["status"] = "THREE_TYPED_S16_ACTIONS_PROVISIONAL_BEFORE_CLEANUP"
         if stage_r is not None:
             report["stage_r_decision_revisions"] = [
                 {"event_seq": step.event_seq,
@@ -537,9 +626,12 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
-            if stage_r is not None
-            else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+            "DEV_ONLY_MP11_G2_ONE_WORLD_THREE_TYPED_S16_ACTIONS"
+            if mp11_three_actions_dev else (
+                "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+                if stage_r is not None
+                else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+            )
         )
         report["stage"] = "CLOSED"
         rc = 0
@@ -633,6 +725,7 @@ async def qualify(
         elif report.get("classification") in (
             "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2",
+            "DEV_ONLY_MP11_G2_ONE_WORLD_THREE_TYPED_S16_ACTIONS",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
@@ -659,8 +752,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument("--mp11-three-actions-dev", action="store_true")
+    parser.add_argument("--raw-capture-root", type=Path)
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    return asyncio.run(qualify(
+        args.report, args.server_log,
+        raw_capture_root=args.raw_capture_root,
+        mp11_three_actions_dev=args.mp11_three_actions_dev,
+    ))
 
 
 if __name__ == "__main__":
