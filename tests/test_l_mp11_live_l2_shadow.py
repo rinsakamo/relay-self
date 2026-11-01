@@ -316,10 +316,10 @@ def test_second_open_wrong_metric_roles_or_false_structural_revision_rejected(ca
 
 def test_original_failed_run_cannot_be_requalified_by_later_eof_envelope():
     from adapters.mineflayer.l_mp11_paper_eof_envelope import seal_after_shutdown
+    from test_self_body_s50_l2_mp11_paper_audit import original
     from tools.mp11_g3_paper_one_world_audit import review
 
     # This is synthetic: the historical FAIL report status remains immutable.
-    from test_self_body_s50_l2_mp11_paper_audit import original
     raw = original() + b"> "
     report = {
         "status": "FAIL",
