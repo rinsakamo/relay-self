@@ -132,3 +132,5 @@ jobs:
       - name: DEV only; L2 and autonomous learning not performed
         if: always()
         run: echo 'ONE_REAL_PAPER_WORLD / THREE_ORIGINAL_ACTIONS_MAX / LIVE_PREFIX_POSTRUN_SHA / NO_L2_CALLS / NO_LEARNING / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+
+# Exact-head opt-in one-World L-lane grant: source-only live prior prefix, no L2 call.
