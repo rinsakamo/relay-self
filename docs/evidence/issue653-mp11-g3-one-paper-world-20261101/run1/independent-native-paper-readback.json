@@ -1,0 +1,130 @@
+{
+  "schema": "MP11_G3_SAME_PAPER_WORLD_THREE_S49_S16_AND_S50_ORIGINALS_INDEPENDENT_READBACK_V1",
+  "experiment_date": "2026-11-01",
+  "executing_head": "38e19c367eb6ef16e1f2cdef9a0b544128c6a762",
+  "github_run": 41289358266,
+  "github_url": "https://github.com/rinsakamo/relay-self/actions/runs/41289358266",
+  "job_conclusion": "SUCCESS",
+  "actual_world_attempts": 1,
+  "retry_count": 0,
+  "exact_physical_environment": {
+    "minecraft": "Paper 1.21.8 build 60",
+    "paper_jar_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "paper_plugin_sha256": "4f23f336cd801f5d4744cd75cde50982f470622592109289f3f92a34f0ab5772",
+    "config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+    "mineflayer": "4.39.0",
+    "java_exit": 0,
+    "node_exit": 0
+  },
+  "original_artifact": {
+    "artifact_id": 13076239081,
+    "artifact_name": "mp11-g3-paper-one-world-three-original-windows-41289358266-1",
+    "zip_sha256": "c58e423fecbb9bbbc70e86790b912330b756e1657a9422942d1b6500a904dc59",
+    "paper_stdout_sha256": "22d867d4efdb17403dd6105bfdd5284d23bf0c65df35f054606af7e1f4516d03",
+    "node_stdout_sha256": "4dd24b895dbd57ddb45366d0c730ea6b5ef3878f0f693dcc2e63951a544f0b54",
+    "node_frame_count": 105,
+    "node_original_bytes": 58502,
+    "node_raw_sha_independently_recomputed_matches_seal": true,
+    "node_capture_eof_observed": true,
+    "node_shutdown_ack_count": 1,
+    "entries": [
+      "independent-paper-native-readback.json",
+      "native-stdout/w3-node-stdout.raw.jsonl",
+      "native-stdout/w3-node-stdout-receipt.json",
+      "paper-active-config-original.yml",
+      "paper-stdout-original.log",
+      "report.json"
+    ],
+    "originals_retained_on_artifact": true
+  },
+  "source_binding": {
+    "paper_world_uuid": "93104ce4-97f1-4819-87dc-7044977e816f",
+    "paper_subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "native_session_id": "71d219ce-3da9-481c-8936-89647f25c5e1",
+    "original_s49_action_ids": [
+      "s49-native-move-32",
+      "s49-native-move-60",
+      "s49-native-move-87"
+    ],
+    "original_s15_clear_count": 3,
+    "original_s16_outcome_count": 3,
+    "paper_preaction_model_arm_count": 3,
+    "paper_surface_lock_count": 3,
+    "paper_wait_tick_count": 24,
+    "paper_input_tick_count": 24,
+    "paper_frozen_pre_next_tick_prediction_count": 21,
+    "paper_next_tick_score_count": 21,
+    "paper_prior_window_sealed_next_accept_count": 2,
+    "all_surfaces": "GRASS_BLOCK",
+    "all_input_motions": "MOVE_BACKWARD",
+    "real_gemma_calls": 0,
+    "l2_selected_experiment_count": 0,
+    "learning_admission_count": 0
+  },
+  "trials": [
+    {
+      "ordinal": 1,
+      "action_id": "s49-native-move-32",
+      "paper_wait_ticks": [
+        299,
+        306
+      ],
+      "native_movement_m": 0.6269065734210613,
+      "wait8_total_m": 0.064246601508961,
+      "prequential_fixed_slope": 0.65,
+      "prequential_mae_m": 0.0038579825390267536,
+      "same_information_zero_baseline_mae_m": 0.0021077733153767675,
+      "first_wait_displacement_m": 0.049492188301323625
+    },
+    {
+      "ordinal": 2,
+      "action_id": "s49-native-move-60",
+      "paper_wait_ticks": [
+        499,
+        506
+      ],
+      "native_movement_m": 0.6269065734210615,
+      "wait8_total_m": 0.12287857661821566,
+      "prequential_fixed_slope": 0.65,
+      "prequential_mae_m": 0.0068053616717903215,
+      "same_information_zero_baseline_mae_m": 0.004604791871329704,
+      "first_wait_displacement_m": 0.09064503351890774
+    },
+    {
+      "ordinal": 3,
+      "action_id": "s49-native-move-87",
+      "paper_wait_ticks": [
+        699,
+        706
+      ],
+      "native_movement_m": 0.6269065734210613,
+      "wait8_total_m": 0.1228785766182161,
+      "prequential_fixed_slope": 0.65,
+      "prequential_mae_m": 0.006805361671790363,
+      "same_information_zero_baseline_mae_m": 0.004604791871329704,
+      "first_wait_displacement_m": 0.09064503351890818
+    }
+  ],
+  "evidence_limits": {
+    "same_world_three_original_s49_s16_and_paper_s50": "DEV_PASS",
+    "model_predictive_gain": "NOT_ESTABLISHED",
+    "model_0_65_vs_zero_baseline": "WORSE_FOR_ALL_THREE_WINDOWS",
+    "reset_and_initial_velocity_control": "NOT_ESTABLISHED",
+    "effective_input_clear_tick": "NOT_ATTESTED",
+    "input_witness_coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+    "real_llm_l2_experiment_choice": "NOT_RUN",
+    "counterfactual_selection": "NOT_RUN",
+    "learning_admitted": "NONE",
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "classification": "MP11_G3_PAPER_ONE_WORLD_3_ACTIONS_3_REAL_S50_WINDOWS_DEV_PASS_ONLY"
+  },
+  "independent_review": {
+    "zip_and_file_sha256_recomputed": true,
+    "w3_original_sha_matches_w3_capture_receipt": true,
+    "paper_world_uuid_stable_and_true_source": true,
+    "paper_local_predictions_original_not_host_afterfact": true,
+    "no_s15_duplicate_or_s16_unknown": true,
+    "postrun_note": "No retry, no new World after this original. Human-specified identical floor/input conditions."
+  }
+}
