@@ -128,8 +128,18 @@ def propose_from_typed_next_epoch(
             status = "ABSTAIN_OUT_OF_MODEL_DOMAIN"
             fitted = ticket.selected_slope
         else:
-            fitted = slope
-            status = "REVISE_CANDIDATE_IN_SAMPLE_ONLY"
+            # A nonzero error does NOT imply that changing this model's slope
+            # can repair it. Numerical rounding must never mint revisions.
+            candidate_mae = sum(abs(slope*x-y) for x,y in zip(xs,ys)) / 7
+            if abs(slope - ticket.selected_slope) < 1e-5:
+                status = "ABSTAIN_NO_EFFECTIVE_COEFFICIENT_CHANGE"
+                fitted = ticket.selected_slope
+            elif old - candidate_mae < 1e-5:
+                status = "ABSTAIN_NO_IN_SAMPLE_MAE_GAIN"
+                fitted = ticket.selected_slope
+            else:
+                fitted = slope
+                status = "REVISE_CANDIDATE_IN_SAMPLE_ONLY"
     in_sample = sum(abs(fitted*x-y) for x,y in zip(xs,ys))/7
     fields = {
         "session_id":window.session_id, "native_epoch_id":body.epoch_id,
