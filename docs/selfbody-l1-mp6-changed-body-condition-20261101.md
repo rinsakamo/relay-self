@@ -24,3 +24,24 @@
 Slowness介入はアクチュエータ命令ではなく実験者の環境条件制御だが、物理条件を変えるため完全readonlyのMP5とは異なる。実Worldを見ずに自然条件の変化と断定しない。実験の差が通常World生成の自然ばらつきやtick jitterを含む可能性も残す。
 
 **上限分類:** `MP6_CHANGED_BODY_DEV / PREVIOUS_MP5_CONTROL_RETAINED / FROZEN_CHEAP_EQUIVALENT / UNSEEN_CONDITION_TRANSFER_TEST / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
+
+
+---
+
+## 実World 1回 — Body効果は有効、観測運動の分布差は不成立（2026-11-01）
+
+**実機コードHEAD `ddaff53a73e4847c3eb652ae9fd55ff437f4d70f`**。GitHub [Actions run #41273158125](https://github.com/rinsakamo/relay-self/actions/runs/41273158125) SUCCESS、原本artifact `mp6-changed-body-one-world-41273158125-1`。使い捨てWorld **1回**、元S49 Action **1件**、再試行0。Jobの事前検証：Python3.12 81 PASS、Java21身体条件gate 17チェックPASS、Ruff/contracts PASS、実Paper API Maven BUILD SUCCESS、Node 4.39.0 / Pin SHA確認。
+
+### sourceを分けて判定
+
+- 元Paper `S50_DEV_BODY_CONDITION_APPLIED` **1件**（World tick245、`SLOWNESS_II`、amplifier1、duration400 tick、実験者による新World身体物理条件の明示介入）。元Paper `S50_DEV_BODY_CONDITION_TICK` **8件**すべて effect `active=true`, amplifier1 を確認。したがって**状態介入の実機受理・維持は確認**。
+- **物理運動の変化は確認できなかった**。MP5原本とMP6新Worldの元S49 native MOVEは、それぞれ0.6269065734210615m vs **0.6269065734210608m**、絶対差6.66×10⁻¹⁶m（事前固定閾値0.06m未満）。S50 WAIT tick変位系列も `[0.0494921883, 0.0095436049, 0.0052108083, 0, 0, 0, 0, 0]` と通常MP5と同値。**UNKNOWN条件への転移検証の前提となる分布シフトが成立せず**、性能保持を汎化成功と解釈しない。
+- Paper localの `FIXED`7・`SCORE`7、元WAIT/INPUT各8、Paper stdoutとserver.log bytes完全一致。MAE **0.0006927084716711548m** / RMSE 0.00131407245365265m、zero baseline MAE 0.0021077733153767675m、last baseline MAE 0.00707031261447482m、train-mean MAE 0.003011104736252498m。**same-information cheap linearと数学的に完全同値**。
+- 元S49/S16/S50 owner DEV PASS、Node exit0、Java exit0、cleanup/25565 port再bind PASS、learning/L10/S10/S11更新0、Goal UNDETERMINED。MP5/MP4を再試行していない。
+- 原本SHA・独立readback：[MP6 Evidence JSON](evidence/issue653-mp6-body-condition-20261101/run1/independent-physical-readback.json)。元Paper stdoutとserver.log SHA256 `fbc5c4daa91ee3d45ef54b09b5444a39e3db96b754d8e6f7f36799736c3609c6`。元原本 artifact はGitHub Actionsに残す。
+
+### 次の工学的検証候補
+
+Paper potionステートは本物だが、対象のMineflayer操作による実移動に伝播したことは示されていない。原因はまだUNKNOWN。物理条件差を得る次の別試験は、外界の**地面摩擦などのブロック条件**を一回だけ事前変更して、元S49操作・Paper originalで実軌跡の変化があったことを独立確認する。もしくはMineflayer physics側が効果を無視したかのread-only検査から開始する。いずれも、新しい物理Worldの消費を明示し、実験者が世界を変えていることを隠さない。
+
+**最終分類：`MP6_DEV_PHYSICAL_OWNER_PASS / SLOWNESS_II_EFFECT_ORIGINAL_OBSERVED / OBSERVED_NATIVE_MOTION_SHIFT_NO / PAPER_PREQUENTIAL_7_7 / CHEAP_EQUIVALENT / UNKNOWN_CONDITION_GENERALIZATION_NOT_TESTED / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`**。
