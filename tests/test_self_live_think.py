@@ -638,3 +638,32 @@ def test_wb_bounded_omission_keeps_prediction_review_for_omitted_target():
     assert data["wb_cognition_budget"]["detail_available"] is True
     assert data["prediction_review"]["status"] == "mismatch"
     assert observer.model_attempts == 0
+
+
+def test_wb_foreign_stale_and_projection_failure_remain_fail_closed(monkeypatch):
+    async def scenario():
+        observer = LiveL2Observer(
+            model="test", port=12345, self_world_live=True, wb_cognition_slice=True,
+        )
+        await observer.observe(scoped_world_probe(8))
+        with pytest.raises(ValueError, match="foreign/replayed"):
+            await observer.observe(scoped_world_probe(8))
+        foreign = replace(scoped_world_probe(19), session_id="foreign")
+        with pytest.raises(ValueError, match="foreign/replayed"):
+            await observer.observe(foreign)
+
+        def rejected_projection(*args, **kwargs):
+            raise ValueError("unqualified WB projection")
+
+        monkeypatch.setattr(
+            "adapters.mineflayer.self_live_think.project_cognition_slice",
+            rejected_projection,
+        )
+        # Optional projection failure returns to the existing S49 callback;
+        # neither a model request nor an Action can be created from it.
+        await asyncio.wait_for(observer.observe(scoped_world_probe(19)), .1)
+        report = await observer.close()
+        assert report["status"] == "SELF_WORLD_INPUT_UNQUALIFIED"
+        assert report["model_attempts"] == report["authorized_actions"] == 0
+        assert report["l0_blocked_on_l2"] is False
+    asyncio.run(scenario())
