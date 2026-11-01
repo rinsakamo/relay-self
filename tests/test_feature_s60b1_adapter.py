@@ -7,9 +7,9 @@ import pytest
 
 import adapters.mineflayer.s60b1_loopback_adapter as transport
 from adapters.mineflayer.s60b1_loopback_adapter import (
+    S60_WB_ADVISORY_JSON_FORMAT,
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
-    S60_WB_ADVISORY_JSON_FORMAT,
     TransportUnconfirmed,
 )
 from relay_self.best_effort_displacement import BestEffortDisplacement, DisplacementRejected
