@@ -283,6 +283,7 @@ async def qualify(
     mp11_g3_paper_assets: L23PaperAssets | None = None,
     l_mp11_live_prefix_dev: bool = False,
     l_mp11_live_l2_engine: RelayEngine | None = None,
+    l_mp11_paper_eof_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -326,6 +327,15 @@ async def qualify(
                 "typed_s16_actions": [],
                 "real_l2_autonomous_experiment": False,
             }
+        if l_mp11_paper_eof_dev and (
+            type(l_mp11_paper_eof_dev) is not bool
+            or not l_mp11_live_prefix_dev
+            or mp11_g3_paper_assets is None
+            or os.environ.get("L_MP11_PAPER_EOF_DEV") != "1"
+        ):
+            raise S31ABlocked("future Paper EOF envelope must be explicitly predeclared")
+        if l_mp11_paper_eof_dev:
+            report["mp11_paper_eof_predeclared"] = True
         if l_mp11_live_l2_engine is not None and (
             not l_mp11_live_prefix_dev
             or os.environ.get("L_MP11_LIVE_L2_DEV") != "1"
@@ -920,6 +930,22 @@ async def qualify(
                 )
                 markers = tuple(report["mp11_g3"]["paper_markers"])
                 raw = server_log.read_bytes()
+                audit_bytes = raw
+                if l_mp11_paper_eof_dev:
+                    from dataclasses import asdict
+
+                    from adapters.mineflayer.l_mp11_paper_eof_envelope import (
+                        seal_after_shutdown,
+                        verified_complete_lines,
+                    )
+
+                    eof = asdict(seal_after_shutdown(
+                        raw, predeclared=report.get("mp11_paper_eof_predeclared") is True,
+                    ))
+                    report["mp11_paper_eof"] = eof
+                    audit_bytes = verified_complete_lines(
+                        raw, eof, predeclared=True,
+                    )
                 locks = [
                     row for row in _paper_rows(raw, "S50_DEV_SURFACE_LOCK ")
                     if row.get("marker_id") in markers
@@ -930,7 +956,7 @@ async def qualify(
                 uuid = locks[0]["world"]
                 subject = locks[0]["subject_uuid"]
                 review = audit_multi_trial_paper(
-                    raw, action_markers=markers, world_uuid=uuid,
+                    audit_bytes, action_markers=markers, world_uuid=uuid,
                     subject_uuid=subject,
                     surfaces=("GRASS_BLOCK",) * 3,
                 )
@@ -940,7 +966,7 @@ async def qualify(
                 report["mp11_g3"]["paper_windows_attested"] = len(review)
                 report["mp11_g3"]["paper_world_uuid"] = uuid
                 report["mp11_g3"]["subject_uuid"] = subject
-                report["mp11_g3"]["original_sha256"] = review[0].paper_sha256
+                report["mp11_g3"]["original_sha256"] = hashlib.sha256(raw).hexdigest()
                 report["mp11_g3"]["wait_ticks"] = [list(x.wait_ticks) for x in review]
                 report["mp11_g3"]["motion_m"] = [list(x.wait_motion_m) for x in review]
                 report["mp11_g3"]["source_status"] = (
@@ -1031,6 +1057,7 @@ def main() -> int:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--mp11-three-actions-dev", action="store_true")
     parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
+    parser.add_argument("--l-mp11-paper-eof-dev", action="store_true")
     parser.add_argument("--l-mp11-live-l2-endpoint")
     parser.add_argument("--l-mp11-live-l2-model")
     parser.add_argument("--raw-capture-root", type=Path)
@@ -1096,6 +1123,7 @@ def main() -> int:
         mp11_three_actions_dev=args.mp11_three_actions_dev,
         mp11_g3_paper_assets=assets,
         l_mp11_live_prefix_dev=args.l_mp11_live_prefix_dev,
+        l_mp11_paper_eof_dev=args.l_mp11_paper_eof_dev,
         l_mp11_live_l2_engine=l2_engine,
     ))
 
