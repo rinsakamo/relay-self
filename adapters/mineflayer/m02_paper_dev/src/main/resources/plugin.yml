@@ -14,6 +14,10 @@ commands:
     description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
     usage: '/relaydevwait <marker_id>'
 
+  relaydevcondition:
+    description: 'Console-only MP6 experimenter-owned Slowness II before original S49 Action'
+    usage: '/relaydevcondition <marker_id> SLOWNESS_II'
+
   relaydevlocalmodel:
     description: 'Console-only one-shot pre-S49 DEV shadow model arm, no Action'
     usage: '/relaydevlocalmodel <marker_id> <slope> <model_ticket_sha256>'
