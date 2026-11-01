@@ -242,6 +242,7 @@ async def qualify(
     l1_paper_ice_floor_dev: bool = False,
     l1_mp8_surface_mode: str | None = None,
     l1_mp9_shadow_dev: bool = False,
+    l1_mp10_revision_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -273,8 +274,22 @@ async def qualify(
     rc = 2
     predictor = None
     mp9_prior = None
+    mp9_ticket = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if l1_mp10_revision_dev:
+            if (type(l1_mp10_revision_dev) is not bool
+                    or not l1_mp9_shadow_dev or not live_next_epoch_dev
+                    or not l1_motion_shadow_dev):
+                raise S31ABlocked("MP10 requires original MP9 selector + route B native epoch")
+            report["mp10_l1_revision"] = {
+                "status": "PENDING_TYPED_NEXT_EPOCH",
+                "trigger_threshold_m": 0.002,
+                "classification": "DEV_PROVISIONAL_SOURCE_NO_MODEL_ADMISSION",
+                "no_l0_actions_modified": True,
+                "durable_learning_admissions": 0,
+                "heldout_after_revision": "NOT_RUN",
+            }
         if l1_mp9_shadow_dev:
             if (type(l1_mp9_shadow_dev) is not bool
                     or l1_mp8_surface_mode not in ("NORMAL", "ICE")
@@ -505,11 +520,13 @@ async def qualify(
             if l1_mp8_surface_mode is not None:
                 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
                     MP9_SEED,
+                    MP10_SEED,
                     set_fixed_seed,
                 )
                 report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
-                    root, seed=MP9_SEED if l1_mp9_shadow_dev else
-                    "RelaySelf-MP8-Matched-Surface-20261101",
+                    root, seed=(MP10_SEED if l1_mp10_revision_dev else
+                                MP9_SEED if l1_mp9_shadow_dev else
+                                "RelaySelf-MP8-Matched-Surface-20261101"),
                 )
         elif rsee_world is not None:
             report["stage"] = "RSEE_BIND_STOPPED_WORLD_BEFORE_JAVA"
@@ -526,11 +543,13 @@ async def qualify(
             if l1_mp8_surface_mode is not None:
                 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
                     MP9_SEED,
+                    MP10_SEED,
                     set_fixed_seed,
                 )
                 report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(
-                    root, seed=MP9_SEED if l1_mp9_shadow_dev else
-                    "RelaySelf-MP8-Matched-Surface-20261101",
+                    root, seed=(MP10_SEED if l1_mp10_revision_dev else
+                                MP9_SEED if l1_mp9_shadow_dev else
+                                "RelaySelf-MP8-Matched-Surface-20261101"),
                 )
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar",
@@ -635,7 +654,7 @@ async def qualify(
             )
 
         async def on_action(step):
-            nonlocal paper_forecast_task
+            nonlocal paper_forecast_task, mp9_ticket
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -790,6 +809,7 @@ async def qualify(
                                 frozen = freeze_from_paper_lock(
                                     mp9_prior, lock, mode=l1_mp8_surface_mode,
                                 )
+                                mp9_ticket = frozen
                                 # Existing journal is write-only diagnostic, not
                                 # an S49 Action / L0 policy / S10 owner call.
                                 predictor.write(
@@ -1157,6 +1177,27 @@ async def qualify(
             raise S49PhysicalFailure("bounded native decisions/Action closures disagree")
         if live_next_epoch_dev and next_epoch_readout is None:
             raise S49PhysicalFailure("missing real third L0 native epoch")
+        if l1_mp10_revision_dev:
+            if next_epoch_readout is None or mp9_ticket is None or mp9_prior is None:
+                raise S49PhysicalFailure("MP10 missing existing typed next-native epoch")
+            from adapters.mineflayer.self_body_s50_l1_mp10_revision import (
+                propose_from_typed_next_epoch,
+            )
+            # Execute AFTER the original L0 decision trace, NOT in its probe
+            # or Action issuing callback. Never feed the model into original L0.
+            proposed = propose_from_typed_next_epoch(
+                next_epoch_readout, mp9_ticket, mp9_prior,
+            )
+            assert predictor is not None
+            predictor.write("MP10_L1_REVISION_NEXT_EPOCH",
+                            proposal=asdict(proposed),
+                            prior_ticket_sha256=mp9_ticket.ticket_sha256,
+                            no_owner_or_policy_mutation=True)
+            report["mp10_l1_revision"].update({
+                "status": "NEXT_NATIVE_EPOCH_REVISION_PROPOSED_AFTER_L0",
+                "candidate": asdict(proposed),
+                "future_heldout_not_run": True,
+            })
         if l1_motion_shadow_dev:
             assert next_epoch_readout is not None
             # Observe the ACTUAL completed S49 third choice. This review is
@@ -1458,6 +1499,7 @@ def main() -> int:
     parser.add_argument("--l1-paper-ice-floor-dev", action="store_true")
     parser.add_argument("--l1-mp8-surface-mode", choices=["NORMAL", "ICE"])
     parser.add_argument("--l1-mp9-shadow-dev", action="store_true")
+    parser.add_argument("--l1-mp10-revision-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1512,6 +1554,7 @@ def main() -> int:
         l1_paper_ice_floor_dev=args.l1_paper_ice_floor_dev,
         l1_mp8_surface_mode=args.l1_mp8_surface_mode,
         l1_mp9_shadow_dev=args.l1_mp9_shadow_dev,
+        l1_mp10_revision_dev=args.l1_mp10_revision_dev,
     ))
 
 

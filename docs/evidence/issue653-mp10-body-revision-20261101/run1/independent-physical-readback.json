@@ -1,0 +1,121 @@
+{
+  "schema": "RELAYSELF_MP10_TYPED_NEXT_EPOCH_REAL_WORLD_DEV_INDEPENDENT_READBACK_V1",
+  "date": "2026-11-01",
+  "source_run": {
+    "id": 41283504071,
+    "url": "https://github.com/rinsakamo/relay-self/actions/runs/41283504071",
+    "executing_head": "e77b3a4c56b4c1b1406e190538f8c9c0b0ad2037",
+    "result": "SUCCESS",
+    "original_zip_artifact_id": 13074168354,
+    "original_zip_name": "mp10-two-world-originals-41283504071-1",
+    "original_zip_sha256": "1772faf91ad6939319d76520261494a032efaeb0b3c6f5b8a92f9d084dda3a5a"
+  },
+  "scope": {
+    "worlds_started": 2,
+    "original_s49_actions": 2,
+    "original_s16_outcomes": 2,
+    "each_paper_wait_samples": 8,
+    "each_old_paper_forecast_pairs": 7,
+    "original_java_node_exits": [
+      0,
+      0
+    ],
+    "source_stdout_equals_server_log": true,
+    "run_retries": 0,
+    "additional_model_calls": 0,
+    "l0_actions_modified": false,
+    "learning_admissions": 0
+  },
+  "physical_pair": {
+    "sampled_preaction_match": true,
+    "seed": "-1373892876",
+    "lock_world_ticks": [
+      285,
+      286
+    ],
+    "sampled_preaction_position": [
+      0.5,
+      -60,
+      0.5
+    ],
+    "sampled_velocity": [
+      0,
+      -0.0784000015258789,
+      0
+    ],
+    "health": 20,
+    "food": 20,
+    "original_floor": "GRASS_BLOCK_5X5",
+    "note": "same sampled state is not identical tick timing or randomized causal evidence"
+  },
+  "originals": {
+    "normal": {
+      "world_uuid": "3a6c11da-45aa-4260-bb0a-8cbb66936e1a",
+      "paper_stdout_sha256": "57153cdb3c76f86f535987faaa9d4fd31b06d97b869a52cbd65cfa62caa42a0e",
+      "paper_prefix_sha256": "191d8439cea1071e06e3b9961b1f400843eb300d43e3d74647c0b1ec1c4e2cb8",
+      "native_move_m": 0.6269065734210613,
+      "prior_slope": 0.5701332477105613,
+      "original_runtime_candidate_slope": 0.5701332477105613,
+      "old_mae_m": 0.005419837182518898,
+      "original_runtime_candidate_in_sample_mae_m": 0.005419837182518898,
+      "original_runtime_status": "REVISE_CANDIDATE_IN_SAMPLE_ONLY",
+      "corrected_guard_would_abstain": true,
+      "residuals_approx": [
+        0.01606415,
+        -0.01867354,
+        -0.00023032,
+        -0.00297086,
+        0,
+        0,
+        0
+      ]
+    },
+    "ice": {
+      "world_uuid": "e1501158-fe09-4185-8437-fdf65a769d7f",
+      "paper_stdout_sha256": "61a66d159779e5e2348cd14394a9e1b757d4e2fb5a501828c213dc73b88fc2b6",
+      "paper_prefix_sha256": "c8c6d34b95a451239c64e48925d542a5f640ab348005dda820fc5ad2f5dcd5e6",
+      "native_move_m": 0.2924715215939989,
+      "prior_slope": 0.6052193469653747,
+      "original_runtime_candidate_slope": 0.6052193469653746,
+      "old_mae_m": 0.014376540020744788,
+      "original_runtime_candidate_in_sample_mae_m": 0.01437654002074479,
+      "original_runtime_status": "REVISE_CANDIDATE_IN_SAMPLE_ONLY",
+      "corrected_guard_would_abstain": true,
+      "residuals_approx": [
+        -0.02519707,
+        0.01642489,
+        0.01464771,
+        0.01306283,
+        0.01164943,
+        0.01038896,
+        0.00926488
+      ]
+    }
+  },
+  "source_chronology": {
+    "original_next_native_L0_trace_consumed_before_MP10_revision": true,
+    "original_paper_eight_wait_samples_before_proposal": true,
+    "host_journal_MP10_proposal_one_per_world": true,
+    "typed_native_body_ref_checked_against_saved_readback": true,
+    "proposal_sha256_each_world_checked": true,
+    "proposal_not_applied_to_L0_or_model": false
+  },
+  "postrun_guard_safety_fix": {
+    "classification": "ADDED_AFTER_EXECUTION_NOT_CLAIMED_AS_TESTED_IN_PHYSICAL_RUN",
+    "purpose": "Reject nonzero-error revision candidate when fitted slope unchanged or no in-sample MAE improvement",
+    "filename": "adapters/mineflayer/self_body_s50_l1_mp10_revision.py",
+    "physical_retest_with_new_code": false
+  },
+  "interpretation": {
+    "typed_interface": "DEV_ORIGINAL_NEXT_EPOCH_PROVISIONAL_PAPER_READONLY",
+    "previous_error_detected": true,
+    "effective_slope_repair": false,
+    "majority_error_not_fixed_by_slope": true,
+    "cheap_ols_equivalent": true,
+    "future_out_of_sample_transfer": "NOT_TESTED",
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "goal": "UNDETERMINED",
+    "classification": "MP10_DEV_TWO_WORLD_TYPED_NEXT_EPOCH_CANDIDATE_PASS / NO_EFFECTIVE_REVISION / LEARNING_ADMISSION_0 / CHEAP_EQUIVALENT / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+  }
+}

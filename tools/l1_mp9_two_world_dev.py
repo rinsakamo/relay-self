@@ -198,7 +198,8 @@ def compare_original_states(normal: dict, ice: dict) -> dict:
 
 
 def run_one(parent: Path, mode: str, *, paper: Path, plugin: Path,
-            config_default: Path, node: Path, prior_sha: str) -> tuple[int, bool]:
+            config_default: Path, node: Path, prior_sha: str,
+            mp10_revision_dev: bool = False) -> tuple[int, bool]:
     out = parent / mode.lower()
     out.mkdir()
     cfg = out / "mp9-active-config.yml"
@@ -229,6 +230,7 @@ def run_one(parent: Path, mode: str, *, paper: Path, plugin: Path,
         "--l1-prediction-journal", str(out / "prediction-original.jsonl"),
         "--l1-paper-local-forecast-dev", "--l1-paper-ice-floor-dev",
         "--l1-mp8-surface-mode", mode, "--l1-mp9-shadow-dev",
+        *([] if not mp10_revision_dev else ["--l1-mp10-revision-dev"]),
         "--l23-paper-server-jar", str(paper),
         "--l23-paper-server-sha256", PAPER_SHA,
         "--l23-paper-plugin-jar", str(plugin),
