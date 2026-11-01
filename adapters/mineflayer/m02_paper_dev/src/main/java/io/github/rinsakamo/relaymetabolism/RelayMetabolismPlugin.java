@@ -102,6 +102,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // Isolated, default-OFF Paper main-thread future-tick receipt; no S49 authority.
     private boolean s50ForecastGateDev = false;
     private final S50ForecastGate s50ForecastGate = new S50ForecastGate();
+    // MP5 Paper-local shadow: pre-armed before original S49 Action, no RTT per tick.
+    private boolean s50PaperLocalForecastDev = false;
+    private final S50PaperLocalForecast s50PaperLocalForecast = new S50PaperLocalForecast();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -240,6 +243,17 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             if (s50ForecastGateDev && !s50TickMeterCandidate) {
                 throw new IllegalStateException("S50 forecast gate needs existing WAIT tick owner");
             }
+            if (getConfig().contains("s50-paper-local-forecast-dev")
+                    && !getConfig().isBoolean("s50-paper-local-forecast-dev")) {
+                throw new IllegalStateException("invalid MP5 local forecast DEV flag");
+            }
+            s50PaperLocalForecastDev = getConfig().getBoolean(
+                "s50-paper-local-forecast-dev", false);
+            if (s50PaperLocalForecastDev && (!s50TickMeterCandidate
+                    || !s50InputWitnessCandidate || s50ForecastGateDev)) {
+                throw new IllegalStateException(
+                    "MP5 requires existing WAIT and input witness; MP4 console gate OFF");
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -357,6 +371,55 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                             devActive = false;
                             Bukkit.getPluginManager().disablePlugin(this);
                             return;
+                        }
+                        if (s50PaperLocalForecastDev) {
+                            // x[t] comes from the SAME original S50 WAIT source callback
+                            // after its live sampling, never the host's later logfile.
+                            double deltaX = where.getX() - from.getX();
+                            double deltaY = where.getY() - from.getY();
+                            double deltaZ = where.getZ() - from.getZ();
+                            double measured = Math.sqrt(
+                                deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
+                            );
+                            try {
+                                S50PaperLocalForecast.Observed local =
+                                    s50PaperLocalForecast.observe(tick, measured);
+                                S50PaperLocalForecast.Score score = local.previousScore();
+                                if (score.previous() != null) {
+                                    getLogger().info("S50_DEV_LOCAL_FORECAST_SCORE marker_id="
+                                        + s50Marker + " world=" + p.getWorld().getUID()
+                                        + " subject_uuid=" + p.getUniqueId()
+                                        + " tick=" + tick
+                                        + " prior_tick=" + score.previous().priorTick()
+                                        + " target_tick=" + score.targetTick()
+                                        + " predicted_m=" + score.previous().predictedMeters()
+                                        + " actual_m=" + score.actualMeters()
+                                        + " abs_error_m=" + score.absoluteErrorMeters()
+                                        + " ticket_sha256=" + score.previous().ticketSha256()
+                                        + " status=" + score.status());
+                                }
+                                if (local.nextPrediction() != null) {
+                                    S50PaperLocalForecast.Prediction next =
+                                        local.nextPrediction();
+                                    getLogger().info("S50_DEV_LOCAL_FORECAST_FIXED marker_id="
+                                        + s50Marker + " world=" + p.getWorld().getUID()
+                                        + " subject_uuid=" + p.getUniqueId()
+                                        + " observed_tick=" + tick
+                                        + " prior_tick=" + next.priorTick()
+                                        + " target_tick=" + next.targetTick()
+                                        + " observed_displacement_m=" + measured
+                                        + " predicted_m=" + next.predictedMeters()
+                                        + " ticket_sha256=" + next.ticketSha256()
+                                        + " chronology=AFTER_PRIOR_S50_SAMPLE_BEFORE_NEXT_CALLBACK");
+                                }
+                            } catch (IllegalStateException exc) {
+                                getLogger().severe("S50_DEV_LOCAL_FORECAST_INVALID marker_id="
+                                    + s50Marker + " tick=" + tick
+                                    + " reason=" + exc.getMessage());
+                                devActive = false;
+                                Bukkit.getPluginManager().disablePlugin(this);
+                                return;
+                            }
                         }
                         s50WaitSourceRows++;
                         s50WaitLast = where.clone();
@@ -582,6 +645,39 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " motion_billed=" + chargedMotionExhaustion);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("relaydevlocalmodel")) {
+            // Source-bound one-shot model registration before native S49 MOVE.
+            // Console-only diagnostic configuration, NOT an Action command.
+            if (!devActive || !s50PaperLocalForecastDev
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 3 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !s50Marker.equals(args[0])
+                    || s50ClearObserved || s50WaitObserveActive) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            double slope;
+            try {
+                slope = Double.parseDouble(args[1]);
+            } catch (NumberFormatException exc) {
+                getLogger().info("S50_DEV_LOCAL_MODEL_REJECT marker_id=" + args[0]
+                    + " reason=INVALID_SLOPE");
+                return false;
+            }
+            boolean armed = s50PaperLocalForecast.arm(
+                args[0], p.getWorld().getUID().toString(),
+                p.getUniqueId().toString(), slope, args[2]);
+            getLogger().info("S50_DEV_LOCAL_MODEL_" + (armed ? "ARM" : "REJECT")
+                + " marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " world_full_time=" + p.getWorld().getFullTime()
+                + " slope=" + slope
+                + " ticket_sha256=" + (armed ? args[2] : "NONE")
+                + " status=" + (armed ? "FROZEN_PRE_S49_ACTION" : "REJECTED"));
+            return armed;
+        }
         if (command.getName().equalsIgnoreCase("relaydevforecast")) {
             if (!devActive || !s50ForecastGateDev || !s50TickMeterCandidate
                     || !(sender instanceof ConsoleCommandSender)
@@ -641,6 +737,20 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     s50Marker, waiting.getWorld().getUID().toString(),
                     waiting.getUniqueId().toString(), s50WaitStartWorldTick
                 );
+            }
+            if (s50PaperLocalForecastDev) {
+                if (!s50PaperLocalForecast.begin(
+                        s50Marker, waiting.getWorld().getUID().toString(),
+                        waiting.getUniqueId().toString(), s50WaitStartWorldTick)) {
+                    getLogger().severe("S50_DEV_LOCAL_WAIT_REJECT marker_id=" + s50Marker
+                        + " reason=NOT_PREARMED_OR_FOREIGN_SCOPE");
+                    return false;
+                }
+                getLogger().info("S50_DEV_LOCAL_WAIT_ARMED marker_id=" + s50Marker
+                    + " world=" + waiting.getWorld().getUID()
+                    + " subject_uuid=" + waiting.getUniqueId()
+                    + " start_tick=" + s50WaitStartWorldTick
+                    + " ticket_sha256=" + s50PaperLocalForecast.model().ticketSha256());
             }
             s50WaitObserveActive = true;
             s50WaitLifecycleEvents = 0;
