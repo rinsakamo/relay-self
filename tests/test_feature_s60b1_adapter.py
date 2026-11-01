@@ -9,6 +9,7 @@ import adapters.mineflayer.s60b1_loopback_adapter as transport
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
+    S60_WB_ADVISORY_JSON_FORMAT,
     TransportUnconfirmed,
 )
 from relay_self.best_effort_displacement import BestEffortDisplacement, DisplacementRejected
@@ -636,3 +637,71 @@ def test_replayed_future_boundary_after_real_success():
             assert "PROVIDER_UNCONFIRMED" in rig.events() and len(server.posts) == 1
             await rig.adapter.aclose()
     asyncio.run(scenario())
+
+
+def test_explicit_structured_off_request_is_exact_and_accepted_without_action():
+    """Opt-in adds only pinned request grammar; normal S60 completion still applies."""
+    async def scenario():
+        async with FakeHTTP() as server:
+            value = envelope()
+            value["choices"][0]["message"]["content"] = '{"uncertainty":"Which path is blocked?"}'
+            server.responses = [response(json.dumps(value).encode())]
+            config = LoopbackTransportConfig(
+                "offline-model", server.port, structured_json_off=True,
+            )
+            message = payload()
+            message.update({
+                "reasoning_effort": "none",
+                "response_format": S60_WB_ADVISORY_JSON_FORMAT,
+            })
+            rig = Rig(server, config=config, supplier=lambda req: message)
+            rig.submit(level="L2")
+            assert await server.next_post() == 0
+            sent = server.posts[0][1]
+            assert sent["reasoning_effort"] == "none"
+            assert sent["response_format"] == S60_WB_ADVISORY_JSON_FORMAT
+            assert set(sent) == {
+                "model", "messages", "temperature", "max_tokens", "stream",
+                "reasoning_effort", "response_format",
+            }
+            server.release[0].set()
+            await rig.terminal()
+            got = rig.owner.tick()
+            assert json.loads(got.value) == {"uncertainty": "Which path is blocked?"}
+            assert rig.owner.active is None
+            rig.assert_sanitized()
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("mode,change", [
+    (False, {"reasoning_effort": "none", "response_format": S60_WB_ADVISORY_JSON_FORMAT}),
+    (True, {"reasoning_effort": "none"}),
+    (True, {"response_format": S60_WB_ADVISORY_JSON_FORMAT}),
+    (True, {"reasoning_effort": "high", "response_format": S60_WB_ADVISORY_JSON_FORMAT}),
+    (True, {"reasoning_effort": "none", "response_format": {"type": "json_object"}}),
+    (True, {"reasoning_effort": "none", "response_format": S60_WB_ADVISORY_JSON_FORMAT,
+            "chat_template_kwargs": {"enable_thinking": False}}),
+])
+def test_structured_wire_bad_or_unconsented_never_posts(mode, change):
+    async def scenario():
+        async with FakeHTTP() as server:
+            config = LoopbackTransportConfig(
+                "offline-model", server.port, structured_json_off=mode,
+            )
+            data = payload()
+            data.update(change)
+            rig = Rig(server, config=config, supplier=lambda req: data)
+            rig.submit(level="L2")
+            assert rig.adapter.transport_tasks == 0
+            assert not server.posts
+            assert rig.owner.tick() is None
+            assert rig.owner.active is not None
+            rig.assert_sanitized()
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+def test_structured_opt_in_requires_exact_boolean():
+    with pytest.raises(TransportUnconfirmed):
+        LoopbackTransportConfig("offline-model", 12345, structured_json_off="yes")
