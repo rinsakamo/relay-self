@@ -80,3 +80,37 @@ GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
 
 No new World or provider call is authorized by this PR. #655 MP3の単発grantを
 L-BCGに流用しない。main・保護原本・元S49/S16/L0/S50 owner・過去科学結論は不変。
+
+## BCG-H1 — 既存S49 hostへの最小readonly接続（2026-11-01）
+
+`adapters/mineflayer/self_body_s50_l_bcg_handoff.py` と
+`tests/test_l_bcg_live_handoff.py` を追加。
+`self_body_s50_world_dev.py` に **default-OFF**
+`--l-bcg-shadow-dev` オプションを追加。既存route Bの原第3 L0選択が
+**完了してから** `LiveNextEpochReadout` と元`WorldConditionedChoice`を
+受ける。既存 `compare_l1_motion_attention_shadow` の厳格なsession・S50
+Paper暫定window・S42 choice/元Present型の照合を再利用し、L0 choice、
+Action、native probeを変更せず `report["l_bcg_shadow"]` のみに記録する。
+
+**現実の初回runでは保留が正しい。** 元readoutには現時点で認証済み
+Goal clearance、歩容、P1/M疲労・エネルギー、障害物の全cueや、
+物理実効clearを認証した複数training Worldがない。
+そこでhostは `current=None`、`training=()`、`admission=None` とし、
+`DEFER_UNKNOWN / CURRENT_GOAL_GAIT_P1_M_OBSTACLE_SOURCE_NOT_ADMITTED`
+を明示する。初回この結果が出ても学習・汎化成功ではない。
+
+将来S/R ownerが別途 `MotionContext`、既存Memory/S16と有資格
+post-clear S50に対応する `MotorOutcome` 群、`MotorSourceAdmission`
+を渡す場合だけ、同一self/session/World/body/world-sourceを束ねて
+`compare_conditional_motion_shadow` を利用可能にする。現状その
+runtime owner-side producerは存在しない。testのsource/digestの組立ては
+物理真正性を証明せず、本番データを静かに`admitted`へ昇格させてはならない。
+
+親PR #655のhost追加HEAD
+`bd9115eeb3aa07a0554058124309c2f6b6cbbc14` を隔離PR #656へ
+non-force two-parent mergeで取り込み、既存親ファイルの変更を尊重。
+既存原本とmain変更なし。
+
+**BCG-H1 evidence ceiling:** `OFFLINE_TYPED_HANDOFF_ONLY`。
+追加されたhost entrypointは実Worldで未実行。
+`QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / REAL_WORLD_BCG_0`。
