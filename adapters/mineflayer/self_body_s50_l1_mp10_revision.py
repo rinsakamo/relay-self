@@ -12,7 +12,6 @@ import math
 from dataclasses import asdict, dataclass
 
 from adapters.mineflayer.self_body_s50_l1_mp9_selector import (
-    MP9Rejected,
     ShadowTicket,
     SurfacePriors,
     train_mp8_only,
