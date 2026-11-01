@@ -184,10 +184,10 @@ class L2ExperimentLoop:
             raise MP11Rejected("L2 must follow exact bounded hypothesis schema")
         used = {r.experiment_id for r in self.receipts}
         experiment = candidate["experiment_id"]
-        if experiment not in EXPERIMENTS or experiment in used:
+        if not isinstance(experiment, str) or experiment not in EXPERIMENTS or experiment in used:
             raise MP11Rejected("L2 requested unsupported or duplicated experiment")
         family = candidate["model_family"]
-        if family not in MODEL_FAMILIES:
+        if not isinstance(family, str) or family not in MODEL_FAMILIES:
             raise MP11Rejected("unbounded L2 model family not accepted")
         for key in ("explanation", "falsification_test"):
             val = candidate[key]
