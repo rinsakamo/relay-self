@@ -40,3 +40,10 @@ Existing MP10 S49 host has ONE Action per World with one-shot S16/S50 lease, Pap
 | G4 | Independent heldout model transfer and cheap baseline comparison | NOT RUN |
 
 Acceptance ceiling: MP11_STAGE0_OFFLINE_L2_PLANNER_ONLY / REAL_L2_NOT_RUN / REAL_MULTITRIAL_WORLD_NOT_RUN / L0_UNCHANGED / NO_LEARNING_ADMISSION / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN. Draft only; main untouched.
+
+
+## Stage 0.1 original Paper multi-marker audit — implemented, source-only
+
+The independent helper adapters/mineflayer/self_body_s50_l2_mp11_paper_audit.py parses the supplied complete, UTF-8 original Paper stdout **bytes** in memory and checks **2–4 distinct markers** from one intended original Paper World. It binds each marker's two-phase PRE_FORWARD/POST_CLEAR, unique surface lock, WAIT_BEGIN, eight ordered WAIT and INPUT observations, seven pre-next-tick FIXED and post-next-tick SCORE pairs, exact World/subject/material and 25-block preintervention evidence. Later trial marker must begin after the earlier original trial finishes; WAIT ticks must increase strictly. Malformed, mixed, duplicate, foreign, nonfinite and missing-source transcripts are refused. This verifies a multi-marker log **shape** only: it neither creates a real multi-Action owner nor attests the S16 terminal/native protocol/grants, and source bytes may still be synthetic. Unit tests generate synthetic transcripts; no recorded MP11 World exists. Actual original experiment setup must separately prove that declared SHORT/LONG input regimes differ.
+
+Source-only CI [#41285028724](https://github.com/rinsakamo/relay-self/actions/runs/41285028724): Python3.12 **86 PASS**, Ruff, compileall, repository contract PASS. Real World 0, real Gemma provider calls 0. Development status G0 PASS and G1–G4 NOT_RUN.
