@@ -7,8 +7,8 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.self_body_s50_l1_mp9_selector import (
-    MP9Rejected,
     SOURCE_PATH,
+    MP9Rejected,
     compare_pair,
     evaluate_frozen_shadow,
     freeze_from_paper_lock,
