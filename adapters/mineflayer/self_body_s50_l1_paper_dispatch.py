@@ -58,7 +58,7 @@ class ForecastCommand:
             raise ForecastDispatchRejected("unbounded/foreign command or tick")
         return (
             f"relaydevforecast {self.marker} {self.prior_tick} {self.target_tick} "
-            f"{self.predicted_m:.17g} {self.ticket_sha256}"
+            f"{self.predicted_m!r} {self.ticket_sha256}"
         )
 
 
