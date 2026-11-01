@@ -70,6 +70,8 @@ async def run_original_s49_with_m_readback(
     except (OSError, UnicodeError, ValueError):
         s_report = {}
     row = tap.readout
+    original_saved = s_report.get("original_completion_readback")
+    readback = original_saved if isinstance(original_saved, dict) else {}
     accepted = (
         type(code) is int and code == 0
         and s_report.get("status") == "PASS"
@@ -77,12 +79,9 @@ async def run_original_s49_with_m_readback(
         and isinstance(row, dict) and row.get("status") == "RECORDED"
         and row.get("kind") == "ORIGINAL_PYTHON_BATCH"
         and s_report.get("session_id") == row.get("session_id")
-        and s_report.get("original_completion_readback", {}).get("step_count")
-        == row.get("step_count")
-        and s_report.get("original_completion_readback", {}).get("wait_count")
-        == row.get("wait_count")
-        and s_report.get("original_completion_readback", {}).get("outcome_count")
-        == row.get("outcome_count")
+        and readback.get("step_count") == row.get("step_count")
+        and readback.get("wait_count") == row.get("wait_count")
+        and readback.get("outcome_count") == row.get("outcome_count")
         and tap.observed_callbacks == 1
     )
     return code, {
