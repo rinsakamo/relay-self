@@ -35,6 +35,16 @@ def output(req, *, change=None):
         "falsification_test": "Measure actual clear transition ticks before next independently scored trial.",
         "predicted_wait_total_m": 0.16,
         "capability_assessment": "CONDITIONAL_HYPOTHESIS",
+        "prior_hypothesis_relation": (
+            "FIRST_HYPOTHESIS" if n == 1 else "REVISE_PRIOR"
+        ),
+        "numeric_evidence_refs": [
+            {"metric_role": "WAIT8_TOTAL_M", "trial_ordinal": n,
+             "pair_index": 0, "value_m": prior[-1]["paper_wait_total_m"]},
+        ] + ([
+            {"metric_role": "PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M",
+             "trial_ordinal": 2, "pair_index": 0, "value_m": .24},
+        ] if n == 2 else []),
     }
     if change:
         p = change(p)
