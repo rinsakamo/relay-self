@@ -56,6 +56,7 @@ def test_original_s49_host_report_sanity_not_physical_attestation():
     "wrong_original_seq", "wrong_world_provenance", "claim_physical",
     "claim_training", "advice_action", "mutable_l0", "bad_threat_distance",
     "invent_energy", "extra_action", "missing_cues", "incomplete_goal",
+    "omitted_food", "inconsistent_coverage", "falsified_target_seen",
 ])
 def test_reject_host_report_source_and_authority_escalation(case):
     report = deepcopy(_report())
@@ -89,6 +90,17 @@ def test_reject_host_report_source_and_authority_escalation(case):
         shadow["cue_inventory"]["missing_required"] = []
     elif case == "incomplete_goal":
         shadow["goal_success_attested"] = True
+    elif case == "omitted_food":
+        shadow["cue_inventory"]["observed"] = [
+            cue for cue in shadow["cue_inventory"]["observed"]
+            if cue["name"] != "food"
+        ]
+    elif case == "inconsistent_coverage":
+        shadow["cue_inventory"]["coverage_truncated"] = not shadow["cue_inventory"]["coverage_truncated"]
+    elif case == "falsified_target_seen":
+        shadow["cue_inventory"]["target_seen_in_limited_coverage"] = (
+            not shadow["cue_inventory"]["target_seen_in_limited_coverage"]
+        )
     with pytest.raises(BCGReportRejected):
         review_bcg_host_report(report)
 
