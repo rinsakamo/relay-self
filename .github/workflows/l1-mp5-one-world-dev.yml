@@ -1,4 +1,5 @@
 name: L1-MP5 one physically fresh Paper World DEV
+# Single MP5 DEV World under standing lane grant; MP4 historical 3 Worlds unchanged.
 on:
   push:
     branches: [dev/l1-mp5-paper-local-forecast-20261101]
