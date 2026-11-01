@@ -6,6 +6,11 @@ on:
     paths:
       - 'adapters/mineflayer/self_body_s50_l1_mp8_transfer.py'
       - 'tests/test_self_body_s50_l1_mp8_transfer.py'
+      - 'tests/test_self_body_s50_l1_mp8_physical.py'
+      - 'adapters/mineflayer/self_body_s50_l1_mp8_physical.py'
+      - 'tools/l1_mp8_two_world_dev.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
       - '.github/workflows/l1-mp8-matched-transfer-offline-dev.yml'
 permissions:
   contents: read
@@ -28,8 +33,8 @@ jobs:
       - name: Source-only MP8 and MP7 regression; NO physical World
         run: |
           set -euo pipefail
-          python -m compileall -q adapters/mineflayer/self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_transfer.py
-          ruff check adapters/mineflayer/self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_transfer.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_mp8_transfer.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp8_two_world_dev.py tests/test_self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_physical.py
+          ruff check adapters/mineflayer/self_body_s50_l1_mp8_transfer.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp8_two_world_dev.py tests/test_self_body_s50_l1_mp8_transfer.py tests/test_self_body_s50_l1_mp8_physical.py
           python -m pytest -o addopts='' -q \
             tests/test_self_body_s50_l1_mp8_transfer.py \
             tests/test_self_body_s50_l1_ice_floor.py
