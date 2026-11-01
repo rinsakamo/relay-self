@@ -51,7 +51,8 @@ def fake_originals():
     return report, raws[-1]
 
 
-def fake_review(report, original):
+def fake_review(report, original, *, expected_l2_calls=0):
+    assert expected_l2_calls in (0, 2)
     assert isinstance(report, dict) and original.endswith(b"\n")
     return {
         "paper_world_uuid": WORLD,
@@ -124,7 +125,7 @@ def test_unsafe_live_claim_or_replay_rejected(monkeypatch, bad):
 
 
 def test_separate_independent_g3_original_audit_required(monkeypatch):
-    def reject(*_):
+    def reject(*_, **kwargs):
         raise ValueError("G3 original S16/Paper audit failed")
     monkeypatch.setattr(post, "review", reject)
     report, original = fake_originals()
