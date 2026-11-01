@@ -21,13 +21,20 @@ class LivePostrunRejected(ValueError):
 def audit_live_prefixes(report: dict, complete_paper: bytes) -> dict:
     if not isinstance(report, dict) or not isinstance(complete_paper, bytes):
         raise LivePostrunRejected("original report and Paper bytes required")
-    g3 = review(report, complete_paper)
+    shadow = report.get("l_mp11_live_l2")
+    n_l2 = (
+        shadow.get("validated_open_calls", 0)
+        if isinstance(shadow, dict) else 0
+    )
+    if type(n_l2) is not int or n_l2 not in (0, 2):
+        raise LivePostrunRejected("only zero or two qualified L2 shadow calls")
+    g3 = review(report, complete_paper, expected_l2_calls=n_l2)
     live = report.get("l_mp11_live_prefix")
     g2 = report.get("mp11_g2")
     if (
         not isinstance(live, dict)
         or live.get("status") != "PROVISIONAL_LIVE_PREFIX_READ_ONLY"
-        or live.get("l2_open_calls") != 0
+        or live.get("l2_open_calls") != n_l2
         or live.get("learning_admissions") != 0
         or live.get("action_issuers_added") != 0
         or not isinstance(g2, dict)
@@ -65,11 +72,23 @@ def audit_live_prefixes(report: dict, complete_paper: bytes) -> dict:
             or p.get("visible_previous_trials") != i+1
             or p.get("source_status") !=
             "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM"
-            or p.get("l2_calls") != 0
+            or p.get("l2_calls") != (1 if n_l2 and i < 2 else 0)
             or p.get("l2_request_id") !=
             f"l-mp11-live:{g3['paper_world_uuid']}:after-{i+1}"
         ):
             raise LivePostrunRejected("foreign or reordered native S16/Paper source")
+        if n_l2 and i < 2:
+            proposals = shadow["proposals"]
+            hypothesis = proposals[i]
+            if (
+                hypothesis.get("source_last_action_id") != p["action_id"]
+                or hypothesis.get("source_last_prefix_sha256") != digest
+                or hypothesis.get("source_world_uuid") != g3["paper_world_uuid"]
+                or hypothesis.get("source_session_id") != g3["session_id"]
+                or hypothesis.get("request_id") != p["l2_request_id"]
+                or hypothesis.get("source_prior_count") != i+1
+            ):
+                raise LivePostrunRejected("L2 hypothesis was not after its prior source")
         previous_len = size
         result.append({
             "ordinal": i+1,
@@ -80,14 +99,18 @@ def audit_live_prefixes(report: dict, complete_paper: bytes) -> dict:
             "last_wait_tick": p["paper_last_tick"],
         })
     return {
-        "classification": "L_MP11_LIVE_PREFIX_POSTRUN_SOURCE_RECONCILED_DEV_ONLY",
+        "classification": (
+            "L_MP11_LIVE_L2_SHADOW_POSTRUN_RECONCILED_DEV_ONLY"
+            if n_l2 else
+            "L_MP11_LIVE_PREFIX_POSTRUN_SOURCE_RECONCILED_DEV_ONLY"
+        ),
         "paper_world_uuid": g3["paper_world_uuid"],
         "session_id": g3["session_id"],
         "three_original_s49_s16_paper_windows": True,
         "all_live_prefix_sha_match_final_original": True,
         "source_observations": result,
         "true_live_sample_clock_independently_attested": False,
-        "real_l2_calls": 0, "learning_admissions": 0,
+        "real_l2_calls": n_l2, "learning_admissions": 0,
         "l0_promotion": 0,
         "qualification": "NO_GO", "science": "NOT_RUN",
     }

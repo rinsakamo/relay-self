@@ -51,7 +51,8 @@ def fake_originals():
     return report, raws[-1]
 
 
-def fake_review(report, original):
+def fake_review(report, original, *, expected_l2_calls=0):
+    assert expected_l2_calls in (0, 2)
     assert isinstance(report, dict) and original.endswith(b"\n")
     return {
         "paper_world_uuid": WORLD,
@@ -124,9 +125,58 @@ def test_unsafe_live_claim_or_replay_rejected(monkeypatch, bad):
 
 
 def test_separate_independent_g3_original_audit_required(monkeypatch):
-    def reject(*_):
+    def reject(*_, **kwargs):
         raise ValueError("G3 original S16/Paper audit failed")
     monkeypatch.setattr(post, "review", reject)
     report, original = fake_originals()
     with pytest.raises(ValueError, match="original"):
         post.audit_live_prefixes(report, original)
+
+
+def test_two_live_open_proposals_reconcile_with_previous_original_source(
+    monkeypatch,
+):
+    monkeypatch.setattr(post, "review", fake_review)
+    report, original = fake_originals()
+    rows = report["l_mp11_live_prefix"]["observations"]
+    report["l_mp11_live_prefix"]["l2_open_calls"] = 2
+    for row in rows[:2]:
+        row["l2_calls"] = 1
+    report["l_mp11_live_l2"] = {
+        "validated_open_calls": 2,
+        "attempts": 2,
+        "proposals": [
+            {
+                "source_last_action_id": row["action_id"],
+                "source_last_prefix_sha256": row["paper_prefix_sha256"],
+                "source_world_uuid": WORLD,
+                "source_session_id": SESSION,
+                "request_id": row["l2_request_id"],
+                "source_prior_count": i+1,
+                "provider_source": "llama.cpp",
+                "action_authority": False,
+                "next_test_owner_approved": False,
+                "learning_admissions": 0,
+                "l0_promotions": 0,
+            } for i, row in enumerate(rows[:2])
+        ],
+        "experiments_selected_and_executed_by_l2": 0,
+        "new_action_issuers": 0,
+        "learning_admissions": 0,
+        "l0_promotions": 0,
+    }
+    assert post.audit_live_prefixes(report, original)["real_l2_calls"] == 2
+    for case in ("wrong_proposal_sha", "wrong_request", "wrong_count"):
+        bad = deepcopy(report)
+        if case == "wrong_proposal_sha":
+            bad["l_mp11_live_l2"]["proposals"][0][
+                "source_last_prefix_sha256"
+            ] = "a" * 64
+        elif case == "wrong_request":
+            bad["l_mp11_live_l2"]["proposals"][1][
+                "request_id"
+            ] = "foreign"
+        else:
+            bad["l_mp11_live_prefix"]["l2_open_calls"] = 0
+        with pytest.raises(post.LivePostrunRejected):
+            post.audit_live_prefixes(bad, original)
