@@ -1,0 +1,85 @@
+name: L1-MP5 Paper-local frozen-model prequential DEV
+on:
+  push:
+    branches: [dev/l1-mp5-paper-local-forecast-20261101]
+    paths:
+      - '.github/workflows/l1-mp5-paper-local-dev.yml'
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - 'adapters/mineflayer/l23_paper_live_assets.py'
+      - 'adapters/mineflayer/self_body_s50_l1_paper_local.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_paper_local.py'
+      - 'docs/selfbody-l1-mp5-paper-local-20261101.md'
+  pull_request:
+    paths:
+      - '.github/workflows/l1-mp5-paper-local-dev.yml'
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - 'adapters/mineflayer/l23_paper_live_assets.py'
+      - 'adapters/mineflayer/self_body_s50_l1_paper_local.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_paper_local.py'
+      - 'docs/selfbody-l1-mp5-paper-local-20261101.md'
+permissions:
+  contents: read
+jobs:
+  pure-paper-local-and-original-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: MP5 Paper-local 7-next-callback tests and MP4 gate negatives
+        run: |
+          set -euo pipefail
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecast.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecastSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50PaperLocalForecastSelfTest
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50ForecastGateSelfTest
+      - name: Python 3.12 pre-arm and protected S49/S50 owner regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check \
+            adapters/mineflayer/self_body_s50_l1_paper_local.py \
+            adapters/mineflayer/l23_paper_live_assets.py \
+            adapters/mineflayer/self_body_s50_world_dev.py \
+            tests/test_self_body_s50_l1_paper_local.py
+          python -m compileall -q \
+            adapters/mineflayer/self_body_s50_l1_paper_local.py \
+            adapters/mineflayer/l23_paper_live_assets.py \
+            adapters/mineflayer/self_body_s50_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_paper_local.py \
+            tests/test_self_body_s50_l1_paper_dispatch.py \
+            tests/test_self_body_s50_l1_host_prediction.py \
+            tests/test_self_body_s50_route_b_dev.py \
+            tests/test_s50_live_paper_window.py \
+            tests/test_s50_input_witness_source.py
+          python tools/check_repository.py
+      - name: Full Paper 1.21.8 Java plugin compiles with MP5 disabled by default
+        run: |
+          set -euo pipefail
+          grep -qx 's50-paper-local-forecast-dev: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: No implied physical gate or new user World consent
+        if: always()
+        run: |
+          echo 'MP5_PAPER_LOCAL_OFFLINE_ONLY / LOCAL_PREDICTION_PHYSICAL_NOT_RUN / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
