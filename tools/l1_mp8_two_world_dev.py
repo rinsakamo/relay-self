@@ -71,7 +71,7 @@ def review_world(root: Path, mode: str, rc: int, timed_out: bool) -> dict:
           "owner cleanup failed")
     actions = report.get("actual_native_actions")
     _must(type(actions) is list and len(actions) == 1
-          and actions[0].get("terminal") == "OUTCOME",
+          and actions[0].get("terminal") == "outcome",
           "one original S49 terminal required")
     _must(report.get("l1_paper_local_forecast", {}).get(
         "local_model_armed_before_action") is True, "Paper old prior not pre-armed")
