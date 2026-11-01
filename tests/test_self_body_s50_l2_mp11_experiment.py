@@ -178,34 +178,34 @@ def test_open_llm_schema_or_unsafe_action_fail_closed(invalid):
 
 
 def test_provider_unavailable_never_executes_or_autofalls_back():
-    l=new_loop()
+    loop=new_loop()
     with pytest.raises(MP11Rejected):
-        l.propose(None)
+        loop.propose(None)
     with pytest.raises(MP11Rejected):
-        l.record_owner_result({})
-    assert l.summary()["actual_minecraft_actions_issued_here"]==0
+        loop.record_owner_result({})
+    assert loop.summary()["actual_minecraft_actions_issued_here"]==0
 
 
 def test_stale_provider_request_and_already_pending_rejected():
-    l=new_loop()
+    loop=new_loop()
     def stale(req):
         ans=fake_open(req)
         return replace(ans,request_id="stale-request")
     with pytest.raises(MP11Rejected):
-        l.propose(stale)
-    p=l.propose(fake_open)
+        loop.propose(stale)
+    p=loop.propose(fake_open)
     with pytest.raises(MP11Rejected):
-        l.propose(fake_open)
+        loop.propose(fake_open)
     with pytest.raises(MP11Rejected):
-        l.stop()
+        loop.stop()
     assert p.experiment_id=="GRASS_SHORT"
 
 
 def test_model_input_carries_last_trial_errors_not_assumed_world_truth():
-    l=new_loop()
-    p=l.propose(fake_open)
-    l.record_owner_result(owner_fixture(l,p,movement=.04))
-    r=l.l2_request()
+    loop=new_loop()
+    p=loop.propose(fake_open)
+    loop.record_owner_result(owner_fixture(loop,p,movement=.04))
+    r=loop.l2_request()
     limits=json.loads(r.context[0].value_json)
     history=json.loads(r.context[2].value_json)
     assert limits["current_world_observation"]=="HOST_FIXTURE_STAGE0_ONLY"
