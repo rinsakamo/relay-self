@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+from adapters.mineflayer.l_mp11_compact_role_table import compact_role_table
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
@@ -169,6 +170,7 @@ def request_for_live_l2(
             feedback = previous_feedback(previous_proposal, ledger.history[-1])
         except NumericRoleRejected as exc:
             raise LiveL2Rejected("invalid prior L2 feedback") from exc
+    role_table = compact_role_table(ledger, feedback=feedback)
     previous = replace(
         previous,
         context=previous.context + (
@@ -184,46 +186,45 @@ def request_for_live_l2(
                     ledger.history[-1].paper_prefix_sha256,
                 ),
             ),
+            CognitionDatum.from_value(
+                "exact_Paper_numeric_roles_index_table",
+                role_table,
+                Provenance(
+                    "l.mp11.live.paper.numeric.role-table.readonly",
+                    ledger.history[-1].paper_prefix_sha256,
+                ),
+            ),
         ),
     )
     schema = (
-        "Respond in ONE JSON object with EXACT keys: "
-        "referenced_prior_ordinals (sorted unique integer array of only "
-        "previous completed trial numbers), reconsideration "
-        "(KEEP_UNRESOLVED / QUESTION_APPLICABILITY / PROPOSE_STRUCTURAL_REVISION "
-        "/ ABSTAIN), model_family (SINGLE_DECAY / PHASE_DEPENDENT / "
-        "SURFACE_DEPENDENT / INITIAL_SPEED_DEPENDENT / OTHER_BOUNDED), next_test "
-        "(CHECK_INITIAL_VELOCITY / CHECK_PAPER_CALLBACK_PHASE / "
-        "VARY_INPUT_DURATION / COMPARE_GRASS_AND_ICE), "
-        "explanation (16..200 characters), "
-        "falsification_test (16..200 characters), predicted_wait_total_m "
-        "(0..3 finite number or null), capability_assessment (UNKNOWN or "
-        "CONDITIONAL_HYPOTHESIS). Cite only prior trial ordinals actually "
-        "available, distinguish evidence from conjecture, and propose "
-        "an UNAPPROVED next experiment. No Minecraft command, no "
-        "performance superiority claim, no physical capability limit claim. "
-        "Do not state that the proposal has been executed or learned."
-        " Explain the numeric observed prediction error and cheap-zero comparison "
-        "from the completed trials; distinguish these measurements from generic "
-        "prior knowledge. Prior L2 feedback targets the FOLLOWING trial's "
-        "WAIT8 TOTAL (m), NOT seven pair MAE (m). "
-        "Return prior_hypothesis_relation: FIRST_HYPOTHESIS on first call; "
-        "KEEP_PRIOR/REVISE_PRIOR/REJECT_PRIOR/ABSTAIN_ON_PRIOR on second. "
-        "Return numeric_evidence_refs as 1..4 exact objects: metric_role, "
-        "trial_ordinal, pair_index, value_m. Allowed role and pair index: "
-        "WAIT8_TOTAL_M(0); PAPER_NEXT_TICK_PREDICTION_M(1..7); "
-        "PAPER_NEXT_TICK_ABS_ERROR_M(1..7); "
-        "PAPER_CHEAP_NEXT_TICK_MAE_M(0); "
-        "PRIOR_L2_NEXT_WAIT8_PREDICTION_M(0, second call only); "
-        "PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M(0, second call only). "
-        "Values must match the prior typed source, and these roles CANNOT "
-        "be compared across targets. Do not call MAE a threshold or "
-        "confuse predicted displacement and absolute error. "
-        "On second call explicitly assess previous_explanation and its forecast; "
-        "cite both WAIT8_TOTAL_M trial 2 and PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M "
-        "trial 2 (pair_index 0) when a forecast exists. "
-        "For REVISE_PRIOR, cite at least one new trial measurement. "
-        "Keep explanations brief enough for 512 output tokens."
+        "Return ONE MINIMAL JSON object, no markdown, with EXACTLY these ten keys: "
+        "referenced_prior_ordinals, reconsideration, model_family, next_test, "
+        "explanation, falsification_test, predicted_wait_total_m, "
+        "capability_assessment, prior_hypothesis_relation, numeric_evidence_refs. "
+        "Both text fields must be 16..80 characters. "
+        "referenced_prior_ordinals: sorted observed trial numbers only. "
+        "reconsideration: KEEP_UNRESOLVED|QUESTION_APPLICABILITY|"
+        "PROPOSE_STRUCTURAL_REVISION|ABSTAIN. "
+        "model_family: SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|"
+        "INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED. "
+        "next_test: CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|"
+        "VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE. "
+        "capability_assessment: UNKNOWN|CONDITIONAL_HYPOTHESIS. "
+        "predicted_wait_total_m: finite NEXT WAIT8 TOTAL (0..3m) or null. "
+        "prior_hypothesis_relation: FIRST_HYPOTHESIS on first call, otherwise "
+        "KEEP_PRIOR|REVISE_PRIOR|REJECT_PRIOR|ABSTAIN_ON_PRIOR. "
+        "numeric_evidence_refs: one citation on first call, 1..2 on second. "
+        "Each citation has EXACT metric_role, trial_ordinal, pair_index, value_m. "
+        "COPY the numeric value exactly from exact_Paper_numeric_roles_index_table. "
+        "index 0 means WAIT8_TOTAL_M or PAPER_CHEAP_NEXT_TICK_MAE_M (aggregate); "
+        "index 1..7 means PAPER_NEXT_TICK_PREDICTION_M or "
+        "PAPER_NEXT_TICK_ABS_ERROR_M (different single pairs). "
+        "Prior L2 forecast/error if available: "
+        "PRIOR_L2_NEXT_WAIT8_PREDICTION_M or PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M, "
+        "trial 2 index 0. NEVER swap forecast with error or MAE with threshold. "
+        "No causal surface proof: all observed trials are GRASS. "
+        "UNAPPROVED experiment proposal only, no Minecraft command, no learned "
+        "model or Action authority. Output just JSON, terminate before 512 tokens."
     )
     return replace(previous, instruction=previous.instruction + "\n" + schema)
 
