@@ -2,7 +2,10 @@
 import pytest
 
 from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
-    SEED, attest_surface_lock, set_fixed_seed, surface_command,
+    SEED,
+    attest_surface_lock,
+    set_fixed_seed,
+    surface_command,
 )
 from adapters.mineflayer.self_body_s50_l1_paper_dispatch import ForecastDispatchRejected
 from tools.l1_mp8_two_world_dev import compare_original_states
