@@ -1,0 +1,61 @@
+{
+  "request": {
+    "model": "relay-self-gemma4-12b-q4km",
+    "temperature": 0,
+    "max_tokens": 512,
+    "reasoning_effort": "none",
+    "cache_prompt": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the open cognition provider for RelaySelf. Use only the supplied transient context to generate one expression. Return expression text only. The generated text is transient cognition: it does not itself establish World truth, mutate Current Intent, persist Memory, authorize an Action, or prove external delivery. Do not add a hidden decision or THINK escalation."
+      },
+      {
+        "role": "user",
+        "content": "{\"context\":[{\"key\":\"evidence_limits\",\"provenance\":{\"reference\":\"d137d13b80385852345b933aafa60b0e64a042905b5d538ddb6c834f98fba0e4\",\"source\":\"l.mp11.live.paper.provisional\"},\"value\":{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}},{\"key\":\"completed_prior_s49_s16_s50_trials\",\"provenance\":{\"reference\":\"d137d13b80385852345b933aafa60b0e64a042905b5d538ddb6c834f98fba0e4\",\"source\":\"l.mp11.live.paper.prefix\"},\"value\":[{\"action_id\":\"s49-native-move-41\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-41-2cd745a5-769a-4ea0-8f73-bd8963418af0\",\"native_s16_seq\":51,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":672,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":194248,\"paper_prefix_sha256\":\"d137d13b80385852345b933aafa60b0e64a042905b5d538ddb6c834f98fba0e4\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[292,293,294,295,296,297,298,299],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"2cd745a5-769a-4ea0-8f73-bd8963418af0\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"8bcb1db7-4e3c-4e73-88da-2c982cfe7ded\"}]},{\"key\":\"previous_L2_hypothesis_typed_feedback\",\"provenance\":{\"reference\":\"d137d13b80385852345b933aafa60b0e64a042905b5d538ddb6c834f98fba0e4\",\"source\":\"l.mp11.live.previous.hypothesis.feedback.readonly\"},\"value\":{\"model_revised_and_admitted\":false,\"previous_proposal_sha256\":null,\"status\":\"FIRST_HYPOTHESIS_NOT_YET_TESTED\"}}],\"focus\":\"LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY\",\"instruction\":\"L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\\nRespond in ONE JSON object with EXACT keys: referenced_prior_ordinals (sorted unique integer array of only previous completed trial numbers), reconsideration (KEEP_UNRESOLVED / QUESTION_APPLICABILITY / PROPOSE_STRUCTURAL_REVISION / ABSTAIN), model_family (SINGLE_DECAY / PHASE_DEPENDENT / SURFACE_DEPENDENT / INITIAL_SPEED_DEPENDENT / OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY / CHECK_PAPER_CALLBACK_PHASE / VARY_INPUT_DURATION / COMPARE_GRASS_AND_ICE), explanation (16..200 characters), falsification_test (16..200 characters), predicted_wait_total_m (0..3 finite number or null), capability_assessment (UNKNOWN or CONDITIONAL_HYPOTHESIS). Cite only prior trial ordinals actually available, distinguish evidence from conjecture, and propose an UNAPPROVED next experiment. No Minecraft command, no performance superiority claim, no physical capability limit claim. Do not state that the proposal has been executed or learned. Explain the numeric observed prediction error and cheap-zero comparison from the completed trials; distinguish these measurements from generic prior knowledge. Prior L2 feedback targets the FOLLOWING trial's WAIT8 TOTAL (m), NOT seven pair MAE (m). Return prior_hypothesis_relation: FIRST_HYPOTHESIS on first call; KEEP_PRIOR/REVISE_PRIOR/REJECT_PRIOR/ABSTAIN_ON_PRIOR on second. Return numeric_evidence_refs as 1..4 exact objects: metric_role, trial_ordinal, pair_index, value_m. Allowed role and pair index: WAIT8_TOTAL_M(0); PAPER_NEXT_TICK_PREDICTION_M(1..7); PAPER_NEXT_TICK_ABS_ERROR_M(1..7); PAPER_CHEAP_NEXT_TICK_MAE_M(0); PRIOR_L2_NEXT_WAIT8_PREDICTION_M(0, second call only); PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M(0, second call only). Values must match the prior typed source, and these roles CANNOT be compared across targets. Do not call MAE a threshold or confuse predicted displacement and absolute error. On second call explicitly assess previous_explanation and its forecast; cite both WAIT8_TOTAL_M trial 2 and PRIOR_L2_NEXT_WAIT8_ABS_ERROR_M trial 2 (pair_index 0) when a forecast exists. For REVISE_PRIOR, cite at least one new trial measurement. Keep explanations brief enough for 512 output tokens.\",\"intent_id\":\"investigate-motion-mismatch\",\"request_id\":\"l-mp11-live:8bcb1db7-4e3c-4e73-88da-2c982cfe7ded:after-1\"}"
+      }
+    ],
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "started_monotonic_ns": 121106283822251,
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "length",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"referenced_prior_ordinals\": [1],\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"model_family\": \"OTHER_BOUNDED\",\n  \"next_test\": \"CHECK_PAPER_CALLBACK_PHASE\",\n  \"explanation\": \"Trial 1 shows a prediction error of 0.032m vs a cheap-zero of 0.002m, indicating a systematic offset in the paper's motion model.\",\n  \"falsification_test\": \"Test if the discrepancy persists across different block types to isolate whether the error is a global offset or a specific material interaction.\",\n  \"predicted_wait_total_m\": 0.064246601508961,\n  \"capability_assessment\": \"CONDITIONAL_HYPOTHESIS\",\n  \"prior_hypothesis_relation\": \"FIRST_HYPOTHESIS\",\n  \"numeric_evidence_refs\": [\n    {\n      \"metric_role\": \"PAPER_CHEAP_NEXT_TICK_MAE_M\",\n      \"trial_ordinal\": 1,\n      \"pair_index\": 0,\n      \"value_m\": 0.0021077733153767\n    },\n    {\n      \"metric_role\": \"PAPER_NEXT_TICK_PREDICTION_M\",\n      \"trial_ordinal\": 1,\n      \"pair_index\": 1,\n      \"value_m\": 0.0062033431985539\n    },\n    {\n      \"metric_role\": \"PAPER_NEXT_TICK_ABS_ERROR_M\",\n      \"trial_ordinal\": 1,\n      \"pair_index\": 1,\n      \"value_m\": 0.0009925349117687\n    },\n    {\n      \"metric_role\": \"PAPER_NEXT_TICK_PREDICTION_M\",\n      \"trial_ordinal\": 1,\n      \"pair_index\": 2,\n      \"value_m\": 0.0033870253864104\n    }\n  ]\n}"
+        }
+      }
+    ],
+    "created": 1793544155,
+    "model": "relay-self-gemma4-12b-q4km",
+    "system_fingerprint": "b10874-e2d2c0d6a",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 512,
+      "prompt_tokens": 2004,
+      "total_tokens": 2516,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "id": "chatcmpl-qMjF7KTfNY9LHfIo9HafPbDZ4vBlaIiF",
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 2004,
+      "prompt_ms": 1953.1,
+      "prompt_per_token_ms": 0.9746007984031936,
+      "prompt_per_second": 1026.06113358251,
+      "predicted_n": 512,
+      "predicted_ms": 14223.678,
+      "predicted_per_token_ms": 27.834986301369863,
+      "predicted_per_second": 35.92601013605623
+    }
+  },
+  "finished_monotonic_ns": 121122502305825
+}
