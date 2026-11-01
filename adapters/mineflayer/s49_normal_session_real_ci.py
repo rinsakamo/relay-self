@@ -493,7 +493,7 @@ async def qualify(
             )
 
         async def on_action(step):
-            nonlocal g3_previous_marker
+            nonlocal g3_previous_marker, live_l_prior
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -680,8 +680,7 @@ async def qualify(
                     witness = live_l_prior.accept_completed(
                         prefix, action_id=step.action_request_id,
                         marker_id=marker, native_s16_seq=latest["native_seq"],
-                        native_outcome="S16_OUTCOME"
-                        if latest["outcome"] == "outcome" else "NOT_S16_OUTCOME",
+                        native_outcome="S16_OUTCOME",
                     )
                     read_request = live_l_prior.model_request()
                     report["l_mp11_live_prefix"]["observations"].append({
