@@ -149,7 +149,7 @@ def test_missing_usage_is_unknown_not_free(monkeypatch):
     "source_not_recorded", "foreign_tap", "forged_tap", "foreign_probe",
     "foreign_session", "wrong_level", "wrong_focus", "inflight_action",
     "timed_out_action", "foreign_world_choice", "remote_endpoint",
-    "https_endpoint", "endpoint_query", "untrusted_provider",
+    "https_endpoint", "untrusted_provider",
 ])
 def test_rejects_before_network_request(monkeypatch, attack):
     from adapters.llama_cpp import relay_engine as http_module
@@ -193,11 +193,10 @@ def test_rejects_before_network_request(monkeypatch, attack):
         e = replace(epoch, cognition_result=object())
         args["original_s_epoch"] = e
         args["original_slm_tap"] = replace(tap, original_s_epoch=e)
-    elif attack in ("remote_endpoint", "https_endpoint", "endpoint_query"):
+    elif attack in ("remote_endpoint", "https_endpoint"):
         url = {
             "remote_endpoint": "http://example.org:8000/v1/chat/completions",
             "https_endpoint": "https://127.0.0.1:443/v1/chat/completions",
-            "endpoint_query": "http://127.0.0.1:1234/v1/chat/completions?override=true",
         }[attack]
         args["provider"] = LlamaCppRelayProvider(
             endpoint=url, model="test-model",
@@ -290,3 +289,12 @@ def test_invalid_budget_or_optin_fails_closed():
         SPostEpochL2OpenRuntime(enabled=True, max_calls=4)
     with pytest.raises(ValueError):
         SPostEpochL2OpenRuntime(enabled=True, max_calls=True)
+
+
+def test_canonical_provider_rejects_query_before_runtime_exists():
+    # Existing owner/provider constructor already fails closed at this layer.
+    with pytest.raises(ValueError):
+        LlamaCppRelayProvider(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions?override=true",
+            model="test-model",
+        )
