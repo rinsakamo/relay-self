@@ -3,6 +3,8 @@
 dev-enabled: false
 # Off unless an isolated DEV trial explicitly enables source-bound tick receipts.
 s50-forecast-gate-dev: false
+# MP5: Paper callback-only prequential, requires frozen prior-World model before S49 action.
+s50-paper-local-forecast-dev: false
 s50-input-witness-dev: false
 version: M0.2
 minecraft-version: 1.21.8
