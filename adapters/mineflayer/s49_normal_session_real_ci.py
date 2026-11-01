@@ -48,6 +48,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
 )
 from adapters.mineflayer.s49_completed_decision_bridge import (
     S49OriginalCompletedBatch,
+    bounded_original_s49_completion_row,
     read_original_s49_completions,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
@@ -272,6 +273,7 @@ async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     completed_l0: Callable[[S49OriginalCompletedBatch], None] | None = None,
+    completed_l0_dev: bool = False,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
 ) -> int:
@@ -297,6 +299,11 @@ async def qualify(
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
         if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
             raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
+        if type(completed_l0_dev) is not bool or (
+            completed_l0_dev
+            and os.environ.get("S49_COMPLETED_L0_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("S49 completed L0 DEV readback requires explicit gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -457,7 +464,7 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
-            if completed_l0 is not None:
+            if completed_l0 is not None or completed_l0_dev:
                 closed_receipts[step.action_request_id] = receipt
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
@@ -545,14 +552,20 @@ async def qualify(
                 raise S49PhysicalFailure("no authentic Stage R single-writer commit")
             report["stage_r_owner"] = stage_r.summary()
             report["learning_in_world"] = True  # HOLD revision, NOT gain
-        if completed_l0 is not None:
-            # S49 has already obtained every original L0Step and original S16
-            # terminal. This is NOT S42 DecisionEpochResult or a B0/L8 epoch.
-            # A failed observer cannot veto a real physical Action or S49.
+        if completed_l0 is not None or completed_l0_dev:
+            # S49 has already obtained every original L0Step and S16 terminal.
+            # This is not an S42 DecisionEpochResult or a B0/L8 epoch.
+            # Readback errors cannot veto the original physical Action.
             try:
-                completed_l0(read_original_s49_completions(
+                batch = read_original_s49_completions(
                     tuple(trace), probes, closed_receipts,
-                ))
+                )
+                if completed_l0_dev:
+                    report["original_completion_readback"] = (
+                        bounded_original_s49_completion_row(batch)
+                    )
+                if completed_l0 is not None:
+                    completed_l0(batch)
                 report["original_completion_observer"] = "CALLBACK_RETURNED"
             except Exception:
                 report["original_completion_observer"] = "OBSERVER_ERROR"
@@ -680,8 +693,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument("--completed-l0-dev", action="store_true")
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    return asyncio.run(qualify(
+        args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
+    ))
 
 
 if __name__ == "__main__":
