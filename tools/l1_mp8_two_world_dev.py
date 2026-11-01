@@ -11,7 +11,6 @@ import json
 import math
 import os
 import signal
-import socket
 import subprocess
 import sys
 from pathlib import Path
