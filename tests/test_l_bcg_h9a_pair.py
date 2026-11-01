@@ -19,6 +19,7 @@ from relay_self.l_bcg_h9a_stimulus import (
     select_h9a_stimulus,
     verify_h9a_observed_distance,
 )
+from tools.l_bcg_h9a_pair_readback import _critical_runtime_assets
 
 ROOT = (
     Path(__file__).resolve().parents[1] / "docs" / "evidence"
@@ -246,3 +247,21 @@ def test_wrong_pair_rejected(change):
         a, b = b, a
     with pytest.raises(H9aRejected):
         compare_h9a_pair(a, b)
+
+
+def test_h8_archived_original_proves_critical_asset_manifest_shape(tmp_path):
+    """Same SHA comparison is required for H9a two NEW World roots."""
+    archived = (ROOT / "run1/runtime-assets-sha256.json").read_bytes()
+    original = _critical_runtime_assets(ROOT / "run1")
+    assert len(original) == 4
+    (tmp_path / "runtime-assets-sha256.json").write_bytes(archived)
+    assert _critical_runtime_assets(tmp_path) == original
+
+    changed = json.loads(archived)
+    plugin = next(k for k in changed if k.endswith("/plugins/relay-metabolism-paper-dev.jar"))
+    changed[plugin]["sha256"] = "0" * 64
+    (tmp_path / "runtime-assets-sha256.json").write_text(json.dumps(changed))
+    assert _critical_runtime_assets(tmp_path) != original
+    (tmp_path / "runtime-assets-sha256.json").unlink()
+    with pytest.raises(ValueError, match="missing/unsafe"):
+        _critical_runtime_assets(tmp_path)
