@@ -4,11 +4,11 @@ on:
   push:
     branches: [dev/l1-mp6-changed-body-condition-20261101]
     paths:
-      - '.github/workflows/l1-mp5-one-world-dev.yml'
+      - '.github/workflows/l1-mp6-one-world-dev.yml'
 permissions:
   contents: read
 jobs:
-  one-new-disposable-mp5-dev:
+  one-new-disposable-mp6-dev:
     # Unlike the source-only CI, run this at most once and only with a
     # dedicated opt-in commit. Any Actions rerun attempt >=2 is disabled.
     if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp6-one-world-dev]')
