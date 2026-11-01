@@ -149,6 +149,11 @@ def review_h9a_arm(
     except (KeyError, IndexError, TypeError) as exc:
         raise H9aRejected("H9a S49 original fields missing") from exc
     _check(
+        type(sidecar) is dict and type(window) is dict
+        and type(shadow) is dict,
+        "H9a preaction/window/shadow type invalid",
+    )
+    _check(
         type(sid) is str and bool(sid)
         and len(original_l0) == 3
         and [v["selected"] for v in original_l0] == ["WAIT", "MOVE_AWAY", "WAIT"]
