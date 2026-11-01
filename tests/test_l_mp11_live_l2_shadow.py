@@ -245,3 +245,90 @@ def test_real_provider_journals_http_response_and_explicit_budget(tmp_path, monk
     assert saved["request"]["max_tokens"] == body["max_tokens"] == 512
     assert saved["response"] == response
     assert saved["finished_monotonic_ns"] >= saved["started_monotonic_ns"]
+
+
+def test_second_open_has_previous_proposal_sha_and_scored_next_wait8_target():
+    ledger = new_ledger()
+    accept(ledger, 1)
+    gate = BoundedLiveL2(fixture_engine(), require_real_llama=False)
+    prior = asyncio.run(gate.propose_after(ledger))
+    accept(ledger, 2)
+    with pytest.raises(LiveL2Rejected):
+        request_for_live_l2(ledger)  # second call MUST be tied to prior L2
+    req = request_for_live_l2(ledger, previous_proposal=prior)
+    history = json.loads(req.context[1].value_json)
+    previous = json.loads(req.context[2].value_json)
+    assert len(history) == 2
+    assert previous["previous_proposal_sha256"] == prior.proposal_sha256
+    assert previous["previous_model_family"] == prior.model_family
+    assert previous["target_kind"] == "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M"
+    assert previous["previous_prediction_m"] == pytest.approx(.16)
+    assert previous["target_observed_m"] == pytest.approx(.4)
+    assert previous["prior_prediction_abs_error_m"] == pytest.approx(.24)
+    assert previous["model_revised_and_admitted"] is False
+    result = asyncio.run(gate.propose_after(ledger))
+    assert result.prior_hypothesis_relation == "REVISE_PRIOR"
+    assert result.prior_proposal_sha256 == prior.proposal_sha256
+    assert result.numeric_evidence_refs[0]["metric_role"] == "WAIT8_TOTAL_M"
+    assert result.numeric_evidence_refs[0]["trial_ordinal"] == 2
+    assert not result.model_structure_admitted
+    assert result.learning_admissions == result.l0_promotions == 0
+
+
+@pytest.mark.parametrize("case", [
+    "mae-as-total", "prediction-as-error", "foreign-prior", "wrong-relation",
+    "unobserved-future", "no-new-measurement", "unbounded-claim",
+])
+def test_second_open_wrong_metric_roles_or_false_structural_revision_rejected(case):
+    ledger = new_ledger()
+    accept(ledger, 1)
+    def corrupt(p):
+        if p["prior_hypothesis_relation"] == "FIRST_HYPOTHESIS":
+            return p
+        if case == "mae-as-total":
+            p["numeric_evidence_refs"][0]["value_m"] = .05
+        elif case == "prediction-as-error":
+            p["numeric_evidence_refs"][1]["value_m"] = .16
+        elif case == "foreign-prior":
+            p["numeric_evidence_refs"][1]["metric_role"] = "NEXT_TICK_THRESHOLD"
+        elif case == "wrong-relation":
+            p["prior_hypothesis_relation"] = "FIRST_HYPOTHESIS"
+        elif case == "unobserved-future":
+            p["numeric_evidence_refs"][0]["trial_ordinal"] = 3
+        elif case == "no-new-measurement":
+            p["numeric_evidence_refs"] = [
+                {"metric_role": "WAIT8_TOTAL_M", "trial_ordinal": 1,
+                 "pair_index": 0, "value_m": .4},
+            ]
+        elif case == "unbounded-claim":
+            p["self_authorized_action"] = True
+        return p
+    gate = BoundedLiveL2(
+        fixture_engine(changes=corrupt), require_real_llama=False,
+    )
+    asyncio.run(gate.propose_after(ledger))
+    accept(ledger, 2)
+    with pytest.raises(LiveL2Rejected):
+        asyncio.run(gate.propose_after(ledger))
+    assert len(gate.proposals) == 1
+    assert gate.failed_closed
+
+
+def test_original_failed_run_cannot_be_requalified_by_later_eof_envelope():
+    from adapters.mineflayer.l_mp11_paper_eof_envelope import seal_after_shutdown
+    from tools.mp11_g3_paper_one_world_audit import review
+
+    # This is synthetic: the historical FAIL report status remains immutable.
+    from test_self_body_s50_l2_mp11_paper_audit import original
+    raw = original() + b"> "
+    report = {
+        "status": "FAIL",
+        "classification": "MP11_G3_ORIGINAL_PAPER_NOT_QUALIFIED",
+        "node_exit": 0, "server_exit": 0, "real_model_calls": 2,
+        "mp11_paper_eof_predeclared": True,
+        "mp11_paper_eof": __import__("dataclasses").asdict(
+            seal_after_shutdown(raw, predeclared=True),
+        ),
+    }
+    with pytest.raises(Exception, match="original single-World complete runtime"):
+        review(report, raw, expected_l2_calls=2)
