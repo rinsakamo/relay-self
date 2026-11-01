@@ -1,0 +1,11 @@
+{
+  "original_broad_result": "540 PASS / 12 FAIL; missing Node and javac on initial shell PATH",
+  "first_fixed_path_result": "7 PASS / 5 FAIL; Node resolved; system JRE has no javac",
+  "final_fixed_jdk_result": "12 PASS / 0 FAIL",
+  "javac": "/home/rinsa/work/s50-p1-flat-native-evidence-20261017/jdk21/runtime/bin/javac",
+  "javac_sha256": "3214f94e6407fdf98909e67a976323e1f14353d65f5e672163c4a7d136efdb80",
+  "javac_version": "javac 21.0.12.1",
+  "test_changes": "NONE; source tests retained",
+  "worlds_started_by_these_tests": 0,
+  "test_scope": "inert native process custody fixtures; no Minecraft bridge or World"
+}

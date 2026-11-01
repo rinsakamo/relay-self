@@ -1,0 +1,45 @@
+{
+  "schema": "L_BCG_H9A_ARM_PREREG_V1",
+  "source_ceiling": "H9A_DEV_EXPLORATORY_NO_PHYSICAL_LEARNING",
+  "arm_id": "B",
+  "requested_distance_m": 3.5,
+  "cheap_threshold_m": 3.0,
+  "executor_head": "38b8b722b5ff431bae98df4331443f36b9c31946",
+  "worlds": 1,
+  "max_original_actions": 1,
+  "retries": 0,
+  "additional_l_bcg_actions": 0,
+  "additional_native_probes": 0,
+  "model_calls": 0,
+  "learning_updates": 0,
+  "qualified_training_worlds": 0,
+  "memory_updates": 0,
+  "s10_s11_updates": 0,
+  "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+  "purpose": "Distinguish native S42 body experience conditions from independent actual World originals",
+  "runtime_preflight": "/home/rinsa/work/l-bcg-h9a-pair-evidence-20261101/preflight/runtime-preflight.json",
+  "runtime_assets": {
+    "server": {
+      "path": "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+      "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+    },
+    "plugin": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+      "sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a"
+    },
+    "config": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/config.yml",
+      "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+    },
+    "intervention": "ACTIVE_METABOLISM_NOT_PASSIVE",
+    "plugin_source_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1"
+  },
+  "original_l0_threshold_m": 4.0,
+  "expected_selection": "MOVE_AWAY; never override original L0",
+  "goal": "GOAL_UNDETERMINED",
+  "effective_clear": "EFFECTIVE_CLEAR_NOT_ATTESTED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "sequence": "A cleanup and original preservation before B; no automatic retries",
+  "evidence_root": "/home/rinsa/work/l-bcg-h9a-b-evidence-20261101"
+}

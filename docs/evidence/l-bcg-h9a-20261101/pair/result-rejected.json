@@ -1,0 +1,15 @@
+{
+  "classification": "H9A_PAIR_REJECTED_RUNTIME_SHA_MISMATCH",
+  "exploratory_pair_pass": false,
+  "worlds": 2,
+  "retries": 0,
+  "reason": "Paper rewrites server.properties timestamp comment; original bytes and SHA differ",
+  "server_properties_noncomment_lines_equal": true,
+  "noncomment_equality_does_not_override_raw_sha_gate": true,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "goal": "GOAL_UNDETERMINED",
+  "effective_clear": "EFFECTIVE_CLEAR_NOT_ATTESTED",
+  "qualified_training_worlds": 0,
+  "learned_l1_attention": "DEFER_UNKNOWN"
+}

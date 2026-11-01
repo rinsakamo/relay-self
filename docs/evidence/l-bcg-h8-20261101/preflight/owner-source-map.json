@@ -1,0 +1,28 @@
+{
+  "executor_head": "a244f5b2ae92878b337297398f5ff3cb48afbdb5",
+  "files": {
+    "adapters/mineflayer/self_body_m0_projection.py": {
+      "exists": true,
+      "sha256": "41e687e5f0203b94656caf55f9371f6f3538a846d6fd223a9ed2c65978af4694"
+    },
+    "adapters/mineflayer/self_body_p1_projection.py": {
+      "exists": true,
+      "sha256": "9468b7375dfe42dbd98e4dd5d8eb1dcf14b712258f6ea474c08216ad3acbcf2d"
+    },
+    "adapters/mineflayer/self_body_s50_world_dev.py": {
+      "exists": true,
+      "sha256": "7607a285f4ea987a7bc37e49c37a828ff428ddd4928d7d7326cd093b3f5cb88f"
+    },
+    "experiments/p1_selfbody_export.py": {
+      "exists": false,
+      "sha256": null
+    }
+  },
+  "Goal": "l20 independent input not supplied; L16 operator-only plan",
+  "gait": "S49 MOVE_BACKWARD is direction only; no selected gait receipt wired",
+  "P1": "unmerged #626 exporter absent in this checkout; no readout/native tick pairing supplied",
+  "M0": "owner-local projection module exists; route B does not compose B0M0 sensor or supply M0 tick/epoch pairing",
+  "G4_obstacle": "original Present entity registry only; no voxel geometry owner receipt",
+  "world_revision": "World UUID and native seq supplied, global revision/order not supplied",
+  "post_clear": "reported input samples only; no authenticated effective clear; qualified training0"
+}

@@ -1,0 +1,233 @@
+source-only-proxy	Set up job	﻿2026-11-01T04:48:56.2615144Z Current runner version: '2.338.2'
+source-only-proxy	Set up job	2026-11-01T04:48:56.2643003Z ##[group]Runner Image Provisioner
+source-only-proxy	Set up job	2026-11-01T04:48:56.2643876Z Hosted Compute Agent
+source-only-proxy	Set up job	2026-11-01T04:48:56.2644573Z Version: 20261021.618
+source-only-proxy	Set up job	2026-11-01T04:48:56.2645269Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+source-only-proxy	Set up job	2026-11-01T04:48:56.2645982Z Build Date: 2026-10-21T00:45:21Z
+source-only-proxy	Set up job	2026-11-01T04:48:56.2646835Z Worker ID: {95ae37fa-36f5-4171-868e-94f7c8e15f47}
+source-only-proxy	Set up job	2026-11-01T04:48:56.2647562Z Region: eastus
+source-only-proxy	Set up job	2026-11-01T04:48:56.2648166Z Cloud: Azure
+source-only-proxy	Set up job	2026-11-01T04:48:56.2648721Z ##[endgroup]
+source-only-proxy	Set up job	2026-11-01T04:48:56.2650284Z ##[group]Operating System
+source-only-proxy	Set up job	2026-11-01T04:48:56.2651058Z Ubuntu
+source-only-proxy	Set up job	2026-11-01T04:48:56.2651592Z 26.04.1
+source-only-proxy	Set up job	2026-11-01T04:48:56.2652495Z LTS
+source-only-proxy	Set up job	2026-11-01T04:48:56.2653234Z ##[endgroup]
+source-only-proxy	Set up job	2026-11-01T04:48:56.2653797Z ##[group]Runner Image
+source-only-proxy	Set up job	2026-11-01T04:48:56.2654505Z Image: ubuntu-26.04
+source-only-proxy	Set up job	2026-11-01T04:48:56.2655087Z Version: 20261025.179.1
+source-only-proxy	Set up job	2026-11-01T04:48:56.2656162Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+source-only-proxy	Set up job	2026-11-01T04:48:56.2658109Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+source-only-proxy	Set up job	2026-11-01T04:48:56.2659192Z ##[endgroup]
+source-only-proxy	Set up job	2026-11-01T04:48:56.2660285Z ##[group]GITHUB_TOKEN Permissions
+source-only-proxy	Set up job	2026-11-01T04:48:56.2663222Z Contents: read
+source-only-proxy	Set up job	2026-11-01T04:48:56.2663904Z Metadata: read
+source-only-proxy	Set up job	2026-11-01T04:48:56.2664486Z ##[endgroup]
+source-only-proxy	Set up job	2026-11-01T04:48:56.2667237Z Secret source: Actions
+source-only-proxy	Set up job	2026-11-01T04:48:56.2668312Z Cache mode: write
+source-only-proxy	Set up job	2026-11-01T04:48:56.2669052Z Prepare workflow directory
+source-only-proxy	Set up job	2026-11-01T04:48:56.3073570Z Prepare all required actions
+source-only-proxy	Set up job	2026-11-01T04:48:56.3123716Z Getting action download info
+source-only-proxy	Set up job	2026-11-01T04:48:56.4791668Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+source-only-proxy	Set up job	2026-11-01T04:48:56.5817102Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+source-only-proxy	Set up job	2026-11-01T04:48:56.7369897Z Complete job name: source-only-proxy
+source-only-proxy	Run actions/checkout@v4	﻿2026-11-01T04:48:56.8299607Z ##[group]Run actions/checkout@v4
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8300560Z with:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8301075Z   ref: a244f5b2ae92878b337297398f5ff3cb48afbdb5
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8301712Z   persist-credentials: false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8302715Z   repository: rinsakamo/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8306571Z   token: ***
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8307028Z   ssh-strict: true
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8307483Z   ssh-user: git
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8307933Z   clean: true
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8308394Z   sparse-checkout-cone-mode: true
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8308938Z   fetch-depth: 1
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8309373Z   fetch-tags: false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8309833Z   show-progress: true
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8310314Z   lfs: false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8310736Z   submodules: false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8311202Z   set-safe-directory: true
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8311725Z   allow-unsafe-pr-checkout: false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8312913Z env:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8313381Z   PYTHONPATH: src:tests:.
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8313914Z   PYTHONDONTWRITEBYTECODE: 1
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:56.8314467Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0885018Z Syncing repository: rinsakamo/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0889611Z ##[group]Getting Git version info
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0891489Z Working directory is '/home/runner/work/relay-self/relay-self'
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0894562Z [command]/usr/bin/git version
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0934313Z git version 2.56.0
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0961529Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0978862Z Temporarily overriding HOME='/home/runner/work/_temp/5661ecb0-b4b1-4864-abc5-d4e0b92dd9b4' before making global git config changes
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0984900Z Adding repository directory to the temporary git global config as a safe directory
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.0988014Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1062762Z Deleting the contents of '/home/runner/work/relay-self/relay-self'
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1067248Z ##[group]Initializing the repository
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1097566Z [command]/usr/bin/git init /home/runner/work/relay-self/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1185327Z hint: Using 'master' as the name for the initial branch. This default branch name
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1188961Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1192297Z hint: to use in all of your new repositories, which will suppress this warning,
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1195347Z hint: call:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1196886Z hint:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1198541Z hint: 	git config --global init.defaultBranch <name>
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1200323Z hint:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1202717Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1205981Z hint: 'development'. The just-created branch can be renamed via this command:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1208080Z hint:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1209528Z hint: 	git branch -m <name>
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1211170Z hint:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1213569Z hint: Disable this message with "git config set advice.defaultBranchName false"
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1216510Z Initialized empty Git repository in /home/runner/work/relay-self/relay-self/.git/
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1222243Z [command]/usr/bin/git remote add origin https://github.com/rinsakamo/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1270102Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1272554Z ##[group]Disabling automatic garbage collection
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1275094Z [command]/usr/bin/git config --local gc.auto 0
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1324052Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1325911Z ##[group]Setting up auth
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1328008Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1371007Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1845092Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.1882991Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2159888Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2198680Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2495585Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2536113Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2538901Z ##[group]Fetching the repository
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.2550936Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin a244f5b2ae92878b337297398f5ff3cb48afbdb5
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8789068Z From https://github.com/rinsakamo/relay-self
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8790405Z  * branch            a244f5b2ae92878b337297398f5ff3cb48afbdb5 -> FETCH_HEAD
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8794095Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8795104Z ##[group]Determining the checkout info
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8797013Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8802797Z [command]/usr/bin/git sparse-checkout disable
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8852388Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8881540Z ##[group]Checking out the ref
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:57.8885355Z [command]/usr/bin/git checkout --progress --force a244f5b2ae92878b337297398f5ff3cb48afbdb5
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0016208Z Note: switching to 'a244f5b2ae92878b337297398f5ff3cb48afbdb5'.
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0017038Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0017467Z You are in 'detached HEAD' state. You can look around, make experimental
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0018390Z changes and commit them, and you can discard any commits you make in this
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0019283Z state without impacting any branches by switching back to a branch.
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0019794Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0020150Z If you want to create a new branch to retain commits you create, you may
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0021232Z do so (now or later) by using -c with the switch command. Example:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0021593Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0021790Z   git switch -c <new-branch-name>
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0022419Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0022749Z Or undo this operation with:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0023071Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0023360Z   git switch -
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0023649Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0024087Z Turn off this advice by setting config variable advice.detachedHead to false
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0024614Z 
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0025100Z HEAD is now at a244f5b test(l-bcg): audit exact original probe and primitive command inventory
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0031620Z ##[endgroup]
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0078737Z [command]/usr/bin/git log -1 --format=%H
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0103987Z a244f5b2ae92878b337297398f5ff3cb48afbdb5
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0115186Z ##[group]Removing auth
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0119455Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0152386Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0440232Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0467479Z http.https://github.com/.extraheader
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0477575Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0516646Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0815730Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.0855725Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+source-only-proxy	Run actions/checkout@v4	2026-11-01T04:48:58.1140527Z ##[endgroup]
+source-only-proxy	Run actions/setup-python@v5	﻿2026-11-01T04:48:58.1563876Z ##[group]Run actions/setup-python@v5
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1564481Z with:
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1564925Z   python-version: 3.12
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1565391Z   check-latest: false
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1568252Z   token: ***
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1568713Z   update-environment: true
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1569204Z   allow-prereleases: false
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1569688Z   freethreaded: false
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1570131Z env:
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1570542Z   PYTHONPATH: src:tests:.
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1571029Z   PYTHONDONTWRITEBYTECODE: 1
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.1571496Z ##[endgroup]
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.2951717Z ##[group]Installed versions
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.3056169Z (node:2476) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.3058091Z (Use `node --trace-deprecation ...` to show where the warning was created)
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.3059282Z Successfully set up CPython (3.12.15)
+source-only-proxy	Run actions/setup-python@v5	2026-11-01T04:48:58.3060638Z ##[endgroup]
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	﻿2026-11-01T04:48:58.3270532Z ##[group]Run set -euo pipefail
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3271449Z [36;1mset -euo pipefail[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3272776Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3275759Z [36;1mruff check tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3280447Z [36;1mpython -m compileall -q tools/l_bcg_h8_world_readback.py src/relay_self/l_bcg_h8_owner_availability.py tests/test_l_bcg_h8_owner_availability.py tools/l_bcg_h8_owner_preflight.py tools/l_bcg_h7_readback.py src/relay_self/l_bcg_h7_preaction.py tests/test_l_bcg_h7_preaction.py src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3284430Z [36;1mpython -m pytest -o addopts='' -q tests/test_l_bcg_h6_dev_proxy.py tests/test_l_bcg_h7_preaction.py tests/test_l_bcg_h8_owner_availability.py[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3286033Z [36;1mpython tools/l_bcg_h6_readback.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3287144Z [36;1mpython tools/l_bcg_h7_readback.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3288327Z [36;1mpython tools/l_bcg_h8_owner_preflight.py docs/evidence/l-bcg-h5-20261101[0m
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3351092Z shell: /usr/bin/bash -e {0}
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3351778Z env:
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3352603Z   PYTHONPATH: src:tests:.
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3353276Z   PYTHONDONTWRITEBYTECODE: 1
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3354049Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3355049Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3356047Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3356982Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3357896Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3358809Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:58.3359616Z ##[endgroup]
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.1141688Z Collecting pytest==9.1.1
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.1391219Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.4745385Z Collecting ruff==0.17.0
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.4798433Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.4943887Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.4974357Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5131244Z Collecting packaging>=22 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5160718Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5279204Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5312688Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5491389Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5526788Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5610060Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.5709726Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6261066Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 194.8 MB/s  0:00:00
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6295235Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6509363Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6564922Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6619525Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.6687224Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 222.6 MB/s  0:00:00
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:48:59.7357535Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:00.9513860Z 
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:00.9527601Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:01.0170755Z All checks passed!
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:02.4200681Z ......................................................                   [100%]
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:02.4201361Z 54 passed in 1.08s
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:02.6606567Z {"comparison": {"action_issues": 0, "admitted_training_worlds": 0, "cheap_any_world_motion": "SAMPLED_MOTION", "cheap_last_world_motion": "SAMPLED_MOTION", "distinct_provisional_worlds": 1, "learned_l1_attention": "DEFER_UNKNOWN", "learned_policy_qualified": false, "learning_commits": 0, "reason": "FULL_CONDITION_AND_PHYSICAL_CLEAR_NOT_ATTESTED"}, "episode": {"action_after_native_seq": 30, "action_before_native_seq": 23, "action_id": "s49-native-move-20", "before_minecraft_food": 20.0, "before_s42_threat_distance_m": 2.0, "classification": "DEV_SAMPLED_LAST_REPORTED_INPUT_OFF_PROXY_ONLY", "extra_actions": 0, "goal_attested": false, "learning_commits": 0, "next_native_seq": 56, "paper_original_sha256": "212e28b0bff6f56fe9ad4e9bf6487067aff89279f6acf0759bdd573a413afe0c", "paper_world_id": "93ca64e6-a7bc-4103-b0ef-e4edbec373fa", "physical_effective_clear_attested": false, "physical_training_eligible": false, "s16_original_sha256": "2d4c13b27fd7a1e0811ac591f79779146f9749752e64c41fd56266d534da1d05", "s7_prefix_sha256": "f769b9a10e8ebbf4b707938b5d2aab9a06f7d35ca9bfc19a2c5f8f41dd293dad", "sampled_any_motion": true, "sampled_input_off_motion_m": 0.06424660150896067, "sampled_input_off_ticks": [252, 253, 254, 255, 256, 257, 258, 259], "session_id": "afa3c38a-6e0b-404f-b46b-10132146ec62"}, "evidence_ceiling": "PER_WORLD_DIGEST_MATCHED_NO_PHYSICAL_CLEAR", "l1_action_authority": false, "qualification": "NO_GO", "qualified_training": false, "science": "NOT_RUN"}
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:02.8837194Z {"cheap_compare": {"action_issues": 0, "cheap_food_low_worlds": 0, "cheap_sampled_motion_worlds": 1, "cheap_threat_near_worlds": 1, "learned_l1_attention": "DEFER_UNKNOWN", "learning_updates": 0, "observed_worlds": 1, "physical_training_worlds": 0, "source_ceiling": "DEV_ARCHIVED_H5_PRE_ACTION_NATIVE_NOT_GOAL_OR_P1_M"}, "evidence_ceiling": "DEV_SOURCE_TIED_READBACK_NO_NEW_WORLD_NO_PHYSICAL_CLEAR", "pre_action": {"cheap_native_food_low": false, "cheap_native_threat_near": true, "episode": {"action_after_native_seq": 30, "action_before_native_seq": 23, "action_id": "s49-native-move-20", "before_minecraft_food": 20.0, "before_s42_threat_distance_m": 2.0, "classification": "DEV_SAMPLED_LAST_REPORTED_INPUT_OFF_PROXY_ONLY", "extra_actions": 0, "goal_attested": false, "learning_commits": 0, "next_native_seq": 56, "paper_original_sha256": "212e28b0bff6f56fe9ad4e9bf6487067aff89279f6acf0759bdd573a413afe0c", "paper_world_id": "93ca64e6-a7bc-4103-b0ef-e4edbec373fa", "physical_effective_clear_attested": false, "physical_training_eligible": false, "s16_original_sha256": "2d4c13b27fd7a1e0811ac591f79779146f9749752e64c41fd56266d534da1d05", "s7_prefix_sha256": "f769b9a10e8ebbf4b707938b5d2aab9a06f7d35ca9bfc19a2c5f8f41dd293dad", "sampled_any_motion": true, "sampled_input_off_motion_m": 0.06424660150896067, "sampled_input_off_ticks": [252, 253, 254, 255, 256, 257, 258, 259], "session_id": "afa3c38a-6e0b-404f-b46b-10132146ec62"}, "extra_action_issues": 0, "learned_l1_attention": "DEFER_UNKNOWN", "learning_updates": 0, "missing_bcg_conditions": ["goal_remaining_m", "goal_tolerance_m", "selected_gait", "p1_fatigue_high", "m_energy_low", "verified_obstacle", "world_revision", "verified_post_clear_training"], "original_action_before_probe_seq": 23, "original_choice_event_seq": 20, "original_choice_probe_seq": 21, "original_next_epoch_probe_seq": 56, "physical_training_worlds": 0, "pre_action_observed": [{"name": "minecraft_health", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": 20.0}, {"name": "minecraft_food", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": 20.0}, {"name": "minecraft_food_saturation", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": 5.0}, {"name": "position_x", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": -9.5}, {"name": "position_y", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": -60.0}, {"name": "position_z", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": -5.5}, {"name": "s42_hostile_distance_m", "native_seq": 21, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:21:s49-actual:afa3c38a-6e0b-404f-b46b-10132146ec62:event-20", "phase": "ORIGINAL_S49_PRE_ACTION", "value": 2.0}, {"name": "s15_before_minecraft_food", "native_seq": 23, "native_source_ref": "native-probe:afa3c38a-6e0b-404f-b46b-10132146ec62:23:s15:afa3c38a-6e0b-404f-b46b-10132146ec62:s49-native-move-20:before", "phase": "ORIGINAL_S49_PRE_ACTION", "value": 20.0}], "provenance_status": "HOST_S7_DIGEST_MATCH_NOT_INDEPENDENT_WIRE_ATTESTATION", "qualifies_goal": false, "qualifies_p1_m": false, "qualifies_post_clear": false}, "qualification": "NO_GO", "science": "NOT_RUN"}
+source-only-proxy	Focused H6/H7/H8 DEV archived-original tests	2026-11-01T04:49:03.1060582Z {"action_issues": 0, "features": [{"feature": "goal_remaining_m", "owner": "Goal/S49 external", "reason": "L16 plan is operator-local, target is not independent Goal owner", "status": "OPERATOR_GEOMETRY_ONLY_NOT_GOAL"}, {"feature": "goal_tolerance_m", "owner": "Goal/S49 external", "reason": "tolerance is stated but no independent Goal-owner admission", "status": "OPERATOR_TOLERANCE_ONLY_NOT_GOAL"}, {"feature": "selected_gait", "owner": "G4/S49 gait", "reason": "MOVE_BACKWARD direction is not WALK/JOG/RUN/DASH gait", "status": "NO_PRE_ACTION_GAIT_RECEIPT"}, {"feature": "p1_fatigue_high", "owner": "P1/SelfBody", "reason": "P1 owner handoff needs native seq, owner tick and source; missing here", "status": "NO_CORRELATED_P1_SENSOR_RECEIPT"}, {"feature": "m_energy_low", "owner": "M0/SelfBody", "reason": "Minecraft food is not M0 interoception or true energy", "status": "NO_CORRELATED_M0_SENSOR_RECEIPT"}, {"feature": "verified_obstacle", "owner": "SelfWorld/G4", "reason": "bounded zombie registry cannot attest voxel obstacle state", "status": "NO_OBSTACLE_GEOMETRY_OWNER"}, {"feature": "world_revision", "owner": "S/R World source", "reason": "S16 operator source_revision is not global training chronology", "status": "NO_CROSS_WORLD_SOURCE_ORDER"}, {"feature": "verified_post_clear_training", "owner": "S7/S16/Paper", "reason": "sampled reported-input OFF is not physical post-clear stability", "status": "NO_EFFECTIVE_CLEAR_ATTESTATION"}], "learned_l1_attention": "DEFER_UNKNOWN", "learning_commits": 0, "missing_required": ["goal_remaining_m", "goal_tolerance_m", "selected_gait", "p1_fatigue_high", "m_energy_low", "verified_obstacle", "world_revision", "verified_post_clear_training"], "operator_goal_plan_sha256": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69", "operator_plan_horizontal_distance_m": 10.977249200050075, "operator_plan_qualifies_goal": false, "operator_plan_tolerance_m": 0.49, "original_l0_choice_modified": false, "paper_world_id": "93ca64e6-a7bc-4103-b0ef-e4edbec373fa", "pre_action_seq": 21, "pre_action_source_qualified": false, "qualification": "NO_GO", "science": "NOT_RUN", "session_id": "afa3c38a-6e0b-404f-b46b-10132146ec62", "source_qualified_training_worlds": 0}
+source-only-proxy	Explicit evidence ceiling	﻿2026-11-01T04:49:03.1233947Z ##[group]Run echo 'DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1234853Z [36;1mecho 'DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'[0m
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1266701Z shell: /usr/bin/bash -e {0}
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1266963Z env:
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1267168Z   PYTHONPATH: src:tests:.
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1267427Z   PYTHONDONTWRITEBYTECODE: 1
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1267757Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1268204Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1268654Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1269042Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1269616Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1270018Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1270411Z ##[endgroup]
+source-only-proxy	Explicit evidence ceiling	2026-11-01T04:49:03.1324319Z DEV PROVISIONAL SOURCE REUSE ONLY / NEW_WORLD_0 / ACTION_0 / TRAINING_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN
+source-only-proxy	Post Run actions/setup-python@v5	﻿2026-11-01T04:49:03.1432742Z Post job cleanup.
+source-only-proxy	Post Run actions/setup-python@v5	2026-11-01T04:49:03.2694213Z (node:2527) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+source-only-proxy	Post Run actions/setup-python@v5	2026-11-01T04:49:03.2695748Z (Use `node --trace-deprecation ...` to show where the warning was created)
+source-only-proxy	Post Run actions/checkout@v4	﻿2026-11-01T04:49:03.2911687Z Post job cleanup.
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.3872791Z [command]/usr/bin/git version
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.3919290Z git version 2.56.0
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.3963177Z Temporarily overriding HOME='/home/runner/work/_temp/03feffad-3927-4faf-ab67-fcb162f4d4ef' before making global git config changes
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.3964783Z Adding repository directory to the temporary git global config as a safe directory
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.3969547Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/relay-self/relay-self
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4015884Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4056523Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4377115Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4423691Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4747017Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+source-only-proxy	Post Run actions/checkout@v4	2026-11-01T04:49:03.4782698Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+source-only-proxy	Complete job	﻿2026-11-01T04:49:03.5203352Z Cleaning up orphan processes
+source-only-proxy	Complete job	2026-11-01T04:49:03.5616554Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

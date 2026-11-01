@@ -1,0 +1,19 @@
+{
+  "arm_id": "B",
+  "requested_distance_m": 3.5,
+  "observed_s42_distance_m": 3.5,
+  "original_preaction_native_seq": 22,
+  "original_session_id": "b7a49586-27bf-4ce2-b012-49f477451a45",
+  "original_paper_world_id": "cb941137-9e11-4a8d-a08a-6b81a1d91cb6",
+  "executor_head": "38b8b722b5ff431bae98df4331443f36b9c31946",
+  "original_report_sha256": "78258060ffaa1c1bc7824389ca0cbf9a42940fe95320eaa3a70fa36616f910ca",
+  "cheap_near_under_3m": false,
+  "sampled_reported_input_off_motion_m": 0.06424660150896089,
+  "original_l0_selection": "MOVE_AWAY",
+  "observed_arm_matched": true,
+  "l_bcg_advice": "DEFER_UNKNOWN",
+  "physical_effective_clear_attested": false,
+  "qualified_training_worlds": 0,
+  "new_actions": 0,
+  "learning_updates": 0
+}

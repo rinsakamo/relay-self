@@ -1,0 +1,757 @@
+{
+  "executor_head": "5a29da666f3692c02dbdb03ed0694ce088f124de",
+  "worlds": 8,
+  "successful": 8,
+  "failed": 0,
+  "retries": 0,
+  "actions": 8,
+  "s16_outcomes": 8,
+  "additional_actions": 0,
+  "additional_native_probes": 0,
+  "model_provider_calls": 0,
+  "learning_memory_s10_s11_updates": 0,
+  "unique_sessions": 8,
+  "unique_paper_world_uuids": 8,
+  "cleanup_all_pass": true,
+  "port_rebind_final": true,
+  "other_local_branch_heads_unchanged": true,
+  "frozen_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+  "freeze_boundary": {
+    "frozen_original_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+    "frozen_utc": "2026-11-01T08:42:55.505096+00:00",
+    "plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e"
+  },
+  "eval": {
+    "candidate_condition_responsive": true,
+    "candidate_linear_mae_m": 0.029102707211831863,
+    "candidate_vs_cheap_threshold": "EQUIVALENT_WITHIN_1E-9_M",
+    "causal_learning_improvement_attested": false,
+    "cheap_global_mae_m": 0.02768015654953862,
+    "cheap_threshold_bin_mae_m": 0.029102707211831863,
+    "classification": "H9B_8_WORLD_DEV_PROXY_FIT_EVAL_ONLY",
+    "cross_world_generalization_attested": false,
+    "effective_clear": "NOT_ATTESTED",
+    "eval_world_count": 4,
+    "fit_world_count": 4,
+    "formal_heldout_worlds": 0,
+    "goal": "UNDETERMINED",
+    "l1_action_authority": false,
+    "learned_l1_attention": "DEFER_UNKNOWN",
+    "model_frozen_before_eval": true,
+    "new_l0_action_issues": 0,
+    "outcome_kind": "DEV_REPORTED_INPUT_OFF_SAMPLED_DISPLACEMENT_M",
+    "physical_training_worlds": 0,
+    "plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "scores": [
+      {
+        "arm_id": "B",
+        "candidate_linear_abs_error_m": 0.04949218830132396,
+        "candidate_linear_pred_m": 0.06424660150896089,
+        "cheap_global_abs_error_m": 0.06551057310667818,
+        "cheap_global_pred_m": 0.08026498631431511,
+        "cheap_threshold_bin_abs_error_m": 0.04949218830132396,
+        "cheap_threshold_bin_pred_m": 0.06424660150896089,
+        "observed_s42_m": 3.5,
+        "outcome_proxy_m": 0.01475441320763693,
+        "slot_id": "B-E1"
+      },
+      {
+        "arm_id": "A",
+        "candidate_linear_abs_error_m": 0.03203676961070867,
+        "candidate_linear_pred_m": 0.09628337111966934,
+        "cheap_global_abs_error_m": 0.016018384805354446,
+        "cheap_global_pred_m": 0.08026498631431511,
+        "cheap_threshold_bin_abs_error_m": 0.03203676961070867,
+        "cheap_threshold_bin_pred_m": 0.09628337111966934,
+        "observed_s42_m": 2.0,
+        "outcome_proxy_m": 0.06424660150896067,
+        "slot_id": "A-E1"
+      },
+      {
+        "arm_id": "A",
+        "candidate_linear_abs_error_m": 0.03203676961070834,
+        "candidate_linear_pred_m": 0.09628337111966934,
+        "cheap_global_abs_error_m": 0.016018384805354113,
+        "cheap_global_pred_m": 0.08026498631431511,
+        "cheap_threshold_bin_abs_error_m": 0.03203676961070834,
+        "cheap_threshold_bin_pred_m": 0.09628337111966934,
+        "observed_s42_m": 2.0,
+        "outcome_proxy_m": 0.064246601508961,
+        "slot_id": "A-E2"
+      },
+      {
+        "arm_id": "B",
+        "candidate_linear_abs_error_m": 0.0028451013245864853,
+        "candidate_linear_pred_m": 0.06424660150896089,
+        "cheap_global_abs_error_m": 0.013173283480767739,
+        "cheap_global_pred_m": 0.08026498631431511,
+        "cheap_threshold_bin_abs_error_m": 0.0028451013245864853,
+        "cheap_threshold_bin_pred_m": 0.06424660150896089,
+        "observed_s42_m": 3.5,
+        "outcome_proxy_m": 0.06709170283354737,
+        "slot_id": "B-E2"
+      }
+    ]
+  },
+  "rows": [
+    {
+      "slot": "A-F1",
+      "role": "FIT",
+      "s42_m": 2.0,
+      "proxy_m": 0.128320140730378,
+      "action_id": "s49-native-move-20",
+      "s16_before": 22,
+      "s16_after": 30,
+      "native_pairs": [
+        [
+          8,
+          9
+        ],
+        [
+          20,
+          21
+        ],
+        [
+          56,
+          57
+        ]
+      ],
+      "session_id": "b7ee73fd-24a0-41ae-afab-143c9533a93e",
+      "world_uuid": "443cf647-6d6e-4110-a45f-5d241d49d882",
+      "config_raw_sha256": "93c88afbe37c57511edcbbd0f397795891f4207170ba4f68d8f6f73eb9bba1ba",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 81025,
+          "ppid": 81024,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-9_qzz820/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-9_qzz820",
+          "first_seen_utc": "2026-11-01T08:38:33.086360+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81079,
+          "ppid": 81025,
+          "argv": "lshw -class processor ",
+          "cwd": "/tmp/relay-self-s49-9_qzz820",
+          "first_seen_utc": "2026-11-01T08:38:39.687405+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81082,
+          "ppid": 81025,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-9_qzz820",
+          "first_seen_utc": "2026-11-01T08:38:39.788958+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81084,
+          "ppid": 81025,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-9_qzz820",
+          "first_seen_utc": "2026-11-01T08:38:39.890571+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81128,
+          "ppid": 81024,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:38:53.424690+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-9_qzz820",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "A-F1",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "6ec1cd52ea5ed42afb3f2c83f94e2f9c4b040af4c10d3ea8c15dd5c448322053",
+        "h9b_frozen_model_sha256": null,
+        "launcher_entered_utc": "2026-11-01T08:38:32.575659+00:00"
+      }
+    },
+    {
+      "slot": "B-F1",
+      "role": "FIT",
+      "s42_m": 3.5,
+      "proxy_m": 0.06424660150896067,
+      "action_id": "s49-native-move-19",
+      "s16_before": 22,
+      "s16_after": 30,
+      "native_pairs": [
+        [
+          7,
+          9
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          55,
+          56
+        ]
+      ],
+      "session_id": "b5078125-bdce-473a-8eac-c335cef6407c",
+      "world_uuid": "85754a10-36f4-4a7b-b949-380ec341dc85",
+      "config_raw_sha256": "8aaa4e451e1b4752d5c08d278d09d93cbaa10c16c31f60ea80639a6b03a506d6",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 81232,
+          "ppid": 81231,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-9ppf2buq/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-9ppf2buq",
+          "first_seen_utc": "2026-11-01T08:39:37.257082+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81286,
+          "ppid": 81232,
+          "argv": "lshw -class processor ",
+          "cwd": "/tmp/relay-self-s49-9ppf2buq",
+          "first_seen_utc": "2026-11-01T08:39:43.476328+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81289,
+          "ppid": 81232,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-9ppf2buq",
+          "first_seen_utc": "2026-11-01T08:39:43.577805+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81291,
+          "ppid": 81232,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-9ppf2buq",
+          "first_seen_utc": "2026-11-01T08:39:43.679437+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81335,
+          "ppid": 81231,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:39:56.828055+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-9ppf2buq",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "B-F1",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "0a1d455827b0d2267bdf4817c7061f609c913cce65a21823d8ff13ef49a48e8b",
+        "h9b_frozen_model_sha256": null,
+        "launcher_entered_utc": "2026-11-01T08:39:36.744628+00:00"
+      }
+    },
+    {
+      "slot": "B-F2",
+      "role": "FIT",
+      "s42_m": 3.5,
+      "proxy_m": 0.06424660150896111,
+      "action_id": "s49-native-move-18",
+      "s16_before": 21,
+      "s16_after": 29,
+      "native_pairs": [
+        [
+          7,
+          9
+        ],
+        [
+          18,
+          19
+        ],
+        [
+          53,
+          54
+        ]
+      ],
+      "session_id": "11dfa9f7-b999-4123-af53-54b7e8c22e85",
+      "world_uuid": "0eb870fb-5539-4ecc-a3fa-3d5e5a9804be",
+      "config_raw_sha256": "08a79c403c367878988e1d6f6c8f96e37182e2b88faf3d34a3c4bf9aa72a00e1",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 81449,
+          "ppid": 81448,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-1wwnqif2/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-1wwnqif2",
+          "first_seen_utc": "2026-11-01T08:40:43.566295+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81501,
+          "ppid": 81449,
+          "argv": "lshw -class processor ",
+          "cwd": "/tmp/relay-self-s49-1wwnqif2",
+          "first_seen_utc": "2026-11-01T08:40:50.170572+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81504,
+          "ppid": 81449,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-1wwnqif2",
+          "first_seen_utc": "2026-11-01T08:40:50.272051+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81554,
+          "ppid": 81448,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:41:03.634700+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-1wwnqif2",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "B-F2",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "cf318f22bd04fb1ace7131e80d272a5962ef65f82a928a1219cf386453d960dc",
+        "h9b_frozen_model_sha256": null,
+        "launcher_entered_utc": "2026-11-01T08:40:42.956008+00:00"
+      }
+    },
+    {
+      "slot": "A-F2",
+      "role": "FIT",
+      "s42_m": 2.0,
+      "proxy_m": 0.06424660150896067,
+      "action_id": "s49-native-move-32",
+      "s16_before": 34,
+      "s16_after": 41,
+      "native_pairs": [
+        [
+          21,
+          22
+        ],
+        [
+          32,
+          33
+        ],
+        [
+          66,
+          67
+        ]
+      ],
+      "session_id": "d7ec71ce-0e1e-45ae-ac4f-f08f83440b75",
+      "world_uuid": "948fe828-184b-4aea-8a9c-45aa12d214dd",
+      "config_raw_sha256": "d36959979c1c6b2bc7495a253c83f4d213bd8f50eae6c5d9c7952ed4f9023be6",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 81660,
+          "ppid": 81659,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-gsowrc4q/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-gsowrc4q",
+          "first_seen_utc": "2026-11-01T08:41:52.540710+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81713,
+          "ppid": 81660,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-gsowrc4q",
+          "first_seen_utc": "2026-11-01T08:42:00.085543+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81716,
+          "ppid": 81660,
+          "argv": "lshw -C display ",
+          "cwd": "/tmp/relay-self-s49-gsowrc4q",
+          "first_seen_utc": "2026-11-01T08:42:00.186995+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81766,
+          "ppid": 81659,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:42:14.323076+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-gsowrc4q",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "A-F2",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "1391e5fbdb6dc0e7eb4cdc250cdc5abb9a03993d192a6bea91a9033e998bf269",
+        "h9b_frozen_model_sha256": null,
+        "launcher_entered_utc": "2026-11-01T08:41:52.032956+00:00"
+      }
+    },
+    {
+      "slot": "B-E1",
+      "role": "EVAL",
+      "s42_m": 3.5,
+      "proxy_m": 0.01475441320763693,
+      "action_id": "s49-native-move-19",
+      "s16_before": 22,
+      "s16_after": 30,
+      "native_pairs": [
+        [
+          7,
+          8
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          54,
+          55
+        ]
+      ],
+      "session_id": "a1bf8e67-c36f-4394-b20e-e10a5905c7bc",
+      "world_uuid": "20b400eb-915b-473e-a9b3-e5df29ad3f79",
+      "config_raw_sha256": "e7c9a856d4c7630ddbc8b00041cf5443dd24c8ad6f4c968e060deb15d47cb579",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 81887,
+          "ppid": 81886,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-prta1upq/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-prta1upq",
+          "first_seen_utc": "2026-11-01T08:43:14.741945+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81944,
+          "ppid": 81887,
+          "argv": "lshw -class processor ",
+          "cwd": "/tmp/relay-self-s49-prta1upq",
+          "first_seen_utc": "2026-11-01T08:43:21.637764+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 81994,
+          "ppid": 81886,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:43:35.515756+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-prta1upq",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "B-E1",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "5edb2278c4762e4152da5a250067defb29166860684651a49b8fd92bde074c21",
+        "h9b_frozen_model_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+        "launcher_entered_utc": "2026-11-01T08:43:14.131243+00:00"
+      }
+    },
+    {
+      "slot": "A-E1",
+      "role": "EVAL",
+      "s42_m": 2.0,
+      "proxy_m": 0.06424660150896067,
+      "action_id": "s49-native-move-19",
+      "s16_before": 22,
+      "s16_after": 29,
+      "native_pairs": [
+        [
+          7,
+          9
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          54,
+          55
+        ]
+      ],
+      "session_id": "05d19d97-7e46-41dd-84d8-95fa8ce3fd72",
+      "world_uuid": "dbec9d82-c173-45d8-ab3f-60cebdced7fc",
+      "config_raw_sha256": "9a7de55f535a78e82f8b3f31cff60c6b1cd5aa6f0fc4ab66b6c694ffd652c64f",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 82111,
+          "ppid": 82110,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-vlyoutei/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-vlyoutei",
+          "first_seen_utc": "2026-11-01T08:44:23.412642+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82165,
+          "ppid": 82111,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-vlyoutei",
+          "first_seen_utc": "2026-11-01T08:44:30.010506+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82168,
+          "ppid": 82111,
+          "argv": "lshw -C display ",
+          "cwd": "/tmp/relay-self-s49-vlyoutei",
+          "first_seen_utc": "2026-11-01T08:44:30.112635+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82214,
+          "ppid": 82110,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:44:43.549836+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-vlyoutei",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "A-E1",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "afc7b49e979c0bd817c3b02d28a0159abf83bca563b78676646bd26e046cdb6e",
+        "h9b_frozen_model_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+        "launcher_entered_utc": "2026-11-01T08:44:22.901910+00:00"
+      }
+    },
+    {
+      "slot": "A-E2",
+      "role": "EVAL",
+      "s42_m": 2.0,
+      "proxy_m": 0.064246601508961,
+      "action_id": "s49-native-move-19",
+      "s16_before": 22,
+      "s16_after": 29,
+      "native_pairs": [
+        [
+          8,
+          9
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          55,
+          56
+        ]
+      ],
+      "session_id": "59b18385-f1e3-4e89-9673-c29baf38447c",
+      "world_uuid": "2c175120-b08c-4e43-8149-d70a5c19b358",
+      "config_raw_sha256": "6335eada8c4a2bb48c140ba12027e1d05bfa0da13279a8f98b9d37d6920b533b",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 82318,
+          "ppid": 82317,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-70t_0aau/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-70t_0aau",
+          "first_seen_utc": "2026-11-01T08:45:25.443322+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82373,
+          "ppid": 82318,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-70t_0aau",
+          "first_seen_utc": "2026-11-01T08:45:33.003532+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82375,
+          "ppid": 82318,
+          "argv": "lshw -C display ",
+          "cwd": "/tmp/relay-self-s49-70t_0aau",
+          "first_seen_utc": "2026-11-01T08:45:33.105795+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82417,
+          "ppid": 82317,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:45:46.739377+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-70t_0aau",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "A-E2",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "bedc98c16371d1138d828b722df2b1416459f2a9ef1428068d95380bf61c1909",
+        "h9b_frozen_model_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+        "launcher_entered_utc": "2026-11-01T08:45:24.934117+00:00"
+      }
+    },
+    {
+      "slot": "B-E2",
+      "role": "EVAL",
+      "s42_m": 3.5,
+      "proxy_m": 0.06709170283354737,
+      "action_id": "s49-native-move-19",
+      "s16_before": 22,
+      "s16_after": 30,
+      "native_pairs": [
+        [
+          8,
+          9
+        ],
+        [
+          19,
+          20
+        ],
+        [
+          56,
+          57
+        ]
+      ],
+      "session_id": "65a09a60-77dd-49d1-961a-f0ecd806bdaf",
+      "world_uuid": "f424aa25-03fb-4985-81ea-b4036e22c764",
+      "config_raw_sha256": "b9ba6adb2b21a485c208bc8d53e917986ed3f644b814599513a8a9c0f9f6eb62",
+      "node_java_exit": [
+        0,
+        0
+      ],
+      "processes": [
+        {
+          "pid": 82526,
+          "ppid": 82525,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-my2bowtc/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-my2bowtc",
+          "first_seen_utc": "2026-11-01T08:46:32.828788+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82581,
+          "ppid": 82526,
+          "argv": "lshw -class processor ",
+          "cwd": "/tmp/relay-self-s49-my2bowtc",
+          "first_seen_utc": "2026-11-01T08:46:40.904463+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82583,
+          "ppid": 82526,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-my2bowtc",
+          "first_seen_utc": "2026-11-01T08:46:41.005837+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82585,
+          "ppid": 82526,
+          "argv": "lshw -C display ",
+          "cwd": "/tmp/relay-self-s49-my2bowtc",
+          "first_seen_utc": "2026-11-01T08:46:41.107029+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 82627,
+          "ppid": 82525,
+          "argv": "node /home/rinsa/work/relay-self-l-bcg-h4-20261101/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l-bcg-h4-20261101",
+          "first_seen_utc": "2026-11-01T08:46:54.554775+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-my2bowtc",
+          "removed": true
+        }
+      ],
+      "marker": {
+        "grant": "https://github.com/rinsakamo/relay-self/issues/431#issuecomment-6552384315",
+        "max_worlds": 1,
+        "retry": 0,
+        "h9b_slot_id": "B-E2",
+        "h9b_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+        "h9b_prereg_sha256": "cb6f54cae0879e41638a92c8da6fc039da235b1911d26fd7ce550f1fde81f0fe",
+        "h9b_frozen_model_sha256": "8d649801d565f729868bc2933cabd68bed099470f6bcd72a052e327573ea9306",
+        "launcher_entered_utc": "2026-11-01T08:46:32.215758+00:00"
+      }
+    }
+  ],
+  "checked_utc": "2026-11-01T08:49:07.661501+00:00"
+}

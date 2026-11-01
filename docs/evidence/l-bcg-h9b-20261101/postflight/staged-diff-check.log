@@ -1,0 +1,231 @@
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:21: trailing whitespace.
++tests/test_s49_native_os_custody.py:178: 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:22: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:55: trailing whitespace.
++tests/test_s49_native_os_custody.py:292: 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:56: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:86: trailing whitespace.
++    
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:93: trailing whitespace.
++tests/test_s49_native_os_custody.py:461: 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:94: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:131: trailing whitespace.
++tests/test_s49_native_os_custody.py:640: 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:132: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:169: trailing whitespace.
++tests/test_s49_native_os_custody.py:640: 
+docs/evidence/l-bcg-h9b-20261101/preflight/regression.log:170: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/evidence/l-bcg-h9b-20261101/preflight/worktrees.txt:593: new blank line at EOF.
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E1/run1/server.log:1011: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-E2/run1/server.log:1234: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F1/run1/server.log:1003: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/A-F2/run1/server.log:1117: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E1/run1/server.log:995: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-E2/run1/server.log:995: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F1/run1/server.log:1019: trailing whitespace.
++> 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-global.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-global.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-global.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-world-defaults.yml:4: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-world-defaults.yml:7: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/config/paper-world-defaults.yml:10: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral_nether/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:3: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/runtime-config/s31a-ephemeral_the_end/paper-world.yml:5: trailing whitespace.
++# 
+docs/evidence/l-bcg-h9b-20261101/worlds/B-F2/run1/server.log:987: trailing whitespace.
++> 

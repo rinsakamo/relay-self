@@ -1,0 +1,64 @@
+{
+  "workflow_runs": [
+    {
+      "id": 41289242190,
+      "name": "SelfBody S50 post-World INTERNAL epoch DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 177,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242190/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242190/logs",
+      "workflow_id": 402680589
+    },
+    {
+      "id": 41289242220,
+      "name": "L-BCG H6 H7 H8 H9a H9b source readback DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 79,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242220/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242220/logs",
+      "workflow_id": 403257891
+    },
+    {
+      "id": 41289242309,
+      "name": "SelfBody route B - live Paper source window DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 173,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242309/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242309/logs",
+      "workflow_id": 402718918
+    },
+    {
+      "id": 41289242148,
+      "name": "SelfBody L1 self-supervised motion heldout DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 173,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242148/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242148/logs",
+      "workflow_id": 402838921
+    },
+    {
+      "id": 41289242167,
+      "name": "SelfBody L1 sampled motion shadow DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 167,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242167/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242167/logs",
+      "workflow_id": 402776825
+    },
+    {
+      "id": 41289242209,
+      "name": "L-BCG conditional motion shadow DEV",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 128,
+      "jobs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242209/jobs",
+      "logs_url": "https://api.github.com/repos/rinsakamo/relay-self/actions/runs/41289242209/logs",
+      "workflow_id": 403172139
+    }
+  ]
+}
