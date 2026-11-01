@@ -30,6 +30,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEntityHurt,
     MineflayerObservation,
 )
+from adapters.mineflayer.s49_completed_decision_bridge import (
+    S49OriginalCompletedBatch,
+    read_original_s49_completions,
+)
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
@@ -267,6 +271,7 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
 async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+    completed_l0: Callable[[S49OriginalCompletedBatch], None] | None = None,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
 ) -> int:
@@ -334,6 +339,9 @@ async def qualify(
             stage_r = StageRDevSingleWriter(host, executor, intent, learning_issuer)
             report["stage_r_dev_enabled"] = True
         probes = {}
+        # Exact S16 Action receipts, captured only AFTER the original executor
+        # has completed and checked its terminal outcome. Optional diagnostic.
+        closed_receipts = {}
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -449,6 +457,8 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
+            if completed_l0 is not None:
+                closed_receipts[step.action_request_id] = receipt
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -535,6 +545,17 @@ async def qualify(
                 raise S49PhysicalFailure("no authentic Stage R single-writer commit")
             report["stage_r_owner"] = stage_r.summary()
             report["learning_in_world"] = True  # HOLD revision, NOT gain
+        if completed_l0 is not None:
+            # S49 has already obtained every original L0Step and original S16
+            # terminal. This is NOT S42 DecisionEpochResult or a B0/L8 epoch.
+            # A failed observer cannot veto a real physical Action or S49.
+            try:
+                completed_l0(read_original_s49_completions(
+                    tuple(trace), probes, closed_receipts,
+                ))
+                report["original_completion_observer"] = "CALLBACK_RETURNED"
+            except Exception:
+                report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
