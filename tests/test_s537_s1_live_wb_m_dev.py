@@ -175,3 +175,42 @@ def test_no_dev_flag_blocks_before_world(monkeypatch, capsys):
     ])
     assert main() == 2
     assert '"BLOCKED"' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("fault", ["replay", "stale", "foreign_session"])
+def test_probe_rejected_before_projection(pinned_owners, fault):
+    batch = _two_original_shape()
+    tap = S1WBMMatchedObserver(enabled=True)
+    probe = batch.steps[0].probe
+    tap.observe(probe)
+    bad = probe
+    if fault == "stale":
+        bad = replace(probe, seq=probe.seq - 1)
+    elif fault == "foreign_session":
+        bad = replace(probe, session_id="foreign")
+    with pytest.raises(ValueError, match="foreign, replayed"):
+        tap.observe(bad)
+
+
+def test_observer_exception_does_not_interrupt_original_owner(pinned_owners, tmp_path):
+    batch = _two_original_shape()
+    tap = S1WBMMatchedObserver(enabled=True)
+    finished = []
+
+    async def original(path, log, *, live_probe, completed_l0, completed_l0_dev):
+        # First callback succeeds; replay then raises inside the observer.
+        await live_probe(batch.steps[0].probe)
+        await live_probe(batch.steps[0].probe)
+        finished.append("original_owner_continued")
+        completed_l0(batch)
+        path.write_text(json.dumps({"status": "PASS"}))
+        return 0
+
+    code, row = asyncio.run(run_s1_owner_dev(
+        original_qualify=original, report_path=tmp_path / "s49.json",
+        server_log=tmp_path / "server.log", observer=tap,
+    ))
+    assert code == 0
+    assert finished == ["original_owner_continued"]
+    assert row["status"] == "DEFERRED"
+    assert row["wb_observer_errors"] == ["ValueError"]
