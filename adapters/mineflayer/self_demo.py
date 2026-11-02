@@ -1366,6 +1366,58 @@ def _dev_run(args: argparse.Namespace) -> int:
                     else WBL1AttentionShadow("UNAVAILABLE", None, None, None)
                 )
                 receipt["dev_wb_l1_attention_shadow"] = witnessed_l1.to_mapping()
+                # Compare the sidecar's ATT A/B witness to fixed shadow-test
+                # semantics and the independent *source ref*. The original
+                # S49 report does not independently preserve the full L1
+                # visual candidate pool: never call its count attested.
+                raw_ab = sidecar.get("wb_l1_attention_ab_at_admission")
+                ab_n = (
+                    raw_ab.get("observed_candidate_count")
+                    if isinstance(raw_ab, dict) else None
+                )
+                expected_ab_state = (
+                    "SHADOW_SELECTION_DIFFERENCE" if type(ab_n) is int and ab_n > 0
+                    else "NO_NATIVE_BASELINE"
+                )
+                ab_valid = (
+                    accepted_host_source
+                    and witnessed_l1.state == "ATT_SELECTED_READ_ONLY"
+                    and isinstance(raw_ab, dict)
+                    and type(ab_n) is int and 0 <= ab_n <= 3
+                    and raw_ab.get("state") == expected_ab_state
+                    and raw_ab.get("source_world_seq") == source_seq
+                    and raw_ab.get("source_ref") == after_ref
+                    and raw_ab.get("baseline_selected")
+                    == (["wb-native-observed-0"] if ab_n else [])
+                    and raw_ab.get("with_l2_selected") == ["wb-l2-uncertainty"]
+                    and raw_ab.get("selection_changed") is bool(ab_n)
+                    and raw_ab.get("policy")
+                    == "EXPLICIT_SHADOW_L2_PRIORITY_1_VS_NATIVE_0"
+                    and raw_ab.get("useful_for_goal") is False
+                    and raw_ab.get("actual_l1_policy_changed") is False
+                    and raw_ab.get("authority")
+                    == "ATT_SHADOW_AB_NO_ACTION_MEMORY_LEARNING"
+                )
+                receipt["dev_wb_l1_attention_ab"] = {
+                    "state": expected_ab_state if ab_valid else "UNAVAILABLE",
+                    "original_s49_l2_source_joined": bool(accepted_host_source),
+                    "observed_candidate_count_sidecar_only": (
+                        ab_n if ab_valid else None
+                    ),
+                    "baseline_selected": (
+                        raw_ab["baseline_selected"] if ab_valid else []
+                    ),
+                    "with_l2_selected": (
+                        raw_ab["with_l2_selected"] if ab_valid else []
+                    ),
+                    "selection_changed_due_to_fixed_priority": (
+                        bool(ab_n) if ab_valid else False
+                    ),
+                    "independent_native_candidate_count_verified": False,
+                    "actual_l1_policy_changed": False,
+                    "learned_attention_gain_verified": False,
+                    "attestation": "S60_HOST_JOIN_AND_SIDECAR_SHADOW_ONLY",
+                }
                 expected_review = project_wb_past_review_handoff(
                     wb_read, later_source_ref=valid_pair_sources.get(original_latest_seq),
                 )
