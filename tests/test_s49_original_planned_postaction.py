@@ -132,10 +132,14 @@ def test_forged_or_missing_s49_planned_source_is_rejected(fault):
     elif fault == "foreign_session":
         batch = replace(batch, session_id="foreign")
     elif fault == "unknown_s16":
+        from relay_self.action import ActionEvent, ActionState
+
         action = batch.steps[0]
-        invalid = replace(action.action_receipt, consequence=replace(
-            action.action_receipt.consequence, movement_distance=None,
+        terminal = action.action_receipt.terminal
+        unknown = replace(terminal, _events=terminal.events[:-1] + (
+            ActionEvent(ActionState.UNKNOWN, 4, Provenance("test", "unknown")),
         ))
+        invalid = replace(action.action_receipt, terminal=unknown)
         batch = replace(batch, steps=(replace(action, action_receipt=invalid), *batch.steps[1:]))
         moves = (replace(row, receipt=invalid),)
     elif fault == "false_s42":
