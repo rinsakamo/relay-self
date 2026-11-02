@@ -22,6 +22,9 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
     evidence_ids = shadow.get("evidence_id_mode", False)
     if type(evidence_ids) is not bool:
         raise ValueError("invalid original evidence mode")
+    b1_contract_v2 = shadow.get("b1_contract_v2_mode", False)
+    if type(b1_contract_v2) is not bool or (b1_contract_v2 and not evidence_ids):
+        raise ValueError("invalid original B1 V2 mode")
     attempts = shadow["attempt_originals"]
     windows = report["l_mp11_live_prefix"]["observations"]
     if type(attempts) is not list or len(attempts) != 2:
@@ -39,6 +42,7 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
         )
         request = request_for_live_l2(
             ledger, previous_proposal=previous, evidence_ids=evidence_ids,
+            b1_contract_v2=b1_contract_v2,
         )
         # JSON-normalize tuple fields without accepting altered source values.
         import json
@@ -57,7 +61,8 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
         )
         proposal = parse_live_l2(ledger, request, result, require_real_llama=True,
                                  previous_proposal=previous,
-                                 evidence_ids=evidence_ids)
+                                 evidence_ids=evidence_ids,
+                                 b1_contract_v2=b1_contract_v2)
         if json.loads(json.dumps(asdict(proposal))) != shadow["proposals"][i]:
             raise ValueError("original model text/proposal SHA/numeric citation mismatch")
         previous = proposal
@@ -66,4 +71,5 @@ def audit_feedback_originals(report: dict, original: bytes) -> dict:
             "h1_to_feedback_to_h2_sha_verified": True,
             "numeric_citations_reparsed": True,
             "evidence_ids_resolved_from_original": evidence_ids,
+            "b1_v2_typed_evaluation_reconstructed": b1_contract_v2,
             "causal_interpretation_attested": False}

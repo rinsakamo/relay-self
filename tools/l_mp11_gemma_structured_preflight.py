@@ -19,6 +19,12 @@ from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderProtocolError,
     _extract_completion,
 )
+from adapters.mineflayer.l_mp11_b1_forecast_contract import (
+    V2_EXTRA_FIELDS,
+    V2_INSTRUCTION,
+    B1ContractRejected,
+    validate_b1_v2,
+)
 from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     GEMMA_MAX_COMPLETION,
     GEMMA_SCHEMA_NAME,
@@ -54,7 +60,7 @@ def _loopback(endpoint: object, model: object) -> tuple[str, str]:
     return endpoint, model
 
 
-def synthetic_test_body(model: str) -> dict:
+def synthetic_test_body(model: str, *, b1_contract_v2: bool = False) -> dict:
     """Finite first-trial fake motion context, visibly NOT a Paper observation."""
     source = []
     source.append({"evidence_id": "T1_W8", "metric_role": "WAIT8_TOTAL_M",
@@ -77,10 +83,13 @@ def synthetic_test_body(model: str) -> dict:
         "intent_id": "transport-only",
         "focus": "Can the server finish strict JSON with thinking OFF?",
         "instruction": (
-            "Return one compact JSON object with the ten required schema keys. "
-            "Cite only T1_W8, model_family PHASE_DEPENDENT, "
+            ("Return one compact JSON object with fourteen required schema keys. "
+             if b1_contract_v2 else
+             "Return one compact JSON object with the ten required schema keys. ")
+            + "Cite only T1_W8, model_family PHASE_DEPENDENT, "
             "prior_hypothesis_relation FIRST_HYPOTHESIS, short falsifiable idea. "
             "This is SYNTHETIC not a real Minecraft World observation."
+            + (" " + V2_INSTRUCTION if b1_contract_v2 else "")
         ),
         "context": [{
             "key": "typed_Paper_evidence_ID_catalog",
@@ -114,13 +123,17 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _check_schema_output(output: dict, request_body: dict) -> None:
+def _check_schema_output(
+    output: dict, request_body: dict, *, b1_contract_v2: bool = False,
+) -> None:
     """Read back every constraint of our finite ten-field wire schema.
 
     A server claiming grammar support is not a trusted schema validator.
     Keep this independent of the HTTP server, including on report readback.
     """
-    schema = strict_gemma_evidence_schema(request_body)["json_schema"]["schema"]
+    schema = strict_gemma_evidence_schema(
+        request_body, b1_contract_v2=b1_contract_v2,
+    )["json_schema"]["schema"]
     for key, rule in schema["properties"].items():
         value = output[key]
         valid = False
@@ -156,7 +169,9 @@ def _unique_object(pairs: list) -> dict:
     return result
 
 
-def _check_json_output(response: dict, request_body: dict) -> None:
+def _check_json_output(
+    response: dict, request_body: dict, *, b1_contract_v2: bool = False,
+) -> None:
     enforce_gemma_thinking_off(response)
     try:
         text, facts = _extract_completion(response, request_body=request_body)
@@ -168,9 +183,18 @@ def _check_json_output(response: dict, request_body: dict) -> None:
         output = json.loads(text, object_pairs_hook=_unique_object)
     except (ValueError, TypeError) as exc:
         raise GemmaPreflightRejected("Gemma output was not complete JSON") from exc
-    if type(output) is not dict or set(output) != set(REQUIRED):
-        raise GemmaPreflightRejected("Gemma failed exact ten-field structured output")
-    _check_schema_output(output, request_body)
+    required = set(REQUIRED) | (V2_EXTRA_FIELDS if b1_contract_v2 else set())
+    if type(output) is not dict or set(output) != required:
+        raise GemmaPreflightRejected("Gemma failed exact structured output fields")
+    _check_schema_output(output, request_body, b1_contract_v2=b1_contract_v2)
+    if b1_contract_v2:
+        try:
+            validate_b1_v2(
+                output, trial_count=1, previous_prediction_m=None,
+                selected_ids=tuple(output["evidence_ids"]),
+            )
+        except B1ContractRejected as exc:
+            raise GemmaPreflightRejected("Gemma failed B1 typed forecast status") from exc
     if (
         output["prior_hypothesis_relation"] != "FIRST_HYPOTHESIS"
         or output["evidence_ids"] != ["T1_W8"]
@@ -179,7 +203,9 @@ def _check_json_output(response: dict, request_body: dict) -> None:
         raise GemmaPreflightRejected("Gemma did not reference the given synthetic source")
 
 
-def verify_preflight_report(path: Path, *, endpoint: str, model: str) -> dict:
+def verify_preflight_report(
+    path: Path, *, endpoint: str, model: str, b1_contract_v2: bool = False,
+) -> dict:
     """Strictly read the pre-World fixture result AND raw saved request/response."""
     endpoint, model = _loopback(endpoint, model)
     if not isinstance(path, Path) or path.name != REPORT_FILENAME:
@@ -204,6 +230,7 @@ def verify_preflight_report(path: Path, *, endpoint: str, model: str) -> dict:
         or report.get("model_weights_attested") is not False
         or report.get("world_qualified") is not False
         or report.get("actual_requests") != 1
+        or report.get("b1_contract_v2", False) is not b1_contract_v2
     ):
         raise GemmaPreflightRejected("preflight status/provenance/hash mismatch")
     if (req.get("model") != model
@@ -214,15 +241,23 @@ def verify_preflight_report(path: Path, *, endpoint: str, model: str) -> dict:
             or req.get("cache_prompt") is not False
             or req.get("temperature") != 0
             or req.get("seed") != 1
-            or req.get("response_format") != strict_gemma_evidence_schema(req)
+            or req.get("response_format") != strict_gemma_evidence_schema(
+                req, b1_contract_v2=b1_contract_v2,
+            )
             or req.get("response_format", {}).get("json_schema", {}).get("name")
-            != GEMMA_SCHEMA_NAME):
+            != (
+                "relay_l2_b1_explicit_forecast_v2"
+                if b1_contract_v2 else GEMMA_SCHEMA_NAME
+            )):
         raise GemmaPreflightRejected("strict schema or Reasoning OFF not genuinely sent")
-    _check_json_output(res, req)
+    _check_json_output(res, req, b1_contract_v2=b1_contract_v2)
     return report
 
 
-def run(endpoint: str, model: str, evidence_root: Path) -> dict:
+def run(
+    endpoint: str, model: str, evidence_root: Path, *,
+    b1_contract_v2: bool = False,
+) -> dict:
     """ONE actual local HTTP probe (not an Action; no retries or substitution)."""
     endpoint, model = _loopback(endpoint, model)
     if not isinstance(evidence_root, Path):
@@ -233,15 +268,18 @@ def run(endpoint: str, model: str, evidence_root: Path) -> dict:
     evidence_root.mkdir(mode=0o700, parents=True, exist_ok=False)
     provider = JournaledLiveLlamaProvider(
         endpoint=endpoint, model=model, timeout=40.0, journal_root=evidence_root,
-        strict_gemma_evidence=True,
+        strict_gemma_evidence=True, b1_contract_v2=b1_contract_v2,
     )
-    request = synthetic_test_body(model)
+    request = synthetic_test_body(model, b1_contract_v2=b1_contract_v2)
     response = provider._call(request)
     request_raw = (evidence_root / REQUEST_FILENAME).read_bytes()
     response_raw = (evidence_root / RESPONSE_FILENAME).read_bytes()
-    _check_json_output(response, json.loads(request_raw))
+    _check_json_output(
+        response, json.loads(request_raw), b1_contract_v2=b1_contract_v2,
+    )
     report = {
         "status": STATUS,
+        "b1_contract_v2": b1_contract_v2,
         "execution_head": execution_head,
         "endpoint": endpoint,
         "model": model,
@@ -262,7 +300,9 @@ def run(endpoint: str, model: str, evidence_root: Path) -> dict:
         json.dump(report, stream, ensure_ascii=False, sort_keys=True, indent=2)
         stream.flush()
         os.fsync(stream.fileno())
-    verify_preflight_report(target, endpoint=endpoint, model=model)
+    verify_preflight_report(
+        target, endpoint=endpoint, model=model, b1_contract_v2=b1_contract_v2,
+    )
     return report
 
 
@@ -271,10 +311,16 @@ def main() -> int:
     parser.add_argument("--endpoint", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--evidence-root", type=Path, required=True)
+    parser.add_argument("--b1-contract-v2", action="store_true")
     args = parser.parse_args()
     if os.environ.get("L_MP11_GEMMA_PREFLIGHT_DEV") != "1":
         parser.error("real HTTP preflight requires L_MP11_GEMMA_PREFLIGHT_DEV=1")
-    print(json.dumps(run(args.endpoint, args.model, args.evidence_root),
+    if args.b1_contract_v2 and os.environ.get("L_MP11_B1_CONTRACT_V2_DEV") != "1":
+        parser.error("B1 V2 preflight requires explicit contract DEV opt-in")
+    print(json.dumps(run(
+        args.endpoint, args.model, args.evidence_root,
+        b1_contract_v2=args.b1_contract_v2,
+    ),
                      ensure_ascii=False, sort_keys=True))
     return 0
 

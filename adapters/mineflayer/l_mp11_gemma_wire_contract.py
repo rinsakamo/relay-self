@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+from adapters.mineflayer.l_mp11_b1_forecast_contract import schema_v2_additions
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
@@ -70,10 +71,14 @@ def _typed_ids_from_open_request(body: dict) -> tuple[tuple[str, ...], int]:
     return ids, n
 
 
-def strict_gemma_evidence_schema(request_body: dict) -> dict:
+def strict_gemma_evidence_schema(
+    request_body: dict, *, b1_contract_v2: bool = False,
+) -> dict:
     """Native llama.cpp json_schema with a finite enumeration of original IDs."""
     if type(request_body) is not dict:
         raise GemmaWireRejected("canonical llama.cpp OPEN request object required")
+    if type(b1_contract_v2) is not bool:
+        raise GemmaWireRejected("B1 contract flag not a boolean")
     ids, count = _typed_ids_from_open_request(request_body)
     def options(values):
         return {"type": "string", "enum": sorted(values)}
@@ -104,15 +109,22 @@ def strict_gemma_evidence_schema(request_body: dict) -> dict:
             "uniqueItems": True,
         },
     }
+    if b1_contract_v2:
+        properties.update(schema_v2_additions())
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": GEMMA_SCHEMA_NAME,
+            "name": (
+                "relay_l2_b1_explicit_forecast_v2"
+                if b1_contract_v2 else GEMMA_SCHEMA_NAME
+            ),
             "strict": True,
             "schema": {
                 "type": "object",
                 "properties": properties,
-                "required": list(REQUIRED),
+                "required": list(REQUIRED) + (
+                    list(schema_v2_additions()) if b1_contract_v2 else []
+                ),
                 "additionalProperties": False,
             },
         },
@@ -150,9 +162,15 @@ def enforce_gemma_thinking_off(response: object) -> None:
         raise GemmaWireRejected("malformed llama.cpp reasoning attestation") from exc
 
 
-def pin_gemma_wire(body: dict, *, evidence_ids: bool) -> dict:
+def pin_gemma_wire(
+    body: dict, *, evidence_ids: bool, b1_contract_v2: bool = False,
+) -> dict:
     """Mutate canonical L2 request in place, before raw journal and HTTP."""
-    if type(evidence_ids) is not bool or type(body) is not dict:
+    if (
+        type(evidence_ids) is not bool or type(body) is not dict
+        or type(b1_contract_v2) is not bool
+        or (b1_contract_v2 and not evidence_ids)
+    ):
         raise GemmaWireRejected("explicit real Gemma protocol gate required")
     body.update(
         max_tokens=GEMMA_MAX_COMPLETION,
@@ -164,7 +182,9 @@ def pin_gemma_wire(body: dict, *, evidence_ids: bool) -> dict:
         chat_template_kwargs={"enable_thinking": False},
     )
     if evidence_ids:
-        body["response_format"] = strict_gemma_evidence_schema(body)
+        body["response_format"] = strict_gemma_evidence_schema(
+            body, b1_contract_v2=b1_contract_v2,
+        )
     else:
         body["response_format"] = {"type": "json_object"}
     return body
