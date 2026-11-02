@@ -1325,6 +1325,8 @@ def _dev_run(args: argparse.Namespace) -> int:
                 # An ATT shadow is a question selected for possible L1 attention,
                 # not evidence that L1 policy or Habit actually used it.
                 from relay_self.wb_l2_attention_handoff import (
+                    WBL1AttentionShadow,
+                    WBL2ReviewHandoff,
                     project_wb_l1_attention_shadow,
                     project_wb_past_review_handoff,
                 )
@@ -1361,18 +1363,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     expected_l1 if accepted_host_source
                     and sidecar.get("wb_l1_attention_at_admission")
                     == expected_l1.to_mapping()
-                    else project_wb_l1_attention_shadow(wb_read)
-                    if wb_read.state == "CURRENT_EPOCH_READ_ONLY"
-                    and sidecar.get("wb_l1_attention_at_admission")
-                    == expected_l1.to_mapping()
-                    else project_wb_l1_attention_shadow(
-                        project_wb_l2_uncertainty(
-                            accepted_text=None, session_id=None,
-                            source_world_seq=None, latest_world_seq=None,
-                            source_ref=None, expected_source_ref=None,
-                            owner_admitted=False,
-                        )
-                    )
+                    else WBL1AttentionShadow("UNAVAILABLE", None, None, None)
                 )
                 receipt["dev_wb_l1_attention_shadow"] = witnessed_l1.to_mapping()
                 expected_review = project_wb_past_review_handoff(
@@ -1387,9 +1378,8 @@ def _dev_run(args: argparse.Namespace) -> int:
                 ):
                     receipt["dev_wb_past_review_handoff"] = expected_review.to_mapping()
                 else:
-                    receipt["dev_wb_past_review_handoff"] = project_wb_past_review_handoff(
-                        admission_read,
-                        later_source_ref=valid_pair_sources.get(original_latest_seq),
+                    receipt["dev_wb_past_review_handoff"] = WBL2ReviewHandoff(
+                        "UNAVAILABLE", None, None, None, None, None, None,
                     ).to_mapping()
                 receipt["dev_wb_structured_l2"] = {
                     "state": state,
