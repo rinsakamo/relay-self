@@ -69,6 +69,7 @@ def _git_head(repo: Path) -> str:
 def prepare_trial(
     evidence_root: Path, repo: Path, preflight_report: Path, *,
     expected_head: str, endpoint: str, model: str,
+    b1_contract_v2: bool = False,
 ) -> dict:
     """Create fresh/empty W3 capture directory only before any Java launch."""
     _safe_directory(evidence_root, must_exist=True)
@@ -88,6 +89,7 @@ def prepare_trial(
     # independently checked, NOT trusted from report status text alone.
     verified = verify_preflight_report(
         preflight_report, endpoint=endpoint, model=model,
+        b1_contract_v2=b1_contract_v2,
     )
     if verified.get("execution_head") != expected_head:
         raise NextWorldGateRejected("probe execution HEAD differs from this trial")
@@ -110,6 +112,7 @@ def prepare_trial(
         "endpoint": endpoint,
         "model": model,
         "preflight_status": verified["status"],
+        "b1_contract_v2": b1_contract_v2,
         "worlds_allowed": 1,
         "retries_allowed": 0,
         "h1_h2_calls_allowed": 2,
@@ -209,6 +212,7 @@ def run_once(
         raise NextWorldGateRejected("preflight symlink changed after preparation")
     verified = verify_preflight_report(
         probe, endpoint=ready["endpoint"], model=ready["model"],
+        b1_contract_v2=ready.get("b1_contract_v2", False),
     )
     if verified.get("execution_head") != expected_head:
         raise NextWorldGateRejected("probe execution HEAD differs from this trial")
@@ -237,6 +241,13 @@ def run_once(
     ):
         if command.count(flag) != 1:
             raise NextWorldGateRejected(f"missing required original scope {flag}")
+    v2 = ready.get("b1_contract_v2", False)
+    if type(v2) is not bool or (
+        (command.count("--l-mp11-b1-contract-v2-dev") == 1) != v2
+    ):
+        raise NextWorldGateRejected("new World B1 contract must match preflight mode")
+    if v2 and os.environ.get("L_MP11_B1_CONTRACT_V2_DEV") != "1":
+        raise NextWorldGateRejected("missing explicit B1 V2 World opt-in")
     if (
         "-m" not in command
         or "adapters.mineflayer.s49_normal_session_real_ci" not in command
@@ -334,6 +345,7 @@ def main() -> int:
     parser.add_argument("--endpoint")
     parser.add_argument("--model")
     parser.add_argument("--sample-seconds", type=float, default=0.25)
+    parser.add_argument("--b1-contract-v2", action="store_true")
     argv = sys.argv[1:]
     separator = argv.index("--") if "--" in argv else len(argv)
     args = parser.parse_args(argv[:separator])
@@ -345,6 +357,7 @@ def main() -> int:
             args.evidence_root, args.repo, args.preflight_report,
             expected_head=args.expected_head,
             endpoint=args.endpoint, model=args.model,
+            b1_contract_v2=args.b1_contract_v2,
         )
     else:
         command = args.original_runner
