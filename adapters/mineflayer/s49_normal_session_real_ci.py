@@ -51,6 +51,12 @@ from adapters.mineflayer.s49_completed_decision_bridge import (
     bounded_original_s49_completion_row,
     read_original_s49_completions,
 )
+from adapters.mineflayer.s49_original_planned_postaction import (
+    S49OriginalPlannedBatch,
+    S49OriginalPlannedMove,
+    bind_original_s49_planned,
+    bounded_original_s49_planned_row,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -275,6 +281,8 @@ async def qualify(
     owner_epoch_readonly: Callable[[MineflayerObservation, NormalWorldL0, IntentCommitment], None] | None = None,
     completed_l0: Callable[[S49OriginalCompletedBatch], None] | None = None,
     completed_l0_dev: bool = False,
+    completed_planned: Callable[[S49OriginalPlannedBatch], None] | None = None,
+    completed_planned_dev: bool = False,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
 ) -> int:
@@ -305,6 +313,13 @@ async def qualify(
             and os.environ.get("S49_COMPLETED_L0_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("S49 completed L0 DEV readback requires explicit gate")
+        if (
+            type(completed_planned_dev) is not bool
+            or (completed_planned is not None and not callable(completed_planned))
+            or ((completed_planned is not None or completed_planned_dev)
+                and os.environ.get("S49_COMPLETED_PLANNED_DEV_ONLY") != "1")
+        ):
+            raise S31ABlocked("S49 planned readback requires separate DEV-only gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -350,6 +365,7 @@ async def qualify(
         # Exact S16 Action receipts, captured only AFTER the original executor
         # has completed and checked its terminal outcome. Optional diagnostic.
         closed_receipts = {}
+        original_planned_moves: list[S49OriginalPlannedMove] = []
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -473,8 +489,18 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
-            if completed_l0 is not None or completed_l0_dev:
+            if (
+                completed_l0 is not None or completed_l0_dev
+                or completed_planned is not None or completed_planned_dev
+            ):
                 closed_receipts[step.action_request_id] = receipt
+            if completed_planned is not None or completed_planned_dev:
+                # Retain exact existing S14 plan/admission/epoch references
+                # after the sole original executor closed S16. No re-run.
+                original_planned_moves.append(S49OriginalPlannedMove(
+                    step, probe, receipt, epoch,
+                    values["plan"], values["admission"],
+                ))
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -578,6 +604,25 @@ async def qualify(
                 report["original_completion_observer"] = "CALLBACK_RETURNED"
             except Exception:
                 report["original_completion_observer"] = "OBSERVER_ERROR"
+        if completed_planned is not None or completed_planned_dev:
+            try:
+                # Separate from the historic completed_l0 callback: a
+                # failing planned observer cannot rewrite its outcome.
+                original_batch = read_original_s49_completions(
+                    tuple(trace), probes, closed_receipts,
+                )
+                planned = bind_original_s49_planned(
+                    original_batch, tuple(original_planned_moves),
+                )
+                if completed_planned_dev:
+                    report["original_planned_readback"] = (
+                        bounded_original_s49_planned_row(planned)
+                    )
+                if completed_planned is not None:
+                    completed_planned(planned)
+                report["original_planned_observer"] = "CALLBACK_RETURNED"
+            except Exception:
+                report["original_planned_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
