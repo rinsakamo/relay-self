@@ -7,8 +7,8 @@ V1 historical responses are NEVER translated or auto-upgraded to V2.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from typing import Any
 
 V2_EXTRA_FIELDS = frozenset({
