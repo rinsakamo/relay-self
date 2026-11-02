@@ -168,6 +168,7 @@ async def run_s2c_live_shadow_dev(
             s60["status"] == "ADVISORY_CURRENT_READ_ONLY"
             and bool(s60["advisory_accepted_before_invalidation"])
         ),
+        "structured_json_requested": observer.shadow.config.structured_json,
         "model_process_identity_verified": False,
         "source_attested": False,
         "action_authority": False,
@@ -220,7 +221,7 @@ def main() -> int:
         config = LoopbackTransportConfig(
             model=args.model_alias, port=args.model_port,
             max_tokens=args.max_tokens, whole_s=min(45.0, args.timeout_s),
-            read_s=min(15.0, args.timeout_s),
+            read_s=min(15.0, args.timeout_s), structured_json=True,
         )
         if not 0 < args.timeout_s <= 60 or args.max_tokens > 256:
             raise ValueError("model budget out of bounds")
