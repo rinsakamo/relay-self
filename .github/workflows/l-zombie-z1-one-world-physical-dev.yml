@@ -18,6 +18,7 @@ jobs:
       L_ZOMBIE_Z1_ONE_WORLD_DEV: '1'
       NODE_OPTIONS: ''
       PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPYCACHEPREFIX: /tmp/relay-l-z1-pycache-${{ github.run_id }}
       PYTHONPATH: src:tests:.
       EVIDENCE_PARENT: /tmp/relay-l-z1-evidence-${{ github.run_id }}
       WORLD_PARENT: /tmp/relay-l-z1-world-${{ github.run_id }}
@@ -76,6 +77,8 @@ jobs:
           set -euo pipefail
           printf '\nadapters/mineflayer/l_zombie_paper_dev/target/\n' >> .git/info/exclude
           mkdir -p "$EVIDENCE_PARENT" "$WORLD_PARENT"
+          echo "Preworld exact worktree status (must be empty):"
+          git status --porcelain
           test -z "$(git status --porcelain)"
           echo 'Z1_ONE_NEW_WORLD / RETRY_ZERO / CREATIVE_OBSERVER / NO_L2_NO_ACTION'
       - name: ONE pinned physical Paper World, original Mineflayer and 31 zombie ticks
