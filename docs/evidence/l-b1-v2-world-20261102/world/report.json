@@ -1,0 +1,1268 @@
+{
+  "actual_native_actions": [
+    {
+      "action": "s49-native-move-40",
+      "event_seq": 40,
+      "execution_evidence": {
+        "action_id": "s49-native-move-40",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:50",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-40:after",
+          "seq": 50,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.1305359614446164,
+                "entity_id": 34,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": 0.5
+                }
+              },
+              {
+                "distance": 9.326509305792028,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.760772389438264,
+                  "y": -60.0,
+                  "z": 0.8710914068716432
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -0.23429114321823113
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 278
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:42",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-40:before",
+          "seq": 42,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 34,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": 0.5
+                }
+              },
+              {
+                "distance": 9.268204469110296,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.760772389438264,
+                  "y": -60.0,
+                  "z": 0.8710914068716432
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": 0.5
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 278
+            }
+          }
+        },
+        "binding_id": "s49-binding-40",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-40-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:48",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 48,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-40",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:43",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 43,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.7342911432182311,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "status": "executed"
+      },
+      "movement_m": 0.7342911432182311,
+      "probe_seq": 41,
+      "source": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "terminal": "outcome"
+    },
+    {
+      "action": "s49-native-move-72",
+      "event_seq": 72,
+      "execution_evidence": {
+        "action_id": "s49-native-move-72",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:81",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-72:after",
+          "seq": 81,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0959512999586933,
+                "entity_id": 36,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -0.3571697198364468
+                }
+              },
+              {
+                "distance": 2.9144624674027586,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 3.329076914237734,
+                  "y": -60.0,
+                  "z": -0.28377972234881377
+                }
+              },
+              {
+                "distance": 9.443231459719536,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.759063405063264,
+                  "y": -60.0,
+                  "z": 0.8718238287466432
+                }
+              },
+              {
+                "distance": 14.415089555505329,
+                "entity_id": 25,
+                "entity_type": "mob",
+                "name": "slime",
+                "position": {
+                  "x": -1.5027723175138046,
+                  "y": -60.0,
+                  "z": 13.291206889132926
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 4,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -0.9840762932575082
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 558
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:74",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-72:before",
+          "seq": 74,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 36,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -0.3571697198364468
+                }
+              },
+              {
+                "distance": 2.8300286709509033,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 3.329076914237734,
+                  "y": -60.0,
+                  "z": -0.28377972234881377
+                }
+              },
+              {
+                "distance": 9.340271959715123,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.759063405063264,
+                  "y": -60.0,
+                  "z": 0.8718238287466432
+                }
+              },
+              {
+                "distance": 13.591309087051819,
+                "entity_id": 25,
+                "entity_type": "mob",
+                "name": "slime",
+                "position": {
+                  "x": -2.2012253142058267,
+                  "y": -58.74772462248802,
+                  "z": 12.904009371049408
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 4,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -0.3571697198364468
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 538
+            }
+          }
+        },
+        "binding_id": "s49-binding-72",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-72-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:80",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 80,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-72",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:75",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 75,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.6269065734210615,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "status": "executed"
+      },
+      "movement_m": 0.6269065734210615,
+      "probe_seq": 73,
+      "source": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "terminal": "outcome"
+    },
+    {
+      "action": "s49-native-move-105",
+      "event_seq": 105,
+      "execution_evidence": {
+        "action_id": "s49-native-move-105",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:116",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-105:after",
+          "seq": 116,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.1305359614446164,
+                "entity_id": 38,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -1.2143394396728937
+                }
+              },
+              {
+                "distance": 3.282591137275761,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 3.329076914237734,
+                  "y": -60.0,
+                  "z": -0.28377972234881377
+                }
+              },
+              {
+                "distance": 9.679112471043442,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.759063405063264,
+                  "y": -60.0,
+                  "z": 0.8718238287466432
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 3,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -1.9486305828911246
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 858
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:108",
+            "source": "mineflayer"
+          },
+          "request_id": "s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-105:before",
+          "seq": 108,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 38,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 2.5,
+                  "y": -60.0,
+                  "z": -1.2143394396728937
+                }
+              },
+              {
+                "distance": 2.9781903186631933,
+                "entity_id": 35,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 3.329076914237734,
+                  "y": -60.0,
+                  "z": -0.28377972234881377
+                }
+              },
+              {
+                "distance": 9.491171282907322,
+                "entity_id": 33,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 9.759063405063264,
+                  "y": -60.0,
+                  "z": 0.8718238287466432
+                }
+              },
+              {
+                "distance": 15.528086573442144,
+                "entity_id": 25,
+                "entity_type": "mob",
+                "name": "slime",
+                "position": {
+                  "x": -1.6175697052117624,
+                  "y": -60.0,
+                  "z": 14.16868273335551
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 4,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 0.5,
+              "y": -60.0,
+              "z": -1.2143394396728937
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 858
+            }
+          }
+        },
+        "binding_id": "s49-binding-105",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-105-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:114",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 114,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-105",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "63584a86-41b4-44a0-8048-8b9b71fb382f:109",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 109,
+          "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.7342911432182309,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "status": "executed"
+      },
+      "movement_m": 0.7342911432182309,
+      "probe_seq": 107,
+      "source": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "terminal": "outcome"
+    }
+  ],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "DEV_ONLY_MP11_G3_THREE_S49_S16_PAPER_S50_WINDOWS_SAME_WORLD",
+  "cleanup_steps": [
+    "node_cleanup",
+    "node_reap",
+    "server_cleanup",
+    "server_reap",
+    "collector_cleanup"
+  ],
+  "decisions": [
+    {
+      "distance_m": 10.0,
+      "entity_id": 32,
+      "event_seq": 27,
+      "issued": false,
+      "probe_seq": 28,
+      "selected": "WAIT"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 34,
+      "event_seq": 40,
+      "issued": true,
+      "probe_seq": 41,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 36,
+      "event_seq": 72,
+      "issued": true,
+      "probe_seq": 73,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 38,
+      "event_seq": 105,
+      "issued": true,
+      "probe_seq": 107,
+      "selected": "MOVE_AWAY"
+    }
+  ],
+  "ignored_duplicate_target_updates": 7,
+  "ignored_hurt_frames": 3,
+  "ignored_non_target_entities": 10,
+  "l_mp11_live_l2": {
+    "attempt_originals": [
+      {
+        "finished_monotonic_ns": 169594735405786,
+        "request": {
+          "context": [
+            {
+              "key": "evidence_limits",
+              "provenance": {
+                "reference": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+                "source": "l.mp11.live.paper.provisional"
+              },
+              "value_json": "{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}"
+            },
+            {
+              "key": "completed_prior_s49_s16_s50_trials",
+              "provenance": {
+                "reference": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+                "source": "l.mp11.live.paper.prefix"
+              },
+              "value_json": "[{\"action_id\":\"s49-native-move-40\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-40-63584a86-41b4-44a0-8048-8b9b71fb382f\",\"native_s16_seq\":50,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":656,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":188720,\"paper_prefix_sha256\":\"6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[291,292,293,294,295,296,297,298],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"63584a86-41b4-44a0-8048-8b9b71fb382f\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"bb847b68-7a7b-4a93-814a-43aaf1cbe382\"}]"
+            },
+            {
+              "key": "previous_L2_hypothesis_typed_feedback",
+              "provenance": {
+                "reference": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+                "source": "l.mp11.live.previous.hypothesis.feedback.readonly"
+              },
+              "value_json": "{\"model_revised_and_admitted\":false,\"previous_proposal_sha256\":null,\"status\":\"FIRST_HYPOTHESIS_NOT_YET_TESTED\"}"
+            },
+            {
+              "key": "typed_Paper_evidence_ID_catalog",
+              "provenance": {
+                "reference": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+                "source": "l.mp11.live.paper.numeric.role-table.readonly"
+              },
+              "value_json": "{\"indexed\":[{\"evidence_id\":\"T1_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.064246601508961},{\"evidence_id\":\"T1_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.0021077733153767675},{\"evidence_id\":\"T1_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.032169922395860355},{\"evidence_id\":\"T1_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.0226263174750082},{\"evidence_id\":\"T1_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.006203343198553902},{\"evidence_id\":\"T1_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.0009925349117686838},{\"evidence_id\":\"T1_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0}],\"selection_note\":\"Return evidence_ids only, not numeric values. Host binds selected IDs to original Paper role/index/value; this does not validate causal meaning or learning.\",\"source_kind\":\"CLOSED_ORIGINAL_PAPER_AND_PRIOR_L2_FEEDBACK\",\"unit\":\"m\"}"
+            }
+          ],
+          "focus": "LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY",
+          "identity_context": null,
+          "instruction": "L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\nProduce only one short JSON object with EXACT ten keys: referenced_prior_ordinals (observed trial numbers), reconsideration (KEEP_UNRESOLVED|QUESTION_APPLICABILITY|PROPOSE_STRUCTURAL_REVISION|ABSTAIN), model_family (SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE), explanation, falsification_test (each 16..60 chars), predicted_wait_total_m (NEXT trial WAIT8 TOTAL m in [0,3] or null), capability_assessment (UNKNOWN|CONDITIONAL_HYPOTHESIS), prior_hypothesis_relation (FIRST_HYPOTHESIS for first; KEEP_PRIOR|REVISE_PRIOR|REJECT_PRIOR|ABSTAIN_ON_PRIOR for second), evidence_ids (ONE on first call, 1..2 on second; sorted distinct strings). Select IDs ONLY from typed_Paper_evidence_ID_catalog. Never transcribe numeric values into output. ID selection is a cited claim, not proof of causal interpretation. No unobserved future, no Action authority, no learned-model or surface-causality claim; all observed surfaces are GRASS. Finish JSON within 512 tokens.\nB1 read-only prediction contract V2. Original S49/Paper WAIT8_TOTAL_M means TOTAL DISPLACEMENT over 8 world ticks, measured in METERS (m), NOT wait duration, time elapsed, or a single-next-tick prediction. Prediction means the NEXT trial's WAIT8 TOTAL DISPLACEMENT in meters. Output exact 14 JSON keys: the normal ten keys plus measurement_target, forecast_status, prior_evaluation_basis, prior_evaluation_reason. measurement_target MUST be NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M. forecast_status NUMERIC_ESTIMATE means predicted_wait_total_m is a finite 0..3 meter point prediction; otherwise use exactly one of ABSTAIN_INSUFFICIENT_EVIDENCE|ABSTAIN_OUTSIDE_APPLICABILITY|ABSTAIN_MODEL_UNRESOLVED and predicted_wait_total_m MUST be null. ABSTAIN is valid uncertainty, never secretly replace with zero or a cheap reference forecast. prior_evaluation_basis FIRST_UNTESTED for H1; for H2 select SCORED_ERROR only when H1 has numeric prediction and host supplies its matching following-trial error; QUALITATIVE_ONLY for a purely observation-based comparison of the two measured WAIT8 TOTAL meters (not forecast error); NO_SCORABLE_FORECAST for explicit inability to score H1. When there is no H1 numeric prediction, do NOT say predicted-versus-actual discrepancy and do NOT claim you scored an error. If no score/defensible qualitative comparison, use ABSTAIN_ON_PRIOR, not KEEP_PRIOR. prior_evaluation_reason is a 16..120 character reason stating the specific type of evidence/limitation; explain what was or was not tested. KEEP_PRIOR with no H1 forecast requires QUALITATIVE_ONLY and source IDs T1_W8 and T2_W8, but is NEVER proof of numerical forecast evaluation. With SCORED_ERROR, select both T2_H1ERR and T2_W8 source IDs. All experiment proposals remain UNAPPROVED; no Action/learning authority. Use no future Action3 data and keep complete JSON under 512 tokens.",
+          "intent_id": "investigate-motion-mismatch",
+          "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-1"
+        },
+        "result": {
+          "call_facts": {
+            "completion_tokens": 248,
+            "finish_reason": "stop",
+            "prompt_tokens": 3282,
+            "requested_max_output_tokens": 512,
+            "total_tokens": 3530
+          },
+          "elapsed_ns": 10651383593,
+          "provenance": {
+            "reference": "request:l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-1:model:relay-self-gemma4-12b-q4km",
+            "source": "llama.cpp"
+          },
+          "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-1",
+          "text": "{\n  \"capability_assessment\": \"UNKNOWN\",\n  \"evidence_ids\": [\n    \"T1_W8\"\n  ],\n  \"explanation\": \"Initial observation of displacement over 8 ticks on grass surface.\",\n  \"falsification_test\": \"Vary input duration to isolate movement.\",\n  \"forecast_status\": \"ABSTAIN_INSUFFICIENT_EVIDENCE\",\n  \"measurement_target\": \"NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M\",\n  \"model_family\": \"OTHER_BOUNDED\",\n  \"next_test\": \"VARY_INPUT_DURATION\",\n  \"predicted_wait_total_m\": null,\n  \"prior_evaluation_basis\": \"FIRST_UNTESTED\",\n  \"prior_evaluation_reason\": \"No prior prediction available to compare against current displacement data.\",\n  \"prior_hypothesis_relation\": \"FIRST_HYPOTHESIS\",\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"referenced_prior_ordinals\": [\n    1\n  ]\n}"
+        },
+        "started_monotonic_ns": 169584083350758
+      },
+      {
+        "finished_monotonic_ns": 169610470287516,
+        "request": {
+          "context": [
+            {
+              "key": "evidence_limits",
+              "provenance": {
+                "reference": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+                "source": "l.mp11.live.paper.provisional"
+              },
+              "value_json": "{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}"
+            },
+            {
+              "key": "completed_prior_s49_s16_s50_trials",
+              "provenance": {
+                "reference": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+                "source": "l.mp11.live.paper.prefix"
+              },
+              "value_json": "[{\"action_id\":\"s49-native-move-40\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-40-63584a86-41b4-44a0-8048-8b9b71fb382f\",\"native_s16_seq\":50,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":656,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":188720,\"paper_prefix_sha256\":\"6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[291,292,293,294,295,296,297,298],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"63584a86-41b4-44a0-8048-8b9b71fb382f\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"bb847b68-7a7b-4a93-814a-43aaf1cbe382\"},{\"action_id\":\"s49-native-move-72\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-72-63584a86-41b4-44a0-8048-8b9b71fb382f\",\"native_s16_seq\":81,\"ordinal\":2,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":1502,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.02262631747500813,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860286,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":504787,\"paper_prefix_sha256\":\"a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f\",\"paper_wait_motion_m\":[0.049492188301323514,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[566,567,568,569,570,571,572,573],\"paper_wait_total_m\":0.06424660150896089,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"63584a86-41b4-44a0-8048-8b9b71fb382f\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"bb847b68-7a7b-4a93-814a-43aaf1cbe382\"}]"
+            },
+            {
+              "key": "previous_L2_hypothesis_typed_feedback",
+              "provenance": {
+                "reference": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+                "source": "l.mp11.live.previous.hypothesis.feedback.readonly"
+              },
+              "value_json": "{\"comparator_scope\":\"PAPER_CHEAP_NEXT_TICK_MAE_M_IS_DIFFERENT_TARGET; NOT_COMPARABLE_TO_WAIT8_TOTAL_ERROR\",\"model_revised_and_admitted\":false,\"previous_explanation\":\"Initial observation of displacement over 8 ticks on grass surface.\",\"previous_falsification_test\":\"Vary input duration to isolate movement.\",\"previous_model_family\":\"OTHER_BOUNDED\",\"previous_next_test_unapproved\":\"VARY_INPUT_DURATION\",\"previous_prediction_m\":null,\"previous_proposal_sha256\":\"83b4fe4f46da2bb72bb7ab18e6129137e2ee534868460109ae12c6fe6a679482\",\"previous_reconsideration\":\"KEEP_UNRESOLVED\",\"previous_source_action_id\":\"s49-native-move-40\",\"previous_source_prefix_sha256\":\"6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2\",\"previous_source_trial_ordinal\":1,\"prior_prediction_abs_error_m\":null,\"source_is_original_Paper_but_postrun_unqualified\":true,\"source_session_id\":\"63584a86-41b4-44a0-8048-8b9b71fb382f\",\"source_world_uuid\":\"bb847b68-7a7b-4a93-814a-43aaf1cbe382\",\"status\":\"PREVIOUS_HYPOTHESIS_NO_NUMERIC_FORECAST\",\"target_action_id\":\"s49-native-move-72\",\"target_kind\":\"NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M\",\"target_observed_m\":0.06424660150896089,\"target_prefix_sha256\":\"a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f\",\"target_trial_ordinal\":2}"
+            },
+            {
+              "key": "typed_Paper_evidence_ID_catalog",
+              "provenance": {
+                "reference": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+                "source": "l.mp11.live.paper.numeric.role-table.readonly"
+              },
+              "value_json": "{\"indexed\":[{\"evidence_id\":\"T1_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.064246601508961},{\"evidence_id\":\"T1_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.0021077733153767675},{\"evidence_id\":\"T1_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.032169922395860355},{\"evidence_id\":\"T1_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.0226263174750082},{\"evidence_id\":\"T1_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.006203343198553902},{\"evidence_id\":\"T1_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.0009925349117686838},{\"evidence_id\":\"T1_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T2_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"pair_index\":0,\"trial_ordinal\":2,\"value_m\":0.06424660150896089},{\"evidence_id\":\"T2_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"pair_index\":0,\"trial_ordinal\":2,\"value_m\":0.0021077733153767675},{\"evidence_id\":\"T2_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":1,\"trial_ordinal\":2,\"value_m\":0.032169922395860286},{\"evidence_id\":\"T2_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":1,\"trial_ordinal\":2,\"value_m\":0.02262631747500813},{\"evidence_id\":\"T2_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":2,\"trial_ordinal\":2,\"value_m\":0.006203343198553902},{\"evidence_id\":\"T2_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":2,\"trial_ordinal\":2,\"value_m\":0.0009925349117686838},{\"evidence_id\":\"T2_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":3,\"trial_ordinal\":2,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T2_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":3,\"trial_ordinal\":2,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T2_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":4,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":4,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":5,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":5,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":6,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":6,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":7,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":7,\"trial_ordinal\":2,\"value_m\":0.0}],\"selection_note\":\"Return evidence_ids only, not numeric values. Host binds selected IDs to original Paper role/index/value; this does not validate causal meaning or learning.\",\"source_kind\":\"CLOSED_ORIGINAL_PAPER_AND_PRIOR_L2_FEEDBACK\",\"unit\":\"m\"}"
+            }
+          ],
+          "focus": "LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY",
+          "identity_context": null,
+          "instruction": "L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\nProduce only one short JSON object with EXACT ten keys: referenced_prior_ordinals (observed trial numbers), reconsideration (KEEP_UNRESOLVED|QUESTION_APPLICABILITY|PROPOSE_STRUCTURAL_REVISION|ABSTAIN), model_family (SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE), explanation, falsification_test (each 16..60 chars), predicted_wait_total_m (NEXT trial WAIT8 TOTAL m in [0,3] or null), capability_assessment (UNKNOWN|CONDITIONAL_HYPOTHESIS), prior_hypothesis_relation (FIRST_HYPOTHESIS for first; KEEP_PRIOR|REVISE_PRIOR|REJECT_PRIOR|ABSTAIN_ON_PRIOR for second), evidence_ids (ONE on first call, 1..2 on second; sorted distinct strings). Select IDs ONLY from typed_Paper_evidence_ID_catalog. Never transcribe numeric values into output. ID selection is a cited claim, not proof of causal interpretation. No unobserved future, no Action authority, no learned-model or surface-causality claim; all observed surfaces are GRASS. Finish JSON within 512 tokens.\nB1 read-only prediction contract V2. Original S49/Paper WAIT8_TOTAL_M means TOTAL DISPLACEMENT over 8 world ticks, measured in METERS (m), NOT wait duration, time elapsed, or a single-next-tick prediction. Prediction means the NEXT trial's WAIT8 TOTAL DISPLACEMENT in meters. Output exact 14 JSON keys: the normal ten keys plus measurement_target, forecast_status, prior_evaluation_basis, prior_evaluation_reason. measurement_target MUST be NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M. forecast_status NUMERIC_ESTIMATE means predicted_wait_total_m is a finite 0..3 meter point prediction; otherwise use exactly one of ABSTAIN_INSUFFICIENT_EVIDENCE|ABSTAIN_OUTSIDE_APPLICABILITY|ABSTAIN_MODEL_UNRESOLVED and predicted_wait_total_m MUST be null. ABSTAIN is valid uncertainty, never secretly replace with zero or a cheap reference forecast. prior_evaluation_basis FIRST_UNTESTED for H1; for H2 select SCORED_ERROR only when H1 has numeric prediction and host supplies its matching following-trial error; QUALITATIVE_ONLY for a purely observation-based comparison of the two measured WAIT8 TOTAL meters (not forecast error); NO_SCORABLE_FORECAST for explicit inability to score H1. When there is no H1 numeric prediction, do NOT say predicted-versus-actual discrepancy and do NOT claim you scored an error. If no score/defensible qualitative comparison, use ABSTAIN_ON_PRIOR, not KEEP_PRIOR. prior_evaluation_reason is a 16..120 character reason stating the specific type of evidence/limitation; explain what was or was not tested. KEEP_PRIOR with no H1 forecast requires QUALITATIVE_ONLY and source IDs T1_W8 and T2_W8, but is NEVER proof of numerical forecast evaluation. With SCORED_ERROR, select both T2_H1ERR and T2_W8 source IDs. All experiment proposals remain UNAPPROVED; no Action/learning authority. Use no future Action3 data and keep complete JSON under 512 tokens.",
+          "intent_id": "investigate-motion-mismatch",
+          "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-2"
+        },
+        "result": {
+          "call_facts": {
+            "completion_tokens": 262,
+            "finish_reason": "stop",
+            "prompt_tokens": 5432,
+            "requested_max_output_tokens": 512,
+            "total_tokens": 5694
+          },
+          "elapsed_ns": 12611022550,
+          "provenance": {
+            "reference": "request:l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-2:model:relay-self-gemma4-12b-q4km",
+            "source": "llama.cpp"
+          },
+          "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-2",
+          "text": "{\n  \"capability_assessment\": \"UNKNOWN\",\n  \"evidence_ids\": [\n    \"T1_W8\",\n    \"T2_W8\"\n  ],\n  \"explanation\": \"Observation of displacement over 8 ticks on grass surface.\",\n  \"falsification_test\": \"Vary input duration to isolate movement.\",\n  \"forecast_status\": \"ABSTAIN_INSUFFICIENT_EVIDENCE\",\n  \"measurement_target\": \"NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M\",\n  \"model_family\": \"OTHER_BOUNDED\",\n  \"next_test\": \"VARY_INPUT_DURATION\",\n  \"predicted_wait_total_m\": null,\n  \"prior_evaluation_basis\": \"QUALITATIVE_ONLY\",\n  \"prior_evaluation_reason\": \"H1 lacked a numeric forecast; comparison is based on qualitative observation of displacement.\",\n  \"prior_hypothesis_relation\": \"KEEP_PRIOR\",\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"referenced_prior_ordinals\": [\n    1,\n    2\n  ]\n}"
+        },
+        "started_monotonic_ns": 169597857899661
+      }
+    ],
+    "attempts": 2,
+    "b1_contract_v2_mode": true,
+    "classification": "LIVE_L2_OPEN_SHADOW_PROPOSALS_NOT_EXECUTED",
+    "evidence_id_mode": true,
+    "experiments_selected_and_executed_by_l2": 0,
+    "l0_promotions": 0,
+    "learning_admissions": 0,
+    "new_action_issuers": 0,
+    "proposals": [
+      {
+        "action_authority": false,
+        "cannot_score_forecast": false,
+        "capability_assessment": "UNKNOWN",
+        "classification": "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED",
+        "explanation": "Initial observation of displacement over 8 ticks on grass surface.",
+        "falsification_test": "Vary input duration to isolate movement.",
+        "forecast_status": "ABSTAIN_INSUFFICIENT_EVIDENCE",
+        "l0_promotions": 0,
+        "learning_admissions": 0,
+        "measurement_target": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+        "model_family": "OTHER_BOUNDED",
+        "model_structure_admitted": false,
+        "next_test": "VARY_INPUT_DURATION",
+        "next_test_owner_approved": false,
+        "numeric_evidence_refs": [
+          {
+            "metric_role": "WAIT8_TOTAL_M",
+            "pair_index": 0,
+            "trial_ordinal": 1,
+            "value_m": 0.064246601508961
+          }
+        ],
+        "numeric_prior_forecast_scored": false,
+        "predicted_wait_total_m": null,
+        "prior_evaluation_basis": "FIRST_UNTESTED",
+        "prior_evaluation_reason": "No prior prediction available to compare against current displacement data.",
+        "prior_hypothesis_relation": "FIRST_HYPOTHESIS",
+        "prior_proposal_sha256": null,
+        "proposal_sha256": "83b4fe4f46da2bb72bb7ab18e6129137e2ee534868460109ae12c6fe6a679482",
+        "provider_completion_tokens": 248,
+        "provider_elapsed_ns": 10651383593,
+        "provider_prompt_tokens": 3282,
+        "provider_source": "llama.cpp",
+        "qualitative_only": false,
+        "reconsideration": "KEEP_UNRESOLVED",
+        "referenced_prior_ordinals": [
+          1
+        ],
+        "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-1",
+        "selected_evidence_ids": [
+          "T1_W8"
+        ],
+        "source_last_action_id": "s49-native-move-40",
+        "source_last_prefix_sha256": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+        "source_prior_count": 1,
+        "source_session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "source_subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source_world_uuid": "bb847b68-7a7b-4a93-814a-43aaf1cbe382"
+      },
+      {
+        "action_authority": false,
+        "cannot_score_forecast": true,
+        "capability_assessment": "UNKNOWN",
+        "classification": "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED",
+        "explanation": "Observation of displacement over 8 ticks on grass surface.",
+        "falsification_test": "Vary input duration to isolate movement.",
+        "forecast_status": "ABSTAIN_INSUFFICIENT_EVIDENCE",
+        "l0_promotions": 0,
+        "learning_admissions": 0,
+        "measurement_target": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+        "model_family": "OTHER_BOUNDED",
+        "model_structure_admitted": false,
+        "next_test": "VARY_INPUT_DURATION",
+        "next_test_owner_approved": false,
+        "numeric_evidence_refs": [
+          {
+            "metric_role": "WAIT8_TOTAL_M",
+            "pair_index": 0,
+            "trial_ordinal": 1,
+            "value_m": 0.064246601508961
+          },
+          {
+            "metric_role": "WAIT8_TOTAL_M",
+            "pair_index": 0,
+            "trial_ordinal": 2,
+            "value_m": 0.06424660150896089
+          }
+        ],
+        "numeric_prior_forecast_scored": false,
+        "predicted_wait_total_m": null,
+        "prior_evaluation_basis": "QUALITATIVE_ONLY",
+        "prior_evaluation_reason": "H1 lacked a numeric forecast; comparison is based on qualitative observation of displacement.",
+        "prior_hypothesis_relation": "KEEP_PRIOR",
+        "prior_proposal_sha256": "83b4fe4f46da2bb72bb7ab18e6129137e2ee534868460109ae12c6fe6a679482",
+        "proposal_sha256": "8633cf87626e28720abe69b28844e9e71b476df1edc75b3d953f052691881013",
+        "provider_completion_tokens": 262,
+        "provider_elapsed_ns": 12611022550,
+        "provider_prompt_tokens": 5432,
+        "provider_source": "llama.cpp",
+        "qualitative_only": true,
+        "reconsideration": "KEEP_UNRESOLVED",
+        "referenced_prior_ordinals": [
+          1,
+          2
+        ],
+        "request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-2",
+        "selected_evidence_ids": [
+          "T1_W8",
+          "T2_W8"
+        ],
+        "source_last_action_id": "s49-native-move-72",
+        "source_last_prefix_sha256": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+        "source_prior_count": 2,
+        "source_session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "source_subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source_world_uuid": "bb847b68-7a7b-4a93-814a-43aaf1cbe382"
+      }
+    ],
+    "provider_label_is_not_model_weights_attestation": true,
+    "qualification": "NO_GO",
+    "science": "NOT_RUN",
+    "validated_open_calls": 2
+  },
+  "l_mp11_live_prefix": {
+    "action_issuers_added": 0,
+    "l2_open_calls": 2,
+    "learning_admissions": 0,
+    "observations": [
+      {
+        "action_id": "s49-native-move-40",
+        "l2_calls": 1,
+        "l2_request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-1",
+        "native_s16_seq": 50,
+        "paper_first_tick": 291,
+        "paper_last_tick": 298,
+        "paper_prefix_length": 188720,
+        "paper_prefix_sha256": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 1
+      },
+      {
+        "action_id": "s49-native-move-72",
+        "l2_calls": 1,
+        "l2_request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-2",
+        "native_s16_seq": 81,
+        "paper_first_tick": 566,
+        "paper_last_tick": 573,
+        "paper_prefix_length": 504787,
+        "paper_prefix_sha256": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 2
+      },
+      {
+        "action_id": "s49-native-move-105",
+        "l2_calls": 0,
+        "l2_request_id": "l-mp11-live:bb847b68-7a7b-4a93-814a-43aaf1cbe382:after-3",
+        "native_s16_seq": 116,
+        "paper_first_tick": 881,
+        "paper_last_tick": 888,
+        "paper_prefix_length": 776664,
+        "paper_prefix_sha256": "38e3ea328580914c0ad77843a7170cc29e9b0d64f3e7193c76c654151c684e24",
+        "source_status": "LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM",
+        "visible_previous_trials": 3
+      }
+    ],
+    "status": "PROVISIONAL_LIVE_PREFIX_READ_ONLY"
+  },
+  "l_mp11_postshutdown_partial_evidence": {
+    "classification": "PARTIAL_NATIVE_AND_EOF_EVIDENCE_NOT_WORLD_QUALIFICATION",
+    "l0_promotions": 0,
+    "l2_attempt_count": 2,
+    "learning_admissions": 0,
+    "live_completed_paper_prefix_count": 3,
+    "mandatory_g3_and_live_prefix_qualified": false,
+    "native_action_ids": [
+      "s49-native-move-40",
+      "s49-native-move-72",
+      "s49-native-move-105"
+    ],
+    "native_closed_action_count": 3,
+    "original_paper_available": true,
+    "paper_eof_shape_only": {
+      "admission": "FUTURE_RUN_OPT_IN_PAPER_SOURCE_SHAPE_ONLY",
+      "complete_lines_length": 780735,
+      "complete_lines_sha256": "cc9dc54f4797d0a5de8499b22a0f476d0266d57c4cc7b776b624d5b41474bd58",
+      "end_state": "JLINE_PROMPT_2_BYTES",
+      "original_length": 780737,
+      "original_sha256": "e0cf1aa0ed6b0a1e3671dddabb47071aec64efa932ce477c3b9d988ea26a94bb",
+      "post_shutdown": true,
+      "schema": "L_MP11_PAPER_EOF_ENVELOPE_V1",
+      "suffix_hex": "3e20"
+    },
+    "paper_full_original_length": 780737,
+    "paper_full_original_sha256": "e0cf1aa0ed6b0a1e3671dddabb47071aec64efa932ce477c3b9d988ea26a94bb",
+    "post_failure_additional_action_independently_attested": false,
+    "typed_s16_action_ids": [
+      "s49-native-move-40",
+      "s49-native-move-72",
+      "s49-native-move-105"
+    ],
+    "typed_s16_count": 3,
+    "valid_l2_open_count": 2,
+    "world_qualified_by_this_report": false,
+    "world_report_status_at_capture": "PASS"
+  },
+  "learning_in_world": false,
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "mp11_g2": {
+    "action_budget": 3,
+    "classification": "DEV_ONLY_ONE_WORLD_THREE_ORIGINAL_S49_ACTIONS",
+    "l10_s10_s11_admissions": 0,
+    "l2_provider_calls": 2,
+    "l2_selected_trials": 0,
+    "paper_s50_windows": 0,
+    "real_l2_autonomous_experiment": false,
+    "status": "THREE_TYPED_S16_ACTIONS_PROVISIONAL_BEFORE_CLEANUP",
+    "typed_s16_actions": [
+      {
+        "action_id": "s49-native-move-40",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:50:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-40:after",
+        "native_seq": 50,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "source_status": "executed"
+      },
+      {
+        "action_id": "s49-native-move-72",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:81:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-72:after",
+        "native_seq": 81,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "source_status": "executed"
+      },
+      {
+        "action_id": "s49-native-move-105",
+        "before_after_source_original": true,
+        "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:116:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-105:after",
+        "native_seq": 116,
+        "new_action_issuers": 0,
+        "outcome": "outcome",
+        "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+        "source_status": "executed"
+      }
+    ]
+  },
+  "mp11_g3": {
+    "classification": "DEV_PAPER_THREE_WINDOWS_PREPARED",
+    "l2_calls": 2,
+    "learning_updates": 0,
+    "model_source": "FIXED_OPERATOR_UNLEARNED_SHADOW_ONLY",
+    "motion_m": [
+      [
+        0.049492188301323625,
+        0.009543604920852156,
+        0.005210808286785218,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.049492188301323514,
+        0.009543604920852156,
+        0.005210808286785218,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.049492188301323736,
+        0.009543604920851934,
+        0.00521080828678544,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "original_sha256": "e0cf1aa0ed6b0a1e3671dddabb47071aec64efa932ce477c3b9d988ea26a94bb",
+    "paper_assets": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "ab5d0f2bb4584d6b19ea4c588c9e1b7b9538d8ec2d183a1aeaba804dc2dd313a",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    },
+    "paper_markers": [
+      "s49-native-move-40-63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "s49-native-move-72-63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "s49-native-move-105-63584a86-41b4-44a0-8048-8b9b71fb382f"
+    ],
+    "paper_windows_attested": 3,
+    "paper_world_uuid": "bb847b68-7a7b-4a93-814a-43aaf1cbe382",
+    "prior_slope": 0.65,
+    "source_status": "THREE_ORIGINAL_PAPER_CALLBACK_WINDOWS_AFTER_SERVER_SHUTDOWN",
+    "staged": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "ab5d0f2bb4584d6b19ea4c588c9e1b7b9538d8ec2d183a1aeaba804dc2dd313a",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    },
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "wait_ticks": [
+      [
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298
+      ],
+      [
+        566,
+        567,
+        568,
+        569,
+        570,
+        571,
+        572,
+        573
+      ],
+      [
+        881,
+        882,
+        883,
+        884,
+        885,
+        886,
+        887,
+        888
+      ]
+    ]
+  },
+  "mp11_paper_eof": {
+    "admission": "FUTURE_RUN_OPT_IN_PAPER_SOURCE_SHAPE_ONLY",
+    "complete_lines_length": 780735,
+    "complete_lines_sha256": "cc9dc54f4797d0a5de8499b22a0f476d0266d57c4cc7b776b624d5b41474bd58",
+    "end_state": "JLINE_PROMPT_2_BYTES",
+    "original_length": 780737,
+    "original_sha256": "e0cf1aa0ed6b0a1e3671dddabb47071aec64efa932ce477c3b9d988ea26a94bb",
+    "post_shutdown": true,
+    "schema": "L_MP11_PAPER_EOF_ENVELOPE_V1",
+    "suffix_hex": "3e20"
+  },
+  "mp11_paper_eof_predeclared": true,
+  "mp11_paper_raw_stdout_path": "/home/rinsa/work/l-b1-v2-evidence-20261102/world/paper-stdout-original.log.raw",
+  "node_exit": 0,
+  "real_model_calls": 2,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+  "source_pair_trace": [
+    {
+      "event_entities": [
+        {
+          "d": 10.0,
+          "id": 32,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 27,
+      "probe_entities": [
+        {
+          "d": 10.0,
+          "id": 32,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 28
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 34,
+          "name": "zombie"
+        },
+        {
+          "d": 9.268204469110296,
+          "id": 33,
+          "name": "item"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 40,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 34,
+          "name": "zombie"
+        },
+        {
+          "d": 9.268204469110296,
+          "id": 33,
+          "name": "item"
+        }
+      ],
+      "probe_seq": 41
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 36,
+          "name": "zombie"
+        },
+        {
+          "d": 2.8300286709509033,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 9.340271959715123,
+          "id": 33,
+          "name": "item"
+        },
+        {
+          "d": 13.429514463203045,
+          "id": 25,
+          "name": "slime"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 72,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 36,
+          "name": "zombie"
+        },
+        {
+          "d": 2.8300286709509033,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 9.340271959715123,
+          "id": 33,
+          "name": "item"
+        },
+        {
+          "d": 13.429514463203045,
+          "id": 25,
+          "name": "slime"
+        }
+      ],
+      "probe_seq": 73
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 38,
+          "name": "zombie"
+        },
+        {
+          "d": 2.9781903186631933,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 9.491171282907322,
+          "id": 33,
+          "name": "item"
+        },
+        {
+          "d": 15.528086573442144,
+          "id": 25,
+          "name": "slime"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 105,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 38,
+          "name": "zombie"
+        },
+        {
+          "d": 2.9781903186631933,
+          "id": 35,
+          "name": "item"
+        },
+        {
+          "d": 9.491171282907322,
+          "id": 33,
+          "name": "item"
+        },
+        {
+          "d": 15.528086573442144,
+          "id": 25,
+          "name": "slime"
+        }
+      ],
+      "probe_seq": 107
+    }
+  ],
+  "stage": "CLOSED",
+  "status": "PASS",
+  "w3_node_stdout_capture": {
+    "byte_count": 85393,
+    "capture_fault": null,
+    "eof_observed": true,
+    "external_source_independence_attested": false,
+    "first_seq": 0,
+    "frame_count": 124,
+    "last_seq": 123,
+    "minecraft_tcp_packets_attested": false,
+    "physical_wait_permitted": false,
+    "process_exit_code": 0,
+    "s10_commit_permitted": false,
+    "schema": "relay-self-w3-node-stdout-v0",
+    "science_qualified": false,
+    "scope": "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP",
+    "seal_reason": "clean_shutdown",
+    "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+    "shutdown_ack_count": 1,
+    "status": "COMPLETE_NODE_STDOUT",
+    "stdout_sha256": "b1d75b520f46e84e27c4ed96b739abbcdfa81499417d6cd8adfc2bc37a9f9ffb"
+  }
+}

@@ -1,0 +1,30 @@
+usage: s49_normal_session_real_ci.py [-h] --report REPORT --server-log
+                                     SERVER_LOG [--mp11-three-actions-dev]
+                                     [--l-mp11-live-prefix-dev]
+                                     [--l-mp11-paper-eof-dev]
+                                     [--l-mp11-evidence-ids-dev]
+                                     [--l-mp11-b1-contract-v2-dev]
+                                     [--l-mp11-gemma-preflight-report L_MP11_GEMMA_PREFLIGHT_REPORT]
+                                     [--l-mp11-live-l2-endpoint L_MP11_LIVE_L2_ENDPOINT]
+                                     [--l-mp11-live-l2-model L_MP11_LIVE_L2_MODEL]
+                                     [--raw-capture-root RAW_CAPTURE_ROOT]
+                                     [--mp11-g3-paper-jar MP11_G3_PAPER_JAR]
+                                     [--mp11-g3-plugin-jar MP11_G3_PLUGIN_JAR]
+                                     [--mp11-g3-config MP11_G3_CONFIG]
+
+options:
+  -h, --help            show this help message and exit
+  --report REPORT
+  --server-log SERVER_LOG
+  --mp11-three-actions-dev
+  --l-mp11-live-prefix-dev
+  --l-mp11-paper-eof-dev
+  --l-mp11-evidence-ids-dev
+  --l-mp11-b1-contract-v2-dev
+  --l-mp11-gemma-preflight-report L_MP11_GEMMA_PREFLIGHT_REPORT
+  --l-mp11-live-l2-endpoint L_MP11_LIVE_L2_ENDPOINT
+  --l-mp11-live-l2-model L_MP11_LIVE_L2_MODEL
+  --raw-capture-root RAW_CAPTURE_ROOT
+  --mp11-g3-paper-jar MP11_G3_PAPER_JAR
+  --mp11-g3-plugin-jar MP11_G3_PLUGIN_JAR
+  --mp11-g3-config MP11_G3_CONFIG

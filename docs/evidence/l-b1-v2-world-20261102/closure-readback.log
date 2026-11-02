@@ -1,0 +1,14 @@
+{
+  "model_pid": 141141,
+  "model_pid_gone": true,
+  "ports": {
+    "8080": "BIND_PASS",
+    "25565": "BIND_PASS"
+  },
+  "historical_original_files_verified": 6659,
+  "historical_changed": [],
+  "existing_other_branch_refs_unchanged": true,
+  "main_unchanged": true,
+  "execution_worktree_clean": true,
+  "initial_cleanup_port_check": "8080 TIME_WAIT caused EADDRINUSE after model exited; no listeners; later plain bind verified"
+}

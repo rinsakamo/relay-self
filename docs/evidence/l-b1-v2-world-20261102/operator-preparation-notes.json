@@ -1,0 +1,6 @@
+{
+  "preprobe_first_clean_check": "Failed only because offline Maven target/ was untracked; moved generated target to external evidence before HTTP. No HTTP or World consumed by that check.",
+  "cleanup_first_bind": "After model SIGINT/PID disappearance, plain 8080 bind initially EADDRINUSE due TIME_WAIT, no listener; retained tool terminal and script; later independent read-only closure plain bind PASS. No process or trial restarted.",
+  "original_audits_source_head": "88f620776c22ac75a86a691624c73feea0ed28d6",
+  "final_code_is_not_execution_code": true
+}

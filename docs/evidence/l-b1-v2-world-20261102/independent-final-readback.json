@@ -1,0 +1,251 @@
+{
+  "wire": [
+    {
+      "ordinal": 1,
+      "output": {
+        "capability_assessment": "UNKNOWN",
+        "evidence_ids": [
+          "T1_W8"
+        ],
+        "explanation": "Initial observation of displacement over 8 ticks on grass surface.",
+        "falsification_test": "Vary input duration to isolate movement.",
+        "forecast_status": "ABSTAIN_INSUFFICIENT_EVIDENCE",
+        "measurement_target": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+        "model_family": "OTHER_BOUNDED",
+        "next_test": "VARY_INPUT_DURATION",
+        "predicted_wait_total_m": null,
+        "prior_evaluation_basis": "FIRST_UNTESTED",
+        "prior_evaluation_reason": "No prior prediction available to compare against current displacement data.",
+        "prior_hypothesis_relation": "FIRST_HYPOTHESIS",
+        "reconsideration": "KEEP_UNRESOLVED",
+        "referenced_prior_ordinals": [
+          1
+        ]
+      },
+      "request_sha256": "d930287c1fcd39a140ec8fb1df0b00f859f1d2985cf3a8122752b360e9cd7ef0",
+      "response_sha256": "4efd561a704cd4d099e6e81b9824d92cf7b8d077bb2440ecee6468a3d73a38e7",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 248,
+        "prompt_tokens": 3282,
+        "total_tokens": 3530,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "reasoning_tokens": "UNREPORTED",
+      "proposal_sha256": "83b4fe4f46da2bb72bb7ab18e6129137e2ee534868460109ae12c6fe6a679482"
+    },
+    {
+      "ordinal": 2,
+      "output": {
+        "capability_assessment": "UNKNOWN",
+        "evidence_ids": [
+          "T1_W8",
+          "T2_W8"
+        ],
+        "explanation": "Observation of displacement over 8 ticks on grass surface.",
+        "falsification_test": "Vary input duration to isolate movement.",
+        "forecast_status": "ABSTAIN_INSUFFICIENT_EVIDENCE",
+        "measurement_target": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+        "model_family": "OTHER_BOUNDED",
+        "next_test": "VARY_INPUT_DURATION",
+        "predicted_wait_total_m": null,
+        "prior_evaluation_basis": "QUALITATIVE_ONLY",
+        "prior_evaluation_reason": "H1 lacked a numeric forecast; comparison is based on qualitative observation of displacement.",
+        "prior_hypothesis_relation": "KEEP_PRIOR",
+        "reconsideration": "KEEP_UNRESOLVED",
+        "referenced_prior_ordinals": [
+          1,
+          2
+        ]
+      },
+      "request_sha256": "ab542a5bc12a85e1c246052acd4c2e825cf7612c14ed59ecac77e6c1bd8faabe",
+      "response_sha256": "b1a6905c435245df271f88f32fcaaffea5c94b3528ad5c56ad6269ec64feab87",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 262,
+        "prompt_tokens": 5432,
+        "total_tokens": 5694,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "reasoning_tokens": "UNREPORTED",
+      "proposal_sha256": "8633cf87626e28720abe69b28844e9e71b476df1edc75b3d953f052691881013"
+    }
+  ],
+  "feedback": {
+    "comparator_scope": "PAPER_CHEAP_NEXT_TICK_MAE_M_IS_DIFFERENT_TARGET; NOT_COMPARABLE_TO_WAIT8_TOTAL_ERROR",
+    "model_revised_and_admitted": false,
+    "previous_explanation": "Initial observation of displacement over 8 ticks on grass surface.",
+    "previous_falsification_test": "Vary input duration to isolate movement.",
+    "previous_model_family": "OTHER_BOUNDED",
+    "previous_next_test_unapproved": "VARY_INPUT_DURATION",
+    "previous_prediction_m": null,
+    "previous_proposal_sha256": "83b4fe4f46da2bb72bb7ab18e6129137e2ee534868460109ae12c6fe6a679482",
+    "previous_reconsideration": "KEEP_UNRESOLVED",
+    "previous_source_action_id": "s49-native-move-40",
+    "previous_source_prefix_sha256": "6d567019a7c63f9864dab7c1bab790046cb8648c6ca343521c738aab5f29a9e2",
+    "previous_source_trial_ordinal": 1,
+    "prior_prediction_abs_error_m": null,
+    "source_is_original_Paper_but_postrun_unqualified": true,
+    "source_session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+    "source_world_uuid": "bb847b68-7a7b-4a93-814a-43aaf1cbe382",
+    "status": "PREVIOUS_HYPOTHESIS_NO_NUMERIC_FORECAST",
+    "target_action_id": "s49-native-move-72",
+    "target_kind": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+    "target_observed_m": 0.06424660150896089,
+    "target_prefix_sha256": "a6ec9b7ef4c5b94412720285e03ee63fc58ebbf3cc0f59c59676af179cce409f",
+    "target_trial_ordinal": 2
+  },
+  "wait8_totals_m": [
+    0.064246601508961,
+    0.06424660150896089,
+    0.06424660150896111
+  ],
+  "typed_s16": [
+    {
+      "action_id": "s49-native-move-40",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:50:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-40:after",
+      "native_seq": 50,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "source_status": "executed"
+    },
+    {
+      "action_id": "s49-native-move-72",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:81:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-72:after",
+      "native_seq": 81,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "source_status": "executed"
+    },
+    {
+      "action_id": "s49-native-move-105",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:63584a86-41b4-44a0-8048-8b9b71fb382f:116:s15:63584a86-41b4-44a0-8048-8b9b71fb382f:s49-native-move-105:after",
+      "native_seq": 116,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "63584a86-41b4-44a0-8048-8b9b71fb382f",
+      "source_status": "executed"
+    }
+  ],
+  "paper_sha256": "e0cf1aa0ed6b0a1e3671dddabb47071aec64efa932ce477c3b9d988ea26a94bb",
+  "native": {
+    "seq_range": [
+      0,
+      123
+    ],
+    "frame_count": 124,
+    "sha256": "b1d75b520f46e84e27c4ed96b739abbcdfa81499417d6cd8adfc2bc37a9f9ffb",
+    "shutdown_ack": 1
+  },
+  "world_cleanup": [
+    {
+      "identity": {
+        "pid": 141376,
+        "ppid": 141372,
+        "start_ticks": 16954680,
+        "state": "S",
+        "argv": [
+          "java",
+          "-Xms512M",
+          "-Xmx1536M",
+          "-jar",
+          "/tmp/relay-self-s49-rfyg0yhf/minecraft.jar",
+          "nogui"
+        ],
+        "cwd": "/tmp/relay-self-s49-rfyg0yhf",
+        "exe": "/home/rinsa/work/s50-p1-flat-native-evidence-20261017/jdk21/runtime/bin/java"
+      },
+      "owned_pid_gone": true,
+      "cwd_removed": true
+    },
+    {
+      "identity": {
+        "pid": 141504,
+        "ppid": 141372,
+        "start_ticks": 16956917,
+        "state": "R",
+        "argv": [
+          "node",
+          "/home/rinsa/work/l-b1-v2-validation-20261102/adapters/mineflayer/bridge.mjs",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "25565",
+          "--username",
+          "RelaySelf",
+          "--version",
+          "1.21.8"
+        ],
+        "cwd": "/home/rinsa/work/l-b1-v2-validation-20261102",
+        "exe": "/home/rinsa/.nvm/versions/node/v22.22.2/bin/node"
+      },
+      "owned_pid_gone": true,
+      "cwd_removed": false
+    }
+  ],
+  "port25565": "BIND_PASS",
+  "mandatory_audits": {
+    "g3": {
+      "returncode": 0,
+      "argv": [
+        "/home/rinsa/relay-lm-v1/.venv/bin/python",
+        "-B",
+        "-m",
+        "tools.mp11_g3_paper_one_world_audit",
+        "--report",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/report.json",
+        "--original-paper",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/paper-stdout-original.log.raw",
+        "--output",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/g3-independent.json",
+        "--expected-live-l2-calls",
+        "2"
+      ],
+      "status": "PASS"
+    },
+    "live-prefix": {
+      "returncode": 0,
+      "argv": [
+        "/home/rinsa/relay-lm-v1/.venv/bin/python",
+        "-B",
+        "-m",
+        "tools.l_mp11_live_paper_postrun_audit",
+        "--report",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/report.json",
+        "--original-paper",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/paper-stdout-original.log.raw",
+        "--output",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world/live-prefix-independent.json"
+      ],
+      "status": "PASS"
+    },
+    "feedback": {
+      "returncode": 0,
+      "argv": [
+        "/home/rinsa/relay-lm-v1/.venv/bin/python",
+        "-B",
+        "-c",
+        "import json,sys;from pathlib import Path;from tools.l_mp11_feedback_original_audit import audit_feedback_originals;r=Path(sys.argv[1]);out=audit_feedback_originals(json.loads((r/'report.json').read_text()),(r/'paper-stdout-original.log.raw').read_bytes());(r/'feedback-independent.json').write_text(json.dumps(out,indent=2));print(json.dumps(out))",
+        "/home/rinsa/work/l-b1-v2-evidence-20261102/world"
+      ],
+      "status": "PASS"
+    }
+  },
+  "scope": {
+    "experiments_selected_and_executed_by_l2": 0,
+    "new_action_issuers": 0,
+    "learning_admissions": 0,
+    "l0_promotions": 0
+  },
+  "formal_source_status": "PASS",
+  "semantic_judgment": "SEPARATE_MANUAL_REVIEW_REQUIRED"
+}
