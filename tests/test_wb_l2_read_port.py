@@ -3,6 +3,10 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
+from relay_self.wb_l2_attention_handoff import (
+    project_wb_l1_attention_shadow,
+    project_wb_past_review_handoff,
+)
 from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
 
 BASE = {
@@ -81,3 +85,68 @@ def test_historical_question_is_not_verified_prediction_or_automatic_learning():
     assert result["origin"] == "L2_GENERATED_UNCERTAINTY_NOT_WORLD_FACT"
     assert result["authority"] == "READ_ONLY_NO_ACTION_MEMORY_LEARNING_HABIT"
     assert result["current_uncertainty"] is None
+
+
+def test_current_l2_question_is_an_existing_att_selected_l1_shadow_only():
+    read = project_wb_l2_uncertainty(**BASE)
+    attention = project_wb_l1_attention_shadow(read)
+    assert attention.state == "ATT_SELECTED_READ_ONLY"
+    assert attention.selected_candidate_ids == ("wb-l2-question",)
+    assert attention.question == "Is the observed motion unexpected?"
+    assert attention.source_world_seq == 21
+    assert attention.source_attested is False
+    assert attention.authority == "ATT_SHADOW_NO_L1_POLICY_OR_ACTION"
+    assert project_wb_past_review_handoff(
+        read, later_source_ref="present:source-session:49:real-native-id",
+    ).state == "UNAVAILABLE"
+    with pytest.raises(FrozenInstanceError):
+        attention.state = "SELECTED_L1_POLICY"
+
+
+def test_expired_l2_question_goes_to_unverified_later_source_review_only():
+    read = project_wb_l2_uncertainty(**{**BASE, "latest_world_seq": 49})
+    assert project_wb_l1_attention_shadow(read).state == "UNAVAILABLE"
+    review = project_wb_past_review_handoff(
+        read,
+        later_source_ref="present:source-session:49:s49-actual:source-session:event-48",
+    )
+    assert review.state == "PENDING_INDEPENDENT_OUTCOME"
+    assert review.origin_world_seq == 21
+    assert review.later_world_seq == 49
+    assert review.origin_source_ref == BASE["source_ref"]
+    assert review.question == "Is the observed motion unexpected?"
+    assert review.outcome_verified is False
+    assert review.learning_authorized is False
+    assert review.authority == "READ_ONLY_REVIEW_NOT_MEMORY_OR_S10"
+    with pytest.raises(FrozenInstanceError):
+        review.learning_authorized = True
+
+
+@pytest.mark.parametrize("later_ref", [
+    None,
+    "present:foreign:49:s49-actual:foreign:event-48",
+    "present:source-session:21:s49-actual:source-session:event-20",
+    "present:source-session:50:s49-actual:source-session:event-49",
+    "present:source-session:49",
+    "",
+])
+def test_past_question_requires_same_session_later_native_source_ref(later_ref):
+    read = project_wb_l2_uncertainty(**{**BASE, "latest_world_seq": 49})
+    handoff = project_wb_past_review_handoff(read, later_source_ref=later_ref)
+    assert handoff.state == "UNAVAILABLE"
+    assert handoff.question is None
+    assert handoff.outcome_verified is False
+
+
+@pytest.mark.parametrize("overrides", [
+    {"owner_admitted": False},
+    {"accepted_text": '{"uncertainty":"x","action":"MOVE_AWAY"}'},
+    {"source_ref": "present:other:21:s49-actual:other:event-20"},
+    {"source_callback_failed": True},
+])
+def test_bad_owner_or_json_never_reaches_attention_or_review(overrides):
+    read = project_wb_l2_uncertainty(**{**BASE, **overrides})
+    assert project_wb_l1_attention_shadow(read).state == "UNAVAILABLE"
+    assert project_wb_past_review_handoff(
+        read, later_source_ref="present:source-session:49:native-after",
+    ).state == "UNAVAILABLE"
