@@ -29,7 +29,7 @@ def pinned_owners(monkeypatch):
         "S0_PINNED_M_SOURCE",
     )
     wb = _load_pinned(
-        monkeypatch, "relay_self.self_cognition_slice", "S0_PINNED_WB_SOURCE",
+        monkeypatch, "relay_self.self_cognition_slice", "S1_PINNED_WB_SOURCE",
     )
     return m, wb
 
