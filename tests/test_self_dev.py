@@ -425,8 +425,10 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
             "source_pair_trace": [
                 {"event_seq": 7, "probe_seq": 8},
                 {"event_seq": 18, "probe_seq": 19},
-                {"event_seq": 46, "probe_seq": 47},
-            ],
+            ] + (
+                [{"event_seq": 46, "probe_seq": 47}]
+                if state in {"advanced", "mismatched_sequence"} else []
+            ),
         }))
         source = "present:s-native-j:19:s49-actual:s-native-j:event-18"
         l2_text = (
@@ -452,6 +454,9 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
                 else "ACCEPTED_READ_ONLY_SAME_PRESENT"
             ),
             "text_current": state != "advanced",
+            "latest_world_seq": (
+                47 if state in {"advanced", "mismatched_sequence"} else 19
+            ),
             "text_source_seq": 47 if state == "mismatched_sequence" else 19,
             "text_observation_only": l2_text,
             "owner_events": ["NEW_REQUEST_STARTED", "BACKEND_COMPLETION_OBSERVED"],
@@ -495,3 +500,24 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
     assert admission["semantic_json_accepted"] is (
         state in {"current", "advanced"}
     )
+    read = receipt["dev_wb_l2_uncertainty_read"]
+    assert read["state"] == {
+        "current": "CURRENT_EPOCH_READ_ONLY",
+        "advanced": "PAST_EPOCH_REVIEW_ONLY",
+        "foreign_source": "UNAVAILABLE",
+        "invalid_json": "UNAVAILABLE",
+        "mismatched_sequence": "UNAVAILABLE",
+    }[state]
+    if state == "current":
+        assert read["current_uncertainty"] == "Check current observed target."
+        assert read["past_review_candidate"] is None
+    elif state == "advanced":
+        assert read["current_uncertainty"] is None
+        assert read["past_review_candidate"] == "Check current observed target."
+        assert read["source_world_seq"] == 19
+        assert read["latest_world_seq"] == 47
+    else:
+        assert read["current_uncertainty"] is None
+        assert read["past_review_candidate"] is None
+    assert read["authority"] == "READ_ONLY_NO_ACTION_MEMORY_LEARNING_HABIT"
+    assert read["source_attested"] is False
