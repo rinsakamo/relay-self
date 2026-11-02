@@ -988,8 +988,20 @@ def test_structured_wb_host_order_acceptance_before_or_after_native_advance(adva
             await asyncio.wait_for(observer._poll_task, 2)
             if advance:
                 await observer.observe(scoped_world_probe(47))
+            live_view = observer.read_wb_l2_uncertainty()
+            assert live_view.state == (
+                "PAST_EPOCH_REVIEW_ONLY" if advance else "CURRENT_EPOCH_READ_ONLY"
+            )
+            assert live_view.current_uncertainty == (
+                None if advance else "Check whether the current target is visible."
+            )
+            assert live_view.past_review_candidate == (
+                "Check whether the current target is visible." if advance else None
+            )
             row = await observer.close()
-            host = row["wb_structured_acceptance_host_order"]
+            assert row["wb_l2_readonly_at_close"] == live_view.to_mapping()
+            assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
+            host = row["wb_structured_acceptance_host_order"
             assert host == {
                 "source_world_seq": 19,
                 "latest_native_seq_at_acceptance": 19,
@@ -1027,8 +1039,10 @@ def test_structured_wb_no_host_acceptance_from_http_failure():
             assert await server.next_post() == 0
             server.release[0].set()
             await asyncio.wait_for(observer._poll_task, 2)
+            assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
             row = await observer.close()
             assert row["wb_structured_acceptance_host_order"] is None
+            assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
             assert row["text_current"] is False
             assert row["status"] == "UNCONFIRMED"
             assert row["authorized_actions"] == row["learning_updates"] == 0
@@ -1067,6 +1081,7 @@ def test_wb_optional_callback_failure_cannot_veto_original_s49_l0(
     row = json.loads((tmp_path / "live_l2.jsonl").read_text().strip())
     assert row["status"] == "SOURCE_CALLBACK_UNCONFIRMED"
     assert row["source_callback_failure"] == "RuntimeError"
+    assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
     assert row["wb_structured_acceptance_host_order"] is None
     assert row["model_attempts"] == row["authorized_actions"] == 0
     assert row["learning_updates"] == 0
