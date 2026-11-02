@@ -31,8 +31,19 @@ from tools.l_mp11_gemma_structured_preflight import synthetic_test_body
 
 
 def v2_reply(req, *, abstain=False, bad=None):
-    answer = id_reply(req)
     n = len(json.loads(req.context[1].value_json))
+    answer = id_reply(req) if n == 1 else {
+        "referenced_prior_ordinals": [1, 2],
+        "reconsideration": "QUESTION_APPLICABILITY",
+        "model_family": "PHASE_DEPENDENT",
+        "next_test": "CHECK_PAPER_CALLBACK_PHASE",
+        "explanation": "Original total displacement in meters was observed.",
+        "falsification_test": "Compare a later independent physical movement.",
+        "predicted_wait_total_m": None,
+        "capability_assessment": "CONDITIONAL_HYPOTHESIS",
+        "prior_hypothesis_relation": "ABSTAIN_ON_PRIOR",
+        "evidence_ids": ["T1_W8", "T2_W8"],
+    }
     answer.update({
         "measurement_target": TARGET,
         "forecast_status": (
