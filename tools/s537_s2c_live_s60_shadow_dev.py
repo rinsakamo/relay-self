@@ -30,6 +30,7 @@ from tools.s537_s1_live_wb_m_dev import (
     run_s1_owner_dev,
 )
 from tools.s537_s2b_original_owner_witness_dev import S2BOwnerWitnessObserver
+from tools.s537_s2d_backend_identity import verify_local_backend
 
 
 class S2CAsyncObserver(S2BOwnerWitnessObserver):
@@ -200,6 +201,11 @@ def main() -> int:
     parser.add_argument("--s2c-report", type=Path, required=True)
     parser.add_argument("--model-alias", required=True)
     parser.add_argument("--model-port", type=int, required=True)
+    parser.add_argument("--backend-pid", type=int, required=True)
+    parser.add_argument("--binary-path", type=Path, required=True)
+    parser.add_argument("--gguf-path", type=Path, required=True)
+    parser.add_argument("--binary-sha256", required=True)
+    parser.add_argument("--gguf-sha256", required=True)
     parser.add_argument("--max-tokens", type=int, default=256)
     parser.add_argument("--timeout-s", type=float, default=45.0)
     parser.add_argument("--live-world-dev", action="store_true")
@@ -236,6 +242,11 @@ def main() -> int:
         )
         if not 0 < args.timeout_s <= 60 or args.max_tokens > 256:
             raise ValueError("model budget out of bounds")
+        backend_identity = verify_local_backend(
+            pid=args.backend_pid, binary=args.binary_path, gguf=args.gguf_path,
+            binary_sha256=args.binary_sha256, gguf_sha256=args.gguf_sha256,
+            alias=args.model_alias, port=args.model_port,
+        )
         _original_owner_module(
             root=args.m_owner_dir, ref=_M_PIN,
             relative="experiments/metabolism_s49_owner_admission.py",
