@@ -35,7 +35,6 @@ from tools.s537_s2b_original_owner_witness_dev import (
 )
 
 
-
 @pytest.fixture
 def pinned_owners(monkeypatch):
     m = _load_pinned(
