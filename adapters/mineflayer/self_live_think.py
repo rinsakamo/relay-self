@@ -43,6 +43,7 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
 from relay_self.self_body import compose_self_body_view
 from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
+from relay_self.wb_l2_read_port import WBL2UncertaintyRead, project_wb_l2_uncertainty
 from relay_self.self_world import (
     SelfWorldView,
     WorldForecast,
@@ -128,6 +129,38 @@ class LiveL2Observer:
         self._accepted_text = None
         self._accepted_source_seq = None
         self._wb_acceptance_host_order = None
+
+    def read_wb_l2_uncertainty(self) -> WBL2UncertaintyRead:
+        """Read current attention OR past-source question, never a live Action.
+
+        No L1 consumer is installed by this port. Source admission and stale
+        fencing remain owned by original S60/S49. Closed observers yield none.
+        """
+        host = self._wb_acceptance_host_order
+        completed = self._owner is not None and any(
+            r.event == "BACKEND_COMPLETION_OBSERVED" for r in self._owner.receipts
+        )
+        admitted = (
+            self.structured_json_off and self.wb_cognition_slice
+            and not self._closed and self._source_callback_failure is None
+            and isinstance(host, dict)
+            and host.get("observer_closed_at_acceptance") is False
+            and host.get("owner_completion_observed_at_acceptance") is True
+            and type(host.get("source_world_seq")) is int
+            and host["source_world_seq"] == self._accepted_source_seq
+            and host.get("latest_native_seq_at_acceptance") == self._accepted_source_seq
+            and completed
+        )
+        return project_wb_l2_uncertainty(
+            accepted_text=self._accepted_text,
+            session_id=self._session_id,
+            source_world_seq=self._accepted_source_seq,
+            latest_world_seq=self._current_seq,
+            source_ref=self._wb_l2_source,
+            expected_source_ref=self._world_after_source,
+            owner_admitted=bool(admitted),
+            source_callback_failed=self._source_callback_failure is not None,
+        )
 
     @property
     def model_attempts(self) -> int:
@@ -488,6 +521,11 @@ class LiveL2Observer:
         """Stop only local provider resources; never assert actual GPU idleness."""
         if self._closed:
             raise ValueError("live L2 owner already closed")
+        # Last *native-source* snapshot; not a live consumer or qualified truth.
+        wb_l2_readonly_at_close = (
+            self.read_wb_l2_uncertainty().to_mapping()
+            if self.structured_json_off else None
+        )
         self._closed = True
         if self._poll_task is not None and not self._poll_task.done():
             self._poll_task.cancel()
@@ -535,6 +573,7 @@ class LiveL2Observer:
             "self_world_live": self.self_world_live,
             "wb_cognition_slice": self.wb_cognition_slice,
             "structured_json_off": self.structured_json_off,
+            "wb_l2_readonly_at_close": wb_l2_readonly_at_close,
             "wb_structured_acceptance_host_order": (
                 dict(self._wb_acceptance_host_order)
                 if self.structured_json_off and self._wb_acceptance_host_order is not None
