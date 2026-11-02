@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -112,6 +113,48 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _check_schema_output(output: dict, request_body: dict) -> None:
+    """Read back every constraint of our finite ten-field wire schema.
+
+    A server claiming grammar support is not a trusted schema validator.
+    Keep this independent of the HTTP server, including on report readback.
+    """
+    schema = strict_gemma_evidence_schema(request_body)["json_schema"]["schema"]
+    for key, rule in schema["properties"].items():
+        value = output[key]
+        valid = False
+        if key == "predicted_wait_total_m":
+            valid = value is None or (
+                type(value) in (int, float) and math.isfinite(value)
+                and 0 <= value <= 3
+            )
+        elif rule["type"] == "string":
+            valid = type(value) is str and (
+                value in rule["enum"] if "enum" in rule else
+                rule["minLength"] <= len(value) <= rule["maxLength"]
+            )
+        elif rule["type"] == "array":
+            item_type = int if rule["items"]["type"] == "integer" else str
+            valid = (
+                type(value) is list
+                and rule["minItems"] <= len(value) <= rule["maxItems"]
+                and all(type(x) is item_type and x in rule["items"]["enum"]
+                        for x in value)
+                and len(set(value)) == len(value)
+            )
+        if not valid:
+            raise GemmaPreflightRejected(f"Gemma schema constraint failed: {key}")
+
+
+def _unique_object(pairs: list) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise GemmaPreflightRejected("duplicate JSON output key")
+        result[key] = value
+    return result
+
+
 def _check_json_output(response: dict, request_body: dict) -> None:
     enforce_gemma_thinking_off(response)
     try:
@@ -121,11 +164,12 @@ def _check_json_output(response: dict, request_body: dict) -> None:
     if facts.finish_reason != "stop" or not text.strip():
         raise GemmaPreflightRejected("Gemma did not stop with a completed JSON answer")
     try:
-        output = json.loads(text)
+        output = json.loads(text, object_pairs_hook=_unique_object)
     except (ValueError, TypeError) as exc:
         raise GemmaPreflightRejected("Gemma output was not complete JSON") from exc
     if type(output) is not dict or set(output) != set(REQUIRED):
         raise GemmaPreflightRejected("Gemma failed exact ten-field structured output")
+    _check_schema_output(output, request_body)
     if (
         output["prior_hypothesis_relation"] != "FIRST_HYPOTHESIS"
         or output["evidence_ids"] != ["T1_W8"]

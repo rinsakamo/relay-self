@@ -213,3 +213,49 @@ def test_preflight_only_accepts_loopback_not_remote(tmp_path):
     ]:
         with pytest.raises(GemmaPreflightRejected):
             run(endpoint, "model", tmp_path / "unused")
+
+
+@pytest.mark.parametrize("key,value", [
+    ("model_family", "UNSUPPORTED"),
+    ("reconsideration", 1),
+    ("next_test", "ISSUE_ACTION"),
+    ("capability_assessment", "LEARNED"),
+    ("explanation", "too short"),
+    ("falsification_test", "x" * 121),
+    ("predicted_wait_total_m", 4),
+    ("predicted_wait_total_m", True),
+    ("predicted_wait_total_m", float("nan")),
+    ("referenced_prior_ordinals", [True]),
+    ("referenced_prior_ordinals", [1, 1]),
+    ("evidence_ids", ["T1_W8", "T1_W8"]),
+])
+def test_schema_noncompliance_never_opens_world_gate(
+    tmp_path, monkeypatch, key, value,
+):
+    import urllib.request
+
+    response = result()
+    output = json.loads(response["choices"][0]["message"]["content"])
+    output[key] = value
+    response["choices"][0]["message"]["content"] = json.dumps(output)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: io.BytesIO(
+        json.dumps(response).encode(),
+    ))
+    root = tmp_path / "rejected"
+    with pytest.raises(GemmaPreflightRejected):
+        run("http://127.0.0.1:8080/v1/chat/completions", "model", root)
+    assert (root / "llama-response-1.raw.json").exists()
+    assert not (root / "gemma-structured-preflight.json").exists()
+
+
+def test_duplicate_output_keys_rejected_before_world(tmp_path, monkeypatch):
+    import urllib.request
+
+    response = result()
+    message = response["choices"][0]["message"]
+    message["content"] = message["content"][:-1] + ',"model_family":"PHASE_DEPENDENT"}'
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: io.BytesIO(
+        json.dumps(response).encode(),
+    ))
+    with pytest.raises(GemmaPreflightRejected):
+        run("http://127.0.0.1:8080/v1/chat/completions", "model", tmp_path / "probe")
