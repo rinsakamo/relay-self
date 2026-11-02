@@ -8,6 +8,7 @@ V1 historical responses are NEVER translated or auto-upgraded to V2.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
 V2_EXTRA_FIELDS = frozenset({
@@ -114,6 +115,22 @@ def validate_b1_v2(
     ):
         raise B1ContractRejected("missing or invalid B1 V2 typed fields")
 
+    # Targeted lexical contradiction checks, NOT general natural-language
+    # verification. Duration hypotheses and time-varying input *tests* remain
+    # allowed; measured WAIT8 displacement must never be renamed wait time.
+    explanation = raw.get("explanation", "")
+    if type(explanation) is str and re.search(
+        r"\b(?:wait\s+times?|elapsed\s+time|time\s+elapsed)\b",
+        explanation, flags=re.IGNORECASE,
+    ):
+        raise B1ContractRejected("WAIT8 displacement in meters mislabeled as waiting time")
+    if trial_count == 2 and previous_prediction_m is None:
+        combined = f"{explanation} {raw['prior_evaluation_reason']}"
+        if re.search(
+            r"\b(?:prediction\s+error|forecast\s+error|predicted\s+(?:versus|vs\.?|and)\s+actual)\b",
+            combined, flags=re.IGNORECASE,
+        ):
+            raise B1ContractRejected("cannot claim a forecast discrepancy without H1 forecast")
     predicted = raw.get("predicted_wait_total_m")
     if (raw["forecast_status"] == "NUMERIC_ESTIMATE") != (
         type(predicted) in (int, float)
