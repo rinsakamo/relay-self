@@ -29,6 +29,7 @@ class M616OriginalS49CompletedTap:
 
         self.lease = S49MAdmissionLease(enabled=enabled, max_batches=1)
         self.readout: dict[str, object] | None = None
+        self.original_s16_receipts: dict[str, object] | None = None
         self.observed_callbacks = 0
 
     def __call__(self, original_batch: object) -> None:
@@ -38,9 +39,19 @@ class M616OriginalS49CompletedTap:
             bounded_s49_m_admission_row,
         )
 
+        from experiments.metabolism_s49_original_owner_receipts import (
+            bounded_original_s49_owner_receipt_row,
+            observe_original_s49_s16_receipts,
+        )
+
         self.observed_callbacks += 1
         result = self.lease.admit_batch(original_batch)
-        # Deliberately avoid saving original World/Body/Action Python objects.
+        # The second M tap reads the original Action/S16 references without
+        # retaining or serializing their native World/Body source objects.
+        sources = observe_original_s49_s16_receipts(
+            enabled=True, batch=original_batch, original_admission=result,
+        )
+        self.original_s16_receipts = bounded_original_s49_owner_receipt_row(sources)
         self.readout = bounded_s49_m_admission_row(result)
 
 
@@ -70,6 +81,25 @@ async def run_original_s49_with_m_readback(
     except (OSError, UnicodeError, ValueError):
         s_report = {}
     row = tap.readout
+    receipts = tap.original_s16_receipts
+    actual = s_report.get("actual_native_actions")
+    owner_actions = actual if isinstance(actual, list) else []
+    receipt_actions = (
+        receipts.get("actions") if isinstance(receipts, dict) else None
+    )
+    actions_match = (
+        isinstance(receipt_actions, list)
+        and len(owner_actions) == len(receipt_actions)
+        and all(
+            isinstance(original, dict) and isinstance(source, dict)
+            and original.get("action") == source.get("action_id")
+            and original.get("event_seq") == source.get("event_seq")
+            and original.get("probe_seq") == source.get("probe_seq")
+            and original.get("terminal") == "outcome"
+            and original.get("movement_m") == source.get("movement_m")
+            for original, source in zip(owner_actions, receipt_actions)
+        )
+    )
     original_saved = s_report.get("original_completion_readback")
     readback = original_saved if isinstance(original_saved, dict) else {}
     accepted = (
@@ -83,6 +113,18 @@ async def run_original_s49_with_m_readback(
         and readback.get("wait_count") == row.get("wait_count")
         and readback.get("outcome_count") == row.get("outcome_count")
         and tap.observed_callbacks == 1
+        and isinstance(receipts, dict)
+        and receipts.get("status") == "RECORDED"
+        and receipts.get("session_id") == row.get("session_id")
+        and receipts.get("wait_count") == row.get("wait_count")
+        and receipts.get("outcome_count") == row.get("outcome_count")
+        and receipts.get("s42_owner_receipt")
+        == "NOT_SUPPLIED_BY_ORIGINAL_S49_COMPLETION_CALLBACK"
+        and receipts.get("b0_owner_receipt")
+        == "NOT_SUPPLIED_BY_ORIGINAL_S49_COMPLETION_CALLBACK"
+        and receipts.get("l8_owner_receipt")
+        == "NOT_SUPPLIED_BY_ORIGINAL_S49_COMPLETION_CALLBACK"
+        and actions_match
     )
     return code, {
         "schema": "M_S49_LIVE_ORIGINAL_BATCH_DEV_V1",
@@ -92,6 +134,7 @@ async def run_original_s49_with_m_readback(
         "s49_owner_report_status": s_report.get("status"),
         "original_callbacks_observed": tap.observed_callbacks,
         "m_admission": row,
+        "m_original_s16_receipts": receipts,
         "source_attested": False,
         "action_authority": False,
         "new_native_reads": 0,
