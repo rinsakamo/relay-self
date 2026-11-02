@@ -284,3 +284,98 @@ def test_legacy_and_v2_requests_cannot_cross_versions():
     assert "B1 read-only prediction contract V2" not in req_v1.instruction
     with pytest.raises(LiveL2Rejected):
         request_for_live_l2(ledger, evidence_ids=False, b1_contract_v2=True)
+
+
+
+def test_v2_strict_synthetic_preflight_only_accepts_matching_v2_raw(tmp_path, monkeypatch):
+    """A previously successful v1 probe cannot unlock the new v2 World."""
+    import io
+    import urllib.request
+
+    from test_l_mp11_gemma_wire_contract import result
+    from tools.l_mp11_gemma_structured_preflight import (
+        GemmaPreflightRejected,
+        run,
+        verify_preflight_report,
+    )
+
+    body = result()
+    message = body["choices"][0]["message"]
+    response = json.loads(message["content"])
+    response.update({
+        "measurement_target": TARGET,
+        "forecast_status": "NUMERIC_ESTIMATE",
+        "prior_evaluation_basis": "FIRST_UNTESTED",
+        "prior_evaluation_reason": (
+            "Synthetic first trial cannot yet score a forecast against another trial."
+        ),
+    })
+    message["content"] = json.dumps(response, separators=(",", ":"))
+    monkeypatch.setattr(
+        urllib.request, "urlopen",
+        lambda *a, **kwargs: io.BytesIO(json.dumps(body).encode("utf-8")),
+    )
+    endpoint = "http://127.0.0.1:8080/v1/chat/completions"
+    root = tmp_path / "probe"
+    receipt = run(endpoint, "fixture-alias", root, b1_contract_v2=True)
+    assert receipt["b1_contract_v2"] is True
+    report_path = root / "gemma-structured-preflight.json"
+    verified = verify_preflight_report(
+        report_path, endpoint=endpoint, model="fixture-alias",
+        b1_contract_v2=True,
+    )
+    assert verified == receipt
+    with pytest.raises(GemmaPreflightRejected):
+        verify_preflight_report(report_path, endpoint=endpoint, model="fixture-alias")
+    raw = json.loads((root / "llama-request-1.raw.json").read_text())
+    assert len(raw["response_format"]["json_schema"]["schema"]["required"]) == 14
+    assert raw["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_independent_feedback_reconstructs_v2_two_proposals_from_original():
+    from test_l_mp11_live_previous_action import ACTIONS, MARKERS, snapshot
+    from tools.l_mp11_feedback_original_audit import audit_feedback_originals
+
+    ledger = new_ledger()
+    gate = BoundedLiveL2(
+        v2_engine(), require_real_llama=False,
+        evidence_ids=True, b1_contract_v2=True,
+    )
+    # The independent auditor requires real provider labeling for a
+    # parser-path fixture, but that label is NOT proof of genuine model weights.
+    def labeled_provider(req, *, mode):
+        assert mode is CognitionMode.OPEN
+        return ProviderExpression(
+            text=json.dumps(v2_reply(req)),
+            provenance=Provenance("llama.cpp", "synthetic-not-actual-weights"),
+        )
+    gate.engine = RelayEngine(labeled_provider)
+    windows = []
+    for i in (1, 2):
+        receipt = accept(ledger, i)
+        asyncio.run(gate.propose_after(ledger))
+        windows.append({"paper_prefix_length": receipt.paper_prefix_length})
+    report = {
+        "session_id": ledger.session_id,
+        "mp11_g3": {
+            "paper_world_uuid": ledger.world_uuid,
+            "subject_uuid": ledger.subject_uuid,
+            "paper_markers": MARKERS,
+        },
+        "mp11_g2": {"typed_s16_actions": [
+            {"action_id": action, "native_seq": i * 25}
+            for i, action in enumerate(ACTIONS, 1)
+        ]},
+        "l_mp11_live_prefix": {"observations": windows},
+        "l_mp11_live_l2": gate.public_report(),
+    }
+    raw = snapshot(3)
+    audited = audit_feedback_originals(report, raw)
+    assert audited["b1_v2_typed_evaluation_reconstructed"] is True
+    assert audited["h1_to_feedback_to_h2_sha_verified"] is True
+    assert audited["causal_interpretation_attested"] is False
+    report["l_mp11_live_l2"]["proposals"][1]["prior_evaluation_basis"] = (
+        "QUALITATIVE_ONLY"
+    )
+    with pytest.raises(ValueError):
+        audit_feedback_originals(report, raw)
