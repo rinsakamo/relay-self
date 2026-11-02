@@ -1,0 +1,37 @@
+name: L Zombie Z1 real-world runner preflight source-only
+on:
+  push:
+    branches: [dev/l-zombie-z1-one-paper-world-20261102]
+  pull_request:
+    paths:
+      - 'tools/l_zombie_z1_one_world_dev.py'
+      - 'tests/test_l_zombie_z1_one_world_dev.py'
+      - '.github/workflows/l-zombie-z1-one-world-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  one-world-launcher-offline-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Source-only preflight and existing source/contract regressions
+        run: |
+          set -euo pipefail
+          ruff check tools/l_zombie_z1_one_world_dev.py tests/test_l_zombie_z1_one_world_dev.py
+          python -m compileall -q tools/l_zombie_z1_one_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_zombie_z1_one_world_dev.py \
+            tests/test_l_zombie_paper_original_audit.py \
+            tests/test_l_zombie_20tick_shadow.py \
+            tests/test_l_mp11_b1_forecast_contract.py \
+            tests/test_self_world_observation_only_real_dev.py
+          python tools/check_repository.py
+      - run: echo 'ONE_WORLD_LAUNCHER_SOURCE_ONLY / ACTUAL_WORLD_0 / PAPER_PID_NOT_OBSERVED / NOT_B1 / NO_GEMMA / QUALIFICATION_NO_GO'
