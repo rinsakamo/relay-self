@@ -370,6 +370,7 @@ def test_independent_feedback_reconstructs_v2_two_proposals_from_original():
         "l_mp11_live_l2": gate.public_report(),
     }
     raw = snapshot(3)
+    report = json.loads(json.dumps(report))
     audited = audit_feedback_originals(report, raw)
     assert audited["b1_v2_typed_evaluation_reconstructed"] is True
     assert audited["h1_to_feedback_to_h2_sha_verified"] is True
