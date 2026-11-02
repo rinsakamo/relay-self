@@ -12,12 +12,12 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
-from adapters.mineflayer.execution import WorldConsequenceStatus
-from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from relay_self.action import ActionState
 from relay_self.action_outcome import ActionOutcomeDisposition
