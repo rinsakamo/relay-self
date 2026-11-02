@@ -24,6 +24,7 @@ def prepped(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "_git_head", lambda p: HEAD)
     monkeypatch.setattr(gate, "verify_preflight_report", lambda *a, **kw: {
         "status": "REAL_GEMMA_WIRE_PROBE_PASS_UNATTESTED_WEIGHTS",
+        "execution_head": HEAD,
     })
     return root, repo, report
 
@@ -280,3 +281,31 @@ def test_wrapper_interrupt_signals_only_its_new_process_group(
     assert '"wrapper_owned_process_group_terminated": true' in status
     assert '"world_qualified": false' in status
     assert (root / gate.STARTED).exists()
+
+
+def test_probe_from_other_execution_head_rejected(tmp_path, monkeypatch):
+    root, repo, report = prepped(tmp_path, monkeypatch)
+    monkeypatch.setattr(gate, "verify_preflight_report", lambda *a, **kw: {
+        "status": "REAL_GEMMA_WIRE_PROBE_PASS_UNATTESTED_WEIGHTS",
+        "execution_head": "b" * 40,
+    })
+    with pytest.raises(gate.NextWorldGateRejected, match="probe execution HEAD"):
+        gate.prepare_trial(root, repo, report, expected_head=HEAD,
+                           endpoint=ENDPOINT, model=MODEL)
+    assert not (root / "world").exists()
+
+
+@pytest.mark.parametrize("action", ["prepare", "run"])
+def test_documented_cli_options_after_action(tmp_path, monkeypatch, action):
+    import sys
+    calls = []
+    monkeypatch.setattr(sys, "argv", ["gate", action, "--evidence-root", str(tmp_path),
+                        "--repo", str(tmp_path), "--expected-head", HEAD] + (
+        ["--preflight-report", str(tmp_path / "probe"), "--endpoint", ENDPOINT,
+         "--model", MODEL] if action == "prepare" else ["--", "/python", "-B", "-m", "owner"]))
+    monkeypatch.setattr(gate, "prepare_trial", lambda *a, **kw: calls.append(kw) or {})
+    monkeypatch.setattr(gate, "run_once", lambda *a, **kw: calls.append(kw) or {})
+    assert gate.main() == 0
+    assert calls[0]["expected_head"] == HEAD
+    if action == "run":
+        assert calls[0]["command"] == ["/python", "-B", "-m", "owner"]

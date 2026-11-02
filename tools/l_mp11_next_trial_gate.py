@@ -12,6 +12,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -88,6 +89,8 @@ def prepare_trial(
     verified = verify_preflight_report(
         preflight_report, endpoint=endpoint, model=model,
     )
+    if verified.get("execution_head") != expected_head:
+        raise NextWorldGateRejected("probe execution HEAD differs from this trial")
     world = evidence_root / "world"
     capture = world / "native-stdout"
     _safe_directory(world, must_exist=False)
@@ -204,9 +207,11 @@ def run_once(
     probe = Path(ready["preflight_report"])
     if probe.is_symlink():
         raise NextWorldGateRejected("preflight symlink changed after preparation")
-    verify_preflight_report(
+    verified = verify_preflight_report(
         probe, endpoint=ready["endpoint"], model=ready["model"],
     )
+    if verified.get("execution_head") != expected_head:
+        raise NextWorldGateRejected("probe execution HEAD differs from this trial")
     if sha256(probe) != ready["preflight_sha256"]:
         raise NextWorldGateRejected("preflight bytes changed since preparation")
     if not command or command[0].startswith("-") or any(
@@ -329,8 +334,10 @@ def main() -> int:
     parser.add_argument("--endpoint")
     parser.add_argument("--model")
     parser.add_argument("--sample-seconds", type=float, default=0.25)
-    parser.add_argument("original_runner", nargs=argparse.REMAINDER)
-    args = parser.parse_args()
+    argv = sys.argv[1:]
+    separator = argv.index("--") if "--" in argv else len(argv)
+    args = parser.parse_args(argv[:separator])
+    args.original_runner = argv[separator + 1:]
     if args.action == "prepare":
         if args.original_runner or not args.preflight_report or not args.endpoint or not args.model:
             parser.error("prepare requires preflight original, endpoint, model, no runner")
