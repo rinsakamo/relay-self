@@ -1,0 +1,31 @@
+{
+  "python": "Python 3.12.3\n",
+  "node": "v22.22.2\n",
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n",
+  "wsl": "Linux RIN-DESKTOP 6.18.33.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n",
+  "os": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "m": {
+    "head": "9afce6bde1079f8a42aaf3c4e515ef35fc6b0396",
+    "status": "",
+    "path": "/home/rinsa/work/s1-m-owner-20261102"
+  },
+  "wb": {
+    "head": "944db858186a4d9449946b6acdcb8c8e5998e071",
+    "status": "",
+    "path": "/home/rinsa/work/s1-wb-owner-20261102"
+  },
+  "changed_from_s49": [
+    ".github/workflows/s49-postowner-completion-fast.yml",
+    "adapters/mineflayer/s49_owner_cognition_join.py",
+    "adapters/mineflayer/s537_s1_original_wb_m.py",
+    "docs/s537-s0-original-s49-cognition-join-20261102.md",
+    "docs/s537-s1-original-wb-m-live-join-20261102.md",
+    "tests/test_s49_owner_cognition_crosslane.py",
+    "tests/test_s49_owner_cognition_join.py",
+    "tests/test_s537_s1_live_wb_m_dev.py",
+    "tools/s537_s1_live_wb_m_dev.py"
+  ],
+  "node_options_absent": true,
+  "mineflayer": "4.39.0",
+  "s49_owner_unchanged": true
+}

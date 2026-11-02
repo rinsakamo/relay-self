@@ -1,0 +1,118 @@
+{
+  "action_authority": false,
+  "completed_callbacks": 1,
+  "energy_debits": 0,
+  "learning_updates": 0,
+  "new_action_issues": 0,
+  "new_model_calls": 0,
+  "new_native_reads": 0,
+  "qualification": "NO_GO",
+  "reason": "same_original_session_wb_m_join",
+  "s49_original_completion_observer": "CALLBACK_RETURNED",
+  "s49_session_id": "d02497ea-f6c5-455f-add1-5c37aafa2e4d",
+  "s49_status": "PASS",
+  "schema": "S537_S1_S49_WB_M_LIVE_DEV_V1",
+  "science": "NOT_RUN",
+  "source_attested": false,
+  "status": "RECORDED",
+  "typed_join": {
+    "action_authority": false,
+    "energy_debits": 0,
+    "learning_updates": 0,
+    "m_status": "RECORDED",
+    "model_usage": "UNKNOWN_NO_METER",
+    "new_action_issues": 0,
+    "new_model_calls": 0,
+    "new_native_reads": 0,
+    "reason": "same_original_S49_postowner_and_WB_predecision_sources",
+    "s16_to_next_epoch": [
+      {
+        "action_id": "s49-native-move-19",
+        "next_probe_seq": 48,
+        "s16_after_seq": 28
+      }
+    ],
+    "s49": {
+      "action_authority": false,
+      "b0_owner": "NOT_SUPPLIED",
+      "decision_count": 3,
+      "decision_source_ids": [
+        {
+          "action_id": null,
+          "event_seq": 8,
+          "probe_seq": 9,
+          "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-8"
+        },
+        {
+          "action_id": "s49-native-move-19",
+          "event_seq": 19,
+          "probe_seq": 20,
+          "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-19"
+        },
+        {
+          "action_id": "s49-native-move-47",
+          "event_seq": 47,
+          "probe_seq": 48,
+          "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-47"
+        }
+      ],
+      "energy_debits": 0,
+      "l8_owner": "NOT_SUPPLIED",
+      "learning_updates": 0,
+      "m_status": "ORIGINAL_PYTHON_BATCH_RECORDED",
+      "model_usage": "UNKNOWN_NOT_METERED",
+      "new_action_issues": 0,
+      "new_model_calls": 0,
+      "new_native_reads": 0,
+      "reason": "read_only_original_s49_postowner",
+      "s42_owner": "NOT_SUPPLIED",
+      "schema": "S49_S_COGNITION_JOIN_DEV_V1",
+      "session_id": "d02497ea-f6c5-455f-add1-5c37aafa2e4d",
+      "source_attested": false,
+      "status": "RECORDED",
+      "wb_source_probe_seq": null,
+      "wb_status": "NOT_SUPPLIED"
+    },
+    "schema": "S537_S1_WB_M_ORIGINAL_SOURCE_DEV_V1",
+    "session_id": "d02497ea-f6c5-455f-add1-5c37aafa2e4d",
+    "source_attested": false,
+    "status": "RECORDED",
+    "wb_rows": [
+      {
+        "body_cues": 4,
+        "body_source_ref": "native-probe:d02497ea-f6c5-455f-add1-5c37aafa2e4d:9:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-8",
+        "body_status": "OBSERVED",
+        "probe_seq": 9,
+        "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-8",
+        "tier": "L1",
+        "world_cues": 1,
+        "world_source_ref": "present:d02497ea-f6c5-455f-add1-5c37aafa2e4d:9:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-8",
+        "world_status": "BOUNDED"
+      },
+      {
+        "body_cues": 4,
+        "body_source_ref": "native-probe:d02497ea-f6c5-455f-add1-5c37aafa2e4d:20:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-19",
+        "body_status": "OBSERVED",
+        "probe_seq": 20,
+        "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-19",
+        "tier": "L1",
+        "world_cues": 1,
+        "world_source_ref": "present:d02497ea-f6c5-455f-add1-5c37aafa2e4d:20:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-19",
+        "world_status": "BOUNDED"
+      },
+      {
+        "body_cues": 4,
+        "body_source_ref": "native-probe:d02497ea-f6c5-455f-add1-5c37aafa2e4d:48:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-47",
+        "body_status": "OBSERVED",
+        "probe_seq": 48,
+        "request_id": "s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-47",
+        "tier": "L1",
+        "world_cues": 2,
+        "world_source_ref": "present:d02497ea-f6c5-455f-add1-5c37aafa2e4d:48:s49-actual:d02497ea-f6c5-455f-add1-5c37aafa2e4d:event-47",
+        "world_status": "BOUNDED"
+      }
+    ],
+    "wb_status": "L1_SOURCE_BOUND_PRESENT_READ_ONLY"
+  },
+  "wb_observer_errors": []
+}
