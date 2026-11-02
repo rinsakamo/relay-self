@@ -1292,8 +1292,20 @@ def _dev_run(args: argparse.Namespace) -> int:
                     and host_order.get("observer_closed_at_acceptance") is False
                     and host_order.get("owner_completion_observed_at_acceptance") is True
                 )
+                # The original S49 source ledger, not a sidecar claim,
+                # determines the latest observed native epoch at World exit.
+                original_latest_seq = max(original_probe_seqs, default=None)
+                latest_source_joined = (
+                    type(original_latest_seq) is int
+                    and type(sidecar.get("latest_world_seq")) is int
+                    and sidecar["latest_world_seq"] == original_latest_seq
+                    and type(host_order.get("source_world_seq")) is int
+                    and sidecar.get("text_current") is (
+                        original_latest_seq == host_order["source_world_seq"]
+                    )
+                ) if isinstance(host_order, dict) else False
                 accepted_host_source = (
-                    qualified_input and actual_source_pair
+                    qualified_input and actual_source_pair and latest_source_joined
                     and sidecar.get("wb_cognition_slice") is True
                     and sidecar.get("structured_json_off") is True
                     and sidecar.get("wb_l2_source_ref") == after_ref
@@ -1309,6 +1321,25 @@ def _dev_run(args: argparse.Namespace) -> int:
                     state = "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND"
                 else:
                     state = "NOT_ACCEPTED_OR_UNQUALIFIED"
+                # Reconstruct the two read-only cognition surfaces from
+                # original S49 source-identity and already-admitted text.
+                # This is NOT an experience commit, policy or L1 consumer.
+                from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
+
+                source_seq = (
+                    host_order.get("source_world_seq")
+                    if isinstance(host_order, dict) else None
+                )
+                receipt["dev_wb_l2_uncertainty_read"] = project_wb_l2_uncertainty(
+                    accepted_text=l2_text,
+                    session_id=native.get("session_id"),
+                    source_world_seq=source_seq,
+                    latest_world_seq=original_latest_seq,
+                    source_ref=sidecar.get("wb_l2_source_ref"),
+                    expected_source_ref=valid_pair_sources.get(source_seq),
+                    owner_admitted=bool(accepted_host_source),
+                    source_callback_failed=sidecar.get("source_callback_failure") is not None,
+                ).to_mapping()
                 receipt["dev_wb_structured_l2"] = {
                     "state": state,
                     "source_world_seq": (
