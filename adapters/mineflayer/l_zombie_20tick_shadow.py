@@ -64,6 +64,7 @@ class ZombieForecast:
 
     identity: tuple[str, str, str, int, int]
     issued_server_tick: int
+    issued_native_seq: int
     target_server_tick: int
     target_kind: str
     predicted_x_m: float | None
@@ -205,6 +206,7 @@ def _freeze(
     details = dict(
         identity=second.identity,
         issued_server_tick=second.server_tick,
+        issued_native_seq=second.native_seq,
         target_server_tick=second.server_tick+HORIZON_TICKS,
         target_kind="ZOMBIE_HORIZONTAL_POSITION_XZ_METERS",
         predicted_x_m=predicted_x_m,
@@ -265,6 +267,7 @@ def review_forecast(
         actual.identity != forecast.identity
         or not actual.complete_coverage
         or actual.server_tick != forecast.target_server_tick
+        or actual.native_seq <= forecast.issued_native_seq
         or actual.source_sha256 in forecast.prior_source_sha256
     ):
         raise ZombieSourceRejected("target zombie replaced, missed or not exact 20 ticks")
