@@ -13,7 +13,10 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from adapters.llama_cpp.relay_engine import _extract_completion
+from adapters.llama_cpp.relay_engine import (
+    LlamaCppProviderProtocolError,
+    _extract_completion,
+)
 from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     GEMMA_MAX_COMPLETION,
     GEMMA_SCHEMA_NAME,
@@ -111,7 +114,10 @@ def _sha(data: bytes) -> str:
 
 def _check_json_output(response: dict, request_body: dict) -> None:
     enforce_gemma_thinking_off(response)
-    text, facts = _extract_completion(response, request_body=request_body)
+    try:
+        text, facts = _extract_completion(response, request_body=request_body)
+    except LlamaCppProviderProtocolError as exc:
+        raise GemmaPreflightRejected("Gemma length/truncated/incomplete response") from exc
     if facts.finish_reason != "stop" or not text.strip():
         raise GemmaPreflightRejected("Gemma did not stop with a completed JSON answer")
     try:
@@ -131,7 +137,7 @@ def _check_json_output(response: dict, request_body: dict) -> None:
 def verify_preflight_report(path: Path, *, endpoint: str, model: str) -> dict:
     """Strictly read the pre-World fixture result AND raw saved request/response."""
     endpoint, model = _loopback(endpoint, model)
-    if type(path) is not Path or path.name != REPORT_FILENAME:
+    if not isinstance(path, Path) or path.name != REPORT_FILENAME:
         raise GemmaPreflightRejected("exact known preflight filename required")
     try:
         report = json.loads(path.read_text(encoding="utf-8"))
@@ -174,7 +180,7 @@ def verify_preflight_report(path: Path, *, endpoint: str, model: str) -> dict:
 def run(endpoint: str, model: str, evidence_root: Path) -> dict:
     """ONE actual local HTTP probe (not an Action; no retries or substitution)."""
     endpoint, model = _loopback(endpoint, model)
-    if type(evidence_root) is not Path:
+    if not isinstance(evidence_root, Path):
         raise GemmaPreflightRejected("explicit NEW proof root required")
     evidence_root.mkdir(mode=0o700, parents=True, exist_ok=False)
     provider = JournaledLiveLlamaProvider(
