@@ -63,8 +63,8 @@ class S2BOriginalOwnerEpochBinder:
                 )
                 or host.session_id != probe.session_id
                 or self._session not in (None, probe.session_id)
-                or self._host not in (None, host)
-                or self._intent not in (None, intent)
+                or (self._host is not None and self._host is not host)
+                or (self._intent is not None and self._intent is not intent)
                 or not isinstance(host.retained, LearningPreferenceState)
                 or type(host.retained.revision) is not int
                 or host.retained.revision < 0
