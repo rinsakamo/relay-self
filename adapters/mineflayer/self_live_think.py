@@ -97,6 +97,7 @@ class LiveL2Observer:
         # Host callback order only; no Paper tick timing or server attestation.
         self._wb_acceptance_host_order: dict[str, object] | None = None
         self._closed = False
+        self._source_callback_failure: str | None = None
         self._source_observations = 0
         self._world_l0_action_owner = "S49_NATIVE_EXISTING"
         self._phase = "NOT_STARTED"
@@ -114,6 +115,19 @@ class LiveL2Observer:
         # WB-only readout of pre-existing S60 receipts. No transport hooks,
         # wall-clock conclusions or extra provider/model/native calls.
         self._wb_source_advance: deque[dict[str, object]] = deque(maxlen=8)
+
+    def note_source_callback_error(self, error: Exception) -> None:
+        """Fail a read-only sidecar closed without vetoing the S49 native issuer.
+
+        The original World path owns exceptions for its own operations; this
+        method handles only exceptions from this optional observer callback.
+        No second probe, retry, logical model completion or STOP ACK is issued.
+        """
+        self._source_callback_failure = type(error).__name__
+        self._phase = "SOURCE_CALLBACK_UNCONFIRMED"
+        self._accepted_text = None
+        self._accepted_source_seq = None
+        self._wb_acceptance_host_order = None
 
     @property
     def model_attempts(self) -> int:
@@ -303,6 +317,8 @@ class LiveL2Observer:
         """Inspect *already issued* native probe; never sends an observe."""
         if self._closed:
             raise ValueError("live L2 observer already closed")
+        if self._source_callback_failure is not None:
+            return  # Already failed closed; do not submit a new L2 request.
         if (
             not isinstance(reading, MineflayerObservation)
             or reading.kind != "probe"
@@ -422,6 +438,8 @@ class LiveL2Observer:
         until = self._started_at + self.timeout_s
         while time.monotonic() < until:
             await asyncio.sleep(0.025)
+            if self._source_callback_failure is not None:
+                return  # A failed native-sidecar callback invalidates L2 admission.
             result = self._owner.tick()
             if result is not None:
                 value = result.value
@@ -460,6 +478,8 @@ class LiveL2Observer:
                 self._phase = "UNCONFIRMED"
                 self._ended_at = time.monotonic()
                 return
+        if self._source_callback_failure is not None:
+            return
         self._owner.tick()
         self._phase = "EXPIRED_OR_BACKEND_UNCONFIRMED"
         self._ended_at = time.monotonic()
@@ -504,6 +524,7 @@ class LiveL2Observer:
             "native_observations_seen": self._source_observations,
             "model_alias_claimed": self.config.model,
             "model_attempts": self._model_attempts,
+            "source_callback_failure": self._source_callback_failure,
             "text_observation_only": self._accepted_text,
             "text_source_seq": self._accepted_source_seq,
             "text_current": (
