@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -44,6 +45,7 @@ from tools.l_zombie_paper_original_audit import (
 PAPER_SHA256 = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 PAPER_SIZE = 52811717
 CONFIRM = "Z1_ONE_PAPER_ZOMBIE_SOURCE_WORLD_DEV_NO_RETRY"
+PURSUIT_CONFIRM = "Z1B_ONE_PROTECTED_SURVIVAL_ZOMBIE_WORLD_DEV_NO_RETRY"
 MARKER = "z1-source-1"
 SESSION = "z1-client-1"
 START = "L_ZOMBIE_ARM_V1 "
@@ -95,10 +97,13 @@ def preflight(
     *, confirm: str, repo: Path, expected_head: str,
     paper_jar: Path, plugin_jar: Path, plugin_sha256: str,
     world_parent: Path, evidence_parent: Path, run_id: str,
+    pursuit_dev: bool = False,
 ) -> dict:
     """Pure local entry check: no World, Java, Node or disk mutation."""
-    if confirm != CONFIRM or os.environ.get("L_ZOMBIE_Z1_ONE_WORLD_DEV") != "1":
-        raise ZombieWorldBlocked("explicit one-world no-retry DEV flag missing")
+    if (confirm != (PURSUIT_CONFIRM if pursuit_dev else CONFIRM)
+            or os.environ.get("L_ZOMBIE_Z1_ONE_WORLD_DEV") != "1"
+            or (pursuit_dev and os.environ.get("L_ZOMBIE_Z1_PURSUIT_DEV") != "1")):
+        raise ZombieWorldBlocked("one-world pursuit/safe-target DEV flag missing")
     if os.environ.get("NODE_OPTIONS"):
         raise ZombieWorldBlocked("native Node substitution/options prohibited")
     if not re.fullmatch(r"[0-9a-f]{16}", run_id):
@@ -133,6 +138,7 @@ def preflight(
         "plugin_sha256": plugin_sha256, "run_id": run_id,
         "world_budget_max": 1, "world_retries_max": 0,
         "real_gemma_calls": 0, "self_actions": 0, "l0_qualified": False,
+        "pursuit_dev": pursuit_dev,
     }
 
 
@@ -197,6 +203,7 @@ async def one_world(
     *, confirm: str, repo: Path, expected_head: str,
     paper_jar: Path, plugin_jar: Path, plugin_sha256: str,
     world_parent: Path, evidence_parent: Path, run_id: str,
+    pursuit_dev: bool = False,
 ) -> dict:
     """Exactly one World and Node client, no user/LLM Actions or retries."""
     checked = preflight(
@@ -204,6 +211,7 @@ async def one_world(
         paper_jar=paper_jar, plugin_jar=plugin_jar,
         plugin_sha256=plugin_sha256, world_parent=world_parent,
         evidence_parent=evidence_parent, run_id=run_id,
+        pursuit_dev=pursuit_dev,
     )
     world_root = world_parent / f"l-z1-world-{run_id}"
     evidence_root = evidence_parent / f"l-z1-evidence-{run_id}"
@@ -214,6 +222,9 @@ async def one_world(
         "world_started": False, "java_pid": None, "node_pid": None,
         "paper_original_ok": False, "mineflayer_join_attested": False,
         "client_sample_count": 0, "zombie_pursuit_attested": False,
+        "pursuit_horizontal_motion_m": None,
+        "pursuit_target_survival": pursuit_dev,
+        "pursuit_motion_observed": False,
         "l2_model_calls": 0, "self_actions": 0,
         "b1_prediction_qualified": False,
         "qualifying_science": False, "retries": 0,
@@ -256,11 +267,22 @@ async def one_world(
         _command(java, "gamerule doMobSpawning false")
         _command(java, "time set midnight")
         _command(java, "gamerule doDaylightCycle false")
-        # Intentionally creative player: NO actual hostile pursuit claim.
-        # Awake zombie (NoAI:0), exactly ONE operator-staged entity.
+        if pursuit_dev:
+            # An actively targetable survival player with high resistance,
+            # regeneration and saturation. Only the disposable World is affected.
+            # This is NOT an L0 survival-safety qualification.
+            _command(java, "effect give RelaySelf minecraft:resistance 90 4 true")
+            _command(java, "effect give RelaySelf minecraft:regeneration 90 4 true")
+            _command(java, "effect give RelaySelf minecraft:saturation 90 0 true")
+            _command(java, "gamemode survival RelaySelf")
+            # Four blocks leaves observable pursuit time without immediate contact.
+            summon_distance = 4
+        else:
+            summon_distance = 2  # prior creative Z1 behavior unchanged
         _command(
             java,
-            "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+            "execute at RelaySelf run summon minecraft:zombie "
+            f"~{summon_distance} ~ ~ "
             "{NoAI:0b,PersistenceRequired:1b}",
         )
         assert java.stdin is not None
@@ -336,6 +358,13 @@ async def one_world(
                     )
                     report["paper_source"] = paper
                     report["paper_original_ok"] = True
+                    x0, z0 = paper["pre_source_xz_m"]
+                    x1, z1 = paper["target_xz_m"]
+                    displacement = math.hypot(x1-x0, z1-z0)
+                    report["pursuit_horizontal_motion_m"] = displacement
+                    report["pursuit_motion_observed"] = displacement > 0.02
+                    # A move alone isn't a confirmed zombie pursuit/AI model.
+                    report["zombie_pursuit_attested"] = False
                 except (PaperZombieSourceRejected, OSError) as exc:
                     report["paper_source_failure"] = f"{type(exc).__name__}: {exc}"
             clean = (
@@ -373,8 +402,15 @@ async def one_world(
                 and report["before"]["entity_id"] == report["paper_source"]["entity_id"]
                 and report["after"]["entity_id"] == report["paper_source"]["entity_id"]
             ):
-                report["status"] = "PASS_DEV"
-                report["classification"] = "Z1_PAPER_SAME_ZOMBIE_SOURCE_DEV_ONLY"
+                if pursuit_dev and not report["pursuit_motion_observed"]:
+                    report["status"] = "FAIL_DEV"
+                    report["classification"] = "Z1B_PAPER_SOURCE_PASS_MOTION_NOT_OBSERVED"
+                else:
+                    report["status"] = "PASS_DEV"
+                    report["classification"] = (
+                        "Z1B_PAPER_MOVING_ZOMBIE_SOURCE_DEV_ONLY"
+                        if pursuit_dev else "Z1_PAPER_SAME_ZOMBIE_SOURCE_DEV_ONLY"
+                    )
             else:
                 report["classification"] = "Z1_WORLD_OR_SOURCE_NOT_ESTABLISHED"
             # Paper and client tick pairing is *not* attested by these probes.
@@ -391,7 +427,8 @@ async def one_world(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--confirm", required=True, choices=[CONFIRM])
+    parser.add_argument("--confirm", required=True, choices=[CONFIRM, PURSUIT_CONFIRM])
+    parser.add_argument("--pursuit-dev", action="store_true")
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--paper-jar", type=Path, required=True)
@@ -408,6 +445,7 @@ def main() -> int:
             plugin_jar=args.plugin_jar, plugin_sha256=args.plugin_sha256,
             world_parent=args.world_parent,
             evidence_parent=args.evidence_parent, run_id=args.run_id,
+            pursuit_dev=args.pursuit_dev,
         ))
     except (ZombieWorldBlocked, ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"Z1_PREWORLD_BLOCKED: {exc}", file=sys.stderr)
@@ -418,6 +456,8 @@ def main() -> int:
         "paper_original_ok": report["paper_original_ok"],
         "client_tick_join_attested": report["mineflayer_join_attested"],
         "action_count": 0, "model_calls": 0,
+        "moving_zombie": report["pursuit_motion_observed"],
+        "horizontal_displacement_m": report["pursuit_horizontal_motion_m"],
     }, sort_keys=True))
     return 0 if report["status"] == "PASS_DEV" else 2
 

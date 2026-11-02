@@ -169,3 +169,38 @@ def test_real_one_world_entry_is_not_started_by_any_source_import():
     assert runner.CONFIRM.startswith("Z1_ONE")
     assert runner.PAPER_SHA256 == "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
     assert runner.EXPECTED_PLUGIN.endswith(".jar")
+
+
+
+def test_pursuit_mode_requires_independent_explicit_single_world_grant(tmp_path, monkeypatch):
+    args = fixture_bundle(tmp_path, monkeypatch)
+    args["pursuit_dev"] = True
+    with pytest.raises(runner.ZombieWorldBlocked, match="pursuit"):
+        runner.preflight(**args)
+    monkeypatch.setenv("L_ZOMBIE_Z1_PURSUIT_DEV", "1")
+    with pytest.raises(runner.ZombieWorldBlocked, match="pursuit"):
+        runner.preflight(**args)
+    args["confirm"] = runner.PURSUIT_CONFIRM
+    receipt = runner.preflight(**args)
+    assert receipt["pursuit_dev"] is True
+    assert receipt["real_gemma_calls"] == 0
+    assert receipt["world_retries_max"] == 0
+    args["confirm"] = runner.CONFIRM
+    args["pursuit_dev"] = False
+    assert runner.preflight(**args)["pursuit_dev"] is False
+    assert list(args["world_parent"].iterdir()) == []
+
+
+def test_pursuit_world_uses_only_bounded_survival_target_readonly_zombie_controls():
+    from inspect import getsource
+    source = getsource(runner.one_world)
+    assert "if pursuit_dev:" in source
+    assert 'effect give RelaySelf minecraft:resistance 90 4 true' in source
+    assert 'effect give RelaySelf minecraft:regeneration 90 4 true' in source
+    assert 'gamemode survival RelaySelf' in source
+    assert "summon minecraft:zombie" in source
+    assert "NoAI:0b,PersistenceRequired:1b" in source
+    assert "self_actions" in source
+    assert '"zombie_pursuit_attested"] = False' in source
+    assert "displacement > 0.02" in source
+    assert "Z1B_PAPER_SOURCE_PASS_MOTION_NOT_OBSERVED" in source
