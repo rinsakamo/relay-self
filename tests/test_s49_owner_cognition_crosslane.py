@@ -41,7 +41,37 @@ def test_original_m_wb_types_join_only_same_s49_source(monkeypatch):
         monkeypatch, "relay_self.wb_l2_read_port", "S0_PINNED_WB_SOURCE",
     )
     steps, probes, receipts = _synthetic_original_shape()
-    batch = read_original_s49_completions(steps, probes, receipts)
+    # The old S49 test deliberately uses test-* IDs. M correctly rejects
+    # them. Construct an explicitly SYNTHETIC but source-format-valid S49
+    # owner shape here; do not loosen M's production ID contract.
+    sid = steps[0].choice.session_id
+    original_move = steps[0]
+    action_id = f"s49-native-move-{original_move.event_seq}"
+    converted = []
+    fixed_probes = {}
+    for step in steps:
+        request_id = f"s49-actual:{sid}:event-{step.event_seq}"
+        new_choice = replace(step.choice, request_id=request_id)
+        new_probe = replace(
+            probes[step.choice.probe_seq], request_id=request_id,
+        )
+        fixed_probes[new_probe.seq] = new_probe
+        if step.asks_for_action:
+            converted.append(replace(
+                step, choice=new_choice, action_request_id=action_id,
+                grant=replace(step.grant, action_id=action_id),
+            ))
+        else:
+            converted.append(replace(step, choice=new_choice))
+    original_receipt = receipts[original_move.action_request_id]
+    fixed_receipt = replace(
+        original_receipt,
+        terminal=replace(original_receipt.terminal, action_id=action_id),
+        consequence=replace(original_receipt.consequence, action_id=action_id),
+    )
+    batch = read_original_s49_completions(
+        tuple(converted), fixed_probes, {action_id: fixed_receipt},
+    )
     accepted = m.S49MAdmissionLease(enabled=True).admit_batch(batch)
     assert accepted.status == "RECORDED"
     first, last = batch.steps[0].probe.seq, batch.steps[-1].probe.seq
