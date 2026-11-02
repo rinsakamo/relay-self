@@ -3,12 +3,12 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
 from relay_self.wb_l2_attention_handoff import (
     compare_wb_l1_attention_ab,
     project_wb_l1_attention_shadow,
     project_wb_past_review_handoff,
 )
-from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
 from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
 from test_self_cognition_slice import sample
 
