@@ -50,10 +50,13 @@ def _owner_batch():
     # Same structurally valid S16 receipt, but original S49 source frames
     # require an Action-specific clear ID and a matching true x/z movement.
     consequence = original.consequence
-    before = new_probes[move.choice.probe_seq]
+    # Original real S49 decision probe and S16 before are SEPARATE frames.
+    # Keep the SYNTHETIC fixture physically plausible and seq-monotonic.
+    choice_probe = new_probes[move.choice.probe_seq]
+    before = replace(choice_probe, seq=choice_probe.seq + 1)
     shifted = replace(
         before,
-        seq=consequence.after_observation.seq,
+        seq=choice_probe.seq + 4,
         snapshot=replace(
             before.snapshot,
             position=replace(
@@ -69,10 +72,12 @@ def _owner_batch():
         after_observation=shifted,
         dispatch_receipt=replace(
             consequence.dispatch_receipt,
+            seq=choice_probe.seq + 2,
             action_id=move.action_request_id,
         ),
         cleanup_receipt=replace(
             consequence.cleanup_receipt,
+            seq=choice_probe.seq + 3,
             action_id=move.action_request_id + "-s15-clear",
         ),
     )
