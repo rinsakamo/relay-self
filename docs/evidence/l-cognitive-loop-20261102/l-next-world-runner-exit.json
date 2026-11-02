@@ -1,0 +1,9 @@
+{
+  "java_owned": true,
+  "node_owned": true,
+  "owned_java_pid_attested": true,
+  "owned_node_pid_attested": true,
+  "returncode": 0,
+  "snapshots": 240,
+  "world_qualified": false
+}

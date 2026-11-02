@@ -1,0 +1,190 @@
+{
+  "wire": [
+    {
+      "ordinal": 1,
+      "request_sha256": "542c3fae71adb055312f74b18b4e362ad0e218c04f2acfdba6f4406ddc2f547c",
+      "response_sha256": "53c4b418217be8d09ebecb88bfa4da0882dab57c2654899f5842effb8d5c2af7",
+      "finish_reason": "stop",
+      "completion_tokens": 172,
+      "prompt_tokens": 2804,
+      "reasoning_content_present": false,
+      "reasoning_tokens": "UNREPORTED",
+      "full_schema_checked": true,
+      "frozen_and_report_and_raw_match": true,
+      "proposal_sha256": "1990f8f2f4ee4769e5e24cd79733307c47ecc6f4134c3f7bcc1a56075dd71fd4"
+    },
+    {
+      "ordinal": 2,
+      "request_sha256": "0fcf172f1460d2d5e2c994d0f66a1123c58caf1cd95240dfd245faf45e65af83",
+      "response_sha256": "edd841b9e14eed6d3a1aefdc835d55f6c5a2992676ed16a23f4d90d62b156694",
+      "finish_reason": "stop",
+      "completion_tokens": 188,
+      "prompt_tokens": 4940,
+      "reasoning_content_present": false,
+      "reasoning_tokens": "UNREPORTED",
+      "full_schema_checked": true,
+      "frozen_and_report_and_raw_match": true,
+      "proposal_sha256": "7fb8ea023a7ff9a90e4acb3154f945883055f6616766f72a8aa7413d71710ff2"
+    }
+  ],
+  "feedback": {
+    "comparator_scope": "PAPER_CHEAP_NEXT_TICK_MAE_M_IS_DIFFERENT_TARGET; NOT_COMPARABLE_TO_WAIT8_TOTAL_ERROR",
+    "model_revised_and_admitted": false,
+    "previous_explanation": "Initial data shows a discrepancy between predicted and actual wait times in a grass environment.",
+    "previous_falsification_test": "Vary input duration to isolate duration effects.",
+    "previous_model_family": "OTHER_BOUNDED",
+    "previous_next_test_unapproved": "VARY_INPUT_DURATION",
+    "previous_prediction_m": null,
+    "previous_proposal_sha256": "1990f8f2f4ee4769e5e24cd79733307c47ecc6f4134c3f7bcc1a56075dd71fd4",
+    "previous_reconsideration": "KEEP_UNRESOLVED",
+    "previous_source_action_id": "s49-native-move-33",
+    "previous_source_prefix_sha256": "7ba7103d8129f9b7e4edb5612dceeba1e92c66960573ac4e452dff9c4e769418",
+    "previous_source_trial_ordinal": 1,
+    "prior_prediction_abs_error_m": null,
+    "source_is_original_Paper_but_postrun_unqualified": true,
+    "source_session_id": "668ade51-8edc-4be8-93e2-7fc46d029ab8",
+    "source_world_uuid": "2c84b716-2f78-45c5-a4a3-7b414692d6a3",
+    "status": "PREVIOUS_HYPOTHESIS_NO_NUMERIC_FORECAST",
+    "target_action_id": "s49-native-move-62",
+    "target_kind": "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M",
+    "target_observed_m": 0.06424660150896089,
+    "target_prefix_sha256": "888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347",
+    "target_trial_ordinal": 2
+  },
+  "paper_sha256": "335db7c9cff433f427c3faf9116705f7008621a3a906f7b08b7081aa1d81c617",
+  "native_seq_range": [
+    0,
+    109
+  ],
+  "native_frame_count": 110,
+  "native_shutdown_ack_count": 1,
+  "w3_sha256": "76f6e89ade9cd97bcdd76da7eb4f9a6bdc85a2366c8002d88676c4af68460fb7",
+  "typed_s16": [
+    {
+      "action_id": "s49-native-move-33",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:668ade51-8edc-4be8-93e2-7fc46d029ab8:42:s15:668ade51-8edc-4be8-93e2-7fc46d029ab8:s49-native-move-33:after",
+      "native_seq": 42,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "668ade51-8edc-4be8-93e2-7fc46d029ab8",
+      "source_status": "executed"
+    },
+    {
+      "action_id": "s49-native-move-62",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:668ade51-8edc-4be8-93e2-7fc46d029ab8:72:s15:668ade51-8edc-4be8-93e2-7fc46d029ab8:s49-native-move-62:after",
+      "native_seq": 72,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "668ade51-8edc-4be8-93e2-7fc46d029ab8",
+      "source_status": "executed"
+    },
+    {
+      "action_id": "s49-native-move-92",
+      "before_after_source_original": true,
+      "native_ref": "native-probe:668ade51-8edc-4be8-93e2-7fc46d029ab8:101:s15:668ade51-8edc-4be8-93e2-7fc46d029ab8:s49-native-move-92:after",
+      "native_seq": 101,
+      "new_action_issuers": 0,
+      "outcome": "outcome",
+      "session_id": "668ade51-8edc-4be8-93e2-7fc46d029ab8",
+      "source_status": "executed"
+    }
+  ],
+  "wait8_totals_m": [
+    0.064246601508961,
+    0.06424660150896089,
+    0.06424660150896111
+  ],
+  "world_process_cleanup": [
+    {
+      "identity": {
+        "pid": 138311,
+        "ppid": 138309,
+        "start_ticks": 16645514,
+        "state": "S",
+        "argv": [
+          "java",
+          "-Xms512M",
+          "-Xmx1536M",
+          "-jar",
+          "/tmp/relay-self-s49-zfzyl9w5/minecraft.jar",
+          "nogui"
+        ],
+        "cwd": "/tmp/relay-self-s49-zfzyl9w5",
+        "exe": "/home/rinsa/work/s50-p1-flat-native-evidence-20261017/jdk21/runtime/bin/java"
+      },
+      "owned_pid_gone": true,
+      "cwd_removed": true
+    },
+    {
+      "identity": {
+        "pid": 138422,
+        "ppid": 138309,
+        "start_ticks": 16647409,
+        "state": "S",
+        "argv": [
+          "node",
+          "/home/rinsa/work/l-cognitive-loop-world-20261102/adapters/mineflayer/bridge.mjs",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "25565",
+          "--username",
+          "RelaySelf",
+          "--version",
+          "1.21.8"
+        ],
+        "cwd": "/home/rinsa/work/l-cognitive-loop-world-20261102",
+        "exe": "/home/rinsa/.nvm/versions/node/v22.22.2/bin/node"
+      },
+      "owned_pid_gone": true,
+      "cwd_removed": false
+    }
+  ],
+  "model_identity_before_cleanup": {
+    "pid": 138152,
+    "ppid": 937,
+    "start_ticks": 16640603,
+    "state": "S",
+    "argv": [
+      "/home/rinsa/src/llama.cpp/build/bin/llama-server",
+      "--model",
+      "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf",
+      "--alias",
+      "relay-self-gemma4-12b-q4km",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "-ngl",
+      "999",
+      "-c",
+      "8192",
+      "-np",
+      "1",
+      "--no-context-shift",
+      "--flash-attn",
+      "on",
+      "--jinja"
+    ],
+    "cwd": "/home/rinsa/work/l-cognitive-loop-world-20261102",
+    "exe": "/home/rinsa/src/llama.cpp/build/bin/llama-server"
+  },
+  "model_after_signal": null,
+  "model_pid_gone": true,
+  "model_exited": true,
+  "ports": {
+    "8080": "BIND_PASS",
+    "25565": "BIND_PASS"
+  },
+  "historical_original_files_verified": 162,
+  "historical_originals_changed": [],
+  "local_other_branch_changes": {},
+  "main_checkout": "32fe105fc12cbf54abd11bfba7c8a75d319939df\n",
+  "A": "PASS_DEV_ORIGINAL_LIVE_H1_H2_RECONSTRUCTED",
+  "B1": "NOT_ESTABLISHED_NO_NUMERIC_FORECAST_OR_PREDICTION_ERROR_AND_WAIT_TIME_UNIT_CONFUSION",
+  "B2": "NOT_ESTABLISHED_NO_HOLDOUT",
+  "C": "NOT_RUN_BY_DESIGN",
+  "mission": "NUMERIC_PREDICTION_ERROR_COGNITIVE_LOOP_NOT_ACHIEVED"
+}

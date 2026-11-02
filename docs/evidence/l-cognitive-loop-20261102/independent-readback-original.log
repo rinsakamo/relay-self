@@ -1,0 +1,17 @@
+{
+  "A": "PASS_DEV_ORIGINAL_LIVE_H1_H2_RECONSTRUCTED",
+  "B1": "NOT_ESTABLISHED_NO_NUMERIC_FORECAST_OR_PREDICTION_ERROR_AND_WAIT_TIME_UNIT_CONFUSION",
+  "B2": "NOT_ESTABLISHED_NO_HOLDOUT",
+  "C": "NOT_RUN_BY_DESIGN",
+  "ports": {
+    "8080": "BIND_PASS",
+    "25565": "BIND_PASS"
+  },
+  "historical_original_files_verified": 162,
+  "wait8_totals_m": [
+    0.064246601508961,
+    0.06424660150896089,
+    0.06424660150896111
+  ],
+  "model_pid_gone": true
+}

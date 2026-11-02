@@ -1,0 +1,210 @@
+{
+  "request": {
+    "model": "relay-self-gemma4-12b-q4km",
+    "temperature": 0,
+    "max_tokens": 512,
+    "reasoning_effort": "none",
+    "cache_prompt": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the open cognition provider for RelaySelf. Use only the supplied transient context to generate one expression. Return expression text only. The generated text is transient cognition: it does not itself establish World truth, mutate Current Intent, persist Memory, authorize an Action, or prove external delivery. Do not add a hidden decision or THINK escalation."
+      },
+      {
+        "role": "user",
+        "content": "{\"context\":[{\"key\":\"evidence_limits\",\"provenance\":{\"reference\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"source\":\"l.mp11.live.paper.provisional\"},\"value\":{\"action_issuer\":\"S49_ONLY\",\"actual_l2_calls\":0,\"controlled_surface_or_duration_comparison\":false,\"effective_s15_clear_tick\":\"NOT_ATTESTED\",\"learning_admissions\":0,\"native_original_stdout_verified_after_exit\":false,\"no_future_action_in_prefix\":true,\"paper_original_verified_after_exit\":false,\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\"}},{\"key\":\"completed_prior_s49_s16_s50_trials\",\"provenance\":{\"reference\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"source\":\"l.mp11.live.paper.prefix\"},\"value\":[{\"action_id\":\"s49-native-move-33\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-33-668ade51-8edc-4be8-93e2-7fc46d029ab8\",\"native_s16_seq\":42,\"ordinal\":1,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":653,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.0226263174750082,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860355,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":187969,\"paper_prefix_sha256\":\"7ba7103d8129f9b7e4edb5612dceeba1e92c66960573ac4e452dff9c4e769418\",\"paper_wait_motion_m\":[0.049492188301323625,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[294,295,296,297,298,299,300,301],\"paper_wait_total_m\":0.064246601508961,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"668ade51-8edc-4be8-93e2-7fc46d029ab8\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"2c84b716-2f78-45c5-a4a3-7b414692d6a3\"},{\"action_id\":\"s49-native-move-62\",\"action_or_learning_authority\":false,\"marker_id\":\"s49-native-move-62-668ade51-8edc-4be8-93e2-7fc46d029ab8\",\"native_s16_seq\":72,\"ordinal\":2,\"original_paper_input_clear_tick_attested\":false,\"original_paper_last_complete_line\":1447,\"paper_cheap_zero_next_mae_m\":0.0021077733153767675,\"paper_next_abs_error_m\":[0.02262631747500813,0.0009925349117686838,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_predicted_next_m\":[0.032169922395860286,0.006203343198553902,0.0033870253864103916,0.0,0.0,0.0,0.0],\"paper_prefix_length\":479099,\"paper_prefix_sha256\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"paper_wait_motion_m\":[0.049492188301323514,0.009543604920852156,0.005210808286785218,0.0,0.0,0.0,0.0,0.0],\"paper_wait_ticks\":[515,516,517,518,519,520,521,522],\"paper_wait_total_m\":0.06424660150896089,\"physically_controlled_conditions_varied\":false,\"real_paper_original_postrun_reauthenticated\":false,\"session_id\":\"668ade51-8edc-4be8-93e2-7fc46d029ab8\",\"source_status\":\"LIVE_PAPER_PREFIX_UNSEALED_S49_TYPED_S16_CLAIM\",\"subject_uuid\":\"dcae346d-e66f-331a-b459-a5a5370e9738\",\"world_uuid\":\"2c84b716-2f78-45c5-a4a3-7b414692d6a3\"}]},{\"key\":\"previous_L2_hypothesis_typed_feedback\",\"provenance\":{\"reference\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"source\":\"l.mp11.live.previous.hypothesis.feedback.readonly\"},\"value\":{\"comparator_scope\":\"PAPER_CHEAP_NEXT_TICK_MAE_M_IS_DIFFERENT_TARGET; NOT_COMPARABLE_TO_WAIT8_TOTAL_ERROR\",\"model_revised_and_admitted\":false,\"previous_explanation\":\"Initial data shows a discrepancy between predicted and actual wait times in a grass environment.\",\"previous_falsification_test\":\"Vary input duration to isolate duration effects.\",\"previous_model_family\":\"OTHER_BOUNDED\",\"previous_next_test_unapproved\":\"VARY_INPUT_DURATION\",\"previous_prediction_m\":null,\"previous_proposal_sha256\":\"1990f8f2f4ee4769e5e24cd79733307c47ecc6f4134c3f7bcc1a56075dd71fd4\",\"previous_reconsideration\":\"KEEP_UNRESOLVED\",\"previous_source_action_id\":\"s49-native-move-33\",\"previous_source_prefix_sha256\":\"7ba7103d8129f9b7e4edb5612dceeba1e92c66960573ac4e452dff9c4e769418\",\"previous_source_trial_ordinal\":1,\"prior_prediction_abs_error_m\":null,\"source_is_original_Paper_but_postrun_unqualified\":true,\"source_session_id\":\"668ade51-8edc-4be8-93e2-7fc46d029ab8\",\"source_world_uuid\":\"2c84b716-2f78-45c5-a4a3-7b414692d6a3\",\"status\":\"PREVIOUS_HYPOTHESIS_NO_NUMERIC_FORECAST\",\"target_action_id\":\"s49-native-move-62\",\"target_kind\":\"NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M\",\"target_observed_m\":0.06424660150896089,\"target_prefix_sha256\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"target_trial_ordinal\":2}},{\"key\":\"typed_Paper_evidence_ID_catalog\",\"provenance\":{\"reference\":\"888a3212ea6016f7f97ed80628d3fee9de0b7fc0b2daccfb8889e8440ffa2347\",\"source\":\"l.mp11.live.paper.numeric.role-table.readonly\"},\"value\":{\"indexed\":[{\"evidence_id\":\"T1_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.064246601508961},{\"evidence_id\":\"T1_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"pair_index\":0,\"trial_ordinal\":1,\"value_m\":0.0021077733153767675},{\"evidence_id\":\"T1_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.032169922395860355},{\"evidence_id\":\"T1_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":1,\"trial_ordinal\":1,\"value_m\":0.0226263174750082},{\"evidence_id\":\"T1_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.006203343198553902},{\"evidence_id\":\"T1_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":2,\"trial_ordinal\":1,\"value_m\":0.0009925349117686838},{\"evidence_id\":\"T1_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":3,\"trial_ordinal\":1,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T1_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":4,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":5,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":6,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T1_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":7,\"trial_ordinal\":1,\"value_m\":0.0},{\"evidence_id\":\"T2_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"pair_index\":0,\"trial_ordinal\":2,\"value_m\":0.06424660150896089},{\"evidence_id\":\"T2_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"pair_index\":0,\"trial_ordinal\":2,\"value_m\":0.0021077733153767675},{\"evidence_id\":\"T2_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":1,\"trial_ordinal\":2,\"value_m\":0.032169922395860286},{\"evidence_id\":\"T2_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":1,\"trial_ordinal\":2,\"value_m\":0.02262631747500813},{\"evidence_id\":\"T2_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":2,\"trial_ordinal\":2,\"value_m\":0.006203343198553902},{\"evidence_id\":\"T2_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":2,\"trial_ordinal\":2,\"value_m\":0.0009925349117686838},{\"evidence_id\":\"T2_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":3,\"trial_ordinal\":2,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T2_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":3,\"trial_ordinal\":2,\"value_m\":0.0033870253864103916},{\"evidence_id\":\"T2_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":4,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":4,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":5,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":5,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":6,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":6,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"pair_index\":7,\"trial_ordinal\":2,\"value_m\":0.0},{\"evidence_id\":\"T2_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"pair_index\":7,\"trial_ordinal\":2,\"value_m\":0.0}],\"selection_note\":\"Return evidence_ids only, not numeric values. Host binds selected IDs to original Paper role/index/value; this does not validate causal meaning or learning.\",\"source_kind\":\"CLOSED_ORIGINAL_PAPER_AND_PRIOR_L2_FEEDBACK\",\"unit\":\"m\"}}],\"focus\":\"LIVE_PREVIOUS_S49_ACTION_SOURCE_L2_CONTEXT_ONLY\",\"instruction\":\"L2 read-only hypothesis input from S49-host-sampled live Paper prefix. Suggest tests but DO NOT order any Action or claim a physical mechanism, learned model, capability limit or goal. All completed prior actions are GRASS/MOVE_BACKWARD; physical clear tick/input duration are NOT attested. This input is provisional until independent postrun source audit.\\nProduce only one short JSON object with EXACT ten keys: referenced_prior_ordinals (observed trial numbers), reconsideration (KEEP_UNRESOLVED|QUESTION_APPLICABILITY|PROPOSE_STRUCTURAL_REVISION|ABSTAIN), model_family (SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED), next_test (CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE), explanation, falsification_test (each 16..60 chars), predicted_wait_total_m (NEXT trial WAIT8 TOTAL m in [0,3] or null), capability_assessment (UNKNOWN|CONDITIONAL_HYPOTHESIS), prior_hypothesis_relation (FIRST_HYPOTHESIS for first; KEEP_PRIOR|REVISE_PRIOR|REJECT_PRIOR|ABSTAIN_ON_PRIOR for second), evidence_ids (ONE on first call, 1..2 on second; sorted distinct strings). Select IDs ONLY from typed_Paper_evidence_ID_catalog. Never transcribe numeric values into output. ID selection is a cited claim, not proof of causal interpretation. No unobserved future, no Action authority, no learned-model or surface-causality claim; all observed surfaces are GRASS. Finish JSON within 512 tokens.\",\"intent_id\":\"investigate-motion-mismatch\",\"request_id\":\"l-mp11-live:2c84b716-2f78-45c5-a4a3-7b414692d6a3:after-2\"}"
+      }
+    ],
+    "seed": 1,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "relay_l2_typed_evidence_v1",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "referenced_prior_ordinals": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true
+            },
+            "reconsideration": {
+              "type": "string",
+              "enum": [
+                "ABSTAIN",
+                "KEEP_UNRESOLVED",
+                "PROPOSE_STRUCTURAL_REVISION",
+                "QUESTION_APPLICABILITY"
+              ]
+            },
+            "model_family": {
+              "type": "string",
+              "enum": [
+                "INITIAL_SPEED_DEPENDENT",
+                "OTHER_BOUNDED",
+                "PHASE_DEPENDENT",
+                "SINGLE_DECAY",
+                "SURFACE_DEPENDENT"
+              ]
+            },
+            "next_test": {
+              "type": "string",
+              "enum": [
+                "CHECK_INITIAL_VELOCITY",
+                "CHECK_PAPER_CALLBACK_PHASE",
+                "COMPARE_GRASS_AND_ICE",
+                "VARY_INPUT_DURATION"
+              ]
+            },
+            "explanation": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 120
+            },
+            "falsification_test": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 120
+            },
+            "predicted_wait_total_m": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capability_assessment": {
+              "type": "string",
+              "enum": [
+                "CONDITIONAL_HYPOTHESIS",
+                "UNKNOWN"
+              ]
+            },
+            "prior_hypothesis_relation": {
+              "type": "string",
+              "enum": [
+                "ABSTAIN_ON_PRIOR",
+                "KEEP_PRIOR",
+                "REJECT_PRIOR",
+                "REVISE_PRIOR"
+              ]
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "T1_CMAE",
+                  "T1_P1ERR",
+                  "T1_P1PRED",
+                  "T1_P2ERR",
+                  "T1_P2PRED",
+                  "T1_P3ERR",
+                  "T1_P3PRED",
+                  "T1_P4ERR",
+                  "T1_P4PRED",
+                  "T1_P5ERR",
+                  "T1_P5PRED",
+                  "T1_P6ERR",
+                  "T1_P6PRED",
+                  "T1_P7ERR",
+                  "T1_P7PRED",
+                  "T1_W8",
+                  "T2_CMAE",
+                  "T2_P1ERR",
+                  "T2_P1PRED",
+                  "T2_P2ERR",
+                  "T2_P2PRED",
+                  "T2_P3ERR",
+                  "T2_P3PRED",
+                  "T2_P4ERR",
+                  "T2_P4PRED",
+                  "T2_P5ERR",
+                  "T2_P5PRED",
+                  "T2_P6ERR",
+                  "T2_P6PRED",
+                  "T2_P7ERR",
+                  "T2_P7PRED",
+                  "T2_W8"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "referenced_prior_ordinals",
+            "reconsideration",
+            "model_family",
+            "next_test",
+            "explanation",
+            "falsification_test",
+            "predicted_wait_total_m",
+            "capability_assessment",
+            "prior_hypothesis_relation",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "started_monotonic_ns": 166500240189073,
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"capability_assessment\": \"CONDITIONAL_HYPOTHESIS\",\n  \"evidence_ids\": [\n    \"T1_W8\",\n    \"T2_W8\"\n  ],\n  \"explanation\": \"Discrepancy between predicted and actual wait times in grass environment.\",\n  \"falsification_test\": \"Vary input duration to isolate duration effects.\",\n  \"model_family\": \"OTHER_BOUNDED\",\n  \"next_test\": \"VARY_INPUT_DURATION\",\n  \"predicted_wait_total_m\": null,\n  \"prior_hypothesis_relation\": \"KEEP_PRIOR\",\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"referenced_prior_ordinals\": [\n    1,\n    2\n  ]\n}"
+        }
+      }
+    ],
+    "created": 1793589835,
+    "model": "relay-self-gemma4-12b-q4km",
+    "system_fingerprint": "b10874-e2d2c0d6a",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 188,
+      "prompt_tokens": 4940,
+      "total_tokens": 5128,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "id": "chatcmpl-tpsFRxqpkkGv6ASkVBwHa3qD6n54OkeD",
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 4940,
+      "prompt_ms": 4195.343,
+      "prompt_per_token_ms": 0.8492597165991903,
+      "prompt_per_second": 1177.496095074944,
+      "predicted_n": 188,
+      "predicted_ms": 5276.448,
+      "predicted_per_token_ms": 28.216299465240642,
+      "predicted_per_second": 35.44050846326923
+    }
+  },
+  "finished_monotonic_ns": 166510400308367
+}
