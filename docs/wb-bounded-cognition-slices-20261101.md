@@ -177,3 +177,22 @@ GGUF SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`�
 今回の3段階にはUNCONFIRMEDは残らない。ただし過去WorldのUNCONFIRMEDは、当時のHTTP原本がないため原因未特定のまま維持する。Thinking OFF/Schemaの追加が過去失敗の原因だったと断定しない。JSONの安全な受理は認知的有用性、学習、World中の採用、物理qualificationを証明しない。次段階は別の有効なDEV World grantの下でWB→L2統合を検討できるが、本作業では自動開始しない。
 
 実行前のexact-head FAST CIは [41364185955](https://github.com/rinsakamo/relay-self/actions/runs/41364185955) の対象7チェックSUCCESS。今回focused S60-A/B1・WB試験196件PASS、Ruff・構文・repository contracts PASS。ローカルFASTと最終報告HEAD CIのterminal結果はPR/owner Issueの実行報告に記録する。証拠はrepo外 `/home/rinsa/evidence/wb-669-structured-gemma-20261102/` にrequest、HTTP raw/envelope、serverログ、source hash、S60前後receipts、process maps/API identity、cleanup、失敗原本、試験ログとmanifestを保存。ローカル保管は独立custody資格を意味しない。
+
+## 2026-11-02 — next live World source-admission DEV guard (World NOT RUN)
+
+The preceding model-only source replay at head `c2b85f7d08cb80fadd5bfe073a1bcb544a743dc8` proved a real Gemma -> S60-B1 -> S60-A structured reply in a saved-native-source offline replay. It **did not** establish adoption during an actual Minecraft World. This follow-up adds a **host-source-order receipt**, not a clock correlation claim or a second sensor.
+
+When WB live structured L2 has been admitted by the original S60 owner, the existing live observer captures one short `wb_structured_acceptance_host_order` record containing the admitted source sequence, latest native callback sequence at acceptance, bounded callback count, whether close had begun, and the prior S60 owner completion receipt. The record persists even when later source advancement makes `text_current=false` / `EXPIRED_WORLD_ADVANCED`. It does not record model output in the timing receipt or claim independent Paper timestamp, server-side native I/O order, STOP ACK, GPU release or World goal success.
+
+The original S49 DEV receipt now **independently cross-joins** the structured sidecar source sequence and WB source reference to original `source_pair_trace` event/probe pairs. It distinguishes:
+- `ACCEPTED_CURRENT_HOST_SOURCE_BOUND`: admitted structured JSON while the host observer was active, still current at sidecar close, matched to original S49 source-pair evidence.
+- `ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND`: same admitted JSON but a later original source invalidated it before close.
+- `NOT_ACCEPTED_OR_UNQUALIFIED`: missing, forged, stale, unparseable or unqualified admission. A valid HTTP completion alone never triggers a positive label.
+
+This **host-order DEV** evidence requires independent local original World/server receipts, exact model/server attestation and output data before any real-World scientific claim. No fabricated native observation, S16 closure, new model calls, provider, Action or STOP ACK are introduced.
+
+A separate negative boundary is closed: an exception from the **optional** `LiveL2Observer.observe` callback is caught only at the S49 caller boundary (`Exception`, **not** cancellation), recorded as sanitized `SOURCE_CALLBACK_UNCONFIRMED`, and no future observer output may be accepted after that error. The original S49 L0 callback continues; this does not change or suppress errors from S49 or its own physical owner. Regression tests use only synthetic/native fixtures and a fake HTTP server.
+
+**Next LocalCodex real World DEV acceptance check** (only with currently valid grant and exclusive disposable-world lease): on the exact pushed code HEAD, first confirm FAST, model/binary SHA and local raw evidence options. Use the already provided explicit `--wb-structured-l2 --wb-cognition-slice --live-think --self-world-live` flags in the original `native-selfworld` DEV entry, with a single original S49 issuer and no new native reads. Retain the complete original source pair, original S49 Action/OUTCOME, `live_l2.jsonl`, `dev_wb_structured_l2`, S60 receipts, raw HTTP and server logs; distinguish actual provider completion from live adopted and still-current, live adopted-then-invalidated, and unconfirmed. Fail/cleanup evidence must be preserved. No main merge or scientific/R qualification.
+
+**State for this change:** `DEV_ONLY / LIVE_SOURCE_ADMISSION_GUARD_OFFLINE / REAL_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
