@@ -15,7 +15,6 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s537_s1_original_wb_m import S1WBMMatchedObserver
 from relay_self.action import ActionState
 from relay_self.action_outcome import ActionOutcomeDisposition
-from relay_self.self_cognition_slice import CognitionSlice, CognitionTier
 
 MAX_EPOCHS = 8
 MAX_CLOSURES = 3
@@ -142,6 +141,8 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
     def observe(self, reading: MineflayerObservation) -> None:
         """Build the L2 candidate before S49 decides; never query a model."""
         super().observe(reading)
+        from relay_self.self_cognition_slice import CognitionSlice, CognitionTier
+
         source = self._observed[-1]
         view = source.wb_slice
         if (
