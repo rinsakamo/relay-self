@@ -8,8 +8,10 @@ on:
       - 'tools/l_zombie_z2b_prepare_gemma.py'
       - 'tests/test_l_zombie_z2b_policy_contract.py'
       - 'tools/l_zombie_z2b_paper_policy_audit.py'
-      - 'tests/test_l_zombie_z2b_paper_policy_audit.py'
+      - 'tests/test_l_zombie_z2b_paper_policy_audit.py tools/l_zombie_z1_one_world_dev.py tests/test_l_zombie_z1_one_world_dev.py'
       - 'adapters/mineflayer/l_zombie_paper_dev/**'
+      - 'tools/l_zombie_z1_one_world_dev.py'
+      - 'tests/test_l_zombie_z1_one_world_dev.py'
       - '.github/workflows/l-zombie-z2b-prepared-policy-offline-dev.yml'
 permissions:
   contents: read
@@ -36,6 +38,7 @@ jobs:
           python -m pytest -p no:cacheprovider -o addopts='' -q \
             tests/test_l_zombie_z2b_policy_contract.py \
             tests/test_l_zombie_z2b_paper_policy_audit.py \
+            tests/test_l_zombie_z1_one_world_dev.py \
             tests/test_l_zombie_z2a_prospective_audit.py \
             tests/test_l_zombie_20tick_shadow.py \
             tests/test_l_mp11_gemma_wire_contract.py \
