@@ -7,6 +7,7 @@ No new L0/Action/World owner, no model or learner logic is implemented here.
 """
 from __future__ import annotations
 
+import copy
 import json
 import time
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackTransportConfig,
 )
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
+from adapters.mineflayer.s537_s2d_strict_json_contract import PROFILE, REQUEST_EXTRAS
 from relay_self.action import ActionState
 from relay_self.action_outcome import ActionOutcomeDisposition
 from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
@@ -65,7 +67,7 @@ class S2BGatedL2Shadow:
 
     def __init__(
         self, *, enabled: bool = False, config: LoopbackTransportConfig,
-        timeout_s: float = 45.0,
+        timeout_s: float = 45.0, structured_profile: str | None = None,
     ) -> None:
         if (
             enabled is not True
@@ -74,9 +76,11 @@ class S2BGatedL2Shadow:
             or not 0 < timeout_s <= 60
             or config.max_tokens > 256
             or config.slots != 1
+            or structured_profile not in (None, PROFILE)
         ):
             raise S2BSourceRejected("explicit bounded S2B DEV gate required")
         self.config = config
+        self._structured_profile = structured_profile
         self.timeout_s = timeout_s
         self._owner: BestEffortDisplacement | None = None
         self._adapter: LoopbackDisplacementAdapter | None = None
@@ -186,7 +190,12 @@ class S2BGatedL2Shadow:
             "temperature": 0,
             "max_tokens": self.config.max_tokens,
         }
-        adapter = LoopbackDisplacementAdapter(self.config, lambda _request: payload)
+        if self._structured_profile == PROFILE:
+            payload.update(copy.deepcopy(REQUEST_EXTRAS))
+        adapter = LoopbackDisplacementAdapter(
+            self.config, lambda _request: payload,
+            structured_profile=self._structured_profile,
+        )
         provenance = Provenance(
             "s537-s2b-original-owner-admission",
             f"{source.session_id}:{source.probe_seq}:{source.request_id}",
@@ -305,6 +314,9 @@ class S2BGatedL2Shadow:
             "source_attested": False,
             "action_authority": False,
             "learning_authority": False,
+            "structured_profile": self._structured_profile,
+            "request_reasoning_off": self._structured_profile == PROFILE,
+            "backend_reasoning_off_attested": False,
             "backend_stop_ack": False,
             "gpu_release_verified": False,
             "qualification": "NO_GO",

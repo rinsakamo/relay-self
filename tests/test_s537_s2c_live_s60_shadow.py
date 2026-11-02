@@ -205,6 +205,11 @@ def test_runner_default_off_blocks_before_any_world(monkeypatch, capsys):
         "--report", "/tmp/s2c-out.json", "--server-log", "/tmp/s2c-server.log",
         "--s2c-report", "/tmp/s2c-report.json",
         "--model-alias", "fixture", "--model-port", "19431",
+        "--backend-pid", "99999999",
+        "--binary-path", "/no/llama-server",
+        "--gguf-path", "/no/model.gguf",
+        "--binary-sha256", "0" * 64,
+        "--gguf-sha256", "0" * 64,
     ])
     assert main() == 2
     assert '"BLOCKED"' in capsys.readouterr().out

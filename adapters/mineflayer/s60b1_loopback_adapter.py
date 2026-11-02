@@ -12,6 +12,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from adapters.mineflayer.s537_s2d_strict_json_contract import (
+    PROFILE,
+    check_request_extras,
+    validate_response_text,
+)
 from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
 from relay_self.relay_engine import ProviderCallFacts
 
@@ -84,12 +89,16 @@ class LoopbackDisplacementAdapter:
     HEADER_LIMIT = 8192
 
     def __init__(self, config: LoopbackTransportConfig,
-                 payload_for: Callable[[ModelRequest], Mapping[str, Any]]) -> None:
-        if not isinstance(config, LoopbackTransportConfig) or not callable(payload_for):
-            raise TransportUnconfirmed("explicit config and payload callback required")
+                 payload_for: Callable[[ModelRequest], Mapping[str, Any]],
+                 *, structured_profile: str | None = None) -> None:
+        if (not isinstance(config, LoopbackTransportConfig)
+            or not callable(payload_for)
+            or structured_profile not in (None, PROFILE)):
+            raise TransportUnconfirmed("explicit config, callback and profile required")
         self._loop = asyncio.get_running_loop()
         self._config = config
         self._payload_for = payload_for
+        self._structured_profile = structured_profile
         self._owner: BestEffortDisplacement | None = None
         self._attempt: _Attempt | None = None
         self._closed = False
@@ -126,7 +135,11 @@ class LoopbackDisplacementAdapter:
     def _payload(self, request: ModelRequest) -> bytes:
         try:
             payload = self._payload_for(request)
-            if not isinstance(payload, Mapping) or set(payload) != {
+            if not isinstance(payload, Mapping):
+                raise ValueError
+            if self._structured_profile == PROFILE:
+                check_request_extras(payload)
+            elif set(payload) != {
                 "model", "messages", "temperature", "max_tokens", "stream",
             }:
                 raise ValueError
@@ -370,11 +383,15 @@ class LoopbackDisplacementAdapter:
             if ("reasoning_content" in message
                 and not isinstance(message["reasoning_content"], str)):
                 raise ValueError
+            if self._structured_profile == PROFILE and "reasoning_content" in message:
+                raise ValueError
             answer = message["content"]
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError
             finish = choice.get("finish_reason")
             if finish is not None and finish not in ("stop", "length"):
+                raise ValueError
+            if self._structured_profile == PROFILE and finish != "stop":
                 raise ValueError
             usage = parsed.get("usage", {})
             if not isinstance(usage, dict) or set(usage) - {
@@ -410,6 +427,8 @@ class LoopbackDisplacementAdapter:
                         for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
                 and usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]):
                 raise ValueError
+            if self._structured_profile == PROFILE:
+                return validate_response_text(answer)
             return answer.strip()
         except Exception:
             raise TransportUnconfirmed("completion envelope unconfirmed") from None

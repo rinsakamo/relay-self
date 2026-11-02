@@ -22,6 +22,7 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from adapters.mineflayer.s537_s2b_gated_l2_shadow import S2BGatedL2Shadow
+from adapters.mineflayer.s537_s2d_strict_json_contract import PROFILE
 from tools.s537_s1_live_wb_m_dev import (
     _M_PIN,
     _WB_PIN,
@@ -29,15 +30,20 @@ from tools.s537_s1_live_wb_m_dev import (
     run_s1_owner_dev,
 )
 from tools.s537_s2b_original_owner_witness_dev import S2BOwnerWitnessObserver
+from tools.s537_s2d_backend_identity import verify_local_backend
 
 
 class S2CAsyncObserver(S2BOwnerWitnessObserver):
     """Live original source witness plus exactly one S60-B1 HTTP attempt."""
 
-    def __init__(self, config: LoopbackTransportConfig, *, timeout_s: float) -> None:
+    def __init__(
+        self, config: LoopbackTransportConfig, *, timeout_s: float,
+        structured_profile: str | None = None,
+    ) -> None:
         super().__init__()
         self.shadow = S2BGatedL2Shadow(
             enabled=True, config=config, timeout_s=timeout_s,
+            structured_profile=structured_profile,
         )
         self._timeout = timeout_s
         self._poll_task: asyncio.Task[None] | None = None
@@ -177,6 +183,10 @@ async def run_s2c_live_shadow_dev(
         "learning_updates": 0,
         "energy_debits": 0,
         "backend_stop_ack": False,
+        "structured_json_response_validated": (
+            s60["structured_profile"] == PROFILE
+            and "HTTP_COMPLETION_OBSERVED" in events
+        ),
         "qualification": "NO_GO",
         "science": "NOT_RUN",
     }
@@ -191,12 +201,20 @@ def main() -> int:
     parser.add_argument("--s2c-report", type=Path, required=True)
     parser.add_argument("--model-alias", required=True)
     parser.add_argument("--model-port", type=int, required=True)
+    parser.add_argument("--backend-pid", type=int, required=True)
+    parser.add_argument("--binary-path", type=Path, required=True)
+    parser.add_argument("--gguf-path", type=Path, required=True)
+    parser.add_argument("--binary-sha256", required=True)
+    parser.add_argument("--gguf-sha256", required=True)
     parser.add_argument("--max-tokens", type=int, default=256)
     parser.add_argument("--timeout-s", type=float, default=45.0)
     parser.add_argument("--live-world-dev", action="store_true")
+    parser.add_argument("--strict-json-reasoning-off", action="store_true")
     args = parser.parse_args()
     if not (
         args.live_world_dev
+        and args.strict_json_reasoning_off
+        and os.environ.get("S537_S2D_STRICT_JSON_DEV_ONLY") == "1"
         and os.environ.get("S537_S2C_LIVE_L2_DEV_ONLY") == "1"
         and os.environ.get("S49_REAL_SERVER_CI") == "1"
         and os.environ.get("S49_COMPLETED_L0_DEV_ONLY") == "1"
@@ -224,6 +242,11 @@ def main() -> int:
         )
         if not 0 < args.timeout_s <= 60 or args.max_tokens > 256:
             raise ValueError("model budget out of bounds")
+        backend_identity = verify_local_backend(
+            pid=args.backend_pid, binary=args.binary_path, gguf=args.gguf_path,
+            binary_sha256=args.binary_sha256, gguf_sha256=args.gguf_sha256,
+            alias=args.model_alias, port=args.model_port,
+        )
         _original_owner_module(
             root=args.m_owner_dir, ref=_M_PIN,
             relative="experiments/metabolism_s49_owner_admission.py",
@@ -242,12 +265,16 @@ def main() -> int:
         return 2
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
-    observer = S2CAsyncObserver(config, timeout_s=args.timeout_s)
+    observer = S2CAsyncObserver(
+        config, timeout_s=args.timeout_s, structured_profile=PROFILE,
+    )
     code, result = asyncio.run(run_s2c_live_shadow_dev(
         original_qualify=qualify,
         report_path=args.report, server_log=args.server_log,
         observer=observer,
     ))
+    result["backend_identity_preflight"] = backend_identity
+    result["model_process_identity_verified"] = True
     args.s2c_report.write_text(
         json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
