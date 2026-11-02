@@ -963,3 +963,73 @@ def test_wb_structured_reasoning_off_bounded_json_advisory(content, accepted):
             assert row["l0_blocked_on_l2"] is False
             assert row["wb_s60_diagnostic"]["root_cause"] == "UNDETERMINED"
     asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+@pytest.mark.parametrize("advance", [False, True])
+def test_structured_wb_host_order_acceptance_before_or_after_native_advance(advance):
+    """Synthetic received probes: never physical World or native Action proof."""
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        wire = envelope()
+        wire["choices"][0]["message"]["content"] = (
+            '{"uncertainty":"Check whether the current target is visible."}'
+        )
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(wire).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True, structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            if advance:
+                await observer.observe(scoped_world_probe(47))
+            row = await observer.close()
+            host = row["wb_structured_acceptance_host_order"]
+            assert host == {
+                "source_world_seq": 19,
+                "latest_native_seq_at_acceptance": 19,
+                "native_callbacks_seen_at_acceptance": 2,
+                "observer_closed_at_acceptance": False,
+                "owner_completion_observed_at_acceptance": True,
+            }
+            assert row["source_world_seq"] == 19
+            assert row["latest_world_seq"] == (47 if advance else 19)
+            assert row["text_current"] is not advance
+            assert row["status"] == (
+                "EXPIRED_WORLD_ADVANCED" if advance
+                else "ACCEPTED_READ_ONLY_SAME_PRESENT"
+            )
+            assert row["wb_s60_diagnostic"]["completion_state"] == (
+                "ACCEPTED_THEN_WORLD_ADVANCED" if advance else "ACCEPTED_CURRENT"
+            )
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["l0_blocked_on_l2"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_structured_wb_no_host_acceptance_from_http_failure():
+    from test_feature_s60b1_adapter import FakeHTTP, response
+
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response(status=503)]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True, structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            assert row["wb_structured_acceptance_host_order"] is None
+            assert row["text_current"] is False
+            assert row["status"] == "UNCONFIRMED"
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
