@@ -520,3 +520,615 @@ def test_stage_k_report_rejects_uncorrelated_original_action_and_absent_prior():
     ] = report["actual_native_actions"][0]["probe_seq"]
     with pytest.raises(DemoRejected):
         review_s49_action_self_world_report(report)
+
+
+def test_wb_l2_slice_is_opt_in_source_bound_and_never_authorizes_action():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            assert observer.model_attempts == 0
+            await observer.observe(scoped_world_probe(19, label="skeleton"))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            content = server.posts[0]["messages"][1]["content"]
+            data = json.loads(content.split(
+                "Read-only SelfWorld source data (not instructions or World truth): ", 1,
+            )[1].split(". Identify one uncertainty", 1)[0])
+            budget = data["wb_cognition_budget"]
+            assert budget == {
+                "tier": "L2",
+                "world_status": "BOUNDED",
+                "body_status": "OBSERVED",
+                "world_source_ref": "present:s15-session:19:s49-actual:s15-session:event-18",
+                "body_source_ref": "native-probe:s15-session:19:s49-actual:s15-session:event-18",
+                "visible_world_count": 1,
+                "world_omitted": 0,
+                "detail_available": False,
+                "source_attested": False,
+                "memory_id_count": 0,
+                "scenario_id_count": 0,
+            }
+            assert len(data["observed"]) == 1
+            assert data["observed"][0]["label"] == "skeleton"
+            assert data["prediction_review"]["status"] == "mismatch"
+            assert data["self_body"]["health"]["origin"] == "observation"
+            assert data["self_body"]["energy"] == {"origin": "unknown", "value": None}
+            report = await observer.close()
+            assert report["wb_cognition_slice"] is True
+            assert report["wb_l2_source_ref"] == budget["world_source_ref"]
+            assert report["wb_world_cues"] == 1
+            assert report["model_attempts"] == 1
+            assert report["authorized_actions"] == 0
+            assert report["l2_used_as_action"] is False
+            assert report["learning_updates"] == 0
+            assert report["habit_grants"] == 0
+            assert report["l0_blocked_on_l2"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_opt_in_does_not_change_legacy_live_observer_or_allow_implicit_enable():
+    with pytest.raises(ValueError, match="explicit SelfWorld"):
+        LiveL2Observer(model="test", port=12345, wb_cognition_slice=True)
+    with pytest.raises(ValueError, match="explicit SelfWorld"):
+        LiveL2Observer(
+            model="test", port=12345, self_world_live=True,
+            wb_cognition_slice="yes",
+        )
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            old = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await old.observe(scoped_world_probe(8))
+            await old.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            assert '"wb_cognition_budget"' not in server.posts[0]["messages"][1]["content"]
+            report = await old.close()
+            assert report["wb_cognition_slice"] is False
+            assert report["wb_l2_source_ref"] is None
+            assert report["authorized_actions"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_cli_requires_existing_selfworld_live_owner(capsys):
+    assert self_demo.main(["--wb-cognition-slice"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2"
+    )
+    assert self_demo.main(["--self-world-live", "--wb-cognition-slice"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2"
+    )
+    assert self_demo.main([
+        "--live-think", "--self-world-live", "--wb-cognition-slice",
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+
+
+def test_wb_bounded_omission_keeps_prediction_review_for_omitted_target():
+    """A nearest-eight display must preserve review of a farther prior target."""
+    observer = LiveL2Observer(
+        model="test", port=12345, self_world_live=True, wb_cognition_slice=True,
+    )
+    assert observer._live_self_world_prompt(scoped_world_probe(8)) is None
+    current = scoped_world_probe(19, label="skeleton")
+    extras = tuple(
+        replace(current.snapshot.nearby_entities[0],
+                entity_id=100 + i, name="cow", distance=.1 * (i + 1))
+        for i in range(9)
+    )
+    current = replace(current, snapshot=replace(
+        current.snapshot,
+        nearby_entities=current.snapshot.nearby_entities + extras,
+        nearby_entities_coverage=replace(
+            current.snapshot.nearby_entities_coverage, candidate_count=10,
+        ),
+    ))
+    prompt = observer._live_self_world_prompt(current)
+    data = json.loads(prompt.split("truth): ", 1)[1].split(". Identify one uncertainty", 1)[0])
+    assert len(data["observed"]) == 8
+    assert all(cue["label"] == "cow" for cue in data["observed"])
+    assert data["wb_cognition_budget"]["world_omitted"] == 2
+    assert data["wb_cognition_budget"]["detail_available"] is True
+    assert data["prediction_review"]["status"] == "mismatch"
+    assert observer.model_attempts == 0
+
+
+def test_wb_foreign_stale_and_projection_failure_remain_fail_closed(monkeypatch):
+    async def scenario():
+        observer = LiveL2Observer(
+            model="test", port=12345, self_world_live=True, wb_cognition_slice=True,
+        )
+        await observer.observe(scoped_world_probe(8))
+        with pytest.raises(ValueError, match="foreign/replayed"):
+            await observer.observe(scoped_world_probe(8))
+        foreign = replace(scoped_world_probe(19), session_id="foreign")
+        with pytest.raises(ValueError, match="foreign/replayed"):
+            await observer.observe(foreign)
+
+        def rejected_projection(*args, **kwargs):
+            raise ValueError("unqualified WB projection")
+
+        monkeypatch.setattr(
+            "adapters.mineflayer.self_live_think.project_cognition_slice",
+            rejected_projection,
+        )
+        # Optional projection failure returns to the existing S49 callback;
+        # neither a model request nor an Action can be created from it.
+        await asyncio.wait_for(observer.observe(scoped_world_probe(19)), .1)
+        report = await observer.close()
+        assert report["status"] == "SELF_WORLD_INPUT_UNQUALIFIED"
+        assert report["model_attempts"] == report["authorized_actions"] == 0
+        assert report["l0_blocked_on_l2"] is False
+    asyncio.run(scenario())
+
+
+def test_wb_s60_host_receipts_separate_pre_advance_from_cleanup():
+    """Read S60/transport events without treating backend completion as Action."""
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            await observer.observe(scoped_world_probe(47))
+            row = await observer.close()
+            diagnostic = row["wb_s60_diagnostic"]
+            assert diagnostic["classification"] == (
+                "HOST_RECEIPT_ONLY_NOT_PHYSICAL_ATTESTATION"
+            )
+            assert diagnostic["root_cause"] == "UNDETERMINED"
+            assert diagnostic["native_stop_ack"] == "UNATTESTED"
+            assert diagnostic["source_advance_samples"][0]["new_native_seq"] == 47
+            assert diagnostic["http_completion_observed_before_cleanup"] is True
+            assert "HTTP_COMPLETION_OBSERVED" in (
+                diagnostic["transport_events_before_cleanup"]
+            )
+            assert "BACKEND_COMPLETION_OBSERVED" in (
+                diagnostic["source_advance_samples"][0]["owner_receipts_before"]
+            )
+            assert diagnostic["accepted_current_text"] is False
+            assert row["status"] == "EXPIRED_WORLD_ADVANCED"
+            assert row["backend_stop_ack"] is False
+            assert row["authorized_actions"] == 0
+            assert row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_s60_unconfirmed_transport_receipts_do_not_guess_rejection_cause():
+    async def scenario():
+        async with OneShotLocalModel(status=503) as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            row = await observer.close()
+            diagnostic = row["wb_s60_diagnostic"]
+            assert server.requests == 1
+            assert diagnostic["http_completion_observed_before_cleanup"] is False
+            assert "TRANSPORT_UNCONFIRMED" in diagnostic["transport_events_before_cleanup"]
+            assert "PROVIDER_UNCONFIRMED" in diagnostic["owner_events_before_cleanup"]
+            assert diagnostic["root_cause"] == "UNDETERMINED"
+            assert diagnostic["source_advance_samples"] == []
+            assert diagnostic["native_stop_ack"] == "UNATTESTED"
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["text_current"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_diagnostic_is_default_off():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            row = await observer.close()
+            assert "wb_s60_diagnostic" not in row
+            assert row["wb_cognition_slice"] is False
+            assert row["authorized_actions"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+@pytest.mark.parametrize("wb", [False, True])
+@pytest.mark.parametrize("case,accepted", [
+    ("valid_length", True), ("valid_chunked", True), ("503", False),
+    ("malformed", False), ("alias", False), ("empty", False),
+    ("reasoning_only", False), ("over_limit", False), ("unknown_metadata", False),
+])
+def test_wb_s60_synthetic_http_matrix_preserves_owner_contract(wb, case, accepted):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        value = envelope()
+        value["model"] = "offline-model"
+        value["choices"][0]["finish_reason"] = "length"
+        value["usage"] = dict(prompt_tokens=1153, completion_tokens=96, total_tokens=1249)
+        if case == "alias":
+            value["model"] = "foreign-model"
+        if case in {"empty", "reasoning_only"}:
+            value["choices"][0]["message"]["content"] = ""
+        if case == "reasoning_only":
+            value["choices"][0]["message"]["reasoning_content"] = "synthetic reasoning"
+        if case == "over_limit":
+            value["usage"].update(completion_tokens=97, total_tokens=1250)
+        if case == "unknown_metadata":
+            value["unknown"] = True
+        wire = response(
+            b"{" if case == "malformed" else json.dumps(value).encode(),
+            status=503 if case == "503" else 200, chunked=case == "valid_chunked",
+        )
+        async with FakeHTTP() as server:
+            server.responses = [wire]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=wb,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            assert len(server.posts) == row["model_attempts"] == 1
+            assert row["text_current"] is accepted
+            assert row["status"] == (
+                "ACCEPTED_READ_ONLY_SAME_PRESENT" if accepted else "UNCONFIRMED"
+            )
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["l0_blocked_on_l2"] is False
+            if wb:
+                diag = row["wb_s60_diagnostic"]
+                assert diag["completion_state"] == (
+                    "ACCEPTED_CURRENT" if accepted
+                    else "PROVIDER_FAILED_HTTP_COMPLETION_UNCONFIRMED"
+                )
+                assert diag["lease_active_before_cleanup"] is not accepted
+                assert diag["owner_completion_observed_before_cleanup"] is accepted
+                assert diag["http_status"] == diag["completion_envelope"] == "UNRECORDED"
+                assert diag["root_cause"] == "UNDETERMINED"
+            else:
+                assert "wb_s60_diagnostic" not in row
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+@pytest.mark.parametrize("boundary", ["world_before", "world_after", "deadline", "cleanup"])
+def test_wb_s60_completion_boundaries_keep_l0_independent(boundary):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        value = envelope()
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(value).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            # Real provider task held at a barrier, never an actual model call.
+            ran = []
+            await observer._owner.run_l0(lambda: _record_l0(ran))
+            assert ran == [True]
+            if boundary == "world_after":
+                server.release[0].set()
+                await asyncio.wait_for(observer._poll_task, 2)
+                await observer.observe(scoped_world_probe(47))
+            elif boundary == "world_before":
+                await observer.observe(scoped_world_probe(47))
+                await asyncio.wait_for(observer._poll_task, 2)
+            elif boundary == "deadline":
+                # Advance only S60's injected monotonic clock, no wall-clock sleep.
+                observer._owner._clock = lambda: observer._started_at + 3
+                observer._owner.tick()
+                await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            diag = row["wb_s60_diagnostic"]
+            assert row["text_current"] is False
+            assert len(server.posts) == 1
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["l0_blocked_on_l2"] is False
+            assert diag["accepted_text_ever_observed"] is (boundary == "world_after")
+            if boundary == "world_after":
+                assert diag["completion_state"] == "ACCEPTED_THEN_WORLD_ADVANCED"
+            else:
+                assert diag["http_completion_observed_before_cleanup"] is False
+                assert "CLIENT_CANCEL_UNCONFIRMED" in diag["transport_events_after_cleanup"]
+            if boundary == "cleanup":
+                assert "CLIENT_CANCEL_UNCONFIRMED" not in diag["transport_events_before_cleanup"]
+            if boundary == "world_before":
+                sample = diag["source_advance_samples"][0]
+                assert "HTTP_COMPLETION_OBSERVED" not in sample["provider_receipts_before"]
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+async def _record_l0(ran):
+    ran.append(True)
+
+
+def test_wb_s60_http_completed_before_owner_poll_can_be_stale_rejected():
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(envelope()).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await server.next_post()
+            observer._poll_task.cancel()
+            await asyncio.gather(observer._poll_task, return_exceptions=True)
+            server.release[0].set()
+            await asyncio.wait_for(observer._adapter._attempt.task, 2)
+            # HTTP is fully validated, but owner has not polled its Future.
+            await observer.observe(scoped_world_probe(47))
+            assert observer._owner.tick() is None
+            row = await observer.close()
+            diag = row["wb_s60_diagnostic"]
+            assert diag["completion_state"] == "HTTP_COMPLETED_S60_STALE_REJECTED"
+            assert diag["owner_completion_observed_before_cleanup"] is True
+            assert diag["accepted_text_ever_observed"] is False
+            assert row["text_current"] is False
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+def test_wb_structured_l2_requires_explicit_opt_in_without_world(capsys):
+    assert self_demo.main(["--wb-structured-l2"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "WB_JSON_L2_REQUIRES_WB_LIVE_L2"
+    assert self_demo.main(["--wb-cognition-slice", "--wb-structured-l2"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "WB_JSON_L2_REQUIRES_WB_LIVE_L2"
+    assert self_demo.main([
+        "--wb-structured-l2", "--wb-cognition-slice", "--self-world-live",
+        "--live-think",
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+    with pytest.raises(ValueError, match="explicit WB"):
+        LiveL2Observer(model="test", port=12345, structured_json_off=True)
+    with pytest.raises(ValueError, match="explicit WB"):
+        LiveL2Observer(
+            model="test", port=12345, self_world_live=True,
+            wb_cognition_slice=True, structured_json_off="yes",
+        )
+
+
+@pytest.mark.parametrize("content,accepted", [
+    ('{"uncertainty":"Which observed path is blocked?"}', True),
+    ('{"uncertainty":""}', False),
+    ('{"unknown":"x"}', False),
+    ('{"uncertainty":"x","command":"MOVE_AWAY"}', False),
+    ('not JSON', False),
+])
+def test_wb_structured_reasoning_off_bounded_json_advisory(content, accepted):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        wire = envelope()
+        wire["choices"][0]["message"]["content"] = content
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(wire).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+                structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            sent = server.posts[0][1]
+            assert sent["reasoning_effort"] == "none"
+            assert sent["response_format"]["type"] == "json_schema"
+            assert sent["response_format"]["json_schema"]["strict"] is True
+            assert sent["response_format"]["json_schema"]["schema"][
+                "additionalProperties"
+            ] is False
+            assert sent["max_tokens"] == 96
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            assert row["structured_json_off"] is True
+            assert row["text_current"] is accepted
+            assert row["status"] == (
+                "ACCEPTED_READ_ONLY_SAME_PRESENT" if accepted
+                else "STRUCTURED_CONTENT_UNCONFIRMED"
+            )
+            if accepted:
+                assert json.loads(row["text_observation_only"]) == {
+                    "uncertainty": "Which observed path is blocked?",
+                }
+            else:
+                assert row["text_observation_only"] is None
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["gpu_release_verified"] is False
+            assert row["l0_blocked_on_l2"] is False
+            assert row["wb_s60_diagnostic"]["root_cause"] == "UNDETERMINED"
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+@pytest.mark.parametrize("advance", [False, True])
+def test_structured_wb_host_order_acceptance_before_or_after_native_advance(advance):
+    """Synthetic received probes: never physical World or native Action proof."""
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        wire = envelope()
+        wire["choices"][0]["message"]["content"] = (
+            '{"uncertainty":"Check whether the current target is visible."}'
+        )
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(wire).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True, structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            if advance:
+                await observer.observe(scoped_world_probe(47))
+            live_view = observer.read_wb_l2_uncertainty()
+            assert live_view.state == (
+                "PAST_EPOCH_REVIEW_ONLY" if advance else "CURRENT_EPOCH_READ_ONLY"
+            )
+            assert live_view.current_uncertainty == (
+                None if advance else "Check whether the current target is visible."
+            )
+            assert live_view.past_review_candidate == (
+                "Check whether the current target is visible." if advance else None
+            )
+            shadow = observer.read_wb_l1_attention_shadow()
+            ab = observer.read_wb_l1_attention_ab()
+            review = observer.read_wb_past_review_handoff()
+            if advance:
+                assert ab.state == "UNAVAILABLE"
+            else:
+                assert ab.state == "SHADOW_SELECTION_DIFFERENCE"
+                assert ab.observed_candidate_count == 1
+                assert ab.baseline_selected == ("wb-native-observed-0",)
+                assert ab.with_l2_selected == ("wb-l2-uncertainty",)
+                assert ab.selection_changed is True
+                assert ab.actual_l1_policy_changed is False
+                assert ab.useful_for_goal is False
+            assert shadow.state == (
+                "UNAVAILABLE" if advance else "ATT_SELECTED_READ_ONLY"
+            )
+            assert review.state == (
+                "PENDING_INDEPENDENT_OUTCOME" if advance else "UNAVAILABLE"
+            )
+            if advance:
+                assert review.origin_world_seq == 19
+                assert review.later_world_seq == 47
+                assert review.outcome_verified is False
+                assert review.learning_authorized is False
+            row = await observer.close()
+            assert row["wb_l2_readonly_at_close"] == live_view.to_mapping()
+            assert row["wb_l1_attention_at_admission"]["state"] == (
+                "ATT_SELECTED_READ_ONLY"
+            )
+            assert row["wb_l1_attention_ab_at_admission"]["state"] == (
+                "SHADOW_SELECTION_DIFFERENCE"
+            )
+            assert row["wb_l1_attention_ab_at_admission"]["selection_changed"] is True
+            assert row["wb_l1_attention_ab_at_close"] == ab.to_mapping()
+            assert row["wb_l1_attention_at_close"] == shadow.to_mapping()
+            assert row["wb_l2_past_review_at_close"] == review.to_mapping()
+            assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
+            assert observer.read_wb_l1_attention_shadow().state == "UNAVAILABLE"
+            assert observer.read_wb_past_review_handoff().state == "UNAVAILABLE"
+            host = row["wb_structured_acceptance_host_order"]
+            assert host == {
+                "source_world_seq": 19,
+                "latest_native_seq_at_acceptance": 19,
+                "native_callbacks_seen_at_acceptance": 2,
+                "observer_closed_at_acceptance": False,
+                "owner_completion_observed_at_acceptance": True,
+            }
+            assert row["source_world_seq"] == 19
+            assert row["latest_world_seq"] == (47 if advance else 19)
+            assert row["text_current"] is not advance
+            assert row["status"] == (
+                "EXPIRED_WORLD_ADVANCED" if advance
+                else "ACCEPTED_READ_ONLY_SAME_PRESENT"
+            )
+            assert row["wb_s60_diagnostic"]["completion_state"] == (
+                "ACCEPTED_THEN_WORLD_ADVANCED" if advance else "ACCEPTED_CURRENT"
+            )
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["l0_blocked_on_l2"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_structured_wb_no_host_acceptance_from_http_failure():
+    from test_feature_s60b1_adapter import FakeHTTP, response
+
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response(status=503)]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True, structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
+            row = await observer.close()
+            assert row["wb_structured_acceptance_host_order"] is None
+            assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
+            assert row["wb_l1_attention_at_admission"] is None
+            assert row["wb_l1_attention_ab_at_admission"] is None
+            assert row["wb_l1_attention_ab_at_close"]["state"] == "UNAVAILABLE"
+            assert row["wb_l1_attention_at_close"]["state"] == "UNAVAILABLE"
+            assert row["wb_l2_past_review_at_close"]["state"] == "UNAVAILABLE"
+            assert row["text_current"] is False
+            assert row["status"] == "UNCONFIRMED"
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_optional_callback_failure_cannot_veto_original_s49_l0(
+    monkeypatch, tmp_path,
+):
+    """Synthetic owner stub; no Minecraft, Gemma or provider transport."""
+    import adapters.mineflayer.s49_normal_session_real_ci as s49
+
+    called = []
+
+    async def fake_original_s49(report_path, log_path, *, live_probe=None):
+        assert live_probe is not None
+        for seq in (8, 19):
+            await live_probe(scoped_world_probe(seq))
+            called.append(seq)
+        return 0
+
+    async def broken_optional_observer(self, reading):
+        raise RuntimeError("synthetic WB projection callback failure")
+
+    monkeypatch.setattr(s49, "qualify", fake_original_s49)
+    monkeypatch.setattr(LiveL2Observer, "observe", broken_optional_observer)
+    result = asyncio.run(self_demo._run_disposable(
+        tmp_path / "unused-native-report.json",
+        tmp_path / "unused-model-log.json",
+        live_model=("offline-model", 12345, 1),
+        self_world_live=True, wb_cognition_slice=True,
+        structured_json_off=True,
+    ))
+    assert result == 0
+    assert called == [8, 19]
+    row = json.loads((tmp_path / "live_l2.jsonl").read_text().strip())
+    assert row["status"] == "SOURCE_CALLBACK_UNCONFIRMED"
+    assert row["source_callback_failure"] == "RuntimeError"
+    assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_l1_attention_at_admission"] is None
+    assert row["wb_l1_attention_ab_at_admission"] is None
+    assert row["wb_l1_attention_ab_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_l1_attention_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_l2_past_review_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_structured_acceptance_host_order"] is None
+    assert row["model_attempts"] == row["authorized_actions"] == 0
+    assert row["learning_updates"] == 0
+    assert row["l0_blocked_on_l2"] is False

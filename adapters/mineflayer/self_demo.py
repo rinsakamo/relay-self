@@ -409,6 +409,8 @@ async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
     self_world_live: bool = False,
+    wb_cognition_slice: bool = False,
+    structured_json_off: bool = False,
     self_world_prospective: bool = False,
     self_world_typed_closure: bool = False,
     self_world_retained_handoff: bool = False,
@@ -436,6 +438,8 @@ async def _run_disposable(
         live_observer = LiveL2Observer(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             self_world_live=self_world_live,
+            wb_cognition_slice=wb_cognition_slice,
+            **({"structured_json_off": True} if structured_json_off else {}),
         )
     stage_n = None
     if self_world_typed_closure:
@@ -490,7 +494,12 @@ async def _run_disposable(
                 # The read-only projection cannot veto S49's native Action owner.
                 passive_views.record_error(exc)
         if live_observer is not None:
-            await live_observer.observe(reading)
+            try:
+                await live_observer.observe(reading)
+            except Exception as exc:
+                # Optional WB/S60 sidecar cannot veto original S49 L0/Action.
+                # Cancellation (BaseException) is intentionally not swallowed.
+                live_observer.note_source_callback_error(exc)
 
     previous = os.environ.get("S49_REAL_SERVER_CI")
     previous_r = os.environ.get("S49_STAGE_R_DEV_ONLY")
@@ -661,6 +670,12 @@ def _dev_run(args: argparse.Namespace) -> int:
         stage_r = getattr(args, "self_world_stage_r_dev", False)
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
         passive_views = getattr(args, "self_passive_views", False)
+        wb_slice = getattr(args, "wb_cognition_slice", False)
+        wb_structured = getattr(args, "wb_structured_l2", False)
+        if wb_structured and (not wb_slice or not live_selfworld or not args.live_think):
+            raise DemoRejected("WB JSON L2 requires native-selfworld WB live DEV")
+        if wb_slice and (not live_selfworld or not args.live_think):
+            raise DemoRejected("WB slice requires native-selfworld live L2 DEV")
         if type(passive_views) is not bool or (
             passive_views and (
                 scenario != "native" or stage_w3
@@ -798,6 +813,10 @@ def _dev_run(args: argparse.Namespace) -> int:
                     extra["self_world_typed_closure"] = True
                 if retained_handoff:
                     extra["self_world_retained_handoff"] = True
+                if wb_slice:
+                    extra["wb_cognition_slice"] = True
+                if wb_structured:
+                    extra["structured_json_off"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
@@ -1192,6 +1211,7 @@ def _dev_run(args: argparse.Namespace) -> int:
             # Native event seq, probe seq and logical decision epoch differ.
             paired = native.get("source_pair_trace")
             valid_pair_refs: list[str] = []
+            valid_pair_sources: dict[int, str] = {}
             if isinstance(paired, list):
                 for pair in paired:
                     if not isinstance(pair, dict):
@@ -1203,6 +1223,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                             f"present:{native['session_id']}:{seq}:"
                             f"s49-actual:{native['session_id']}:event-{event}"
                         )
+                        valid_pair_sources[seq] = valid_pair_refs[-1]
             prior_ref = sidecar.get("self_world_prior_source")
             after_ref = sidecar.get("self_world_after_source")
             actual_source_pair = (
@@ -1236,6 +1257,200 @@ def _dev_run(args: argparse.Namespace) -> int:
                 dev_self_world_model_identity_verified=False,
                 dev_self_world_sidecar="live_l2.jsonl",
             )
+            if wb_structured:
+                # Classify ONLY the original World receipt joined to the
+                # already-emitted read-only sidecar. Host source order is not
+                # independent Paper-clock, model-binary or STOP attestation.
+                host_order = sidecar.get("wb_structured_acceptance_host_order")
+                diagnostic = sidecar.get("wb_s60_diagnostic")
+                l2_text = sidecar.get("text_observation_only")
+                try:
+                    parsed = json.loads(l2_text) if isinstance(l2_text, str) else None
+                except (TypeError, ValueError):
+                    parsed = None
+                semantic_ok = (
+                    isinstance(parsed, dict)
+                    and set(parsed) == {"uncertainty"}
+                    and isinstance(parsed["uncertainty"], str)
+                    and 0 < len(parsed["uncertainty"].strip()) <= 300
+                )
+                original_probe_seqs = {
+                    pair["probe_seq"] for pair in paired
+                    if isinstance(pair, dict)
+                    and type(pair.get("probe_seq")) is int
+                } if isinstance(paired, list) else set()
+                host_order_ok = (
+                    isinstance(host_order, dict)
+                    and type(host_order.get("source_world_seq")) is int
+                    and host_order["source_world_seq"] in original_probe_seqs
+                    and host_order["source_world_seq"] == sidecar.get("text_source_seq")
+                    and after_ref == valid_pair_sources.get(host_order["source_world_seq"])
+                    and host_order.get("latest_native_seq_at_acceptance")
+                    == host_order["source_world_seq"]
+                    and type(host_order.get("native_callbacks_seen_at_acceptance")) is int
+                    and 1 <= host_order["native_callbacks_seen_at_acceptance"] <= len(original_probe_seqs)
+                    and host_order.get("observer_closed_at_acceptance") is False
+                    and host_order.get("owner_completion_observed_at_acceptance") is True
+                )
+                # The original S49 source ledger, not a sidecar claim,
+                # determines the latest observed native epoch at World exit.
+                original_latest_seq = max(original_probe_seqs, default=None)
+                latest_source_joined = (
+                    type(original_latest_seq) is int
+                    and type(sidecar.get("latest_world_seq")) is int
+                    and sidecar["latest_world_seq"] == original_latest_seq
+                    and type(host_order.get("source_world_seq")) is int
+                    and sidecar.get("text_current") is (
+                        original_latest_seq == host_order["source_world_seq"]
+                    )
+                ) if isinstance(host_order, dict) else False
+                accepted_host_source = (
+                    qualified_input and actual_source_pair and latest_source_joined
+                    and sidecar.get("wb_cognition_slice") is True
+                    and sidecar.get("structured_json_off") is True
+                    and sidecar.get("wb_l2_source_ref") == after_ref
+                    and isinstance(diagnostic, dict)
+                    and diagnostic.get("owner_completion_observed_before_cleanup") is True
+                    and diagnostic.get("accepted_text_ever_observed") is True
+                    and "BACKEND_COMPLETION_OBSERVED" in sidecar.get("owner_events", [])
+                    and host_order_ok and semantic_ok
+                )
+                if accepted_host_source and sidecar.get("text_current") is True:
+                    state = "ACCEPTED_CURRENT_HOST_SOURCE_BOUND"
+                elif accepted_host_source and sidecar.get("text_current") is False:
+                    state = "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND"
+                else:
+                    state = "NOT_ACCEPTED_OR_UNQUALIFIED"
+                # Re-read the original native source after S60 adoption.
+                # An ATT shadow is a question selected for possible L1 attention,
+                # not evidence that L1 policy or Habit actually used it.
+                from relay_self.wb_l2_attention_handoff import (
+                    WBL1AttentionShadow,
+                    WBL2ReviewHandoff,
+                    project_wb_l1_attention_shadow,
+                    project_wb_past_review_handoff,
+                )
+                from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
+
+                source_seq = (
+                    host_order.get("source_world_seq")
+                    if isinstance(host_order, dict) else None
+                )
+                wb_read = project_wb_l2_uncertainty(
+                    accepted_text=l2_text,
+                    session_id=native.get("session_id"),
+                    source_world_seq=source_seq,
+                    latest_world_seq=original_latest_seq,
+                    source_ref=sidecar.get("wb_l2_source_ref"),
+                    expected_source_ref=valid_pair_sources.get(source_seq),
+                    owner_admitted=bool(accepted_host_source),
+                    source_callback_failed=sidecar.get("source_callback_failure") is not None,
+                )
+                receipt["dev_wb_l2_uncertainty_read"] = wb_read.to_mapping()
+                admission_read = project_wb_l2_uncertainty(
+                    accepted_text=l2_text,
+                    session_id=native.get("session_id"),
+                    source_world_seq=source_seq,
+                    latest_world_seq=source_seq,
+                    source_ref=sidecar.get("wb_l2_source_ref"),
+                    expected_source_ref=valid_pair_sources.get(source_seq),
+                    owner_admitted=bool(accepted_host_source),
+                    source_callback_failed=sidecar.get("source_callback_failure") is not None,
+                )
+                expected_l1 = project_wb_l1_attention_shadow(admission_read)
+                # An unverifiable sidecar witness never becomes an L1 result.
+                witnessed_l1 = (
+                    expected_l1 if accepted_host_source
+                    and sidecar.get("wb_l1_attention_at_admission")
+                    == expected_l1.to_mapping()
+                    else WBL1AttentionShadow("UNAVAILABLE", None, None, None)
+                )
+                receipt["dev_wb_l1_attention_shadow"] = witnessed_l1.to_mapping()
+                # Compare the sidecar's ATT A/B witness to fixed shadow-test
+                # semantics and the independent *source ref*. The original
+                # S49 report does not independently preserve the full L1
+                # visual candidate pool: never call its count attested.
+                raw_ab = sidecar.get("wb_l1_attention_ab_at_admission")
+                ab_n = (
+                    raw_ab.get("observed_candidate_count")
+                    if isinstance(raw_ab, dict) else None
+                )
+                expected_ab_state = (
+                    "SHADOW_SELECTION_DIFFERENCE" if type(ab_n) is int and ab_n > 0
+                    else "NO_NATIVE_BASELINE"
+                )
+                ab_valid = (
+                    accepted_host_source
+                    and witnessed_l1.state == "ATT_SELECTED_READ_ONLY"
+                    and isinstance(raw_ab, dict)
+                    and type(ab_n) is int and 0 <= ab_n <= 3
+                    and raw_ab.get("state") == expected_ab_state
+                    and raw_ab.get("source_world_seq") == source_seq
+                    and raw_ab.get("source_ref") == after_ref
+                    and raw_ab.get("baseline_selected")
+                    == (["wb-native-observed-0"] if ab_n else [])
+                    and raw_ab.get("with_l2_selected") == ["wb-l2-uncertainty"]
+                    and raw_ab.get("selection_changed") is bool(ab_n)
+                    and raw_ab.get("policy")
+                    == "EXPLICIT_SHADOW_L2_PRIORITY_1_VS_NATIVE_0"
+                    and raw_ab.get("useful_for_goal") is False
+                    and raw_ab.get("actual_l1_policy_changed") is False
+                    and raw_ab.get("authority")
+                    == "ATT_SHADOW_AB_NO_ACTION_MEMORY_LEARNING"
+                )
+                receipt["dev_wb_l1_attention_ab"] = {
+                    "state": expected_ab_state if ab_valid else "UNAVAILABLE",
+                    "original_s49_l2_source_joined": bool(accepted_host_source),
+                    "observed_candidate_count_sidecar_only": (
+                        ab_n if ab_valid else None
+                    ),
+                    "baseline_selected": (
+                        raw_ab["baseline_selected"] if ab_valid else []
+                    ),
+                    "with_l2_selected": (
+                        raw_ab["with_l2_selected"] if ab_valid else []
+                    ),
+                    "selection_changed_due_to_fixed_priority": (
+                        bool(ab_n) if ab_valid else False
+                    ),
+                    "independent_native_candidate_count_verified": False,
+                    "actual_l1_policy_changed": False,
+                    "learned_attention_gain_verified": False,
+                    "attestation": "S60_HOST_JOIN_AND_SIDECAR_SHADOW_ONLY",
+                }
+                expected_review = project_wb_past_review_handoff(
+                    wb_read, later_source_ref=valid_pair_sources.get(original_latest_seq),
+                )
+                # Require both original source evidence and matching live
+                # sidecar projection; no question-to-outcome claim is created.
+                if (
+                    expected_review.state == "PENDING_INDEPENDENT_OUTCOME"
+                    and sidecar.get("wb_l2_past_review_at_close")
+                    == expected_review.to_mapping()
+                ):
+                    receipt["dev_wb_past_review_handoff"] = expected_review.to_mapping()
+                else:
+                    receipt["dev_wb_past_review_handoff"] = WBL2ReviewHandoff(
+                        "UNAVAILABLE", None, None, None, None, None, None,
+                    ).to_mapping()
+                receipt["dev_wb_structured_l2"] = {
+                    "state": state,
+                    "source_world_seq": (
+                        host_order.get("source_world_seq")
+                        if isinstance(host_order, dict) else None
+                    ),
+                    "original_source_pair_joined": bool(
+                        actual_source_pair and host_order_ok
+                    ),
+                    "observer_status": sidecar.get("status"),
+                    "s60_owner_completed": (
+                        diagnostic.get("owner_completion_observed_before_cleanup")
+                        if isinstance(diagnostic, dict) else None
+                    ),
+                    "semantic_json_accepted": bool(accepted_host_source),
+                    "action_authority": "S49_ONLY",
+                    "attestation": "HOST_ORDER_DEV_ONLY",
+                }
             # Stage K reuses the already CLOSED S15/S16 native before/after
             # frames from each Action. No new probe, L2 lease or movement.
             # This differs from S49's intentionally different zombies across
@@ -1529,6 +1744,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="one L2 model attempt DURING native World; L0 remains independent")
     parser.add_argument("--self-world-live", action="store_true",
                         help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
+    parser.add_argument("--wb-cognition-slice", action="store_true",
+                        help="DEV-only opt-in bounded L2 context; requires SelfWorld live")
+    parser.add_argument("--wb-structured-l2", action="store_true",
+                        help="DEV opt-in schema JSON and attested Thinking OFF; requires WB L2")
     parser.add_argument("--self-world-prospective", action="store_true",
                         help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
     parser.add_argument("--self-world-typed-closure", action="store_true",
@@ -1572,6 +1791,20 @@ def main(argv: list[str] | None = None) -> int:
     ) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.wb_structured_l2 and not (
+        args.wb_cognition_slice and args.self_world_live and args.live_think
+    ):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="WB_JSON_L2_REQUIRES_WB_LIVE_L2",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.wb_cognition_slice and not (args.self_world_live and args.live_think):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="WB_SLICE_REQUIRES_SELF_WORLD_LIVE_L2",
             model_calls=0, actual_actions=0,
         ), sort_keys=True))
         return 2
@@ -1740,6 +1973,7 @@ def main(argv: list[str] | None = None) -> int:
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     self_world_live=args.self_world_live,
+                    wb_cognition_slice=args.wb_cognition_slice,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))

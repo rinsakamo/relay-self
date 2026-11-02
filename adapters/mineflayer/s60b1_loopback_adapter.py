@@ -20,6 +20,23 @@ class TransportUnconfirmed(ValueError):
     """Sanitized failure: transport cannot establish provider completion."""
 
 
+# Only one DEV L2 advisory schema: no game commands, rewards or authority.
+# This is a pinned wire contract, not an arbitrary caller-supplied JSON grammar.
+S60_WB_ADVISORY_JSON_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "wb_l2_uncertainty",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {"uncertainty": {"type": "string"}},
+            "required": ["uncertainty"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
 @dataclass(frozen=True, slots=True)
 class LoopbackTransportConfig:
     """Explicit S57-compatible alias/port/one-slot binding, no process launch."""
@@ -30,6 +47,7 @@ class LoopbackTransportConfig:
     connect_s: float = 5.0
     read_s: float = 15.0
     whole_s: float = 45.0
+    structured_json_off: bool = False
 
     def __post_init__(self) -> None:
         if (not isinstance(self.model, str)
@@ -37,6 +55,7 @@ class LoopbackTransportConfig:
             or type(self.port) is not int or not 1025 <= self.port <= 65535
             or type(self.slots) is not int or self.slots != 1
             or type(self.max_tokens) is not int or not 1 <= self.max_tokens <= 1024
+            or type(self.structured_json_off) is not bool
             or any(type(t) not in (int, float) or not math.isfinite(t) or not 0 < t <= 120
                    for t in (self.connect_s, self.read_s, self.whole_s))):
             raise TransportUnconfirmed("invalid explicit loopback bounds")
@@ -126,9 +145,16 @@ class LoopbackDisplacementAdapter:
     def _payload(self, request: ModelRequest) -> bytes:
         try:
             payload = self._payload_for(request)
-            if not isinstance(payload, Mapping) or set(payload) != {
-                "model", "messages", "temperature", "max_tokens", "stream",
-            }:
+            basic = {"model", "messages", "temperature", "max_tokens", "stream"}
+            off = {"reasoning_effort", "response_format"}
+            expected = basic | off if self.config.structured_json_off else basic
+            if not isinstance(payload, Mapping) or set(payload) != expected:
+                raise ValueError
+            if self.config.structured_json_off and (
+                payload["reasoning_effort"] != "none"
+                or type(payload["response_format"]) is not dict
+                or payload["response_format"] != S60_WB_ADVISORY_JSON_FORMAT
+            ):
                 raise ValueError
             messages = payload["messages"]
             if (payload["model"] != self.config.model or payload["stream"] is not False

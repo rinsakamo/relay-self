@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'self/product-self-one-command-*'
+      - 'dev/wb-cognition-budget-view-*'
   pull_request:
     branches:
       - 'self/s60b1-loopback-adapter-*'
@@ -77,6 +78,7 @@ jobs:
               adapters/mineflayer/self_demo.py|\
               adapters/mineflayer/self_product_passive_views.py|\
               adapters/mineflayer/self_live_think.py|\
+              adapters/mineflayer/s60b1_loopback_adapter.py|\
               adapters/mineflayer/self_body_projection.py|\
               adapters/mineflayer/self_body_m0_projection.py|\
               adapters/mineflayer/self_body_p1_projection.py|\
@@ -128,8 +130,12 @@ jobs:
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
+              src/relay_self/self_cognition_slice.py|\
+              src/relay_self/wb_l2_read_port.py|\
+              src/relay_self/wb_l2_attention_handoff.py|\
               src/relay_self/world_conditioned_choice.py|\
               docs/selfworld-v0.md|\
+              docs/wb-bounded-cognition-slices-20261101.md|\
               docs/selfworld-w2-localcodex.md|\
               docs/selfworld-w3-native-capture.md|\
               docs/selfworld-w4-independent-custody.md|\
@@ -144,6 +150,8 @@ jobs:
               docs/w4-protected-adoption-v2.md|\
               docs/selfworld-w4-s49-optin-composition.md|\
               tests/test_self_world.py|\
+              tests/test_self_cognition_slice.py|\
+              tests/test_wb_l2_read_port.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
               adapters/mineflayer/v6_*.test.mjs|\
@@ -157,6 +165,7 @@ jobs:
               tests/test_self_dev.py|\
               tests/test_self_product_passive_views.py|\
               tests/test_self_live_think.py|\
+              tests/test_feature_s60b1_adapter.py|\
               tests/test_self_action_evidence.py|\
               tests/test_self_world_prospective.py|\
               tests/test_self_world_learning_gate.py|\
@@ -257,6 +266,7 @@ jobs:
             tests/test_s50_p1_scope.py \
             tests/test_self_demo.py \
             tests/test_self_live_think.py \
+            tests/test_feature_s60b1_adapter.py \
             tests/test_self_action_evidence.py \
             tests/test_self_world_prospective.py \
             tests/test_self_world_learning_gate.py \
@@ -302,7 +312,9 @@ jobs:
             tests/test_self_body.py \
             tests/test_self_body_m0_projection.py \
             tests/test_self_body_timing_dev.py \
-            tests/test_self_world.py
+            tests/test_self_world.py \
+            tests/test_self_cognition_slice.py \
+            tests/test_wb_l2_read_port.py
 
 
   w4-prehost-focused:

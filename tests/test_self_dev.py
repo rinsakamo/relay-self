@@ -398,3 +398,208 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
     assert (root / "live_l2.jsonl").is_file()
     assert (root / "SHA256SUMS").is_file()
     assert not (root / "observed_memory.json").exists()
+
+
+@pytest.mark.parametrize("state", [
+    "current", "advanced", "foreign_source", "invalid_json", "mismatched_sequence",
+    "tampered_witness", "tampered_later_ref", "tampered_ab",
+])
+def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
+    tmp_path, monkeypatch, state,
+):
+    """Offline S49-owned report stub, never a physical World/model claim."""
+    monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(
+        demo.subprocess, "run",
+        lambda *a, **kw: SimpleNamespace(returncode=0, stdout="v", stderr=""),
+    )
+
+    async def fake_s49(report_path, log_path, *, live_model, self_world_live,
+                       wb_cognition_slice, structured_json_off):
+        assert self_world_live and wb_cognition_slice and structured_json_off
+        assert live_model[0] == "stage-j-backend-not-attested"
+        session = "s-native-j"
+        report_path.write_text(json.dumps({
+            "status": "PASS", "classification": "QUALIFIED", "session_id": session,
+            "server_exit": 0, "node_exit": 0, "decisions": [{}, {}, {}],
+            "actual_native_actions": [{}, {}],
+            "source_pair_trace": [
+                {"event_seq": 7, "probe_seq": 8},
+                {"event_seq": 18, "probe_seq": 19},
+            ] + (
+                [{"event_seq": 46, "probe_seq": 47}]
+                if state in {"advanced", "mismatched_sequence", "tampered_later_ref"} else []
+            ),
+        }))
+        source = "present:s-native-j:19:s49-actual:s-native-j:event-18"
+        l2_text = (
+            '{"uncertainty":"Check current observed target."}' if state != "invalid_json"
+            else '{"command":"MOVE_AWAY"}'
+        )
+        row = {
+            "kind": "l2_live_observer", "session": session,
+            "self_world_live": True, "wb_cognition_slice": True,
+            "structured_json_off": True, "native_l0_action_owner": "S49_NATIVE_EXISTING",
+            "authorized_actions": 0, "l2_used_as_action": False,
+            "learning_updates": 0, "habit_grants": 0, "l0_blocked_on_l2": False,
+            "model_attempts": 1, "self_world_l2_input_bound": True,
+            "self_world_prior_source": "present:s-native-j:8:s49-actual:s-native-j:event-7",
+            "self_world_after_source": source,
+            "wb_l2_source_ref": (
+                "present:foreign:19:s49-actual:foreign:event-18"
+                if state == "foreign_source" else source
+            ),
+            "self_world_review_status": "match",
+            "status": (
+                "EXPIRED_WORLD_ADVANCED" if state in {"advanced", "tampered_later_ref"}
+                else "ACCEPTED_READ_ONLY_SAME_PRESENT"
+            ),
+            "text_current": state not in {"advanced", "tampered_later_ref"},
+            "latest_world_seq": (
+                47 if state in {"advanced", "mismatched_sequence", "tampered_later_ref"} else 19
+            ),
+            "text_source_seq": 47 if state == "mismatched_sequence" else 19,
+            "text_observation_only": l2_text,
+            "owner_events": ["NEW_REQUEST_STARTED", "BACKEND_COMPLETION_OBSERVED"],
+            "wb_s60_diagnostic": {
+                "owner_completion_observed_before_cleanup": True,
+                "accepted_text_ever_observed": True,
+            },
+            "wb_structured_acceptance_host_order": {
+                "source_world_seq": 47 if state == "mismatched_sequence" else 19,
+                "latest_native_seq_at_acceptance": 47 if state == "mismatched_sequence" else 19,
+                "native_callbacks_seen_at_acceptance": 2,
+                "observer_closed_at_acceptance": False,
+                "owner_completion_observed_at_acceptance": True,
+            },
+        }
+        from relay_self.wb_l2_attention_handoff import (
+            project_wb_l1_attention_shadow,
+            project_wb_past_review_handoff,
+        )
+        from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
+
+        accepted = project_wb_l2_uncertainty(
+            accepted_text=l2_text, session_id=session,
+            source_world_seq=19, latest_world_seq=19,
+            source_ref=source, expected_source_ref=source,
+            owner_admitted=True,
+        )
+        witness = project_wb_l1_attention_shadow(accepted).to_mapping()
+        if state == "tampered_witness":
+            witness["selected_candidate_ids"] = ["forged-l1-authority"]
+        row["wb_l1_attention_at_admission"] = witness
+        row["wb_l1_attention_ab_at_admission"] = {
+            "state": "SHADOW_SELECTION_DIFFERENCE",
+            "source_world_seq": 19,
+            "source_ref": source,
+            "observed_candidate_count": 1,
+            "baseline_selected": ["wb-native-observed-0"],
+            "with_l2_selected": ["wb-l2-uncertainty"],
+            "selection_changed": True,
+            "policy": "EXPLICIT_SHADOW_L2_PRIORITY_1_VS_NATIVE_0",
+            "useful_for_goal": False,
+            "actual_l1_policy_changed": state == "tampered_ab",
+            "authority": "ATT_SHADOW_AB_NO_ACTION_MEMORY_LEARNING",
+        }
+        latest = 47 if state in {"advanced", "tampered_later_ref"} else 19
+        prior = project_wb_l2_uncertainty(
+            accepted_text=l2_text, session_id=session,
+            source_world_seq=19, latest_world_seq=latest,
+            source_ref=source, expected_source_ref=source,
+            owner_admitted=True,
+        )
+        later_ref = (
+            "present:s-native-j:47:s49-actual:s-native-j:event-46"
+            if state != "tampered_later_ref"
+            else "present:foreign:47:spoof"
+        )
+        row["wb_l2_past_review_at_close"] = project_wb_past_review_handoff(
+            prior, later_source_ref=later_ref,
+        ).to_mapping()
+        (report_path.parent / "live_l2.jsonl").write_text(json.dumps(row) + "\n")
+        return 0
+
+    monkeypatch.setattr(demo, "_run_disposable", fake_s49)
+    config = _stage_j_args(tmp_path / state)
+    config.wb_cognition_slice = True
+    config.wb_structured_l2 = True
+    assert demo._dev_run(config) == 0
+    receipt = json.loads((config.output_dir / "dev_receipt.json").read_text())
+    admission = receipt["dev_wb_structured_l2"]
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["stop_ack"] == "UNATTESTED"
+    assert receipt["dev_self_world_input"] == "SOURCE_BOUND"
+    expected = {
+        "current": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
+        "advanced": "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND",
+        "foreign_source": "NOT_ACCEPTED_OR_UNQUALIFIED",
+        "invalid_json": "NOT_ACCEPTED_OR_UNQUALIFIED",
+        "mismatched_sequence": "NOT_ACCEPTED_OR_UNQUALIFIED",
+        "tampered_witness": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
+        "tampered_later_ref": "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND",
+        "tampered_ab": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
+    }[state]
+    assert admission["state"] == expected
+    assert admission["attestation"] == "HOST_ORDER_DEV_ONLY"
+    assert admission["action_authority"] == "S49_ONLY"
+    assert admission["semantic_json_accepted"] is (
+        state in {"current", "advanced", "tampered_witness", "tampered_later_ref", "tampered_ab"}
+    )
+    read = receipt["dev_wb_l2_uncertainty_read"]
+    assert read["state"] == {
+        "current": "CURRENT_EPOCH_READ_ONLY",
+        "advanced": "PAST_EPOCH_REVIEW_ONLY",
+        "foreign_source": "UNAVAILABLE",
+        "invalid_json": "UNAVAILABLE",
+        "mismatched_sequence": "UNAVAILABLE",
+        "tampered_witness": "CURRENT_EPOCH_READ_ONLY",
+        "tampered_later_ref": "PAST_EPOCH_REVIEW_ONLY",
+        "tampered_ab": "CURRENT_EPOCH_READ_ONLY",
+    }[state]
+    if state in {"current", "tampered_witness", "tampered_ab"}:
+        assert read["current_uncertainty"] == "Check current observed target."
+        assert read["past_review_candidate"] is None
+    elif state in {"advanced", "tampered_later_ref"}:
+        assert read["current_uncertainty"] is None
+        assert read["past_review_candidate"] == "Check current observed target."
+        assert read["source_world_seq"] == 19
+        assert read["latest_world_seq"] == 47
+    else:
+        assert read["current_uncertainty"] is None
+        assert read["past_review_candidate"] is None
+    assert read["authority"] == "READ_ONLY_NO_ACTION_MEMORY_LEARNING_HABIT"
+    assert read["source_attested"] is False
+    att = receipt["dev_wb_l1_attention_shadow"]
+    review = receipt["dev_wb_past_review_handoff"]
+    assert att["state"] == (
+        "ATT_SELECTED_READ_ONLY"
+        if state in {"current", "advanced", "tampered_later_ref", "tampered_ab"}
+        else "UNAVAILABLE"
+    )
+    assert att["authority"] == "ATT_SHADOW_NO_L1_POLICY_OR_ACTION"
+    ab = receipt["dev_wb_l1_attention_ab"]
+    assert ab["state"] == (
+        "SHADOW_SELECTION_DIFFERENCE"
+        if state in {"current", "advanced", "tampered_later_ref"}
+        else "UNAVAILABLE"
+    )
+    assert ab["attestation"] == "S60_HOST_JOIN_AND_SIDECAR_SHADOW_ONLY"
+    assert ab["independent_native_candidate_count_verified"] is False
+    assert ab["actual_l1_policy_changed"] is False
+    assert ab["learned_attention_gain_verified"] is False
+    if ab["state"] == "SHADOW_SELECTION_DIFFERENCE":
+        assert ab["observed_candidate_count_sidecar_only"] == 1
+        assert ab["baseline_selected"] == ["wb-native-observed-0"]
+        assert ab["with_l2_selected"] == ["wb-l2-uncertainty"]
+        assert ab["selection_changed_due_to_fixed_priority"] is True
+    else:
+        assert ab["selection_changed_due_to_fixed_priority"] is False
+    assert review["state"] == (
+        "PENDING_INDEPENDENT_OUTCOME" if state == "advanced" else "UNAVAILABLE"
+    )
+    assert review["outcome_verified"] is False
+    assert review["learning_authorized"] is False
+    assert review["authority"] == "READ_ONLY_REVIEW_NOT_MEMORY_OR_S10"
