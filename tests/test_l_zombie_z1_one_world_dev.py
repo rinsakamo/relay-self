@@ -210,6 +210,7 @@ def test_pursuit_world_uses_only_bounded_survival_target_readonly_zombie_control
 def test_z2a_prospective_cheap_requires_new_specific_one_world_grant(tmp_path, monkeypatch):
     args = fixture_bundle(tmp_path, monkeypatch)
     args.update(pursuit_dev=True, prospective_cheap_dev=True)
+    monkeypatch.delenv("L_ZOMBIE_Z2A_CHEAP_DEV", raising=False)
     monkeypatch.setenv("L_ZOMBIE_Z1_PURSUIT_DEV", "1")
     with pytest.raises(runner.ZombieWorldBlocked, match="pursuit"):
         runner.preflight(**args)
