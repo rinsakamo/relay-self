@@ -285,6 +285,7 @@ async def qualify(
     l_mp11_live_l2_engine: RelayEngine | None = None,
     l_mp11_paper_eof_dev: bool = False,
     l_mp11_evidence_ids_dev: bool = False,
+    l_mp11_b1_contract_v2_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -362,6 +363,12 @@ async def qualify(
             raise S31ABlocked(
                 "evidence-ID L2 requires exact explicit real live source grant"
             )
+        if l_mp11_b1_contract_v2_dev and (
+            type(l_mp11_b1_contract_v2_dev) is not bool
+            or not l_mp11_evidence_ids_dev
+            or os.environ.get("L_MP11_B1_CONTRACT_V2_DEV") != "1"
+        ):
+            raise S31ABlocked("B1 V2 requires explicitly opted-in live evidence-ID Gemma")
         if l_mp11_live_l2_engine is not None and (
             not l_mp11_live_prefix_dev
             or os.environ.get("L_MP11_LIVE_L2_DEV") != "1"
@@ -445,6 +452,7 @@ async def qualify(
             live_l2 = BoundedLiveL2(
                 l_mp11_live_l2_engine, require_real_llama=True,
                 timeout_s=45.0, evidence_ids=l_mp11_evidence_ids_dev,
+                b1_contract_v2=l_mp11_b1_contract_v2_dev,
             )
             l2_stage_release = {1: asyncio.Event(), 2: asyncio.Event()}
             report["l_mp11_live_l2"] = live_l2.public_report()
@@ -1132,6 +1140,7 @@ def main() -> int:
     parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
     parser.add_argument("--l-mp11-paper-eof-dev", action="store_true")
     parser.add_argument("--l-mp11-evidence-ids-dev", action="store_true")
+    parser.add_argument("--l-mp11-b1-contract-v2-dev", action="store_true")
     parser.add_argument("--l-mp11-gemma-preflight-report", type=Path)
     parser.add_argument("--l-mp11-live-l2-endpoint")
     parser.add_argument("--l-mp11-live-l2-model")
@@ -1172,6 +1181,7 @@ def main() -> int:
             args.l_mp11_gemma_preflight_report,
             endpoint=args.l_mp11_live_l2_endpoint,
             model=args.l_mp11_live_l2_model,
+            b1_contract_v2=args.l_mp11_b1_contract_v2_dev,
         )
     if args.l_mp11_live_l2_endpoint is not None:
         from urllib.parse import urlsplit
@@ -1200,6 +1210,7 @@ def main() -> int:
         l2_provider = JournaledLiveLlamaProvider(
             journal_root=args.report.parent,
             strict_gemma_evidence=args.l_mp11_evidence_ids_dev,
+            b1_contract_v2=args.l_mp11_b1_contract_v2_dev,
             endpoint=args.l_mp11_live_l2_endpoint,
             model=args.l_mp11_live_l2_model,
             timeout=40.0,
@@ -1214,6 +1225,7 @@ def main() -> int:
         l_mp11_paper_eof_dev=args.l_mp11_paper_eof_dev,
         l_mp11_live_l2_engine=l2_engine,
         l_mp11_evidence_ids_dev=args.l_mp11_evidence_ids_dev,
+        l_mp11_b1_contract_v2_dev=args.l_mp11_b1_contract_v2_dev,
     ))
 
 
