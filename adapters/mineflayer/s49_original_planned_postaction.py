@@ -8,7 +8,6 @@ An S14 planned epoch is NOT a separate S42 owner receipt or a model meter.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.s49_completed_decision_bridge import S49OriginalCompletedBatch
