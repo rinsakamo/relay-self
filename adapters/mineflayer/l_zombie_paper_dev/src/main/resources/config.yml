@@ -7,3 +7,10 @@ zombie-tick-readonly-dev: false
 
 # Z2a: freeze two CHEAP forecasts synchronously before future server ticks.
 zombie-prospective-cheap-dev: false
+
+# Z2b: an ORIGINAL, externally verified earlier-epoch model policy packet.
+# This Paper plugin only evaluates a preselected rule at tick10, NEVER calls L2.
+zombie-prepared-l2-shadow-dev: false
+zombie-prepared-l2-strategy: "ABSTAIN"
+zombie-prepared-l2-speed-m-per-tick: "none"
+zombie-prepared-l2-policy-sha256: "none"
