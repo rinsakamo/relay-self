@@ -221,6 +221,7 @@ def test_prior_null_cannot_be_stated_as_scored_h1_error(case):
             p["explanation"] = "Predicted and actual displacement differ in this trial."
         elif case == "missing_qualitative_sources":
             p["prior_evaluation_basis"] = "QUALITATIVE_ONLY"
+            p["evidence_ids"] = ["T2_W8"]
         elif case == "fake_h1_error_source":
             p["evidence_ids"] = ["T1_W8", "T2_H1ERR"]
         return p
