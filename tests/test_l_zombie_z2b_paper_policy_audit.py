@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import replace
 
 import pytest
 
@@ -11,7 +10,6 @@ from test_l_zombie_z2b_policy_contract import frozen
 from tools.l_zombie_paper_original_audit import PaperZombieSourceRejected
 from tools.l_zombie_z2b_paper_policy_audit import audit_prepared_l2_world
 from tools.l_zombie_z2b_prepare_gemma import render_activated_plugin_config
-
 
 WORLD = "095288da-4414-441b-9cbe-1b35a3a5d1bc"
 ZOMBIE = "baf12c70-c261-49f4-a309-ccf0f91c5ae1"
@@ -131,4 +129,4 @@ def test_prepared_plugin_config_requires_prior_cheap_and_exact_model_packet():
             disabled_plugin_config=disabled.replace("zombie-prospective-cheap-dev: true",""),
             prepared_policy=p,
         )
-    assert not replace(p, strategy="ABSTAIN").no_action_authority is False
+    assert p.no_action_authority and p.no_learning_admission
