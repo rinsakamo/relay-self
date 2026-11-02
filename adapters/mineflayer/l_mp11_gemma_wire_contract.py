@@ -122,7 +122,9 @@ def strict_gemma_evidence_schema(
             "schema": {
                 "type": "object",
                 "properties": properties,
-                "required": list(REQUIRED),
+                "required": list(REQUIRED) + (
+                    list(schema_v2_additions()) if b1_contract_v2 else []
+                ),
                 "additionalProperties": False,
             },
         },
