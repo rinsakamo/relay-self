@@ -13,15 +13,15 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.normal_action import (
     NormalActionClosedReadback,
     observe_closed_native_actions,
 )
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.s537_s2b_gated_l2_shadow import S2BGatedL2Shadow
 from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
+from adapters.mineflayer.s537_s2b_gated_l2_shadow import S2BGatedL2Shadow
 from tools.s537_s1_live_wb_m_dev import (
     _M_PIN,
     _WB_PIN,
