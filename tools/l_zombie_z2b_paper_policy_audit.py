@@ -7,7 +7,6 @@ not prove model identity, process custody or L2 online reasoning.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import re
@@ -37,6 +36,17 @@ KEYS = {
 }
 
 
+
+def _prepared_line(line: str) -> dict[str, str]:
+    """V3 fields use numeric names such as policy_sha256."""
+    bits = line.split(PREPARED, 1)[1].split(" ")
+    if any(re.fullmatch(r"[a-z0-9_]+=[^\s=]+", p) is None for p in bits):
+        raise PaperZombieSourceRejected("malformed prepared policy Paper source")
+    obj = dict(p.split("=", 1) for p in bits)
+    if len(obj) != len(bits):
+        raise PaperZombieSourceRejected("duplicate prepared policy source field")
+    return obj
+
 def audit_prepared_l2_world(
     original: bytes, *, sha256: str, marker: str, session: str,
     prepared: PreparedZombiePolicy,
@@ -52,7 +62,7 @@ def audit_prepared_l2_world(
     offsets = {}
     for line_number, line in enumerate(lines):
         if PREPARED in line:
-            candidates.append((line_number, _row(line, PREPARED)))
+            candidates.append((line_number, _prepared_line(line)))
         if TICK in line:
             point = _row(line, TICK)
             if point.get("marker") == marker and point.get("session") == session:
