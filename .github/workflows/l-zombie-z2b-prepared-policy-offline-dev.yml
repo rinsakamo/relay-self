@@ -1,0 +1,39 @@
+name: L Z2b genuine Gemma prepared-policy contract offline DEV
+on:
+  push:
+    branches: [dev/l-zombie-z2b-prepared-l2-policy-20261102]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_zombie_z2b_policy_contract.py'
+      - 'tools/l_zombie_z2b_prepare_gemma.py'
+      - 'tests/test_l_zombie_z2b_policy_contract.py'
+      - '.github/workflows/l-zombie-z2b-prepared-policy-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  prepared-policy-negative-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Prepared real Gemma policy wire gates (FAKE HTTP fixtures only)
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_prepare_gemma.py tests/test_l_zombie_z2b_policy_contract.py
+          python -m compileall -q adapters/mineflayer/l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_prepare_gemma.py
+          python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/test_l_zombie_z2b_policy_contract.py \
+            tests/test_l_zombie_z2a_prospective_audit.py \
+            tests/test_l_zombie_20tick_shadow.py \
+            tests/test_l_mp11_gemma_wire_contract.py \
+            tests/test_l_mp11_b1_forecast_contract.py
+          python tools/check_repository.py
+      - name: Epistemic boundary
+        run: echo 'SYNTHETIC_POLICY_HTTP_ONLY / REAL_GEMMA_0 / REAL_WORLD_0 / NO_L2_PHYSICAL_FORECAST / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
