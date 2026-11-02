@@ -7,17 +7,16 @@ No new L0/Action/World owner, no model or learner logic is implemented here.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from dataclasses import dataclass
 from typing import Any
 
-from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
+from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
 from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
