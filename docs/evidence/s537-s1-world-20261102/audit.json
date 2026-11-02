@@ -1,0 +1,74 @@
+{
+  "classification": "S1_REAL_WORLD_DEV_INTEGRATION_PASS",
+  "session_id": "d02497ea-f6c5-455f-add1-5c37aafa2e4d",
+  "execution_head": "0d2ff99a4fcdcb670e8356c90f3cbfc5451f95c3",
+  "native_verifier_pin": "702f75c9fab3c42053ca0c89af670db1e306c892",
+  "native_verifier_sha256": "7fa6c60ca6c410d0a0195909e4634c836cec07ff4b4faa1dcf3ddc76303deb3c",
+  "action_frames": [
+    {
+      "action_id": "s49-native-move-19",
+      "movement_m": 0.6269065734210599,
+      "before_observation": 21,
+      "dispatch_receipt": 22,
+      "cleanup_receipt": 27,
+      "after_observation": 28
+    },
+    {
+      "action_id": "s49-native-move-47",
+      "movement_m": 0.6269065734210617,
+      "before_observation": 49,
+      "dispatch_receipt": 50,
+      "cleanup_receipt": 55,
+      "after_observation": 56
+    }
+  ],
+  "s16_to_next_epoch": [
+    {
+      "action_id": "s49-native-move-19",
+      "next_probe_seq": 48,
+      "s16_after_seq": 28
+    }
+  ],
+  "mutated_copy_rejections": [
+    [
+      "s49-native-move-19",
+      "foreign_session"
+    ],
+    [
+      "s49-native-move-19",
+      "action_id"
+    ],
+    [
+      "s49-native-move-19",
+      "s15_clear"
+    ],
+    [
+      "s49-native-move-19",
+      "s16_order"
+    ],
+    [
+      "s49-native-move-47",
+      "foreign_session"
+    ],
+    [
+      "s49-native-move-47",
+      "action_id"
+    ],
+    [
+      "s49-native-move-47",
+      "s15_clear"
+    ],
+    [
+      "s49-native-move-47",
+      "s16_order"
+    ]
+  ],
+  "worlds": 1,
+  "success": 1,
+  "failures": 0,
+  "retry": 0,
+  "source_attested": false,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "limitation": "Saved decoded frames and owner callback identity; no raw TCP or independent Paper chronology attestation"
+}

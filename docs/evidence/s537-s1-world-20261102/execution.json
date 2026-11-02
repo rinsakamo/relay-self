@@ -1,0 +1,25 @@
+{
+  "execution_head": "0d2ff99a4fcdcb670e8356c90f3cbfc5451f95c3",
+  "m_pin": "9afce6bde1079f8a42aaf3c4e515ef35fc6b0396",
+  "wb_pin": "944db858186a4d9449946b6acdcb8c8e5998e071",
+  "s49_pin": "702f75c9fab3c42053ca0c89af670db1e306c892",
+  "argv": [
+    "/home/rinsa/relay-self-s60b1-venv/bin/python",
+    "-m",
+    "tools.s537_s1_live_wb_m_dev",
+    "--m-owner-dir",
+    "/home/rinsa/work/s1-m-owner-20261102",
+    "--wb-owner-dir",
+    "/home/rinsa/work/s1-wb-owner-20261102",
+    "--report",
+    "/home/rinsa/work/s1-live-evidence-20261102/s49.json",
+    "--server-log",
+    "/home/rinsa/work/s1-live-evidence-20261102/server.log",
+    "--s1-report",
+    "/home/rinsa/work/s1-live-evidence-20261102/s1.json",
+    "--live-world-dev"
+  ],
+  "world_attempts": 1,
+  "retry": 0,
+  "started_ns": 1793597362992742915
+}
