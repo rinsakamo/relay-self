@@ -18,6 +18,12 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+from adapters.mineflayer.l_mp11_b1_forecast_contract import (
+    V2_EXTRA_FIELDS,
+    V2_INSTRUCTION,
+    B1ContractRejected,
+    validate_b1_v2,
+)
 from adapters.mineflayer.l_mp11_compact_role_table import compact_role_table
 from adapters.mineflayer.l_mp11_evidence_id_selection import (
     EvidenceIDRejected,
@@ -71,18 +77,23 @@ class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
     """Canonical HTTP provider with L-only bounded output and original journal."""
 
     def __init__(
-        self, *, journal_root: Path, strict_gemma_evidence: bool = False, **kwargs,
+        self, *, journal_root: Path, strict_gemma_evidence: bool = False,
+        b1_contract_v2: bool = False, **kwargs,
     ):
         super().__init__(**kwargs)
         if type(strict_gemma_evidence) is not bool:
             raise ValueError("strict structured Gemma mode must be boolean")
+        if type(b1_contract_v2) is not bool or (b1_contract_v2 and not strict_gemma_evidence):
+            raise ValueError("B1 V2 requires native strict structured evidence-ID mode")
         self.strict_gemma_evidence = strict_gemma_evidence
+        self.b1_contract_v2 = b1_contract_v2
         self.calls: list[dict] = []
         self.journal_root = journal_root
 
     def _call(self, request_body, *, endpoint=None):
         body = pin_gemma_wire(
             request_body, evidence_ids=self.strict_gemma_evidence,
+            b1_contract_v2=self.b1_contract_v2,
         )
         entry = {"request": body, "endpoint": self.endpoint,
                  "started_monotonic_ns": time.monotonic_ns()}
@@ -166,7 +177,7 @@ class LiveL2Proposal:
 
 def request_for_live_l2(
     ledger: LivePriorLedger, *, previous_proposal: LiveL2Proposal | None = None,
-    evidence_ids: bool = False,
+    evidence_ids: bool = False, b1_contract_v2: bool = False,
 ) -> OpenCognitionRequest:
     """Create a finite-shape hypothesis prompt with no later Action evidence."""
     if type(ledger) is not LivePriorLedger or not 1 <= len(ledger.history) <= 2:
@@ -174,7 +185,7 @@ def request_for_live_l2(
     if len(ledger.history) == 1 and previous_proposal is not None:
         raise LiveL2Rejected("future L2 model cannot be visible on first trial")
     if len(ledger.history) == 2 and (
-        type(previous_proposal) is not LiveL2Proposal
+        not isinstance(previous_proposal, LiveL2Proposal)
         or previous_proposal.source_world_uuid != ledger.world_uuid
         or previous_proposal.source_subject_uuid != ledger.subject_uuid
         or previous_proposal.source_session_id != ledger.session_id
@@ -182,6 +193,15 @@ def request_for_live_l2(
         or previous_proposal.source_last_prefix_sha256 != ledger.history[0].paper_prefix_sha256
     ):
         raise LiveL2Rejected("second proposal requires exact prior frozen L2 hypothesis")
+    if (
+        type(b1_contract_v2) is not bool
+        or (b1_contract_v2 and not evidence_ids)
+        or (len(ledger.history) == 2 and (
+            (b1_contract_v2 and not isinstance(previous_proposal, LiveL2ProposalV2))
+            or (not b1_contract_v2 and type(previous_proposal) is not LiveL2Proposal)
+        ))
+    ):
+        raise LiveL2Rejected("B1 V2 may not reuse an unversioned H1")
     previous = ledger.model_request()
     feedback = None
     if previous_proposal is not None:
@@ -274,6 +294,8 @@ def request_for_live_l2(
             "no Action authority, no learned-model or surface-causality claim; "
             "all observed surfaces are GRASS. Finish JSON within 512 tokens."
         )
+    if b1_contract_v2:
+        schema = schema + "\n" + V2_INSTRUCTION
     return replace(previous, instruction=previous.instruction + "\n" + schema)
 
 
@@ -283,11 +305,12 @@ def parse_live_l2(
     result: OpenCognitionResult,
     *, require_real_llama: bool,
     previous_proposal: LiveL2Proposal | None = None,
-    evidence_ids: bool = False,
+    evidence_ids: bool = False, b1_contract_v2: bool = False,
 ) -> LiveL2Proposal:
     """Parse strict observed OPEN response, not a World command."""
     expected = request_for_live_l2(
         ledger, previous_proposal=previous_proposal, evidence_ids=evidence_ids,
+        b1_contract_v2=b1_contract_v2,
     )
     if (
         type(result) is not OpenCognitionResult
@@ -307,6 +330,8 @@ def parse_live_l2(
         PROPOSAL_FIELDS - {"numeric_evidence_refs"} | {"evidence_ids"}
         if evidence_ids else PROPOSAL_FIELDS
     )
+    if b1_contract_v2:
+        required_fields = required_fields | V2_EXTRA_FIELDS
     if type(raw) is not dict or set(raw) != required_fields:
         raise LiveL2Rejected("extra executable instructions or missing fields")
     refs = raw["referenced_prior_ordinals"]
@@ -367,10 +392,23 @@ def parse_live_l2(
     if len(citations) > (1 if n == 1 else 2):
         raise LiveL2Rejected("model emitted more numeric claims than compact budget")
     if relation == "REVISE_PRIOR" and (
-        feedback is None or feedback["previous_prediction_m"] is None
+        feedback is None or (not b1_contract_v2 and feedback["previous_prediction_m"] is None)
         or not any(c.trial_ordinal == 2 for c in citations)
     ):
         raise LiveL2Rejected("revision candidate lacks new-epoch observed evidence")
+    b1_typed = None
+    if b1_contract_v2:
+        try:
+            b1_typed = validate_b1_v2(
+                raw,
+                trial_count=n,
+                previous_prediction_m=(
+                    feedback["previous_prediction_m"] if feedback is not None else None
+                ),
+                selected_ids=selected_ids,
+            )
+        except B1ContractRejected as exc:
+            raise LiveL2Rejected("B1 V2 typed prediction/abstention contract failed") from exc
     source = ledger.history[-1]
     details = {
         "source_world_uuid": ledger.world_uuid,
@@ -402,11 +440,29 @@ def parse_live_l2(
     }
     if evidence_ids:
         details["selected_evidence_ids"] = selected_ids
+    if b1_typed is not None:
+        details.update(asdict(b1_typed))
     digest = hashlib.sha256(json.dumps(
         details, sort_keys=True, ensure_ascii=False,
         separators=(",", ":"), allow_nan=False,
     ).encode()).hexdigest()
-    return LiveL2Proposal(**details, proposal_sha256=digest)
+    return (
+        LiveL2ProposalV2(**details, proposal_sha256=digest)
+        if b1_typed is not None
+        else LiveL2Proposal(**details, proposal_sha256=digest)
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class LiveL2ProposalV2(LiveL2Proposal):
+    """Separate V2 proposal representation; historical V1 stays byte-identical."""
+    measurement_target: str = ""
+    forecast_status: str = ""
+    prior_evaluation_basis: str = ""
+    prior_evaluation_reason: str = ""
+    numeric_prior_forecast_scored: bool = False
+    qualitative_only: bool = False
+    cannot_score_forecast: bool = False
 
 
 class BoundedLiveL2:
@@ -416,11 +472,14 @@ class BoundedLiveL2:
         self,
         engine: RelayEngine, *, require_real_llama: bool = True,
         timeout_s: float = 45.0, evidence_ids: bool = False,
+        b1_contract_v2: bool = False,
     ):
         if (
             type(engine) is not RelayEngine
             or type(require_real_llama) is not bool
             or type(evidence_ids) is not bool
+            or type(b1_contract_v2) is not bool
+            or (b1_contract_v2 and not evidence_ids)
         ):
             raise LiveL2Rejected("one existing RelayEngine and explicit source mode required")
         if (
@@ -432,6 +491,7 @@ class BoundedLiveL2:
         self.engine = engine
         self.require_real_llama = require_real_llama
         self.evidence_ids = evidence_ids
+        self.b1_contract_v2 = b1_contract_v2
         self.timeout_s = float(timeout_s)
         self.proposals: list[LiveL2Proposal] = []
         self.attempted_request_ids: set[str] = set()
@@ -450,6 +510,7 @@ class BoundedLiveL2:
         previous = self.proposals[-1] if self.proposals else None
         req = request_for_live_l2(
             ledger, previous_proposal=previous, evidence_ids=self.evidence_ids,
+            b1_contract_v2=self.b1_contract_v2,
         )
         if req.request_id in self.attempted_request_ids:
             raise LiveL2Rejected("OPEN request already attempted")
@@ -466,6 +527,7 @@ class BoundedLiveL2:
             proposed = parse_live_l2(
                 ledger, req, observed, require_real_llama=self.require_real_llama,
                 previous_proposal=previous, evidence_ids=self.evidence_ids,
+                b1_contract_v2=self.b1_contract_v2,
             )
         except (Exception, asyncio.CancelledError) as exc:
             # A timed-out HTTP thread might finish later, but its result is
@@ -501,6 +563,7 @@ class BoundedLiveL2:
             "attempt_originals": self.attempts,
             "validated_open_calls": len(self.proposals),
             "evidence_id_mode": self.evidence_ids,
+            "b1_contract_v2_mode": self.b1_contract_v2,
             "provider_label_is_not_model_weights_attestation": True,
             "experiments_selected_and_executed_by_l2": 0,
             "new_action_issuers": 0,
