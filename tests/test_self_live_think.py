@@ -998,9 +998,29 @@ def test_structured_wb_host_order_acceptance_before_or_after_native_advance(adva
             assert live_view.past_review_candidate == (
                 "Check whether the current target is visible." if advance else None
             )
+            shadow = observer.read_wb_l1_attention_shadow()
+            review = observer.read_wb_past_review_handoff()
+            assert shadow.state == (
+                "UNAVAILABLE" if advance else "ATT_SELECTED_READ_ONLY"
+            )
+            assert review.state == (
+                "PENDING_INDEPENDENT_OUTCOME" if advance else "UNAVAILABLE"
+            )
+            if advance:
+                assert review.origin_world_seq == 19
+                assert review.later_world_seq == 47
+                assert review.outcome_verified is False
+                assert review.learning_authorized is False
             row = await observer.close()
             assert row["wb_l2_readonly_at_close"] == live_view.to_mapping()
+            assert row["wb_l1_attention_at_admission"]["state"] == (
+                "ATT_SELECTED_READ_ONLY"
+            )
+            assert row["wb_l1_attention_at_close"] == shadow.to_mapping()
+            assert row["wb_l2_past_review_at_close"] == review.to_mapping()
             assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
+            assert observer.read_wb_l1_attention_shadow().state == "UNAVAILABLE"
+            assert observer.read_wb_past_review_handoff().state == "UNAVAILABLE"
             host = row["wb_structured_acceptance_host_order"]
             assert host == {
                 "source_world_seq": 19,
@@ -1043,6 +1063,9 @@ def test_structured_wb_no_host_acceptance_from_http_failure():
             row = await observer.close()
             assert row["wb_structured_acceptance_host_order"] is None
             assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
+            assert row["wb_l1_attention_at_admission"] is None
+            assert row["wb_l1_attention_at_close"]["state"] == "UNAVAILABLE"
+            assert row["wb_l2_past_review_at_close"]["state"] == "UNAVAILABLE"
             assert row["text_current"] is False
             assert row["status"] == "UNCONFIRMED"
             assert row["authorized_actions"] == row["learning_updates"] == 0
@@ -1082,6 +1105,9 @@ def test_wb_optional_callback_failure_cannot_veto_original_s49_l0(
     assert row["status"] == "SOURCE_CALLBACK_UNCONFIRMED"
     assert row["source_callback_failure"] == "RuntimeError"
     assert row["wb_l2_readonly_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_l1_attention_at_admission"] is None
+    assert row["wb_l1_attention_at_close"]["state"] == "UNAVAILABLE"
+    assert row["wb_l2_past_review_at_close"]["state"] == "UNAVAILABLE"
     assert row["wb_structured_acceptance_host_order"] is None
     assert row["model_attempts"] == row["authorized_actions"] == 0
     assert row["learning_updates"] == 0
