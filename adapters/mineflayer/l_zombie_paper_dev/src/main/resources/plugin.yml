@@ -1,0 +1,10 @@
+name: RelayZombieTickDev
+version: '0.1.0-dev'
+main: io.github.rinsakamo.relayzombie.ZombieTickWitnessPlugin
+api-version: '1.21.8'
+description: 'DEV only read-only one-zombie one-tick Paper witness; disabled by default'
+load: POSTWORLD
+commands:
+  relayzombietrack:
+    description: 'Console-only opt-in read-only one-zombie 31-tick Paper witness'
+    usage: '/relayzombietrack start <marker> <session> or /relayzombietrack stop'

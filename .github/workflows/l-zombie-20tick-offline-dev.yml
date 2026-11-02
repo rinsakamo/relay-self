@@ -1,0 +1,43 @@
+name: L Zombie exact 20-tick identity and source gate offline DEV
+on:
+  push:
+    branches: [dev/l-zombie-20tick-prediction-source-gate-20261102]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_zombie_20tick_shadow.py'
+      - 'tests/test_l_zombie_20tick_shadow.py'
+      - '.github/workflows/l-zombie-20tick-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  zombie-exact-tick-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Strict source+identity and prior physical lane regression
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_zombie_20tick_shadow.py tests/test_l_zombie_20tick_shadow.py
+          python -m compileall -q adapters/mineflayer/l_zombie_20tick_shadow.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_zombie_20tick_shadow.py \
+            tests/test_l_mp11_b1_forecast_contract.py \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_evidence_id_selection.py \
+            tests/test_l_mp11_next_trial_gate.py \
+            tests/test_self_world_observation_only_cognition.py \
+            tests/test_self_world_observation_only_dev.py \
+            tests/test_mp11_g2_s49_original_audit.py
+          python tools/check_repository.py
+      - name: Epistemic boundary
+        run: echo 'OFFLINE_FIXTURE_ONLY / SAME_ENTITY_EPOCH_AND_EXACT_PAPER_TICK_NOT_YET_PHYSICALLY_ATTESTED / REAL_NEW_WORLD_0 / GEMMA_0 / NO_ACTION_OR_LEARNING_AUTHORITY / QUALIFICATION_NO_GO'
