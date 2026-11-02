@@ -132,6 +132,7 @@ jobs:
               src/relay_self/self_world.py|\
               src/relay_self/self_cognition_slice.py|\
               src/relay_self/wb_l2_read_port.py|\
+              src/relay_self/wb_l2_attention_handoff.py|\
               src/relay_self/world_conditioned_choice.py|\
               docs/selfworld-v0.md|\
               docs/wb-bounded-cognition-slices-20261101.md|\
