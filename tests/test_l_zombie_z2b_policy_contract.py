@@ -165,7 +165,13 @@ def test_request_tampering_prior_sha_and_response_duplicate_key_fails():
             original_response=payload(),
             expected_request=fake,
         )
-    response = payload().replace(b'"reason":', b'"reason":"duplicate", "reason":')
+    wire = json.loads(payload())
+    wire["choices"][0]["message"]["content"] = (
+        json.dumps(selection()).replace(
+            '"reason":', '"reason":"duplicate", "reason":',
+        )
+    )
+    response = _canonical(wire)
     with pytest.raises(ZombiePolicyRejected):
         freeze_from_http(
             original_request=_canonical(req),
