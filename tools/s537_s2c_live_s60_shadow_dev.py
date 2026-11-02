@@ -145,6 +145,7 @@ async def run_s2c_live_shadow_dev(
         and original.get("status") == "RECORDED"
         and s2a.get("status") == "RECORDED"
         and s60["model_attempts"] == 1
+        and "SOCKET_POST_SENT" in s60["transport_events"]
         and s60["original_s16_invalidations"] >= 1
         and not s60["poll_errors"]
         and not s60["original_source_callback_errors"]
