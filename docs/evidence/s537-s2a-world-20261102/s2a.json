@@ -1,0 +1,324 @@
+{
+  "action_authority": false,
+  "learning_authority": false,
+  "model_calls": 0,
+  "qualification": "NO_GO",
+  "reason": "same_S49_WB_M_and_ordered_prior_S16_no_L2",
+  "s1": {
+    "action_authority": false,
+    "completed_callbacks": 1,
+    "energy_debits": 0,
+    "learning_updates": 0,
+    "new_action_issues": 0,
+    "new_model_calls": 0,
+    "new_native_reads": 0,
+    "qualification": "NO_GO",
+    "reason": "same_original_session_wb_m_join",
+    "s49_original_completion_observer": "CALLBACK_RETURNED",
+    "s49_session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+    "s49_status": "PASS",
+    "schema": "S537_S1_S49_WB_M_LIVE_DEV_V1",
+    "science": "NOT_RUN",
+    "source_attested": false,
+    "status": "RECORDED",
+    "typed_join": {
+      "action_authority": false,
+      "energy_debits": 0,
+      "learning_updates": 0,
+      "m_status": "RECORDED",
+      "model_usage": "UNKNOWN_NO_METER",
+      "new_action_issues": 0,
+      "new_model_calls": 0,
+      "new_native_reads": 0,
+      "reason": "same_original_S49_postowner_and_WB_predecision_sources",
+      "s16_to_next_epoch": [
+        {
+          "action_id": "s49-native-move-20",
+          "next_probe_seq": 51,
+          "s16_after_seq": 29
+        }
+      ],
+      "s49": {
+        "action_authority": false,
+        "b0_owner": "NOT_SUPPLIED",
+        "decision_count": 3,
+        "decision_source_ids": [
+          {
+            "action_id": null,
+            "event_seq": 8,
+            "probe_seq": 9,
+            "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8"
+          },
+          {
+            "action_id": "s49-native-move-20",
+            "event_seq": 20,
+            "probe_seq": 21,
+            "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20"
+          },
+          {
+            "action_id": "s49-native-move-50",
+            "event_seq": 50,
+            "probe_seq": 51,
+            "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50"
+          }
+        ],
+        "energy_debits": 0,
+        "l8_owner": "NOT_SUPPLIED",
+        "learning_updates": 0,
+        "m_status": "ORIGINAL_PYTHON_BATCH_RECORDED",
+        "model_usage": "UNKNOWN_NOT_METERED",
+        "new_action_issues": 0,
+        "new_model_calls": 0,
+        "new_native_reads": 0,
+        "reason": "read_only_original_s49_postowner",
+        "s42_owner": "NOT_SUPPLIED",
+        "schema": "S49_S_COGNITION_JOIN_DEV_V1",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_attested": false,
+        "status": "RECORDED",
+        "wb_source_probe_seq": null,
+        "wb_status": "NOT_SUPPLIED"
+      },
+      "schema": "S537_S1_WB_M_ORIGINAL_SOURCE_DEV_V1",
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_attested": false,
+      "status": "RECORDED",
+      "wb_rows": [
+        {
+          "body_cues": 4,
+          "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+          "body_status": "OBSERVED",
+          "probe_seq": 9,
+          "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+          "tier": "L1",
+          "world_cues": 1,
+          "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+          "world_status": "BOUNDED"
+        },
+        {
+          "body_cues": 4,
+          "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+          "body_status": "OBSERVED",
+          "probe_seq": 21,
+          "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+          "tier": "L1",
+          "world_cues": 2,
+          "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+          "world_status": "BOUNDED"
+        },
+        {
+          "body_cues": 4,
+          "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+          "body_status": "OBSERVED",
+          "probe_seq": 51,
+          "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+          "tier": "L1",
+          "world_cues": 2,
+          "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+          "world_status": "BOUNDED"
+        }
+      ],
+      "wb_status": "L1_SOURCE_BOUND_PRESENT_READ_ONLY"
+    },
+    "wb_observer_errors": []
+  },
+  "s1_session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+  "s2a": {
+    "action_authority": false,
+    "closed_s16_count": 2,
+    "energy_debits": 0,
+    "host_events": [
+      {
+        "epoch_id": "native-9",
+        "event": "input_built",
+        "preceding_action_id": null,
+        "probe_seq": 9,
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+      },
+      {
+        "epoch_id": "native-21",
+        "event": "input_built",
+        "preceding_action_id": null,
+        "probe_seq": 21,
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+      },
+      {
+        "action_id": "s49-native-move-20",
+        "event": "closed_s16",
+        "s16_after_seq": 29,
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_probe_seq": 21,
+        "terminal": "outcome"
+      },
+      {
+        "epoch_id": "native-51",
+        "event": "input_built",
+        "preceding_action_id": "s49-native-move-20",
+        "probe_seq": 51,
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+      },
+      {
+        "action_id": "s49-native-move-50",
+        "event": "closed_s16",
+        "s16_after_seq": 59,
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_probe_seq": 51,
+        "terminal": "outcome"
+      }
+    ],
+    "input_count": 3,
+    "inputs": [
+      {
+        "action_authority": false,
+        "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+        "epoch_id": "native-9",
+        "learning_authority": false,
+        "model_submitted": false,
+        "observed_body": [
+          {
+            "key": "health",
+            "observed_value": 20.0
+          },
+          {
+            "key": "food",
+            "observed_value": 20.0
+          },
+          {
+            "key": "position_x",
+            "observed_value": -5.5
+          },
+          {
+            "key": "position_y",
+            "observed_value": -60.0
+          }
+        ],
+        "observed_world": [
+          {
+            "distance_m": 10.0,
+            "entity_ref": "entity-2",
+            "label": "zombie"
+          }
+        ],
+        "preceding_action_id": null,
+        "preceding_action_source_probe_seq": null,
+        "preceding_s16_after_seq": null,
+        "probe_seq": 9,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+        "self_id": "self-s537-s1-native",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_attested": false,
+        "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8"
+      },
+      {
+        "action_authority": false,
+        "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+        "epoch_id": "native-21",
+        "learning_authority": false,
+        "model_submitted": false,
+        "observed_body": [
+          {
+            "key": "health",
+            "observed_value": 20.0
+          },
+          {
+            "key": "food",
+            "observed_value": 20.0
+          },
+          {
+            "key": "position_x",
+            "observed_value": -5.5
+          },
+          {
+            "key": "position_y",
+            "observed_value": -60.0
+          }
+        ],
+        "observed_world": [
+          {
+            "distance_m": 2.0,
+            "entity_ref": "entity-4",
+            "label": "zombie"
+          },
+          {
+            "distance_m": 10.347229115926107,
+            "entity_ref": "entity-3",
+            "label": "item"
+          }
+        ],
+        "preceding_action_id": null,
+        "preceding_action_source_probe_seq": null,
+        "preceding_s16_after_seq": null,
+        "probe_seq": 21,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+        "self_id": "self-s537-s1-native",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_attested": false,
+        "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20"
+      },
+      {
+        "action_authority": false,
+        "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+        "epoch_id": "native-51",
+        "learning_authority": false,
+        "model_submitted": false,
+        "observed_body": [
+          {
+            "key": "health",
+            "observed_value": 20.0
+          },
+          {
+            "key": "food",
+            "observed_value": 20.0
+          },
+          {
+            "key": "position_x",
+            "observed_value": -5.5
+          },
+          {
+            "key": "position_y",
+            "observed_value": -60.0
+          }
+        ],
+        "observed_world": [
+          {
+            "distance_m": 2.0,
+            "entity_ref": "entity-6",
+            "label": "zombie"
+          },
+          {
+            "distance_m": 10.397947627661916,
+            "entity_ref": "entity-3",
+            "label": "item"
+          }
+        ],
+        "preceding_action_id": "s49-native-move-20",
+        "preceding_action_source_probe_seq": 21,
+        "preceding_s16_after_seq": 29,
+        "probe_seq": 51,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+        "self_id": "self-s537-s1-native",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "source_attested": false,
+        "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50"
+      }
+    ],
+    "learning_authority": false,
+    "learning_updates": 0,
+    "new_action_issues": 0,
+    "new_model_calls": 0,
+    "new_native_reads": 0,
+    "reason": "HOST_ORDERED_READ_ONLY_NO_MODEL",
+    "s60_submissions": 0,
+    "schema": "S537_S2A_BOUND_L1_AND_PREVIOUS_S16_DEV_V1",
+    "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+    "source_attested": false,
+    "status": "RECORDED",
+    "with_previous_s16": 1
+  },
+  "s49_s1_status": "RECORDED",
+  "s60_submissions": 0,
+  "schema": "S537_S2A_HOST_READONLY_DEV_V1",
+  "science": "NOT_RUN",
+  "source_attested": false,
+  "status": "RECORDED"
+}

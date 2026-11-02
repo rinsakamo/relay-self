@@ -1,0 +1,514 @@
+{
+  "actual_native_actions": [
+    {
+      "action": "s49-native-move-20",
+      "event_seq": 20,
+      "execution_evidence": {
+        "action_id": "s49-native-move-20",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:29",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 29,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0959512999586933,
+                "entity_id": 4,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": -3.5,
+                  "y": -60.0,
+                  "z": -7.5
+                }
+              },
+              {
+                "distance": 10.375526868310471,
+                "entity_id": 3,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 4.846079381717032,
+                  "y": -60.0,
+                  "z": -7.3457540772705325
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": -5.5,
+              "y": -60.0,
+              "z": -8.126906573421062
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 239
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:22",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 22,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 4,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": -3.5,
+                  "y": -60.0,
+                  "z": -7.5
+                }
+              },
+              {
+                "distance": 10.347229115926107,
+                "entity_id": 3,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 4.846079381717032,
+                  "y": -60.0,
+                  "z": -7.3457540772705325
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": -5.5,
+              "y": -60.0,
+              "z": -7.5
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 239
+            }
+          }
+        },
+        "binding_id": "s49-binding-20",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-20-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:28",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 28,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-20",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:23",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 23,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.6269065734210617,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "status": "executed"
+      },
+      "movement_m": 0.6269065734210617,
+      "probe_seq": 21,
+      "source": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "terminal": "outcome"
+    },
+    {
+      "action": "s49-native-move-50",
+      "event_seq": 50,
+      "execution_evidence": {
+        "action_id": "s49-native-move-50",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:59",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 59,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [
+              {
+                "count": 1,
+                "name": "rotten_flesh",
+                "slot": 36
+              }
+            ],
+            "nearby_entities": [
+              {
+                "distance": 2.0959512999586933,
+                "entity_id": 6,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": -3.5,
+                  "y": -60.0,
+                  "z": -8.357169719836445
+                }
+              },
+              {
+                "distance": 10.477594355699978,
+                "entity_id": 3,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 4.848520787967032,
+                  "y": -60.0,
+                  "z": -7.3445333741455325
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": -5.5,
+              "y": -60.0,
+              "z": -8.984076293257507
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 439
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:52",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 52,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [
+              {
+                "count": 1,
+                "name": "rotten_flesh",
+                "slot": 36
+              }
+            ],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 6,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": -3.5,
+                  "y": -60.0,
+                  "z": -8.357169719836445
+                }
+              },
+              {
+                "distance": 10.397947627661916,
+                "entity_id": 3,
+                "entity_type": "other",
+                "name": "item",
+                "position": {
+                  "x": 4.848520787967032,
+                  "y": -60.0,
+                  "z": -7.3445333741455325
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": -5.5,
+              "y": -60.0,
+              "z": -8.357169719836445
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 439
+            }
+          }
+        },
+        "binding_id": "s49-binding-50",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-50-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:58",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 58,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-50",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "db48a963-5de7-4b1a-8bd3-3557edd20d33:53",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 53,
+          "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.6269065734210617,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+        "status": "executed"
+      },
+      "movement_m": 0.6269065734210617,
+      "probe_seq": 51,
+      "source": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "terminal": "outcome"
+    }
+  ],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
+  "cleanup_steps": [
+    "node_cleanup",
+    "node_reap",
+    "server_cleanup",
+    "server_reap",
+    "collector_cleanup"
+  ],
+  "decisions": [
+    {
+      "distance_m": 10.0,
+      "entity_id": 2,
+      "event_seq": 8,
+      "issued": false,
+      "probe_seq": 9,
+      "selected": "WAIT"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 4,
+      "event_seq": 20,
+      "issued": true,
+      "probe_seq": 21,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 6,
+      "event_seq": 50,
+      "issued": true,
+      "probe_seq": 51,
+      "selected": "MOVE_AWAY"
+    }
+  ],
+  "download_host": "piston-data.mojang.com",
+  "ignored_duplicate_target_updates": 5,
+  "ignored_hurt_frames": 2,
+  "ignored_non_target_entities": 0,
+  "java_major_version": 21,
+  "learning_in_world": false,
+  "manifest_version_url_host": "piston-meta.mojang.com",
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "node_exit": 0,
+  "original_completion_observer": "CALLBACK_RETURNED",
+  "original_completion_readback": {
+    "action_authority": false,
+    "decisions": [
+      {
+        "action_id": null,
+        "choice": "WAIT",
+        "event_seq": 8,
+        "probe_seq": 9,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+        "s16_terminal": null
+      },
+      {
+        "action_id": "s49-native-move-20",
+        "choice": "MOVE_AWAY",
+        "event_seq": 20,
+        "probe_seq": 21,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+        "s16_terminal": "outcome"
+      },
+      {
+        "action_id": "s49-native-move-50",
+        "choice": "MOVE_AWAY",
+        "event_seq": 50,
+        "probe_seq": 51,
+        "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+        "s16_terminal": "outcome"
+      }
+    ],
+    "energy_debits": 0,
+    "learning_updates": 0,
+    "new_action_issues": 0,
+    "new_model_calls": 0,
+    "new_native_reads": 0,
+    "outcome_count": 2,
+    "real_b0_decision_supplied": false,
+    "real_l8_epoch_supplied": false,
+    "real_s42_epoch_supplied": false,
+    "schema": "S49_ORIGINAL_COMPLETION_DEV_V1",
+    "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+    "source_attested": false,
+    "step_count": 3,
+    "wait_count": 1
+  },
+  "real_model_calls": 0,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "server_sha1": "6bce4ef400e4efaa63a13d5e6f6b500be969ef81",
+  "server_size_bytes": 57555044,
+  "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+  "source_pair_trace": [
+    {
+      "event_entities": [
+        {
+          "d": 10.0,
+          "id": 2,
+          "name": "zombie"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 8,
+      "probe_entities": [
+        {
+          "d": 10.0,
+          "id": 2,
+          "name": "zombie"
+        }
+      ],
+      "probe_seq": 9
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 4,
+          "name": "zombie"
+        },
+        {
+          "d": 10.347229115926107,
+          "id": 3,
+          "name": "item"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 20,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 4,
+          "name": "zombie"
+        },
+        {
+          "d": 10.347229115926107,
+          "id": 3,
+          "name": "item"
+        }
+      ],
+      "probe_seq": 21
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 6,
+          "name": "zombie"
+        },
+        {
+          "d": 10.397947627661916,
+          "id": 3,
+          "name": "item"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 50,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 6,
+          "name": "zombie"
+        },
+        {
+          "d": 10.397947627661916,
+          "id": 3,
+          "name": "item"
+        }
+      ],
+      "probe_seq": 51
+    }
+  ],
+  "stage": "CLOSED",
+  "status": "PASS"
+}

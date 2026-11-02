@@ -1,5 +1,9 @@
 # S #537 / S2-A — source-bound read-only input for future L2 (DEV)
 
+2026-11-02 follow-up: a new disposable World passed the S2-A source join.
+See [実World検証・実測seq・S2-B境界](s537-s2a-real-world-dev-20261102.md).
+The offline-only classification below records the pre-World stage.
+
 S2-A builds on S1 **actual DEV** source proof at exact
 `125c7fbfe5f96bf8db394412365c29775761d6af` (Draft #690).
 It does **not** call Gemma, issue another Action, add a native reader, grant
