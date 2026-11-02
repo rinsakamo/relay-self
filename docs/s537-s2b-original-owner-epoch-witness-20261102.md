@@ -72,7 +72,7 @@ host chronology, source refs, receipts and closure Action IDs, final
 owner-view consistency and process/World/port cleanup; do not reuse
 prior one-shot authorizations.
 
-**Model calls = 0, S60 submissions = 0**, irrespective of owner witness
+Use the independent post-run JSON report-row auditor **only if** the real-World\nS2-B report is RECORDED and the original S49 JSON file exists:\n\n\`\`\`bash\npython -m tools.s537_s2b_original_owner_audit \\\n  --s49 \"$EVIDENCE_DIR/s49.json\" \\\n  --s2b \"$EVIDENCE_DIR/s2b.json\" \\\n  --output \"$EVIDENCE_DIR/s2b-source-audit.json\"\n\`\`\`\n\nThe S2-B report embeds the S2-A host callback chronology and original\nWB/M source rows; the independent auditor matches both reports\nagainst S49 Action/S16 native after-seq and the three owner contexts,\nrejecting future S16, mismatched Action/owner, foreign session,\nmissing/duplicate callback, changed WB rows, or any model submission.\n**It is still not independent Paper/W3 process source attestation.**\n\n**Model calls = 0, S60 submissions = 0**, irrespective of owner witness
 outcome. Separately obtaining a live S2B **real Gemma** grant/budget is
 necessary. A passing synthetic fixture or a real owner witness alone
 cannot attest backend identity, L2 quality, independent Paper/W3 tick
