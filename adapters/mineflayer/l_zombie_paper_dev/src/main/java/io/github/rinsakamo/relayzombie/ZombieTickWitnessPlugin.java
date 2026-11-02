@@ -13,6 +13,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Zombie;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,6 +45,11 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
     private boolean enabled;
     private boolean prospectiveCheap;
     private boolean forecastFrozen;
+    private boolean preparedL2;
+    private String preparedStrategy;
+    private String preparedPolicySha;
+    private double preparedSpeed;
+    private boolean preparedFrozen;
     private double firstX;
     private double firstZ;
 
@@ -55,6 +61,43 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
             && "1.21.8".equals(getConfig().getString("minecraft-version"));
         prospectiveCheap = enabled
             && getConfig().getBoolean("zombie-prospective-cheap-dev", false);
+        preparedL2 = enabled
+            && prospectiveCheap
+            && getConfig().getBoolean("zombie-prepared-l2-shadow-dev", false);
+        if (preparedL2) {
+            preparedStrategy = getConfig().getString("zombie-prepared-l2-strategy", "");
+            preparedPolicySha = getConfig().getString("zombie-prepared-l2-policy-sha256", "");
+            String speedText = getConfig().getString("zombie-prepared-l2-speed-m-per-tick", "");
+            if (preparedPolicySha == null
+                    || !preparedPolicySha.matches("[0-9a-f]{64}")
+                    || preparedStrategy == null
+                    || !List.of(
+                        "STATIONARY", "CONSTANT_VELOCITY", "TARGET_APPROACH", "ABSTAIN"
+                    ).contains(preparedStrategy)) {
+                getLogger().severe("L_ZOMBIE_PREPARED_L2_REFUSED_INVALID_POLICY");
+                enabled = false;
+                return;
+            }
+            if ("TARGET_APPROACH".equals(preparedStrategy)) {
+                try {
+                    preparedSpeed = Double.parseDouble(speedText);
+                } catch (NumberFormatException exc) {
+                    getLogger().severe("L_ZOMBIE_PREPARED_L2_REFUSED_BAD_SPEED");
+                    enabled = false;
+                    return;
+                }
+                if (!Double.isFinite(preparedSpeed)
+                        || preparedSpeed <= 0.0 || preparedSpeed > 0.3) {
+                    getLogger().severe("L_ZOMBIE_PREPARED_L2_REFUSED_OUT_OF_BOUNDS_SPEED");
+                    enabled = false;
+                    return;
+                }
+            } else if (!"none".equals(speedText)) {
+                getLogger().severe("L_ZOMBIE_PREPARED_L2_REFUSED_NONAPPROACH_SPEED");
+                enabled = false;
+                return;
+            }
+        }
         if (!enabled) {
             getLogger().info("L_ZOMBIE_DISABLED_DEFAULT_NO_WORLD_ACCESS");
             return;
@@ -178,11 +221,68 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
             ));
             forecastFrozen = true;
         }
+        if (preparedL2 && offset == FIRST_PREDICTION_OFFSET) {
+            Player target = Bukkit.getPlayerExact("RelaySelf");
+            if (target == null || !target.isOnline()
+                    || !target.getWorld().getUID().equals(worldUuid)) {
+                closeWindow("PREPARED_L2_TARGET_UNAVAILABLE");
+                return;
+            }
+            Location player = target.getLocation();
+            double px = player.getX();
+            double pz = player.getZ();
+            double ax = location.getX();
+            double az = location.getZ();
+            if (!Double.isFinite(px) || !Double.isFinite(pz)) {
+                closeWindow("PREPARED_L2_BAD_TARGET_POSITION");
+                return;
+            }
+            String predictedX = "null";
+            String predictedZ = "null";
+            if (!"ABSTAIN".equals(preparedStrategy)) {
+                double fx = ax;
+                double fz = az;
+                if ("CONSTANT_VELOCITY".equals(preparedStrategy)) {
+                    fx = ax + 2.0 * (ax - firstX);
+                    fz = az + 2.0 * (az - firstZ);
+                } else if ("TARGET_APPROACH".equals(preparedStrategy)) {
+                    double dx = px - ax;
+                    double dz = pz - az;
+                    double dist = Math.hypot(dx, dz);
+                    double advance = Math.min(dist, preparedSpeed * 20.0);
+                    if (dist > 0.0) {
+                        fx = ax + dx * advance / dist;
+                        fz = az + dz * advance / dist;
+                    }
+                }
+                if (!Double.isFinite(fx) || !Double.isFinite(fz)) {
+                    closeWindow("PREPARED_L2_BAD_FORECAST_POSITION");
+                    return;
+                }
+                predictedX = String.format(Locale.ROOT, "%.12f", fx);
+                predictedZ = String.format(Locale.ROOT, "%.12f", fz);
+            }
+            getLogger().info(String.format(Locale.ROOT,
+                "L_ZOMBIE_PREPARED_L2_FREEZE_V3 marker=%s session=%s world=%s "
+                + "entity_uuid=%s entity_id=%d issued_tick=%d target_tick=%d "
+                + "policy_sha256=%s strategy=%s speed=%s "
+                + "player_x=%.12f player_z=%.12f "
+                + "predicted_x=%s predicted_z=%s",
+                marker, session, worldUuid, uuid, entityId,
+                tick, tick + 20, preparedPolicySha, preparedStrategy,
+                ("TARGET_APPROACH".equals(preparedStrategy)
+                    ? String.format(Locale.ROOT, "%.12f", preparedSpeed) : "none"),
+                px, pz, predictedX, predictedZ
+            ));
+            preparedFrozen = true;
+        }
         lastTick = tick;
         lastOffset = offset;
         if (offset == LAST_OFFSET) {
             closeWindow(
-                (samples == LAST_OFFSET + 1 && (!prospectiveCheap || forecastFrozen))
+                (samples == LAST_OFFSET + 1
+                    && (!prospectiveCheap || forecastFrozen)
+                    && (!preparedL2 || preparedFrozen))
                 ? "PAPER_WINDOW_COMPLETE" : "INCOMPLETE_FORECAST"
             );
         }
@@ -225,6 +325,7 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
         session = args[2];
         samples = 0;
         forecastFrozen = false;
+        preparedFrozen = false;
         firstX = 0.0;
         firstZ = 0.0;
         lastOffset = -1;
