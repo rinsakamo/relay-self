@@ -38,7 +38,6 @@ def _source():
         return replace(
             probe,
             seq=seq,
-            provenance=Provenance("mineflayer", f"{sid}:{seq}"),
             snapshot=replace(
                 probe.snapshot,
                 position=replace(
