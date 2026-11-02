@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
-    MODEL_FAMILIES, NEXT_TESTS, RECONSIDERATIONS,
+    MODEL_FAMILIES,
+    NEXT_TESTS,
+    RECONSIDERATIONS,
 )
 from adapters.mineflayer.l_mp11_typed_feedback import RELATIONS
 
