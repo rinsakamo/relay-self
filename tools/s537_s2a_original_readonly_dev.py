@@ -11,7 +11,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.normal_action import observe_closed_native_actions
 from adapters.mineflayer.s537_s2a_l2_read_port import S2ASourceBoundObserver
