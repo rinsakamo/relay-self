@@ -1,0 +1,40 @@
+{
+  "actual_real_gguf_mapping_verified_by_this_parser": false,
+  "cheap_stationary_error_m": 1.4837801948120548,
+  "cheap_velocity_error_m": 1.4837801948120548,
+  "classification": "Z2B_PAPER_PREPARED_L2_POLICY_SCORED_SOURCE_ONLY",
+  "forecast_kind": "ZOMBIE_HORIZONTAL_XZ_METERS",
+  "frozen_before_next_tick": true,
+  "future_actual_xz_m": [
+    -3.983553173838,
+    -1.525954708854
+  ],
+  "issued_tick": 37,
+  "l0_promotion": false,
+  "learning_admission": false,
+  "model_live_in_world_calls": 0,
+  "model_original_wire_cryptographically_joined_by_this_parser": true,
+  "model_prepared_xz_m": [
+    -2.5,
+    -1.5
+  ],
+  "model_request_sha256": "5572136f4941b1bad3aef9134f86beca9388679e930a29d572f6148ba2041e91",
+  "model_response_sha256": "abdcb54e06cb766ea52365e476fd216cabad008f2a24344a8bda8a41e0e4a09c",
+  "native_mineflayer_exact_paper_tick_join": false,
+  "original_paper_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+  "player_xz_m": [
+    -6.5,
+    -1.5
+  ],
+  "policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+  "prepared_policy_error_m": 1.4837801948120548,
+  "prepared_policy_owner": "EARLIER_EPOCH_MODEL_PREPARED_SHADOW",
+  "qualification_go": false,
+  "schema": "L_ZOMBIE_Z2B_PREPARED_POLICY_WORLD_V3",
+  "self_action_count": 0,
+  "source_first_tick": 27,
+  "strategy": "STATIONARY",
+  "target_tick": 57,
+  "world_uuid": "0c73cad5-ad84-4112-a708-4a1fb9ff9fc4",
+  "zombie_uuid": "1427da04-3095-4045-93b1-74a8f9d17b8f"
+}

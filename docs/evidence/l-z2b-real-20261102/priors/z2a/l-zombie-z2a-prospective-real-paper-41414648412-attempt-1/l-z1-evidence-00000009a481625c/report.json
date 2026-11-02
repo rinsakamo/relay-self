@@ -1,0 +1,205 @@
+{
+  "actual_client_session_id": "8c9329a9-2bc4-4f04-a628-ab44318d4a21",
+  "actual_spawn": {
+    "kind": "spawn",
+    "request_id": null,
+    "seq": 1,
+    "session_id": "8c9329a9-2bc4-4f04-a628-ab44318d4a21",
+    "snapshot": {
+      "food": 20.0,
+      "food_saturation": 5.0,
+      "health": 20.0,
+      "inventory": [],
+      "nearby_entities": [],
+      "nearby_entities_coverage": {
+        "candidate_count": 0,
+        "max_distance": 16.0,
+        "max_entities": 16,
+        "source_scope": "mineflayer_entity_registry",
+        "truncated": false
+      },
+      "oxygen_level": null,
+      "position": {
+        "x": -7.5,
+        "y": -60.0,
+        "z": -7.5
+      },
+      "time": {
+        "day": 0,
+        "is_day": true,
+        "time_of_day": 17
+      }
+    }
+  },
+  "after": {
+    "bot_position": [
+      -7.5,
+      -60.0,
+      -7.5
+    ],
+    "coverage_candidates": 2,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 3.127621,
+    "entity_id": 45,
+    "entity_position": [
+      -4.372396669883656,
+      -60.0,
+      -7.510498046875
+    ],
+    "name": "zombie",
+    "observation_seq": 67,
+    "provenance": "8c9329a9-2bc4-4f04-a628-ab44318d4a21:67",
+    "request_id": "z1-after-00000009a481625c"
+  },
+  "b1_prediction_qualified": false,
+  "before": {
+    "bot_position": [
+      -7.5,
+      -60.0,
+      -7.5
+    ],
+    "coverage_candidates": 2,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 4.793131,
+    "entity_id": 45,
+    "entity_position": [
+      -2.7068693261336567,
+      -60.0,
+      -7.5
+    ],
+    "name": "zombie",
+    "observation_seq": 29,
+    "provenance": "8c9329a9-2bc4-4f04-a628-ab44318d4a21:29",
+    "request_id": "z1-before-00000009a481625c-2"
+  },
+  "classification": "Z2A_PAPER_CHEAP_PREOUTCOME_DEV_ONLY",
+  "cleanup_confirmed": true,
+  "client_sample_count": 2,
+  "collector_settled": true,
+  "expected_head": "4bbbf38bc1f1fdf3cff1181fdcc8b077b8b78f2e",
+  "java_exit": 0,
+  "java_pid": {
+    "boot_id": "53fc878e-bb7e-4be6-9bd5-ee5697058682",
+    "pid": 2714,
+    "starttime_ticks": 6033
+  },
+  "java_pid_absent": true,
+  "l0_qualified": false,
+  "l2_model_calls": 0,
+  "mineflayer_join_attested": false,
+  "node_exit": 0,
+  "node_pid": {
+    "boot_id": "53fc878e-bb7e-4be6-9bd5-ee5697058682",
+    "pid": 2800,
+    "starttime_ticks": 8786
+  },
+  "node_pid_absent": true,
+  "original_bytes": 18736,
+  "original_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+  "paper_original_ok": true,
+  "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+  "paper_source": {
+    "actor_action_issued": false,
+    "classification": "PAPER_31_TICK_EXACT_SAME_ZOMBIE_SOURCE_ONLY",
+    "entity_id": 45,
+    "entity_spawn_instance": 1,
+    "entity_uuid": "df85ca6c-6f0e-4061-ba1a-4a436e29453c",
+    "forecast_freeze_tick": 46,
+    "forecast_freeze_xz_m": [
+      -2.170414564023,
+      -7.588829298265
+    ],
+    "l2_model_called": false,
+    "learned_state_admitted": false,
+    "marker": "z1-source-1",
+    "mineflayer_client_join_attested": false,
+    "original_line_count": 153,
+    "paper_log_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+    "paper_only": true,
+    "physical_world_evidence_qualified_here": false,
+    "pre_source_tick": 36,
+    "pre_source_xz_m": [
+      -2.241795332529,
+      -7.5
+    ],
+    "qualified_world_claim": false,
+    "real_client_observation_attested_here": false,
+    "real_java_pid_and_jar_attested_here": false,
+    "session": "z1-client-1",
+    "target_tick": 66,
+    "target_xz_m": [
+      -4.488911051329,
+      -7.510033913574
+    ],
+    "total_samples": 31,
+    "world_uuid": "dfdf25f1-d28e-4d2c-a20a-bdcc7b2f635f"
+  },
+  "plugin_sha256": "ecf07129d87f54ce78d39ac3d4c29f0277774f3e4b84bb3b4c96978355f6e6bd",
+  "port_released": true,
+  "prospective_cheap": {
+    "classification": "Z2A_PAPER_PREOUTCOME_CHEAP_FROZEN_AND_SCORED",
+    "constant_velocity_error_m": 2.474582733866241,
+    "entity_id": 45,
+    "entity_uuid": "df85ca6c-6f0e-4061-ba1a-4a436e29453c",
+    "exact_20_tick_target": true,
+    "forecast_owner": "PAPER_CHEAP_NOT_L2",
+    "freeze_before_tick11": true,
+    "issued_source_xz_m": [
+      -2.170414564023,
+      -7.588829298265
+    ],
+    "issued_tick": 46,
+    "marker": "z1-source-1",
+    "model_calls": 0,
+    "model_learning_admitted": false,
+    "native_client_tick_join_attested": false,
+    "original_freeze_line": 96,
+    "original_target_xz_m": [
+      -4.488911051329,
+      -7.510033913574
+    ],
+    "paper_original_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+    "physical_paper_owner_attested_by_this_parser": false,
+    "pre_source_xz_m": [
+      -2.241795332529,
+      -7.5
+    ],
+    "qualification_go": false,
+    "real_gemma_forecast_attested": false,
+    "schema": "L_ZOMBIE_Z2A_PROSPECTIVE_CHEAP_V2",
+    "self_actions": 0,
+    "session": "z1-client-1",
+    "stationary_error_m": 2.319835053252464,
+    "stationary_forecast_xz_m": [
+      -2.170414564023,
+      -7.588829298265
+    ],
+    "target_observation_line": 116,
+    "target_tick": 66,
+    "velocity_forecast_xz_m": [
+      -2.027653027012,
+      -7.766487894795
+    ],
+    "world_uuid": "dfdf25f1-d28e-4d2c-a20a-bdcc7b2f635f"
+  },
+  "prospective_cheap_dev": true,
+  "prospective_cheap_frozen": true,
+  "pursuit_dev": true,
+  "pursuit_horizontal_motion_m": 2.2471381206102237,
+  "pursuit_motion_observed": true,
+  "pursuit_target_survival": true,
+  "qualifying_science": false,
+  "real_gemma_calls": 0,
+  "retries": 0,
+  "run_id": "00000009a481625c",
+  "self_actions": 0,
+  "stage": "ORIGINAL_COLLECTION_COMPLETE",
+  "status": "PASS_DEV",
+  "world_budget_max": 1,
+  "world_removed": true,
+  "world_retries_max": 0,
+  "world_started": true,
+  "zombie_pursuit_attested": false
+}

@@ -1,0 +1,36 @@
+{
+  "actor_action_issued": false,
+  "classification": "PAPER_31_TICK_EXACT_SAME_ZOMBIE_SOURCE_ONLY",
+  "entity_id": 45,
+  "entity_spawn_instance": 1,
+  "entity_uuid": "df85ca6c-6f0e-4061-ba1a-4a436e29453c",
+  "forecast_freeze_tick": 46,
+  "forecast_freeze_xz_m": [
+    -2.170414564023,
+    -7.588829298265
+  ],
+  "l2_model_called": false,
+  "learned_state_admitted": false,
+  "marker": "z1-source-1",
+  "mineflayer_client_join_attested": false,
+  "original_line_count": 153,
+  "paper_log_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+  "paper_only": true,
+  "physical_world_evidence_qualified_here": false,
+  "pre_source_tick": 36,
+  "pre_source_xz_m": [
+    -2.241795332529,
+    -7.5
+  ],
+  "qualified_world_claim": false,
+  "real_client_observation_attested_here": false,
+  "real_java_pid_and_jar_attested_here": false,
+  "session": "z1-client-1",
+  "target_tick": 66,
+  "target_xz_m": [
+    -4.488911051329,
+    -7.510033913574
+  ],
+  "total_samples": 31,
+  "world_uuid": "dfdf25f1-d28e-4d2c-a20a-bdcc7b2f635f"
+}

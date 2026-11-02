@@ -1,0 +1,16 @@
+{
+  "pass": true,
+  "policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+  "strategy": "STATIONARY",
+  "response_model": "relay-self-gemma4-12b-q4km",
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 197,
+    "prompt_tokens": 873,
+    "total_tokens": 1070,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "world_started": false
+}

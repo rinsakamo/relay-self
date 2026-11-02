@@ -1,0 +1,157 @@
+{
+  "actual_client_session_id": "e5836346-6d9d-4913-a596-d0e5ff225b4b",
+  "actual_spawn": {
+    "kind": "spawn",
+    "request_id": null,
+    "seq": 1,
+    "session_id": "e5836346-6d9d-4913-a596-d0e5ff225b4b",
+    "snapshot": {
+      "food": 20.0,
+      "food_saturation": 5.0,
+      "health": 20.0,
+      "inventory": [],
+      "nearby_entities": [],
+      "nearby_entities_coverage": {
+        "candidate_count": 0,
+        "max_distance": 16.0,
+        "max_entities": 16,
+        "source_scope": "mineflayer_entity_registry",
+        "truncated": false
+      },
+      "oxygen_level": null,
+      "position": {
+        "x": 6.5,
+        "y": -60.0,
+        "z": 7.5
+      },
+      "time": {
+        "day": 0,
+        "is_day": true,
+        "time_of_day": 16
+      }
+    }
+  },
+  "after": {
+    "bot_position": [
+      6.5,
+      -60.0,
+      7.5
+    ],
+    "coverage_candidates": 1,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 2.042725,
+    "entity_id": 22,
+    "entity_position": [
+      8.542724609375,
+      -60.0,
+      7.5
+    ],
+    "name": "zombie",
+    "observation_seq": 50,
+    "provenance": "e5836346-6d9d-4913-a596-d0e5ff225b4b:50",
+    "request_id": "z1-after-00000009a4382ef9"
+  },
+  "b1_prediction_qualified": false,
+  "before": {
+    "bot_position": [
+      6.5,
+      -60.0,
+      7.5
+    ],
+    "coverage_candidates": 1,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 4.0,
+    "entity_id": 22,
+    "entity_position": [
+      10.5,
+      -60.0,
+      7.5
+    ],
+    "name": "zombie",
+    "observation_seq": 15,
+    "provenance": "e5836346-6d9d-4913-a596-d0e5ff225b4b:15",
+    "request_id": "z1-before-00000009a4382ef9-1"
+  },
+  "classification": "Z1B_PAPER_MOVING_ZOMBIE_SOURCE_DEV_ONLY",
+  "cleanup_confirmed": true,
+  "client_sample_count": 2,
+  "collector_settled": true,
+  "expected_head": "6807baa68464ebbf7b78befff39c2ab906df568b",
+  "java_exit": 0,
+  "java_pid": {
+    "boot_id": "be6042b4-6099-41b0-b9c8-395cd5a01998",
+    "pid": 2716,
+    "starttime_ticks": 6561
+  },
+  "java_pid_absent": true,
+  "l0_qualified": false,
+  "l2_model_calls": 0,
+  "mineflayer_join_attested": false,
+  "node_exit": 0,
+  "node_pid": {
+    "boot_id": "be6042b4-6099-41b0-b9c8-395cd5a01998",
+    "pid": 2807,
+    "starttime_ticks": 9377
+  },
+  "node_pid_absent": true,
+  "original_bytes": 18360,
+  "original_sha256": "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+  "paper_original_ok": true,
+  "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+  "paper_source": {
+    "actor_action_issued": false,
+    "classification": "PAPER_31_TICK_EXACT_SAME_ZOMBIE_SOURCE_ONLY",
+    "entity_id": 22,
+    "entity_spawn_instance": 1,
+    "entity_uuid": "878e5176-e9b5-49ac-bac9-e2ccba25e45a",
+    "forecast_freeze_tick": 40,
+    "forecast_freeze_xz_m": [
+      10.5,
+      7.5
+    ],
+    "l2_model_called": false,
+    "learned_state_admitted": false,
+    "marker": "z1-source-1",
+    "mineflayer_client_join_attested": false,
+    "original_line_count": 153,
+    "paper_log_sha256": "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+    "paper_only": true,
+    "physical_world_evidence_qualified_here": false,
+    "pre_source_tick": 30,
+    "pre_source_xz_m": [
+      10.5,
+      7.5
+    ],
+    "qualified_world_claim": false,
+    "real_client_observation_attested_here": false,
+    "real_java_pid_and_jar_attested_here": false,
+    "session": "z1-client-1",
+    "target_tick": 60,
+    "target_xz_m": [
+      8.309734168171,
+      7.5
+    ],
+    "total_samples": 31,
+    "world_uuid": "726200b9-2c82-49fe-8afc-f1142a227f8b"
+  },
+  "plugin_sha256": "3c5b03c4d5ac29a1ae84375d96950d4c0cdf1a801b719f49a7f066c01cf2ca3d",
+  "port_released": true,
+  "pursuit_dev": true,
+  "pursuit_horizontal_motion_m": 2.1902658318290005,
+  "pursuit_motion_observed": true,
+  "pursuit_target_survival": true,
+  "qualifying_science": false,
+  "real_gemma_calls": 0,
+  "retries": 0,
+  "run_id": "00000009a4382ef9",
+  "self_actions": 0,
+  "stage": "ORIGINAL_COLLECTION_COMPLETE",
+  "status": "PASS_DEV",
+  "world_budget_max": 1,
+  "world_removed": true,
+  "world_retries_max": 0,
+  "world_started": true,
+  "zombie_pursuit_attested": false
+}

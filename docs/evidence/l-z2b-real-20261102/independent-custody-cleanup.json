@@ -1,0 +1,20 @@
+{
+  "classification": "INDEPENDENT_LOCAL_ORIGINAL_CUSTODY_AND_CLEANUP_PASS_DEV_ONLY",
+  "java_pid": 167754,
+  "node_pid": 167894,
+  "model_pid": 167622,
+  "java_node_model_pid_absent": true,
+  "ports_8080_25565_released": true,
+  "world_deleted": true,
+  "prior_all_files_unchanged": true,
+  "protected_main_checkout_unchanged": true,
+  "real_completion_count_in_dedicated_server_log": 1,
+  "http_retries": 0,
+  "new_world_count": 1,
+  "world_retries": 0,
+  "java_paper_plugin_custody": true,
+  "native_tick_join": "CLIENT_TICK_JOIN_UNATTESTED",
+  "qualification": "QUALIFICATION_NO_GO",
+  "science": "SCIENCE_NOT_RUN",
+  "gemma_response_before_world_start": true
+}

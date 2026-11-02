@@ -1,0 +1,19 @@
+{
+  "execution_head": "ca4877579a69eea8351778d808e0e7459aa40bec",
+  "branch": "dev/l-z2b-real-validation-20261102",
+  "gemma_completion_budget": 1,
+  "http_retries": 0,
+  "new_world_max": 1,
+  "world_retries": 0,
+  "world_requires_preparation_pass": true,
+  "l0_changes": 0,
+  "learning_admission": 0,
+  "l0_promotion": 0,
+  "self_actions": 0,
+  "client_tick_join": "CLIENT_TICK_JOIN_UNATTESTED",
+  "prior_sha256": [
+    "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+    "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d"
+  ],
+  "model_pid": 167622
+}

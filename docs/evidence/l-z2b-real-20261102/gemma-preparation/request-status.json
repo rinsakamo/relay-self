@@ -1,0 +1,12 @@
+{
+  "future_world_visited": false,
+  "model_weights_attested_by_this_tool": false,
+  "old_source_sha256": [
+    "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+    "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d"
+  ],
+  "request_sha256": "5572136f4941b1bad3aef9134f86beca9388679e930a29d572f6148ba2041e91",
+  "requests_max": 1,
+  "retries": 0,
+  "status": "PREPARED_POLICY_CONTRACT_PASS_NOT_PHYSICALLY_QUALIFIED"
+}

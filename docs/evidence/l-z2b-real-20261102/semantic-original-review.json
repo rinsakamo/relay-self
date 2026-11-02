@@ -1,0 +1,18 @@
+{
+  "Z2b-P": "PASS_DEV: actual prior-only real Gemma selected STATIONARY and cited both old Worlds; causal dependence on experiences not established",
+  "Z2b-W": "PASS_DEV: prepared rule applied and frozen before offset11 in a separate new World",
+  "Z2b-E": "PASS_DEV: exact +20 tick errors measured against two same-information CHEAP baselines",
+  "B1-N": "UNDETERMINED: numeric forecast/error arithmetic observed on host/Paper; no post-error Gemma request and no model error recognition established",
+  "B1-U": "PARTIAL_DEV_ONLY: CONDITIONS_UNRESOLVED and limited evidence acknowledged, but ABSTAIN was not selected and reliable applicability recognition is unestablished",
+  "B1-Q": "NOT_ESTABLISHED: falsification names CONSTANT_VELOCITY while selection is STATIONARY; claim that current player coordinates unavailable for TARGET_APPROACH confuses preparation with future execution inputs",
+  "B2": "NOT_RUN: no model-facing error feedback, structural revision, holdout or learning admission",
+  "C": "NOT_RUN: operator selected experiment and budget; no autonomous experiment selection",
+  "single_error_threshold_preregistered": false,
+  "1_5m_is_not_a_validated_tolerance": true,
+  "cheap_superiority": "NONE: all three forecasts and errors tied because offset0 and offset10 positions matched",
+  "native_join": "CLIENT_TICK_JOIN_UNATTESTED",
+  "learned_L1": "NOT_ESTABLISHED",
+  "qualification": "QUALIFICATION_NO_GO",
+  "science": "SCIENCE_NOT_RUN",
+  "scope": "DEV_ONLY"
+}

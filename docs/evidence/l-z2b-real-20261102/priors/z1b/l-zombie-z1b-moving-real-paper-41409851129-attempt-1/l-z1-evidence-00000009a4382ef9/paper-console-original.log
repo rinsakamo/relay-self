@@ -1,0 +1,153 @@
+Downloading mojang_1.21.8.jar
+Applying patches
+Starting org.bukkit.craftbukkit.Main
+*** Warning, you've not updated in a while! ***
+*** Please download a new build from https://papermc.io/downloads/paper ***
+2026-11-02T08:00:34.484088380Z ServerMain WARN Advanced terminal features are not available in this environment
+[08:00:34 INFO]: [bootstrap] Running Java 21 (OpenJDK 64-Bit Server VM 21.0.13+9-LTS; Eclipse Adoptium Temurin-21.0.13+9) on Linux 7.0.0-1017-azure (amd64)
+[08:00:34 INFO]: [bootstrap] Loading Paper 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) for Minecraft 1.21.8
+[08:00:35 INFO]: [PluginInitializerManager] Initializing plugins...
+[08:00:35 INFO]: [ReobfServer] Remapping server...
+[08:00:42 INFO]: [ReobfServer] Done remapping server in 6266ms.
+[08:00:42 INFO]: [PluginRemapper] Remapping plugin 'plugins/relay-l-zombie-paper-dev-0.1.0-dev.jar'...
+[08:00:42 INFO]: [PluginRemapper] Done remapping plugin 'plugins/relay-l-zombie-paper-dev-0.1.0-dev.jar' in 120ms.
+[08:00:42 INFO]: [PluginInitializerManager] Initialized 1 plugin
+[08:00:42 INFO]: [PluginInitializerManager] Bukkit plugins (1):
+ - RelayZombieTickDev (0.1.0-dev)
+[08:00:47 INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[08:00:47 INFO]: Found new data pack file/bukkit, loading it automatically
+[08:00:47 INFO]: Found new data pack paper, loading it automatically
+[08:00:48 INFO]: No existing world data, creating new world
+[08:00:48 ERROR]: No key layers in MapLike[{}]
+[08:00:49 INFO]: Loaded 1407 recipes
+[08:00:49 INFO]: Loaded 1520 advancements
+[08:00:49 INFO]: [ca.spottedleaf.dataconverter.minecraft.datatypes.MCTypeRegistry] Initialising converters for DataConverter...
+[08:00:49 INFO]: [ca.spottedleaf.dataconverter.minecraft.datatypes.MCTypeRegistry] Finished initialising converters for DataConverter in 539.1ms
+[08:00:49 INFO]: Starting minecraft server version 1.21.8
+[08:00:49 INFO]: Loading properties
+[08:00:49 INFO]: This server is running Paper version 1.21.8-60-main@29c8822 (2025-09-06T21:49:13Z) (Implementing API version 1.21.8-R0.1-SNAPSHOT)
+[08:00:49 INFO]: [spark] This server bundles the spark profiler. For more information please visit https://docs.papermc.io/paper/profiling
+[08:00:49 INFO]: Server Ping Player Sample Count: 12
+[08:00:50 INFO]: Using 4 threads for Netty based IO
+[08:00:50 INFO]: [MoonriseCommon] Paper is using 1 worker threads, 1 I/O threads
+[08:00:50 INFO]: [ChunkTaskScheduler] Chunk system is using population gen parallelism: true
+[08:00:51 INFO]: Default game type: CREATIVE
+[08:00:51 INFO]: Generating keypair
+[08:00:51 INFO]: Starting Minecraft server on 127.0.0.1:25565
+[08:00:51 INFO]: Using epoll channel type
+[08:00:51 INFO]: Paper: Using libdeflate (Linux x86_64) compression from Velocity.
+[08:00:51 INFO]: Paper: Using OpenSSL 3.x.x (Linux x86_64) cipher from Velocity.
+[08:00:51 INFO]: [RelayZombieTickDev] Loading server plugin RelayZombieTickDev v0.1.0-dev
+[08:00:51 WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[08:00:51 WARN]: The server will make no attempt to authenticate usernames. Beware.
+[08:00:51 WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[08:00:51 WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[08:00:51 INFO]: Preparing level "s31a-ephemeral"
+[08:00:51 ERROR]: No key layers in MapLike[{}]
+[08:00:51 ERROR]: No key layers in MapLike[{}]
+[08:00:53 ERROR]: No key layers in MapLike[{}]
+[08:00:53 INFO]: Preparing start region for dimension minecraft:overworld
+[08:00:53 INFO]: Preparing spawn area: 2%
+[08:00:54 INFO]: Preparing spawn area: 26%
+[08:00:54 INFO]: Time elapsed: 585 ms
+[08:00:54 INFO]: Preparing start region for dimension minecraft:the_nether
+[08:00:54 INFO]: Preparing spawn area: 2%
+[08:00:54 INFO]: Preparing spawn area: 2%
+[08:00:55 INFO]: Preparing spawn area: 18%
+[08:00:55 INFO]: Preparing spawn area: 51%
+[08:00:56 INFO]: Time elapsed: 1995 ms
+[08:00:56 INFO]: Preparing start region for dimension minecraft:the_end
+[08:00:56 INFO]: Preparing spawn area: 2%
+[08:00:56 INFO]: Preparing spawn area: 18%
+[08:00:56 INFO]: Time elapsed: 687 ms
+[08:00:56 INFO]: [RelayZombieTickDev] Enabling RelayZombieTickDev v0.1.0-dev
+[08:00:56 INFO]: [RelayZombieTickDev] L_ZOMBIE_READONLY_READY ticks=31 forecast=10_to_30
+[08:00:57 INFO]: [spark] Starting background profiler...
+[08:00:57 INFO]: Done preparing level "s31a-ephemeral" (6.530s)
+[08:00:57 INFO]: Running delayed init tasks
+[08:00:57 INFO]: Done (24.170s)! For help, type "help"
+[08:00:57 INFO]: *************************************************************************************
+[08:00:57 INFO]: This is the first time you're starting this server.
+[08:00:57 INFO]: It's recommended you read our 'Getting Started' documentation for guidance.
+[08:00:57 INFO]: View this and more helpful information here: https://docs.papermc.io/paper/next-steps
+[08:00:57 INFO]: *************************************************************************************
+[08:00:58 INFO]: UUID of player RelaySelf is dcae346d-e66f-331a-b459-a5a5370e9738
+[08:00:58 INFO]: RelaySelf joined the game
+[08:00:58 INFO]: RelaySelf[/127.0.0.1:43426] logged in with entity id 21 at ([s31a-ephemeral]6.5, -60.0, 7.5)
+[08:00:58 INFO]: Gamerule doMobSpawning is now set to: false
+[08:00:58 INFO]: Set the time to 18000
+[08:00:58 INFO]: Gamerule doDaylightCycle is now set to: false
+[08:00:58 INFO]: Applied effect Resistance to RelaySelf
+[08:00:58 INFO]: Applied effect Regeneration to RelaySelf
+[08:00:58 INFO]: Applied effect Saturation to RelaySelf
+[08:00:58 INFO]: Set RelaySelf's game mode to Survival Mode
+[08:00:58 INFO]: Summoned new Zombie
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_ARM_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 expected_samples=31 pre_offset=10 future_offset=30
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=30 offset=0 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=31 offset=1 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=32 offset=2 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=33 offset=3 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=34 offset=4 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=35 offset=5 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=36 offset=6 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=37 offset=7 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=38 offset=8 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=39 offset=9 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=40 offset=10 x=10.500000000000 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=41 offset=11 x=10.447099998081 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=42 offset=12 x=10.365316591759 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=43 offset=13 x=10.267762844801 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=44 offset=14 x=10.161598490856 y=-60.000000000000 z=7.500000000000
+[08:00:59 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=45 offset=15 x=10.050732744950 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=46 offset=16 x=9.937300038735 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=47 offset=17 x=9.822465772028 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=48 offset=18 x=9.706866253204 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=49 offset=19 x=9.590848906676 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=50 offset=20 x=9.474603426195 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=51 offset=21 x=9.358233384560 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=52 offset=22 x=9.241795332529 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=53 offset=23 x=9.125320146816 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=54 offset=24 x=9.008824686110 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=55 offset=25 x=8.892318155258 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=56 offset=26 x=8.775805580104 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=57 offset=27 x=8.659289704762 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=58 offset=28 x=8.542772027517 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=59 offset=29 x=8.426253366432 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_TICK_V1 marker=z1-source-1 session=z1-client-1 world=726200b9-2c82-49fe-8afc-f1142a227f8b entity_uuid=878e5176-e9b5-49ac-bac9-e2ccba25e45a entity_id=22 spawn_instance=1 server_tick=60 offset=30 x=8.309734168171 y=-60.000000000000 z=7.500000000000
+[08:01:00 INFO]: [RelayZombieTickDev] L_ZOMBIE_END_V1 marker=z1-source-1 session=z1-client-1 result=PAPER_WINDOW_COMPLETE samples=31 last_offset=30
+[08:01:00 INFO]: RelaySelf lost connection: Disconnected
+[08:01:00 INFO]: RelaySelf left the game
+[08:01:00 INFO]: Stopping the server
+[08:01:00 INFO]: Stopping server
+[08:01:00 INFO]: [RelayZombieTickDev] Disabling RelayZombieTickDev v0.1.0-dev
+[08:01:00 INFO]: Saving players
+[08:01:01 INFO]: Saving worlds
+[08:01:01 INFO]: Saving chunks for level 'ServerLevel[s31a-ephemeral]'/minecraft:overworld
+[08:01:01 INFO]: [ChunkHolderManager] Waiting 60s for chunk system to halt for world 's31a-ephemeral'
+[08:01:01 INFO]: [ChunkHolderManager] Halted chunk system for world 's31a-ephemeral'
+[08:01:01 INFO]: [ChunkHolderManager] Saving all chunkholders for world 's31a-ephemeral'
+[08:01:01 INFO]: [ChunkHolderManager] Saved 1225 block chunks, 169 entity chunks, 0 poi chunks in world 's31a-ephemeral' in 0.82s
+[08:01:01 INFO]: [ChunkHolderManager] Waiting 60s for chunk I/O to halt for world 's31a-ephemeral'
+[08:01:01 INFO]: [ChunkHolderManager] Halted I/O scheduler for world 's31a-ephemeral'
+[08:01:01 INFO]: Saving chunks for level 'ServerLevel[s31a-ephemeral_nether]'/minecraft:the_nether
+[08:01:01 INFO]: [ChunkHolderManager] Waiting 60s for chunk system to halt for world 's31a-ephemeral_nether'
+[08:01:01 INFO]: [ChunkHolderManager] Halted chunk system for world 's31a-ephemeral_nether'
+[08:01:01 INFO]: [ChunkHolderManager] Saving all chunkholders for world 's31a-ephemeral_nether'
+[08:01:02 INFO]: [ChunkHolderManager] Saved 841 block chunks, 49 entity chunks, 0 poi chunks in world 's31a-ephemeral_nether' in 0.40s
+[08:01:02 INFO]: [ChunkHolderManager] Waiting 60s for chunk I/O to halt for world 's31a-ephemeral_nether'
+[08:01:02 INFO]: [ChunkHolderManager] Halted I/O scheduler for world 's31a-ephemeral_nether'
+[08:01:02 INFO]: Saving chunks for level 'ServerLevel[s31a-ephemeral_the_end]'/minecraft:the_end
+[08:01:02 INFO]: [ChunkHolderManager] Waiting 60s for chunk system to halt for world 's31a-ephemeral_the_end'
+[08:01:02 INFO]: [ChunkHolderManager] Halted chunk system for world 's31a-ephemeral_the_end'
+[08:01:02 INFO]: [ChunkHolderManager] Saving all chunkholders for world 's31a-ephemeral_the_end'
+[08:01:02 INFO]: [ChunkHolderManager] Saved 841 block chunks, 49 entity chunks, 0 poi chunks in world 's31a-ephemeral_the_end' in 0.26s
+[08:01:02 INFO]: [ChunkHolderManager] Waiting 60s for chunk I/O to halt for world 's31a-ephemeral_the_end'
+[08:01:02 INFO]: [ChunkHolderManager] Halted I/O scheduler for world 's31a-ephemeral_the_end'
+[08:01:02 INFO]: ThreadedAnvilChunkStorage (s31a-ephemeral): All chunks are saved
+[08:01:02 INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[08:01:02 INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[08:01:02 INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[08:01:02 INFO]: Waiting for all RegionFile I/O tasks to complete...
+[08:01:02 INFO]: All RegionFile I/O tasks to complete
+[08:01:02 INFO]: [MoonriseCommon] Awaiting termination of worker pool for up to 60s...
+[08:01:02 INFO]: [MoonriseCommon] Awaiting termination of I/O pool for up to 60s...

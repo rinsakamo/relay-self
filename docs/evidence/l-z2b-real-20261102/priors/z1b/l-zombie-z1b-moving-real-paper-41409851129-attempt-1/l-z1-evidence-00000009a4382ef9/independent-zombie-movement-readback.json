@@ -1,0 +1,21 @@
+{
+  "causal_pursuit_attested": false,
+  "classification": "Z1B_PAPER_MOVEMENT_OBSERVED_SOURCE_ONLY",
+  "client_paper_tick_join_attested": false,
+  "entity_uuid": "878e5176-e9b5-49ac-bac9-e2ccba25e45a",
+  "freeze_reference_tick": 40,
+  "max_step_m": 0.11651919826100077,
+  "movement_observed": true,
+  "net_horizontal_displacement_m": 2.1902658318290005,
+  "original_sha256": "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+  "qualifying_science": false,
+  "real_gemma_hypothesis": false,
+  "same_zombie": true,
+  "sample_count": 31,
+  "schema": "L_ZOMBIE_Z1B_MOVEMENT_SOURCE_V1",
+  "self_action_count": 0,
+  "start_tick": 30,
+  "target_tick": 60,
+  "total_path_length_m": 2.1902658318290005,
+  "world_uuid": "726200b9-2c82-49fe-8afc-f1142a227f8b"
+}
