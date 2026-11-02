@@ -1,0 +1,261 @@
+{
+  "classification": "S2A_REAL_WORLD_SOURCE_JOIN_PASS",
+  "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+  "execution_head": "4da911f8158e3c89c7ac5f808c4db3f1e88f8ca7",
+  "native_verifier_pin": "702f75c9fab3c42053ca0c89af670db1e306c892",
+  "native_verifier_sha256": "7fa6c60ca6c410d0a0195909e4634c836cec07ff4b4faa1dcf3ddc76303deb3c",
+  "action_frames": [
+    {
+      "action_id": "s49-native-move-20",
+      "movement_m": 0.6269065734210617,
+      "before_observation": 22,
+      "dispatch_receipt": 23,
+      "cleanup_receipt": 28,
+      "after_observation": 29
+    },
+    {
+      "action_id": "s49-native-move-50",
+      "movement_m": 0.6269065734210617,
+      "before_observation": 52,
+      "dispatch_receipt": 53,
+      "cleanup_receipt": 58,
+      "after_observation": 59
+    }
+  ],
+  "s16_to_next_epoch": [
+    {
+      "action_id": "s49-native-move-20",
+      "next_probe_seq": 51,
+      "s16_after_seq": 29
+    }
+  ],
+  "mutated_copy_rejections": [
+    [
+      "s49-native-move-20",
+      "foreign_session"
+    ],
+    [
+      "s49-native-move-20",
+      "action_id"
+    ],
+    [
+      "s49-native-move-20",
+      "s15_clear"
+    ],
+    [
+      "s49-native-move-20",
+      "s16_order"
+    ],
+    [
+      "s49-native-move-50",
+      "foreign_session"
+    ],
+    [
+      "s49-native-move-50",
+      "action_id"
+    ],
+    [
+      "s49-native-move-50",
+      "s15_clear"
+    ],
+    [
+      "s49-native-move-50",
+      "s16_order"
+    ]
+  ],
+  "worlds": 1,
+  "success": 1,
+  "failures": 0,
+  "retry": 0,
+  "source_attested": false,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "limitation": "Saved decoded frames and owner callback identity; no raw TCP or independent Paper chronology attestation",
+  "host_events": [
+    {
+      "epoch_id": "native-9",
+      "event": "input_built",
+      "preceding_action_id": null,
+      "probe_seq": 9,
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+    },
+    {
+      "epoch_id": "native-21",
+      "event": "input_built",
+      "preceding_action_id": null,
+      "probe_seq": 21,
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+    },
+    {
+      "action_id": "s49-native-move-20",
+      "event": "closed_s16",
+      "s16_after_seq": 29,
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_probe_seq": 21,
+      "terminal": "outcome"
+    },
+    {
+      "epoch_id": "native-51",
+      "event": "input_built",
+      "preceding_action_id": "s49-native-move-20",
+      "probe_seq": 51,
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33"
+    },
+    {
+      "action_id": "s49-native-move-50",
+      "event": "closed_s16",
+      "s16_after_seq": 59,
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_probe_seq": 51,
+      "terminal": "outcome"
+    }
+  ],
+  "inputs": [
+    {
+      "action_authority": false,
+      "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+      "epoch_id": "native-9",
+      "learning_authority": false,
+      "model_submitted": false,
+      "observed_body": [
+        {
+          "key": "health",
+          "observed_value": 20.0
+        },
+        {
+          "key": "food",
+          "observed_value": 20.0
+        },
+        {
+          "key": "position_x",
+          "observed_value": -5.5
+        },
+        {
+          "key": "position_y",
+          "observed_value": -60.0
+        }
+      ],
+      "observed_world": [
+        {
+          "distance_m": 10.0,
+          "entity_ref": "entity-2",
+          "label": "zombie"
+        }
+      ],
+      "preceding_action_id": null,
+      "preceding_action_source_probe_seq": null,
+      "preceding_s16_after_seq": null,
+      "probe_seq": 9,
+      "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8",
+      "self_id": "self-s537-s1-native",
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_attested": false,
+      "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:9:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-8"
+    },
+    {
+      "action_authority": false,
+      "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+      "epoch_id": "native-21",
+      "learning_authority": false,
+      "model_submitted": false,
+      "observed_body": [
+        {
+          "key": "health",
+          "observed_value": 20.0
+        },
+        {
+          "key": "food",
+          "observed_value": 20.0
+        },
+        {
+          "key": "position_x",
+          "observed_value": -5.5
+        },
+        {
+          "key": "position_y",
+          "observed_value": -60.0
+        }
+      ],
+      "observed_world": [
+        {
+          "distance_m": 2.0,
+          "entity_ref": "entity-4",
+          "label": "zombie"
+        },
+        {
+          "distance_m": 10.347229115926107,
+          "entity_ref": "entity-3",
+          "label": "item"
+        }
+      ],
+      "preceding_action_id": null,
+      "preceding_action_source_probe_seq": null,
+      "preceding_s16_after_seq": null,
+      "probe_seq": 21,
+      "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20",
+      "self_id": "self-s537-s1-native",
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_attested": false,
+      "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:21:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-20"
+    },
+    {
+      "action_authority": false,
+      "body_source_ref": "native-probe:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+      "epoch_id": "native-51",
+      "learning_authority": false,
+      "model_submitted": false,
+      "observed_body": [
+        {
+          "key": "health",
+          "observed_value": 20.0
+        },
+        {
+          "key": "food",
+          "observed_value": 20.0
+        },
+        {
+          "key": "position_x",
+          "observed_value": -5.5
+        },
+        {
+          "key": "position_y",
+          "observed_value": -60.0
+        }
+      ],
+      "observed_world": [
+        {
+          "distance_m": 2.0,
+          "entity_ref": "entity-6",
+          "label": "zombie"
+        },
+        {
+          "distance_m": 10.397947627661916,
+          "entity_ref": "entity-3",
+          "label": "item"
+        }
+      ],
+      "preceding_action_id": "s49-native-move-20",
+      "preceding_action_source_probe_seq": 21,
+      "preceding_s16_after_seq": 29,
+      "probe_seq": 51,
+      "request_id": "s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50",
+      "self_id": "self-s537-s1-native",
+      "session_id": "db48a963-5de7-4b1a-8bd3-3557edd20d33",
+      "source_attested": false,
+      "world_source_ref": "present:db48a963-5de7-4b1a-8bd3-3557edd20d33:51:s49-actual:db48a963-5de7-4b1a-8bd3-3557edd20d33:event-50"
+    }
+  ],
+  "closed_s16_count": 2,
+  "with_previous_s16": 1,
+  "immutable_originals_verified": 37,
+  "protected_refs_unchanged": true,
+  "m_wb_clean": true,
+  "zeros": {
+    "new_native_reads": 0,
+    "new_model_calls": 0,
+    "new_action_issues": 0,
+    "learning_updates": 0,
+    "energy_debits": 0,
+    "s60_submissions": 0
+  }
+}
