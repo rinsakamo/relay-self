@@ -17,7 +17,6 @@ from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     pin_gemma_wire,
     strict_gemma_evidence_schema,
 )
-from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
 from tools.l_mp11_gemma_structured_preflight import (
     GemmaPreflightRejected,
     run,
