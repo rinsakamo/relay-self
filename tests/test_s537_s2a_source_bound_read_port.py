@@ -31,7 +31,6 @@ from test_s537_s1_live_wb_m_dev import _two_original_shape
 from tools.s537_s2a_original_readonly_dev import main, run_s2a_original_dev
 
 
-
 @pytest.fixture
 def pinned_owners(monkeypatch):
     m = _load_pinned(
