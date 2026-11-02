@@ -20,6 +20,27 @@ class TransportUnconfirmed(ValueError):
     """Sanitized failure: transport cannot establish provider completion."""
 
 
+# Optional S2-D bounded advisory-only JSON Schema. Fixed by S60 transport
+# owner, not supplied dynamically by the model or any World observation.
+READ_ONLY_REVIEW_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string", "enum": ["ADVISORY", "DEFER"]},
+        "observation": {"type": "string", "minLength": 1, "maxLength": 320},
+        "uncertainty": {"type": "string", "minLength": 1, "maxLength": 320},
+    },
+    "required": ["status", "observation", "uncertainty"],
+    "additionalProperties": False,
+}
+
+
+def structured_review_format() -> dict[str, object]:
+    """Create a JSON copy; callers may not mutate the canonical schema."""
+    return {"type": "json_schema", "schema": json.loads(
+        json.dumps(READ_ONLY_REVIEW_JSON_SCHEMA)
+    )}
+
+
 @dataclass(frozen=True, slots=True)
 class LoopbackTransportConfig:
     """Explicit S57-compatible alias/port/one-slot binding, no process launch."""
@@ -30,12 +51,14 @@ class LoopbackTransportConfig:
     connect_s: float = 5.0
     read_s: float = 15.0
     whole_s: float = 45.0
+    structured_json: bool = False
 
     def __post_init__(self) -> None:
         if (not isinstance(self.model, str)
             or not re.fullmatch(r"[a-zA-Z0-9_.:/-]{1,160}", self.model)
             or type(self.port) is not int or not 1025 <= self.port <= 65535
             or type(self.slots) is not int or self.slots != 1
+            or type(self.structured_json) is not bool
             or type(self.max_tokens) is not int or not 1 <= self.max_tokens <= 1024
             or any(type(t) not in (int, float) or not math.isfinite(t) or not 0 < t <= 120
                    for t in (self.connect_s, self.read_s, self.whole_s))):
@@ -126,9 +149,16 @@ class LoopbackDisplacementAdapter:
     def _payload(self, request: ModelRequest) -> bytes:
         try:
             payload = self._payload_for(request)
-            if not isinstance(payload, Mapping) or set(payload) != {
+            expected = {
                 "model", "messages", "temperature", "max_tokens", "stream",
-            }:
+            }
+            if self.config.structured_json:
+                expected.add("response_format")
+            if not isinstance(payload, Mapping) or set(payload) != expected:
+                raise ValueError
+            if self.config.structured_json and (
+                payload["response_format"] != structured_review_format()
+            ):
                 raise ValueError
             messages = payload["messages"]
             if (payload["model"] != self.config.model or payload["stream"] is not False
@@ -370,11 +400,15 @@ class LoopbackDisplacementAdapter:
             if ("reasoning_content" in message
                 and not isinstance(message["reasoning_content"], str)):
                 raise ValueError
+            if self.config.structured_json and message.get("reasoning_content"):
+                raise ValueError
             answer = message["content"]
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError
             finish = choice.get("finish_reason")
             if finish is not None and finish not in ("stop", "length"):
+                raise ValueError
+            if self.config.structured_json and finish != "stop":
                 raise ValueError
             usage = parsed.get("usage", {})
             if not isinstance(usage, dict) or set(usage) - {
@@ -410,6 +444,27 @@ class LoopbackDisplacementAdapter:
                         for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
                 and usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]):
                 raise ValueError
+            if self.config.structured_json:
+                review = json.loads(
+                    answer, object_pairs_hook=unique,
+                    parse_constant=lambda _value: (_ for _ in ()).throw(ValueError()),
+                )
+                if (
+                    not isinstance(review, dict)
+                    or set(review) != set(READ_ONLY_REVIEW_JSON_SCHEMA["required"])
+                    or review["status"] not in ("ADVISORY", "DEFER")
+                    or any(
+                        not isinstance(review[key], str)
+                        or not 1 <= len(review[key]) <= 320
+                        or not review[key].strip()
+                        or any(ord(ch) < 32 for ch in review[key])
+                        for key in ("observation", "uncertainty")
+                    )
+                    or "<think" in answer.lower()
+                    or "</think" in answer.lower()
+                ):
+                    raise ValueError
+                return json.dumps(review, ensure_ascii=False, sort_keys=True)
             return answer.strip()
         except Exception:
             raise TransportUnconfirmed("completion envelope unconfirmed") from None

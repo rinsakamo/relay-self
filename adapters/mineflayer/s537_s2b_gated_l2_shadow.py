@@ -17,6 +17,7 @@ from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
+    structured_review_format,
 )
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from relay_self.action import ActionState
@@ -186,6 +187,13 @@ class S2BGatedL2Shadow:
             "temperature": 0,
             "max_tokens": self.config.max_tokens,
         }
+        if self.config.structured_json:
+            payload["response_format"] = structured_review_format()
+            payload["messages"][0]["content"] += (
+                " Return only the strict JSON object with fields status "
+                "(ADVISORY or DEFER), observation and uncertainty. "
+                "No reasoning, no markdown, no actions."
+            )
         adapter = LoopbackDisplacementAdapter(self.config, lambda _request: payload)
         provenance = Provenance(
             "s537-s2b-original-owner-admission",
