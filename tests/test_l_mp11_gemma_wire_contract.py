@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import io
 import json
-from copy import deepcopy
 
 import pytest
 
