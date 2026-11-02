@@ -8,10 +8,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
-import test_metabolism_s49_owner_admission as source
 from adapters.mineflayer.s49_completed_decision_bridge import (
     S49OriginalCompletedBatch,
 )
+
+import test_metabolism_s49_owner_admission as source
 from experiments.metabolism_s49_original_owner_receipts import (
     S49MOwnerReceiptReadout,
     bounded_original_s49_owner_receipt_row,
