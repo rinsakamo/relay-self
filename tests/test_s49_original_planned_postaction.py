@@ -30,7 +30,6 @@ def _source():
     steps, probes, receipts = original._synthetic_original_shape()
     move = steps[0]
     probe = probes[move.choice.probe_seq]
-    sid = probe.session_id
     receipt = receipts[move.action_request_id]
     consequence = receipt.consequence
 
