@@ -37,16 +37,13 @@ from adapters.mineflayer.self_world_observation_only_native_boundary import (
     capture_original_native_pid,
 )
 from adapters.mineflayer.startup_process_ownership import _supervise
-from tools.l_zombie_paper_original_audit import (
-    PaperZombieSourceRejected,
-    report_paper_only,
-)
+from tools.l_zombie_paper_original_audit import report_paper_only
 from tools.l_zombie_z2a_prospective_audit import audit_z2a_prospective
+from tools.l_zombie_z2b_paper_policy_audit import audit_prepared_l2_world
 from tools.l_zombie_z2b_prepare_gemma import (
     render_activated_plugin_config,
     verify_prepared_archive,
 )
-from tools.l_zombie_z2b_paper_policy_audit import audit_prepared_l2_world
 
 PAPER_SHA256 = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 PAPER_SIZE = 52811717
