@@ -6,7 +6,6 @@ join, a Gemma prediction, or an autonomous safe L0 response.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import sys
