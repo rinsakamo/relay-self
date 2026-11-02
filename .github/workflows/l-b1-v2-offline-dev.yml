@@ -1,0 +1,62 @@
+name: L B1 V2 explicit forecast abstention and unit grounding offline DEV
+on:
+  push:
+    branches: [dev/l-b1-forecast-abstention-reason-contract-20261102]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_b1_forecast_contract.py'
+      - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/l_mp11_gemma_wire_contract.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tools/l_mp11_feedback_original_audit.py'
+      - 'tools/l_mp11_gemma_structured_preflight.py'
+      - 'tools/l_mp11_next_trial_gate.py'
+      - 'tests/test_l_mp11_b1_forecast_contract.py'
+      - '.github/workflows/l-b1-v2-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  b1-explicit-forecast-and-historical-no-upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: V2 source-only tests and full L predecessor regression
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_b1_forecast_contract.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/l_mp11_gemma_wire_contract.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/l_mp11_feedback_original_audit.py \
+            tools/l_mp11_gemma_structured_preflight.py \
+            tools/l_mp11_next_trial_gate.py \
+            tests/test_l_mp11_b1_forecast_contract.py
+          python -m compileall -q adapters/mineflayer/l_mp11_b1_forecast_contract.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/l_mp11_gemma_wire_contract.py \
+            tools/l_mp11_gemma_structured_preflight.py \
+            tools/l_mp11_next_trial_gate.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_b1_forecast_contract.py \
+            tests/test_l_mp11_gemma_wire_contract.py \
+            tests/test_l_mp11_evidence_id_selection.py \
+            tests/test_l_mp11_feedback_original_audit.py \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_eof_and_typed_feedback.py \
+            tests/test_l_mp11_next_trial_gate.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: Non-qualification scope
+        run: echo 'V2_B1_CONTRACT_SOURCE_ONLY / HISTORICAL_686_A_DEV_PASS_B1_NOT_ESTABLISHED / REAL_GEMMA_0 / REAL_WORLD_0 / QUALIFICATION_NO_GO'
