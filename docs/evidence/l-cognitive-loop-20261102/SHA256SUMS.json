@@ -1,0 +1,317 @@
+{
+  "audit_new_world.py": {
+    "bytes": 1309,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/audit_new_world.py",
+    "sha256": "aff4f1d727f9e5a813c1d93fbd53aa829f10e55ee51680eec10c4cd59887cf61"
+  },
+  "chat-template-original.jinja": {
+    "bytes": 20577,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/chat-template-original.jinja",
+    "sha256": "031f45711a263bdb0b9642fdba78e2cdf6990d6d965a0873aae05da49682d0ec"
+  },
+  "contracts.log": {
+    "bytes": 34,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/contracts.log",
+    "sha256": "7d28006178dc7261753b460c2975bf372214d715782cdeb70b468c580e75b091"
+  },
+  "execution-head.txt": {
+    "bytes": 41,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/execution-head.txt",
+    "sha256": "92b4582ae252dfb93846828e5f7e2489b4eb0f73618755b6f9b8525a8cf8670a"
+  },
+  "gate-final.log": {
+    "bytes": 99,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gate-final.log",
+    "sha256": "6b68487be8cb7888dd484c4315bec7c57a83f116ca55d197780f04e35f0d7f77"
+  },
+  "gemma-strict-wire-probe/gemma-structured-preflight.json": {
+    "bytes": 705,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gemma-strict-wire-probe/gemma-structured-preflight.json",
+    "sha256": "e11f5f3d529897ae4ec965c01998aa1e14dbb8bf35d286ff878bf41637265c0d"
+  },
+  "gemma-strict-wire-probe/llama-http-1.json": {
+    "bytes": 8695,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gemma-strict-wire-probe/llama-http-1.json",
+    "sha256": "362c6d6e4b32b0b74fcacb9e7c3072cca26befb29476da38d8d9f0c898525985"
+  },
+  "gemma-strict-wire-probe/llama-request-1.raw.json": {
+    "bytes": 4872,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gemma-strict-wire-probe/llama-request-1.raw.json",
+    "sha256": "2bc8c1794e2da7c9c3747fbc73796a5b8817db899064ee1a247c1f821bf26410"
+  },
+  "gemma-strict-wire-probe/llama-response-1.raw.json": {
+    "bytes": 1293,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gemma-strict-wire-probe/llama-response-1.raw.json",
+    "sha256": "59157c87a2631bddb31271355bd49eca155797f4bd2edef9f21dee9e6b644849"
+  },
+  "gpu-after.txt": {
+    "bytes": 1689,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gpu-after.txt",
+    "sha256": "1262ae74f7b7084d3085a81b875475798a558fbc59815a0b5a6016ecfadd9a24"
+  },
+  "gpu-loaded.txt": {
+    "bytes": 1689,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/gpu-loaded.txt",
+    "sha256": "3615391cc78e93995fc3472259c3b4e000902ef70d22789868f00d3d1567adb0"
+  },
+  "health.json": {
+    "bytes": 15,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/health.json",
+    "sha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288"
+  },
+  "historical-originals-before.json": {
+    "bytes": 29705,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/historical-originals-before.json",
+    "sha256": "f7e48c84d9ed19c4b5498e36a35a98a4706aa29b6be54eea1ca1fa63108a5438"
+  },
+  "independent-final-readback.json": {
+    "bytes": 6747,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/independent-final-readback.json",
+    "sha256": "96d64124bb0f2a73adcba0e52f7c959910abf9eb457a01a14717cf7f6a71a97f"
+  },
+  "independent-readback-original.log": {
+    "bytes": 456,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/independent-readback-original.log",
+    "sha256": "bbd87edacb3cd1682cc94a286183aa1a36eed7582425e08428065b8c8677c85a"
+  },
+  "independent_readback.py": {
+    "bytes": 6356,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/independent_readback.py",
+    "sha256": "2a64b7f5feabdd90d9e06989c72a30a6d0cfaaf4a8164941aae52738b3e24e6d"
+  },
+  "l-next-world-attempt-started.json": {
+    "bytes": 1522,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/l-next-world-attempt-started.json",
+    "sha256": "2bcbc3e23c848c4a7292bed6efed12934c2b720d3b885a904723e373c48fd070"
+  },
+  "l-next-world-capture-ready.json": {
+    "bytes": 877,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/l-next-world-capture-ready.json",
+    "sha256": "0f9005836580e85dc0d911769c5ec6ff1cca95e6d93b24047249a788af8c77c2"
+  },
+  "l-next-world-owned-processes.jsonl": {
+    "bytes": 460366,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/l-next-world-owned-processes.jsonl",
+    "sha256": "65f2ff7bccf3abe5aee0a2982e52f2fe8fe0859db2fe7ec32407965c791866ac"
+  },
+  "l-next-world-runner-exit.json": {
+    "bytes": 183,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/l-next-world-runner-exit.json",
+    "sha256": "dfb4ebe813eb91f2254b68e5b54df0b27de351cc678167d4cc353525c5c13165"
+  },
+  "l-next-world-runner-original.log": {
+    "bytes": 44015,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/l-next-world-runner-original.log",
+    "sha256": "f4dcb11b903802afedde2eb9b11584ecd4a86596120cbf766e6f3e70462d906c"
+  },
+  "llama-server-original.log": {
+    "bytes": 4706,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/llama-server-original.log",
+    "sha256": "5d765cbfd12cbf13e3411669398fdf466bf203fb0a3043d2a134d8f92ecb4230"
+  },
+  "llama-version.txt": {
+    "bytes": 90,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/llama-version.txt",
+    "sha256": "44a298a446309cc20e005275ae9e1da8af75476dc7edf9125a4f71967b91fc6a"
+  },
+  "model-files.sha256.json": {
+    "bytes": 248,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/model-files.sha256.json",
+    "sha256": "d064c492a4a892229ff2c42c33bf1b924e25002ba5364d1178e867f3ae98f08e"
+  },
+  "model-process-identity.json": {
+    "bytes": 25868,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/model-process-identity.json",
+    "sha256": "6259a6437f41993128dd4bdbdce8facc79099623ba72f9d5a1ac794060868a74"
+  },
+  "node-import-preflight.json": {
+    "bytes": 156,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/node-import-preflight.json",
+    "sha256": "31d9af488df287f3353965294a73b323e14df8b8b11730e5afb5685e68ff937b"
+  },
+  "offline.log": {
+    "bytes": 260,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/offline.log",
+    "sha256": "bd0ab0ae133ab891d57cdf2fbade5dbcb9119c50c2375e23b6295548e4fe4d20"
+  },
+  "owned-model-pid.json": {
+    "bytes": 589,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/owned-model-pid.json",
+    "sha256": "ef2c51acdf327d68d1d1f68658a916dcfedb542765d2eff693d3bcca4cd94feb"
+  },
+  "paper-active-config.yml": {
+    "bytes": 2590,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/paper-active-config.yml",
+    "sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d"
+  },
+  "paper-version-original.json": {
+    "bytes": 357,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/paper-version-original.json",
+    "sha256": "7c06c676cc679f01974b84342543dd9d71daac978b973ec7ab026434bc7616d1"
+  },
+  "plugin-build.log": {
+    "bytes": 3398,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/plugin-build.log",
+    "sha256": "767fc4b9bce7f50237c27709ebaaa1eff178a6ed4891929ef45c7703a8bd9c5a"
+  },
+  "preflight-original.log": {
+    "bytes": 666,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/preflight-original.log",
+    "sha256": "4bafe3632b2aa9ea29853df8dbe306c7c8d8c8853cd763b196a97b70c4326230"
+  },
+  "prepare-original.log": {
+    "bytes": 844,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/prepare-original.log",
+    "sha256": "60dee2359e9fbb8a019c71ec2f366cc84f6f8a46fc0c374919ca958e75fb532b"
+  },
+  "preworld-manifest.json": {
+    "bytes": 2727,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/preworld-manifest.json",
+    "sha256": "e806142ed179185d70ef1629d9d4cab4783217893cf6dbe79e94310e83744eb9"
+  },
+  "props.json": {
+    "bytes": 22873,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/props.json",
+    "sha256": "47460d63dc8d808eb7550bf8ef462df3fc6439147507917acb5faed32d6919a5"
+  },
+  "protected-checkout-before.txt": {
+    "bytes": 41,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/protected-checkout-before.txt",
+    "sha256": "71314c7c9aa8bdc713bcfc283a5acb05d795081e6fcfc96506a5bff2f1372882"
+  },
+  "protected-refs-before.json": {
+    "bytes": 7056,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/protected-refs-before.json",
+    "sha256": "4e3b58d86cc4485e0d266b7c67b1afb3bf8189f431eaea2856e88568bf3269f1"
+  },
+  "ruff.log": {
+    "bytes": 19,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/ruff.log",
+    "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "run_new_world_once.py": {
+    "bytes": 4304,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/run_new_world_once.py",
+    "sha256": "f2694c4e7e1593e3aaea8cd993673e1f1f462f8ead88275cd0ae302d21607ed1"
+  },
+  "slots.json": {
+    "bytes": 65,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/slots.json",
+    "sha256": "6276aaa9e9e8d1a336cc47f6fbe67e62b66e602028b0982363b9ac026aa2ebd6"
+  },
+  "start_owned_model.py": {
+    "bytes": 2178,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/start_owned_model.py",
+    "sha256": "04b44fa78583428b13977d6d0136649748702414fd2c5eae90dfc353f1505746"
+  },
+  "v1-models.json": {
+    "bytes": 663,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/v1-models.json",
+    "sha256": "fde1638309c8f43cfe26bbdc02c6eaba2926c636cf4044df29c8abff5345cf88"
+  },
+  "world-controller-original.log": {
+    "bytes": 168,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world-controller-original.log",
+    "sha256": "a2d5d9506e944f580426d7a74e5dae421c6939aeca61c224f917b15935e1f800"
+  },
+  "world/feedback-independent-original.log": {
+    "bytes": 213,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/feedback-independent-original.log",
+    "sha256": "e586cf995c646d937fdfc7da56fc9f9cd45cce669bd7dcbdeda3bfb880d0f5fb"
+  },
+  "world/feedback-independent.json": {
+    "bytes": 224,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/feedback-independent.json",
+    "sha256": "74b2f87435fc948ba07d436737911fa304a804b4fa17c1bae7d8ea11bde5b4dd"
+  },
+  "world/g3-independent-original.log": {
+    "bytes": 1299,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/g3-independent-original.log",
+    "sha256": "c1272aecfe5539a44caa52bafb970834edb324035dd85184a4d50b9560c57718"
+  },
+  "world/g3-independent.json": {
+    "bytes": 1594,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/g3-independent.json",
+    "sha256": "de6da4dc73719d917f4c471d7f6979cb93f8b39d85c5ca5971cb61c2f3b8c86a"
+  },
+  "world/l2-frozen-1.json": {
+    "bytes": 9383,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/l2-frozen-1.json",
+    "sha256": "67948763f5f7003581ada5e2c9df65859ed33c6d90a584de89e64c9b5ead0974"
+  },
+  "world/l2-frozen-2.json": {
+    "bytes": 14286,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/l2-frozen-2.json",
+    "sha256": "c04a8b9e5adb87e43b552a4cbd47c1344e345579507b9371706b6618b1f9cf86"
+  },
+  "world/live-prefix-independent-original.log": {
+    "bytes": 1178,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/live-prefix-independent-original.log",
+    "sha256": "720756c31fdd4ad6138507487ae675b401f052e0e46418d4a47a84503a78a648"
+  },
+  "world/live-prefix-independent.json": {
+    "bytes": 1326,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/live-prefix-independent.json",
+    "sha256": "d8adc91f1daa0d3a12cc77e2bf7628e87ce612e112aa5323274e70d60c87544b"
+  },
+  "world/llama-http-1.json": {
+    "bytes": 12732,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-http-1.json",
+    "sha256": "9d66469caf216b6335746776a2d80314f19cc6456b028b7558456882e962cc24"
+  },
+  "world/llama-http-2.json": {
+    "bytes": 18069,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-http-2.json",
+    "sha256": "55a3f728d141cc530fc19fe8ae3af1f3483727e0807b9b4f9769a037ac482da9"
+  },
+  "world/llama-request-1.raw.json": {
+    "bytes": 8988,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-request-1.raw.json",
+    "sha256": "542c3fae71adb055312f74b18b4e362ad0e218c04f2acfdba6f4406ddc2f547c"
+  },
+  "world/llama-request-2.raw.json": {
+    "bytes": 13940,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-request-2.raw.json",
+    "sha256": "0fcf172f1460d2d5e2c994d0f66a1123c58caf1cd95240dfd245faf45e65af83"
+  },
+  "world/llama-response-1.raw.json": {
+    "bytes": 1214,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-response-1.raw.json",
+    "sha256": "53c4b418217be8d09ebecb88bfa4da0882dab57c2654899f5842effb8d5c2af7"
+  },
+  "world/llama-response-2.raw.json": {
+    "bytes": 1225,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/llama-response-2.raw.json",
+    "sha256": "edd841b9e14eed6d3a1aefdc835d55f6c5a2992676ed16a23f4d90d62b156694"
+  },
+  "world/mandatory-audit-status.json": {
+    "bytes": 1717,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/mandatory-audit-status.json",
+    "sha256": "e6a822cbd929b1b30613a7178d13beb456e070da415496fa25a39f2570608d66"
+  },
+  "world/native-stdout/w3-node-stdout-receipt.json": {
+    "bytes": 623,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/native-stdout/w3-node-stdout-receipt.json",
+    "sha256": "87a83c4aa4cd1cf9ad3286be6d448009ea019d12b99a59a52df64927bf324ff5"
+  },
+  "world/native-stdout/w3-node-stdout.raw.jsonl": {
+    "bytes": 71235,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/native-stdout/w3-node-stdout.raw.jsonl",
+    "sha256": "76f6e89ade9cd97bcdd76da7eb4f9a6bdc85a2366c8002d88676c4af68460fb7"
+  },
+  "world/paper-stdout-original.log": {
+    "bytes": 734729,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/paper-stdout-original.log",
+    "sha256": "335db7c9cff433f427c3faf9116705f7008621a3a906f7b08b7081aa1d81c617"
+  },
+  "world/paper-stdout-original.log.raw": {
+    "bytes": 734729,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/paper-stdout-original.log.raw",
+    "sha256": "335db7c9cff433f427c3faf9116705f7008621a3a906f7b08b7081aa1d81c617"
+  },
+  "world/report.json": {
+    "bytes": 55877,
+    "original": "/home/rinsa/evidence/l-cognitive-loop-20261102T034000Z/world/report.json",
+    "sha256": "a642408a2a70463559751797f9150d30145ca7bad15570af843c5b3abcaac682"
+  }
+}

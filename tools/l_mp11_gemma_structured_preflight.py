@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import os
+import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -226,6 +227,9 @@ def run(endpoint: str, model: str, evidence_root: Path) -> dict:
     endpoint, model = _loopback(endpoint, model)
     if not isinstance(evidence_root, Path):
         raise GemmaPreflightRejected("explicit NEW proof root required")
+    execution_head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True,
+    ).strip()
     evidence_root.mkdir(mode=0o700, parents=True, exist_ok=False)
     provider = JournaledLiveLlamaProvider(
         endpoint=endpoint, model=model, timeout=40.0, journal_root=evidence_root,
@@ -238,6 +242,7 @@ def run(endpoint: str, model: str, evidence_root: Path) -> dict:
     _check_json_output(response, json.loads(request_raw))
     report = {
         "status": STATUS,
+        "execution_head": execution_head,
         "endpoint": endpoint,
         "model": model,
         "request_sha256": _sha(request_raw),

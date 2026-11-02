@@ -1,0 +1,29 @@
+{
+  "pid": 138152,
+  "ppid": 138125,
+  "start_ticks": 16640603,
+  "state": "R",
+  "argv": [
+    "/home/rinsa/src/llama.cpp/build/bin/llama-server",
+    "--model",
+    "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf",
+    "--alias",
+    "relay-self-gemma4-12b-q4km",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8080",
+    "-ngl",
+    "999",
+    "-c",
+    "8192",
+    "-np",
+    "1",
+    "--no-context-shift",
+    "--flash-attn",
+    "on",
+    "--jinja"
+  ],
+  "cwd": "/home/rinsa/work/l-cognitive-loop-world-20261102",
+  "exe": "/home/rinsa/src/llama.cpp/build/bin/llama-server"
+}
