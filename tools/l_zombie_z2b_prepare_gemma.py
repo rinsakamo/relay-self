@@ -173,6 +173,77 @@ def prepare_one_http(
             dest.write("\n")
 
 
+
+def verify_prepared_archive(
+    *, prepared_root: Path, z1b_original: Path, z2a_original: Path,
+):
+    """Fresh independent readback of prior Paper raws and real model wire bytes.
+
+    A local fake HTTP provider can emit perfectly shaped JSON; this validates
+    the wire and source lineage, NOT model process mmap/GGUF identity. That
+    must be separately qualified by the local operator.
+    """
+    if (
+        not isinstance(prepared_root, Path) or not prepared_root.is_absolute()
+        or not prepared_root.is_dir() or prepared_root.is_symlink()
+    ):
+        raise ZombiePolicyRejected("existing real original preparation root required")
+    past = source_summaries(
+        z1b_raw=z1b_original.read_bytes(), z2a_raw=z2a_original.read_bytes(),
+    )
+    request_raw = (prepared_root / "llama-request-1.raw.json").read_bytes()
+    response_raw = (prepared_root / "llama-response-1.raw.json").read_bytes()
+    archive = (prepared_root / "prepared-zombie-l2-policy-v1.json").read_bytes()
+    try:
+        parsed_req = json.loads(request_raw)
+        if type(parsed_req) is not dict:
+            raise ZombiePolicyRejected("invalid saved model request")
+        expected = request(parsed_req["model"], original_prior=past)
+        policy = freeze_from_http(
+            original_request=request_raw,
+            original_response=response_raw,
+            expected_request=expected,
+        )
+        if archive != policy_json(policy):
+            raise ZombiePolicyRejected("prepared policy archive differs from actual model wire")
+    except (KeyError, ValueError, TypeError, UnicodeError) as exc:
+        raise ZombiePolicyRejected("prepared Gemma HTTP/original model policy readback FAIL") from exc
+    return policy
+
+
+def render_activated_plugin_config(
+    *, disabled_plugin_config: str, prepared_policy,
+) -> str:
+    """Exact-only World-local opt-in; no direct model invocation at Paper tick."""
+    from adapters.mineflayer.l_zombie_z2b_policy_contract import PreparedZombiePolicy
+
+    if (
+        type(disabled_plugin_config) is not str
+        or not isinstance(prepared_policy, PreparedZombiePolicy)
+        or disabled_plugin_config.count("zombie-prepared-l2-shadow-dev: false") != 1
+        or disabled_plugin_config.count('zombie-prepared-l2-strategy: "ABSTAIN"') != 1
+        or disabled_plugin_config.count('zombie-prepared-l2-speed-m-per-tick: "none"') != 1
+        or disabled_plugin_config.count('zombie-prepared-l2-policy-sha256: "none"') != 1
+        or disabled_plugin_config.count("zombie-prospective-cheap-dev: true") != 1
+    ):
+        raise ZombiePolicyRejected("prepared policy requires distinct preenabled CHEAP config")
+    speed = (
+        f"{prepared_policy.speed_m_per_tick:.12f}"
+        if prepared_policy.strategy == "TARGET_APPROACH" else "none"
+    )
+    return (
+        disabled_plugin_config
+        .replace("zombie-prepared-l2-shadow-dev: false",
+                 "zombie-prepared-l2-shadow-dev: true")
+        .replace('zombie-prepared-l2-strategy: "ABSTAIN"',
+                 f'zombie-prepared-l2-strategy: "{prepared_policy.strategy}"')
+        .replace('zombie-prepared-l2-speed-m-per-tick: "none"',
+                 f'zombie-prepared-l2-speed-m-per-tick: "{speed}"')
+        .replace('zombie-prepared-l2-policy-sha256: "none"',
+                 f'zombie-prepared-l2-policy-sha256: "{prepared_policy.policy_sha256}"')
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--endpoint", required=True)
