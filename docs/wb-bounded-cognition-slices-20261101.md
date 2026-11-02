@@ -343,3 +343,23 @@ Verify original S49 Action terminal control, Java/Node/model exit, PID disappear
 Post the exact HEAD, outcome matrix, relevant test counts, original source seqs, timestamps with clock domains, independent raw evidence location, SHA manifest and terminal CI to existing Draft #669 and Issues #632/#633. Read back the posts, check remote HEAD and worktree cleanliness. Preserve `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN` even if the host-source ATT witness is positive.
 
 **No physical World has been run merely by committing this protocol.**
+
+## 2026-11-02 — native L1 attention vs L2 question, same-source shadow A/B (DEV, offline)
+
+The preceding **real World** L2/ATT-shadow trial admitted one Gemma uncertainty at native seq20, recorded `ATT_SELECTED_READ_ONLY` and later expired it at seq47, handing the question to `PENDING_INDEPENDENT_OUTCOME`. It did **not** compare the **same observed L1 attention pool** with and without an L2 question, so it did not show an L2-caused attention choice difference or any L1 policy adaptation.
+
+This stage introduces a two-arm *read-only shadow ATT* comparison, never an L1 production decision. The same source-bound `CognitionSlice(tier=L1)` comes from the original World/Body projection already used by the S60 L2 prompt. Its at-most-three original visible native cues form the control attention candidates. The treatment arm adds one **L2-generated uncertainty** candidate from S60-A (same source epoch, session, and source ref); both arms use the same existing `select_attention` selector and identical `AttentionCriterion(top_k=1)`.
+
+The test explicitly assigns native candidates priority 0 and the *new L2 question* priority 1. **Any observed difference is a configured candidate-insertion/priority effect, NOT evidence of learned relevance, goal utility, or autonomous improvement.** The two arms do not consume separate World observations, call a second model, delay L0, or authorize physical Action. `WBL1AttentionAB` classifies:
+
+- `SHADOW_SELECTION_DIFFERENCE`: at least one L1 native observed cue was in the control pool; the configured L2 insertion changes the ATT shadow selected ID. `actual_l1_policy_changed=false`, `useful_for_goal=false`.
+- `NO_NATIVE_BASELINE`: there is no observed control candidate; selecting the new L2 question is **not** counted as a demonstrated change against a native-selected attention choice.
+- `UNAVAILABLE`: no source-matched current S60 admission, invalid epoch/tier/session, mismatch in original visible cue source, forged duplicate entity, or stale L2.
+
+The live observer retains only one *ephemeral* original L1-tier snapshot at L2 prompt construction. At original S60 acceptance, it writes `wb_l1_attention_ab_at_admission` once. A later actual World update invalidates the live current A/B read, while the admission-time witness remains on the sidecar. `wb_l1_attention_ab_at_close` records the remaining availability, never another L1 policy selection.
+
+The original S49 DEV receipt writes `dev_wb_l1_attention_ab` only after the existing S49 original source-pair/S60 acceptance/ATT witness gates. It validates the fixed-priority schema and denies fabricated `actual_l1_policy_changed=true`. Importantly, the original `source_pair_trace` does **not** independently provide a qualified full L1 visible candidate-count readback. Its field is therefore named `observed_candidate_count_sidecar_only`, and `independent_native_candidate_count_verified=false` and `attestation=S60_HOST_JOIN_AND_SIDECAR_SHADOW_ONLY` are mandatory. A positive shadow ATT difference is not independent physical native cue-count attestation.
+
+Regression fixtures include an observed baseline, zero-observation baseline, stale/foreign wrong-tier cues, duplicate entity refs, tampered sidecar A/B, real-off/failed-provider paths and default-OFF invariants. No new actual World or Gemma run is part of this change. Future experimental or learned **semantic attention relevance** belongs to L Lane only after an authorized outcome review and explicit separate A/B design; no S10 transaction or Habit is granted here.
+
+**Classification:** `DEV_ONLY / NATIVE_L1_VS_L2_ATT_SHADOW_AB_OFFLINE / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
