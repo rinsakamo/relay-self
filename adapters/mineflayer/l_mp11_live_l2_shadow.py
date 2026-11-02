@@ -24,14 +24,14 @@ from adapters.mineflayer.l_mp11_evidence_id_selection import (
     model_evidence_catalog,
     resolve_evidence_ids,
 )
-from adapters.mineflayer.l_mp11_gemma_wire_contract import (
-    enforce_gemma_thinking_off,
-    pin_gemma_wire,
-)
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
     RECONSIDERATIONS,
+)
+from adapters.mineflayer.l_mp11_gemma_wire_contract import (
+    enforce_gemma_thinking_off,
+    pin_gemma_wire,
 )
 from adapters.mineflayer.l_mp11_live_previous_action import LivePriorLedger
 from adapters.mineflayer.l_mp11_typed_feedback import (
