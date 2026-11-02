@@ -273,6 +273,8 @@ def main() -> int:
         report_path=args.report, server_log=args.server_log,
         observer=observer,
     ))
+    result["backend_identity_preflight"] = backend_identity
+    result["model_process_identity_verified"] = True
     args.s2c_report.write_text(
         json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
