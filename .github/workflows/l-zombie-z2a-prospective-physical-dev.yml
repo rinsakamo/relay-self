@@ -1,5 +1,6 @@
 name: L Z2a prospective CHEAP Paper one World DEV
-# Exactly one opt-in push: a failed World/preflight is evidence, not a retry grant.
+# A previous CI run was blocked at negative-control preflight (World0).
+# This distinct run first passed offline tests, and has one World budget / no retry.
 on:
   push:
     branches: [dev/l-zombie-z2a-prospective-cheap-20261102]
