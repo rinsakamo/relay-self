@@ -1,0 +1,57 @@
+name: L Gemma 4 native strict JSON schema and no-thinking preflight offline
+on:
+  push:
+    branches: [dev/l-gemma-strict-json-thinking-off-preflight-20261102]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_gemma_wire_contract.py'
+      - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tools/l_mp11_gemma_structured_preflight.py'
+      - 'tests/test_l_mp11_gemma_wire_contract.py'
+      - '.github/workflows/l-gemma-strict-schema-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  structured-gemma-and-preworld-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin offline test tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Validate real-Gemma request shape without touching model
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_gemma_wire_contract.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/l_mp11_gemma_structured_preflight.py \
+            tests/test_l_mp11_gemma_wire_contract.py
+          python -m compileall -q adapters/mineflayer/l_mp11_gemma_wire_contract.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/l_mp11_gemma_structured_preflight.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_gemma_wire_contract.py \
+            tests/test_l_mp11_evidence_id_selection.py \
+            tests/test_l_mp11_compact_role_and_failure.py \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_eof_and_typed_feedback.py \
+            tests/test_l_mp11_feedback_original_audit.py \
+            tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: Exact epistemic ceiling
+        run: echo 'OFFLINE_FAKE_HTTP_ONLY / LLM_GGUF_NOT_LOADED / REAL_PREFLIGHT_NOT_RUN / REAL_WORLD_NOT_RUN / ORIGINAL_FAILS_UNCHANGED / QUALIFICATION_NO_GO'

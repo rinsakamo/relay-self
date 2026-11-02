@@ -1116,6 +1116,7 @@ def main() -> int:
     parser.add_argument("--l-mp11-live-prefix-dev", action="store_true")
     parser.add_argument("--l-mp11-paper-eof-dev", action="store_true")
     parser.add_argument("--l-mp11-evidence-ids-dev", action="store_true")
+    parser.add_argument("--l-mp11-gemma-preflight-report", type=Path)
     parser.add_argument("--l-mp11-live-l2-endpoint")
     parser.add_argument("--l-mp11-live-l2-model")
     parser.add_argument("--raw-capture-root", type=Path)
@@ -1144,6 +1145,18 @@ def main() -> int:
         args.l_mp11_live_l2_model is None
     ):
         parser.error("live L2 requires both the exact endpoint and model alias")
+    if args.l_mp11_evidence_ids_dev:
+        if os.environ.get("L_MP11_GEMMA_STRICT_SCHEMA_DEV") != "1":
+            parser.error("Gemma evidence-ID mode requires native JSON Schema and thinking OFF")
+        if args.l_mp11_gemma_preflight_report is None:
+            parser.error("real Gemma structured output preflight required BEFORE World")
+        from tools.l_mp11_gemma_structured_preflight import verify_preflight_report
+
+        verify_preflight_report(
+            args.l_mp11_gemma_preflight_report,
+            endpoint=args.l_mp11_live_l2_endpoint,
+            model=args.l_mp11_live_l2_model,
+        )
     if args.l_mp11_live_l2_endpoint is not None:
         from urllib.parse import urlsplit
 
@@ -1170,6 +1183,7 @@ def main() -> int:
             parser.error("only exact loopback llama.cpp endpoint and model allowed")
         l2_provider = JournaledLiveLlamaProvider(
             journal_root=args.report.parent,
+            strict_gemma_evidence=args.l_mp11_evidence_ids_dev,
             endpoint=args.l_mp11_live_l2_endpoint,
             model=args.l_mp11_live_l2_model,
             timeout=40.0,
