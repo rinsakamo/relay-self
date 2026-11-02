@@ -1033,3 +1033,41 @@ def test_structured_wb_no_host_acceptance_from_http_failure():
             assert row["status"] == "UNCONFIRMED"
             assert row["authorized_actions"] == row["learning_updates"] == 0
     asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_optional_callback_failure_cannot_veto_original_s49_l0(
+    monkeypatch, tmp_path,
+):
+    """Synthetic owner stub; no Minecraft, Gemma or provider transport."""
+    import adapters.mineflayer.s49_normal_session_real_ci as s49
+
+    called = []
+
+    async def fake_original_s49(report_path, log_path, *, live_probe=None):
+        assert live_probe is not None
+        for seq in (8, 19):
+            await live_probe(scoped_world_probe(seq))
+            called.append(seq)
+        return 0
+
+    async def broken_optional_observer(self, reading):
+        raise RuntimeError("synthetic WB projection callback failure")
+
+    monkeypatch.setattr(s49, "qualify", fake_original_s49)
+    monkeypatch.setattr(LiveL2Observer, "observe", broken_optional_observer)
+    result = asyncio.run(self_demo._run_disposable(
+        tmp_path / "unused-native-report.json",
+        tmp_path / "unused-model-log.json",
+        live_model=("offline-model", 12345, 1),
+        self_world_live=True, wb_cognition_slice=True,
+        structured_json_off=True,
+    ))
+    assert result == 0
+    assert called == [8, 19]
+    row = json.loads((tmp_path / "live_l2.jsonl").read_text().strip())
+    assert row["status"] == "SOURCE_CALLBACK_UNCONFIRMED"
+    assert row["source_callback_failure"] == "RuntimeError"
+    assert row["wb_structured_acceptance_host_order"] is None
+    assert row["model_attempts"] == row["authorized_actions"] == 0
+    assert row["learning_updates"] == 0
+    assert row["l0_blocked_on_l2"] is False
