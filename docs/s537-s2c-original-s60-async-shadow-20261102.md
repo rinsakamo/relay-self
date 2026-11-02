@@ -82,11 +82,23 @@ python -m tools.s537_s2c_live_s60_shadow_dev \
 ```
 
 The default-OFF gates prohibit this invocation absent explicit flags.
-Use the original S49 S16 validator as the owner physical verifier; previous
-S2-B independent JSON cross-audit assumes zero model calls, and **must not**
-be applied unchanged to a S2-C model-enabled report. Preserve and
-independently audit the original S49 source and S2-C correlation as a
-new model-enabled audit instead.
+Use the original S49 S16 validator as the owner physical verifier.
+The previous S2-B auditor still defaults to **zero** model calls;
+for this S2-C model-enabled report use the new independent audit
+with explicit one-sidecar request accounting:
+
+```bash
+python -m tools.s537_s2c_async_source_audit \
+  --s49 "$EVIDENCE_DIR/s49.json" \
+  --s2c "$EVIDENCE_DIR/s2c.json" \
+  --output "$EVIDENCE_DIR/s2c-source-audit.json"
+```
+
+The audit compares original S49 native Action / S16 outcomes,
+S2-A WB source and previous S16, exact original L0/Intent revision rows,
+one S60 POST and original S16 expiry. Synthetic model receipts in CI are
+test fixtures only. The audit does not independently attest the backend
+PID, HTTP wire or Paper/W3 timestamp.
 
 4. Record each source native sequence, Action S16 after sequence,
    exact L0/Intent revision, S60 request/cancellation/response stages
