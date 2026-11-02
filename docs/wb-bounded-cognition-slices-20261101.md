@@ -253,3 +253,27 @@ Java21.0.12.1 PID135376 / Node22.22.2 PID135464のexe/hash/cmdline、元Mojang s
 外部証拠 `/home/rinsa/evidence/wb-669-live-world-20261102/`: request.json、HTTP raw/envelope、received-probes、S60 before/after/result、server log、process maps/identity、events、cleanup audit、失敗原本、試験ログ、SHA256 manifest。元World出力は上記output root、元SHA256SUMS検査PASS。`audit-live.py` はlocal read-only整合確認であり、独立R custodyではない。sidecar自身のmodel_binary_identity_verified=false / HTTP UNRECORDEDは書換えず、外部取得証拠と区別する。
 
 未解決: 独立STOP/GPU解放資格、Paper物理時系列、正確な採用時刻、L2の認知的有用性、live L0/L1 slice利用、情報予算利益、学習・結晶化。今回の実WorldでL2受理1件と後続の正しい失効1件を観測したが、qualification/scienceへ昇格しない。
+
+## 2026-11-02 — WB current-vs-past L2 uncertainty read port (DEV, no physical inference)
+
+The previous **real World** DEV at execution HEAD `1f4305e507494af9e989390d794cc3c60914524c` accepted one actual Gemma structured L2 response for native source seq **21** and invalidated it on the later S49 callback seq **49**. S49 issued two original Actions with two S16 OUTCOME; the L2 observer issued **zero additional Action or native probe**, and no Memory/Learning/Habit was committed. That earlier real-World evidence is not rerun or reclassified by this change. Independent Paper timestamps, exact L2 adoption timestamp, STOP ACK and GPU release remain unavailable.
+
+### A question is not a learned physical hypothesis
+
+The currently admitted JSON schema has exactly one field: `{"uncertainty":"..."}`. This is an **L2-generated question**. It is not a predicted physical value, a verified counterfactual or a learning update. Consequently, this WB step must never call it a confirmed World model or a learned Habit merely because a later native source invalidated the current answer.
+
+The new pure `src/relay_self/wb_l2_read_port.py` exposes an immutable `WBL2UncertaintyRead` projection with three disjoint states:
+
+- `CURRENT_EPOCH_READ_ONLY`: source-bound S60-admitted uncertainty is available for **read-only attention** while native source seq remains unchanged; `current_uncertainty` is populated and `past_review_candidate` is empty.
+- `PAST_EPOCH_REVIEW_ONLY`: a later original native callback has invalidated current applicability; **only** `past_review_candidate` contains the old question, tagged with original source ref/seq. This is not an experience store or an automatic transfer to L1/Learning.
+- `UNAVAILABLE`: no qualifying S60 acceptance, bad/duplicate JSON, invalid/foreign/stale-source ref, missing source, source callback failure, or unsupported metadata. No current or past content is exposed.
+
+All views have `source_attested=false` (independent S49/physical attestation remains upstream), `origin=L2_GENERATED_UNCERTAINTY_NOT_WORLD_FACT`, and `authority=READ_ONLY_NO_ACTION_MEMORY_LEARNING_HABIT`. Outputs never include an Action field, prediction result, memory write or learning grant.
+
+The WB live observer supports a **pure read** via `read_wb_l2_uncertainty()` only while the observer is open and S60 has actually completed; a subsequent source observation yields `PAST_EPOCH_REVIEW_ONLY`. The `wb_l2_readonly_at_close` sidecar field is a final native-source snapshot for DEV evidence, **not** a persistent live consumer: calls after close return `UNAVAILABLE`.
+
+The original S49 DEV receipt independently projects `dev_wb_l2_uncertainty_read` from the already persisted sidecar text **and S49's own source-pair refs and latest native probe sequence**. A positive read requires previous `dev_wb_structured_l2` acceptance, source reference equality, source-seq alignment, full JSON validation and an unchanged S60 owner. This is a DEV host-order readback only, not a Paper physical chronology or a separate second model.
+
+Offline negative controls cover mismatched original source, untrusted sidecar latest-seq, wrong session, stale past presented as current, duplicate JSON keys, extra Action content, reasoning-only content, empty/truncated JSON, callback failure and owner noncompletion. Normal WB OFF and earlier S60 default behavior are unchanged.
+
+**Scope / current status:** Read-only port implementation and offline regressions, no new World, no new Gemma call, no L1 consumer installed, no learned hypothesis or L0 crystallization. Future **L Lane** integration may take a `PAST_EPOCH_REVIEW_ONLY` question as a source-bound **review candidate** only after independently observing relevant outcomes and verifying applicability; it must not auto-commit this object as Memory, S10 feedback or a Habit. `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
