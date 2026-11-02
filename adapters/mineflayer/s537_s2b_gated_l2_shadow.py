@@ -16,8 +16,11 @@ from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
+from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
+from relay_self.action import ActionState
+from relay_self.action_outcome import ActionOutcomeDisposition
 from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
 from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
@@ -225,6 +228,10 @@ class S2BGatedL2Shadow:
         if (
             self._closed
             or not isinstance(closed, NormalActionClosedReadback)
+            or closed.terminal.state is not ActionState.OUTCOME
+            or closed.interpretation.disposition is not ActionOutcomeDisposition.OUTCOME
+            or closed.consequence.status is not WorldConsequenceStatus.EXECUTED
+            or closed.terminal.action_id != closed.consequence.action_id
             or closed.original_probe.session_id != source.session_id
             or closed.original_probe.seq != source.probe_seq
             or closed.original_probe.request_id != source.request_id
