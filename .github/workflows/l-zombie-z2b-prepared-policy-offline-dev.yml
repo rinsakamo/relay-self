@@ -7,6 +7,9 @@ on:
       - 'adapters/mineflayer/l_zombie_z2b_policy_contract.py'
       - 'tools/l_zombie_z2b_prepare_gemma.py'
       - 'tests/test_l_zombie_z2b_policy_contract.py'
+      - 'tools/l_zombie_z2b_paper_policy_audit.py'
+      - 'tests/test_l_zombie_z2b_paper_policy_audit.py'
+      - 'adapters/mineflayer/l_zombie_paper_dev/**'
       - '.github/workflows/l-zombie-z2b-prepared-policy-offline-dev.yml'
 permissions:
   contents: read
@@ -22,18 +25,22 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
       - name: Prepared real Gemma policy wire gates (FAKE HTTP fixtures only)
         run: |
           set -euo pipefail
-          ruff check adapters/mineflayer/l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_prepare_gemma.py tests/test_l_zombie_z2b_policy_contract.py
+          ruff check adapters/mineflayer/l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_prepare_gemma.py tests/test_l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_paper_policy_audit.py tests/test_l_zombie_z2b_paper_policy_audit.py
           python -m compileall -q adapters/mineflayer/l_zombie_z2b_policy_contract.py tools/l_zombie_z2b_prepare_gemma.py
           python -m pytest -p no:cacheprovider -o addopts='' -q \
             tests/test_l_zombie_z2b_policy_contract.py \
+            tests/test_l_zombie_z2b_paper_policy_audit.py \
             tests/test_l_zombie_z2a_prospective_audit.py \
             tests/test_l_zombie_20tick_shadow.py \
             tests/test_l_mp11_gemma_wire_contract.py \
             tests/test_l_mp11_b1_forecast_contract.py
           python tools/check_repository.py
+          mvn -B -ntp -f adapters/mineflayer/l_zombie_paper_dev/pom.xml -DskipTests package
       - name: Epistemic boundary
         run: echo 'SYNTHETIC_POLICY_HTTP_ONLY / REAL_GEMMA_0 / REAL_WORLD_0 / NO_L2_PHYSICAL_FORECAST / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
