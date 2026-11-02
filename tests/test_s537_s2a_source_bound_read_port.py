@@ -59,7 +59,7 @@ def _realistic_synthetic_batch():
         ),
     )
     return read_original_s49_completions(
-        tuple([revised, *batch.steps[1:]]),
+        tuple([revised.step, *(entry.step for entry in batch.steps[1:])]),
         {item.probe.seq: item.probe for item in batch.steps},
         {revised.step.action_request_id: revised.action_receipt},
     )
