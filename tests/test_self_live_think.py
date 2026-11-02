@@ -1001,7 +1001,7 @@ def test_structured_wb_host_order_acceptance_before_or_after_native_advance(adva
             row = await observer.close()
             assert row["wb_l2_readonly_at_close"] == live_view.to_mapping()
             assert observer.read_wb_l2_uncertainty().state == "UNAVAILABLE"
-            host = row["wb_structured_acceptance_host_order"
+            host = row["wb_structured_acceptance_host_order"]
             assert host == {
                 "source_world_seq": 19,
                 "latest_native_seq_at_acceptance": 19,
