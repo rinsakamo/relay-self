@@ -402,7 +402,7 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
 
 @pytest.mark.parametrize("state", [
     "current", "advanced", "foreign_source", "invalid_json", "mismatched_sequence",
-    "tampered_witness", "tampered_later_ref",
+    "tampered_witness", "tampered_later_ref", "tampered_ab",
 ])
 def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
     tmp_path, monkeypatch, state,
@@ -489,6 +489,19 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         if state == "tampered_witness":
             witness["selected_candidate_ids"] = ["forged-l1-authority"]
         row["wb_l1_attention_at_admission"] = witness
+        row["wb_l1_attention_ab_at_admission"] = {
+            "state": "SHADOW_SELECTION_DIFFERENCE",
+            "source_world_seq": 19,
+            "source_ref": source,
+            "observed_candidate_count": 1,
+            "baseline_selected": ["wb-native-observed-0"],
+            "with_l2_selected": ["wb-l2-uncertainty"],
+            "selection_changed": True,
+            "policy": "EXPLICIT_SHADOW_L2_PRIORITY_1_VS_NATIVE_0",
+            "useful_for_goal": False,
+            "actual_l1_policy_changed": state == "tampered_ab",
+            "authority": "ATT_SHADOW_AB_NO_ACTION_MEMORY_LEARNING",
+        }
         latest = 47 if state in {"advanced", "tampered_later_ref"} else 19
         prior = project_wb_l2_uncertainty(
             accepted_text=l2_text, session_id=session,
@@ -527,12 +540,13 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         "mismatched_sequence": "NOT_ACCEPTED_OR_UNQUALIFIED",
         "tampered_witness": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
         "tampered_later_ref": "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND",
+        "tampered_ab": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
     }[state]
     assert admission["state"] == expected
     assert admission["attestation"] == "HOST_ORDER_DEV_ONLY"
     assert admission["action_authority"] == "S49_ONLY"
     assert admission["semantic_json_accepted"] is (
-        state in {"current", "advanced", "tampered_witness", "tampered_later_ref"}
+        state in {"current", "advanced", "tampered_witness", "tampered_later_ref", "tampered_ab"}
     )
     read = receipt["dev_wb_l2_uncertainty_read"]
     assert read["state"] == {
@@ -543,8 +557,9 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         "mismatched_sequence": "UNAVAILABLE",
         "tampered_witness": "CURRENT_EPOCH_READ_ONLY",
         "tampered_later_ref": "PAST_EPOCH_REVIEW_ONLY",
+        "tampered_ab": "CURRENT_EPOCH_READ_ONLY",
     }[state]
-    if state in {"current", "tampered_witness"}:
+    if state in {"current", "tampered_witness", "tampered_ab"}:
         assert read["current_uncertainty"] == "Check current observed target."
         assert read["past_review_candidate"] is None
     elif state in {"advanced", "tampered_later_ref"}:
@@ -561,10 +576,27 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
     review = receipt["dev_wb_past_review_handoff"]
     assert att["state"] == (
         "ATT_SELECTED_READ_ONLY"
-        if state in {"current", "advanced", "tampered_later_ref"}
+        if state in {"current", "advanced", "tampered_later_ref", "tampered_ab"}
         else "UNAVAILABLE"
     )
     assert att["authority"] == "ATT_SHADOW_NO_L1_POLICY_OR_ACTION"
+    ab = receipt["dev_wb_l1_attention_ab"]
+    assert ab["state"] == (
+        "SHADOW_SELECTION_DIFFERENCE"
+        if state in {"current", "advanced", "tampered_later_ref"}
+        else "UNAVAILABLE"
+    )
+    assert ab["attestation"] == "S60_HOST_JOIN_AND_SIDECAR_SHADOW_ONLY"
+    assert ab["independent_native_candidate_count_verified"] is False
+    assert ab["actual_l1_policy_changed"] is False
+    assert ab["learned_attention_gain_verified"] is False
+    if ab["state"] == "SHADOW_SELECTION_DIFFERENCE":
+        assert ab["observed_candidate_count_sidecar_only"] == 1
+        assert ab["baseline_selected"] == ["wb-native-observed-0"]
+        assert ab["with_l2_selected"] == ["wb-l2-uncertainty"]
+        assert ab["selection_changed_due_to_fixed_priority"] is True
+    else:
+        assert ab["selection_changed_due_to_fixed_priority"] is False
     assert review["state"] == (
         "PENDING_INDEPENDENT_OUTCOME" if state == "advanced" else "UNAVAILABLE"
     )
