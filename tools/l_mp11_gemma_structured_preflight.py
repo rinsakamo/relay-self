@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from adapters.llama_cpp.relay_engine import _extract_completion
 from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     GEMMA_MAX_COMPLETION,
     GEMMA_SCHEMA_NAME,
@@ -21,8 +22,6 @@ from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     strict_gemma_evidence_schema,
 )
 from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
-from adapters.llama_cpp.relay_engine import _extract_completion
-
 REPORT_FILENAME = "gemma-structured-preflight.json"
 REQUEST_FILENAME = "llama-request-1.raw.json"
 RESPONSE_FILENAME = "llama-response-1.raw.json"
