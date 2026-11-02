@@ -35,13 +35,12 @@ class M616OriginalS49CompletedTap:
     def __call__(self, original_batch: object) -> None:
         if not self.lease.enabled:
             return
-        from experiments.metabolism_s49_owner_admission import (
-            bounded_s49_m_admission_row,
-        )
-
         from experiments.metabolism_s49_original_owner_receipts import (
             bounded_original_s49_owner_receipt_row,
             observe_original_s49_s16_receipts,
+        )
+        from experiments.metabolism_s49_owner_admission import (
+            bounded_s49_m_admission_row,
         )
 
         self.observed_callbacks += 1
