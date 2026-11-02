@@ -129,6 +129,7 @@ class S2BOriginalOwnerEpochBinder:
             or original_probe.request_id != source.request_id
             or entry.intent_id != entry.host.intent_id
             or entry.intent.current_intent is None
+            or entry.intent.pending_reconsideration is not None
             or entry.intent.current_intent.intent_id != entry.intent_id
             or entry.host.retained is not entry.retained_source
             or entry.host.retained.revision != entry.retained_revision

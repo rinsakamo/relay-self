@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+
 
 class OwnerAuditRejected(ValueError):
     """Claim would require unknown/foreign/future original source evidence."""
@@ -34,6 +36,7 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
             s49["status"] != "PASS"
             or report["status"] != "RECORDED"
             or owner["status"] != "RECORDED"
+            or owner["original_owner"]["status"] != "RECORDED"
             or root["status"] != "RECORDED"
             or s2a["status"] != "RECORDED"
             or s1["status"] != "RECORDED"
@@ -62,6 +65,10 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
         for action in native_actions:
             evidence = action["execution_evidence"]
             aid = action["action"]
+            verify_native_action_evidence(
+                evidence, action_id=aid, session_id=sid,
+                movement_m=evidence["movement_m"],
+            )
             if (
                 aid in used_actions
                 or action["terminal"] != "outcome"
@@ -102,6 +109,13 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
                 or incoming["world_source_ref"] != wb["world_source_ref"]
                 or incoming["body_source_ref"] != wb["body_source_ref"]
                 or owner_row["intent_generation"] != original_epoch["intent_generation"]
+                or owner_row["intent_id"] != original_epoch["intent_id"]
+                or not isinstance(owner_row["intent_id"], str)
+                or not owner_row["intent_id"]
+                or type(owner_row["intent_generation"]) is not int
+                or not 1 <= owner_row["intent_generation"] <= 32
+                or type(owner_row["retained_revision"]) is not int
+                or owner_row["retained_revision"] < 0
                 or owner_row["retained_revision"] != original_epoch["retained_revision"]
                 or owner_row["intent_generation"] < previous_intent_gen
                 or owner_row["retained_revision"] < previous_retained_rev

@@ -72,7 +72,8 @@ def test_original_rows_consistent_with_synthetic_owner_witness():
     "foreign_session", "future_s16", "injected_previous_s16",
     "replayed_probe", "wrong_owner_rev", "wrong_wb_source",
     "missing_s16", "wrong_action_after", "swapped_action",
-    "model_call", "fake_source_attestation",
+    "model_call", "fake_source_attestation", "foreign_intent",
+    "foreign_effect_session", "wrong_s15_action", "missing_s15",
 ])
 def test_audit_rejects_tampered_original_source_rows(fault):
     s49, report = _source()
@@ -80,7 +81,15 @@ def test_audit_rejects_tampered_original_source_rows(fault):
     rows = report["owner_epoch"]["epoch_contexts"]
     input_rows = report["s2a"]["s2a"]["inputs"]
     host_events = report["s2a"]["s2a"]["host_events"]
-    if fault == "foreign_session":
+    if fault == "foreign_effect_session":
+        s49["actual_native_actions"][0]["execution_evidence"]["cleanup_receipt"]["session_id"] = "foreign"
+    elif fault == "wrong_s15_action":
+        s49["actual_native_actions"][0]["execution_evidence"]["cleanup_receipt"]["action_id"] = "foreign"
+    elif fault == "missing_s15":
+        del s49["actual_native_actions"][0]["execution_evidence"]["cleanup_receipt"]
+    elif fault == "foreign_intent":
+        rows[0]["intent_id"] = "foreign"
+    elif fault == "foreign_session":
         rows[0]["request_id"] = "foreign"
     elif fault == "future_s16":
         input_rows[2]["preceding_s16_after_seq"] = 1000

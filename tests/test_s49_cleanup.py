@@ -576,3 +576,25 @@ def test_node_claimed_success_must_match_owned_process(owner_ports, tmp_path, mo
     report = json.loads(out.read_text())
     assert report['status'] == 'FAIL'
     assert 'node_exit' in report['error'] or 'node_cleanup_error' in report
+
+
+def test_s2b_owner_observer_exception_does_not_veto_original_actions(owner_ports, tmp_path):
+    s49, _, _, node, server = owner_ports
+    witnessed = []
+
+    def broken_observer(probe, host, intent):
+        witnessed.append((probe, host, intent))
+        raise RuntimeError("offline observer failure")
+
+    out = tmp_path / "report.json"
+    rc = asyncio.run(s49.qualify(
+        out, tmp_path / "java.log", owner_epoch_readonly=broken_observer,
+        raw_capture_root=tmp_path / "raw",
+    ))
+    report = json.loads(out.read_text())
+    assert rc == 0 and report["status"] == "PASS"
+    assert len(witnessed) == 3
+    assert all(host is witnessed[0][1] and intent is witnessed[0][2]
+               for _, host, intent in witnessed)
+    assert len(report["actual_native_actions"]) == 2
+    assert node.returncode == server.returncode == 0

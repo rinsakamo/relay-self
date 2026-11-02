@@ -29,7 +29,7 @@ jobs:
           python -m compileall -q adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_owner_cognition_join.py adapters/mineflayer/s537_s1_original_wb_m.py tools/s537_s1_live_wb_m_dev.py adapters/mineflayer/s537_s2a_l2_read_port.py tools/s537_s2a_original_readonly_dev.py adapters/mineflayer/s537_s2b_gated_l2_shadow.py adapters/mineflayer/s537_s2b_original_owner_epoch.py tools/s537_s2b_original_owner_witness_dev.py tools/s537_s2b_original_owner_audit.py
       - name: Original S49 and completion focused tests (offline)
         run: |
-          python -m pytest -q tests/test_s49_completed_decision_bridge.py tests/test_s49_owner_cognition_join.py tests/test_feature_s49_normal_runtime.py tests/test_postmain_s42_world_contrast.py
+          python -m pytest -q tests/test_s49_completed_decision_bridge.py tests/test_s49_owner_cognition_join.py tests/test_feature_s49_normal_runtime.py tests/test_postmain_s42_world_contrast.py tests/test_s49_cleanup.py
 
       - name: Pinned M original owner checkout (read-only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

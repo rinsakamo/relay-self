@@ -208,3 +208,44 @@ def test_owner_witness_is_default_off(monkeypatch, capsys):
     ])
     assert main() == 2
     assert '"BLOCKED"' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("fault", ["prefix", "regression", "current_intent"])
+def test_intent_original_history_changes_are_rejected(pinned_owners, fault):
+    batch = _realistic_synthetic_batch()
+    host, intent = _owners(batch)
+    binder = S2BOriginalOwnerEpochBinder()
+    first, second = (step.probe for step in batch.steps)
+    binder.note_original_epoch(first, host, intent)
+    # Deliberate corruption of the original owner's private history, offline only.
+    if fault == "regression":
+        intent._events = ()
+    elif fault == "prefix":
+        intent._events = (replace(intent.events[0], objective="changed"),)
+    else:
+        intent._events = (replace(intent.events[0], intent_id="foreign"),)
+    binder.note_original_epoch(second, host, intent)
+    assert binder.bounded_row()["status"] == "DEFERRED"
+
+
+def test_original_owner_generation_advances_from_real_events(pinned_owners):
+    from relay_self.intent import ReconsiderationDecision
+
+    batch = _realistic_synthetic_batch()
+    host, intent = _owners(batch)
+    observer = S2BOwnerWitnessObserver()
+    first, second = (step.probe for step in batch.steps)
+    observer.owner_epoch(first, host, intent)
+    observer.observe(first)
+    intent.request_reconsideration(
+        "escape-threat", reason="offline advance", at_ns=2,
+        provenance=Provenance("synthetic", "advance"),
+    )
+    intent.reconsider(
+        "escape-threat", decision=ReconsiderationDecision.CONTINUE,
+        reason="continue", at_ns=3,
+        provenance=Provenance("synthetic", "continue"),
+    )
+    observer.owner_epoch(second, host, intent)
+    observer.observe(second)
+    assert [row.context.intent_revision for row in observer.bound] == [1, 3]
