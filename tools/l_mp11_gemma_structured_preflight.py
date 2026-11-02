@@ -86,7 +86,7 @@ def synthetic_test_body(model: str, *, b1_contract_v2: bool = False) -> dict:
             ("Return one compact JSON object with fourteen required schema keys. "
              if b1_contract_v2 else
              "Return one compact JSON object with the ten required schema keys. ")
-            "Cite only T1_W8, model_family PHASE_DEPENDENT, "
+            + "Cite only T1_W8, model_family PHASE_DEPENDENT, "
             "prior_hypothesis_relation FIRST_HYPOTHESIS, short falsifiable idea. "
             "This is SYNTHETIC not a real Minecraft World observation."
             + (" " + V2_INSTRUCTION if b1_contract_v2 else "")
