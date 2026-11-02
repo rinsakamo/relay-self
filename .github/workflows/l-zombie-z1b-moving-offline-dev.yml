@@ -1,0 +1,30 @@
+name: L Z1b moving zombie pursuit source-only preflight
+on:
+  push:
+    branches: [dev/l-zombie-z1-moving-target-20261102]
+  pull_request:
+    paths: ['tools/l_zombie_z1_one_world_dev.py','tests/test_l_zombie_z1_one_world_dev.py']
+permissions:
+  contents: read
+jobs:
+  pursuit-world-no-launch-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env: {PYTHONPATH: 'src:tests:.', PYTHONDONTWRITEBYTECODE: '1'}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - run: |
+          set -euo pipefail
+          ruff check tools/l_zombie_z1_one_world_dev.py tests/test_l_zombie_z1_one_world_dev.py tools/l_zombie_paper_original_audit.py
+          python -m compileall -q tools/l_zombie_z1_one_world_dev.py
+          python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/test_l_zombie_z1_one_world_dev.py \
+            tests/test_l_zombie_paper_original_audit.py \
+            tests/test_l_zombie_20tick_shadow.py \
+            tests/test_l_mp11_b1_forecast_contract.py
+          python tools/check_repository.py
+      - run: echo 'Z1B_SOURCE_ONLY / REAL_WORLD_0 / REAL_GEMMA_0 / NO_PURSUIT_CLAIM / QUALIFICATION_NO_GO'
