@@ -1,0 +1,97 @@
+........................................................................ [ 70%]
+..............................                                           [100%]
+All checks passed!
+Repository contract check failed:
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./json-schema.md#unevaluatedproperties
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./json-schema.md#unevaluateditems
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./validation.md#extending-recursive-schemas
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./json-schema.md#json-schema-draft-2019-09
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./docs/strict-mode.md
+- broken local Markdown link: adapters/mineflayer/node_modules/ajv/README.md -> ./docs/codegen.md
+- broken local Markdown link: adapters/mineflayer/node_modules/debug/README.md -> ./examples/node/app.js
+- broken local Markdown link: adapters/mineflayer/node_modules/debug/README.md -> ./examples/node/worker.js
+- broken local Markdown link: adapters/mineflayer/node_modules/debug/README.md -> ./examples/node/stdout.js
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> <version>
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> <version>
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> <version>
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> <version>
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> <version>
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> '1.17'
+- broken local Markdown link: adapters/mineflayer/node_modules/minecraft-data/doc/api.md -> '1.16.220'
+- local Markdown link escapes repository: adapters/mineflayer/node_modules/minecraft-protocol/docs/_sidebar.md -> /
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/CONTRIBUTING.md -> test/internalTest.js
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/CONTRIBUTING.md -> test/externalTests/
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/CONTRIBUTING.md -> test/externalTests
+- local Markdown link escapes repository: adapters/mineflayer/node_modules/mineflayer/docs/README.md -> /LICENSE
+- local Markdown link escapes repository: adapters/mineflayer/node_modules/mineflayer/docs/_sidebar.md -> /
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/br/CONTRIBUTING_BR.md -> test/internalTest.js
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/br/CONTRIBUTING_BR.md -> test/externalTests/
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/br/CONTRIBUTING_BR.md -> test/externalTests
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/es/CONTRIBUTING_ES.md -> test/internalTest.js
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/es/CONTRIBUTING_ES.md -> test/externalTests/
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/es/CONTRIBUTING_ES.md -> test/externalTests
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> tutorial.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> tutorial.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> FAQ.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> unstable_api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> history.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/fr/README_FR.md -> CONTRIBUTING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/history.md -> Fix viewDistance type (#2824
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/CONTRIBUTING_RU.md -> ../../test/internalTest.js
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/CONTRIBUTING_RU.md -> ../../test/externalTests/
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/CONTRIBUTING_RU.md -> ../../test/externalTests
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/README_RU.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/api_ru.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/FAQ_RU.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/demos_ru.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/tutorial_ru.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/unstable_api_ru.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> ru/CONTRIBUTING_RU.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/ru/_sidebar.md -> history.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> tutorial.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> tutorial.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> FAQ.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> unstable_api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> history.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/tr/README_TR.md -> CONTRIBUTING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/update_to_1_21_5.md -> '1.21.5'
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/update_to_1_21_5.md -> '1.21.5'
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/CONTRIBUTING.md -> test/internalTest.js
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/CONTRIBUTING.md -> test/externalTests/
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/CONTRIBUTING.md -> test/externalTests
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/CONTRIBUTING.md -> test/externalTests
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/README_ZH_CN.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/FAQ.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/demos.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/tutorial.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> unstable_api.md
+- broken local Markdown link: adapters/mineflayer/node_modules/mineflayer/docs/zh/_sidebar.md -> zh/CONTRIBUTING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/moo/README.md -> cow.png
+- broken local Markdown link: adapters/mineflayer/node_modules/nearley/README.md -> .github/CONTRIBUTING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/node-fetch/README.md -> ERROR-HANDLING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/node-fetch/README.md -> LIMITS.md
+- broken local Markdown link: adapters/mineflayer/node_modules/node-fetch/README.md -> UPGRADE-GUIDE.md
+- broken local Markdown link: adapters/mineflayer/node_modules/node-fetch/README.md -> ERROR-HANDLING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/protodef/doc/api.md -> newDataTypes.md
+- broken local Markdown link: adapters/mineflayer/node_modules/rxjs/CHANGELOG.md -> https:/github.com/ReactiveX/RxJS/commit/5073139
+- broken local Markdown link: adapters/mineflayer/node_modules/rxjs/CHANGELOG.md -> doc/lettable-operators.md
+- broken local Markdown link: adapters/mineflayer/node_modules/rxjs/README.md -> CONTRIBUTING.md
+- broken local Markdown link: adapters/mineflayer/node_modules/rxjs/README.md -> docs_app/content/maintainer-guidelines.md
+- broken local Markdown link: adapters/mineflayer/node_modules/rxjs/README.md -> ./docs_app
+- broken local Markdown link: adapters/mineflayer/node_modules/uuid/README.md -> ./examples/node-esmodules/
+- broken local Markdown link: adapters/mineflayer/node_modules/uuid/README.md -> ./examples/browser-rollup/
+- broken local Markdown link: adapters/mineflayer/node_modules/uuid/README.md -> ./examples/browser-webpack/
+- broken local Markdown link: adapters/mineflayer/node_modules/uuid/README.md -> README_js.md
+- broken local Markdown link: adapters/mineflayer/node_modules/webidl-conversions/README.md -> x
+- broken local Markdown link: adapters/mineflayer/node_modules/webidl-conversions/README.md -> y
+- broken local Markdown link: adapters/mineflayer/node_modules/webidl-conversions/README.md -> NaN
+- broken local Markdown link: adapters/mineflayer/node_modules/webidl-conversions/README.md -> x, { clamp: true }
+- broken local Markdown link: adapters/mineflayer/node_modules/yggdrasil/node_modules/uuid/README.md -> ./examples/node-esmodules/
+- broken local Markdown link: adapters/mineflayer/node_modules/yggdrasil/node_modules/uuid/README.md -> ./examples/browser-rollup/
+- broken local Markdown link: adapters/mineflayer/node_modules/yggdrasil/node_modules/uuid/README.md -> ./examples/browser-webpack/
+- broken local Markdown link: adapters/mineflayer/node_modules/yggdrasil/node_modules/uuid/README.md -> README_js.md
