@@ -111,6 +111,10 @@ def test_original_owner_action_closes_before_future_l2_input(pinned_owners):
     assert second["observed_body"]
     assert row["s60_submissions"] == row["new_model_calls"] == 0
     assert row["source_attested"] is row["action_authority"] is False
+    assert [event["event"] for event in row["host_events"]] == [
+        "input_built", "closed_s16", "input_built",
+    ]
+    assert row["host_events"][1]["action_id"] == second["preceding_action_id"]
 
 
 @pytest.mark.parametrize("attack", [
@@ -201,6 +205,7 @@ def test_s2a_passive_runner_invokes_original_s49_once(
     assert result["s2a"]["with_previous_s16"] == 1
     assert result["model_calls"] == 0
     assert result["s60_submissions"] == 0
+    assert result["s1"]["typed_join"]["m_status"] == "RECORDED"
     assert _READ_ONLY_CLOSURE.get() is None
 
 

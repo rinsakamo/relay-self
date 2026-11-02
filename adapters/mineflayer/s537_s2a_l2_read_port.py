@@ -75,6 +75,7 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
         self._inputs: list[S2AReadOnlyInput] = []
         self._closed_action_ids: set[str] = set()
         self._s2_errors: list[str] = []
+        self._host_events: list[dict[str, object]] = []
 
     def record_error(self, exc: Exception) -> None:
         super().record_error(exc)
@@ -86,6 +87,13 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
             self._require_closed(closed)
             self._closed.append(closed)
             self._closed_action_ids.add(closed.terminal.action_id)
+            self._host_events.append({
+                "event": "closed_s16", "action_id": closed.terminal.action_id,
+                "session_id": closed.original_probe.session_id,
+                "source_probe_seq": closed.original_probe.seq,
+                "s16_after_seq": closed.consequence.after_observation.seq,
+                "terminal": closed.terminal.state.value,
+            })
         except (ValueError, AttributeError, TypeError) as exc:
             # Original Executor must not be vetoed even by a forged observer.
             self.record_error(exc)
@@ -189,6 +197,12 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
             ),
         ))
 
+        self._host_events.append({
+            "event": "input_built", "probe_seq": reading.seq,
+            "session_id": reading.session_id, "epoch_id": view.epoch_id,
+            "preceding_action_id": self._inputs[-1].preceding_action_id,
+        })
+
     def s2a_readout(self) -> dict[str, Any]:
         """Post-run audit; never pretend an offline or deferred result is L2."""
         s1 = self.readout
@@ -235,6 +249,7 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
             "closed_s16_count": len(self._closed),
             "with_previous_s16": ready,
             "inputs": [entry.bounded_row() for entry in self._inputs],
+            "host_events": list(self._host_events),
             "source_attested": False,
             "action_authority": False,
             "learning_authority": False,

@@ -54,6 +54,7 @@ async def run_s2a_original_dev(
         ),
         "s49_s1_status": s1.get("status", "UNKNOWN"),
         "s1_session_id": s1.get("s49_session_id"),
+        "s1": s1,
         "s2a": s2a,
         "model_calls": 0,
         "s60_submissions": 0,
