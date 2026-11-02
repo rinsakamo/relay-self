@@ -135,7 +135,7 @@ def test_original_owner_witness_fails_closed_on_source_mismatch(
     observer.observe(probe)
     source = observer._inputs[-1]
     if fault == "retained_changed":
-        host.retained = replace(host.retained, revision=host.retained.revision + 1)
+        host.retained = replace(host.retained, last_update=None)
     elif fault == "intent_changed":
         intent.request_reconsideration(
             "escape-threat", reason="probe changed", at_ns=2,
