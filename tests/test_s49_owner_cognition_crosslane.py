@@ -11,7 +11,6 @@ from pathlib import Path
 
 import experiments
 import relay_self
-
 from adapters.mineflayer.s49_completed_decision_bridge import (
     read_original_s49_completions,
 )
