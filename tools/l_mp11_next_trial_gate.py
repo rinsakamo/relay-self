@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -78,8 +79,8 @@ def prepare_trial(
     if not isinstance(preflight_report, Path):
         raise NextWorldGateRejected("original preflight report path required")
     _safe_directory(preflight_report.parent, must_exist=True)
-    if not preflight_report.is_file():
-        raise NextWorldGateRejected("original Gemma preflight must be a file")
+    if not preflight_report.is_file() or preflight_report.is_symlink():
+        raise NextWorldGateRejected("original Gemma preflight must be a regular file")
     if not preflight_report.is_relative_to(evidence_root):
         raise NextWorldGateRejected("new evidence root must own this preflight")
     # Schema, model alias, thinking-off and saved raw request/response SHA are
@@ -186,7 +187,8 @@ def run_once(
     if _git_head(repo) != expected_head:
         raise NextWorldGateRejected("HEAD changed after capture preparation")
     ready_path = evidence_root / READY
-    if not ready_path.is_file() or (evidence_root / STARTED).exists():
+    if (not ready_path.is_file() or ready_path.is_symlink()
+            or (evidence_root / STARTED).exists()):
         raise NextWorldGateRejected("missing pre-Java preparation or spent World budget")
     ready = json.loads(ready_path.read_text())
     capture = evidence_root / "world" / "native-stdout"
@@ -200,6 +202,8 @@ def run_once(
     ):
         raise NextWorldGateRejected("original W3 capture path not empty/attested")
     probe = Path(ready["preflight_report"])
+    if probe.is_symlink():
+        raise NextWorldGateRejected("preflight symlink changed after preparation")
     verify_preflight_report(
         probe, endpoint=ready["endpoint"], model=ready["model"],
     )
@@ -256,12 +260,14 @@ def run_once(
         os.fsync(stream.fileno())
     result = {"returncode": None, "snapshots": 0, "java_owned": False,
               "node_owned": False, "world_qualified": False}
+    proc = None
     with (evidence_root / RUNNER_LOG).open("xb") as output:
         with (evidence_root / SNAPSHOTS).open("x") as journal:
             try:
                 proc = subprocess.Popen(
                     command, cwd=repo, stdout=output,
                     stderr=subprocess.STDOUT,
+                    start_new_session=True,
                 )
                 started["runner_pid"] = proc.pid
                 while True:
@@ -287,6 +293,20 @@ def run_once(
                 result["returncode"] = proc.wait()
             except BaseException as exc:
                 result["launcher_error"] = f"{type(exc).__name__}: {exc}"
+                # This wrapper owns only the new S49 child process group.
+                # Never signal unrelated pre-existing model/server processes.
+                if proc is not None and proc.poll() is None:
+                    try:
+                        os.killpg(proc.pid, signal.SIGTERM)
+                        proc.wait(timeout=5)
+                        result["wrapper_owned_process_group_terminated"] = True
+                    except (OSError, subprocess.TimeoutExpired):
+                        try:
+                            os.killpg(proc.pid, signal.SIGKILL)
+                            proc.wait(timeout=5)
+                            result["wrapper_owned_process_group_killed"] = True
+                        except (OSError, subprocess.TimeoutExpired):
+                            result["wrapper_owned_process_group_unconfirmed"] = True
                 raise
             finally:
                 # A missing Java lineage remains UNATTESTED even if exit0.
@@ -308,7 +328,7 @@ def main() -> int:
     parser.add_argument("--preflight-report", type=Path)
     parser.add_argument("--endpoint")
     parser.add_argument("--model")
-    parser.add_argument("--sample-seconds", type=float, default=0.10)
+    parser.add_argument("--sample-seconds", type=float, default=0.25)
     parser.add_argument("original_runner", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.action == "prepare":
