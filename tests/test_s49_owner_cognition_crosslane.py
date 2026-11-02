@@ -3,11 +3,11 @@
 CI checks out immutable independent owner revisions; this test never
 reinterprets a fabricated M/S42/B0/L8 receipt or reads a real World.
 """
-from dataclasses import replace
 import importlib.util
 import os
-from pathlib import Path
 import sys
+from dataclasses import replace
+from pathlib import Path
 
 import experiments
 import relay_self
