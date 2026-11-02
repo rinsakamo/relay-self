@@ -7,6 +7,7 @@ from tools.l_zombie_paper_original_audit import (
     PaperZombieSourceRejected,
     audit_paper_zombie_window,
     report_paper_only,
+    main,
 )
 
 WORLD = "095288da-4414-441b-9cbe-1b35a3a5d1bc"
@@ -124,3 +125,51 @@ def test_paper_only_cannot_claim_mineflayer_client_tick_correlation():
     assert w.l2_model_called is False
     assert w.actor_action_issued is False
     assert w.qualified_world_claim is False
+
+
+
+def test_readback_cli_reads_only_saved_original_and_never_overwrites(tmp_path):
+    source = tmp_path / "original-paper.log"
+    report = tmp_path / "zombie-source-readback.json"
+    raw = raw_lines()
+    source.write_bytes(raw)
+    sha = hashlib.sha256(raw).hexdigest()
+    args = [
+        "--paper-original", str(source),
+        "--expected-sha256", sha,
+        "--marker", "z1-1", "--session", "s1",
+        "--report", str(report),
+    ]
+    assert main(args) == 0
+    assert source.read_bytes() == raw
+    assert report.exists()
+    assert main(args) == 2  # exclusive create only
+    assert report.read_text().count('"paper_only": true') == 1
+    assert not (tmp_path / "world").exists()
+
+
+def test_readback_cli_mismatched_expected_sha_does_not_create_report(tmp_path):
+    source = tmp_path / "original-paper.log"
+    report = tmp_path / "zombie-source-readback.json"
+    source.write_bytes(raw_lines())
+    assert main([
+        "--paper-original", str(source),
+        "--expected-sha256", "0"*64,
+        "--marker", "z1-1", "--session", "s1",
+        "--report", str(report),
+    ]) == 2
+    assert not report.exists()
+
+
+def test_readback_cli_symlinked_original_rejected(tmp_path):
+    original = tmp_path / "original-paper.log"
+    original.write_bytes(raw_lines())
+    linked = tmp_path / "link-paper.log"
+    linked.symlink_to(original)
+    assert main([
+        "--paper-original", str(linked),
+        "--expected-sha256", hashlib.sha256(original.read_bytes()).hexdigest(),
+        "--marker", "z1-1", "--session", "s1",
+        "--report", str(tmp_path / "report.json"),
+    ]) == 2
+    assert not (tmp_path / "report.json").exists()
