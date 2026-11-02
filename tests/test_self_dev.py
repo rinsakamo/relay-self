@@ -402,6 +402,7 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
 
 @pytest.mark.parametrize("state", [
     "current", "advanced", "foreign_source", "invalid_json", "mismatched_sequence",
+    "tampered_witness", "tampered_later_ref",
 ])
 def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
     tmp_path, monkeypatch, state,
@@ -427,7 +428,7 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
                 {"event_seq": 18, "probe_seq": 19},
             ] + (
                 [{"event_seq": 46, "probe_seq": 47}]
-                if state in {"advanced", "mismatched_sequence"} else []
+                if state in {"advanced", "mismatched_sequence", "tampered_later_ref"} else []
             ),
         }))
         source = "present:s-native-j:19:s49-actual:s-native-j:event-18"
@@ -450,12 +451,12 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
             ),
             "self_world_review_status": "match",
             "status": (
-                "EXPIRED_WORLD_ADVANCED" if state == "advanced"
+                "EXPIRED_WORLD_ADVANCED" if state in {"advanced", "tampered_later_ref"}
                 else "ACCEPTED_READ_ONLY_SAME_PRESENT"
             ),
-            "text_current": state != "advanced",
+            "text_current": state not in {"advanced", "tampered_later_ref"},
             "latest_world_seq": (
-                47 if state in {"advanced", "mismatched_sequence"} else 19
+                47 if state in {"advanced", "mismatched_sequence", "tampered_later_ref"} else 19
             ),
             "text_source_seq": 47 if state == "mismatched_sequence" else 19,
             "text_observation_only": l2_text,
@@ -472,6 +473,37 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
                 "owner_completion_observed_at_acceptance": True,
             },
         }
+        from relay_self.wb_l2_attention_handoff import (
+            project_wb_l1_attention_shadow,
+            project_wb_past_review_handoff,
+        )
+        from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
+
+        accepted = project_wb_l2_uncertainty(
+            accepted_text=l2_text, session_id=session,
+            source_world_seq=19, latest_world_seq=19,
+            source_ref=source, expected_source_ref=source,
+            owner_admitted=True,
+        )
+        witness = project_wb_l1_attention_shadow(accepted).to_mapping()
+        if state == "tampered_witness":
+            witness["selected_candidate_ids"] = ["forged-l1-authority"]
+        row["wb_l1_attention_at_admission"] = witness
+        latest = 47 if state in {"advanced", "tampered_later_ref"} else 19
+        prior = project_wb_l2_uncertainty(
+            accepted_text=l2_text, session_id=session,
+            source_world_seq=19, latest_world_seq=latest,
+            source_ref=source, expected_source_ref=source,
+            owner_admitted=True,
+        )
+        later_ref = (
+            "present:s-native-j:47:s49-actual:s-native-j:event-46"
+            if state != "tampered_later_ref"
+            else "present:foreign:47:spoof"
+        )
+        row["wb_l2_past_review_at_close"] = project_wb_past_review_handoff(
+            prior, later_source_ref=later_ref,
+        ).to_mapping()
         (report_path.parent / "live_l2.jsonl").write_text(json.dumps(row) + "\n")
         return 0
 
@@ -493,12 +525,14 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         "foreign_source": "NOT_ACCEPTED_OR_UNQUALIFIED",
         "invalid_json": "NOT_ACCEPTED_OR_UNQUALIFIED",
         "mismatched_sequence": "NOT_ACCEPTED_OR_UNQUALIFIED",
+        "tampered_witness": "ACCEPTED_CURRENT_HOST_SOURCE_BOUND",
+        "tampered_later_ref": "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND",
     }[state]
     assert admission["state"] == expected
     assert admission["attestation"] == "HOST_ORDER_DEV_ONLY"
     assert admission["action_authority"] == "S49_ONLY"
     assert admission["semantic_json_accepted"] is (
-        state in {"current", "advanced"}
+        state in {"current", "advanced", "tampered_witness", "tampered_later_ref"}
     )
     read = receipt["dev_wb_l2_uncertainty_read"]
     assert read["state"] == {
@@ -507,11 +541,13 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         "foreign_source": "UNAVAILABLE",
         "invalid_json": "UNAVAILABLE",
         "mismatched_sequence": "UNAVAILABLE",
+        "tampered_witness": "CURRENT_EPOCH_READ_ONLY",
+        "tampered_later_ref": "PAST_EPOCH_REVIEW_ONLY",
     }[state]
-    if state == "current":
+    if state in {"current", "tampered_witness"}:
         assert read["current_uncertainty"] == "Check current observed target."
         assert read["past_review_candidate"] is None
-    elif state == "advanced":
+    elif state in {"advanced", "tampered_later_ref"}:
         assert read["current_uncertainty"] is None
         assert read["past_review_candidate"] == "Check current observed target."
         assert read["source_world_seq"] == 19
@@ -521,3 +557,17 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         assert read["past_review_candidate"] is None
     assert read["authority"] == "READ_ONLY_NO_ACTION_MEMORY_LEARNING_HABIT"
     assert read["source_attested"] is False
+    att = receipt["dev_wb_l1_attention_shadow"]
+    review = receipt["dev_wb_past_review_handoff"]
+    assert att["state"] == (
+        "ATT_SELECTED_READ_ONLY"
+        if state in {"current", "advanced", "tampered_later_ref"}
+        else "UNAVAILABLE"
+    )
+    assert att["authority"] == "ATT_SHADOW_NO_L1_POLICY_OR_ACTION"
+    assert review["state"] == (
+        "PENDING_INDEPENDENT_OUTCOME" if state == "advanced" else "UNAVAILABLE"
+    )
+    assert review["outcome_verified"] is False
+    assert review["learning_authorized"] is False
+    assert review["authority"] == "READ_ONLY_REVIEW_NOT_MEMORY_OR_S10"
