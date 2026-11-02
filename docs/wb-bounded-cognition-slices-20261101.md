@@ -196,3 +196,60 @@ A separate negative boundary is closed: an exception from the **optional** `Live
 **Next LocalCodex real World DEV acceptance check** (only with currently valid grant and exclusive disposable-world lease): on the exact pushed code HEAD, first confirm FAST, model/binary SHA and local raw evidence options. Use the already provided explicit `--wb-structured-l2 --wb-cognition-slice --live-think --self-world-live` flags in the original `native-selfworld` DEV entry, with a single original S49 issuer and no new native reads. Retain the complete original source pair, original S49 Action/OUTCOME, `live_l2.jsonl`, `dev_wb_structured_l2`, S60 receipts, raw HTTP and server logs; distinguish actual provider completion from live adopted and still-current, live adopted-then-invalidated, and unconfirmed. Fail/cleanup evidence must be preserved. No main merge or scientific/R qualification.
 
 **State for this change:** `DEV_ONLY / LIVE_SOURCE_ADMISSION_GUARD_OFFLINE / REAL_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## 実World・実Gemma構造化L2統合DEV（2026-11-02）
+
+**DEV_ONLY / ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN。** 実行HEAD `1f4305e507494af9e989390d794cc3c60914524c`、独立detached worktree `/home/rinsa/work/wb-669-world-20261102`、起動時clean。今回のユーザー指示と最新 #537 の所有使い捨てWorld DEV方針を確認し、新規Worldを**1回、失敗0、再試行0**実行した。過去のmodel-only replay採用1件と、過去WorldのUNCONFIRMEDを今回の成果へ算入していない。
+
+既存CLI `--mode DEV --dev-scenario native-selfworld --run-disposable --live-think --self-world-live --wb-cognition-slice --wb-structured-l2 --model-alias wb-gemma4 --model-port 16669 --model-timeout 12 --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD` を使用。新output rootは `/home/rinsa/work/wb-669-live-world-output-20261102-01`。元S49の判断・Action・観測順を変更せず、L2完了を待つ停止・sleep・追加probeを入れていない。外部証拠スクリプトは受信済みcallback、既存HTTP readerとowner receiptsの値を複写するだけで、元provider/owner/validationへ委譲する。起動確認APIは推論要求ではなく、実completion POSTは1回だけ。
+
+| 独立した判定 | 今回の観測 |
+| --- | --- |
+| 実Gemma推論開始 | 1、server task 1 |
+| HTTP正常完了 / S60-B1受理 | 1 / 1、HTTP 200・Content-Lengthとbody一致・HTTP_COMPLETION_OBSERVED |
+| S60-A完了 / 採用 | 1 / 1、BACKEND_COMPLETION_OBSERVED後の実採用receipt |
+| 有効構造化JSON | 1、非空uncertaintyのみ、Thinking OFF・strict Schema |
+| 採用時native callback seq | 21、latest_native_seq_at_acceptance=21、observer open、callback count=2 |
+| World更新前の採用 / 採用後失効 | 1 / 1、後続callback seq49でEXPIRED_WORLD_ADVANCED |
+| World終了時の有効L2 | 0、text_current=false |
+| 最終認知callback / 最後の保存S15 native frame | 49 / 57。全native frameと認知callbackのseqを混同しない |
+| S49 decision | WAIT(seq9) → MOVE_AWAY(seq21) → MOVE_AWAY(seq49) |
+| 実Action / S16 OUTCOME | 2 / 2、元ExecutorのMOVE_BACKWARDのみ、S15 clear_controls applied各1 |
+| WB追加Action / 追加native probe | 0 / 0、単一native receiver・S49 issuer維持 |
+| Memory / Learning / Habit更新 | 0 / 0 / 0、既存retained入力の読取り・投影は新規学習ではない |
+| callback例外 / L2再試行 / L0自動昇格 | 0 / 0 / 0 |
+
+今回の実応答（修復なし）:
+
+```json
+{"uncertainty": "The prediction_review for entity-2's label is marked as 'undetermined' because the target_or_property_unobserved reason indicates the property was not observed in the prior source."}
+```
+
+message.content非空、reasoning_contentフィールドなし、finish_reason=stop、prompt1152 / completion54（上限96）/ total1206 tokens。生成文の意味的正しさ・有用性は今回評価していない。元source_pair_traceと保存callbackのsession/request/seq/entity値を照合し、同じ受信済みsourceから再投影したpromptは実POSTのuser contentと完全一致した。読戻し時の再投影はモデル呼出しやWorld replayではない。
+
+### L0非ブロック・時系列の資格
+
+Python同一host monotonic記録で、callback9/21/49の処理時間は0.536 / 1.123 / 0.211ms。seq21 callbackはHTTP完了の**2814.799ms前にreturn**している。既存S49はモデルをawaitせず、元3 decision / 2 Actionを完了した。採用の正確なmonotonic timestampは未記録で、B1完了後からcallback49前までのhost-order区間と採用時seq21を証明する。精密な採用遅延や物理反応時間を推定しない。
+
+- Python: monotonic_ns、owner receiptsとcallbackのhost順序。receiptはS60-A tickによる実受理後だけ生成される。
+- Node: 同一sessionのdecoded native seq。認知側へ渡すsourceは9/21/49、S15観測には22/29/50/57等もある。採用時に全native frameが停止していたことや、source21が全Worldの最新状態だったことは主張しない。
+- llama.cpp: server相対clock、eval計2807.44ms。別clockとのtimestamp差分を取らない。
+- Minecraft: **既存launcherはMojang vanilla 1.21.8でありPaperではない**。独立Paper full_time observerは今回使用しておらず、Paper物理chronologyの資格はない。native S15/S16 decoded証拠とhost source失効のDEV観測に限定する。
+
+### 実モデル同一性・cleanup
+
+GGUF SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`、server SHA256 `ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536` を実ファイルから照合。build10874、revision `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`。所有PID135299のexe/binary mapping、GGUF mmap、cmdline、API alias wb-gemma4、127.0.0.1:16669、slot1/ctx8192を保存。指定 `-ngl 999 -c 8192 -np 1 --no-context-shift --slots`。別レーンのprocessに触れず、GPU協調flockと空きportを確認してから起動した。
+
+Java21.0.12.1 PID135376 / Node22.22.2 PID135464のexe/hash/cmdline、元Mojang server jar SHA256 `2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7`、server.properties原本を保存。World seedはSERVER_GENERATED_NOT_ATTESTEDのまま。
+
+元S49 Action clear、Java/Node exit0、owned World namespace空、対象3 PID消滅。Gemmaは自己所有PIDのみSIGTERM、exit0、SIGKILLなし。即時16669 bind失敗を原本保存し、listener不在とTIME_WAITを区別した。時間経過後の25565/16669通常再bindはともにPASS。GPU表示706→8599→706MiBだが、**STOP ACK UNATTESTED / GPU解放資格false**。client cancellation・slot release・総量復帰をbackend STOP ACKや物理idleへ昇格しない。grant-consumed.jsonには今回のDEV権限と1回のCLI呼出しを記録し、過去ledgerは不変。
+
+### 実行後の最小補強・検証・証拠
+
+実行後のreadback監査で、receipt側の独立joinに「採用seqと元S49のL2入力refの直接一致」を追加した。以前の存在確認だけでは、同一runに実在する別seqと入力refを混ぜた合成sidecarを拒否できなかった。新負対照はsource seq47と入力ref seq19の混線を拒否する。S60 owner/期限/stale fence・S49の原本・判断・Actionは不変更。今回の正しい実原本はseq21/ref21で新条件も満たす。**修正後のWorld再実行は0**、実行HEADと報告HEADを区別する。
+
+実行前focused299 PASS、最小補強後focused300 PASS。Ruff・構文PASS。contractsはnpm依存内READMEの欠落リンクを拾う初回失敗を保存し、git tracked snapshotでPASSを確認した。FASTおよび報告HEADのCI terminal結果・最終SHAはPR #669 / owner #632/#633の最終報告に記録する。実行HEAD CI [41379339432](https://github.com/rinsakamo/relay-self/actions/runs/41379339432) は対象7/7 SUCCESS、full-regression/物理jobsはSKIPPED。
+
+外部証拠 `/home/rinsa/evidence/wb-669-live-world-20261102/`: request.json、HTTP raw/envelope、received-probes、S60 before/after/result、server log、process maps/identity、events、cleanup audit、失敗原本、試験ログ、SHA256 manifest。元World出力は上記output root、元SHA256SUMS検査PASS。`audit-live.py` はlocal read-only整合確認であり、独立R custodyではない。sidecar自身のmodel_binary_identity_verified=false / HTTP UNRECORDEDは書換えず、外部取得証拠と区別する。
+
+未解決: 独立STOP/GPU解放資格、Paper物理時系列、正確な採用時刻、L2の認知的有用性、live L0/L1 slice利用、情報予算利益、学習・結晶化。今回の実WorldでL2受理1件と後続の正しい失効1件を観測したが、qualification/scienceへ昇格しない。

@@ -400,7 +400,9 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
     assert not (root / "observed_memory.json").exists()
 
 
-@pytest.mark.parametrize("state", ["current", "advanced", "foreign_source", "invalid_json"])
+@pytest.mark.parametrize("state", [
+    "current", "advanced", "foreign_source", "invalid_json", "mismatched_sequence",
+])
 def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
     tmp_path, monkeypatch, state,
 ):
@@ -450,7 +452,7 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
                 else "ACCEPTED_READ_ONLY_SAME_PRESENT"
             ),
             "text_current": state != "advanced",
-            "text_source_seq": 19,
+            "text_source_seq": 47 if state == "mismatched_sequence" else 19,
             "text_observation_only": l2_text,
             "owner_events": ["NEW_REQUEST_STARTED", "BACKEND_COMPLETION_OBSERVED"],
             "wb_s60_diagnostic": {
@@ -458,8 +460,8 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
                 "accepted_text_ever_observed": True,
             },
             "wb_structured_acceptance_host_order": {
-                "source_world_seq": 19,
-                "latest_native_seq_at_acceptance": 19,
+                "source_world_seq": 47 if state == "mismatched_sequence" else 19,
+                "latest_native_seq_at_acceptance": 47 if state == "mismatched_sequence" else 19,
                 "native_callbacks_seen_at_acceptance": 2,
                 "observer_closed_at_acceptance": False,
                 "owner_completion_observed_at_acceptance": True,
@@ -485,6 +487,7 @@ def test_wb_structured_live_receipt_original_native_join_is_fail_closed(
         "advanced": "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND",
         "foreign_source": "NOT_ACCEPTED_OR_UNQUALIFIED",
         "invalid_json": "NOT_ACCEPTED_OR_UNQUALIFIED",
+        "mismatched_sequence": "NOT_ACCEPTED_OR_UNQUALIFIED",
     }[state]
     assert admission["state"] == expected
     assert admission["attestation"] == "HOST_ORDER_DEV_ONLY"

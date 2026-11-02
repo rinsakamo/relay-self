@@ -1211,6 +1211,7 @@ def _dev_run(args: argparse.Namespace) -> int:
             # Native event seq, probe seq and logical decision epoch differ.
             paired = native.get("source_pair_trace")
             valid_pair_refs: list[str] = []
+            valid_pair_sources: dict[int, str] = {}
             if isinstance(paired, list):
                 for pair in paired:
                     if not isinstance(pair, dict):
@@ -1222,6 +1223,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                             f"present:{native['session_id']}:{seq}:"
                             f"s49-actual:{native['session_id']}:event-{event}"
                         )
+                        valid_pair_sources[seq] = valid_pair_refs[-1]
             prior_ref = sidecar.get("self_world_prior_source")
             after_ref = sidecar.get("self_world_after_source")
             actual_source_pair = (
@@ -1282,6 +1284,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     and type(host_order.get("source_world_seq")) is int
                     and host_order["source_world_seq"] in original_probe_seqs
                     and host_order["source_world_seq"] == sidecar.get("text_source_seq")
+                    and after_ref == valid_pair_sources.get(host_order["source_world_seq"])
                     and host_order.get("latest_native_seq_at_acceptance")
                     == host_order["source_world_seq"]
                     and type(host_order.get("native_callbacks_seen_at_acceptance")) is int
