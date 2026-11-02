@@ -34,7 +34,7 @@ def raw_lines(*, gap=None, missing=None, changed=None, end="PAPER_WINDOW_COMPLET
             f"x={i / 10:.12f} y=64.000000000000 z=0.000000000000"
         )
         out.append(pre + row)
-        if i == duplicate:
+        if duplicate is not False and i == duplicate:
             out.append(pre + row)
     out.append(pre + (
         f"L_ZOMBIE_END_V1 marker=z1-1 session=s1 result={end} "
