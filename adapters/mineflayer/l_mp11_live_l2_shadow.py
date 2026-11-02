@@ -24,6 +24,10 @@ from adapters.mineflayer.l_mp11_evidence_id_selection import (
     model_evidence_catalog,
     resolve_evidence_ids,
 )
+from adapters.mineflayer.l_mp11_gemma_wire_contract import (
+    enforce_gemma_thinking_off,
+    pin_gemma_wire,
+)
 from adapters.mineflayer.l_mp11_g3_archived_l2_prefix import (
     MODEL_FAMILIES,
     NEXT_TESTS,
@@ -66,14 +70,20 @@ SOURCE_CLASS = "LIVE_L2_PREVIOUS_EXPERIENCE_HYPOTHESIS_UNEXECUTED"
 class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
     """Canonical HTTP provider with L-only bounded output and original journal."""
 
-    def __init__(self, *, journal_root: Path, **kwargs):
+    def __init__(
+        self, *, journal_root: Path, strict_gemma_evidence: bool = False, **kwargs,
+    ):
         super().__init__(**kwargs)
+        if type(strict_gemma_evidence) is not bool:
+            raise ValueError("strict structured Gemma mode must be boolean")
+        self.strict_gemma_evidence = strict_gemma_evidence
         self.calls: list[dict] = []
         self.journal_root = journal_root
 
     def _call(self, request_body, *, endpoint=None):
-        request_body.update(max_tokens=512, response_format={"type": "json_object"})
-        body = request_body
+        body = pin_gemma_wire(
+            request_body, evidence_ids=self.strict_gemma_evidence,
+        )
         entry = {"request": body, "endpoint": self.endpoint,
                  "started_monotonic_ns": time.monotonic_ns()}
         self.calls.append(entry)
@@ -98,6 +108,8 @@ class JournaledLiveLlamaProvider(LlamaCppRelayProvider):
             if type(response) is not dict:
                 raise LiveL2Rejected("original HTTP response must be an object")
             entry["response"] = response
+            if self.strict_gemma_evidence:
+                enforce_gemma_thinking_off(response)
             return response
         except Exception as exc:
             entry["error"] = f"{type(exc).__name__}: {exc}"
