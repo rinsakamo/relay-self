@@ -152,6 +152,11 @@ def test_model_call_uses_original_prior_s16_but_original_s49_never_awaits(
 
 
 def test_original_s16_after_current_epoch_invalidates_s60_owner():
+    # Existing original S19 fixture calls asyncio.run internally.
+    # Construct it before entering S60's live event loop.
+    batch = _realistic_synthetic_batch()
+    closed_source = _closure(batch)
+
     async def go():
         shadow = S2BGatedL2Shadow(
             enabled=True, config=_config(19093), timeout_s=.6,
@@ -159,8 +164,7 @@ def test_original_s16_after_current_epoch_invalidates_s60_owner():
         src = _input()
         shadow.observe(src, owner_read=_read(src))
         assert shadow.model_attempts == 1
-        batch = _realistic_synthetic_batch()
-        closed = _closure(batch)
+        closed = closed_source
         new_probe = replace(
             closed.original_probe,
             session_id=src.session_id, seq=src.probe_seq,
