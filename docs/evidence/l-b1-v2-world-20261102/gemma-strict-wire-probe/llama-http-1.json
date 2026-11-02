@@ -1,0 +1,223 @@
+{
+  "request": {
+    "model": "relay-self-gemma4-12b-q4km",
+    "temperature": 0,
+    "max_tokens": 512,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are RelaySelf L2, schema output only. This is a synthetic HTTP transport test, not real World truth."
+      },
+      {
+        "role": "user",
+        "content": "{\"request_id\":\"SYNTHETIC_WIRE_PREFLIGHT_NO_WORLD\",\"intent_id\":\"transport-only\",\"focus\":\"Can the server finish strict JSON with thinking OFF?\",\"instruction\":\"Return one compact JSON object with fourteen required schema keys. Cite only T1_W8, model_family PHASE_DEPENDENT, prior_hypothesis_relation FIRST_HYPOTHESIS, short falsifiable idea. This is SYNTHETIC not a real Minecraft World observation. B1 read-only prediction contract V2. Original S49/Paper WAIT8_TOTAL_M means TOTAL DISPLACEMENT over 8 world ticks, measured in METERS (m), NOT wait duration, time elapsed, or a single-next-tick prediction. Prediction means the NEXT trial's WAIT8 TOTAL DISPLACEMENT in meters. Output exact 14 JSON keys: the normal ten keys plus measurement_target, forecast_status, prior_evaluation_basis, prior_evaluation_reason. measurement_target MUST be NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M. forecast_status NUMERIC_ESTIMATE means predicted_wait_total_m is a finite 0..3 meter point prediction; otherwise use exactly one of ABSTAIN_INSUFFICIENT_EVIDENCE|ABSTAIN_OUTSIDE_APPLICABILITY|ABSTAIN_MODEL_UNRESOLVED and predicted_wait_total_m MUST be null. ABSTAIN is valid uncertainty, never secretly replace with zero or a cheap reference forecast. prior_evaluation_basis FIRST_UNTESTED for H1; for H2 select SCORED_ERROR only when H1 has numeric prediction and host supplies its matching following-trial error; QUALITATIVE_ONLY for a purely observation-based comparison of the two measured WAIT8 TOTAL meters (not forecast error); NO_SCORABLE_FORECAST for explicit inability to score H1. When there is no H1 numeric prediction, do NOT say predicted-versus-actual discrepancy and do NOT claim you scored an error. If no score/defensible qualitative comparison, use ABSTAIN_ON_PRIOR, not KEEP_PRIOR. prior_evaluation_reason is a 16..120 character reason stating the specific type of evidence/limitation; explain what was or was not tested. KEEP_PRIOR with no H1 forecast requires QUALITATIVE_ONLY and source IDs T1_W8 and T2_W8, but is NEVER proof of numerical forecast evaluation. With SCORED_ERROR, select both T2_H1ERR and T2_W8 source IDs. All experiment proposals remain UNAPPROVED; no Action/learning authority. Use no future Action3 data and keep complete JSON under 512 tokens.\",\"context\":[{\"key\":\"typed_Paper_evidence_ID_catalog\",\"value\":{\"source_kind\":\"CLOSED_ORIGINAL_PAPER_AND_PRIOR_L2_FEEDBACK\",\"indexed\":[{\"evidence_id\":\"T1_W8\",\"metric_role\":\"WAIT8_TOTAL_M\",\"trial_ordinal\":1,\"pair_index\":0,\"value_m\":0.4},{\"evidence_id\":\"T1_CMAE\",\"metric_role\":\"PAPER_CHEAP_NEXT_TICK_MAE_M\",\"trial_ordinal\":1,\"pair_index\":0,\"value_m\":0.05},{\"evidence_id\":\"T1_P1PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":1,\"value_m\":0.0325},{\"evidence_id\":\"T1_P1ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":1,\"value_m\":0.0175},{\"evidence_id\":\"T1_P2PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":2,\"value_m\":0.0325},{\"evidence_id\":\"T1_P2ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":2,\"value_m\":0.0175},{\"evidence_id\":\"T1_P3PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":3,\"value_m\":0.0325},{\"evidence_id\":\"T1_P3ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":3,\"value_m\":0.0175},{\"evidence_id\":\"T1_P4PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":4,\"value_m\":0.0325},{\"evidence_id\":\"T1_P4ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":4,\"value_m\":0.0175},{\"evidence_id\":\"T1_P5PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":5,\"value_m\":0.0325},{\"evidence_id\":\"T1_P5ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":5,\"value_m\":0.0175},{\"evidence_id\":\"T1_P6PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":6,\"value_m\":0.0325},{\"evidence_id\":\"T1_P6ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":6,\"value_m\":0.0175},{\"evidence_id\":\"T1_P7PRED\",\"metric_role\":\"PAPER_NEXT_TICK_PREDICTION_M\",\"trial_ordinal\":1,\"pair_index\":7,\"value_m\":0.0325},{\"evidence_id\":\"T1_P7ERR\",\"metric_role\":\"PAPER_NEXT_TICK_ABS_ERROR_M\",\"trial_ordinal\":1,\"pair_index\":7,\"value_m\":0.0175}],\"unit\":\"m\",\"selection_note\":\"SYNTHETIC_TRANSPORT_ONLY\"},\"provenance\":{\"source\":\"l.mp11.live.paper.numeric.role-table.readonly\",\"reference\":\"SYNTHETIC_NO_PHYSICAL_SOURCE\"}}]}"
+      }
+    ],
+    "seed": 1,
+    "stream": false,
+    "cache_prompt": false,
+    "reasoning_effort": "none",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "relay_l2_b1_explicit_forecast_v2",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "referenced_prior_ordinals": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 1,
+              "uniqueItems": true
+            },
+            "reconsideration": {
+              "type": "string",
+              "enum": [
+                "ABSTAIN",
+                "KEEP_UNRESOLVED",
+                "PROPOSE_STRUCTURAL_REVISION",
+                "QUESTION_APPLICABILITY"
+              ]
+            },
+            "model_family": {
+              "type": "string",
+              "enum": [
+                "INITIAL_SPEED_DEPENDENT",
+                "OTHER_BOUNDED",
+                "PHASE_DEPENDENT",
+                "SINGLE_DECAY",
+                "SURFACE_DEPENDENT"
+              ]
+            },
+            "next_test": {
+              "type": "string",
+              "enum": [
+                "CHECK_INITIAL_VELOCITY",
+                "CHECK_PAPER_CALLBACK_PHASE",
+                "COMPARE_GRASS_AND_ICE",
+                "VARY_INPUT_DURATION"
+              ]
+            },
+            "explanation": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 120
+            },
+            "falsification_test": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 120
+            },
+            "predicted_wait_total_m": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capability_assessment": {
+              "type": "string",
+              "enum": [
+                "CONDITIONAL_HYPOTHESIS",
+                "UNKNOWN"
+              ]
+            },
+            "prior_hypothesis_relation": {
+              "type": "string",
+              "enum": [
+                "FIRST_HYPOTHESIS"
+              ]
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "T1_CMAE",
+                  "T1_P1ERR",
+                  "T1_P1PRED",
+                  "T1_P2ERR",
+                  "T1_P2PRED",
+                  "T1_P3ERR",
+                  "T1_P3PRED",
+                  "T1_P4ERR",
+                  "T1_P4PRED",
+                  "T1_P5ERR",
+                  "T1_P5PRED",
+                  "T1_P6ERR",
+                  "T1_P6PRED",
+                  "T1_P7ERR",
+                  "T1_P7PRED",
+                  "T1_W8"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 1,
+              "uniqueItems": true
+            },
+            "measurement_target": {
+              "type": "string",
+              "enum": [
+                "NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M"
+              ]
+            },
+            "forecast_status": {
+              "type": "string",
+              "enum": [
+                "NUMERIC_ESTIMATE",
+                "ABSTAIN_INSUFFICIENT_EVIDENCE",
+                "ABSTAIN_OUTSIDE_APPLICABILITY",
+                "ABSTAIN_MODEL_UNRESOLVED"
+              ]
+            },
+            "prior_evaluation_basis": {
+              "type": "string",
+              "enum": [
+                "FIRST_UNTESTED",
+                "SCORED_ERROR",
+                "QUALITATIVE_ONLY",
+                "NO_SCORABLE_FORECAST"
+              ]
+            },
+            "prior_evaluation_reason": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "referenced_prior_ordinals",
+            "reconsideration",
+            "model_family",
+            "next_test",
+            "explanation",
+            "falsification_test",
+            "predicted_wait_total_m",
+            "capability_assessment",
+            "prior_hypothesis_relation",
+            "evidence_ids",
+            "measurement_target",
+            "forecast_status",
+            "prior_evaluation_basis",
+            "prior_evaluation_reason"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "started_monotonic_ns": 169523245661552,
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"capability_assessment\": \"UNKNOWN\",\n  \"evidence_ids\": [\n    \"T1_W8\"\n  ],\n  \"explanation\": \"T1_W8 is the primary metric for displacement.\",\n  \"falsification_test\": \"H1: Displacement is constant.\",\n  \"forecast_status\": \"ABSTAIN_INSUFFICIENT_EVIDENCE\",\n  \"measurement_target\": \"NEXT_TRIAL_WAIT8_TOTAL_DISPLACEMENT_M\",\n  \"model_family\": \"PHASE_DEPENDENT\",\n  \"next_test\": \"COMPARE_GRASS_AND_ICE\",\n  \"predicted_wait_total_m\": null,\n  \"prior_evaluation_basis\": \"FIRST_UNTESTED\",\n  \"prior_evaluation_reason\": \"No prior numeric prediction exists for H1; first trial evaluation.\",\n  \"prior_hypothesis_relation\": \"FIRST_HYPOTHESIS\",\n  \"reconsideration\": \"KEEP_UNRESOLVED\",\n  \"referenced_prior_ordinals\": [\n    1\n  ]\n}"
+        }
+      }
+    ],
+    "created": 1793592908,
+    "model": "relay-self-gemma4-12b-q4km",
+    "system_fingerprint": "b10874-e2d2c0d6a",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 260,
+      "prompt_tokens": 1515,
+      "total_tokens": 1775,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "id": "chatcmpl-EpyB2pFG4Vwh2T6GZg93wKpHCKSYeYZv",
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 1515,
+      "prompt_ms": 1648.55,
+      "prompt_per_token_ms": 1.0881518151815182,
+      "prompt_per_second": 918.9894149404023,
+      "predicted_n": 260,
+      "predicted_ms": 8134.97,
+      "predicted_per_token_ms": 31.40915057915058,
+      "predicted_per_second": 31.837855579061756
+    }
+  },
+  "finished_monotonic_ns": 169533072121187
+}

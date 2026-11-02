@@ -1,0 +1,20 @@
+{
+  "actual_requests": 1,
+  "b1_contract_v2": true,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "execution_head": "88f620776c22ac75a86a691624c73feea0ed28d6",
+  "max_tokens": 512,
+  "model": "relay-self-gemma4-12b-q4km",
+  "model_weights_attested": false,
+  "physical_paper_observation": false,
+  "reasoning_effort": "none",
+  "request_sha256": "be286acbb448ee520b52909fb245e8a37f8232b9a0198a1ae33adf5701fe3b0c",
+  "response_sha256": "d42fb4552fe0e78e57a2769f7046f4a69d921f367deb01f60855826c89262789",
+  "status": "REAL_GEMMA_WIRE_PROBE_PASS_UNATTESTED_WEIGHTS",
+  "strict_json_schema": true,
+  "thinking_off_checked": true,
+  "world_qualified": false
+}

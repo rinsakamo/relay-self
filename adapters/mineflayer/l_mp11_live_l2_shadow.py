@@ -275,14 +275,19 @@ def request_for_live_l2(
     )
     if evidence_ids:
         schema = (
-            "Produce only one short JSON object with EXACT ten keys: "
+            ("Produce only one short JSON object with EXACT fourteen keys: "
+             if b1_contract_v2 else
+             "Produce only one short JSON object with EXACT ten keys: ")
+            +
             "referenced_prior_ordinals (observed trial numbers), reconsideration "
             "(KEEP_UNRESOLVED|QUESTION_APPLICABILITY|PROPOSE_STRUCTURAL_REVISION|ABSTAIN), "
             "model_family (SINGLE_DECAY|PHASE_DEPENDENT|SURFACE_DEPENDENT|"
             "INITIAL_SPEED_DEPENDENT|OTHER_BOUNDED), next_test "
             "(CHECK_INITIAL_VELOCITY|CHECK_PAPER_CALLBACK_PHASE|"
             "VARY_INPUT_DURATION|COMPARE_GRASS_AND_ICE), explanation, "
-            "falsification_test (each 16..60 chars), predicted_wait_total_m "
+            "falsification_test "
+            + ("(each 16..120 chars), " if b1_contract_v2 else "(each 16..60 chars), ")
+            + "predicted_wait_total_m "
             "(NEXT trial WAIT8 TOTAL m in [0,3] or null), capability_assessment "
             "(UNKNOWN|CONDITIONAL_HYPOTHESIS), prior_hypothesis_relation "
             "(FIRST_HYPOTHESIS for first; KEEP_PRIOR|REVISE_PRIOR|"

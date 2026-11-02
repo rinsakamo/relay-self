@@ -1,0 +1,47 @@
+{
+  "g3": {
+    "returncode": 0,
+    "argv": [
+      "/home/rinsa/relay-lm-v1/.venv/bin/python",
+      "-B",
+      "-m",
+      "tools.mp11_g3_paper_one_world_audit",
+      "--report",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/report.json",
+      "--original-paper",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/paper-stdout-original.log.raw",
+      "--output",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/g3-independent.json",
+      "--expected-live-l2-calls",
+      "2"
+    ],
+    "status": "PASS"
+  },
+  "live-prefix": {
+    "returncode": 0,
+    "argv": [
+      "/home/rinsa/relay-lm-v1/.venv/bin/python",
+      "-B",
+      "-m",
+      "tools.l_mp11_live_paper_postrun_audit",
+      "--report",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/report.json",
+      "--original-paper",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/paper-stdout-original.log.raw",
+      "--output",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world/live-prefix-independent.json"
+    ],
+    "status": "PASS"
+  },
+  "feedback": {
+    "returncode": 0,
+    "argv": [
+      "/home/rinsa/relay-lm-v1/.venv/bin/python",
+      "-B",
+      "-c",
+      "import json,sys;from pathlib import Path;from tools.l_mp11_feedback_original_audit import audit_feedback_originals;r=Path(sys.argv[1]);out=audit_feedback_originals(json.loads((r/'report.json').read_text()),(r/'paper-stdout-original.log.raw').read_bytes());(r/'feedback-independent.json').write_text(json.dumps(out,indent=2));print(json.dumps(out))",
+      "/home/rinsa/work/l-b1-v2-evidence-20261102/world"
+    ],
+    "status": "PASS"
+  }
+}

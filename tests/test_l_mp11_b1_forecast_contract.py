@@ -117,6 +117,19 @@ def test_native_v2_schema_exact_14_keys_and_legacy_still_ten():
                        evidence_ids=False, b1_contract_v2=True)
 
 
+def test_v2_live_prompt_has_no_legacy_ten_key_or_text_limit_instruction():
+    ledger = first()
+    v2 = request_for_live_l2(ledger, evidence_ids=True, b1_contract_v2=True)
+    assert "EXACT fourteen keys" in v2.instruction
+    assert "EXACT ten keys" not in v2.instruction
+    assert "16..120 chars" in v2.instruction
+    assert "16..60 chars" not in v2.instruction
+    legacy = request_for_live_l2(ledger, evidence_ids=True)
+    assert "EXACT ten keys" in legacy.instruction
+    assert "16..60 chars" in legacy.instruction
+    assert "B1 read-only prediction contract V2" not in legacy.instruction
+
+
 def test_v2_numeric_realistic_two_opens_freeze_h1_before_h2():
     ledger = first()
     gate = BoundedLiveL2(

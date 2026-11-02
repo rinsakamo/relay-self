@@ -1,0 +1,21 @@
+{
+  "head": "88f620776c22ac75a86a691624c73feea0ed28d6",
+  "repo": "/home/rinsa/work/l-b1-v2-validation-20261102",
+  "root": "/home/rinsa/work/l-b1-v2-evidence-20261102",
+  "authority": [
+    "current user B1 V2 mission",
+    "live #537 2026-10-14 DEV policy + 2026-11-01 L development policy"
+  ],
+  "preflight_http_max": 1,
+  "world_max": 1,
+  "world_retries": 0,
+  "mineflayer_sessions_max": 1,
+  "s49_actions_max": 3,
+  "world_open_max": 2,
+  "l2_actions": 0,
+  "l2_condition_changes": 0,
+  "learning_admission": 0,
+  "l0_promotion": 0,
+  "classification_ceiling": "DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "historical_files_protected": 6659
+}

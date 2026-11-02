@@ -1,0 +1,8 @@
+{
+  "two_prior_only_requests_reconstructed": true,
+  "h1_to_feedback_to_h2_sha_verified": true,
+  "numeric_citations_reparsed": true,
+  "evidence_ids_resolved_from_original": true,
+  "b1_v2_typed_evaluation_reconstructed": true,
+  "causal_interpretation_attested": false
+}

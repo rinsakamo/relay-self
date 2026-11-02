@@ -1,0 +1,74 @@
+{
+  "head": "88f620776c22ac75a86a691624c73feea0ed28d6",
+  "mode": "DEV_ONLY",
+  "authority": [
+    "current user mission 2026-11-02",
+    "https://github.com/rinsakamo/relay-self/issues/537"
+  ],
+  "world_max": 1,
+  "retry_max": 0,
+  "session_max": 1,
+  "s49_action_max": 3,
+  "world_gemma_open_max": 2,
+  "preflight_http_max": 1,
+  "l2_actions": 0,
+  "l2_condition_changes": 0,
+  "learning_admission": 0,
+  "l0_promotion": 0,
+  "flags": {
+    "S49_REAL_SERVER_CI": "1",
+    "MP11_S49_THREE_ACTION_DEV": "1",
+    "MP11_G3_PAPER_THREE_WINDOWS_DEV": "1",
+    "L_MP11_LIVE_PREFIX_DEV": "1",
+    "L_MP11_LIVE_L2_DEV": "1",
+    "L_MP11_EVIDENCE_IDS_DEV": "1",
+    "L_MP11_GEMMA_STRICT_SCHEMA_DEV": "1",
+    "L_MP11_PAPER_EOF_DEV": "1",
+    "L_MP11_B1_CONTRACT_V2_DEV": "1"
+  },
+  "files": {
+    "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "/home/rinsa/work/l-b1-v2-evidence-20261102/plugin-build-target/relay-metabolism-paper-dev-0.2.0-dev.jar": "ab5d0f2bb4584d6b19ea4c588c9e1b7b9538d8ec2d183a1aeaba804dc2dd313a",
+    "/home/rinsa/work/l-b1-v2-evidence-20261102/paper-active-config.yml": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+    "/home/rinsa/work/l-b1-v2-evidence-20261102/gemma-strict-wire-probe/gemma-structured-preflight.json": "11d754cfd544332ad03c918559062749b41d8105a76f5ac64324c6c89a4c29de",
+    "/home/rinsa/work/l-b1-v2-validation-20261102/docs/l-b1-explicit-forecast-abstention-20261102.md": "016d486288866d403792928aafdcf3fec6c48241edcbfdb2b16f05885cd7689c"
+  },
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n",
+  "python": "Python 3.12.3\n",
+  "node": {
+    "node": "v22.22.2",
+    "mineflayer": "4.39.0",
+    "resolved": "/home/rinsa/work/l-b1-v2-evidence-20261102/node-runtime/node_modules/mineflayer/index.js"
+  },
+  "model_identity": {
+    "pid": 141141,
+    "ppid": 937,
+    "start_ticks": 16949392,
+    "state": "S",
+    "argv": [
+      "/home/rinsa/src/llama.cpp/build/bin/llama-server",
+      "--model",
+      "/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf",
+      "--alias",
+      "relay-self-gemma4-12b-q4km",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "-ngl",
+      "999",
+      "-c",
+      "8192",
+      "-np",
+      "1",
+      "--no-context-shift",
+      "--flash-attn",
+      "on",
+      "--jinja"
+    ],
+    "cwd": "/home/rinsa/work/l-b1-v2-validation-20261102",
+    "exe": "/home/rinsa/src/llama.cpp/build/bin/llama-server"
+  },
+  "capture_empty": true,
+  "started_absent": true
+}

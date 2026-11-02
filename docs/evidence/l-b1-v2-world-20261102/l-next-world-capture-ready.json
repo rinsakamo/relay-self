@@ -1,0 +1,19 @@
+{
+  "actual_body_actions": 0,
+  "actual_llm_world_calls": 0,
+  "actual_worlds_started": 0,
+  "b1_contract_v2": true,
+  "capture_root": "/home/rinsa/work/l-b1-v2-evidence-20261102/world/native-stdout",
+  "classification": "CAPTURE_READY_ONLY_NOT_WORLD_STARTED",
+  "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+  "expected_head": "88f620776c22ac75a86a691624c73feea0ed28d6",
+  "gguf_process_identity_verified_by_this_helper": false,
+  "h1_h2_calls_allowed": 2,
+  "model": "relay-self-gemma4-12b-q4km",
+  "original_s49_actions_allowed": 3,
+  "preflight_report": "/home/rinsa/work/l-b1-v2-evidence-20261102/gemma-strict-wire-probe/gemma-structured-preflight.json",
+  "preflight_sha256": "11d754cfd544332ad03c918559062749b41d8105a76f5ac64324c6c89a4c29de",
+  "preflight_status": "REAL_GEMMA_WIRE_PROBE_PASS_UNATTESTED_WEIGHTS",
+  "retries_allowed": 0,
+  "worlds_allowed": 1
+}
