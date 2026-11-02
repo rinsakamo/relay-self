@@ -113,7 +113,9 @@ def test_bounded_config_requires_opt_in_and_no_large_output():
     with pytest.raises(S2BSourceRejected):
         S2BGatedL2Shadow(config=cfg)
     with pytest.raises(S2BSourceRejected):
-        S2BGatedL2Shadow(enabled=True, config=cfg)
+        S2BGatedL2Shadow(enabled=True, config=LoopbackTransportConfig(
+            "fixture-model", 19092, max_tokens=257,
+        ))
 
 
 def test_s60_owned_loopback_single_model_advisory_only():
