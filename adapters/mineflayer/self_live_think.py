@@ -94,6 +94,8 @@ class LiveL2Observer:
         self._model_attempts = 0
         self._accepted_text: str | None = None
         self._accepted_source_seq: int | None = None
+        # Host callback order only; no Paper tick timing or server attestation.
+        self._wb_acceptance_host_order: dict[str, object] | None = None
         self._closed = False
         self._source_observations = 0
         self._world_l0_action_owner = "S49_NATIVE_EXISTING"
@@ -440,6 +442,17 @@ class LiveL2Observer:
                         value = json.dumps(datum, sort_keys=True, ensure_ascii=True)
                     self._accepted_text = value[:1000]
                     self._accepted_source_seq = result.request.context.world_seq
+                    if self.wb_cognition_slice and self.structured_json_off:
+                        self._wb_acceptance_host_order = {
+                            "source_world_seq": result.request.context.world_seq,
+                            "latest_native_seq_at_acceptance": self._current_seq,
+                            "native_callbacks_seen_at_acceptance": self._source_observations,
+                            "observer_closed_at_acceptance": self._closed,
+                            "owner_completion_observed_at_acceptance": any(
+                                r.event == "BACKEND_COMPLETION_OBSERVED"
+                                for r in self._owner.receipts
+                            ),
+                        }
                     self._phase = "ACCEPTED_READ_ONLY_SAME_PRESENT"
                 self._ended_at = time.monotonic()
                 return
@@ -501,6 +514,11 @@ class LiveL2Observer:
             "self_world_live": self.self_world_live,
             "wb_cognition_slice": self.wb_cognition_slice,
             "structured_json_off": self.structured_json_off,
+            "wb_structured_acceptance_host_order": (
+                dict(self._wb_acceptance_host_order)
+                if self.structured_json_off and self._wb_acceptance_host_order is not None
+                else None
+            ),
             "wb_l2_source_ref": self._wb_l2_source,
             "wb_world_cues": self._wb_world_cues,
             "wb_world_omitted": self._wb_world_omitted,
