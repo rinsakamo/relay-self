@@ -42,7 +42,7 @@ from relay_self.prediction import (
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
 from relay_self.self_body import compose_self_body_view
-from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
+from relay_self.self_cognition_slice import CognitionSlice, CognitionTier, project_cognition_slice
 from relay_self.self_world import (
     SelfWorldView,
     WorldForecast,
@@ -53,8 +53,10 @@ from relay_self.self_world import (
     select_self_world_attention,
 )
 from relay_self.wb_l2_attention_handoff import (
+    WBL1AttentionAB,
     WBL1AttentionShadow,
     WBL2ReviewHandoff,
+    compare_wb_l1_attention_ab,
     project_wb_l1_attention_shadow,
     project_wb_past_review_handoff,
 )
@@ -104,6 +106,8 @@ class LiveL2Observer:
         # Host callback order only; no Paper tick timing or server attestation.
         self._wb_acceptance_host_order: dict[str, object] | None = None
         self._wb_l1_attention_at_admission: dict[str, object] | None = None
+        self._wb_l1_native_cues_at_request: CognitionSlice | None = None
+        self._wb_l1_attention_ab_at_admission: dict[str, object] | None = None
         self._wb_latest_native_source_ref: str | None = None
         self._closed = False
         self._source_callback_failure: str | None = None
@@ -138,6 +142,7 @@ class LiveL2Observer:
         self._accepted_source_seq = None
         self._wb_acceptance_host_order = None
         self._wb_l1_attention_at_admission = None
+        self._wb_l1_attention_ab_at_admission = None
 
     def read_wb_l2_uncertainty(self) -> WBL2UncertaintyRead:
         """Read current attention OR past-source question, never a live Action.
@@ -174,6 +179,15 @@ class LiveL2Observer:
     def read_wb_l1_attention_shadow(self) -> WBL1AttentionShadow:
         """Explicit ATT shadow; does not change the real L1 policy selector."""
         return project_wb_l1_attention_shadow(self.read_wb_l2_uncertainty())
+
+    def read_wb_l1_attention_ab(self) -> WBL1AttentionAB:
+        """Pure same-native-source shadow A/B; never feeds L1 policy."""
+        if self._wb_l1_native_cues_at_request is None:
+            return WBL1AttentionAB("UNAVAILABLE", None, None, 0, (), (), False)
+        return compare_wb_l1_attention_ab(
+            self.read_wb_l2_uncertainty(),
+            native_l1=self._wb_l1_native_cues_at_request,
+        )
 
     def read_wb_past_review_handoff(self) -> WBL2ReviewHandoff:
         """Old question plus a *later* native source pointer; outcome unverified."""
@@ -354,6 +368,12 @@ class LiveL2Observer:
                 "memory_id_count": len(wb.remembered_ids),
                 "scenario_id_count": len(wb.scenario_ids),
             }
+            if self.structured_json_off:
+                l1_native = project_cognition_slice(current, tier=CognitionTier.L1)
+                if (l1_native.world_source_ref != wb.world_source_ref
+                        or l1_native.session_id != wb.session_id):
+                    raise ValueError("WB L1 ATT native baseline must match L2 source")
+                self._wb_l1_native_cues_at_request = l1_native
             self._wb_l2_source = wb.world_source_ref
             self._wb_world_cues = len(wb.visible_world)
             self._wb_world_omitted = wb.world_omitted
@@ -531,6 +551,9 @@ class LiveL2Observer:
                         self._wb_l1_attention_at_admission = (
                             self.read_wb_l1_attention_shadow().to_mapping()
                         )
+                        self._wb_l1_attention_ab_at_admission = (
+                            self.read_wb_l1_attention_ab().to_mapping()
+                        )
                     self._phase = "ACCEPTED_READ_ONLY_SAME_PRESENT"
                 self._ended_at = time.monotonic()
                 return
@@ -555,6 +578,10 @@ class LiveL2Observer:
         )
         wb_l1_at_close = (
             self.read_wb_l1_attention_shadow().to_mapping()
+            if self.structured_json_off else None
+        )
+        wb_l1_ab_at_close = (
+            self.read_wb_l1_attention_ab().to_mapping()
             if self.structured_json_off else None
         )
         wb_review_at_close = (
@@ -615,6 +642,12 @@ class LiveL2Observer:
                 and self._wb_l1_attention_at_admission is not None else None
             ),
             "wb_l1_attention_at_close": wb_l1_at_close,
+            "wb_l1_attention_ab_at_admission": (
+                dict(self._wb_l1_attention_ab_at_admission)
+                if self.structured_json_off
+                and self._wb_l1_attention_ab_at_admission is not None else None
+            ),
+            "wb_l1_attention_ab_at_close": wb_l1_ab_at_close,
             "wb_l2_past_review_at_close": wb_review_at_close,
             "wb_structured_acceptance_host_order": (
                 dict(self._wb_acceptance_host_order)
