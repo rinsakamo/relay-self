@@ -22,6 +22,7 @@ from adapters.mineflayer.l_mp11_gemma_wire_contract import (
     strict_gemma_evidence_schema,
 )
 from adapters.mineflayer.l_mp11_live_l2_shadow import JournaledLiveLlamaProvider
+
 REPORT_FILENAME = "gemma-structured-preflight.json"
 REQUEST_FILENAME = "llama-request-1.raw.json"
 RESPONSE_FILENAME = "llama-response-1.raw.json"
