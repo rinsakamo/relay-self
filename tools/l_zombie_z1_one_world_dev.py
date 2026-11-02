@@ -456,7 +456,7 @@ async def one_world(
                     report["pursuit_motion_observed"] = displacement > 0.02
                     # A move alone isn't a confirmed zombie pursuit/AI model.
                     report["zombie_pursuit_attested"] = False
-                except (PaperZombieSourceRejected, OSError) as exc:
+                except (ValueError, OSError) as exc:
                     report["paper_source_failure"] = f"{type(exc).__name__}: {exc}"
             clean = (
                 java is not None and node_pid is not None and java_pid is not None
