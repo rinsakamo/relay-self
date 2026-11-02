@@ -1,7 +1,6 @@
 """All Z2b policy samples here are SYNTHETIC -- no real Gemma call."""
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 from dataclasses import replace
@@ -240,7 +239,6 @@ def test_one_http_journals_raw_before_policy_and_never_runs_world(tmp_path, monk
     assert (root/"llama-response-1.raw.json").read_bytes() == payload()
     assert (root/"prepared-zombie-l2-policy-v1.json").exists()
     assert not (tmp_path/"world").exists()
-    assert tool.prepare_one_http if root.exists() else False
     with pytest.raises(ZombiePolicyRejected):
         tool.prepare_one_http(
             endpoint="http://127.0.0.1:8080/v1/chat/completions",
