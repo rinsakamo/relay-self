@@ -99,6 +99,7 @@ def test_original_owner_witness_fails_closed_on_source_mismatch(
     host, intent = _owners(batch)
     probe = batch.steps[0].probe
     binder = S2BOriginalOwnerEpochBinder()
+    observer = S2BOwnerWitnessObserver()
     if fault == "missing":
         with pytest.raises(S2BSourceRejected):
             binder.bind(None, probe)
