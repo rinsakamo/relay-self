@@ -23,16 +23,29 @@ from adapters.mineflayer.s537_s2b_original_owner_epoch import (
 )
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+from test_s49_owner_cognition_crosslane import _load_pinned
 from test_s537_s2a_source_bound_read_port import (
     _closure,
     _realistic_synthetic_batch,
-    pinned_owners,
 )
 from tools.s537_s2b_original_owner_witness_dev import (
     S2BOwnerWitnessObserver,
     main,
     run_s2b_owner_witness_dev,
 )
+
+
+
+@pytest.fixture
+def pinned_owners(monkeypatch):
+    m = _load_pinned(
+        monkeypatch, "experiments.metabolism_s49_owner_admission",
+        "S0_PINNED_M_SOURCE",
+    )
+    wb = _load_pinned(
+        monkeypatch, "relay_self.self_cognition_slice", "S1_PINNED_WB_SOURCE",
+    )
+    return m, wb
 
 
 def _owners(batch):
@@ -86,9 +99,7 @@ def test_original_owner_witness_fails_closed_on_source_mismatch(
     host, intent = _owners(batch)
     probe = batch.steps[0].probe
     binder = S2BOriginalOwnerEpochBinder()
-    observer = S2BOwnerWitnessObserver()
     if fault == "missing":
-        observer.observe(probe) if False else None
         with pytest.raises(S2BSourceRejected):
             binder.bind(None, probe)
         return
