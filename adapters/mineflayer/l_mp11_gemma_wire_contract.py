@@ -138,7 +138,10 @@ def enforce_gemma_thinking_off(response: object) -> None:
             raise GemmaWireRejected("Gemma reasoning channel present despite thinking OFF")
         if message.get("content") is None or type(message["content"]) is not str:
             raise GemmaWireRejected("missing real answer content")
-        if "<think>" in message["content"] or "<thought>" in message["content"]:
+        if any(marker in message["content"] for marker in (
+            "<think>", "</think>", "<thought>", "</thought>",
+            "<|channel>", "<channel|>",
+        )):
             raise GemmaWireRejected("reasoning markers in constrained output")
         details = response.get("usage", {}).get("completion_tokens_details") or {}
         if type(details) is not dict or details.get("reasoning_tokens", 0) not in (0, None):

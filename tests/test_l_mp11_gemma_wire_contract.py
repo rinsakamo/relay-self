@@ -112,6 +112,18 @@ def test_reasoning_in_content_or_token_usage_fails_closed():
         enforce_gemma_thinking_off(response)
 
 
+@pytest.mark.parametrize("marker", ["<|channel>thought", "<channel|>", "</think>"])
+def test_actual_gemma_template_channel_markers_rejected(marker):
+    response = result()
+    # Even a schema-valid string may hide a template channel marker.
+    message = response["choices"][0]["message"]
+    output = json.loads(message["content"])
+    output["explanation"] = "Observed movement " + marker
+    message["content"] = json.dumps(output)
+    with pytest.raises(GemmaWireRejected, match="reasoning markers"):
+        enforce_gemma_thinking_off(response)
+
+
 def test_missing_or_foreign_source_cannot_construct_schema():
     body = synthetic_test_body("model")
     raw = json.loads(body["messages"][1]["content"])
