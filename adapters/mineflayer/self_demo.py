@@ -494,7 +494,12 @@ async def _run_disposable(
                 # The read-only projection cannot veto S49's native Action owner.
                 passive_views.record_error(exc)
         if live_observer is not None:
-            await live_observer.observe(reading)
+            try:
+                await live_observer.observe(reading)
+            except Exception as exc:
+                # Optional WB/S60 sidecar cannot veto original S49 L0/Action.
+                # Cancellation (BaseException) is intentionally not swallowed.
+                live_observer.note_source_callback_error(exc)
 
     previous = os.environ.get("S49_REAL_SERVER_CI")
     previous_r = os.environ.get("S49_STAGE_R_DEV_ONLY")
