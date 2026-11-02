@@ -1321,16 +1321,20 @@ def _dev_run(args: argparse.Namespace) -> int:
                     state = "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND"
                 else:
                     state = "NOT_ACCEPTED_OR_UNQUALIFIED"
-                # Reconstruct the two read-only cognition surfaces from
-                # original S49 source-identity and already-admitted text.
-                # This is NOT an experience commit, policy or L1 consumer.
+                # Re-read the original native source after S60 adoption.
+                # An ATT shadow is a question selected for possible L1 attention,
+                # not evidence that L1 policy or Habit actually used it.
+                from relay_self.wb_l2_attention_handoff import (
+                    project_wb_l1_attention_shadow,
+                    project_wb_past_review_handoff,
+                )
                 from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
 
                 source_seq = (
                     host_order.get("source_world_seq")
                     if isinstance(host_order, dict) else None
                 )
-                receipt["dev_wb_l2_uncertainty_read"] = project_wb_l2_uncertainty(
+                wb_read = project_wb_l2_uncertainty(
                     accepted_text=l2_text,
                     session_id=native.get("session_id"),
                     source_world_seq=source_seq,
@@ -1339,7 +1343,54 @@ def _dev_run(args: argparse.Namespace) -> int:
                     expected_source_ref=valid_pair_sources.get(source_seq),
                     owner_admitted=bool(accepted_host_source),
                     source_callback_failed=sidecar.get("source_callback_failure") is not None,
-                ).to_mapping()
+                )
+                receipt["dev_wb_l2_uncertainty_read"] = wb_read.to_mapping()
+                admission_read = project_wb_l2_uncertainty(
+                    accepted_text=l2_text,
+                    session_id=native.get("session_id"),
+                    source_world_seq=source_seq,
+                    latest_world_seq=source_seq,
+                    source_ref=sidecar.get("wb_l2_source_ref"),
+                    expected_source_ref=valid_pair_sources.get(source_seq),
+                    owner_admitted=bool(accepted_host_source),
+                    source_callback_failed=sidecar.get("source_callback_failure") is not None,
+                )
+                expected_l1 = project_wb_l1_attention_shadow(admission_read)
+                # An unverifiable sidecar witness never becomes an L1 result.
+                witnessed_l1 = (
+                    expected_l1 if accepted_host_source
+                    and sidecar.get("wb_l1_attention_at_admission")
+                    == expected_l1.to_mapping()
+                    else project_wb_l1_attention_shadow(wb_read)
+                    if wb_read.state == "CURRENT_EPOCH_READ_ONLY"
+                    and sidecar.get("wb_l1_attention_at_admission")
+                    == expected_l1.to_mapping()
+                    else project_wb_l1_attention_shadow(
+                        project_wb_l2_uncertainty(
+                            accepted_text=None, session_id=None,
+                            source_world_seq=None, latest_world_seq=None,
+                            source_ref=None, expected_source_ref=None,
+                            owner_admitted=False,
+                        )
+                    )
+                )
+                receipt["dev_wb_l1_attention_shadow"] = witnessed_l1.to_mapping()
+                expected_review = project_wb_past_review_handoff(
+                    wb_read, later_source_ref=valid_pair_sources.get(original_latest_seq),
+                )
+                # Require both original source evidence and matching live
+                # sidecar projection; no question-to-outcome claim is created.
+                if (
+                    expected_review.state == "PENDING_INDEPENDENT_OUTCOME"
+                    and sidecar.get("wb_l2_past_review_at_close")
+                    == expected_review.to_mapping()
+                ):
+                    receipt["dev_wb_past_review_handoff"] = expected_review.to_mapping()
+                else:
+                    receipt["dev_wb_past_review_handoff"] = project_wb_past_review_handoff(
+                        admission_read,
+                        later_source_ref=valid_pair_sources.get(original_latest_seq),
+                    ).to_mapping()
                 receipt["dev_wb_structured_l2"] = {
                     "state": state,
                     "source_world_seq": (
