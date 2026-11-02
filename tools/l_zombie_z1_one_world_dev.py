@@ -42,12 +42,18 @@ from tools.l_zombie_paper_original_audit import (
     report_paper_only,
 )
 from tools.l_zombie_z2a_prospective_audit import audit_z2a_prospective
+from tools.l_zombie_z2b_prepare_gemma import (
+    render_activated_plugin_config,
+    verify_prepared_archive,
+)
+from tools.l_zombie_z2b_paper_policy_audit import audit_prepared_l2_world
 
 PAPER_SHA256 = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 PAPER_SIZE = 52811717
 CONFIRM = "Z1_ONE_PAPER_ZOMBIE_SOURCE_WORLD_DEV_NO_RETRY"
 PURSUIT_CONFIRM = "Z1B_ONE_PROTECTED_SURVIVAL_ZOMBIE_WORLD_DEV_NO_RETRY"
 PROSPECTIVE_CONFIRM = "Z2A_ONE_PROSPECTIVE_PAPER_CHEAP_WORLD_DEV_NO_RETRY"
+PREPARED_CONFIRM = "Z2B_ONE_PREPARED_L2_SHADOW_WORLD_DEV_NO_RETRY"
 MARKER = "z1-source-1"
 SESSION = "z1-client-1"
 START = "L_ZOMBIE_ARM_V1 "
@@ -101,10 +107,14 @@ def preflight(
     world_parent: Path, evidence_parent: Path, run_id: str,
     pursuit_dev: bool = False,
     prospective_cheap_dev: bool = False,
+    prepared_l2_root: Path | None = None,
+    z1b_prior_original: Path | None = None,
+    z2a_prior_original: Path | None = None,
 ) -> dict:
     """Pure local entry check: no World, Java, Node or disk mutation."""
     expected_confirm = (
-        PROSPECTIVE_CONFIRM if prospective_cheap_dev
+        PREPARED_CONFIRM if prepared_l2_root is not None
+        else PROSPECTIVE_CONFIRM if prospective_cheap_dev
         else PURSUIT_CONFIRM if pursuit_dev else CONFIRM
     )
     if (
@@ -114,6 +124,13 @@ def preflight(
         or (prospective_cheap_dev and (
             not pursuit_dev
             or os.environ.get("L_ZOMBIE_Z2A_CHEAP_DEV") != "1"
+        ))
+        or (prepared_l2_root is not None and (
+            not prospective_cheap_dev
+            or not pursuit_dev
+            or os.environ.get("L_ZOMBIE_Z2B_PREPARED_DEV") != "1"
+            or z1b_prior_original is None
+            or z2a_prior_original is None
         ))
     ):
         raise ZombieWorldBlocked("one-world pursuit/safe-target DEV flag missing")
@@ -145,6 +162,13 @@ def preflight(
         or not _loopback_port_can_bind(25565)
     ):
         raise ZombieWorldBlocked("one new World/evidence root or free port unavailable")
+    prepared = None
+    if prepared_l2_root is not None:
+        prepared = verify_prepared_archive(
+            prepared_root=prepared_l2_root,
+            z1b_original=z1b_prior_original,
+            z2a_original=z2a_prior_original,
+        )
     return {
         "classification": "Z1_PREWORLD_SOURCE_ONLY",
         "expected_head": expected_head, "paper_sha256": PAPER_SHA256,
@@ -153,6 +177,7 @@ def preflight(
         "real_gemma_calls": 0, "self_actions": 0, "l0_qualified": False,
         "pursuit_dev": pursuit_dev,
         "prospective_cheap_dev": prospective_cheap_dev,
+        "prepared_l2_policy_sha256": prepared.policy_sha256 if prepared else None,
     }
 
 
@@ -204,6 +229,7 @@ async def wait_original_window(
 def _set_up_world(
     *, repo: Path, world_root: Path, evidence_root: Path, plugin_jar: Path,
     prospective_cheap_dev: bool = False,
+    prepared_l2_policy=None,
 ) -> None:
     _write_config(world_root)  # pinned flat/creative/loopback S31A source
     plugin_dir = world_root / "plugins"
@@ -213,6 +239,11 @@ def _set_up_world(
         repo / "adapters/mineflayer/l_zombie_paper_dev/src/main/resources/config.yml"
     )
     settings = active_plugin_config(default_path.read_text(encoding="utf-8"), prospective_cheap_dev=prospective_cheap_dev)
+    if prepared_l2_policy is not None:
+        settings = render_activated_plugin_config(
+            disabled_plugin_config=settings,
+            prepared_policy=prepared_l2_policy,
+        )
     # The pinned plugin name in plugin.yml is RelayZombieTickDev.
     config_dir = plugin_dir / "RelayZombieTickDev"
     config_dir.mkdir(mode=0o700)
@@ -228,6 +259,9 @@ async def one_world(
     world_parent: Path, evidence_parent: Path, run_id: str,
     pursuit_dev: bool = False,
     prospective_cheap_dev: bool = False,
+    prepared_l2_root: Path | None = None,
+    z1b_prior_original: Path | None = None,
+    z2a_prior_original: Path | None = None,
 ) -> dict:
     """Exactly one World and Node client, no user/LLM Actions or retries."""
     checked = preflight(
@@ -237,7 +271,19 @@ async def one_world(
         evidence_parent=evidence_parent, run_id=run_id,
         pursuit_dev=pursuit_dev,
         prospective_cheap_dev=prospective_cheap_dev,
+        prepared_l2_root=prepared_l2_root,
+        z1b_prior_original=z1b_prior_original,
+        z2a_prior_original=z2a_prior_original,
     )
+    prepared = None
+    if prepared_l2_root is not None:
+        prepared = verify_prepared_archive(
+            prepared_root=prepared_l2_root,
+            z1b_original=z1b_prior_original,
+            z2a_original=z2a_prior_original,
+        )
+        if prepared.policy_sha256 != checked["prepared_l2_policy_sha256"]:
+            raise ZombieWorldBlocked("model prep original changed after preflight")
     world_root = world_parent / f"l-z1-world-{run_id}"
     evidence_root = evidence_parent / f"l-z1-evidence-{run_id}"
     evidence_root.mkdir(mode=0o700)  # exclusive one physical attempt marker
@@ -253,6 +299,8 @@ async def one_world(
         "l2_model_calls": 0, "self_actions": 0,
         "b1_prediction_qualified": False,
         "prospective_cheap_frozen": False,
+        "prepared_l2_frozen": False,
+        "prepared_l2_model_called_during_world": False,
         "qualifying_science": False, "retries": 0,
     }
     java = collector = session = None
@@ -266,6 +314,7 @@ async def one_world(
             repo=repo, world_root=world_root,
             evidence_root=evidence_root, plugin_jar=plugin_jar,
             prospective_cheap_dev=prospective_cheap_dev,
+            prepared_l2_policy=prepared,
         )
         report["stage"] = "JAVA_START"
         java, collector, _ = await _ready_server(
@@ -392,6 +441,14 @@ async def one_world(
                         )
                         report["prospective_cheap"] = cheap
                         report["prospective_cheap_frozen"] = True
+                        if prepared is not None:
+                            prepared_review = audit_prepared_l2_world(
+                                original.read_bytes(), sha256=report["original_sha256"],
+                                marker=MARKER, session=SESSION,
+                                prepared=prepared,
+                            )
+                            report["prepared_l2_review"] = prepared_review
+                            report["prepared_l2_frozen"] = True
                     x0, z0 = paper["pre_source_xz_m"]
                     x1, z1 = paper["target_xz_m"]
                     displacement = math.hypot(x1-x0, z1-z0)
@@ -433,6 +490,7 @@ async def one_world(
                 report.get("stage") == "ORIGINAL_COLLECTION_COMPLETE"
                 and report["paper_original_ok"]
                 and (not prospective_cheap_dev or report["prospective_cheap_frozen"])
+                and (prepared is None or report["prepared_l2_frozen"])
                 and clean and report.get("world_removed") is True
                 and report["before"]["entity_id"] == report["paper_source"]["entity_id"]
                 and report["after"]["entity_id"] == report["paper_source"]["entity_id"]
@@ -443,6 +501,8 @@ async def one_world(
                 else:
                     report["status"] = "PASS_DEV"
                     report["classification"] = (
+                        "Z2B_PREPARED_POLICY_FREEZE_DEV_ONLY"
+                        if prepared is not None else
                         "Z2A_PAPER_CHEAP_PREOUTCOME_DEV_ONLY"
                         if prospective_cheap_dev else
                         "Z1B_PAPER_MOVING_ZOMBIE_SOURCE_DEV_ONLY"
@@ -464,7 +524,13 @@ async def one_world(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--confirm", required=True, choices=[CONFIRM, PURSUIT_CONFIRM, PROSPECTIVE_CONFIRM])
+    parser.add_argument(
+        "--confirm", required=True,
+        choices=[CONFIRM, PURSUIT_CONFIRM, PROSPECTIVE_CONFIRM, PREPARED_CONFIRM],
+    )
+    parser.add_argument("--prepared-l2-root", type=Path)
+    parser.add_argument("--z1b-prior-original", type=Path)
+    parser.add_argument("--z2a-prior-original", type=Path)
     parser.add_argument("--prospective-cheap-dev", action="store_true")
     parser.add_argument("--pursuit-dev", action="store_true")
     parser.add_argument("--repo", type=Path, required=True)
@@ -485,6 +551,9 @@ def main() -> int:
             evidence_parent=args.evidence_parent, run_id=args.run_id,
             pursuit_dev=args.pursuit_dev,
             prospective_cheap_dev=args.prospective_cheap_dev,
+            prepared_l2_root=args.prepared_l2_root,
+            z1b_prior_original=args.z1b_prior_original,
+            z2a_prior_original=args.z2a_prior_original,
         ))
     except (ZombieWorldBlocked, ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"Z1_PREWORLD_BLOCKED: {exc}", file=sys.stderr)
@@ -497,6 +566,7 @@ def main() -> int:
         "action_count": 0, "model_calls": 0,
         "moving_zombie": report["pursuit_motion_observed"],
         "prospective_cheap_frozen": report["prospective_cheap_frozen"],
+        "prepared_l2_frozen": report["prepared_l2_frozen"],
         "horizontal_displacement_m": report["pursuit_horizontal_motion_m"],
     }, sort_keys=True))
     return 0 if report["status"] == "PASS_DEV" else 2
