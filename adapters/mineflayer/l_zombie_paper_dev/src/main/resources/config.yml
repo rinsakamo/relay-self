@@ -1,0 +1,6 @@
+# Only a fresh, disposable isolated Paper 1.21.8 World.
+# False means plugin never observes or changes World state.
+dev-enabled: false
+minecraft-version: 1.21.8
+# Dedicated Z1 read-only tick witness; never creates zombies or Self Actions.
+zombie-tick-readonly-dev: false
