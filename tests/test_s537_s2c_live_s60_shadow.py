@@ -14,11 +14,11 @@ from adapters.mineflayer.normal_action import _READ_ONLY_CLOSURE, NormalWorldL0
 from adapters.mineflayer.s49_completed_decision_bridge import (
     bounded_original_s49_completion_row,
 )
+from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from adapters.mineflayer.s537_s2b_gated_l2_shadow import (
     S2BGatedL2Shadow,
     S2BSourceRejected,
 )
-from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from relay_self.intent import IntentCommitment
 from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
