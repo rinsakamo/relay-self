@@ -8,7 +8,10 @@ on:
       - 'tools/l_zombie_z2b_prepare_gemma.py'
       - 'tests/test_l_zombie_z2b_policy_contract.py'
       - 'tools/l_zombie_z2b_paper_policy_audit.py'
-      - 'tests/test_l_zombie_z2b_paper_policy_audit.py tools/l_zombie_z1_one_world_dev.py tests/test_l_zombie_z1_one_world_dev.py'
+      - 'tests/test_l_zombie_z2b_paper_policy_audit.py'
+      - 'tools/l_zombie_z2b_saved_original_readback.py'
+      - 'docs/evidence/l-z2b-real-20261102/**'
+      - 'docs/l-z2b-real-validation-20261102.md'
       - 'adapters/mineflayer/l_zombie_paper_dev/**'
       - 'tools/l_zombie_z1_one_world_dev.py'
       - 'tests/test_l_zombie_z1_one_world_dev.py'
@@ -45,5 +48,7 @@ jobs:
             tests/test_l_mp11_b1_forecast_contract.py
           python tools/check_repository.py
           mvn -B -ntp -f adapters/mineflayer/l_zombie_paper_dev/pom.xml -DskipTests package
+      - name: Saved actual originals replay (no physical execution)
+        run: python -m tools.l_zombie_z2b_saved_original_readback --evidence-root docs/evidence/l-z2b-real-20261102
       - name: Epistemic boundary
-        run: echo 'SYNTHETIC_POLICY_HTTP_ONLY / REAL_GEMMA_0 / REAL_WORLD_0 / NO_L2_PHYSICAL_FORECAST / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+        run: echo 'CI_SYNTHETIC_HTTP_AND_SAVED_ORIGINAL_REPLAY_ONLY / CI_NEW_REAL_GEMMA_0 / CI_NEW_REAL_WORLD_0 / NO_LIVE_ATTESTATION / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'

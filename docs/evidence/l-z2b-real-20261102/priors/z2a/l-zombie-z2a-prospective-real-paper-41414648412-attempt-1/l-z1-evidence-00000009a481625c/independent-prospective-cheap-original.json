@@ -1,0 +1,46 @@
+{
+  "classification": "Z2A_PAPER_PREOUTCOME_CHEAP_FROZEN_AND_SCORED",
+  "constant_velocity_error_m": 2.474582733866241,
+  "entity_id": 45,
+  "entity_uuid": "df85ca6c-6f0e-4061-ba1a-4a436e29453c",
+  "exact_20_tick_target": true,
+  "forecast_owner": "PAPER_CHEAP_NOT_L2",
+  "freeze_before_tick11": true,
+  "issued_source_xz_m": [
+    -2.170414564023,
+    -7.588829298265
+  ],
+  "issued_tick": 46,
+  "marker": "z1-source-1",
+  "model_calls": 0,
+  "model_learning_admitted": false,
+  "native_client_tick_join_attested": false,
+  "original_freeze_line": 96,
+  "original_target_xz_m": [
+    -4.488911051329,
+    -7.510033913574
+  ],
+  "paper_original_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+  "physical_paper_owner_attested_by_this_parser": false,
+  "pre_source_xz_m": [
+    -2.241795332529,
+    -7.5
+  ],
+  "qualification_go": false,
+  "real_gemma_forecast_attested": false,
+  "schema": "L_ZOMBIE_Z2A_PROSPECTIVE_CHEAP_V2",
+  "self_actions": 0,
+  "session": "z1-client-1",
+  "stationary_error_m": 2.319835053252464,
+  "stationary_forecast_xz_m": [
+    -2.170414564023,
+    -7.588829298265
+  ],
+  "target_observation_line": 116,
+  "target_tick": 66,
+  "velocity_forecast_xz_m": [
+    -2.027653027012,
+    -7.766487894795
+  ],
+  "world_uuid": "dfdf25f1-d28e-4d2c-a20a-bdcc7b2f635f"
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "evidence_id": "Z1B_T40_T60",
+    "source_scope": "COMPLETED_PREVIOUS_WORLD",
+    "raw_original_sha256": "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+    "world_uuid": "726200b9-2c82-49fe-8afc-f1142a227f8b",
+    "zombie_uuid": "878e5176-e9b5-49ac-bac9-e2ccba25e45a",
+    "reference_tick": 40,
+    "target_tick": 60,
+    "start_xz_m": [
+      10.5,
+      7.5
+    ],
+    "end_xz_m": [
+      8.309734168171,
+      7.5
+    ],
+    "position_source": "EXACT_PAPER_TICK_NOT_NATIVE_CLIENT_TICK",
+    "chase_causality": "NOT_ATTESTED"
+  },
+  {
+    "evidence_id": "Z2A_T46_T66",
+    "source_scope": "COMPLETED_PREVIOUS_WORLD",
+    "raw_original_sha256": "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d",
+    "world_uuid": "dfdf25f1-d28e-4d2c-a20a-bdcc7b2f635f",
+    "zombie_uuid": "df85ca6c-6f0e-4061-ba1a-4a436e29453c",
+    "reference_tick": 46,
+    "target_tick": 66,
+    "start_xz_m": [
+      -2.170414564023,
+      -7.588829298265
+    ],
+    "end_xz_m": [
+      -4.488911051329,
+      -7.510033913574
+    ],
+    "position_source": "EXACT_PAPER_TICK_NOT_NATIVE_CLIENT_TICK",
+    "chase_causality": "NOT_ATTESTED",
+    "past_stationary_error_m": 2.319835053252464,
+    "past_velocity_error_m": 2.474582733866241
+  }
+]

@@ -1,0 +1,3 @@
+(node:167894) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{"action_count": 0, "classification": "Z2B_PREPARED_POLICY_FREEZE_DEV_ONLY", "client_tick_join_attested": false, "horizontal_displacement_m": 1.4837801948120548, "model_calls": 0, "moving_zombie": true, "paper_original_ok": true, "prepared_l2_frozen": true, "prospective_cheap_frozen": true, "stage": "ORIGINAL_COLLECTION_COMPLETE", "status": "PASS_DEV", "world_started": true}

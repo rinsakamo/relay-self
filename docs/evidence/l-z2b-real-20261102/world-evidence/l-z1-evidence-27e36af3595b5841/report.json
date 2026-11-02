@@ -1,0 +1,248 @@
+{
+  "actual_client_session_id": "74b6298f-1525-4aa4-93eb-14673a27a492",
+  "actual_spawn": {
+    "kind": "spawn",
+    "request_id": null,
+    "seq": 1,
+    "session_id": "74b6298f-1525-4aa4-93eb-14673a27a492",
+    "snapshot": {
+      "food": 20.0,
+      "food_saturation": 5.0,
+      "health": 20.0,
+      "inventory": [],
+      "nearby_entities": [],
+      "nearby_entities_coverage": {
+        "candidate_count": 0,
+        "max_distance": 16.0,
+        "max_entities": 16,
+        "source_scope": "mineflayer_entity_registry",
+        "truncated": false
+      },
+      "oxygen_level": null,
+      "position": {
+        "x": -6.5,
+        "y": -60.0,
+        "z": -1.5
+      },
+      "time": {
+        "day": 0,
+        "is_day": true,
+        "time_of_day": 14
+      }
+    }
+  },
+  "after": {
+    "bot_position": [
+      -6.5,
+      -60.0,
+      -1.5
+    ],
+    "coverage_candidates": 1,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 2.632965,
+    "entity_id": 24,
+    "entity_position": [
+      -3.8671875,
+      -60.0,
+      -1.5283203125
+    ],
+    "name": "zombie",
+    "observation_seq": 46,
+    "provenance": "74b6298f-1525-4aa4-93eb-14673a27a492:46",
+    "request_id": "z1-after-27e36af3595b5841"
+  },
+  "b1_prediction_qualified": false,
+  "before": {
+    "bot_position": [
+      -6.5,
+      -60.0,
+      -1.5
+    ],
+    "coverage_candidates": 1,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 4.0,
+    "entity_id": 24,
+    "entity_position": [
+      -2.5,
+      -60.0,
+      -1.5
+    ],
+    "name": "zombie",
+    "observation_seq": 11,
+    "provenance": "74b6298f-1525-4aa4-93eb-14673a27a492:11",
+    "request_id": "z1-before-27e36af3595b5841-1"
+  },
+  "classification": "Z2B_PREPARED_POLICY_FREEZE_DEV_ONLY",
+  "cleanup_confirmed": true,
+  "client_sample_count": 2,
+  "collector_settled": true,
+  "expected_head": "ca4877579a69eea8351778d808e0e7459aa40bec",
+  "java_exit": 0,
+  "java_pid": {
+    "boot_id": "3c71f497-1d97-4c21-a2d5-86195a922316",
+    "pid": 167754,
+    "starttime_ticks": 20513279
+  },
+  "java_pid_absent": true,
+  "l0_qualified": false,
+  "l2_model_calls": 0,
+  "mineflayer_join_attested": false,
+  "node_exit": 0,
+  "node_pid": {
+    "boot_id": "3c71f497-1d97-4c21-a2d5-86195a922316",
+    "pid": 167894,
+    "starttime_ticks": 20515562
+  },
+  "node_pid_absent": true,
+  "original_bytes": 20106,
+  "original_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+  "paper_original_ok": true,
+  "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+  "paper_source": {
+    "actor_action_issued": false,
+    "classification": "PAPER_31_TICK_EXACT_SAME_ZOMBIE_SOURCE_ONLY",
+    "entity_id": 24,
+    "entity_spawn_instance": 1,
+    "entity_uuid": "1427da04-3095-4045-93b1-74a8f9d17b8f",
+    "forecast_freeze_tick": 37,
+    "forecast_freeze_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "l2_model_called": false,
+    "learned_state_admitted": false,
+    "marker": "z1-source-1",
+    "mineflayer_client_join_attested": false,
+    "original_line_count": 382,
+    "paper_log_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+    "paper_only": true,
+    "physical_world_evidence_qualified_here": false,
+    "pre_source_tick": 27,
+    "pre_source_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "qualified_world_claim": false,
+    "real_client_observation_attested_here": false,
+    "real_java_pid_and_jar_attested_here": false,
+    "session": "z1-client-1",
+    "target_tick": 57,
+    "target_xz_m": [
+      -3.983553173838,
+      -1.525954708854
+    ],
+    "total_samples": 31,
+    "world_uuid": "0c73cad5-ad84-4112-a708-4a1fb9ff9fc4"
+  },
+  "plugin_sha256": "1116216bd49b9d2e9007750126c9c85fde32335f962a951d788646ddeb7ec033",
+  "port_released": true,
+  "prepared_l2_frozen": true,
+  "prepared_l2_model_called_during_world": false,
+  "prepared_l2_policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+  "prepared_l2_review": {
+    "actual_real_gguf_mapping_verified_by_this_parser": false,
+    "cheap_stationary_error_m": 1.4837801948120548,
+    "cheap_velocity_error_m": 1.4837801948120548,
+    "classification": "Z2B_PAPER_PREPARED_L2_POLICY_SCORED_SOURCE_ONLY",
+    "forecast_kind": "ZOMBIE_HORIZONTAL_XZ_METERS",
+    "frozen_before_next_tick": true,
+    "future_actual_xz_m": [
+      -3.983553173838,
+      -1.525954708854
+    ],
+    "issued_tick": 37,
+    "l0_promotion": false,
+    "learning_admission": false,
+    "model_live_in_world_calls": 0,
+    "model_original_wire_cryptographically_joined_by_this_parser": false,
+    "model_prepared_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "model_request_sha256": "5572136f4941b1bad3aef9134f86beca9388679e930a29d572f6148ba2041e91",
+    "model_response_sha256": "abdcb54e06cb766ea52365e476fd216cabad008f2a24344a8bda8a41e0e4a09c",
+    "native_mineflayer_exact_paper_tick_join": false,
+    "original_paper_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+    "player_xz_m": [
+      -6.5,
+      -1.5
+    ],
+    "policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+    "prepared_policy_error_m": 1.4837801948120548,
+    "prepared_policy_owner": "EARLIER_EPOCH_MODEL_PREPARED_SHADOW",
+    "qualification_go": false,
+    "schema": "L_ZOMBIE_Z2B_PREPARED_POLICY_WORLD_V3",
+    "self_action_count": 0,
+    "source_first_tick": 27,
+    "strategy": "STATIONARY",
+    "target_tick": 57,
+    "world_uuid": "0c73cad5-ad84-4112-a708-4a1fb9ff9fc4",
+    "zombie_uuid": "1427da04-3095-4045-93b1-74a8f9d17b8f"
+  },
+  "prospective_cheap": {
+    "classification": "Z2A_PAPER_PREOUTCOME_CHEAP_FROZEN_AND_SCORED",
+    "constant_velocity_error_m": 1.4837801948120548,
+    "entity_id": 24,
+    "entity_uuid": "1427da04-3095-4045-93b1-74a8f9d17b8f",
+    "exact_20_tick_target": true,
+    "forecast_owner": "PAPER_CHEAP_NOT_L2",
+    "freeze_before_tick11": true,
+    "issued_source_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "issued_tick": 37,
+    "marker": "z1-source-1",
+    "model_calls": 0,
+    "model_learning_admitted": false,
+    "native_client_tick_join_attested": false,
+    "original_freeze_line": 210,
+    "original_target_xz_m": [
+      -3.983553173838,
+      -1.525954708854
+    ],
+    "paper_original_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+    "physical_paper_owner_attested_by_this_parser": false,
+    "pre_source_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "qualification_go": false,
+    "real_gemma_forecast_attested": false,
+    "schema": "L_ZOMBIE_Z2A_PROSPECTIVE_CHEAP_V2",
+    "self_actions": 0,
+    "session": "z1-client-1",
+    "stationary_error_m": 1.4837801948120548,
+    "stationary_forecast_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "target_observation_line": 273,
+    "target_tick": 57,
+    "velocity_forecast_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "world_uuid": "0c73cad5-ad84-4112-a708-4a1fb9ff9fc4"
+  },
+  "prospective_cheap_dev": true,
+  "prospective_cheap_frozen": true,
+  "pursuit_dev": true,
+  "pursuit_horizontal_motion_m": 1.4837801948120548,
+  "pursuit_motion_observed": true,
+  "pursuit_target_survival": true,
+  "qualifying_science": false,
+  "real_gemma_calls": 0,
+  "retries": 0,
+  "run_id": "27e36af3595b5841",
+  "self_actions": 0,
+  "stage": "ORIGINAL_COLLECTION_COMPLETE",
+  "status": "PASS_DEV",
+  "world_budget_max": 1,
+  "world_removed": true,
+  "world_retries_max": 0,
+  "world_started": true,
+  "zombie_pursuit_attested": false
+}
