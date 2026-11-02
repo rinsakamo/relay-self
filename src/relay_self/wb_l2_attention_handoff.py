@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from relay_self.attention import AttentionCandidate, AttentionCriterion, select_attention
 from relay_self.provenance import Provenance
+from relay_self.self_cognition_slice import CognitionSlice, CognitionTier
 from relay_self.wb_l2_read_port import WBL2UncertaintyRead
 
 
@@ -133,4 +134,90 @@ def project_wb_past_review_handoff(
         "PENDING_INDEPENDENT_OUTCOME", read.session_id,
         read.source_world_seq, read.latest_world_seq,
         read.source_ref, later_source_ref, read.past_review_candidate,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class WBL1AttentionAB:
+    """One source, two bounded ATT shadows; no actual L1 behavior observed."""
+
+    state: str  # UNAVAILABLE / NO_NATIVE_BASELINE / SHADOW_SELECTION_DIFFERENCE
+    source_world_seq: int | None
+    source_ref: str | None
+    observed_candidate_count: int
+    baseline_selected: tuple[str, ...]
+    with_l2_selected: tuple[str, ...]
+    selection_changed: bool
+    policy: str = "EXPLICIT_SHADOW_L2_PRIORITY_1_VS_NATIVE_0"
+    useful_for_goal: bool = False
+    actual_l1_policy_changed: bool = False
+    authority: str = "ATT_SHADOW_AB_NO_ACTION_MEMORY_LEARNING"
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "state": self.state,
+            "source_world_seq": self.source_world_seq,
+            "source_ref": self.source_ref,
+            "observed_candidate_count": self.observed_candidate_count,
+            "baseline_selected": list(self.baseline_selected),
+            "with_l2_selected": list(self.with_l2_selected),
+            "selection_changed": self.selection_changed,
+            "policy": self.policy,
+            "useful_for_goal": self.useful_for_goal,
+            "actual_l1_policy_changed": self.actual_l1_policy_changed,
+            "authority": self.authority,
+        }
+
+
+def compare_wb_l1_attention_ab(
+    read: WBL2UncertaintyRead, *, native_l1: CognitionSlice,
+) -> WBL1AttentionAB:
+    """Compare the same *already projected* observed L1 cues with/without L2.
+
+    A +1 priority for the L2 question is an explicit **shadow test condition**,
+    NOT learned attention relevance. Only a baseline with a genuinely observed
+    world cue can demonstrate a changed selected candidate. No real L1 policy
+    or native Action reads this result.
+    """
+    missing = WBL1AttentionAB("UNAVAILABLE", None, None, 0, (), (), False)
+    if (
+        not isinstance(native_l1, CognitionSlice)
+        or native_l1.tier is not CognitionTier.L1
+        or native_l1.source_attested is not False
+        or native_l1.world_status not in ("BOUNDED", "TRUNCATED")
+        or not isinstance(read, WBL2UncertaintyRead)
+        or project_wb_l1_attention_shadow(read).state != "ATT_SELECTED_READ_ONLY"
+        or native_l1.session_id != read.session_id
+        or native_l1.world_source_ref != read.source_ref
+        or len(native_l1.visible_world) > 3
+        or len({cue.entity.entity_ref for cue in native_l1.visible_world})
+        != len(native_l1.visible_world)
+        or any(
+            cue.source_ref != native_l1.world_source_ref
+            or cue.entity.entity_ref == ""
+            for cue in native_l1.visible_world
+        )
+    ):
+        return missing
+    observed = tuple(
+        AttentionCandidate(
+            f"wb-native-observed-{i}", cue.entity.entity_ref,
+            Provenance("wb-original-visible-native-shadow", cue.source_ref),
+            priority=0, focus_keys=("native-observed",),
+        )
+        for i, cue in enumerate(native_l1.visible_world)
+    )
+    l2 = AttentionCandidate(
+        "wb-l2-uncertainty", read.source_ref,
+        Provenance("wb-s60-generated-uncertainty-not-world-fact", read.source_ref),
+        priority=1, focus_keys=("wb-l2-uncertainty",),
+    )
+    criterion = AttentionCriterion("wb-l1-conditional-att-shadow-ab", top_k=1)
+    baseline = select_attention(observed, criterion)
+    with_l2 = select_attention(observed + (l2,), criterion)
+    changed = bool(observed) and baseline.candidate_ids != with_l2.candidate_ids
+    return WBL1AttentionAB(
+        "SHADOW_SELECTION_DIFFERENCE" if changed else "NO_NATIVE_BASELINE",
+        read.source_world_seq, read.source_ref, len(observed),
+        baseline.candidate_ids, with_l2.candidate_ids, changed,
     )
