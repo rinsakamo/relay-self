@@ -7,11 +7,15 @@ No Action, model call, learned update or physical World launch here.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
+import json
 import math
 import re
+import sys
 import uuid
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 MAX_BYTES = 16_000_000
 PREFIX_ARM = "L_ZOMBIE_ARM_V1 "
@@ -226,3 +230,50 @@ def report_paper_only(original: bytes, *, sha256: str, marker: str, session: str
     report["real_client_observation_attested_here"] = False
     report["physical_world_evidence_qualified_here"] = False
     return report
+
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Offline readback of a separately captured original Paper log."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--paper-original", type=Path, required=True)
+    parser.add_argument("--expected-sha256", required=True)
+    parser.add_argument("--marker", required=True)
+    parser.add_argument("--session", required=True)
+    parser.add_argument("--report", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        if (
+            not args.paper_original.is_absolute()
+            or not args.report.is_absolute()
+            or args.paper_original.is_symlink()
+            or args.report.is_symlink()
+            or args.paper_original == args.report
+            or args.report.exists()
+        ):
+            raise PaperZombieSourceRejected(
+                "absolute original, unused distinct report and no symlink required"
+            )
+        with args.paper_original.open("rb") as stream:
+            raw = stream.read(MAX_BYTES + 1)
+        report = report_paper_only(
+            raw, sha256=args.expected_sha256, marker=args.marker,
+            session=args.session,
+        )
+        # The write is create-only; the raw original and prior reports stay intact.
+        with args.report.open("x", encoding="utf-8") as output:
+            json.dump(report, output, ensure_ascii=False, sort_keys=True, indent=2)
+            output.write("\n")
+    except (PaperZombieSourceRejected, OSError, ValueError) as exc:
+        print(f"L_ZOMBIE_PAPER_AUDIT_BLOCKED: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps({
+        "classification": report["classification"],
+        "original_sha256": report["paper_log_sha256"],
+        "paper_only": True, "real_client_attested": False,
+    }, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
