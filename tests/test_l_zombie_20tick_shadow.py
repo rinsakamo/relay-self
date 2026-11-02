@@ -130,13 +130,8 @@ def test_outcome_must_be_exact_world_tick_not_nearest_packet(target_tick, source
     a, b, _ = trio()
     candidate = shadow_forecast(a, b, predicted_x_m=3, predicted_z_m=0)
     c = observed(tick=target_tick, seq=source_seq, x=3, z=0)
-    if target_tick != 130:
-        with pytest.raises(ZombieSourceRejected, match="not exact"):
-            review_forecast(candidate, c)
-    else:
-        # The v0 contract's native observation lineage needs independently
-        # validated seq order; a test of future source boundaries below.
-        assert review_forecast(candidate, c).horizontal_error_m == 0
+    with pytest.raises(ZombieSourceRejected, match="not exact"):
+        review_forecast(candidate, c)
 
 
 @pytest.mark.parametrize("field,value", [
