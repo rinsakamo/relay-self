@@ -272,6 +272,7 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
 async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+    owner_epoch_readonly: Callable[[MineflayerObservation, NormalWorldL0, IntentCommitment], None] | None = None,
     completed_l0: Callable[[S49OriginalCompletedBatch], None] | None = None,
     completed_l0_dev: bool = False,
     stage_r_dev: bool = False,
@@ -358,6 +359,14 @@ async def qualify(
                 # Single writer commits only after prior terminal and this
                 # NEW original-session native probe, before next L0._check.
                 stage_r.observe_original_probe(reading)
+            if owner_epoch_readonly is not None:
+                # S-only DEV witness: actual same-process L0 and Intent owner,
+                # before the already-existing live_probe and L0 decision.
+                # A passive observer cannot veto the original World owner.
+                try:
+                    owner_epoch_readonly(reading, host, intent)
+                except Exception:
+                    pass
             if live_probe is not None:
                 # Product-only observer sees an already received native probe.
                 # Original S49 L0 selection, Action ownership and receipt

@@ -1,0 +1,12 @@
+{
+  "model_calls": 0,
+  "native_input_count": 3,
+  "original_closed_actions": 2,
+  "previous_s16_bound": 1,
+  "qualification": "NO_GO",
+  "schema": "S537_S2B_ORIGINAL_ROW_CROSS_AUDIT_DEV_V1",
+  "science": "NOT_RUN",
+  "session_id": "20a2c581-f90d-4ddd-be60-00a3ce2e8826",
+  "source_attested": false,
+  "status": "PASS"
+}

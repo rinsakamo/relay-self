@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "immutable_file_count": 49,
+  "changed_originals": [],
+  "other_branch_refs_unchanged": true,
+  "java_count": 1,
+  "node_count": 1,
+  "owned_pids_absent": true,
+  "world_deleted": true,
+  "port_25565_released": true
+}

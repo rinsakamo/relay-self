@@ -1,0 +1,1 @@
+実World前の変更：S2-B原本監査に元native verifierを再利用し、S15 receiptのsession/Action/effectを確認。owner Intent IDの行間一致と世代/revisionの型・範囲を検証。履歴prefix破壊・世代後退・current Intent置換・実イベントによるgeneration増加・observer例外隔離を追加検証。元S49 Executor/S15/S16/STOPには変更なし。runbookの改行を修正。CIに既存cleanup回帰＋observer例外テストを追加。
