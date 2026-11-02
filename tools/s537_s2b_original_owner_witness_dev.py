@@ -126,6 +126,7 @@ async def run_s2b_owner_witness_dev(
         "schema": "S537_S2B_ORIGINAL_OWNER_EPOCH_RUN_DEV_V1",
         "status": "RECORDED" if accepted else "DEFERRED",
         "s2a_status": s2a.get("status"),
+        "s2a": s2a,
         "owner_epoch": owner_readout,
         "model_calls": 0,
         "s60_submissions": 0,
