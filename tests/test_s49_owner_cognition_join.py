@@ -50,7 +50,7 @@ def test_original_typed_s49_source_readout_without_invented_wb_m():
 
 @pytest.mark.parametrize("attack", [
     "session", "authority", "s42", "replay", "missing_s16",
-    "foreign_probe", "bad_terminal", "not_a_batch",
+    "foreign_probe", "bad_terminal", "not_a_batch", "forged_scope",
 ])
 def test_invalid_original_rejected_atomically(attack):
     batch = _source()
@@ -69,6 +69,10 @@ def test_invalid_original_rejected_atomically(attack):
     elif attack == "foreign_probe":
         batch = replace(batch, steps=(
             replace(batch.steps[0], probe=batch.steps[1].probe), batch.steps[1],
+        ))
+    elif attack == "forged_scope":
+        batch = replace(batch, steps=(
+            replace(batch.steps[0], source_scope="FAKE_S42_OWNER"), batch.steps[1],
         ))
     elif attack == "bad_terminal":
         owner = batch.steps[0].action_receipt
@@ -100,3 +104,17 @@ def test_foreign_optional_companions_do_not_claim_integration():
 def test_allowlist_serializer_requires_typed_readout():
     with pytest.raises(ValueError, match="typed"):
         bounded_s49_cognition_join_row(object())
+
+
+def test_serializer_rejects_forged_model_meter_or_action_authority():
+    value = join_completed_s49_cognition(enabled=True, batch=_source())
+    assert value.status == "RECORDED"
+    for wrong in (
+        replace(value, action_authority=True),
+        replace(value, source_attested=True),
+        replace(value, new_action_issues=1),
+        replace(value, b0_owner="FAKE_B0"),
+        replace(value, model_usage="MEASURED_ZERO"),
+    ):
+        with pytest.raises(ValueError, match="without authority"):
+            bounded_s49_cognition_join_row(wrong)
