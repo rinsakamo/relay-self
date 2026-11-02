@@ -489,7 +489,10 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
-            if completed_l0 is not None or completed_l0_dev:
+            if (
+                completed_l0 is not None or completed_l0_dev
+                or completed_planned is not None or completed_planned_dev
+            ):
                 closed_receipts[step.action_request_id] = receipt
             if completed_planned is not None or completed_planned_dev:
                 # Retain exact existing S14 plan/admission/epoch references
