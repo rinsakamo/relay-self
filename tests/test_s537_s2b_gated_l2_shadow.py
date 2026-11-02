@@ -11,13 +11,13 @@ from dataclasses import replace
 
 import pytest
 
+from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from adapters.mineflayer.s537_s2b_gated_l2_shadow import (
     S2BGatedL2Shadow,
     S2BOwnerContextRead,
     S2BSourceRejected,
 )
-from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from relay_self.interruption_fence import CognitionContext
 
 
