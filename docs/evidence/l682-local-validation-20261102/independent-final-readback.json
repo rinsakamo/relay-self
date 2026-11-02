@@ -1,0 +1,62 @@
+{
+  "classification": "REAL_GEMMA_SYNTHETIC_PROBE_PASS_WORLD_APPARATUS_FAIL_NO_RETRY",
+  "probe_raw_sha_readback": "PASS",
+  "probe_request_count": 1,
+  "probe_finish_reason": "stop",
+  "probe_completion_tokens": 206,
+  "reasoning_content_present": false,
+  "reasoning_tokens_reported": null,
+  "reasoning_markers_observed": false,
+  "probe_is_body_experience": false,
+  "world_starts": 1,
+  "retries": 0,
+  "world_status": "FAIL",
+  "world_http_raw_files": 0,
+  "s49_actions": 0,
+  "s15_clear_receipts": 0,
+  "s16_outcomes": 0,
+  "valid_world_open": 0,
+  "native_sequence": "UNAVAILABLE_W3_CONSTRUCTOR_FAILED_NO_CAPTURE",
+  "h1": null,
+  "h2": null,
+  "prediction_observation_error": null,
+  "mandatory_audits": [
+    {
+      "tool": "tools/mp11_g3_paper_one_world_audit.py",
+      "exit_code": 1,
+      "status": "FAIL"
+    },
+    {
+      "tool": "tools/l_mp11_live_paper_postrun_audit.py",
+      "exit_code": 1,
+      "status": "FAIL"
+    },
+    {
+      "tool": "tools/l_mp11_feedback_original_audit.py:audit_feedback_originals",
+      "exit_code": 1,
+      "status": "FAIL"
+    }
+  ],
+  "A": "NOT_ESTABLISHED_APPARATUS_BLOCKED",
+  "B1": "NOT_EVALUATED_NO_H1_H2",
+  "B2": "NOT_ESTABLISHED_NO_HOLDOUT",
+  "C": "NOT_RUN_BY_DESIGN",
+  "server_exit": 0,
+  "node_exit": null,
+  "node_spawn": "ATTEMPTED_BEFORE_W3_CONSTRUCTOR; PID_AND_EXIT_NOT_IN_ORIGINAL_REPORT",
+  "native_stop_ack": "NOT_AVAILABLE_NO_W3_CAPTURE",
+  "current_runtime_processes": [],
+  "ports": {
+    "8080": "BIND_SUCCESS",
+    "25565": "BIND_SUCCESS"
+  },
+  "current_s49_temp_directories": [],
+  "world_exact_pid_cwd_independent_attestation": false,
+  "world_pid_cwd_limitation": "External snapshot predicate compared exact minecraft.jar argv instead of absolute jar path; no PID/cwd captured. Empty set must not imply exact-owned cleanup PASS. Original flawed derived readback is preserved separately.",
+  "historical_original_files_checked": 35,
+  "historical_changes": [],
+  "paper_raw_equals_log": true,
+  "paper_sha256": "827436e99b0ef8b6e01e679666107f51a86be4b26e341ab7956fe0250ad75b45",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}

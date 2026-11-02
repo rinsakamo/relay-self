@@ -1,0 +1,47 @@
+{
+  "head": "d8043917ffb59d4d5470071638ed71dc20a53937",
+  "probe_execution_head": "ec9a4c27ea37d180d9506b7b01c7557f27b176fa",
+  "mode": "DEV_ONLY",
+  "authority": [
+    "current user mission 2026-11-02",
+    "https://github.com/rinsakamo/relay-self/issues/537",
+    "https://github.com/rinsakamo/relay-self/issues/431",
+    "https://github.com/rinsakamo/relay-self/issues/653"
+  ],
+  "worlds": 1,
+  "retries": 0,
+  "sessions": 1,
+  "s49_action_max": 3,
+  "live_gemma_open_max": 2,
+  "probe_http": 1,
+  "l2_actions": 0,
+  "l2_condition_changes": 0,
+  "learning_admission": 0,
+  "l0_promotion": 0,
+  "predeclared_eof": true,
+  "file_sha256": {
+    "/home/rinsa/evidence/l682-local-validation-20261102T013000Z/plugin-build-target/relay-metabolism-paper-dev-0.2.0-dev.jar": "255bfaffda9f9b6d2ac80c77d76327bfdef4b00ddd6f56345f8cd3e4703694e0",
+    "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "/home/rinsa/evidence/l682-local-validation-20261102T013000Z/paper-active-config.yml": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+    "/home/rinsa/evidence/l682-local-validation-20261102T013000Z/gemma-strict-wire-probe/gemma-structured-preflight.json": "2f456c96cf20628898e5d5e1ccc88387a58d4c9621630cc962ca2b7e1d2ef416",
+    "/home/rinsa/work/relay-self-l-gemma-local-validation-20261102/docs/l-gemma-local-validation-prereg-20261102.md": "7c8b6c5dd93c5a047afc2e687d99a35d1cf7b467906125cebf053c03bc1c08fa"
+  },
+  "flags": {
+    "S49_REAL_SERVER_CI": "1",
+    "MP11_S49_THREE_ACTION_DEV": "1",
+    "MP11_G3_PAPER_THREE_WINDOWS_DEV": "1",
+    "L_MP11_LIVE_PREFIX_DEV": "1",
+    "L_MP11_LIVE_L2_DEV": "1",
+    "L_MP11_EVIDENCE_IDS_DEV": "1",
+    "L_MP11_GEMMA_STRICT_SCHEMA_DEV": "1",
+    "L_MP11_PAPER_EOF_DEV": "1"
+  },
+  "model_pid": 129904,
+  "python": "Python 3.12.3\n",
+  "node_import": {
+    "node": "v22.22.2",
+    "mineflayer": "4.39.0",
+    "resolved": "/home/rinsa/evidence/l682-local-validation-20261102T013000Z/node-runtime/node_modules/mineflayer/index.js"
+  },
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n"
+}

@@ -112,6 +112,18 @@ def test_reasoning_in_content_or_token_usage_fails_closed():
         enforce_gemma_thinking_off(response)
 
 
+@pytest.mark.parametrize("marker", ["<|channel>thought", "<channel|>", "</think>"])
+def test_actual_gemma_template_channel_markers_rejected(marker):
+    response = result()
+    # Even a schema-valid string may hide a template channel marker.
+    message = response["choices"][0]["message"]
+    output = json.loads(message["content"])
+    output["explanation"] = "Observed movement " + marker
+    message["content"] = json.dumps(output)
+    with pytest.raises(GemmaWireRejected, match="reasoning markers"):
+        enforce_gemma_thinking_off(response)
+
+
 def test_missing_or_foreign_source_cannot_construct_schema():
     body = synthetic_test_body("model")
     raw = json.loads(body["messages"][1]["content"])
@@ -213,3 +225,88 @@ def test_preflight_only_accepts_loopback_not_remote(tmp_path):
     ]:
         with pytest.raises(GemmaPreflightRejected):
             run(endpoint, "model", tmp_path / "unused")
+
+
+@pytest.mark.parametrize("key,value", [
+    ("model_family", "UNSUPPORTED"),
+    ("reconsideration", 1),
+    ("next_test", "ISSUE_ACTION"),
+    ("capability_assessment", "LEARNED"),
+    ("explanation", "too short"),
+    ("falsification_test", "x" * 121),
+    ("predicted_wait_total_m", 4),
+    ("predicted_wait_total_m", True),
+    ("predicted_wait_total_m", float("nan")),
+    ("referenced_prior_ordinals", [True]),
+    ("referenced_prior_ordinals", [1, 1]),
+    ("evidence_ids", ["T1_W8", "T1_W8"]),
+])
+def test_schema_noncompliance_never_opens_world_gate(
+    tmp_path, monkeypatch, key, value,
+):
+    import urllib.request
+
+    response = result()
+    output = json.loads(response["choices"][0]["message"]["content"])
+    output[key] = value
+    response["choices"][0]["message"]["content"] = json.dumps(output)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: io.BytesIO(
+        json.dumps(response).encode(),
+    ))
+    root = tmp_path / "rejected"
+    with pytest.raises(GemmaPreflightRejected):
+        run("http://127.0.0.1:8080/v1/chat/completions", "model", root)
+    assert (root / "llama-response-1.raw.json").exists()
+    assert not (root / "gemma-structured-preflight.json").exists()
+
+
+def test_duplicate_output_keys_rejected_before_world(tmp_path, monkeypatch):
+    import urllib.request
+
+    response = result()
+    message = response["choices"][0]["message"]
+    message["content"] = message["content"][:-1] + ',"model_family":"PHASE_DEPENDENT"}'
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: io.BytesIO(
+        json.dumps(response).encode(),
+    ))
+    with pytest.raises(GemmaPreflightRejected):
+        run("http://127.0.0.1:8080/v1/chat/completions", "model", tmp_path / "probe")
+
+
+@pytest.mark.parametrize("kind", ["missing", "relative", "file", "used", "symlink", "ancestor"])
+def test_l_capture_path_rejected_before_any_world_provision(tmp_path, monkeypatch, kind):
+    import asyncio
+
+    from adapters.mineflayer import s49_normal_session_real_ci as owner
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    def forbidden(*a, **kw):
+        pytest.fail("invalid capture path reached World provisioning")
+    monkeypatch.setattr(owner.tempfile, "TemporaryDirectory", forbidden)
+    monkeypatch.setattr(owner, "_ready_server", forbidden)
+    root = tmp_path / "capture"
+    if kind == "relative":
+        root = type(root)("relative-capture")
+    elif kind == "file":
+        root.touch()
+    elif kind == "used":
+        root.mkdir()
+        (root / "old-original").write_bytes(b"preserve")
+    elif kind in ("symlink", "ancestor"):
+        real = tmp_path / "real"
+        real.mkdir()
+        root.symlink_to(real, target_is_directory=True)
+        if kind == "ancestor":
+            root = root / "child"
+            root.mkdir()
+    report = tmp_path / "report.json"
+    rc = asyncio.run(owner.qualify(
+        report, tmp_path / "paper.log", l_mp11_live_prefix_dev=True,
+        raw_capture_root=root,
+    ))
+    saved = json.loads(report.read_text())
+    assert rc != 0 and "BEFORE World startup" in saved["error"]
+    assert saved["actual_native_actions"] == []
+    if kind == "used":
+        assert (root / "old-original").read_bytes() == b"preserve"
