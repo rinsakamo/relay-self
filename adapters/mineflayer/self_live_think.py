@@ -43,7 +43,6 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
 from relay_self.self_body import compose_self_body_view
 from relay_self.self_cognition_slice import CognitionTier, project_cognition_slice
-from relay_self.wb_l2_read_port import WBL2UncertaintyRead, project_wb_l2_uncertainty
 from relay_self.self_world import (
     SelfWorldView,
     WorldForecast,
@@ -53,6 +52,7 @@ from relay_self.self_world import (
     review_self_world_prediction,
     select_self_world_attention,
 )
+from relay_self.wb_l2_read_port import WBL2UncertaintyRead, project_wb_l2_uncertainty
 
 
 class LiveL2Observer:
