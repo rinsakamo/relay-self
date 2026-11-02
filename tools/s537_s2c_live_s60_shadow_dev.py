@@ -22,6 +22,7 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s60b1_loopback_adapter import LoopbackTransportConfig
 from adapters.mineflayer.s537_s2b_gated_l2_shadow import S2BGatedL2Shadow
+from adapters.mineflayer.s537_s2d_strict_json_contract import PROFILE
 from tools.s537_s1_live_wb_m_dev import (
     _M_PIN,
     _WB_PIN,
@@ -34,10 +35,14 @@ from tools.s537_s2b_original_owner_witness_dev import S2BOwnerWitnessObserver
 class S2CAsyncObserver(S2BOwnerWitnessObserver):
     """Live original source witness plus exactly one S60-B1 HTTP attempt."""
 
-    def __init__(self, config: LoopbackTransportConfig, *, timeout_s: float) -> None:
+    def __init__(
+        self, config: LoopbackTransportConfig, *, timeout_s: float,
+        structured_profile: str | None = None,
+    ) -> None:
         super().__init__()
         self.shadow = S2BGatedL2Shadow(
             enabled=True, config=config, timeout_s=timeout_s,
+            structured_profile=structured_profile,
         )
         self._timeout = timeout_s
         self._poll_task: asyncio.Task[None] | None = None
@@ -177,6 +182,10 @@ async def run_s2c_live_shadow_dev(
         "learning_updates": 0,
         "energy_debits": 0,
         "backend_stop_ack": False,
+        "structured_json_response_validated": (
+            s60["structured_profile"] == PROFILE
+            and "HTTP_COMPLETION_OBSERVED" in events
+        ),
         "qualification": "NO_GO",
         "science": "NOT_RUN",
     }
@@ -194,9 +203,12 @@ def main() -> int:
     parser.add_argument("--max-tokens", type=int, default=256)
     parser.add_argument("--timeout-s", type=float, default=45.0)
     parser.add_argument("--live-world-dev", action="store_true")
+    parser.add_argument("--strict-json-reasoning-off", action="store_true")
     args = parser.parse_args()
     if not (
         args.live_world_dev
+        and args.strict_json_reasoning_off
+        and os.environ.get("S537_S2D_STRICT_JSON_DEV_ONLY") == "1"
         and os.environ.get("S537_S2C_LIVE_L2_DEV_ONLY") == "1"
         and os.environ.get("S49_REAL_SERVER_CI") == "1"
         and os.environ.get("S49_COMPLETED_L0_DEV_ONLY") == "1"
@@ -242,7 +254,9 @@ def main() -> int:
         return 2
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
-    observer = S2CAsyncObserver(config, timeout_s=args.timeout_s)
+    observer = S2CAsyncObserver(
+        config, timeout_s=args.timeout_s, structured_profile=PROFILE,
+    )
     code, result = asyncio.run(run_s2c_live_shadow_dev(
         original_qualify=qualify,
         report_path=args.report, server_log=args.server_log,
