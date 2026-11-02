@@ -1,0 +1,126 @@
+name: L Z1 one physical Paper Zombie source World DEV
+# Exactly one opt-in push: a failed World/preflight is evidence, not a retry grant.
+on:
+  push:
+    branches: [dev/l-zombie-z1-one-paper-world-20261102]
+    paths: ['.github/workflows/l-zombie-z1-one-world-physical-dev.yml']
+permissions:
+  contents: read
+concurrency:
+  group: l-z1-one-paper-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  z1-one-paper-zombie-source:
+    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[l-z1-one-world-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      L_ZOMBIE_Z1_ONE_WORLD_DEV: '1'
+      NODE_OPTIONS: ''
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPYCACHEPREFIX: /tmp/relay-l-z1-pycache-${{ github.run_id }}
+      PYTHONPATH: src:tests:.
+      EVIDENCE_PARENT: /tmp/relay-l-z1-evidence-${{ github.run_id }}
+      WORLD_PARENT: /tmp/relay-l-z1-world-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source-only negative controls BEFORE any real World
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check tools/l_zombie_z1_one_world_dev.py tools/l_zombie_paper_original_audit.py \
+            tests/test_l_zombie_z1_one_world_dev.py tests/test_l_zombie_paper_original_audit.py
+          python -m compileall -q tools/l_zombie_z1_one_world_dev.py
+          python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/test_l_zombie_z1_one_world_dev.py \
+            tests/test_l_zombie_paper_original_audit.py \
+            tests/test_l_zombie_20tick_shadow.py
+          python tools/check_repository.py
+      - name: Build genuine isolated Paper1.21.8 plugin and pinned Mineflayer 4.39.0
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/l_zombie_paper_dev/pom.xml -DskipTests package
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -p "require('./adapters/mineflayer/node_modules/mineflayer/package.json').version" | grep -x '4.39.0'
+      - name: Fetch official pinned Paper1.21.8 build60 by original SHA and bytes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          h='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          dest=pathlib.Path(os.environ['RUNNER_TEMP'])/'z1-paper-1.21.8-60.jar'
+          url='https://fill-data.papermc.io/v1/objects/'+h+'/paper-1.21.8-60.jar'
+          req=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-L-Zombie-Z1-DEV (https://github.com/rinsakamo/relay-self)'})
+          digest=hashlib.sha256();size=0
+          with urllib.request.urlopen(req,timeout=120) as src,dest.open('xb') as out:
+              while chunk:=src.read(1024*1024):
+                  size+=len(chunk)
+                  if size>52811717:raise ValueError('Paper object oversized')
+                  out.write(chunk);digest.update(chunk)
+          assert size==52811717 and digest.hexdigest()==h
+          PY
+      - name: Declare one World budget and exclude only generated build products
+        run: |
+          set -euo pipefail
+          printf '\nadapters/mineflayer/l_zombie_paper_dev/target/\n' >> .git/info/exclude
+          mkdir -p "$EVIDENCE_PARENT" "$WORLD_PARENT"
+          echo "Preworld exact worktree status (must be empty):"
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+          echo 'Z1_ONE_NEW_WORLD / RETRY_ZERO / CREATIVE_OBSERVER / NO_L2_NO_ACTION'
+      - name: ONE pinned physical Paper World, original Mineflayer and 31 zombie ticks
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/adapters/mineflayer/l_zombie_paper_dev/target/relay-l-zombie-paper-dev-0.1.0-dev.jar"
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          RUN_ID="$(printf '%016x' "$GITHUB_RUN_ID")"
+          python -B -m tools.l_zombie_z1_one_world_dev \
+            --confirm Z1_ONE_PAPER_ZOMBIE_SOURCE_WORLD_DEV_NO_RETRY \
+            --repo "$GITHUB_WORKSPACE" --expected-head "$GITHUB_SHA" \
+            --paper-jar "$RUNNER_TEMP/z1-paper-1.21.8-60.jar" \
+            --plugin-jar "$PLUGIN" --plugin-sha256 "$PLUGIN_SHA" \
+            --world-parent "$WORLD_PARENT" --evidence-parent "$EVIDENCE_PARENT" \
+            --run-id "$RUN_ID"
+      - name: Independent saved raw Paper audit, even after World failure
+        if: always()
+        run: |
+          set -euo pipefail
+          RUN_ID="$(printf '%016x' "$GITHUB_RUN_ID")"
+          EVID="$EVIDENCE_PARENT/l-z1-evidence-$RUN_ID"
+          RAW="$EVID/paper-console-original.raw"
+          if test -f "$RAW"; then
+            SHA="$(sha256sum "$RAW" | awk '{print $1}')"
+            python -B -m tools.l_zombie_paper_original_audit \
+              --paper-original "$RAW" --expected-sha256 "$SHA" \
+              --marker z1-source-1 --session z1-client-1 \
+              --report "$EVID/independent-paper-source-readback.json" || \
+              echo 'Z1_PAPER_SOURCE_AUDIT_FAIL: raw preserved'
+          else
+            echo 'Z1_NO_PAPER_ORIGINAL: PREWORLD_OR_WORLD_FAIL'
+          fi
+      - name: Preserve originals even on fail; no automatic re-run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l-zombie-z1-real-paper-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: warn
+          include-hidden-files: true
+          path: ${{ env.EVIDENCE_PARENT }}/
+      - name: No cognition or qualifying claims
+        if: always()
+        run: echo 'ONE_WORLD_MAX / PAPER_SOURCE_ONLY / NO_EXACT_CLIENT_TICK_JOIN / GEMMA_0 / L0_UNTESTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
