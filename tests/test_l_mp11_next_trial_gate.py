@@ -220,3 +220,63 @@ def test_preflight_action_flags_and_missing_capture_refuse_without_spending(
             root, repo, expected_head=HEAD, command=physical_command(root),
         )
     assert not (root / gate.STARTED).exists()
+
+
+
+def test_symlinked_preflight_file_is_rejected_before_capture(tmp_path, monkeypatch):
+    root, repo, report = prepped(tmp_path, monkeypatch)
+    raw = report.with_name("raw-preflight.json")
+    report.rename(raw)
+    report.symlink_to(raw)
+    with pytest.raises(gate.NextWorldGateRejected, match="regular file"):
+        gate.prepare_trial(
+            root, repo, report, expected_head=HEAD, endpoint=ENDPOINT,
+            model=MODEL,
+        )
+    assert not (root / "world").exists()
+
+
+def test_wrapper_interrupt_signals_only_its_new_process_group(
+    tmp_path, monkeypatch,
+):
+    root, repo, report = prepped(tmp_path, monkeypatch)
+    gate.prepare_trial(
+        root, repo, report, expected_head=HEAD, endpoint=ENDPOINT, model=MODEL,
+    )
+    flags = [
+        "S49_REAL_SERVER_CI", "MP11_S49_THREE_ACTION_DEV",
+        "MP11_G3_PAPER_THREE_WINDOWS_DEV", "L_MP11_LIVE_PREFIX_DEV",
+        "L_MP11_LIVE_L2_DEV", "L_MP11_EVIDENCE_IDS_DEV",
+        "L_MP11_GEMMA_STRICT_SCHEMA_DEV", "L_MP11_PAPER_EOF_DEV",
+    ]
+    for flag in flags:
+        monkeypatch.setenv(flag, "1")
+
+    class Owned:
+        pid = 997
+
+        def poll(self):
+            return None
+
+        def wait(self, timeout=None):
+            assert timeout == 5
+            return -15
+
+    def spawn(args, **kwargs):
+        assert kwargs["start_new_session"] is True
+        return Owned()
+
+    seen = []
+    monkeypatch.setattr(gate.subprocess, "Popen", spawn)
+    monkeypatch.setattr(
+        gate, "owned_tree",
+        lambda pid: (_ for _ in ()).throw(KeyboardInterrupt("operator stop")),
+    )
+    monkeypatch.setattr(gate.os, "killpg", lambda pid, sig: seen.append((pid, sig)))
+    with pytest.raises(KeyboardInterrupt):
+        gate.run_once(root, repo, expected_head=HEAD, command=physical_command(root))
+    assert seen == [(997, gate.signal.SIGTERM)]
+    status = (root / gate.EXITED).read_text()
+    assert '"wrapper_owned_process_group_terminated": true' in status
+    assert '"world_qualified": false' in status
+    assert (root / gate.STARTED).exists()
