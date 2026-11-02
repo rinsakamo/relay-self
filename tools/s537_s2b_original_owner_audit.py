@@ -89,10 +89,14 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
             seq, rid = decision["probe_seq"], decision["request_id"]
             if (
                 seq <= previous_probe
-                or seq != incoming["probe_seq"] == owner_row["native_probe_seq"]
-                == original_epoch["native_probe_seq"] == wb["probe_seq"]
-                or rid != incoming["request_id"] == owner_row["request_id"]
-                == wb["request_id"]
+                or not (
+                    seq == incoming["probe_seq"] == owner_row["native_probe_seq"]
+                    == original_epoch["native_probe_seq"] == wb["probe_seq"]
+                )
+                or not (
+                    rid == incoming["request_id"] == owner_row["request_id"]
+                    == wb["request_id"]
+                )
                 or incoming["session_id"] != sid
                 or incoming["epoch_id"] != f"native-{seq}"
                 or incoming["world_source_ref"] != wb["world_source_ref"]
