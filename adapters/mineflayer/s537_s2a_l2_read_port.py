@@ -122,7 +122,7 @@ class S2ASourceBoundObserver(S1WBMMatchedObserver):
             or con.session_id != probe.session_id
             or before.session_id != probe.session_id
             or after.session_id != probe.session_id
-            or before.seq != probe.seq
+            or before.seq <= probe.seq
             or after.seq <= before.seq
             or owner.action_id in self._closed_action_ids
             or (
