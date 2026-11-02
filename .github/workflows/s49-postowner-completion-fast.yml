@@ -20,9 +20,27 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
       - name: Static contracts
         run: |
-          ruff check adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_completed_decision_bridge.py adapters/mineflayer/s49_owner_cognition_join.py tests/test_s49_owner_cognition_join.py
+          ruff check adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_completed_decision_bridge.py adapters/mineflayer/s49_owner_cognition_join.py tests/test_s49_owner_cognition_join.py tests/test_s49_owner_cognition_crosslane.py
           python tools/check_repository.py
           python -m compileall -q adapters/mineflayer/s49_completed_decision_bridge.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_owner_cognition_join.py
       - name: Original S49 and completion focused tests (offline)
         run: |
           python -m pytest -q tests/test_s49_completed_decision_bridge.py tests/test_s49_owner_cognition_join.py tests/test_feature_s49_normal_runtime.py tests/test_postmain_s42_world_contrast.py
+
+      - name: Pinned M original owner checkout (read-only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 9afce6bde1079f8a42aaf3c4e515ef35fc6b0396
+          path: .s0-pinned-m
+          persist-credentials: false
+      - name: Pinned WB cognition port checkout (read-only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 944db858186a4d9449946b6acdcb8c8e5998e071
+          path: .s0-pinned-wb
+          persist-credentials: false
+      - name: S0 M+WB original typed cross-lane contract (synthetic offline)
+        env:
+          S0_PINNED_M_SOURCE: ${{ github.workspace }}/.s0-pinned-m/experiments/metabolism_s49_owner_admission.py
+          S0_PINNED_WB_SOURCE: ${{ github.workspace }}/.s0-pinned-wb/src/relay_self/wb_l2_read_port.py
+        run: python -m pytest -q tests/test_s49_owner_cognition_crosslane.py
