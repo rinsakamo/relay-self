@@ -46,7 +46,7 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
             or owner["original_owner"]["session_id"] != sid
             or not isinstance(source_rows, list)
             or not 2 <= len(source_rows) <= 8
-            or len(source_rows) != len(inputs) == len(owner_rows) == len(original_epochs)
+            or not (len(source_rows) == len(inputs) == len(owner_rows) == len(original_epochs))
             or len(s1["wb_rows"]) != len(inputs)
             or s2a["input_count"] != len(inputs)
             or s2a["closed_s16_count"] != len(native_actions)
