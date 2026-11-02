@@ -73,7 +73,8 @@ def strict_gemma_evidence_schema(request_body: dict) -> dict:
     if type(request_body) is not dict:
         raise GemmaWireRejected("canonical llama.cpp OPEN request object required")
     ids, count = _typed_ids_from_open_request(request_body)
-    options = lambda values: {"type": "string", "enum": sorted(values)}
+    def options(values):
+        return {"type": "string", "enum": sorted(values)}
     properties = {
         "referenced_prior_ordinals": {
             "type": "array", "items": {"type": "integer", "enum": list(range(1, count+1))},
