@@ -5,7 +5,6 @@ import pytest
 
 from relay_self.wb_l2_read_port import project_wb_l2_uncertainty
 
-
 BASE = {
     "accepted_text": '{"uncertainty":"Is the observed motion unexpected?"}',
     "session_id": "source-session",
