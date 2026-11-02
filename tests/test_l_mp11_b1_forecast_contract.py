@@ -9,7 +9,6 @@ import pytest
 
 from adapters.mineflayer.l_mp11_b1_forecast_contract import (
     TARGET,
-    B1ContractRejected,
     historical_v1_b1_readback,
     schema_v2_additions,
     validate_b1_v2,
