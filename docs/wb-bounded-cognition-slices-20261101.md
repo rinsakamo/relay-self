@@ -146,3 +146,34 @@ In this opt-in mode, the existing WB L2 observer parses the returned `message.co
 Offline tests must verify the two opt-in fields and fixed schema, S60 default-off rejection of extra request fields, negative envelope/JSON controls, source expiration, CLI no-World refusal, single-model-call and zero-action properties. The original saved real World and its provider-before-displacement `UNCONFIRMED` classification are unchanged. A further **LocalCodex-owned** one-shot, model-only test on an independently attested exact pinned model/server condition is needed before enabling this in a disposable real World. Use an existing single-slot S60 backend and preserve raw failure evidence. Any execution must report actual model calls, accepted current L2 text separately from backend tokens, and whether the pinned schema is compatible with that exact runtime.
 
 **State: DEV_ONLY / REQUEST_WIRE_IMPLEMENTED / REAL_GEMMA_NOT_RUN / ORIGINAL_PROVIDER_FAILURE_UNCHANGED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+## 2026-11-02 — 実Gemma構造化S60 model-only DEV受理
+
+**DEV_ONLY / WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN。** 実行HEADは `c2b85f7d08cb80fadd5bfe073a1bcb544a743dc8`。今回のユーザー指示の1回限定model-only試験として実施し、過去のWorld grantは再利用していない。専用detached worktreeで実装を変更せず、以前のnative callback原本（seq10/21、SHA256 `f73583fbf716aceca4ae6b2d0c38864144289d7aaefae4b7d1d2fb1611cafb83`）を値一致確認のうえread-onlyで復元した。これは**過去sourceのオフラインreplay**であり、現在のMinecraft観測ではない。
+
+実Gemma呼出しは **1 POSTのみ**。同じ1応答を既存 `LiveL2Observer` → `LoopbackDisplacementAdapter` → `BestEffortDisplacement` の本実装で検証した。追加provider、validation変更、retry、World起動はない。外部DEV harnessは既存メソッドへ委譲する記録ラッパーでpayload・読み取ったHTTP bytes・gate結果を保存した。既存Future/lease/deadline/owner tick/stale fenceは不変更。実行中sourceを進めず、12秒の元deadline内で完了した。
+
+| 段階 | 今回の実測 |
+| --- | --- |
+| Gemma / HTTP | 1件、HTTP 200、Content-Length 777 bytesとbody完全一致 |
+| request | 元5-key + `reasoning_effort="none"` + pinned strict `wb_l2_uncertainty` Schema、stream=false、temperature=0、max_tokens=96 |
+| completion | alias `wb-gemma4`、finish_reason=stop、prompt=1155 / completion=41 / total=1196 tokens |
+| reasoning/content | `reasoning_content`フィールドなし、非空contentにSchema適合JSON。内部reasoning token数=0という証明ではない |
+| S60-B1 | `SOCKET_POST_SENT` → `HTTP_COMPLETION_OBSERVED`、envelope受理1件 |
+| S60-A | `NEW_REQUEST_STARTED` → `BACKEND_COMPLETION_OBSERVED`、完了1件、失効/cancel 0件 |
+| L2 | `ACCEPTED_READ_ONLY_SAME_PRESENT` 1件、offline source seq21で採用。有効な実World中L2採用は0件 |
+| 効果 | World 0、Action 0、S16 OUTCOME 0、Memory/Learning更新0 |
+
+真の `message.content` は次のとおり。補修・再生成していない。
+
+```json
+{"uncertainty": "The prediction_review for entity-3's label is marked as 'undetermined' because the target or property was not observed."}
+```
+
+GGUF SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`、server SHA256 `ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536` を起動前に実ファイルから再計算した。実binary versionはbuild10874 / revision `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`と一致。所有PID126560のexe/cmdline、GGUF mmap、`/health`・`/v1/models`・`/props`・`/slots`、応答fingerprint `b10874-e2d2c0d6a` を保存。Thinking OFF指定は記録requestの `reasoning_effort="none"` であり、同revision `server-common.cpp` のnone→`inputs.enable_thinking=false`処理と照合する。モデル名だけから対応を推定していない。
+
+既存server/port占有がない状態を確認し、協調host flockを保持して所有serverを1回だけ起動した。alias `wb-gemma4`、127.0.0.1:16669、ctx8192、parallel1、GPU layers60、`--no-context-shift --slots`。GPU表示は起動前706MiB→load8599MiB→終了後706MiB。所有serverはSIGTERMでexit0、SIGKILLなし、PID消滅とlistener不在を確認。即時bindは失敗原本を保持し、待受け不在とTCP接続の残留を区別する。**backend STOP ACKはUNATTESTED、GPU allocation解放の資格は未成立**。serverログのslot releaseやnvidia-smiの総量復帰をSTOP ACKへ昇格しない。観測replayのsemantic owner行にある `model_binary_identity_verified=false` / HTTP `UNRECORDED` はその実装自身のclaim ceilingであり、外部取得のidentity/raw HTTP証拠と区別して原文を保持する。
+
+今回の3段階にはUNCONFIRMEDは残らない。ただし過去WorldのUNCONFIRMEDは、当時のHTTP原本がないため原因未特定のまま維持する。Thinking OFF/Schemaの追加が過去失敗の原因だったと断定しない。JSONの安全な受理は認知的有用性、学習、World中の採用、物理qualificationを証明しない。次段階は別の有効なDEV World grantの下でWB→L2統合を検討できるが、本作業では自動開始しない。
+
+実行前のexact-head FAST CIは [41364185955](https://github.com/rinsakamo/relay-self/actions/runs/41364185955) の対象7チェックSUCCESS。今回focused S60-A/B1・WB試験196件PASS、Ruff・構文・repository contracts PASS。ローカルFASTと最終報告HEAD CIのterminal結果はPR/owner Issueの実行報告に記録する。証拠はrepo外 `/home/rinsa/evidence/wb-669-structured-gemma-20261102/` にrequest、HTTP raw/envelope、serverログ、source hash、S60前後receipts、process maps/API identity、cleanup、失敗原本、試験ログとmanifestを保存。ローカル保管は独立custody資格を意味しない。
