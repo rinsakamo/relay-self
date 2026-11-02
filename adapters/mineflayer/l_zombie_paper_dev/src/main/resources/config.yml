@@ -4,3 +4,6 @@ dev-enabled: false
 minecraft-version: 1.21.8
 # Dedicated Z1 read-only tick witness; never creates zombies or Self Actions.
 zombie-tick-readonly-dev: false
+
+# Z2a: freeze two CHEAP forecasts synchronously before future server ticks.
+zombie-prospective-cheap-dev: false

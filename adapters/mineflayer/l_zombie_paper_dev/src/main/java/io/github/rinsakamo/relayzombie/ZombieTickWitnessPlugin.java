@@ -42,6 +42,10 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
     private String session;
     private int samples;
     private boolean enabled;
+    private boolean prospectiveCheap;
+    private boolean forecastFrozen;
+    private double firstX;
+    private double firstZ;
 
     @Override
     public void onEnable() {
@@ -49,6 +53,8 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
         enabled = getConfig().getBoolean("dev-enabled", false)
             && getConfig().getBoolean("zombie-tick-readonly-dev", false)
             && "1.21.8".equals(getConfig().getString("minecraft-version"));
+        prospectiveCheap = enabled
+            && getConfig().getBoolean("zombie-prospective-cheap-dev", false);
         if (!enabled) {
             getLogger().info("L_ZOMBIE_DISABLED_DEFAULT_NO_WORLD_ACCESS");
             return;
@@ -146,10 +152,39 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
             tick, offset, location.getX(), location.getY(), location.getZ()
         ));
         samples++;
+        if (prospectiveCheap && offset == 0) {
+            firstX = location.getX();
+            firstZ = location.getZ();
+        }
+        if (prospectiveCheap && offset == FIRST_PREDICTION_OFFSET) {
+            // Synchronous main-thread, strictly before offset11..30.
+            double currentX = location.getX();
+            double currentZ = location.getZ();
+            double velocityX = currentX + 2.0 * (currentX - firstX);
+            double velocityZ = currentZ + 2.0 * (currentZ - firstZ);
+            if (!Double.isFinite(velocityX) || !Double.isFinite(velocityZ)) {
+                closeWindow("NONFINITE_FORECAST");
+                return;
+            }
+            getLogger().info(String.format(Locale.ROOT,
+                "L_ZOMBIE_CHEAP_FREEZE_V2 marker=%s session=%s world=%s "
+                + "entity_uuid=%s entity_id=%d source_first_tick=%d "
+                + "issued_tick=%d target_tick=%d "
+                + "stationary_x=%.12f stationary_z=%.12f "
+                + "velocity_x=%.12f velocity_z=%.12f",
+                marker, session, worldUuid, uuid, entityId,
+                tick - FIRST_PREDICTION_OFFSET, tick, tick + 20,
+                currentX, currentZ, velocityX, velocityZ
+            ));
+            forecastFrozen = true;
+        }
         lastTick = tick;
         lastOffset = offset;
         if (offset == LAST_OFFSET) {
-            closeWindow(samples == LAST_OFFSET + 1 ? "PAPER_WINDOW_COMPLETE" : "INCOMPLETE");
+            closeWindow(
+                (samples == LAST_OFFSET + 1 && (!prospectiveCheap || forecastFrozen))
+                ? "PAPER_WINDOW_COMPLETE" : "INCOMPLETE_FORECAST"
+            );
         }
     }
 
@@ -189,6 +224,9 @@ public final class ZombieTickWitnessPlugin extends JavaPlugin implements Listene
         marker = args[1];
         session = args[2];
         samples = 0;
+        forecastFrozen = false;
+        firstX = 0.0;
+        firstZ = 0.0;
         lastOffset = -1;
         lastTick = -1;
         // Paper scheduler will sample offset zero on its first callback.

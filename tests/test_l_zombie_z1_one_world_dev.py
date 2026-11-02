@@ -204,3 +204,42 @@ def test_pursuit_world_uses_only_bounded_survival_target_readonly_zombie_control
     assert '"zombie_pursuit_attested"] = False' in source
     assert "displacement > 0.02" in source
     assert "Z1B_PAPER_SOURCE_PASS_MOTION_NOT_OBSERVED" in source
+
+
+
+def test_z2a_prospective_cheap_requires_new_specific_one_world_grant(tmp_path, monkeypatch):
+    args = fixture_bundle(tmp_path, monkeypatch)
+    args.update(pursuit_dev=True, prospective_cheap_dev=True)
+    monkeypatch.delenv("L_ZOMBIE_Z2A_CHEAP_DEV", raising=False)
+    monkeypatch.setenv("L_ZOMBIE_Z1_PURSUIT_DEV", "1")
+    with pytest.raises(runner.ZombieWorldBlocked, match="pursuit"):
+        runner.preflight(**args)
+    args["confirm"] = runner.PROSPECTIVE_CONFIRM
+    with pytest.raises(runner.ZombieWorldBlocked, match="pursuit"):
+        runner.preflight(**args)
+    monkeypatch.setenv("L_ZOMBIE_Z2A_CHEAP_DEV", "1")
+    r = runner.preflight(**args)
+    assert r["prospective_cheap_dev"]
+    assert r["world_budget_max"] == 1 and r["world_retries_max"] == 0
+    args["pursuit_dev"] = False
+    with pytest.raises(runner.ZombieWorldBlocked):
+        runner.preflight(**args)
+    assert list(args["world_parent"].iterdir()) == []
+
+
+def test_z2a_activates_new_flag_only_for_new_world():
+    default = (
+        "dev-enabled: false\n"
+        "zombie-tick-readonly-dev: false\n"
+        "zombie-prospective-cheap-dev: false\n"
+        "minecraft-version: 1.21.8\n"
+    )
+    old = runner.active_plugin_config(default)
+    assert "zombie-prospective-cheap-dev: false" in old
+    new = runner.active_plugin_config(default, prospective_cheap_dev=True)
+    assert "zombie-prospective-cheap-dev: true" in new
+    with pytest.raises(runner.ZombieWorldBlocked):
+        runner.active_plugin_config(
+            default.replace("zombie-prospective-cheap-dev: false", ""),
+            prospective_cheap_dev=True,
+        )

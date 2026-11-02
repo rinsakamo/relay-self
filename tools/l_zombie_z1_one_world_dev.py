@@ -41,11 +41,13 @@ from tools.l_zombie_paper_original_audit import (
     PaperZombieSourceRejected,
     report_paper_only,
 )
+from tools.l_zombie_z2a_prospective_audit import audit_z2a_prospective
 
 PAPER_SHA256 = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 PAPER_SIZE = 52811717
 CONFIRM = "Z1_ONE_PAPER_ZOMBIE_SOURCE_WORLD_DEV_NO_RETRY"
 PURSUIT_CONFIRM = "Z1B_ONE_PROTECTED_SURVIVAL_ZOMBIE_WORLD_DEV_NO_RETRY"
+PROSPECTIVE_CONFIRM = "Z2A_ONE_PROSPECTIVE_PAPER_CHEAP_WORLD_DEV_NO_RETRY"
 MARKER = "z1-source-1"
 SESSION = "z1-client-1"
 START = "L_ZOMBIE_ARM_V1 "
@@ -98,11 +100,22 @@ def preflight(
     paper_jar: Path, plugin_jar: Path, plugin_sha256: str,
     world_parent: Path, evidence_parent: Path, run_id: str,
     pursuit_dev: bool = False,
+    prospective_cheap_dev: bool = False,
 ) -> dict:
     """Pure local entry check: no World, Java, Node or disk mutation."""
-    if (confirm != (PURSUIT_CONFIRM if pursuit_dev else CONFIRM)
-            or os.environ.get("L_ZOMBIE_Z1_ONE_WORLD_DEV") != "1"
-            or (pursuit_dev and os.environ.get("L_ZOMBIE_Z1_PURSUIT_DEV") != "1")):
+    expected_confirm = (
+        PROSPECTIVE_CONFIRM if prospective_cheap_dev
+        else PURSUIT_CONFIRM if pursuit_dev else CONFIRM
+    )
+    if (
+        confirm != expected_confirm
+        or os.environ.get("L_ZOMBIE_Z1_ONE_WORLD_DEV") != "1"
+        or (pursuit_dev and os.environ.get("L_ZOMBIE_Z1_PURSUIT_DEV") != "1")
+        or (prospective_cheap_dev and (
+            not pursuit_dev
+            or os.environ.get("L_ZOMBIE_Z2A_CHEAP_DEV") != "1"
+        ))
+    ):
         raise ZombieWorldBlocked("one-world pursuit/safe-target DEV flag missing")
     if os.environ.get("NODE_OPTIONS"):
         raise ZombieWorldBlocked("native Node substitution/options prohibited")
@@ -139,10 +152,11 @@ def preflight(
         "world_budget_max": 1, "world_retries_max": 0,
         "real_gemma_calls": 0, "self_actions": 0, "l0_qualified": False,
         "pursuit_dev": pursuit_dev,
+        "prospective_cheap_dev": prospective_cheap_dev,
     }
 
 
-def active_plugin_config(default: str) -> str:
+def active_plugin_config(default: str, *, prospective_cheap_dev: bool = False) -> str:
     """Only two flags from the versioned default, with no other overrides."""
     if (
         default.count("dev-enabled: false") != 1
@@ -150,10 +164,18 @@ def active_plugin_config(default: str) -> str:
         or default.count("minecraft-version: 1.21.8") != 1
     ):
         raise ZombieWorldBlocked("unknown disabled Z1 Paper plugin configuration")
-    return (
+    modified = (
         default.replace("dev-enabled: false", "dev-enabled: true")
         .replace("zombie-tick-readonly-dev: false", "zombie-tick-readonly-dev: true")
     )
+    if prospective_cheap_dev:
+        if default.count("zombie-prospective-cheap-dev: false") != 1:
+            raise ZombieWorldBlocked("Z2a requires exact disabled plugin forecast flag")
+        modified = modified.replace(
+            "zombie-prospective-cheap-dev: false",
+            "zombie-prospective-cheap-dev: true",
+        )
+    return modified
 
 
 async def wait_original_window(
@@ -181,6 +203,7 @@ async def wait_original_window(
 
 def _set_up_world(
     *, repo: Path, world_root: Path, evidence_root: Path, plugin_jar: Path,
+    prospective_cheap_dev: bool = False,
 ) -> None:
     _write_config(world_root)  # pinned flat/creative/loopback S31A source
     plugin_dir = world_root / "plugins"
@@ -189,7 +212,7 @@ def _set_up_world(
     default_path = (
         repo / "adapters/mineflayer/l_zombie_paper_dev/src/main/resources/config.yml"
     )
-    settings = active_plugin_config(default_path.read_text(encoding="utf-8"))
+    settings = active_plugin_config(default_path.read_text(encoding="utf-8"), prospective_cheap_dev=prospective_cheap_dev)
     # The pinned plugin name in plugin.yml is RelayZombieTickDev.
     config_dir = plugin_dir / "RelayZombieTickDev"
     config_dir.mkdir(mode=0o700)
@@ -204,6 +227,7 @@ async def one_world(
     paper_jar: Path, plugin_jar: Path, plugin_sha256: str,
     world_parent: Path, evidence_parent: Path, run_id: str,
     pursuit_dev: bool = False,
+    prospective_cheap_dev: bool = False,
 ) -> dict:
     """Exactly one World and Node client, no user/LLM Actions or retries."""
     checked = preflight(
@@ -212,6 +236,7 @@ async def one_world(
         plugin_sha256=plugin_sha256, world_parent=world_parent,
         evidence_parent=evidence_parent, run_id=run_id,
         pursuit_dev=pursuit_dev,
+        prospective_cheap_dev=prospective_cheap_dev,
     )
     world_root = world_parent / f"l-z1-world-{run_id}"
     evidence_root = evidence_parent / f"l-z1-evidence-{run_id}"
@@ -227,6 +252,7 @@ async def one_world(
         "pursuit_motion_observed": False,
         "l2_model_calls": 0, "self_actions": 0,
         "b1_prediction_qualified": False,
+        "prospective_cheap_frozen": False,
         "qualifying_science": False, "retries": 0,
     }
     java = collector = session = None
@@ -239,6 +265,7 @@ async def one_world(
         _set_up_world(
             repo=repo, world_root=world_root,
             evidence_root=evidence_root, plugin_jar=plugin_jar,
+            prospective_cheap_dev=prospective_cheap_dev,
         )
         report["stage"] = "JAVA_START"
         java, collector, _ = await _ready_server(
@@ -358,6 +385,13 @@ async def one_world(
                     )
                     report["paper_source"] = paper
                     report["paper_original_ok"] = True
+                    if prospective_cheap_dev:
+                        cheap = audit_z2a_prospective(
+                            original.read_bytes(), sha256=report["original_sha256"],
+                            marker=MARKER, session=SESSION,
+                        )
+                        report["prospective_cheap"] = cheap
+                        report["prospective_cheap_frozen"] = True
                     x0, z0 = paper["pre_source_xz_m"]
                     x1, z1 = paper["target_xz_m"]
                     displacement = math.hypot(x1-x0, z1-z0)
@@ -398,6 +432,7 @@ async def one_world(
             if (
                 report.get("stage") == "ORIGINAL_COLLECTION_COMPLETE"
                 and report["paper_original_ok"]
+                and (not prospective_cheap_dev or report["prospective_cheap_frozen"])
                 and clean and report.get("world_removed") is True
                 and report["before"]["entity_id"] == report["paper_source"]["entity_id"]
                 and report["after"]["entity_id"] == report["paper_source"]["entity_id"]
@@ -408,6 +443,8 @@ async def one_world(
                 else:
                     report["status"] = "PASS_DEV"
                     report["classification"] = (
+                        "Z2A_PAPER_CHEAP_PREOUTCOME_DEV_ONLY"
+                        if prospective_cheap_dev else
                         "Z1B_PAPER_MOVING_ZOMBIE_SOURCE_DEV_ONLY"
                         if pursuit_dev else "Z1_PAPER_SAME_ZOMBIE_SOURCE_DEV_ONLY"
                     )
@@ -427,7 +464,8 @@ async def one_world(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--confirm", required=True, choices=[CONFIRM, PURSUIT_CONFIRM])
+    parser.add_argument("--confirm", required=True, choices=[CONFIRM, PURSUIT_CONFIRM, PROSPECTIVE_CONFIRM])
+    parser.add_argument("--prospective-cheap-dev", action="store_true")
     parser.add_argument("--pursuit-dev", action="store_true")
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
@@ -446,6 +484,7 @@ def main() -> int:
             world_parent=args.world_parent,
             evidence_parent=args.evidence_parent, run_id=args.run_id,
             pursuit_dev=args.pursuit_dev,
+            prospective_cheap_dev=args.prospective_cheap_dev,
         ))
     except (ZombieWorldBlocked, ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"Z1_PREWORLD_BLOCKED: {exc}", file=sys.stderr)
@@ -457,6 +496,7 @@ def main() -> int:
         "client_tick_join_attested": report["mineflayer_join_attested"],
         "action_count": 0, "model_calls": 0,
         "moving_zombie": report["pursuit_motion_observed"],
+        "prospective_cheap_frozen": report["prospective_cheap_frozen"],
         "horizontal_displacement_m": report["pursuit_horizontal_motion_m"],
     }, sort_keys=True))
     return 0 if report["status"] == "PASS_DEV" else 2
