@@ -1,0 +1,18 @@
+{
+  "gguf_version": 3,
+  "tensor_count": 667,
+  "metadata_count": 45,
+  "general.architecture": "gemma4",
+  "general.type": "model",
+  "general.sampling.top_k": 64,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.temp": 1.0,
+  "general.name": "Google_Gemma 4 12B It",
+  "general.finetune": "it",
+  "general.basename": "google_gemma-4",
+  "general.size_label": "12B",
+  "gemma4.block_count": 48,
+  "gemma4.context_length": 131072,
+  "general.quantization_version": 2,
+  "general.file_type": 15
+}

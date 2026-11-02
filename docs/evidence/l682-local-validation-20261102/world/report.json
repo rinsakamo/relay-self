@@ -1,0 +1,87 @@
+{
+  "actual_native_actions": [],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "PENDING_REAL_NATIVE_EVIDENCE",
+  "cleanup_steps": [
+    "server_cleanup",
+    "server_reap",
+    "collector_cleanup"
+  ],
+  "decisions": [],
+  "error": "W3CaptureRejected: fresh absolute non-symlink evidence root required",
+  "l_mp11_postshutdown_partial_evidence": {
+    "classification": "PARTIAL_NATIVE_AND_EOF_EVIDENCE_NOT_WORLD_QUALIFICATION",
+    "l0_promotions": 0,
+    "l2_attempt_count": 0,
+    "learning_admissions": 0,
+    "live_completed_paper_prefix_count": 0,
+    "mandatory_g3_and_live_prefix_qualified": false,
+    "native_action_ids": [],
+    "native_closed_action_count": 0,
+    "original_paper_available": true,
+    "paper_eof_shape_only": {
+      "admission": "FUTURE_RUN_OPT_IN_PAPER_SOURCE_SHAPE_ONLY",
+      "complete_lines_length": 8351,
+      "complete_lines_sha256": "6410a220f9670736db7fa5270db48580b8c030416c60ac388e56f5e955372537",
+      "end_state": "JLINE_PROMPT_2_BYTES",
+      "original_length": 8353,
+      "original_sha256": "827436e99b0ef8b6e01e679666107f51a86be4b26e341ab7956fe0250ad75b45",
+      "post_shutdown": true,
+      "schema": "L_MP11_PAPER_EOF_ENVELOPE_V1",
+      "suffix_hex": "3e20"
+    },
+    "paper_full_original_length": 8353,
+    "paper_full_original_sha256": "827436e99b0ef8b6e01e679666107f51a86be4b26e341ab7956fe0250ad75b45",
+    "post_failure_additional_action_independently_attested": false,
+    "typed_s16_action_ids": [],
+    "typed_s16_count": 0,
+    "valid_l2_open_count": 0,
+    "world_qualified_by_this_report": false,
+    "world_report_status_at_capture": "FAIL"
+  },
+  "learning_in_world": false,
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "mp11_g2": {
+    "action_budget": 3,
+    "classification": "DEV_ONLY_ONE_WORLD_THREE_ORIGINAL_S49_ACTIONS",
+    "l10_s10_s11_admissions": 0,
+    "l2_provider_calls": 0,
+    "l2_selected_trials": 0,
+    "paper_s50_windows": 0,
+    "real_l2_autonomous_experiment": false,
+    "typed_s16_actions": []
+  },
+  "mp11_g3": {
+    "classification": "DEV_PAPER_THREE_WINDOWS_PREPARED",
+    "l2_calls": 0,
+    "learning_updates": 0,
+    "model_source": "FIXED_OPERATOR_UNLEARNED_SHADOW_ONLY",
+    "paper_assets": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "255bfaffda9f9b6d2ac80c77d76327bfdef4b00ddd6f56345f8cd3e4703694e0",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    },
+    "paper_markers": [],
+    "paper_windows_attested": 0,
+    "prior_slope": 0.65,
+    "staged": {
+      "paper_config_sha256": "dae81f39c9f76c6e1ddf826f145d6d3b70af4ee855a79e7f1431be315e26c40d",
+      "paper_plugin_sha256": "255bfaffda9f9b6d2ac80c77d76327bfdef4b00ddd6f56345f8cd3e4703694e0",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    }
+  },
+  "mp11_paper_eof_predeclared": true,
+  "mp11_paper_raw_stdout_path": "/home/rinsa/evidence/l682-local-validation-20261102T013000Z/world/paper-stdout-original.log.raw",
+  "real_model_calls": 0,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "stage": "AUTHENTIC_NATIVE_SELF_SESSION",
+  "status": "FAIL"
+}

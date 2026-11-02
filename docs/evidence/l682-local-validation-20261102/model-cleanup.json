@@ -1,0 +1,6 @@
+{
+  "owned_pid": 129904,
+  "signal": "SIGINT",
+  "pid_absent": true,
+  "port_8080_bind_success": true
+}

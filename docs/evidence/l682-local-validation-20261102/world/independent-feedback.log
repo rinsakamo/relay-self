@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/rinsa/work/relay-self-l-gemma-local-validation-20261102/tools/l_mp11_feedback_original_audit.py", line 18, in audit_feedback_originals
+    ledger = LivePriorLedger(session_id=report["session_id"],
+                                        ~~~~~~^^^^^^^^^^^^^^
+KeyError: 'session_id'
