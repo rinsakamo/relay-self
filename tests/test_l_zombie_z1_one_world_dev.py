@@ -243,3 +243,73 @@ def test_z2a_activates_new_flag_only_for_new_world():
             default.replace("zombie-prospective-cheap-dev: false", ""),
             prospective_cheap_dev=True,
         )
+
+
+
+def test_z2b_real_prepared_policy_preflight_denies_missing_new_flag(tmp_path, monkeypatch):
+    from test_l_zombie_z2b_policy_contract import frozen
+
+    args = fixture_bundle(tmp_path, monkeypatch)
+    args.update(
+        confirm=runner.PREPARED_CONFIRM,
+        pursuit_dev=True, prospective_cheap_dev=True,
+        prepared_l2_root=tmp_path / "prepared",
+        z1b_prior_original=tmp_path / "z1b.raw",
+        z2a_prior_original=tmp_path / "z2a.raw",
+    )
+    monkeypatch.setenv("L_ZOMBIE_Z1_PURSUIT_DEV", "1")
+    monkeypatch.setenv("L_ZOMBIE_Z2A_CHEAP_DEV", "1")
+    calls = []
+    monkeypatch.setattr(runner, "verify_prepared_archive", lambda **kw: (
+        calls.append(kw) or frozen()
+    ))
+    with pytest.raises(runner.ZombieWorldBlocked):
+        runner.preflight(**args)
+    assert calls == []
+    monkeypatch.setenv("L_ZOMBIE_Z2B_PREPARED_DEV", "1")
+    r = runner.preflight(**args)
+    assert r["prepared_l2_policy_sha256"] == frozen().policy_sha256
+    assert len(calls) == 1
+    assert r["world_retries_max"] == 0
+    args["prepared_l2_root"] = None
+    with pytest.raises(runner.ZombieWorldBlocked):
+        runner.preflight(**args)
+
+
+def test_z2b_config_stages_verified_prepared_policy_without_new_world_action(tmp_path, monkeypatch):
+    from test_l_zombie_z2b_policy_contract import frozen
+
+    args = fixture_bundle(tmp_path, monkeypatch)
+    repo = args["repo"]
+    path = repo / (
+        "adapters/mineflayer/l_zombie_paper_dev/src/main/resources/config.yml"
+    )
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        'dev-enabled: false\n'
+        'zombie-tick-readonly-dev: false\n'
+        'zombie-prospective-cheap-dev: false\n'
+        'minecraft-version: 1.21.8\n'
+        'zombie-prepared-l2-shadow-dev: false\n'
+        'zombie-prepared-l2-strategy: "ABSTAIN"\n'
+        'zombie-prepared-l2-speed-m-per-tick: "none"\n'
+        'zombie-prepared-l2-policy-sha256: "none"\n'
+    )
+    world_root = args["world_parent"] / "new"
+    world_root.mkdir()
+    evidence_root = args["evidence_parent"] / "new"
+    evidence_root.mkdir()
+    p = frozen()
+    runner._set_up_world(
+        repo=repo, world_root=world_root, evidence_root=evidence_root,
+        plugin_jar=args["plugin_jar"],
+        prospective_cheap_dev=True, prepared_l2_policy=p,
+    )
+    settings = (world_root / "plugins/RelayZombieTickDev/config.yml").read_text()
+    assert "zombie-prepared-l2-shadow-dev: true" in settings
+    assert p.policy_sha256 in settings
+    assert 'zombie-prepared-l2-strategy: "TARGET_APPROACH"' in settings
+    assert "zombie-prospective-cheap-dev: true" in settings
+    assert "zombie-prepared-l2-shadow-dev: false" not in settings
+    assert list(args["world_parent"].iterdir()) == [world_root]
+    assert list(args["evidence_parent"].iterdir()) == [evidence_root]
