@@ -4,7 +4,9 @@ import hashlib
 import pytest
 
 from tools.l_zombie_paper_original_audit import (
-    PaperZombieSourceRejected, audit_paper_zombie_window, report_paper_only,
+    PaperZombieSourceRejected,
+    audit_paper_zombie_window,
+    report_paper_only,
 )
 
 WORLD = "095288da-4414-441b-9cbe-1b35a3a5d1bc"
