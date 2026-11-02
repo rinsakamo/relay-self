@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from adapters.mineflayer.normal_action import NormalWorldL0
+from adapters.mineflayer.normal_action import (
+    NormalActionClosedReadback,
+    NormalWorldL0,
+)
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
 from adapters.mineflayer.s537_s2b_gated_l2_shadow import (
@@ -147,6 +150,40 @@ class S2BOriginalOwnerEpochBinder:
             ),
             intent_id=entry.intent_id,
             owner_scope="ORIGINAL_S49_L0_AND_INTENT_READ_ONLY",
+        )
+
+    def context_at_original_s16(
+        self, closed: NormalActionClosedReadback,
+    ) -> CognitionContext:
+        """Read actual original owner state at S16, without a new World probe."""
+        if (
+            self.errors or not isinstance(closed, NormalActionClosedReadback)
+            or not self._entries or self._host is None or self._intent is None
+            or self._entries[-1].probe is not closed.original_probe
+            or self._entries[-1].host is not self._host
+            or self._entries[-1].intent is not self._intent
+            or self._intent.current_intent is None
+            or self._intent.pending_reconsideration is not None
+            or self._intent.current_intent.intent_id != self._host.intent_id
+            or self._intent.events[:len(self._entries[-1].intent_events)]
+            != self._entries[-1].intent_events
+            or len(self._intent.events) < self._entries[-1].intent_generation
+            or self._host.retained.revision < self._entries[-1].retained_revision
+        ):
+            raise S2BSourceRejected("S16 cannot read original current owners")
+        after = closed.consequence.after_observation
+        if (
+            after is None or after.session_id != self._session
+            or type(after.seq) is not int
+            or after.seq <= closed.original_probe.seq
+            or closed.terminal.action_id != closed.consequence.action_id
+        ):
+            raise S2BSourceRejected("S16 native after source is not current")
+        return CognitionContext(
+            session_id=after.session_id,
+            world_seq=after.seq,
+            intent_revision=len(self._intent.events),
+            retained_revision=self._host.retained.revision,
         )
 
     def bounded_row(self) -> dict[str, object]:

@@ -12,11 +12,15 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
 from adapters.mineflayer.s537_s2a_l2_read_port import S2AReadOnlyInput
+from relay_self.action import ActionState
+from relay_self.action_outcome import ActionOutcomeDisposition
 from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
 from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
@@ -156,7 +160,14 @@ class S2BGatedL2Shadow:
             raise S2BSourceRejected("owner witness does not identify original input")
         # The context object is supplied by the original owner, NOT synthesized.
         context = owner_read.context
-        prompt = json.dumps(source.bounded_row(), ensure_ascii=True, sort_keys=True)
+        prompt = json.dumps({
+            "current_wb_l1_and_previous_s16": source.bounded_row(),
+            "original_owner": {
+                "intent_id": owner_read.intent_id,
+                "intent_event_generation": context.intent_revision,
+                "retained_revision": context.retained_revision,
+            },
+        }, ensure_ascii=True, sort_keys=True)
         if len(prompt) > 5000:
             raise S2BSourceRejected("bounded L2 input too long")
         model = self.config.model
@@ -199,6 +210,50 @@ class S2BGatedL2Shadow:
         self._status = "IN_FLIGHT"
         owner.submit(request)
 
+    def invalidate_on_original_s16(
+        self, closed: NormalActionClosedReadback, *,
+        new_context: CognitionContext,
+    ) -> None:
+        """Already completed original S16 advances World; never await L2.
+
+        S60-A receives an actual original-owner context from the S49 S16
+        callback. This is not a new native read and not a model cancellation ACK.
+        """
+        if self._source is None:
+            return
+        source = self._source
+        after = getattr(closed.consequence, "after_observation", None) if (
+            isinstance(closed, NormalActionClosedReadback)
+        ) else None
+        if (
+            self._closed
+            or not isinstance(closed, NormalActionClosedReadback)
+            or closed.terminal.state is not ActionState.OUTCOME
+            or closed.interpretation.disposition is not ActionOutcomeDisposition.OUTCOME
+            or closed.consequence.status is not WorldConsequenceStatus.EXECUTED
+            or closed.terminal.action_id != closed.consequence.action_id
+            or closed.original_probe.session_id != source.session_id
+            or closed.original_probe.seq != source.probe_seq
+            or closed.original_probe.request_id != source.request_id
+            or after is None or after.session_id != source.session_id
+            or type(after.seq) is not int or after.seq <= source.probe_seq
+            or not isinstance(new_context, CognitionContext)
+            or new_context.session_id != source.session_id
+            or new_context.world_seq != after.seq
+            or self._owner is None or self._request is None
+            or new_context.intent_revision < self._request.context.intent_revision
+            or new_context.retained_revision < self._request.context.retained_revision
+        ):
+            raise S2BSourceRejected("original S16 world advance not source-bound")
+        self._current = False
+        self._status = "EXPIRED_ORIGINAL_S16_WORLD_ADVANCED"
+        self._owner.observe(new_context)
+
+    def fail_closed_on_source_error(self) -> None:
+        """A broken passive witness can only revoke an advisory, not Action."""
+        self._current = False
+        self._status = "DEFERRED_SOURCE_WITNESS_ERROR"
+
     def poll(self) -> str | None:
         """S60-A owns acceptance; this only displays a current advisory result."""
         if self._owner is None:
@@ -225,6 +280,8 @@ class S2BGatedL2Shadow:
             raise S2BSourceRejected("duplicate S2B close")
         self._closed = True
         self._current = False
+        if self._status == "IN_FLIGHT":
+            self._status = "UNCONFIRMED_LOCAL_CLIENT_CLOSED"
         if self._adapter is not None:
             await self._adapter.aclose()
         return {
@@ -237,6 +294,7 @@ class S2BGatedL2Shadow:
             "latest_probe_seq": self._last_probe_seq,
             "model_attempts": self._calls,
             "accepted_advisory": self._accepted,
+            "accepted_advisory_current": False,
             "current": False,
             "owner_events": [
                 r.event for r in self._owner.receipts

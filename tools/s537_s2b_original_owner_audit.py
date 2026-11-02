@@ -18,8 +18,15 @@ class OwnerAuditRejected(ValueError):
     """Claim would require unknown/foreign/future original source evidence."""
 
 
-def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
-    """Fail closed on mismatched S49 native, S2-A host and S2-B owner sequence."""
+def audit_original_rows(
+    s49: dict[str, Any], report: dict[str, Any], *,
+    expected_sidecar_model_attempts: int = 0,
+) -> dict[str, Any]:
+    """Fail closed on mismatched original rows, with explicit sidecar count."""
+    if type(expected_sidecar_model_attempts) is not int or (
+        expected_sidecar_model_attempts not in (0, 1)
+    ):
+        raise OwnerAuditRejected("bounded sidecar attempt count required")
     try:
         root = report["s2a"]
         s1 = root["s1"]["typed_join"]
@@ -54,8 +61,8 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
             or s2a["input_count"] != len(inputs)
             or s2a["closed_s16_count"] != len(native_actions)
             or s49["real_model_calls"] != 0
-            or report["model_calls"] != 0
-            or report["s60_submissions"] != 0
+            or report["model_calls"] != expected_sidecar_model_attempts
+            or report["s60_submissions"] != expected_sidecar_model_attempts
             or report["source_attested"] is not False
             or s2a["source_attested"] is not False
             or owner["source_attested"] is not False
@@ -181,7 +188,7 @@ def audit_original_rows(s49: dict[str, Any], report: dict[str, Any]) -> dict[str
             "original_closed_actions": len(used_actions),
             "previous_s16_bound": prev_with_s16,
             "source_attested": False,
-            "model_calls": 0,
+            "model_calls": expected_sidecar_model_attempts,
             "qualification": "NO_GO",
             "science": "NOT_RUN",
         }
