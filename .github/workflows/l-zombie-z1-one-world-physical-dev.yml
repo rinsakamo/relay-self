@@ -19,8 +19,8 @@ jobs:
       NODE_OPTIONS: ''
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: src:tests:.
-      EVIDENCE_PARENT: ${{ runner.temp }}/z1-evidence-parent
-      WORLD_PARENT: ${{ runner.temp }}/z1-world-parent
+      EVIDENCE_PARENT: /tmp/relay-l-z1-evidence-${{ github.run_id }}
+      WORLD_PARENT: /tmp/relay-l-z1-world-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
