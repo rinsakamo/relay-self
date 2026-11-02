@@ -1250,6 +1250,75 @@ def _dev_run(args: argparse.Namespace) -> int:
                 dev_self_world_model_identity_verified=False,
                 dev_self_world_sidecar="live_l2.jsonl",
             )
+            if wb_structured:
+                # Classify ONLY the original World receipt joined to the
+                # already-emitted read-only sidecar. Host source order is not
+                # independent Paper-clock, model-binary or STOP attestation.
+                host_order = sidecar.get("wb_structured_acceptance_host_order")
+                diagnostic = sidecar.get("wb_s60_diagnostic")
+                l2_text = sidecar.get("text_observation_only")
+                try:
+                    parsed = json.loads(l2_text) if isinstance(l2_text, str) else None
+                except (TypeError, ValueError):
+                    parsed = None
+                semantic_ok = (
+                    isinstance(parsed, dict)
+                    and set(parsed) == {"uncertainty"}
+                    and isinstance(parsed["uncertainty"], str)
+                    and 0 < len(parsed["uncertainty"].strip()) <= 300
+                )
+                original_probe_seqs = {
+                    pair["probe_seq"] for pair in paired
+                    if isinstance(pair, dict)
+                    and type(pair.get("probe_seq")) is int
+                } if isinstance(paired, list) else set()
+                host_order_ok = (
+                    isinstance(host_order, dict)
+                    and type(host_order.get("source_world_seq")) is int
+                    and host_order["source_world_seq"] in original_probe_seqs
+                    and host_order["source_world_seq"] == sidecar.get("text_source_seq")
+                    and host_order.get("latest_native_seq_at_acceptance")
+                    == host_order["source_world_seq"]
+                    and type(host_order.get("native_callbacks_seen_at_acceptance")) is int
+                    and 1 <= host_order["native_callbacks_seen_at_acceptance"] <= len(original_probe_seqs)
+                    and host_order.get("observer_closed_at_acceptance") is False
+                    and host_order.get("owner_completion_observed_at_acceptance") is True
+                )
+                accepted_host_source = (
+                    qualified_input and actual_source_pair
+                    and sidecar.get("wb_cognition_slice") is True
+                    and sidecar.get("structured_json_off") is True
+                    and sidecar.get("wb_l2_source_ref") == after_ref
+                    and isinstance(diagnostic, dict)
+                    and diagnostic.get("owner_completion_observed_before_cleanup") is True
+                    and diagnostic.get("accepted_text_ever_observed") is True
+                    and "BACKEND_COMPLETION_OBSERVED" in sidecar.get("owner_events", [])
+                    and host_order_ok and semantic_ok
+                )
+                if accepted_host_source and sidecar.get("text_current") is True:
+                    state = "ACCEPTED_CURRENT_HOST_SOURCE_BOUND"
+                elif accepted_host_source and sidecar.get("text_current") is False:
+                    state = "ACCEPTED_THEN_WORLD_ADVANCED_HOST_SOURCE_BOUND"
+                else:
+                    state = "NOT_ACCEPTED_OR_UNQUALIFIED"
+                receipt["dev_wb_structured_l2"] = {
+                    "state": state,
+                    "source_world_seq": (
+                        host_order.get("source_world_seq")
+                        if isinstance(host_order, dict) else None
+                    ),
+                    "original_source_pair_joined": bool(
+                        actual_source_pair and host_order_ok
+                    ),
+                    "observer_status": sidecar.get("status"),
+                    "s60_owner_completed": (
+                        diagnostic.get("owner_completion_observed_before_cleanup")
+                        if isinstance(diagnostic, dict) else None
+                    ),
+                    "semantic_json_accepted": bool(accepted_host_source),
+                    "action_authority": "S49_ONLY",
+                    "attestation": "HOST_ORDER_DEV_ONLY",
+                }
             # Stage K reuses the already CLOSED S15/S16 native before/after
             # frames from each Action. No new probe, L2 lease or movement.
             # This differs from S49's intentionally different zombies across
