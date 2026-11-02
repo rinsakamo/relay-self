@@ -271,3 +271,42 @@ def test_duplicate_output_keys_rejected_before_world(tmp_path, monkeypatch):
     ))
     with pytest.raises(GemmaPreflightRejected):
         run("http://127.0.0.1:8080/v1/chat/completions", "model", tmp_path / "probe")
+
+
+@pytest.mark.parametrize("kind", ["missing", "relative", "file", "used", "symlink", "ancestor"])
+def test_l_capture_path_rejected_before_any_world_provision(tmp_path, monkeypatch, kind):
+    import asyncio
+
+    from adapters.mineflayer import s49_normal_session_real_ci as owner
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    def forbidden(*a, **kw):
+        pytest.fail("invalid capture path reached World provisioning")
+    monkeypatch.setattr(owner.tempfile, "TemporaryDirectory", forbidden)
+    monkeypatch.setattr(owner, "_ready_server", forbidden)
+    root = tmp_path / "capture"
+    if kind == "relative":
+        root = type(root)("relative-capture")
+    elif kind == "file":
+        root.touch()
+    elif kind == "used":
+        root.mkdir()
+        (root / "old-original").write_bytes(b"preserve")
+    elif kind in ("symlink", "ancestor"):
+        real = tmp_path / "real"
+        real.mkdir()
+        root.symlink_to(real, target_is_directory=True)
+        if kind == "ancestor":
+            root = root / "child"
+            root.mkdir()
+    report = tmp_path / "report.json"
+    rc = asyncio.run(owner.qualify(
+        report, tmp_path / "paper.log", l_mp11_live_prefix_dev=True,
+        raw_capture_root=root,
+    ))
+    saved = json.loads(report.read_text())
+    assert rc != 0 and "BEFORE World startup" in saved["error"]
+    assert saved["actual_native_actions"] == []
+    if kind == "used":
+        assert (root / "old-original").read_bytes() == b"preserve"

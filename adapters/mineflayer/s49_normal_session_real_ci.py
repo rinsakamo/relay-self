@@ -306,6 +306,22 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if l_mp11_live_prefix_dev:
+            # W3 opens its sole transcript later, during native startup. Check
+            # the L trial's capture namespace BEFORE provisioning/starting Java.
+            # Do not create or repair an operator-supplied path after a start.
+            if (
+                not isinstance(raw_capture_root, Path)
+                or not raw_capture_root.is_absolute()
+                or not raw_capture_root.is_dir()
+                or raw_capture_root.is_symlink()
+                or any(p.is_symlink() for p in raw_capture_root.parents)
+                or any(raw_capture_root.iterdir())
+            ):
+                raise S31ABlocked(
+                    "L live trial requires an existing empty absolute non-symlink "
+                    "W3 capture directory BEFORE World startup"
+                )
         if type(mp11_three_actions_dev) is not bool or (
             mp11_three_actions_dev and (
                 os.environ.get("MP11_S49_THREE_ACTION_DEV") != "1"
