@@ -46,6 +46,13 @@ def _original(batch: object) -> tuple[S49OriginalCompletedBatch, dict[str, objec
     sources = batch.steps
     if type(sources) is not tuple or not 1 <= len(sources) <= 8:
         raise ValueError("bounded original S49 steps required")
+    if any(
+        s.source_scope != "S49_ORIGINAL_L0_STEP_WITH_OPTIONAL_S16_NOT_S42_EPOCH"
+        or s.source_attested is not False
+        or s.action_authority is not False
+        for s in sources
+    ):
+        raise ValueError("forged original S49 source scope or authority")
     steps = tuple(s.step for s in sources)
     probes = {s.probe.seq: s.probe for s in sources}
     receipts = {
@@ -170,8 +177,24 @@ def bounded_s49_cognition_join_row(
     value: S49CognitionJoinedReadout,
 ) -> dict[str, object]:
     """Allowlisted IDs and qualifiers only; never raw World, Body or L2 text."""
-    if not isinstance(value, S49CognitionJoinedReadout):
-        raise ValueError("typed bounded S49 join required")
+    if (
+        not isinstance(value, S49CognitionJoinedReadout)
+        or value.source_attested is not False
+        or value.action_authority is not False
+        or any(
+            type(getattr(value, name)) is not int
+            or getattr(value, name) != 0
+            for name in (
+                "new_native_reads", "new_model_calls", "new_action_issues",
+                "learning_updates", "energy_debits",
+            )
+        )
+        or value.s42_owner != NOT_SUPPLIED
+        or value.b0_owner != NOT_SUPPLIED
+        or value.l8_owner != NOT_SUPPLIED
+        or value.model_usage != "UNKNOWN_NOT_METERED"
+    ):
+        raise ValueError("typed bounded S49 join required without authority")
     return {
         "schema": "S49_S_COGNITION_JOIN_DEV_V1",
         "status": value.status,
