@@ -20,20 +20,24 @@ qualified World/WorldBody observation
 
 The sequence is a **proposed integration target**, not a single observed end-to-end run.
 
+## 0.1 Existing code reuse (source audit, no new owner)
+
+The initial Bug-0 behaviors already have significant code in `main` and in S/WB/P1/M/L Draft branches. [Existing-assets audit](../bug0-existing-assets-audit-20261103.md) records exact source paths, branches, existing tests and the Grand-Null verdict. **EAT and ATTACK are existing Mineflayer native effect classes, not proposed additions.** The missing work is scoped source-correct **composition/admission/experience** into Bug-0, not reimplementing Skills. Physical S49 readiness and live owner qualification remain separate.
+
 ## 1. Six basic behaviors — vocabulary, not six new primitive APIs
 
 | Behavior | Semantic level | Initial eligibility / preconditions | Evidence after attempt | Fail-closed / negative case |
 |---|---|---|---|---|
 | **MOVE / STOP** | MOVE Skill and authorized primitive commands; STOP requires confirmed input clear and settling qualification | Fresh position, movement feasibility, current Intent, action/grant/resource admission | S49 primitive Action ID, S15 clear, S16 result, positions, post-clear movement if relevant | Closed Action ≠ stopped body; unknown settling blocks unsafe reuse |
 | **EVADE** | Goal-dependent conditional Skill, initially decomposed into existing MOVE actions | A currently grounded threat and a feasible retreat direction | Threat distance and motion after MOVE, not mere issue | No invented safe route when obstacle or threat position unknown; may DEFER |
-| **EAT** | Need/Goal -> retained Intent -> food-use Skill; **candidate new physical command**, not presently owned by MOVE-only S49 | Fresh hunger/food/inventory/hand availability and safe enough moment, valid food-use authority | Inventory/item-use/hunger or other qualified WorldBody readback; explicit failure/UNKNOWN | No food / stale hunger / hand conflict -> no use; issue ≠ eaten |
-| **ATTACK** | Threat-dependent Intent -> attack Skill; **candidate new physical command**, not presently owned by MOVE-only S49 | Fresh legitimate target, geometry/range/cooldown/hand availability, issuer grant | Attack issue, hit/damage, target death **separate facts** | No target/out-of-range/stale source -> DENY/DEFER; issue ≠ hit |
+| **EAT** | Need/Goal -> retained Intent -> food-use Skill; **existing Mineflayer equip/consume primitives and controlled EAT Skill**; S51 owner extension exists in an unmerged Draft, **not yet part of MOVE-only S49** | Fresh hunger/food/inventory/hand availability and safe enough moment, valid food-use authority | Inventory/item-use/hunger or other qualified WorldBody readback; explicit failure/UNKNOWN | No food / stale hunger / hand conflict -> no use; issue ≠ eaten |
+| **ATTACK** | Threat-dependent Intent -> attack Skill; **existing Mineflayer attack primitive and controlled FIGHT Skill**, **not yet part of MOVE-only S49** | Fresh legitimate target, geometry/range/cooldown/hand availability, issuer grant | Attack issue, hit/damage, target death **separate facts** | No target/out-of-range/stale source -> DENY/DEFER; issue ≠ hit |
 | **REST** | Resource-maintenance Goal/Intent/Skill; may emit **no primitive physical Action** | Need for rest, risk of delay, observable resource/viability context | Elapsed time and native body/resource readback; progress vs failed recovery | REST ≠ WAIT; WAIT does not prove energy/health recovered |
 | **WAIT / OBSERVE** | Low-cost non-issuance / observation; can be a phase of another Intent | No body Action currently justified, or awaiting safe admission | No Action claim; observations separately source-qualified | No fabricated physical outcome or budget refund |
 
 **Action-class boundary:** a label in a plan, synthetic ControlFrame, or LLM response is not a native executable action. The current S49 implementation is MOVE-only with a single current owner/one in-flight primitive. The v0.5 longer-term model retains **multiple independently live body-directed Intents** and one legitimate physical issuer, without requiring multi-channel ControlFrames in Bug-0. Start with **serial physical admission**; retain independent Intent identities for deferred work.
 
-**REST ownership:** exhaustion/energy is not a universal Minecraft-native resource. The M lane may model energy/fatigue with its own evidence and rights; do not infer replenishment from WAIT, hunger, host time, or command silence. Health recovery requires qualified body observations and game preconditions. Food and rest are different Needs even when they interact.
+**REST ownership:** exhaustion/energy is not a universal Minecraft-native resource. The existing P1 physical-fatigue model ([#626](https://github.com/rinsakamo/relay-self/pull/626)) defines fatigue recovery from **externally qualified, fully inactive World-tick WAIT**, not from a REST command, mere lack of issued Actions, or blocked movement. M0/M0.2 still accounts for basal/body costs on WAIT independently and is not an automatic credit. Qualified readback and source admission are still unmerged owner concerns. Do not infer replenishment from the word WAIT, hunger, host time or command silence. Native Minecraft HP recovery has separate prerequisites and must be observed. Food and rest remain different Needs even when they interact.
 
 ## 2. Minimal three-model projection (B slice)
 
@@ -107,8 +111,8 @@ Offline acceptance requires executable checks with both positive/negative cases 
 ## 6. Staging and review owners
 
 - **B0-D0 / design-only (this document):** fixed initial behavior vocabulary and no-goals. A/B/C are **still open** for owner review.
-- **B0-A0 / offline owner mapping:** audit the current MOVE-only adapter, inventory/hunger/attack/rest evidence sources and authority/grants; reject unsupported primitive APIs. No new Action grant.
-- **B0-A1 / owner-approved extension:** add **one** physical behavior at a time, preserve serial issuer and native evidence, avoid universal action adapters.
+- **B0-A0 / offline owner mapping:** reuse the already existing `main` Mineflayer `equip_item`, `consume_held`, `attack_entity` and controlled EAT/FIGHT/FLEE runners; inspect S46/S51 owner code, P1 WAIT-fatigue, M source and existing tests. Resolve their **distinct** authorities before composing. Do not reimplement native effects or grant new Actions.
+- **B0-A1 / owner-approved extension:** connect **one existing behavior at a time** to the legitimate S49 serial Action owner, first S51 EAT and then controlled FIGHT if owner-approved. Preserve original native evidence, no new physical issuer, no universal action adapter. REST initially remains an Intent selecting verified inactivity rather than a new primitive.
 - **B0-B1 / three projections:** read-only provenance-aware narrow SelfWorld/SelfBody/MySelf views; no new Memory owner.
 - **B0-C1 / experience loop:** test one conditional next-epoch decision shift, separate from improvement and L0 promotion.
 - **B0-DEV live World:** only with explicit lane-authorized execution conditions and preflight for actual supported operations; maintain DEV_ONLY / SOURCE_UNATTESTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN until evidence supports reclassification.
@@ -123,8 +127,8 @@ Neither is a prerequisite for Bug-0. Preserve interfaces and provenance so a fut
 
 ## 7. Review questions that remain legitimately OPEN
 
-1. Which existing WorldBody/S49 hooks can attest **food use**, **attack**, and actual outcomes? Where are unsupported command types refused?
-2. Does REST begin as a Goal/Intent-level no-Action wait or require a concrete body Skill/observable recovery condition? Which owner proves recovery?
+1. Which existing **main controlled EAT/FIGHT**, **S46/S51** and **S49** hooks can be reused directly? Which additional owner-approved binding is needed so native food use and attack outcomes remain valid under the sole product issuer? See [existing-assets reuse audit](../bug0-existing-assets-audit-20261103.md).
+2. REST begins as a Goal/Intent-level safe pause using verified WAIT, **not** a new motor command. Who qualifies consecutive full idle World ticks for existing P1 recovery and independently preserves M0/Paper costs and native HP observation?
 3. How are multiple retained body-directed Intent identifiers represented before S49 supports more than one live current owner, without shadow-granting model output?
 4. Are existing projection adapters sufficient for all minimal 3Self fields, or are narrowly scoped observational additions necessary?
 5. How can L judge *learned* action selection separately from copied L2 explanations or fixed cues without leaking future World information?
