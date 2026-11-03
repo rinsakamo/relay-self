@@ -1,0 +1,40 @@
+name: S50 Bug-0 post-clear Paper readback offline
+on:
+  push:
+    branches:
+      - dev/s50-bug0-postclear-eat-candidate-20261104
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-reader-join:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact child SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install offline test deps
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository contracts, syntax, lint
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_bug0_postclear_eat_candidate.py tests/test_s50_bug0_postclear_eat_candidate.py
+          ruff check adapters/mineflayer/m02_paper_dev/s50_bug0_postclear_eat_candidate.py tests/test_s50_bug0_postclear_eat_candidate.py
+      - name: Existing S50 readers + new cross-reader negative checks
+        run: |
+          python -m pytest -q tests/test_s50_p1_wait.py tests/test_s50_input_witness_source.py tests/test_s50_bug0_postclear_eat_candidate.py
+      - name: Explicitly no physical Action or proof promotion
+        run: |
+          echo 'OFFLINE_ONLY / PAPER_SOURCE_SAMPLED / EFFECTIVE_CLEAR_NOT_ATTESTED / EAT_ACTION_0 / P1_WAIT_0 / WORLD_0 / QUALIFICATION_NO_GO'
