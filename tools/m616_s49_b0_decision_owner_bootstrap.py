@@ -57,8 +57,8 @@ def bootstrap_original_s49_b0_decision_owner(directory: Path) -> Path:
             sys.path.remove(location)
         sys.path.insert(0, location)
 
-    import adapters.mineflayer.s49_normal_session_real_ci as original_s49
     import adapters.mineflayer.s49_b0_owner_decision_witness as original_b0
+    import adapters.mineflayer.s49_normal_session_real_ci as original_s49
 
     import experiments
 
