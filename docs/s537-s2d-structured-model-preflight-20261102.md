@@ -133,3 +133,43 @@ learned behavior, self-model correction or quality evidence is claimed.
 `DEV_ONLY / S2D_STRICT_REQUEST_AND_PROCESS_PREFLIGHT_OFFLINE_ONLY /
 REAL_WORLD_NOT_RUN / REAL_GEMMA_NOT_RUN / SOURCE_UNATTESTED /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+
+## S2-E local single-HTTP preworld check (separate from physical World)
+
+The new tools.s537_s2e_real_schema_probe_dev is an independent DEV-only,
+one-POST synthetic-observation diagnostic. It does NOT run Minecraft,
+modify S49/S60 runtime authorities, or start/stop llama-server. It uses
+the same strict schema and the original S60-B1 response validator,
+and checks same-user PID, binary/GGUF SHA, alias, port, and reasoning-off
+process arguments before any HTTP POST.
+
+This consumes a SEPARATE model grant from any later optional S49 one-World
+integration. Never count the probe and World inference as one model call.
+
+Command (only with the independent local model DEV grant and clean HEAD):
+
+```bash
+export PYTHONPATH=src:.:tests
+export S537_S2E_SCHEMA_PROBE_DEV_ONLY=1
+python -m tools.s537_s2e_real_schema_probe_dev \
+  --model-pid "$MODEL_PID" \
+  --llama-server "$LLAMA_SERVER" --binary-sha256 "$LLAMA_SHA256" \
+  --gguf "$GGUF" --gguf-sha256 "$GGUF_SHA256" \
+  --model-alias "$MODEL_ALIAS" --model-port "$MODEL_PORT" \
+  --gpu-layers "$GPU_LAYERS" \
+  --max-tokens 128 --timeout-s 45 \
+  --evidence-dir "$FRESH_EVIDENCE_DIR" --one-shot-dev
+```
+
+No auto-retry, proxy, fallback, World creation or extra Action. Preflight
+failures stay BLOCKED_PREWORLD. A POST attempt writes request.json,
+response.raw, result.json and SHA256SUMS even when the completion is
+rejected. A transport exception is NOT proof of HTTP completion; an
+invalid HTTP response is NOT a valid S60 structured advisory. Client
+disconnect does NOT establish backend STOP ACK or GPU release.
+
+Success proves a limited real-response compatibility result together
+with static pinned source evidence, not universal grammar enforcement.
+Only after a separate probe PASS and a fresh independently applicable
+S49 World+model DEV grant can the single-World integration be attempted.
