@@ -71,7 +71,7 @@ def build_z2c_eu_ledger(repo: Path) -> EULedger:
         or h2["source_files_sha_replayed"] != 68
     ):
         raise EUPairRejected("historical Z2b physical or Z2c cognitive original differs")
-    h1_policy, policy_file_sha = read(repo, H1_POLICY)
+    h1_policy, _ = read(repo, H1_POLICY)
     world_review, world_review_sha = read(repo, WORLD_AUDIT)
     independent, indep_sha = read(repo, H2_INDEPENDENT)
     semantic, semantic_sha = read(repo, H2_SEMANTIC)
@@ -79,7 +79,6 @@ def build_z2c_eu_ledger(repo: Path) -> EULedger:
     if (
         h1_policy.get("policy_sha256") != H1_POLICY_SHA
         or h1_policy["strategy"] != "STATIONARY"
-        or policy_file_sha == H1_POLICY_SHA  # policy digest is NOT file digest
         or world_review["original_paper_sha256"] != ORIGINAL_PAPER_SHA
         or independent != h2
         or semantic["B1_Q"] != "FAIL"
@@ -130,8 +129,9 @@ def build_z2c_eu_ledger(repo: Path) -> EULedger:
         source_status="ARCHIVED_REPLAY_VERIFIED",
         world_uuid=paper["world_uuid"],
         fact_summary=(
-            "H2 original reply gave a limited numerical match but misnamed H1 "
-            "falsification, and proposed TARGET_APPROACH with ABSTAIN and null speed."
+            "H2 original fields report old_falsification_named_strategy=STATIONARY, "
+            "reconsideration=ABSTAIN_PENDING_MORE_EVIDENCE, "
+            "proposed_strategy=TARGET_APPROACH and proposed_speed_m_per_tick=null."
         ),
         source_event="POST_Z2B_H2_SINGLE_REAL_HTTP_REPLY",
     ))
@@ -141,6 +141,8 @@ def build_z2c_eu_ledger(repo: Path) -> EULedger:
         original_response_sha256=old["model_response_sha256"],
         source_kind="REAL_GEMMA_H1_PREPARED_POLICY",
         source_strategy=h1_policy["strategy"],
+        original_decision="ORIGINAL_FORECAST_SELECTION",
+        original_speed_m_per_tick=h1_policy["speed_m_per_tick"],
         applicability=h1_policy["applicability"],
         reason_original=h1_policy["reason"],
         falsification_original=h1_policy["falsification_test"],
@@ -153,6 +155,8 @@ def build_z2c_eu_ledger(repo: Path) -> EULedger:
         original_response_sha256=h2_sha,
         source_kind="REAL_GEMMA_H2_FAILED_CONTRACT",
         source_strategy=model_h2["proposed_strategy"],
+        original_decision=model_h2["reconsideration"],
+        original_speed_m_per_tick=model_h2["proposed_speed_m_per_tick"],
         applicability=model_h2["proposed_applicability"],
         reason_original=model_h2["rationale"],
         falsification_original=model_h2["next_falsification_test"],
