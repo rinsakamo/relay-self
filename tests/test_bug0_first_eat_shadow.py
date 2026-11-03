@@ -115,6 +115,13 @@ def test_reject_unqualified_first_eat_native_source_and_owner(fault):
         current = replace(
             current, snapshot=replace(current.snapshot, inventory=()),
         )
+    elif fault == "changed-inventory":
+        old = current.snapshot.inventory[0]
+        current = replace(
+            current, snapshot=replace(
+                current.snapshot, inventory=(replace(old, count=old.count + 1),),
+            ),
+        )
     elif fault == "not-hungry":
         current = replace(
             current, snapshot=replace(current.snapshot, food=20),
