@@ -505,6 +505,22 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            if eat_cursor is not None:
+                # Diagnostic only: the original S15 cleanup ACK and S16 terminal
+                # cannot establish effective physical STOP or release EAT.
+                read = executor.read_only_post_move_eat_boundary(receipt)
+                report.setdefault("bug0_post_move_eat_boundary", []).append({
+                    "session_id": read.session_id,
+                    "action_id": read.action_id,
+                    "s16_terminal": read.s16_terminal,
+                    "s15_clear_ack_applied": read.s15_clear_ack_applied,
+                    "clear_ack_seq": read.clear_ack_seq,
+                    "after_probe_seq": read.after_probe_seq,
+                    "source_ref": read.readback_source.reference,
+                    "settling_status": read.settling_status,
+                    "physically_stopped_proven": read.physically_stopped_proven,
+                    "eat_issuance_authorized": read.eat_issuance_authorized,
+                })
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
             if completed_l0 is not None or completed_l0_dev:
