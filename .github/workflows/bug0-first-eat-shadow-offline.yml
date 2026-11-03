@@ -1,0 +1,40 @@
+name: Bug-0 first EAT nonissuing source shadow offline
+on:
+  push:
+    branches:
+      - dev/bug0-first-eat-no-move-shadow-20261104
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-eat-no-move:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact child SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install offline test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository contracts, compileall and lint
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/bug0_first_eat_shadow.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_first_eat_shadow.py
+          ruff check adapters/mineflayer/bug0_first_eat_shadow.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_first_eat_shadow.py
+      - name: New first EAT source and original S49 S51 negative regressions
+        run: |
+          python -m pytest -q tests/test_bug0_first_eat_shadow.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_s51_eat_owner_binding.py tests/test_feature_s51_eat_execution.py tests/test_feature_s46_eat.py tests/test_feature_s49_normal_runtime.py
+      - name: State the evidence ceiling
+        run: |
+          echo 'BUG0_FIRST_EAT_OFFLINE_ONLY / WORLD_0 / EAT_ACTION_0 / NATIVE_EFFECT_0 / ENERGY_CREDIT_0 / LEARNING_0 / SOURCE_UNATTESTED / QUALIFICATION_NO_GO'
