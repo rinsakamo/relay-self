@@ -24,7 +24,7 @@ jobs:
       - name: Static contracts
         run: |
           python tools/check_repository.py
-          python -m compileall -q adapters/mineflayer/eat_execution.py adapters/mineflayer/normal_action.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py tests/test_bug0_s49_s51_eat_handoff.py
+          python -m compileall -q adapters/mineflayer/eat_execution.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py tests/test_bug0_s49_s51_eat_handoff.py
           ruff check adapters/mineflayer/eat_execution.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py
       - name: Original S49 S51 and Bug-0 bounded tests
         run: |
