@@ -81,7 +81,7 @@ def _envelope_content(original_response: bytes) -> dict | None:
 def audit_saved_h2(original_root: Path, h2_root: Path) -> dict:
     for root in (original_root, h2_root):
         if (
-            type(root) is not Path or not root.is_absolute()
+            not isinstance(root, Path) or not root.is_absolute()
             or not root.is_dir() or root.is_symlink()
         ):
             raise ZombiePolicyRejected("absolute non-symlink existing source root required")
