@@ -257,6 +257,40 @@ class NormalWorldL0(ReactiveL0):
         )
 
 
+class NormalEatingObservationStatus(str, Enum):
+    """Bounded native-view risk gate, NOT proof that the World is safe."""
+
+    NO_NEARBY_ENTITY_OBSERVED = "NO_NEARBY_ENTITY_OBSERVED"
+    OBSERVED_ENTITY_NEARBY = "OBSERVED_ENTITY_NEARBY"
+    TRUNCATED_COVERAGE = "TRUNCATED_COVERAGE"
+    BODY_NOT_VIABLE = "BODY_NOT_VIABLE"
+
+
+def assess_normal_eating_observation(
+    probe: MineflayerObservation,
+) -> NormalEatingObservationStatus:
+    """Conservative Bug-0 EAT *precondition*, never a physical Action grant.
+
+    An empty bounded Mineflayer registry is not a global safety certificate.
+    The operator/issuer must separately qualify source, threats, resource use,
+    permission, physical occupancy and the actual moment of Action ISSUE.
+    """
+    if (
+        not isinstance(probe, MineflayerObservation)
+        or probe.kind != "probe"
+        or not probe.request_id
+        or probe.provenance.source != "mineflayer"
+    ):
+        raise NormalActionRejected("native current probe required for eating")
+    if probe.snapshot.nearby_entities_coverage.truncated:
+        return NormalEatingObservationStatus.TRUNCATED_COVERAGE
+    if probe.snapshot.health <= 0 or probe.snapshot.oxygen_level == 0:
+        return NormalEatingObservationStatus.BODY_NOT_VIABLE
+    if probe.snapshot.nearby_entities:
+        return NormalEatingObservationStatus.OBSERVED_ENTITY_NEARBY
+    return NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+
+
 class NormalActionStage(str, Enum):
     PROPOSE = "PROPOSE"
     ISSUE = "ISSUE"
@@ -470,7 +504,8 @@ class NormalSessionActionExecutor:
             or choice.food_before != probe.snapshot.food
             or choice.item_name is None or choice.item_slot is None
             or probe.seq <= self._last_issued_probe_seq
-            or probe.snapshot.nearby_entities_coverage.truncated
+            or assess_normal_eating_observation(probe)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
             or not any(
                 item.name == choice.item_name
                 and item.slot == choice.item_slot and item.count > 0
