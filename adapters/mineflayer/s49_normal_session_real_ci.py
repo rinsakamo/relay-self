@@ -24,6 +24,7 @@ from adapters.mineflayer.normal_action import (
     NormalActionStage,
     NormalSessionActionExecutor,
     NormalWorldL0,
+    assess_normal_eating_observation,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
@@ -54,6 +55,7 @@ from adapters.mineflayer.s49_completed_decision_bridge import (
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.eat_hunger import EatCursor
 from relay_self.execution_binding import (
     ExecutionBinding,
     resolve_execution_binding,
@@ -66,6 +68,34 @@ from relay_self.world_conditioned_choice import WorldChoiceKind
 
 class S49PhysicalFailure(RuntimeError):
     """The real native World did not support the claimed autonomous behavior."""
+
+
+def read_only_bug0_eat_window(
+    cursor: EatCursor, probe: MineflayerObservation,
+) -> dict[str, object]:
+    """Only project an existing native probe, never issue or grant EAT.
+
+    The status describes a bounded source view, not global safety. It cannot
+    replace an independent operator's PROPOSE / ISSUE authorization.
+    """
+    risk = assess_normal_eating_observation(probe)
+    choice = cursor.choose(probe)
+    return {
+        "session_id": probe.session_id,
+        "probe_seq": probe.seq,
+        "probe_request_id": probe.request_id,
+        "source_ref": probe.provenance.reference,
+        "food_before": choice.food_before,
+        "food_status": choice.status.value,
+        "candidate_item": choice.item_name,
+        "candidate_slot": choice.item_slot,
+        "risk_status": risk.value,
+        "nearby_observed": len(probe.snapshot.nearby_entities),
+        "source_coverage_truncated": probe.snapshot.nearby_entities_coverage.truncated,
+        "action_issued": False,
+        "grant_requested": False,
+        "learning_written": False,
+    }
 
 
 class NativeObservationOnly:
@@ -276,6 +306,7 @@ async def qualify(
     completed_l0_dev: bool = False,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
+    bug0_eat_shadow: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -304,6 +335,10 @@ async def qualify(
             and os.environ.get("S49_COMPLETED_L0_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("S49 completed L0 DEV readback requires explicit gate")
+        if type(bug0_eat_shadow) is not bool or (
+            bug0_eat_shadow and os.environ.get("S49_BUG0_EAT_SHADOW_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("Bug-0 read-only EAT shadow needs explicit DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -332,6 +367,10 @@ async def qualify(
             sid, "escape-threat", retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
+        eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        if eat_cursor is not None:
+            report["bug0_eat_shadow"] = []
+            report["bug0_eat_shadow_only"] = True
         if stage_r_dev:
             # Explicit S49-owned extension; never install a read-only
             # observer as a new Action issuer or as an S10 authority.
@@ -354,6 +393,10 @@ async def qualify(
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if eat_cursor is not None:
+                report["bug0_eat_shadow"].append(
+                    read_only_bug0_eat_window(eat_cursor, reading)
+                )
             if stage_r is not None:
                 # Single writer commits only after prior terminal and this
                 # NEW original-session native probe, before next L0._check.
@@ -694,9 +737,11 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--completed-l0-dev", action="store_true")
+    parser.add_argument("--bug0-eat-shadow", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
+        bug0_eat_shadow=args.bug0_eat_shadow,
     ))
 
 
