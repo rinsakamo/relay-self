@@ -283,6 +283,8 @@ async def qualify(
     completed_l0_dev: bool = False,
     completed_planned: Callable[[S49OriginalPlannedBatch], None] | None = None,
     completed_planned_dev: bool = False,
+    completed_b0_decisions: Callable[[Any], None] | None = None,
+    completed_b0_decisions_dev: bool = False,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
 ) -> int:
@@ -320,6 +322,14 @@ async def qualify(
                 and os.environ.get("S49_COMPLETED_PLANNED_DEV_ONLY") != "1")
         ):
             raise S31ABlocked("S49 planned readback requires separate DEV-only gate")
+        if (
+            type(completed_b0_decisions_dev) is not bool
+            or (completed_b0_decisions is not None
+                and not callable(completed_b0_decisions))
+            or ((completed_b0_decisions is not None or completed_b0_decisions_dev)
+                and os.environ.get("S49_B0_DECISION_WITNESS_DEV_ONLY") != "1")
+        ):
+            raise S31ABlocked("S49 B0 decision-only DEV tap requires separate gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -366,11 +376,22 @@ async def qualify(
         # has completed and checked its terminal outcome. Optional diagnostic.
         closed_receipts = {}
         original_planned_moves: list[S49OriginalPlannedMove] = []
+        b0_witness = None
+        if completed_b0_decisions is not None or completed_b0_decisions_dev:
+            from adapters.mineflayer.s49_b0_owner_decision_witness import (
+                S49B0DecisionWitness,
+            )
+
+            b0_witness = S49B0DecisionWitness(sid)
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if b0_witness is not None:
+                # Existing correlated native reading, same session.
+                # The B0 owner selects but never advances/debits energy.
+                b0_witness.observe(reading)
             if stage_r is not None:
                 # Single writer commits only after prior terminal and this
                 # NEW original-session native probe, before next L0._check.
@@ -492,6 +513,7 @@ async def qualify(
             if (
                 completed_l0 is not None or completed_l0_dev
                 or completed_planned is not None or completed_planned_dev
+                or b0_witness is not None
             ):
                 closed_receipts[step.action_request_id] = receipt
             if completed_planned is not None or completed_planned_dev:
@@ -623,6 +645,25 @@ async def qualify(
                 report["original_planned_observer"] = "CALLBACK_RETURNED"
             except Exception:
                 report["original_planned_observer"] = "OBSERVER_ERROR"
+        if b0_witness is not None:
+            try:
+                from adapters.mineflayer.s49_b0_owner_decision_witness import (
+                    bounded_original_b0_decision_row,
+                )
+
+                original_b0_l0 = read_original_s49_completions(
+                    tuple(trace), probes, closed_receipts,
+                )
+                b0_batch = b0_witness.complete(original_b0_l0)
+                if completed_b0_decisions_dev:
+                    report["original_b0_decision_readback"] = (
+                        bounded_original_b0_decision_row(b0_batch)
+                    )
+                if completed_b0_decisions is not None:
+                    completed_b0_decisions(b0_batch)
+                report["original_b0_decision_observer"] = "CALLBACK_RETURNED"
+            except Exception:
+                report["original_b0_decision_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
