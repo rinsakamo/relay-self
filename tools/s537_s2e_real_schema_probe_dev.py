@@ -65,14 +65,18 @@ def assert_build10874_shape(payload: dict[str, object]) -> None:
     if not isinstance(wrapper, dict) or set(wrapper) != {"schema"}:
         raise ValueError("build10874 nested schema missing")
     schema = wrapper["schema"]
-    if (
-        not isinstance(schema, dict)
-        or schema != structured_review_format()["json_schema"]["schema"]
-        or schema.get("additionalProperties") is not False
-        or set(schema.get("required", [])) != {
-            "status", "observation", "uncertainty",
-        }
-    ):
+    # Deliberately independent of the producer function: detect schema drift.
+    expected = {
+        "type": "object",
+        "properties": {
+            "status": {"type": "string", "enum": ["ADVISORY", "DEFER"]},
+            "observation": {"type": "string", "minLength": 1, "maxLength": 320},
+            "uncertainty": {"type": "string", "minLength": 1, "maxLength": 320},
+        },
+        "required": ["status", "observation", "uncertainty"],
+        "additionalProperties": False,
+    }
+    if not isinstance(schema, dict) or schema != expected:
         raise ValueError("unbounded or unexpected schema")
 
 
