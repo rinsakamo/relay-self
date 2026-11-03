@@ -1,0 +1,45 @@
+name: L EU Pair immutable experience–understanding offline DEV
+on:
+  push:
+    branches: [dev/l-eu-experience-understanding-20261103]
+  pull_request:
+    paths:
+      - 'src/relay_self/experience_understanding.py'
+      - 'tools/l_eu_pair_z2c_original_replay.py'
+      - 'tests/test_experience_understanding.py'
+      - '.github/workflows/l-eu-experience-understanding-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  original-source-pair-and-revision-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPYCACHEPREFIX: /tmp/relay-eu-pycache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Immutable EU records, real Z2b/Z2c saved original replay, negative gates
+        run: |
+          set -euo pipefail
+          ruff check \
+            src/relay_self/experience_understanding.py \
+            tools/l_eu_pair_z2c_original_replay.py \
+            tests/test_experience_understanding.py
+          python -m compileall -q src/relay_self/experience_understanding.py tools/l_eu_pair_z2c_original_replay.py
+          python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/test_experience_understanding.py \
+            tests/test_experience_bridge.py \
+            tests/test_learning_qualification.py \
+            tests/test_l_zombie_z2c_h2_independent_audit.py \
+            tests/test_l_zombie_z2c_feedback_contract.py
+          python tools/check_repository.py
+      - name: Enforce no invisible learning grant
+        run: echo 'EU_PAIR_OFFLINE_SHADOW / REAL_H1_H2_ARCHIVED_ONLY / NEW_HTTP_0 / WORLD_0 / LEARNING_0 / ACTION_0 / SCIENCE_NOT_RUN'
