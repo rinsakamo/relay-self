@@ -10,35 +10,42 @@
 
 We need multiple independent or interdependent cognitive activities (L0/L1/L2) to pursue Needs/Goals/Questions and temporally construct Plans, *while keeping exactly one lawful physical Action execution boundary*.
 
-The smallest compatible design uses **two explicitly distinct commitment scopes**, without requiring a second physical issuer:
+The target design distinguishes **cognitive task commitments**, **body-directed execution commitments**, and **the sole physical dispatch authority**. It does **not** require all body-directed commitments to collapse into one global Intent or one owner:
 
-1. **Cognitive Intent (slot scope)**: one active task commitment associated with a transient cognitive execution slot, or no Intent if the slot is only monitoring/reflexing a source. It may deliberate or propose plans/skills/actions but cannot authorize or issue physical effects.
-2. **Execution Intent (physical owner scope)**: the existing `IntentCommitment` held by the sole physical execution route. At most one current physical execution commitment is admitted there. It covers a sufficiently bounded, meaningful objective, potentially composed from several Goals. Physical Skills/Actions are *always* grounded in this actual owner, not an arbitrarily selected slot owner.
+1. **Cognitive task Intent (slot scope)**: one active task commitment associated with a transient cognitive execution slot, or no Intent if only monitoring/reflexing a source. It can reason, retrieve, propose and possibly contribute to a body-directed Intent; slot possession alone never confers physical authority.
+2. **Body-directed Execution Intents (per-commitment scope)**: **zero, one or many** currently valid commitments may require bodily effects. They can coexist, overlap in time, or compete for the same WorldBody channels. A given Intent can be related to one or several Goals; arbitrary aggregation into one giant Intent is neither required nor preferred. Each bodily effect must be linked to a legitimate **live, owner-validated** commitment and admitted separately for its actual resources and authority. The initial S49 adapter presently exposes only one current Intent through one `IntentCommitment` owner; that is a compatible first stage, **not the final architectural upper bound**.
 
-**Slot scope is not a new ontology type of Goal.** The words `Cognitive Intent` and `Execution Intent` describe **use scope**, not automatically new durable semantic owners or new constructors. This contract does **not** change `IntentCommitment.current_intent` implementation; further executable scoping requires explicit S owner changes/tests.
+**The labels Cognitive and Execution describe the work's effects and admission scope, not ontologically separate subclasses or automatically new owners.** One Intent may involve both thought and body action, and multiple independent Intent commitments may remain concurrent. The *single S49 issuer* is a constraint on who may dispatch/authorize effects, **not how many intentions can be held**. This design does **not** change today's `IntentCommitment.current_intent` implementation; a multi-owner/currentness registry and owner-derived bindings require explicit S review and implementation.
 
 ```text
-Persistent Goal A   Persistent Goal B   Question C
-        \              /                  |
-         \            /                   v
-          value-conditioned Plan(s)     cognitive-only inquiry
-                |                           |
-       active/suspended cognitive slots [L0/L1/L2]
-                |
-       source/provenance-bound candidates (NO authority)
-                |
-       S49 sole-issuer physical admission / arbitration
-                |  physical intent and execution binding
-       existing IntentCommitment (one Current Intent)
-                |
-       SkillExecution.start (actual physical intent)
-                |
-       ActionLifecycle.propose + explicit authorize / deny
-                |
-       ActionSupervisor.issue -> S49 executor -> S15/S16/World outcome
+MySelf / SelfWorld / SelfBody -> relevant Goals, Needs, Questions
+                  |
+           Goal Arbitration / Composition
+                  |
+         L0/L1/L2 cognitive execution slots
+                  |
+       task/Plan/Skill proposals (no physical grant)
+                  |
+       multiple valid body-directed Execution Intents
+              |            |             |
+         dodge/move    jump/terrain    attack/defense
+              \            |             /
+          one S49 issuer: action admissibility,
+          owner/currentness + per-channel arbitration
+                          |
+               body-specific ControlFrame(s)
+                          |
+       authorized Skill/Action binding and supervision
+                          |
+         WorldBody execution / separate causal outcomes
+
+CURRENT S49 DEV: one active IntentCommitment owner,
+                 serial MOVE-only admissibility (unchanged).
+TARGET DESIGN:   multiple live Intent commitments,
+                 one physical issuer; compatible channels may overlap.
 ```
 
-The diagram describes a proposed connection, **not** integrated implementation. In existing S49 tests `escape-threat` is the fixed physical Current Intent; no experimental multi-goal plan change is already verified.
+The diagram describes a proposed connection, **not** integrated implementation. The present S49 `escape-threat` is one physical Current Intent. Multi-Intent arbitration, concurrent controls and Goal composition have **not** been demonstrated by that test.
 
 ## 2. Distinct objects and relationships
 
@@ -48,7 +55,7 @@ The diagram describes a proposed connection, **not** integrated implementation. 
 | Plan candidate / temporal Goal graph | Source/revision-scoped reasoning product; not necessarily persisted | No |
 | Cognitive slot | Self-created bounded runtime work capacity; not a personality or semantic owner | No |
 | Slot-local task / Cognitive Intent | At most one currently committed task per slot when needed; can be paused, reconsidered or released independently | No |
-| Physical Execution Intent | Current commitment owned by original physical `IntentCommitment`; at most one per physical executor in initial design | Not by itself |
+| Body-directed Execution Intent(s) | Zero or more bounded live commitments targeting physical effects; each needs real owner/currentness validation; initial S49 implements one | Not by itself |
 | SkillExecution | One started, immutable physical Intent association and lifecycle | No |
 | Action proposal | One primitive requested effect, source and causal scope | No |
 | Authorize / issue | Existing legitimate S49/S14-S16 owner seam; independent policy gate and one issuer | Yes, only after admission |
@@ -60,7 +67,7 @@ Multiple Goal or Question objects can be simultaneously *relevant* while zero, o
 For later API exploration, candidate binding identities should be explicitly scoped by:
 - `self_instance / physical_body / world_session`;
 - `slot_instance` plus `slot_generation`, if derived from a slot;
-- `cognitive_intent_id` (if any), `physical_intent_id` **from the live physical owner**, not text supplied by a model;
+- zero or more **owner-derived, live `execution_intent_refs`** with explicit command/channel-to-Intent binding; never IDs selected as authority by a model;
 - `goal_refs` and `plan_revision` (if supplied); capability/skill binding;
 - `observation_source / native_seq / world_revision`, expiry/deadline;
 - `physical_issuer_id`, grant/authorization origin and action/resource scope.
@@ -92,13 +99,13 @@ UNALLOCATED
 
 ## 4. Temporal Goal/Plan changes without Intent churn
 
-- A Plan revision changes **how** current Goals are pursued; it does not necessarily change **what is committed**. A local phase failure, new affordance, safer route or timing change may replace a Plan/Skill while keeping the same physical Execution Intent.
+- A Plan revision changes **how** current Goals are pursued; it does not necessarily change **what is committed**. A local phase failure, new affordance, safer route or timing change may replace a Plan/Skill while keeping the relevant one or several Execution Intents in place.
 - A new proposed Plan must not expand an Intent beyond its admissible meaning, authority or viability scope. Broad objective strings like "survive" are **not wildcard Action permission**. Source-grounded action applicability and actual grant scope remain necessary.
 - If the goal/commitment's meaning, feasibility, authority or viability is materially challenged, request **reconsideration** with its own triggering source. Only the separate `CONTINUE` / `RELEASE` decision changes the commitment, or a valid terminal success/failure/invalidation closes it.
 - New cognitive slots may create prospective work while old physical Action is still executing; their outputs are advisory until admitted at a source-current physical boundary. Do not retroactively alter an already issued command.
 - Goal-level incompatibility (protect X vs destroy X), resource conflict (two operations need same input), and time-sliceable order (eat then attack) are distinct. Re-evaluation can choose composition, sequencing, deferral or escalation, with possible zero-action WAIT.
 
-Example (conceptual): **Execution Intent:** deal with a nearby threat while preserving ability to recover. **Plan P1:** move away -> verify distance -> eat -> approach -> attack. **Plan P2:** attack -> confirm threat ended -> eat. Both are candidate plans for overlapping Goals, not unconditional recipes. Each phase is guarded by actual observed preconditions/outcome and may yield, replan, fail or ask for a new physical Intent. Minecraft command capability for movement+eating or attack+eating must be **empirically verified**, not inferred from Plan composition.
+Example (conceptual): **Intent A:** gain distance from a nearby threat. **Intent B:** recover hunger. **Intent C:** neutralize the threat. They may coexist while **Plan P1** orders A -> B -> C or **Plan P2** prioritizes C -> B. The physically issued subset can change over time without collapsing all three into a synthetic 'survive' Intent. Each phase is guarded by actual observation, authority and outcome. Minecraft capability for movement+eating or attack+eating must be **empirically verified**, not inferred from Goal coexistence.
 
 ## 5. One physical issuer and admission sequence
 
@@ -106,12 +113,12 @@ Example (conceptual): **Execution Intent:** deal with a nearby threat while pres
 
 1. Read the **current** source-qualified observation and actual physical owner state; record relevant WorldBody resources, deadline and uncertainty. Missing or stale inputs fail closed or yield UNKNOWN.
 2. Form candidate bounded Plan/Skill/Action and any support from cognitive slots. L2 recommendations, value gradients and apparent Goal urgency are **not** grants.
-3. Only the **existing S49 owner/adapter** decides whether to admit a candidate for physical execution based on the **actual live** `IntentCommitment`, actor/skill capability and source/currentness. It may choose none (WAIT), defer, or use an already tested cheap L0 path.
-4. **Physical execution binding:** derive physical Intent association from the actual owner and record which cognitive Goal/Plan, if any, justified the proposal. Check bounded semantics and admission scope, not merely identical strings. The current `SkillExecution.start(...)` and `ActionLifecycle.propose(...)` must continue to use the physical owner instance; never feed an independent slot owner as a direct bypass.
+3. Only the **existing S49 owner/adapter** decides whether to admit candidate physical effects, based on actual live/authorized Intent owners and their currentness, actor/skill capability, source/currentness and channel conflict. It may choose a compatible subset, none (WAIT), defer or use an already tested cheap L0 path. **Current implementation** can inspect just its one `IntentCommitment`; multi-Intent admission is **future owner-reviewed API work**.
+4. **Physical execution binding:** for each proposed primitive effect derive the relevant Intent ID(s) from **real authorized live owners**, preserve source Goal/Plan refs, and check allowed action/channel scope, not matching strings. The current `SkillExecution.start(...)` and `ActionLifecycle.propose(...)` continue to use their **actual existing one-owner `IntentCommitment`** interface until the S owner implements validated multi-Intent routing. Do not pass a freely created cognitive slot owner to bypass S49. A multi-Intent frame must not use an ungrounded composite ID; the frame's per-channel causal lineage must remain auditable.
 5. Before issuance, check the authorized principal and grant's real scope, current source/epoch, actor, body capability, action resource reservation, deadlines, and exclusivity. `ActionLifecycle.authorize()` remains the **recorded lifecycle transition** and does not authenticate a fabricated `authority` string by itself. Avoid second issuers or independent authorizers minted by cognition.
 6. Original S49-issued command passes existing S14/S15/S16 / ActionSupervisor processes. Final OUTCOME/UNKNOWN/TIMEOUT **and** source-bound consequence are passed to the next cognitive epoch as evidence; physical motion settling and control-clear must not be inferred from `OUTCOME` alone.
 
-A possible transient **PhysicalAdmissionRecord** is a *typed, bounded source-and-owner join*, **not** a second authorizing owner: it might record `world/session, physical_intent_id, slot/plan generation, skill/action identity, admitted capability/resource scope, original grant/authorization source and expiry`. Exact fields need a local S owner Grand Null and tests; if existing `ExecutionBinding` and S49 traces suffice, **do not create a new record type**.
+A possible transient **PhysicalAdmissionRecord** is a *typed, bounded source-and-owner join*, **not** a second authorizing owner: it might record `world/session, channel/Action -> live owner-derived Intent ref(s), slot/plan generations, skill/action identity, admitted capability/resource scope, original grant/authorization source and expiry`. Exact fields need a local S owner Grand Null and tests; if existing `ExecutionBinding` and S49 traces suffice, **do not create a new record type**.
 
 ### Explicit non-authority edges
 
@@ -149,7 +156,7 @@ Fair scheduling may avoid starvation among ordinary Goal/Plan candidates; howeve
 
 ### Case A: eat after retreat
 - SelfWorld threat Goal and SelfBody hunger Goal are simultaneously active; cognition proposes P1 `retreat -> assess safe distance -> eat -> re-approach -> attack`.
-- S49 physical Execution Intent stays committed through phase changes if its originally admitted bounded objective and authority remain valid.
+- Distinct body-directed Intents for distance management, nutrition and defense can remain valid during phase changes. The currently eligible bodily effect still needs an actual owner-derived commitment and S49 authorization. **Current S49 does not yet implement multiple such commitments.**
 - A movement Skill proposes `MOVE_BACKWARD`; original S49 authorizes/issues/closes and verifies physical evidence. Eating can be attempted only when an implemented and authorized `USE_ITEM` path and preconditions exist. **Current S49 does not prove or provide that path.**
 - Enemy closes distance during attempted eating: fence new eat proposals, preserve already issued results, revalidate, revise Plan locally; request Intent reconsideration only if its objective is materially challenged.
 
@@ -163,21 +170,21 @@ Fair scheduling may avoid starvation among ordinary Goal/Plan candidates; howeve
 - If the cognitive estimate of capacity is wrong, the discrepancy is source-qualified experience for later allocation learning, not an excuse to violate hard runtime caps.
 
 ### Case D: two conflicting L0 candidates
-- Movement and combat slots both request exclusive body control; independent IDs and apparent authority do not permit two physical issuances.
-- One S49 owner chooses compatible sequencing or none; the other candidate is deferred or denied. No unqualified second issuer or fabricated "parallel" success.
+- Movement and combat slots can own distinct valid body-directed Intents while requesting different controls. Identity alone grants no physical authority.
+- The one S49 issuer admits **both if channels are verified compatible** (future ControlFrame), or resolves actual conflicts by sequencing/defer/deny. Current MOVE-only S49 still dispatches just one in-flight Action. No unqualified second issuer or fabricated "parallel" success.
 
 ## 8. Contract invariants (for later executable owner review)
 
 | ID | Required invariant | Proposed negative control |
 | --- | --- | --- |
 | A-01 | Slot is transient cognitive capacity, never physical Action authority | L2-only slot tries direct issue |
-| A-02 | Slot and physical owner Intent identity/lifetime differ | same textual ID, foreign owner |
+| A-02 | Slot identity, Intent identity, and physical issuer authority are not interchangeable; multiple live Intent owners require independently validated scope/currentness | same textual ID, foreign owner |
 | A-03 | No silent replacement of committed Intent | alternative Plan causes hidden COMMIT |
 | A-04 | Local Plan/Skill revision need not break Intent | phase/route change without RELEASE |
 | A-05 | Goal/Plan candidate carries bounded provenance/currentness | stale world/native seq or replay |
 | A-06 | One physical issuer and required valid grant | second issuer, fake authority string |
-| A-07 | Physical `SkillExecution` and `ActionLifecycle` use actual current physical owner | cognitive slot owner passed as Action parent |
-| A-08 | Body resource exclusivity until qualified release; initial one in-flight transaction | same-time move + attack, post-S16 settling |
+| A-07 | Each physical primitive binds to the actual current authorized Intent owner(s); existing single-owner Skill/Action API is not silently weakened | cognitive slot owner passed as Action parent |
+| A-08 | Resource exclusion is **per conflicting channel**, not global to the WorldBody; current S49 has the separate initial one-in-flight implementation guard | incompatible same-channel requests; post-S16 settling |
 | A-09 | Slot suspension is not automatically Skill/Action cancellation | suspended L2 returns stale output |
 | A-10 | In-flight issue closes via real evidence/deadline/UNKNOWN | RELEASE during MOVE; no STOP ACK |
 | A-11 | Runtime budget/actual deadlines bound concurrency; emergency L0 remains available | L2 task saturates GPU/CPU or exceeds deadline |
@@ -187,11 +194,11 @@ Fair scheduling may avoid starvation among ordinary Goal/Plan candidates; howeve
 
 ## 9. Staged implementation path (owner S #537, not authorized by this document)
 
-**A0 — Offline, read-only boundary:** create/derive source-bound cognitive candidate traces from fixed L0/L1/L2 slots; show slot/task/Intent versus physical-Intent separation and stale rejection; **0 new Action**. Reuse present S49 and existing intent/action contracts.
+**A0 — Offline, read-only boundary:** derive source-bound Goal -> multiple body-directed Intent candidates from fixed L0/L1/L2 slots and demonstrate disjoint vs conflicting channel demands. Distinguish commitment count from physical issuer count; exercise stale/foreign-owner rejection; **0 new Action**. Reuse current S49 unchanged.
 
-**A1 — Local physical-admission proof, still one physical action at a time:** at original S49 owner, validate candidate-to-physical `ExecutionBinding` association, source/epoch/deadline and actual grant scope. Test mismatch/fake authority/replay, consecutive plans under one physical Intent. Keep original MOVE-only behavior and no automatic learning.
+**A1 — Local physical-admission proof, still one physical action at a time:** at original S49 owner, validate candidate-to-actual-live-owner `ExecutionBinding`, source/epoch/deadline and actual grant scope. Test mismatch/fake authority/replay and sequential source-bound actions, with a roadmap for independently referenced multiple Intents. Keep original MOVE-only behavior and no automatic learning.
 
-**A2 — Cognitive scheduling and guarded Plan revisions:** preserve transient tasks, suspended/resumed cognitive work and Plan revision under unchanged physical Intent; enforce resource budgets. Add source-bound tests for protected L0 amid slow L2 and post-outcome physical settling/clear. No body-command expansion is implied.
+**A2 — Cognitive scheduling and guarded Plan revisions:** preserve concurrent valid body-directed Intent candidates, transient tasks, suspended/resumed cognitive work and local Plan revisions without forcing a single global Intent; enforce resource budgets. Add source-bound tests for protected L0 amid slow L2 and post-outcome physical settling/clear. No body-command expansion is implied.
 
 **A3 — Multi-channel motor composition, initially opt-in and offline:** expand body-specific capabilities only after typed channel controls, per-channel grant semantics, controller lease/currentness, bounded command frame, dispatch/clear and source-qualified outcome tracing are independently tested. The single existing physical issuer composes compatible locomotion/jump/orientation/attack requests into one frame without granting cognitive slots direct physical rights. Mixed channel effects, individual completion and emergency override require separate evidence; no simultaneous physical operation is assumed implemented. Eating/attack and concurrent physical operations are separate opt-in feature qualifications, **not** an A0–A2 completion gate.
 
@@ -220,18 +227,17 @@ These are bounded implementation choices under the v0.5 conceptual decision, **n
 - [Runtime principles](../runtime-principles.md), [Ontology](../ontology.md), [v0.5 gap audit](../unification-gap-audit-v0.5.md)
 - [Product S #537](https://github.com/rinsakamo/relay-self/issues/537), [parallel cognition #367](https://github.com/rinsakamo/relay-self/issues/367), [S49 completed original owner #674](https://github.com/rinsakamo/relay-self/pull/674), [cross-lane #636](https://github.com/rinsakamo/relay-self/issues/636)
 
-## 12. Multi-channel motor decoding under one Execution Intent (2026-11-03 amendment)
+## 12. Multi-channel motor decoding from multiple Execution Intents (2026-11-03 revised design)
 
 > **STATUS: DESIGN PROPOSAL / SUPERSEDES ANY READING OF §6 AS A PERMANENT SINGLE-ACTION LIMIT.** The single issuer is an **authority singularity**, not a single motor command or single control channel. Existing S49's `open_actions` exclusion is a current MOVE-only DEV implementation limit, not the v0.5 target. No physical concurrency is currently demonstrated or authorized by this amendment.
 
 ### 12.1 Hierarchy and source of control requests
 
 ```text
-one physical Execution Intent (bounded objective and lawful authority)
-     |
- guarded Plan / temporal Skill composition
-     |
-  L0 Skill controllers (potentially more than one, no direct issuer)
+multiple valid body-directed Execution Intents
+ (e.g. MOVE_AWAY, JUMP_OVER, ATTACK_TARGET)
+     |               |              |
+ guarded Plan(s) and Skill controllers (no direct issuer)
      |            |            |              |
  locomotion    jump        orientation     attack/use
      \            |            |              /
@@ -247,7 +253,7 @@ one physical Execution Intent (bounded objective and lawful authority)
        bounded per-channel evidence + composite outcome association
 ```
 
-An Execution Intent **does not output native buttons directly**. A Plan selects/parameterizes Skill controllers. Each controller can propose a *bounded channel request* over a time horizon. The Motor Decoder uses **WorldBody capability and actual control state** to merge compatible requests into one authorized physical control episode, or safely defer/deny some requests. All physical dispatch is still owned by the one S49 execution path.
+An Execution Intent **does not output native buttons directly**. Multiple Intents can remain current while their Plans/Skills propose bounded channel requests. A request must carry its **originating, live owner-validated Intent reference**, not become authorized just because a frame includes it. The Motor Decoder uses **WorldBody capability and actual control state** to merge compatible requests into one control frame or safely defer/deny some. All physical dispatch remains with one S49 issuer; it is the **authority/dispatch bottleneck**, not the owner of all goals or a single global Intent.
 
 A new top-level `MotorDecoder` *owner* is **not presumed**: first attempt the minimal body-specific controller-composition boundary inside the existing S/WorldBody adapter. Add independently persisted/authorized state only if Grand Null shows no existing owner can retain it.
 
@@ -256,7 +262,8 @@ A new top-level `MotorDecoder` *owner* is **not presumed**: first attempt the mi
 ```text
 ControlFrame {
   physical_body, world_session, source_revision, frame_sequence,
-  physical_execution_intent_id, physical_issuer_id, plan_revision,
+  physical_issuer_id, channel_intent_bindings: {channel: [live_owner_intent_refs]},
+  channel_plan_revisions: {channel: plan_revision},  // when applicable
   valid_from, valid_until, control_lease_generation,
   held_controls: {locomotion: FORWARD, ...},
   event_pulses: {jump: REQUEST, attack: REQUEST(target_ref), ...},
@@ -282,17 +289,17 @@ Initially define a **body-specific capability map**, not universal assumed axes:
 
 A compatibility decision is **not** just comparing resource labels: there can be conditional cross-channel constraints (e.g. jump needs room, attack needs target/range/aim; using an item may interfere with sprint or attack). Requested simultaneous `move + jump + attack` is a *candidate* frame only if relevant dependencies, actual game version/body adapter behavior, native capability and execution deadline have been checked.
 
-If two Skills propose incompatible values for the **same** channel, resolve **before** issuing using source-qualified feasibility, viability/emergency constraints, current Execution Intent, urgency, deadlines, value/Plan commitments and current leases. Non-selected proposals remain deferred/denied; do **not** create an invisible extra Action issuer. Explicit fairness is subordinate to bounded safety and deadlines.
+If two Skills/Intents propose incompatible values for the **same** channel, resolve **before** issuing using source-qualified feasibility, viability/emergency constraints, **all relevant live Execution Intents**, urgency, deadlines, value/Plan commitments and current leases. Non-selected proposals remain deferred/denied; do **not** create an invisible extra Action issuer. Explicit fairness is subordinate to bounded safety and deadlines.
 
 ### 12.4 Timing, authority, observation and cancellation
 
-1. **Prepare:** evaluate all candidate channel requests against one observed frame/epoch and existing physical owner commitment; test capability, dependencies, resource conflict, source freshness and deadline. A later L2 advisory cannot mutate a previously prepared/issued frame without a new admission.
-2. **Authorize:** one real physical issuer performs a scoped authorization for the *whole frame and each admitted channel*. No channel may be added after authorization. A valid authority string alone is insufficient. The frame is not released as a union of independent, out-of-order authorizations.
+1. **Prepare:** evaluate candidate channel requests against a source-qualified observation and **the set of actual live Intent owner commitments**; test capability, cross-channel dependencies, conflicts, source freshness and deadlines. No global single-Intent reduction is required. A later L2 advisory cannot mutate a previously prepared/issued frame without a new admission.
+2. **Authorize:** the one real physical issuer performs scoped authorization for the *whole frame and each admitted channel with its own owner-derived Intent lineage*. No channel may be added after authorization. A valid authority string alone is insufficient. The frame is not released as a union of independent, out-of-order authorizations.
 3. **Dispatch:** send the bounded set of controls via the existing WorldBody adapter with an observable ordering/window. **Do not claim atomic same-tick execution** from separate JS/native calls absent wire/World evidence. Some control state persists between events; track transitions and lease expiration explicitly.
 4. **Observe:** record source-correlated per-channel ACK/clear/World effects and the outer frame's state. Attack intent, attack call success, hit/target damage and death are separate; movement and post-clear inertia are separate. If evidence is missing, the affected channel/frame is UNKNOWN, not collective OUTCOME success. An outer frame outcome must not erase unresolved child effects.
 5. **Stop/replan:** fence future frames from obsolete `slot_generation / plan_revision / source_generation`. Request S15/native clear where supported; keep channel reservations until release is supported by actual clear/physical quiescence or conservative bound. Already dispatched attack pulses cannot be retroactively revoked. Emergency control can override future outputs but cannot falsify already in-flight effects.
 
-**Existing `ActionLifecycle` owns primitive effect commands.** The eventual exact relationship between a frame/episode and individually supervised primitive actions (per-channel or grouped effect with separately attributed receipts) is an **open owner API choice**. Do not silently recast an atomic `ActionLifecycle` as a compound action; test causal association and whether a composite frame record is truly needed. Keep `ActionSupervisor` actual outcome and deadline semantics unchanged until owner-reviewed.
+**Existing `ActionLifecycle` owns primitive effect commands bound to its current one-owner Intent.** A future owner-approved extension must make each per-channel primitive's source Intent and currentness separately attestable, while allowing a frame to aggregate independently admissible commands. The exact relationship between a frame/episode, one-or-several Intent owner snapshots and individually supervised primitive effects is an **open owner API choice**. Do not silently recast an atomic `ActionLifecycle` as a compound action; test causal association and whether a composite frame record is truly needed. Keep `ActionSupervisor` actual outcome and deadline semantics unchanged until owner-reviewed.
 
 ### 12.5 New negative tests (contract A expansion)
 
@@ -307,4 +314,13 @@ If two Skills propose incompatible values for the **same** channel, resolve **be
 
 Keep current S49 sequential MOVE route untouched for compatibility. First add **offline source-bound control-frame decoding and collision/authority tests**, with a synthetic WorldBody capability matrix. Only later stage opt-in real World tests of individual controls, simple compatible pairs, and finally movement+jump+attack with independently recorded native/tick outcomes. These are separate features and grants under S #537, not part of this documentation write.
 
-**Still to resolve before DESIGN_ACCEPTED:** (a) can the frame be a transient `ExecutionBinding`/existing adapter structure instead of another owner; (b) exact primitive-action vs frame causal mapping; (c) body-specific control/lease and native timing evidence for same-period operations; (d) safe quiescence/abort treatment of partially dispatched frames. This section does not mark A accepted.
+**Still to resolve before DESIGN_ACCEPTED:** (a) model/registry for **multiple independently live body-directed IntentCommitment owners** and validation across S49 without widening permission; (b) can the frame be a transient `ExecutionBinding`/existing adapter structure instead of another owner; (c) exact per-Intent/per-Action vs frame causal mapping; (d) body-specific control/lease and native timing evidence; (e) safe quiescence/abort for partially dispatched frames. There is **no mandatory single global physical Intent**. This section does not mark A accepted. This section does not mark A accepted.
+
+### 12.7 Multiple-Intent examples and guarded compatibility
+
+- Intent `move_to_cover` can remain current while Intent `jump_obstacle` requests a time-limited jump; both may produce **one compatible ControlFrame** through one issuer if source/physics/dependency checks succeed. Neither must be renamed or fused into a global Intent.
+- Intent `attack_threat` can also remain current while locomotion and jump are active; the attack pulse requires its own current authority, target/range/aim/cooldown checks. The composite frame records **which source Intent justified each channel**; shared causal outcomes may be linked to several but are not double-counted as independent successes.
+- Intent `eat_food` can stay committed but **temporarily unrunnable** while hand-use conflicts with `attack_threat`. It can be deferred/suspended without treating its Goal as invalid or forcibly changing the other Intent.
+- An emergency L0 Intent/viability guard can override specific competing **channels**, not necessarily revoke all other Intents. Actual cancellation/clear evidence and in-flight outcomes remain independently necessary.
+
+**Architectural correction:** the global invariant is **single authoritative body-issuer per controlled WorldBody**, together with bounded concurrent Intent owners and channel-level arbitration. In general, `Intent count != cognitive slot count != concurrently issued control count != issuer count`. The existing S49 implementation is a narrower serial special case and does not establish a global one-Intent invariant.
