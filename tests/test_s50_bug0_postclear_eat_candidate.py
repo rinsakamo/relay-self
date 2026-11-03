@@ -2,6 +2,7 @@
 
 import hashlib
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -160,3 +161,34 @@ def test_join_does_not_offer_mutable_authority_even_if_caller_edits_copy(
     # It is NOT a signed or attested capability; reject use by convention.
     assert row.eat_action_authorized is False
     assert row.physically_stopped_proven is False
+
+
+def test_archived_real_s50_paper_original_detects_motion_with_input_off():
+    """Read the unchanged archived S50 #642 genuine DEV World, not a mock.
+
+    This uses its original sealed Paper console source, whose SHA is in the
+    original evidence manifest. It does not turn archived DEV into R science.
+    """
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs/evidence/s50-input-20261031/run2/server.log"
+    )
+    original = path.read_bytes()
+    assert hashlib.sha256(original).hexdigest() == (
+        "0e1fc41d0c64ed871506e59252556f01320f3ac53e1b4d9239312a26dd3f1f05"
+    )
+    result = review(
+        original,
+        marker="s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+        world="6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+        subject="dcae346d-e66f-331a-b459-a5a5370e9738",
+        begin=251,
+    )
+    assert result.sample_status == ACTIVITY_OBSERVED
+    assert result.sampled_body_activity_ticks == (252, 253, 254)
+    assert result.sampled_input_active_ticks == ()
+    assert result.input_event_count_final == 0
+    assert result.effective_s15_clear_tick == "NOT_ATTESTED"
+    assert not result.physically_stopped_proven
+    assert not result.eat_action_authorized
+    assert result.p1_wait_ticks_admitted == 0
