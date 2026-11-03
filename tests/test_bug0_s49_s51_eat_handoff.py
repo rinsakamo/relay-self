@@ -469,3 +469,18 @@ def test_eat_requires_two_stable_same_session_native_probes(variant):
         ))
     assert owner.supervisor.open_actions == ()
     assert owner._dispatched == set()
+
+
+def test_prior_move_with_unqualified_postclear_settling_blocks_eat():
+    # Owner state reflecting a previously dispatched MOVE: S16 terminal and
+    # two nearly identical positions are NOT evidence of native STOP settling.
+    before, choice, owner, session = fixture()
+    propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
+    owner._post_move_settling_unqualified = True
+    with pytest.raises(NormalActionRejected):
+        asyncio.run(owner.execute_eat(
+            session, choice, before, propose, issue,
+            previous_probe=prior_probe(before),
+        ))
+    assert owner._dispatched == set()
+    assert owner.supervisor.open_actions == ()
