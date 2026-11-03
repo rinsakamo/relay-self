@@ -308,6 +308,11 @@ async def qualify(
             )
         if os.environ.get("S51_REAL_SERVER_CI") != "1":
             raise S31ABlocked("explicit real-survival qualification environment required")
+        if bug0_first_eat_shadow:
+            report["stage"] = "DEV_UNQUALIFIED_FRESH_DISPOSABLE_WORLD"
+            report["world_source"] = "NEW_DEV_MOJANG_WORLD_NOT_RSEE_GOLDEN"
+            report["physical_eat_authorized"] = False
+            report["untrusted_operator_grant_not_inferred"] = True
         if food_item == "rotten_flesh":
             # Not a permission token: physical permission is external and
             # per-run. Never use the legacy unqualified-download B0 path.
@@ -362,8 +367,8 @@ async def qualify(
         report["server_config_sha256"] = hashlib.sha256(
             (root / "server.properties").read_bytes(),
         ).hexdigest()
-        if rsee is not None or dev_only:
-            # Reserve both originals before Java. Never truncate an old stream.
+        if rsee is not None or dev_only or bug0_first_eat_shadow:
+            # Reserve original native/command bytes before Java. Never overwrite.
             native_output = native_path.open("xb")
             command_output = command_path.open("xb")
             report["native_stdout_path"] = str(native_path)
@@ -371,15 +376,16 @@ async def qualify(
             if rsee is not None:
                 report["clone_prelaunch_binding"] = copied
         report["stage"] = (
-            "DEV_OWNED_WORLD_JAVA_START" if dev_only
+            "DEV_OWNED_WORLD_JAVA_START"
+            if (dev_only or bug0_first_eat_shadow)
             else "JAVA_START_ONESHOT_BOUNDARY"
         )
         report["java_start_attempted"] = True
         server, collector, _ = await _ready_server(root, jar, server_log)
         report["java_pid"] = server.pid
-        if dev_only:
+        if dev_only or bug0_first_eat_shadow:
             # Reuse the exact existing S51 recording owner, NOT a new launcher.
-            # The native source is unqualified DEV even when an outcome exists.
+            # Native source remains DEV, no R qualification or EAT grant.
             session_type = _recording_session_type(native_output, command_output)
             session = await session_type.launch(
                 MineflayerLaunchConfig(
@@ -850,8 +856,11 @@ async def qualify(
         )
         # DEV never touches a V6 or B0 one-shot grant. Its World launch is
         # tracked independently and does not certify source identity.
-        report["grant_consumed"] = (report["physical_java_started"] if not dev_only else False)
-        if dev_only:
+        report["grant_consumed"] = (
+            report["physical_java_started"]
+            if not (dev_only or bug0_first_eat_shadow) else False
+        )
+        if dev_only or bug0_first_eat_shadow:
             report["dev_world_started"] = report["physical_java_started"]
         for stream in (native_output, command_output):
             if stream is not None:
