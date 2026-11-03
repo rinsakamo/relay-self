@@ -35,10 +35,13 @@ READ_ONLY_REVIEW_JSON_SCHEMA = {
 
 
 def structured_review_format() -> dict[str, object]:
-    """Create a JSON copy; callers may not mutate the canonical schema."""
-    return {"type": "json_schema", "schema": json.loads(
-        json.dumps(READ_ONLY_REVIEW_JSON_SCHEMA)
-    )}
+    """Build10874 wrapper: response_format.json_schema.schema; no flat fallback."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "schema": json.loads(json.dumps(READ_ONLY_REVIEW_JSON_SCHEMA)),
+        },
+    }
 
 
 @dataclass(frozen=True, slots=True)
