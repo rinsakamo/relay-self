@@ -13,7 +13,6 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.l_zombie_z2b_policy_contract import (
