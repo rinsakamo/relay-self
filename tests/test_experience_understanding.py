@@ -54,32 +54,32 @@ def connected():
 
 
 def test_basic_pair_is_immutable_and_has_no_memory_learning_or_action_authority():
-    l = connected()
-    initial = l.add_experience(experience("E_B"))
-    assert len(l.experiences) == 1 and len(initial.experiences) == 2
-    assert l.understandings[0].source_strategy == "STATIONARY"
-    assert l.memory_commits == l.habit_promotions == 0
-    assert l.action_authority is l.learning_admitted is l.science_qualified is False
-    assert l.interpretations_for("E_A") == l.understandings
+    ledger = connected()
+    initial = ledger.add_experience(experience("E_B"))
+    assert len(ledger.experiences) == 1 and len(initial.experiences) == 2
+    assert ledger.understandings[0].source_strategy == "STATIONARY"
+    assert ledger.memory_commits == ledger.habit_promotions == 0
+    assert ledger.action_authority is ledger.learning_admitted is ledger.science_qualified is False
+    assert ledger.interpretations_for("E_A") == ledger.understandings
     with pytest.raises(EUPairRejected):
-        l.interpretations_for("E_UNKNOWN")
+        ledger.interpretations_for("E_UNKNOWN")
     with pytest.raises(AttributeError):
-        l.understandings[0].reason_original = "overwrite"
+        ledger.understandings[0].reason_original = "overwrite"
 
 
 def test_one_experience_many_competing_understandings_and_revision_graph():
-    l = connected()
+    ledger = connected()
     u = understanding("U_B", parent=("U_A",))
-    l2 = l.add_understanding(u).link(
+    revised_ledger = ledger.add_understanding(u).link(
         PairLink("E_A", "U_B", "REVISES_ABOUT", "PROPOSAL_NOT_ADMITTED",
                  SHA_B, "MODEL_SOURCE_TEST", "New candidate, old one retained.")
     )
-    assert l2.understandings == (l.understandings[0], u)
-    assert len(l2.interpretations_for("E_A")) == 2
-    assert l2.links[0].review == "UNTESTED"
-    assert not l2.learning_admitted
+    assert revised_ledger.understandings == (ledger.understandings[0], u)
+    assert len(revised_ledger.interpretations_for("E_A")) == 2
+    assert revised_ledger.links[0].review == "UNTESTED"
+    assert not revised_ledger.learning_admitted
     with pytest.raises(EUPairRejected, match="preceding"):
-        EULedger("eu-a", (experience(),), (u, l.understandings[0]))
+        EULedger("eu-a", (experience(),), (u, ledger.understandings[0]))
 
 
 @pytest.mark.parametrize("bad", [
@@ -110,17 +110,17 @@ def test_invalid_understanding_and_self_learning_rejected(bad):
 
 
 def test_unbound_and_duplicate_references_rejected():
-    l = connected()
+    ledger = connected()
     with pytest.raises(EUPairRejected, match="duplicate experience"):
-        l.add_experience(experience())
+        ledger.add_experience(experience())
     with pytest.raises(EUPairRejected, match="duplicate understanding"):
-        l.add_understanding(understanding())
+        ledger.add_understanding(understanding())
     with pytest.raises(EUPairRejected, match="duplicate pair"):
-        l.link(l.links[0])
+        ledger.link(ledger.links[0])
     with pytest.raises(EUPairRejected, match="endpoint"):
-        l.link(replace(l.links[0], experience_id="E_B"))
+        ledger.link(replace(ledger.links[0], experience_id="E_B"))
     with pytest.raises(EUPairRejected, match="source IDs"):
-        l.add_understanding(understanding("U_B", parent=("U_A",), evid=("E_B",)))
+        ledger.add_understanding(understanding("U_B", parent=("U_A",), evid=("E_B",)))
 
 
 @pytest.mark.parametrize("bad", [
@@ -174,11 +174,11 @@ def test_actual_archived_z2b_z2c_eu_pair_replay_without_any_new_real_actions():
 
 def test_missing_archived_response_fails_before_pair_build(tmp_path):
     root = tmp_path / "copy"
-    shutil.copytree(REPO / "docs/evidence/l-z2b-real-20261102",
-                    root / "docs/evidence/l-z2b-real-20261102")
-    shutil.copytree(REPO / "docs/evidence/l-z2c-real-h2-20261103",
-                    root / "docs/evidence/l-z2c-real-h2-20261103")
-    bad = root / "docs/evidence/l-z2c-real-h2-20261103/h2-original/h2-response-1.raw.json"
+    shutil.copytree(REPO / "docs/evidence/ledger-z2b-real-20261102",
+                    root / "docs/evidence/ledger-z2b-real-20261102")
+    shutil.copytree(REPO / "docs/evidence/ledger-z2c-real-h2-20261103",
+                    root / "docs/evidence/ledger-z2c-real-h2-20261103")
+    bad = root / "docs/evidence/ledger-z2c-real-h2-20261103/h2-original/h2-response-1.raw.json"
     bad.write_bytes(bad.read_bytes() + b"\n")
     with pytest.raises(ValueError):
         build_z2c_eu_ledger(root)
