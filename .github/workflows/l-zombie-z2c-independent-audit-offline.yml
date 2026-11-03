@@ -1,0 +1,44 @@
+name: L Zombie Z2c independent postflight original audit DEV
+on:
+  push:
+    branches: [dev/l-z2c-independent-readback-20261103]
+  pull_request:
+    paths:
+      - 'tools/l_zombie_z2c_h2_independent_audit.py'
+      - 'tests/test_l_zombie_z2c_h2_independent_audit.py'
+      - '.github/workflows/l-zombie-z2c-independent-audit-offline.yml'
+permissions:
+  contents: read
+jobs:
+  replay-original-and-split-numeric-vs-semantic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPYCACHEPREFIX: /tmp/relay-z2c-independent-pycache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Original-source replay and independent H2 refusal controls (mock HTTP only)
+        run: |
+          set -euo pipefail
+          ruff check \
+            tools/l_zombie_z2c_h2_independent_audit.py \
+            tests/test_l_zombie_z2c_h2_independent_audit.py \
+            tools/l_zombie_z2c_h2_original_feedback.py \
+            adapters/mineflayer/l_zombie_z2c_feedback_contract.py
+          python -m compileall -q tools/l_zombie_z2c_h2_independent_audit.py
+          python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/test_l_zombie_z2c_h2_independent_audit.py \
+            tests/test_l_zombie_z2c_feedback_contract.py \
+            tests/test_l_zombie_z2b_policy_contract.py \
+            tests/test_l_zombie_z2b_paper_policy_audit.py \
+            tests/test_l_zombie_z2a_prospective_audit.py
+          python tools/check_repository.py
+      - run: echo 'H2_POSTFLIGHT_SOURCE_REPLAY_ONLY / REAL_NEW_GEMMA_0 / REAL_NEW_WORLD_0 / SEMANTIC_Q_MANUAL_REVIEW_REQUIRED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
