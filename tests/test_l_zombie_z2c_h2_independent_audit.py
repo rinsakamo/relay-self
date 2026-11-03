@@ -120,7 +120,7 @@ def test_saved_request_tampering_refused(tmp_path, monkeypatch):
     root = attempt(tmp_path, monkeypatch, response=reply())
     path = root / "h2-request-1.raw.json"
     path.write_bytes(path.read_bytes() + b" ")
-    with pytest.raises(ZombiePolicyRejected, match="request"):
+    with pytest.raises(ZombiePolicyRejected, match="status contradicts"):
         auditor.audit_saved_h2(REAL_OLD_ROOT, root)
 
 
