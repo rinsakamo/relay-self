@@ -1,7 +1,6 @@
 """Z2c H2 feedback tests. Simulated HTTP never proves a real Gemma run."""
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 from pathlib import Path
