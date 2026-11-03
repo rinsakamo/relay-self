@@ -363,7 +363,7 @@ def test_truncated_native_entity_registry_cannot_admit_eat():
 def test_unverified_event_cannot_be_treated_as_current_food_probe():
     before, _, _, _ = fixture()
     with pytest.raises(NormalActionRejected):
-        assess_normal_eating_observation(replace(before, kind="event"))
+        assess_normal_eating_observation(replace(before, kind="health", request_id=None))
 
 
 def test_original_s49_read_only_eat_shadow_preserves_cue_vs_action_separation():
