@@ -11,7 +11,9 @@ import pytest
 
 from adapters.mineflayer.l_zombie_z2b_policy_contract import ZombiePolicyRejected
 from test_l_zombie_z2c_feedback_contract import (
-    SOURCE_ROOT, answer, reply,
+    SOURCE_ROOT,
+    answer,
+    reply,
 )
 from tools import l_zombie_z2c_h2_independent_audit as auditor
 from tools import l_zombie_z2c_h2_original_feedback as runner
