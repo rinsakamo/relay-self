@@ -656,6 +656,7 @@ async def qualify(
             try:
                 result = await IssuedEatingExecutor().execute(
                     session, supervisor, issued, choice, before,
+                    skill_execution=skill, intent_commitment=intent,
                 )
             finally:
                 report["action_terminal"] = supervisor.get(issued.action_id).state.value
