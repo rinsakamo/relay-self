@@ -113,6 +113,8 @@ Learning is **experience + interpretation + governed revision**:
 
 **Frozen:** conceptual division, causal/authority boundaries, three-model perspectives, multi-goal temporal/value conditioning, cognition modes, transient resource-bounded slots, experience-based allocation and conditional crystallization; no universal best plan.
 
+**Bug-0 initial implementation slice:** [Minimum Embodied Self / «流暢にしゃべるゾンビ»](contracts/bug0-minimal-embodied-self-v0.5.md) limits the first real-world target to MOVE/STOP, EVADE, EAT, ATTACK, REST and WAIT/OBSERVE, with narrow SelfWorld/SelfBody/MySelf views, serial physical admission and one attributable experience-based decision change. EAT/ATTACK/REST are **not** inferred to be implemented from this design. High-fidelity joint World simulation (D) and MySelf-driven autonomous training (E) are deliberately deferred. Contract A/B/C owner review remains open.
+
 **Open detailed contracts (tracked in #717):**
 - **A — Intent slots and Action admission/authorization:** slot/Intent mapping, scheduling, dependencies, preemption/resume, resource conflict, binding, in-flight effects, real authorized principal and S49-compatible path.
 - **B — Persistent Cognition + three models:** semantic storage/projection ownership, source-linked updates, SelfOther and durable/reconstructible state, identity/value governance.
