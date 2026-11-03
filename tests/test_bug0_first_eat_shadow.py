@@ -160,9 +160,9 @@ def test_s51_opt_in_first_eat_shadow_fails_before_java_without_dev_gate(
     assert report["status"] == "BLOCKED"
     assert report["physical_java_started"] is False
     assert report["grant_consumed"] is False
-    assert report["physical_eat_authorized"] is False if (
-        "physical_eat_authorized" in report
-    ) else True
+    assert report["physical_eat_authorized"] is False
+    assert report["actual_native_actions"] == []
+    assert report["food_commands_issued"] == 0
     assert "explicit separate DEV gate" in report["error"]
     assert not (tmp_path / "paper.log").exists()
 
