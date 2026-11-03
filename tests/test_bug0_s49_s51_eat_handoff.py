@@ -19,7 +19,9 @@ from adapters.mineflayer.normal_action import (
     NormalActionRejected,
     NormalActionStage,
     NormalEatingAuthorization,
+    NormalEatingObservationStatus,
     NormalSessionActionExecutor,
+    assess_normal_eating_observation,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerInventoryItem
@@ -40,6 +42,15 @@ def source(tag):
 
 def fixture(*, current_name="eat-when-hungry"):
     before = s46.case()
+    # Synthetic positive case: only a bounded, empty native registry,
+    # never a claim of globally safe surroundings.
+    before = replace(before, snapshot=replace(
+        before.snapshot,
+        nearby_entities=(),
+        nearby_entities_coverage=replace(
+            before.snapshot.nearby_entities_coverage, candidate_count=0,
+        ),
+    ))
     choice = EatCursor(before.session_id).choose(before)
     commitment = IntentCommitment()
     commitment.commit(
@@ -288,3 +299,68 @@ def test_original_s49_marks_unknown_if_scripted_native_consume_is_rejected():
         ("consume", propose.action_id + "-consume"),
     ]
     assert owner.supervisor.open_actions == ()
+
+
+def test_empty_native_registry_is_only_a_bounded_eat_eligibility_not_safety():
+    before, choice, owner, _ = fixture()
+    assert assess_normal_eating_observation(before) is (
+        NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+    )
+    assert choice.item_name == "bread"
+    assert owner.supervisor.open_actions == ()
+
+
+@pytest.mark.parametrize("variant", ("zombie", "unknown-entity", "no-health", "no-oxygen"))
+def test_observed_threat_or_nonviable_body_fences_s49_eat(variant):
+    before, choice, owner, session = fixture()
+    if variant in ("zombie", "unknown-entity"):
+        entity = s46.case().snapshot.nearby_entities[0]
+        if variant == "unknown-entity":
+            entity = replace(entity, name=None, entity_type=None)
+        unsafe = replace(before, snapshot=replace(
+            before.snapshot,
+            nearby_entities=(entity,),
+            nearby_entities_coverage=replace(
+                before.snapshot.nearby_entities_coverage, candidate_count=1,
+            ),
+        ))
+    elif variant == "no-health":
+        unsafe = replace(before, snapshot=replace(before.snapshot, health=0))
+    else:
+        unsafe = replace(before, snapshot=replace(before.snapshot, oxygen_level=0))
+    status = assess_normal_eating_observation(unsafe)
+    assert status is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+    propose, issue = grants(unsafe, choice, owner.intent.current_intent.intent_id)
+    with pytest.raises(NormalActionRejected):
+        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue))
+    assert owner._dispatched == set()
+    assert owner.supervisor.open_actions == ()
+
+
+def test_truncated_native_entity_registry_cannot_admit_eat():
+    before, choice, owner, session = fixture()
+    coverage = before.snapshot.nearby_entities_coverage
+    sample = s46.case().snapshot.nearby_entities[0]
+    full = tuple(
+        replace(sample, entity_id=sample.entity_id + i)
+        for i in range(coverage.max_entities)
+    )
+    unsafe = replace(before, snapshot=replace(
+        before.snapshot, nearby_entities=full,
+        nearby_entities_coverage=replace(
+            coverage, candidate_count=coverage.max_entities + 1, truncated=True,
+        ),
+    ))
+    assert assess_normal_eating_observation(unsafe) is (
+        NormalEatingObservationStatus.TRUNCATED_COVERAGE
+    )
+    propose, issue = grants(unsafe, choice, owner.intent.current_intent.intent_id)
+    with pytest.raises(NormalActionRejected):
+        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue))
+    assert owner.supervisor.open_actions == ()
+
+
+def test_unverified_event_cannot_be_treated_as_current_food_probe():
+    before, _, _, _ = fixture()
+    with pytest.raises(NormalActionRejected):
+        assess_normal_eating_observation(replace(before, kind="event"))
