@@ -14,12 +14,14 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
 )
 from relay_self.action import ActionLifecycle, ActionState
-from relay_self.action_supervision import ActionSupervisor
+from relay_self.action_supervision import ActionSupervisor, UnknownSupervisedAction
 from relay_self.eat_hunger import (
     EatChoice,
     EatingOutcome,
     EatStatus,
 )
+from relay_self.intent import IntentCommitment
+from relay_self.skill import SkillExecution, SkillState
 
 
 class EatingExecutionRejected(ValueError):
@@ -131,6 +133,62 @@ def verify_eating_subactions(
     )
 
 
+def validate_issued_eating_binding(
+    supervisor: ActionSupervisor,
+    issued: ActionLifecycle,
+    skill_execution: SkillExecution | None,
+    intent_commitment: IntentCommitment | None,
+    choice: EatChoice,
+    before: MineflayerObservation,
+) -> None:
+    """Fail closed before native IO: this issued Action must belong to EAT.
+
+    Uses existing Intent/Skill/Action owners. The AUTHORIZE provenance is not
+    evidence of a genuine external principal or S49 physical-issuer identity;
+    those remain upstream, separate authority/admission responsibilities.
+    """
+    if (
+        not isinstance(supervisor, ActionSupervisor)
+        or not isinstance(issued, ActionLifecycle)
+        or not isinstance(skill_execution, SkillExecution)
+        or not isinstance(intent_commitment, IntentCommitment)
+        or not isinstance(choice, EatChoice)
+        or not isinstance(before, MineflayerObservation)
+        or issued.state is not ActionState.ISSUED
+        or not issued.is_current_snapshot
+        or skill_execution.state is not SkillState.STARTED
+        or not skill_execution.is_current_snapshot
+        or skill_execution.skill_id not in ("eat", "EAT")
+        or intent_commitment.current_intent is None
+        or intent_commitment.pending_reconsideration is not None
+        or issued.intent_id != intent_commitment.current_intent.intent_id
+        or skill_execution.intent_id != issued.intent_id
+        or issued.skill_execution_id != skill_execution.execution_id
+        or choice.status is not EatStatus.CANDIDATE
+        or choice.item_name is None
+        or choice.item_slot is None
+        or choice.session_id != before.session_id
+        or before.kind != "probe" or not before.request_id
+        or choice.probe_seq != before.seq
+        or choice.provenance != before.provenance
+        or choice.food_before != before.snapshot.food
+        or not any(
+            i.name == choice.item_name and i.slot == choice.item_slot and i.count > 0
+            for i in before.snapshot.inventory
+        )
+        or len(issued.events) < 3
+        or issued.events[-2].state is not ActionState.AUTHORIZED
+        or not issued.events[-2].authority
+    ):
+        raise EatingExecutionRejected("issued Action is not bound to live EAT Skill/Intent")
+    try:
+        owned = supervisor.get(issued.action_id)
+    except UnknownSupervisedAction as exc:
+        raise EatingExecutionRejected("EAT Action not supervised by this owner") from exc
+    if owned is not issued or supervisor.open_actions != (issued,):
+        raise EatingExecutionRejected("EAT Action is stale or conflicts with in-flight Action")
+
+
 class IssuedEatingExecutor:
     def __init__(self) -> None:
         self._attempted: set[str] = set()
@@ -141,6 +199,9 @@ class IssuedEatingExecutor:
         issued: ActionLifecycle,
         choice: EatChoice,
         before: MineflayerObservation,
+        *,
+        skill_execution: SkillExecution | None = None,
+        intent_commitment: IntentCommitment | None = None,
     ) -> EatingActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -152,8 +213,6 @@ class IssuedEatingExecutor:
             or choice.status is not EatStatus.CANDIDATE
             or issued.state is not ActionState.ISSUED
             or not issued.is_current_snapshot
-            or supervisor.get(issued.action_id) is not issued
-            or supervisor.open_actions != (issued,)
             or issued.action_id in self._attempted
             or choice.session_id != session.started.session_id
             or before.session_id != choice.session_id
@@ -162,6 +221,9 @@ class IssuedEatingExecutor:
             or choice.item_name is None
         ):
             raise EatingExecutionRejected("requires fresh issued current EAT authority")
+        validate_issued_eating_binding(
+            supervisor, issued, skill_execution, intent_commitment, choice, before,
+        )
         # Consume the Action ID before any potentially irreversible IO.
         self._attempted.add(issued.action_id)
         at_ns = (supervisor.last_at_ns or 0) + 1

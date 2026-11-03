@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
+from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
     WorldConsequence,
+    WorldConsequenceStatus,
     build_mineflayer_command,
     execute_mineflayer_command,
 )
@@ -29,6 +31,7 @@ from relay_self.action_outcome import (
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.eat_hunger import EatChoice, EatStatus
 from relay_self.execution_binding import (
     BoundExecutionCandidate,
     start_and_propose_bound_execution,
@@ -36,6 +39,7 @@ from relay_self.execution_binding import (
 from relay_self.intent import IntentCommitment
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
+from relay_self.skill import SkillExecution
 from relay_self.reactive_l0 import (
     L0Step,
     ReactiveL0,
@@ -254,6 +258,40 @@ class NormalWorldL0(ReactiveL0):
         )
 
 
+class NormalEatingObservationStatus(str, Enum):
+    """Bounded native-view risk gate, NOT proof that the World is safe."""
+
+    NO_NEARBY_ENTITY_OBSERVED = "NO_NEARBY_ENTITY_OBSERVED"
+    OBSERVED_ENTITY_NEARBY = "OBSERVED_ENTITY_NEARBY"
+    TRUNCATED_COVERAGE = "TRUNCATED_COVERAGE"
+    BODY_NOT_VIABLE = "BODY_NOT_VIABLE"
+
+
+def assess_normal_eating_observation(
+    probe: MineflayerObservation,
+) -> NormalEatingObservationStatus:
+    """Conservative Bug-0 EAT *precondition*, never a physical Action grant.
+
+    An empty bounded Mineflayer registry is not a global safety certificate.
+    The operator/issuer must separately qualify source, threats, resource use,
+    permission, physical occupancy and the actual moment of Action ISSUE.
+    """
+    if (
+        not isinstance(probe, MineflayerObservation)
+        or probe.kind != "probe"
+        or not probe.request_id
+        or probe.provenance.source != "mineflayer"
+    ):
+        raise NormalActionRejected("native current probe required for eating")
+    if probe.snapshot.nearby_entities_coverage.truncated:
+        return NormalEatingObservationStatus.TRUNCATED_COVERAGE
+    if probe.snapshot.health <= 0 or probe.snapshot.oxygen_level == 0:
+        return NormalEatingObservationStatus.BODY_NOT_VIABLE
+    if probe.snapshot.nearby_entities:
+        return NormalEatingObservationStatus.OBSERVED_ENTITY_NEARBY
+    return NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+
+
 class NormalActionStage(str, Enum):
     PROPOSE = "PROPOSE"
     ISSUE = "ISSUE"
@@ -289,11 +327,64 @@ class NormalActionAuthorization:
             raise NormalActionRejected("independent typed Action authorization required")
 
 
+
+@dataclass(frozen=True, slots=True)
+class NormalEatingAuthorization:
+    """Caller-provided independent EAT-specific grant; not a signed capability.
+
+    It is NOT interchangeable with MOVE-specific NormalActionAuthorization.
+    External principal/source qualification remains the S/R caller's duty.
+    """
+
+    stage: NormalActionStage
+    authority_id: str
+    intent_id: str
+    session_id: str
+    action_id: str
+    probe_seq: int
+    probe_request_id: str
+    food_item: str
+    food_slot: int
+    granted: bool
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.stage, NormalActionStage)
+            or not all(isinstance(x, str) and x for x in (
+                self.authority_id, self.intent_id, self.session_id,
+                self.action_id, self.probe_request_id, self.food_item,
+            ))
+            or type(self.probe_seq) is not int or self.probe_seq < 0
+            or type(self.food_slot) is not int or self.food_slot < 0
+            or type(self.granted) is not bool
+            or not isinstance(self.provenance, Provenance)
+            or self.provenance.source == "mineflayer"
+        ):
+            raise NormalActionRejected("independent scoped EAT authorization required")
+
+
 @dataclass(frozen=True, slots=True)
 class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
     source: Provenance
+
+
+@dataclass(frozen=True, slots=True)
+class NormalPostMoveEatingReadback:
+    """Read-only S15/S16 original evidence; never certifies physical STOP."""
+
+    session_id: str
+    action_id: str
+    s16_terminal: str
+    s15_clear_ack_applied: bool
+    clear_ack_seq: int
+    after_probe_seq: int
+    readback_source: Provenance
+    settling_status: str = "WORLD_TICK_IDLE_NOT_ATTESTED"
+    physically_stopped_proven: bool = False
+    eat_issuance_authorized: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -342,6 +433,54 @@ class NormalSessionActionExecutor:
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
+        self._last_issued_probe_seq = -1
+        # Once a physical MOVE was issued, S49's native S15 clear/S16 closure
+        # alone does not qualify post-clear settling. EAT stays fenced until
+        # a distinct original-source settling owner is integrated.
+        self._post_move_settling_unqualified = False
+
+    def read_only_post_move_eat_boundary(
+        self, receipt: NormalActionReceipt,
+    ) -> NormalPostMoveEatingReadback:
+        """Inspect the SAME S49 supervisor and native S15 clear ACK, read-only.
+
+        L22 sampled quiet, L23 Paper callback ticks and S50 input-off reports
+        do not prove tick-aligned effective STOP. Do not un-fence EAT here.
+        """
+        if not isinstance(receipt, NormalActionReceipt):
+            raise NormalActionRejected("original S49 Action receipt required")
+        terminal, consequence = receipt.terminal, receipt.consequence
+        clear = consequence.cleanup_receipt
+        after = consequence.after_observation
+        if (
+            terminal.state is not ActionState.OUTCOME
+            or consequence.status is not WorldConsequenceStatus.EXECUTED
+            or terminal.action_id != consequence.action_id
+            or terminal.action_id not in self._dispatched
+            or consequence.session_id != self.session_id
+            or consequence.action_ref != "MOVE_BACKWARD"
+            or clear is None or after is None
+            or clear.session_id != self.session_id
+            or clear.effect != "clear_controls"
+            or clear.result != "applied"
+            or clear.provenance.source != "mineflayer"
+            or after.session_id != self.session_id
+            or after.kind != "probe"
+            or after.provenance.source != "mineflayer"
+            or not clear.seq < after.seq
+            or not self._post_move_settling_unqualified
+            or self.supervisor.get(terminal.action_id) is not terminal
+        ):
+            raise NormalActionRejected("original clear/after source not qualified")
+        return NormalPostMoveEatingReadback(
+            session_id=self.session_id,
+            action_id=terminal.action_id,
+            s16_terminal=terminal.state.value,
+            s15_clear_ack_applied=True,
+            clear_ack_seq=clear.seq,
+            after_probe_seq=after.seq,
+            readback_source=after.provenance,
+        )
 
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
@@ -405,6 +544,142 @@ class NormalSessionActionExecutor:
             ):
                 raise NormalActionRejected("authority is not scoped to this exact event")
 
+
+    def require_eating_authorizations(
+        self, choice: EatChoice, probe: MineflayerObservation,
+        propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+        *, previous_probe: MineflayerObservation,
+    ) -> None:
+        """Only the existing S49 issuer may admit this serial EAT request.
+
+        A matching typed grant is still NOT independent proof of who granted it.
+        No safety or freshness beyond the given native source is manufactured.
+        """
+        current = self.intent.current_intent
+        # Two original-native observations bound to the same session are a
+        # necessary pre-ISSUE check, not a verified tick clock/STOP ACK.
+        # The separate native physical-settling owner must still qualify any
+        # transition from earlier motion before a real World EAT grant.
+        if (
+            not isinstance(previous_probe, MineflayerObservation)
+            or previous_probe.kind != "probe"
+            or not previous_probe.request_id
+            or previous_probe.provenance.source != "mineflayer"
+            or previous_probe.session_id != self.session_id
+            or not isinstance(probe, MineflayerObservation)
+            or probe.session_id != previous_probe.session_id
+            or probe.seq <= previous_probe.seq
+            or probe.seq - previous_probe.seq > 32
+            or probe.request_id == previous_probe.request_id
+            or assess_normal_eating_observation(previous_probe)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or any(
+                abs(getattr(previous_probe.snapshot.position, axis)
+                    - getattr(probe.snapshot.position, axis)) > 0.05
+                for axis in ("x", "y", "z")
+            )
+        ):
+            raise NormalActionRejected("no recent same-session steady native EAT window")
+        if (
+            not isinstance(choice, EatChoice)
+            or choice.status is not EatStatus.CANDIDATE
+            or not isinstance(probe, MineflayerObservation)
+            or probe.kind != "probe" or not probe.request_id
+            or probe.provenance.source != "mineflayer"
+            or probe.session_id != self.session_id
+            or choice.session_id != self.session_id
+            or choice.probe_seq != probe.seq
+            or choice.provenance != probe.provenance
+            or choice.food_before != probe.snapshot.food
+            or choice.item_name is None or choice.item_slot is None
+            or probe.seq <= self._last_issued_probe_seq
+            or self._post_move_settling_unqualified
+            or assess_normal_eating_observation(probe)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or not any(
+                item.name == choice.item_name
+                and item.slot == choice.item_slot and item.count > 0
+                for item in probe.snapshot.inventory
+            )
+            or current is None or self.intent.pending_reconsideration is not None
+            or not isinstance(propose, NormalEatingAuthorization)
+            or not isinstance(issue, NormalEatingAuthorization)
+            or propose.stage is not NormalActionStage.PROPOSE
+            or issue.stage is not NormalActionStage.ISSUE
+            or not propose.granted or not issue.granted
+            or propose.authority_id == issue.authority_id
+            or propose.provenance == issue.provenance
+            or propose.action_id in self._dispatched
+            or self.supervisor.open_actions
+        ):
+            raise NormalActionRejected("S49 EAT source/Intent/Action admission invalid")
+        for grant in (propose, issue):
+            if (
+                grant.intent_id != current.intent_id
+                or grant.session_id != self.session_id
+                or grant.action_id != propose.action_id
+                or grant.probe_seq != probe.seq
+                or grant.probe_request_id != probe.request_id
+                or grant.food_item != choice.item_name
+                or grant.food_slot != choice.item_slot
+            ):
+                raise NormalActionRejected("S49 EAT grant is not scoped to this source")
+
+    async def execute_eat(
+        self, session: MineflayerProcessSession, choice: EatChoice,
+        probe: MineflayerObservation,
+        propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+        *, previous_probe: MineflayerObservation,
+    ) -> EatingActionReceipt:
+        """Same original S49 supervisor issues, unchanged S51 performs EAT.
+
+        Bounded owner integration candidate; existing normal-session runtime
+        does not call this path. Real-world authorization is not self-granted.
+        """
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+        ):
+            raise NormalActionRejected("S49 EAT live Mineflayer session mismatch")
+        self.require_eating_authorizations(
+            choice, probe, propose, issue, previous_probe=previous_probe,
+        )
+        t = 100 + 10 * self._count
+        origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
+        skill = SkillExecution.start(
+            f"skill:eat:{self.session_id}:{probe.seq}:{self._count}",
+            skill_id="eat", intent_commitment=self.intent,
+            at_ns=t, provenance=origin,
+        )
+        proposed = ActionLifecycle.propose(
+            propose.action_id, skill_execution=skill,
+            intent_commitment=self.intent, at_ns=t, provenance=origin,
+        )
+        authorized = proposed.authorize(
+            at_ns=t + 1, provenance=propose.provenance,
+            authority=propose.authority_id,
+        )
+        issued = self.supervisor.issue(
+            authorized, at_ns=t + 2, deadline_ns=t + 100,
+            provenance=issue.provenance,
+        )
+        # Irreversible effect may begin next: never reissue this ID or source.
+        self._dispatched.add(issued.action_id)
+        self._last_issued_probe_seq = probe.seq
+        self._count += 1
+        try:
+            return await IssuedEatingExecutor().execute(
+                session, self.supervisor, issued, choice, probe,
+                skill_execution=skill, intent_commitment=self.intent,
+            )
+        except BaseException:
+            if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                self.supervisor.mark_unknown(
+                    issued.action_id, at_ns=t + 3, provenance=origin,
+                )
+            raise
+
     async def execute(
         self, session: MineflayerProcessSession, step: L0Step,
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
@@ -437,6 +712,10 @@ class NormalSessionActionExecutor:
         command = build_mineflayer_command(issued, result)
         # Consumed BEFORE any external IO. Incomplete physical work is UNKNOWN.
         self._dispatched.add(command.action_id)
+        # A MOVE issuer cannot infer physical quiescence merely from terminal
+        # S16 or a couple of stable-looking native position probes.
+        self._post_move_settling_unqualified = True
+        self._last_issued_probe_seq = max(self._last_issued_probe_seq, probe.seq)
         self._count += 1
         try:
             consequence = await execute_mineflayer_command(
