@@ -18,10 +18,16 @@ from pathlib import Path
 
 from adapters.mineflayer.l_mp11_gemma_wire_contract import enforce_gemma_thinking_off
 from adapters.mineflayer.l_zombie_z2b_policy_contract import (
-    ZombiePolicyRejected, _canonical, _unique_pairs,
+    ZombiePolicyRejected,
+    _canonical,
+    _unique_pairs,
 )
 from adapters.mineflayer.l_zombie_z2c_feedback_contract import (
-    NUMERIC_TOLERANCE_M, TARGET, build_request, freeze_h2, revision_json,
+    NUMERIC_TOLERANCE_M,
+    TARGET,
+    build_request,
+    freeze_h2,
+    revision_json,
 )
 from tools.l_zombie_z2c_h2_original_feedback import original_z2b_h2_sources
 
