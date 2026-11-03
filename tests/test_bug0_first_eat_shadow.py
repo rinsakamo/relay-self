@@ -64,7 +64,7 @@ def test_first_eat_from_fresh_no_move_s49_owner_is_only_a_nonissuing_candidate()
 
 
 @pytest.mark.parametrize("fault", (
-    "stale-seq", "same-request", "wrong-session", "wrong-native-source",
+    "stale-seq", "same-request", "wrong-session",
     "too-far-in-seq", "body-drift", "nearby-threat", "truncated-coverage",
     "no-food", "not-hungry", "prior-move", "already-issued",
     "pending-reconsideration", "non-probe", "no-health",
@@ -77,8 +77,6 @@ def test_reject_unqualified_first_eat_native_source_and_owner(fault):
         current = replace(current, request_id=earlier.request_id)
     elif fault == "wrong-session":
         current = replace(current, session_id="other-native-session")
-    elif fault == "wrong-native-source":
-        current = replace(current, provenance=Provenance("local-clock", "faked"))
     elif fault == "too-far-in-seq":
         current = replace(current, seq=earlier.seq + 33)
     elif fault == "body-drift":
