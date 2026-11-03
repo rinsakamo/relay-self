@@ -32,7 +32,7 @@ Branch `dev/l-z2c-real-h2-validation-20261103`。実行HEAD `381f937d0ef957e3173
 
 ## 実モデル帰属・HTTP
 
-Gemma-4-12B-it Q4_K_M。実GGUF `/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf` SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`を今回2回全読検証。llama.cpp build10874/e2d2c0d6a、実バイナリSHA `ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536`。
+Gemma-4-12B-it Q4_K_M。実GGUF `/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf` SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`を今回3回全読検証（起動前・実HTTP前・終了後の別プロセス）。llama.cpp build10874/e2d2c0d6a、実バイナリSHA `ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536`。
 
 今回専用PID **195850**、開始stat/argv/exe/GGUF mmap/CUDA mappingを記録。別監査プロセスPID195953で同一starttime/argv/mmapとGGUF SHAを確認。RTX3060 12GB、context8192、slot1、loaded VRAM8599MiB、推論中8611MiB・GPU60%。競合モデルなし。endpoint `http://127.0.0.1:18083/v1/chat/completions`、alias `relay-self-gemma4-12b-q4km`。health/models/propsへのGETは生成ではなく状態確認。
 
