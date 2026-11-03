@@ -10,7 +10,6 @@ from dataclasses import replace
 import pytest
 
 from experiments.metabolism_s49_worldtick_energy_gate import (
-    WorldTickEnergyGate,
     audit_original_s49_energy_coverage,
     bounded_world_tick_energy_gate,
 )
