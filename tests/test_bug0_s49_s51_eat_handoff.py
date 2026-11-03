@@ -26,7 +26,7 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerInventoryItem
 from relay_self.action import ActionLifecycle, ActionState
-from relay_self.eat_hunger import EatCursor
+from relay_self.eat_hunger import EatCursor, EatRejected
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
@@ -364,3 +364,50 @@ def test_unverified_event_cannot_be_treated_as_current_food_probe():
     before, _, _, _ = fixture()
     with pytest.raises(NormalActionRejected):
         assess_normal_eating_observation(replace(before, kind="event"))
+
+
+def test_original_s49_read_only_eat_shadow_preserves_cue_vs_action_separation():
+    from adapters.mineflayer.s49_normal_session_real_ci import read_only_bug0_eat_window
+
+    safe, _, owner, _ = fixture()
+    row = read_only_bug0_eat_window(EatCursor(safe.session_id), safe)
+    assert row["food_status"] == "CANDIDATE"
+    assert row["candidate_item"] == "bread"
+    assert row["risk_status"] == "NO_NEARBY_ENTITY_OBSERVED"
+    assert row["action_issued"] is False
+    assert row["grant_requested"] is False
+    assert row["learning_written"] is False
+    assert owner.supervisor.open_actions == ()
+    assert owner._dispatched == set()
+
+    near = s46.case()
+    row_near = read_only_bug0_eat_window(EatCursor(near.session_id), near)
+    assert row_near["food_status"] == "CANDIDATE"
+    assert row_near["risk_status"] == "OBSERVED_ENTITY_NEARBY"
+    assert row_near["action_issued"] is False
+    cursor = EatCursor(near.session_id)
+    cursor.choose(near)
+    with pytest.raises(EatRejected):
+        read_only_bug0_eat_window(cursor, near)
+
+
+def test_s49_eat_shadow_flag_cannot_start_world_without_independent_dev_gate(
+    monkeypatch, tmp_path,
+):
+    import json
+
+    from adapters.mineflayer.s49_normal_session_real_ci import qualify
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("S49_BUG0_EAT_SHADOW_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    path = tmp_path / "s49-shadow-gate.json"
+    rc = asyncio.run(qualify(
+        path, tmp_path / "server.log", bug0_eat_shadow=True,
+    ))
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert rc == 2
+    assert report["status"] == "BLOCKED"
+    assert "read-only EAT shadow needs explicit DEV gate" in report["error"]
+    assert report["actual_native_actions"] == []
+    assert "session_id" not in report
