@@ -192,3 +192,114 @@ def test_standard_s51_runner_remains_default_nonshadow():
     assert inspect.signature(qualify).parameters[
         "bug0_first_eat_shadow"
     ].default is False
+
+
+def test_existing_s51_runner_shadow_path_never_sends_eat_with_scripted_originals(
+    tmp_path, monkeypatch,
+):
+    """Script original World I/O: exercise real S51 branch, but spawn no World."""
+    import json
+    from types import SimpleNamespace
+
+    import adapters.mineflayer.s51_eat_real_ci as s51
+
+    owner, earlier, fresh = pair()
+    del owner
+    calls = []
+    monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S51_BUG0_FIRST_EAT_SHADOW_DEV_ONLY", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+
+    class FakeStdin:
+        async def drain(self):
+            return None
+
+    class FakeServer:
+        stdin = FakeStdin()
+        pid = 127
+        returncode = 0
+
+    class FakeSession:
+        started = SimpleNamespace(session_id=earlier.session_id)
+        _process = SimpleNamespace(pid=128)
+
+        async def shutdown(self, *, timeout_s=10):
+            calls.append("shutdown")
+            return 0
+
+    class FakeSessionType:
+        @staticmethod
+        async def launch(*args, **kwargs):
+            calls.append("existing-session-launch-shape")
+            return FakeSession()
+
+    class FakeLedger:
+        body = SimpleNamespace(tick=0, energy=9)
+        config = SimpleNamespace(basal_cost=0.1, food_energy=4)
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def decide(self, read):
+            assert read is earlier
+            return SimpleNamespace(
+                kind="EAT", eat_choice=object(), sensor_reading=7.0,
+            )
+
+    def fake_official(jar_path):
+        jar_path.write_bytes(b"synthetic-test-never-run")
+        return {"synthetic_bootstrap_only": True}
+
+    def fake_config(root):
+        (root / "server.properties").write_text("synthetic-test=true\n")
+
+    async def fake_ready(*args, **kwargs):
+        calls.append("no-physical-java")
+        return FakeServer(), None, None
+
+    async def no_effect(*args, **kwargs):
+        return None
+
+    async def fake_probe(session, request_id):
+        assert isinstance(session, FakeSession)
+        calls.append(("native-original-shape", request_id))
+        return earlier if "s51-hunger-native" in request_id else fresh
+
+    def fake_command(server, command):
+        calls.append(("server-stage-only", command))
+
+    monkeypatch.setattr(s51, "_fetch_official_server", fake_official)
+    monkeypatch.setattr(s51, "_write_config", fake_config)
+    monkeypatch.setattr(s51, "_ready_server", fake_ready)
+    monkeypatch.setattr(s51, "_recording_session_type", lambda *_: FakeSessionType)
+    monkeypatch.setattr(s51, "_await_spawn", no_effect)
+    monkeypatch.setattr(s51, "_shutdown_server", no_effect)
+    monkeypatch.setattr(s51, "_correlated_observe", fake_probe)
+    monkeypatch.setattr(s51, "_command", fake_command)
+    monkeypatch.setattr(s51, "B0EnergyLedger", FakeLedger)
+
+    report_path = tmp_path / "shadow.json"
+    rc = asyncio.run(s51.qualify(
+        report_path, tmp_path / "paper.log",
+        bug0_first_eat_shadow=True,
+    ))
+    report = json.loads(report_path.read_text())
+    assert rc == 0 and report["status"] == "PASS"
+    assert report["classification"] == (
+        "BUG0_FIRST_EAT_NATIVE_SHADOW_NO_ACTION_DEV_ONLY"
+    )
+    assert report["bug0_first_eat_shadow"]["candidate_item"] == "bread"
+    assert report["actual_native_actions"] == []
+    assert report["food_commands_issued"] == 0
+    assert report["physical_eat_authorized"] is False
+    assert report["m_energy_credited"] is False
+    assert report["grant_consumed"] is False
+    assert calls.count("shutdown") == 1
+    assert not any(
+        isinstance(call, tuple) and any(
+            name in call[1] for name in ("equip_item", "consume_held")
+        )
+        for call in calls
+    )
+    assert (tmp_path / "shadow.native.jsonl").is_file()
+    assert (tmp_path / "shadow.commands.jsonl").is_file()
