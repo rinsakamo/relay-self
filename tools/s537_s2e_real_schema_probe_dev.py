@@ -12,6 +12,7 @@ import hashlib
 import http.client
 import json
 import os
+import signal
 from pathlib import Path
 
 from adapters.mineflayer.s57_owned_llama_backend import OwnedBackendSpec
@@ -92,6 +93,12 @@ def probe_once(
     if len(data) > REQUEST_LIMIT:
         raise ValueError("request too large")
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout_s)
+    # Linux main-thread hard deadline: socket timeouts alone are per operation.
+    def whole_budget_expired(_signum, _frame):
+        raise TimeoutError("entire one-shot HTTP budget expired")
+
+    old_handler = signal.signal(signal.SIGALRM, whole_budget_expired)
+    signal.setitimer(signal.ITIMER_REAL, timeout_s)
     try:
         conn.request(
             "POST", "/v1/chat/completions", body=data,
@@ -101,6 +108,8 @@ def probe_once(
         status = response.status
         raw = response.read(RESPONSE_LIMIT + 1)
     finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old_handler)
         conn.close()
     return status, data, raw
 
