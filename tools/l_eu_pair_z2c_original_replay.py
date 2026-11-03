@@ -52,10 +52,37 @@ def read(repo: Path, relative: str) -> tuple[dict, str]:
         raise EUPairRejected("old original source JSON malformed") from exc
 
 
+
+def verify_z2c_original_manifest(repo: Path) -> int:
+    """Replay all 30 archived H2 files, including the HOST semantic review."""
+    manifest, _ = read(repo, H2_SOURCE + "/SHA256SUMS.json")
+    if type(manifest) is not dict or len(manifest) != 30:
+        raise EUPairRejected("exact previous H2 evidence manifest missing")
+    for relative, sha in manifest.items():
+        if (
+            type(relative) is not str or type(sha) is not str
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or not relative or len(relative) > 240
+        ):
+            raise EUPairRejected("invalid prior H2 evidence path")
+        candidate = repo / H2_SOURCE / relative
+        if (
+            candidate.is_symlink() or not candidate.is_file()
+            or not candidate.resolve().is_relative_to((repo / H2_SOURCE).resolve())
+            or hashlib.sha256(candidate.read_bytes()).hexdigest() != sha
+        ):
+            raise EUPairRejected("H2 source original SHA manifest mismatch")
+    return len(manifest)
+
+
 def build_z2c_eu_ledger(repo: Path) -> EULedger:
     """Pure archived original replay; no provider, user Memory or Action owner."""
     if not isinstance(repo, Path) or not repo.is_absolute() or not repo.is_dir() or repo.is_symlink():
         raise EUPairRejected("absolute existing repo root required")
+    verified_h2_files = verify_z2c_original_manifest(repo)
+    if verified_h2_files != 30:
+        raise EUPairRejected("original Z2c archive not fully preserved")
     old, paper, replay = original_z2b_h2_sources(repo / WORLD_SOURCE)
     h2 = audit_saved_h2(repo / WORLD_SOURCE, repo / H2_SOURCE / "h2-original")
     if (
