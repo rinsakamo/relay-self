@@ -126,7 +126,7 @@ Same textual intent_id -X-> proof of same owner/epoch/physical authority
 
 ## 6. Physical resource conflict, exclusivity and cleanup
 
-**Initial safe policy:** permit **one physically active effect transaction at a time per controlled WorldBody** through the existing S49 issuer. Cognitive parallelism continues; physical command concurrency is **deferred**. This policy avoids promising that simultaneous movement, use-item, attack and camera operations are compatible on Minecraft 1.21.8 or on an eventual different body.
+**S49 compatibility policy (current DEV implementation only):** the present MOVE-only executor admits **one in-flight primitive Action**; it rejects new proposals when `ActionSupervisor.open_actions` is nonempty. This protects existing tested S49 behavior, **not** a permanent one-Action-per-body or one-input-channel ontology rule. The target architecture supports **one physical issuer emitting an admitted multi-channel control frame**, whose channels may overlap physically when independently proven compatible. Until the multi-channel protocol, grant scopes, atomic conflict resolution and source-qualified outcomes are implemented and tested, S49 continues to use its existing single-action policy.
 
 Future controlled physical concurrency is possible only after:
 - actuator/resource set and conflict relations are declared by body-specific owner (not abstract Goal graph);
@@ -193,7 +193,7 @@ Fair scheduling may avoid starvation among ordinary Goal/Plan candidates; howeve
 
 **A2 — Cognitive scheduling and guarded Plan revisions:** preserve transient tasks, suspended/resumed cognitive work and Plan revision under unchanged physical Intent; enforce resource budgets. Add source-bound tests for protected L0 amid slow L2 and post-outcome physical settling/clear. No body-command expansion is implied.
 
-**A3 — Physical capability expansion (separate grants):** only after body-specific Action primitive, grant semantics, control clear, physics, and outcome tracing exist for eating/attack, test composed Goal sequences. *Simultaneous* physical operations are a separate feature/qualification, **not** an A0–A2 completion gate.
+**A3 — Multi-channel motor composition, initially opt-in and offline:** expand body-specific capabilities only after typed channel controls, per-channel grant semantics, controller lease/currentness, bounded command frame, dispatch/clear and source-qualified outcome tracing are independently tested. The single existing physical issuer composes compatible locomotion/jump/orientation/attack requests into one frame without granting cognitive slots direct physical rights. Mixed channel effects, individual completion and emergency override require separate evidence; no simultaneous physical operation is assumed implemented. Eating/attack and concurrent physical operations are separate opt-in feature qualifications, **not** an A0–A2 completion gate.
 
 ### Completion statuses
 
@@ -219,3 +219,92 @@ These are bounded implementation choices under the v0.5 conceptual decision, **n
 - [Intent commitment](intent-commitment.md), [Skill execution](skill-execution.md), [Action lifecycle](action-lifecycle.md), [Action supervision](action-supervision.md)
 - [Runtime principles](../runtime-principles.md), [Ontology](../ontology.md), [v0.5 gap audit](../unification-gap-audit-v0.5.md)
 - [Product S #537](https://github.com/rinsakamo/relay-self/issues/537), [parallel cognition #367](https://github.com/rinsakamo/relay-self/issues/367), [S49 completed original owner #674](https://github.com/rinsakamo/relay-self/pull/674), [cross-lane #636](https://github.com/rinsakamo/relay-self/issues/636)
+
+## 12. Multi-channel motor decoding under one Execution Intent (2026-11-03 amendment)
+
+> **STATUS: DESIGN PROPOSAL / SUPERSEDES ANY READING OF §6 AS A PERMANENT SINGLE-ACTION LIMIT.** The single issuer is an **authority singularity**, not a single motor command or single control channel. Existing S49's `open_actions` exclusion is a current MOVE-only DEV implementation limit, not the v0.5 target. No physical concurrency is currently demonstrated or authorized by this amendment.
+
+### 12.1 Hierarchy and source of control requests
+
+```text
+one physical Execution Intent (bounded objective and lawful authority)
+     |
+ guarded Plan / temporal Skill composition
+     |
+  L0 Skill controllers (potentially more than one, no direct issuer)
+     |            |            |              |
+ locomotion    jump        orientation     attack/use
+     \            |            |              /
+        Body-specific Motor Decoder / Control Composer
+           * validate actual capabilities and dependencies
+           * resolve channel conflicts / temporal guards
+           * stage a bounded ControlFrame and owner-bound grant
+                         |
+              existing sole S49 physical issuer
+                         |
+             WorldBody adapter / real input channel effects
+                         |
+       bounded per-channel evidence + composite outcome association
+```
+
+An Execution Intent **does not output native buttons directly**. A Plan selects/parameterizes Skill controllers. Each controller can propose a *bounded channel request* over a time horizon. The Motor Decoder uses **WorldBody capability and actual control state** to merge compatible requests into one authorized physical control episode, or safely defer/deny some requests. All physical dispatch is still owned by the one S49 execution path.
+
+A new top-level `MotorDecoder` *owner* is **not presumed**: first attempt the minimal body-specific controller-composition boundary inside the existing S/WorldBody adapter. Add independently persisted/authorized state only if Grand Null shows no existing owner can retain it.
+
+### 12.2 Proposed typed ControlFrame (design type, not current API)
+
+```text
+ControlFrame {
+  physical_body, world_session, source_revision, frame_sequence,
+  physical_execution_intent_id, physical_issuer_id, plan_revision,
+  valid_from, valid_until, control_lease_generation,
+  held_controls: {locomotion: FORWARD, ...},
+  event_pulses: {jump: REQUEST, attack: REQUEST(target_ref), ...},
+  continuous_targets: {orientation: TRACK(target_ref), ...},
+  channel_grants_and_requirements: [...],
+  preconditions, abort_conditions, expected_channel_outcomes
+}
+```
+
+**Held control** (e.g. moving forward over a bounded period), **event/pulse** (e.g. discrete attack request; jump may be implemented as state or edge depending on body adapter), and **continuous controller target** (e.g. track the entity) have distinct timing/closure semantics. They are **not** four primitive `ActionLifecycle` objects already verified at the same tick. One frame is an *owner-validated emission plan/coordination unit*, not automatically an atomic Minecraft/protocol transaction or an evidence-backed collective success.
+
+### 12.3 Per-channel ownership, composition, and compatibility
+
+Initially define a **body-specific capability map**, not universal assumed axes:
+
+| Channel class | Example controls | Primary conflicts / dependencies |
+| --- | --- | --- |
+| Locomotion | forward/backward, strafe, throttle | competing speed/direction controllers, collisions, fatigue |
+| Vertical/stance | jump, crouch, posture | grounding, collision/headroom, movement interaction |
+| Orientation | yaw/pitch, tracking | camera owner contention; attack may need aim |
+| Interaction | attack, use/eat, item switch | hand/input exclusivity, cooldown, item inventory/target constraints |
+| Global stop/safety | clear/abort/STOP, emergency override | preempts or inhibits lower-priority channels according to verified control semantics |
+
+A compatibility decision is **not** just comparing resource labels: there can be conditional cross-channel constraints (e.g. jump needs room, attack needs target/range/aim; using an item may interfere with sprint or attack). Requested simultaneous `move + jump + attack` is a *candidate* frame only if relevant dependencies, actual game version/body adapter behavior, native capability and execution deadline have been checked.
+
+If two Skills propose incompatible values for the **same** channel, resolve **before** issuing using source-qualified feasibility, viability/emergency constraints, current Execution Intent, urgency, deadlines, value/Plan commitments and current leases. Non-selected proposals remain deferred/denied; do **not** create an invisible extra Action issuer. Explicit fairness is subordinate to bounded safety and deadlines.
+
+### 12.4 Timing, authority, observation and cancellation
+
+1. **Prepare:** evaluate all candidate channel requests against one observed frame/epoch and existing physical owner commitment; test capability, dependencies, resource conflict, source freshness and deadline. A later L2 advisory cannot mutate a previously prepared/issued frame without a new admission.
+2. **Authorize:** one real physical issuer performs a scoped authorization for the *whole frame and each admitted channel*. No channel may be added after authorization. A valid authority string alone is insufficient. The frame is not released as a union of independent, out-of-order authorizations.
+3. **Dispatch:** send the bounded set of controls via the existing WorldBody adapter with an observable ordering/window. **Do not claim atomic same-tick execution** from separate JS/native calls absent wire/World evidence. Some control state persists between events; track transitions and lease expiration explicitly.
+4. **Observe:** record source-correlated per-channel ACK/clear/World effects and the outer frame's state. Attack intent, attack call success, hit/target damage and death are separate; movement and post-clear inertia are separate. If evidence is missing, the affected channel/frame is UNKNOWN, not collective OUTCOME success. An outer frame outcome must not erase unresolved child effects.
+5. **Stop/replan:** fence future frames from obsolete `slot_generation / plan_revision / source_generation`. Request S15/native clear where supported; keep channel reservations until release is supported by actual clear/physical quiescence or conservative bound. Already dispatched attack pulses cannot be retroactively revoked. Emergency control can override future outputs but cannot falsify already in-flight effects.
+
+**Existing `ActionLifecycle` owns primitive effect commands.** The eventual exact relationship between a frame/episode and individually supervised primitive actions (per-channel or grouped effect with separately attributed receipts) is an **open owner API choice**. Do not silently recast an atomic `ActionLifecycle` as a compound action; test causal association and whether a composite frame record is truly needed. Keep `ActionSupervisor` actual outcome and deadline semantics unchanged until owner-reviewed.
+
+### 12.5 New negative tests (contract A expansion)
+
+- **A-15:** same issuer + multiple channels can be proposed but no independent issuer, no channel without real scoped authority.
+- **A-16:** `move + jump + attack` is admitted only with a valid capability map, dependency checks, source freshness and bounded dispatch window; unsupported target/range/grounding fails closed.
+- **A-17:** conflicting same-channel controls (`forward` vs `backward`, two camera owners, `attack` vs `use` if incompatible) never produce contradictory live output.
+- **A-18:** a held movement input continues/clears according to an explicit lease and real ACK; jump/attack pulses have event identity and no replay on retries or Plan changes.
+- **A-19:** frame dispatched through several native calls is **not** reported as same-tick atomic without separate evidence; partial execution, unknown attack result, and physical settling cannot be normalized to full success.
+- **A-20:** a new urgent L0 collision-avoidance proposal may preempt conflicting future channel output without altering already issued receipts or bypassing the physical issuer.
+
+### 12.6 Implementation sequencing and review questions
+
+Keep current S49 sequential MOVE route untouched for compatibility. First add **offline source-bound control-frame decoding and collision/authority tests**, with a synthetic WorldBody capability matrix. Only later stage opt-in real World tests of individual controls, simple compatible pairs, and finally movement+jump+attack with independently recorded native/tick outcomes. These are separate features and grants under S #537, not part of this documentation write.
+
+**Still to resolve before DESIGN_ACCEPTED:** (a) can the frame be a transient `ExecutionBinding`/existing adapter structure instead of another owner; (b) exact primitive-action vs frame causal mapping; (c) body-specific control/lease and native timing evidence for same-period operations; (d) safe quiescence/abort treatment of partially dispatched frames. This section does not mark A accepted.
