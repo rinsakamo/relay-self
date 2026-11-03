@@ -8,14 +8,14 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
-import test_m616_s49_s14_planned_owner_join as m_s14_test
-
 from adapters.mineflayer.s49_b0_owner_decision_witness import (
     S49B0DecisionWitness,
 )
 from adapters.mineflayer.s49_completed_decision_bridge import (
     read_original_s49_completions,
 )
+
+import test_m616_s49_s14_planned_owner_join as m_s14_test
 from experiments.metabolism_s49_b0_original_decision_only import (
     M616B0DecisionLease,
     bounded_m_b0_original_decision_row,
