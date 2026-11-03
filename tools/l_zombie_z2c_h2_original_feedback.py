@@ -63,6 +63,9 @@ def original_z2b_h2_sources(root: Path) -> tuple[dict, dict, dict]:
         )
         saved = json.loads((root / "independent-prepared-world-audit.json").read_text())
         world["model_original_wire_cryptographically_joined_by_this_parser"] = True
+        # Original auditor serializes Python tuples as JSON arrays.
+        # Compare normalized JSON representation, never mutate the original.
+        world = json.loads(json.dumps(world, allow_nan=False))
         if world != saved:
             raise ZombiePolicyRejected("original Paper model policy audit differs")
         if (
