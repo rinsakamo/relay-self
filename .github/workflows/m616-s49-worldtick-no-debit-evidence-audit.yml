@@ -1,0 +1,69 @@
+name: M616 preserved S49 B0 WorldTick evidence NO_DEBIT readback
+
+on:
+  push:
+    branches:
+      - research/m616-s49-worldtick-energy-admission-gate-20261103
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-world-source-no-debit-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout independent M-only gate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Download exactly the original successful one-World evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p original_artifact original_energy_audit
+          gh run download 41561214150 \
+            --repo rinsakamo/relay-self \
+            --name m616-s49-b0-decision-oneworld-dev \
+            --dir original_artifact
+          test -f original_artifact/SHA256SUMS
+          test -f original_artifact/s49-report.json
+          test -f original_artifact/m-original-b0.json
+      - name: Independent saved-original SHA and physical energy NO_DEBIT gate
+        run: |
+          PYTHONPATH=.:src python -B -m tools.m616_s49_saved_worldtick_energy_audit \
+            --evidence-dir original_artifact \
+            --report original_energy_audit/m-worldtick-energy-gate.json \
+            > original_energy_audit/readback-stdout.log \
+            2> original_energy_audit/readback-stderr.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("original_energy_audit/m-worldtick-energy-gate.json")
+          row = json.loads(p.read_text(encoding="utf-8"))
+          assert row["status"] == "DEFERRED"
+          assert row["reason"] == "S49_NATIVE_EVENT_SEQ_NOT_CONTINUOUS_WORLD_TICK"
+          assert row["original_evidence_files_sha_matched"] == 7
+          assert row["energy_debits"] == row["paid_basal_ticks"] == 0
+          assert row["consecutive_world_ticks"] is None
+          assert row["original_artifact_sha_list_authenticated_by_independent_custodian"] is False
+          print("M616_ORIGINAL_WORLD_B0_ENERGY_NO_DEBIT_SOURCE_GATE_PASS")
+          PY
+      - name: Hash output and preserve audit evidence (original World is read-only)
+        if: always()
+        run: |
+          mkdir -p original_energy_audit
+          find original_energy_audit -maxdepth 1 -type f -not -name SHA256SUMS -print0 \
+            | sort -z | xargs -0 -r sha256sum \
+            > original_energy_audit/SHA256SUMS
+      - name: Preserve readback output and failures; NO new World
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m616-s49-b0-preserved-world-energy-no-debit-audit
+          path: original_energy_audit/
+          retention-days: 30
+          if-no-files-found: warn
