@@ -12,11 +12,11 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.s49_completed_decision_bridge import S49OriginalCompletedBatch
 from adapters.mineflayer.self_body_m0_projection import (
     B0CognitionViews,
     compose_b0_cognition_views,
 )
-from adapters.mineflayer.s49_completed_decision_bridge import S49OriginalCompletedBatch
 from experiments.metabolism_viability import initial_body, observe_energy
 
 
