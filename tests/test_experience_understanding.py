@@ -119,7 +119,7 @@ def test_unbound_and_duplicate_references_rejected():
         ledger.link(ledger.links[0])
     with pytest.raises(EUPairRejected, match="endpoint"):
         ledger.link(replace(ledger.links[0], experience_id="E_B"))
-    with pytest.raises(EUPairRejected, match="source IDs"):
+    with pytest.raises(EUPairRejected, match="missing original experience"):
         ledger.add_understanding(understanding("U_B", parent=("U_A",), evid=("E_B",)))
 
 
@@ -174,11 +174,11 @@ def test_actual_archived_z2b_z2c_eu_pair_replay_without_any_new_real_actions():
 
 def test_missing_archived_response_fails_before_pair_build(tmp_path):
     root = tmp_path / "copy"
-    shutil.copytree(REPO / "docs/evidence/ledger-z2b-real-20261102",
-                    root / "docs/evidence/ledger-z2b-real-20261102")
-    shutil.copytree(REPO / "docs/evidence/ledger-z2c-real-h2-20261103",
-                    root / "docs/evidence/ledger-z2c-real-h2-20261103")
-    bad = root / "docs/evidence/ledger-z2c-real-h2-20261103/h2-original/h2-response-1.raw.json"
+    shutil.copytree(REPO / "docs/evidence/l-z2b-real-20261102",
+                    root / "docs/evidence/l-z2b-real-20261102")
+    shutil.copytree(REPO / "docs/evidence/l-z2c-real-h2-20261103",
+                    root / "docs/evidence/l-z2c-real-h2-20261103")
+    bad = root / "docs/evidence/l-z2c-real-h2-20261103/h2-original/h2-response-1.raw.json"
     bad.write_bytes(bad.read_bytes() + b"\n")
     with pytest.raises(ValueError):
         build_z2c_eu_ledger(root)
