@@ -1,0 +1,103 @@
+name: M616 S49 S14 original post-Action one World DEV
+on:
+  push:
+    branches:
+      - research/m616-s49-s14-oneworld-20261103
+
+permissions:
+  contents: read
+
+jobs:
+  m616-s14-original-oneworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_COMPLETED_L0_DEV_ONLY: '1'
+      S49_COMPLETED_PLANNED_DEV_ONLY: '1'
+      M616_S49_LIVE_DEV_ONLY: '1'
+      M616_S14_PLANNED_LIVE_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - name: Checkout fixed M code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Set up Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4.4.1
+        with:
+          node-version: '22'
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Original S #701 pinned source checkout (do not edit)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 2e76ba467def10c1e0675eb3ebbe325682d5e8d2
+          path: product_s14_contract
+          persist-credentials: false
+      - name: Install pinned bootstrap and native dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1
+          npm ci --omit=dev --no-audit --no-fund --prefix product_s14_contract/adapters/mineflayer
+          java -version
+          node -e "if (require('./product_s14_contract/adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: Pre-world original S owner and M module import check
+        run: |
+          mkdir -p m616-s14-evidence
+          python -B - <<'PY' > m616-s14-evidence/preflight.log
+          from pathlib import Path
+          import pytest
+          from tools.m616_s49_s14_owner_bootstrap import bootstrap_original_s14_owner
+          from tools.m616_s49_s14_live_owner_dev import M616S14LiveTap
+          root = bootstrap_original_s14_owner(Path("product_s14_contract"))
+          from adapters.mineflayer.s49_normal_session_real_ci import qualify
+          assert callable(qualify)
+          assert M616S14LiveTap(enabled=True).original.lease.enabled
+          print("S14_PINNED_ORIGINAL_OWNER_PREWORLD_IMPORT_PASS", root)
+          PY
+      - name: Exactly one disposable physical Minecraft World DEV
+        run: |
+          set +e
+          python -B -m tools.m616_s49_s14_live_owner_dev \
+            --s49-owner-dir product_s14_contract \
+            --report m616-s14-evidence/s49-report.json \
+            --server-log m616-s14-evidence/minecraft.log \
+            --m-report m616-s14-evidence/m-original-s14.json \
+            --live-world-dev \
+            > m616-s14-evidence/stdout.log \
+            2> m616-s14-evidence/stderr.log
+          rc=$?
+          printf '{"process_exit": %s, "world_attempts": 1, "retries": 0}\n' "$rc" > m616-s14-evidence/exit.json
+          exit "$rc"
+      - name: Append evidence SHA and bounded status (never promote after failure)
+        if: always()
+        run: |
+          mkdir -p m616-s14-evidence
+          find m616-s14-evidence -maxdepth 1 -type f -not -name SHA256SUMS -print0 \
+            | sort -z | xargs -0 -r sha256sum > m616-s14-evidence/SHA256SUMS
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("m616-s14-evidence")
+          for p in ("exit.json","s49-report.json","m-original-s14.json"):
+              path=root/p
+              if path.exists():
+                  data=json.loads(path.read_text())
+                  print(p, "status=", data.get("status"), "reason=", data.get("reason"))
+              else:
+                  print(p, "NOT_PRODUCED")
+          PY
+      - name: Always preserve one-World raw evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m616-s49-s14-original-oneworld-dev
+          path: m616-s14-evidence/
+          if-no-files-found: warn
+          retention-days: 30
