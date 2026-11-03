@@ -57,6 +57,11 @@ def audit_original_s49_energy_coverage(
     S49 event seq, Minecraft time_of_day or V6 sparse packet sample will
     never satisfy this contract.
     """
+    # The compatibility audit currently uses explicit assertions. When
+    # bytecode optimization removes them, REJECT rather than treating any
+    # unvalidated saved-source JSON as a valid M observation.
+    if not __debug__:
+        return _rejected()
     if type(s49_report) is not dict or type(m_report) is not dict:
         return _rejected()
     try:
@@ -164,6 +169,7 @@ def bounded_world_tick_energy_gate(gate: WorldTickEnergyGate) -> dict[str, Any]:
         or gate.source_attested or gate.action_authority
         or gate.native_full_tick_coverage != "NOT_SUPPLIED"
         or gate.true_world_energy != "UNKNOWN_NO_PHYSICAL_ENERGY_TICK"
+        or gate.b0_model_energy != "UNADVANCED_INITIAL_STATE_NOT_PHYSICAL_COST"
         or gate.consecutive_world_ticks is not None
         or any((
             gate.paid_basal_ticks, gate.paid_movement_ticks,
