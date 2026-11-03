@@ -1,7 +1,7 @@
 """Offline S50 original-reader reuse for Bug-0 EAT; no World or Action."""
 
-from dataclasses import replace
 import hashlib
+from dataclasses import replace
 
 import pytest
 
