@@ -213,3 +213,18 @@ def test_eu_builder_cli_creates_exclusive_only_shadow_receipt(tmp_path):
     assert receipt["learning_updates"] == receipt["worlds_started"] == 0
     assert decode_ledger(out.read_bytes()) == build_z2c_eu_ledger(REPO)
     assert subprocess.run(cmd, capture_output=True, check=False).returncode == 2
+
+
+
+def test_tampered_host_semantic_review_does_not_become_verified_experience(tmp_path):
+    root = tmp_path / "copy"
+    shutil.copytree(REPO / "docs/evidence/l-z2b-real-20261102",
+                    root / "docs/evidence/l-z2b-real-20261102")
+    shutil.copytree(REPO / "docs/evidence/l-z2c-real-h2-20261103",
+                    root / "docs/evidence/l-z2c-real-h2-20261103")
+    hostile = root / "docs/evidence/l-z2c-real-h2-20261103/semantic-review.json"
+    original = hostile.read_bytes()
+    hostile.write_bytes(original.replace(b'"FAIL"', b'"PASS"'))
+    with pytest.raises(EUPairRejected, match="manifest mismatch"):
+        build_z2c_eu_ledger(root)
+    assert (REPO / "docs/evidence/l-z2c-real-h2-20261103/semantic-review.json").read_bytes() == original
