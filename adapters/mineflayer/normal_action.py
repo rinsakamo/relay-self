@@ -484,6 +484,7 @@ class NormalSessionActionExecutor:
     def require_eating_authorizations(
         self, choice: EatChoice, probe: MineflayerObservation,
         propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+        *, previous_probe: MineflayerObservation,
     ) -> None:
         """Only the existing S49 issuer may admit this serial EAT request.
 
@@ -491,6 +492,30 @@ class NormalSessionActionExecutor:
         No safety or freshness beyond the given native source is manufactured.
         """
         current = self.intent.current_intent
+        # Two original-native observations bound to the same session are a
+        # necessary pre-ISSUE check, not a verified tick clock/STOP ACK.
+        # The separate native physical-settling owner must still qualify any
+        # transition from earlier motion before a real World EAT grant.
+        if (
+            not isinstance(previous_probe, MineflayerObservation)
+            or previous_probe.kind != "probe"
+            or not previous_probe.request_id
+            or previous_probe.provenance.source != "mineflayer"
+            or previous_probe.session_id != self.session_id
+            or not isinstance(probe, MineflayerObservation)
+            or probe.session_id != previous_probe.session_id
+            or probe.seq <= previous_probe.seq
+            or probe.seq - previous_probe.seq > 32
+            or probe.request_id == previous_probe.request_id
+            or assess_normal_eating_observation(previous_probe)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or any(
+                abs(getattr(previous_probe.snapshot.position, axis)
+                    - getattr(probe.snapshot.position, axis)) > 0.05
+                for axis in ("x", "y", "z")
+            )
+        ):
+            raise NormalActionRejected("no recent same-session steady native EAT window")
         if (
             not isinstance(choice, EatChoice)
             or choice.status is not EatStatus.CANDIDATE
@@ -539,6 +564,7 @@ class NormalSessionActionExecutor:
         self, session: MineflayerProcessSession, choice: EatChoice,
         probe: MineflayerObservation,
         propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+        *, previous_probe: MineflayerObservation,
     ) -> EatingActionReceipt:
         """Same original S49 supervisor issues, unchanged S51 performs EAT.
 
@@ -551,7 +577,9 @@ class NormalSessionActionExecutor:
             or session.process_returncode is not None
         ):
             raise NormalActionRejected("S49 EAT live Mineflayer session mismatch")
-        self.require_eating_authorizations(choice, probe, propose, issue)
+        self.require_eating_authorizations(
+            choice, probe, propose, issue, previous_probe=previous_probe,
+        )
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
         skill = SkillExecution.start(
