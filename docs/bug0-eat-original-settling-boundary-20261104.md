@@ -21,7 +21,7 @@
 1. Current terminal `OUTCOME` must belong to the exact `ActionSupervisor` instance; its original S15 `WorldConsequence` is `EXECUTED` for `MOVE_BACKWARD` in the same session.
 2. The originally observed Mineflayer `clear_controls` receipt is applied, source-matched and temporally before the original after-probe. **S15 after-probes have no request ID; one is not invented.**
 3. Owner has already fenced EAT as `_post_move_settling_unqualified=True`.
-4. Result explicitly states `s15_clear_ack_applied=True`, `s16_terminal=OUTCOME`, `settling_status=WORLD_TICK_IDLE_NOT_ATTESTED`, `physically_stopped_proven=False`, `eat_issuance_authorized=False`. It never clears the EAT fence.
+4. Result explicitly states `s15_clear_ack_applied=True`, `s16_terminal=outcome`, `settling_status=WORLD_TICK_IDLE_NOT_ATTESTED`, `physically_stopped_proven=False`, `eat_issuance_authorized=False`. It never clears the EAT fence.
 5. When the existing S49 `--bug0-eat-shadow` (default **off**) is operator-enabled, the same original closure produces these additional **read-only** report fields. The legacy fixed `WAIT→MOVE_AWAY→MOVE_AWAY` trial is unchanged, with no extra probe, Action, reader, or model.
 
 Synthetic offline tests use frozen S15/S16 typed fixture semantics and negative controls: wrong session, wrong clear kind/result, foreign after, non-owner or unissued Action, source reversal and fake clearance. The tests are **not** a live native or independently authenticated STOP attestation.
