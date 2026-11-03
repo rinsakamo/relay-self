@@ -436,7 +436,12 @@ def test_eat_requires_two_stable_same_session_native_probes(variant):
     elif variant == "same-request":
         previous = replace(previous, request_id=before.request_id)
     elif variant == "too-old":
-        previous = replace(previous, seq=before.seq - 33)
+        # Construct a later valid current probe; native seqs cannot be < 0.
+        before = replace(before, seq=before.seq + 40)
+        choice = EatCursor(before.session_id).choose(before)
+        propose, issue = grants(
+            before, choice, owner.intent.current_intent.intent_id,
+        )
     elif variant == "unstable-position":
         moved = replace(
             previous.snapshot.position,
