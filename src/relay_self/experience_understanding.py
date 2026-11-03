@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import asdict, dataclass, replace
 
@@ -122,6 +123,8 @@ class Understanding:
     original_response_sha256: str
     source_kind: str
     source_strategy: str
+    original_decision: str
+    original_speed_m_per_tick: float | None
     applicability: str
     reason_original: str
     falsification_original: str
@@ -134,8 +137,19 @@ class Understanding:
         _one_of("stage", self.stage, STAGE)
         _sha("understanding original", self.original_response_sha256)
         _text("source_kind", self.source_kind, limit=64)
-        for name in ("source_strategy", "applicability", "reason_original", "falsification_original"):
+        for name in (
+            "source_strategy", "original_decision", "applicability",
+            "reason_original", "falsification_original",
+        ):
             _text(name, getattr(self, name))
+        # This is ORIGINAL model output, not a policy validator:
+        # STATIONARY-vs-falsification or ABSTAIN-vs-approach inconsistencies
+        # must remain representable instead of being silently repaired.
+        speed = self.original_speed_m_per_tick
+        if speed is not None and (
+            type(speed) not in (float, int) or not math.isfinite(speed) or not 0 <= speed <= 0.3
+        ):
+            raise EUPairRejected("original speed must be bounded numeric or null")
         _parents("parent_ids", self.parent_ids)
         _parents("evidence_ids", self.evidence_ids)
         if not self.evidence_ids or self.understanding_id in self.parent_ids:
@@ -193,7 +207,8 @@ class EULedger:
         ):
             raise EUPairRejected("bounded typed immutable records required")
         if (
-            self.memory_commits != 0 or self.habit_promotions != 0
+            type(self.memory_commits) is not int or self.memory_commits != 0
+            or type(self.habit_promotions) is not int or self.habit_promotions != 0
             or self.action_authority is not False or self.learning_admitted is not False
             or self.science_qualified is not False
         ):
