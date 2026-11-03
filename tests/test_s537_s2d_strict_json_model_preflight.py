@@ -57,6 +57,18 @@ def test_strict_json_request_schema_in_original_s60_and_parent_compatibility():
             "response_format",
         }
         assert payload["response_format"] == structured_review_format()
+        # Exact llama.cpp build10874 parser reads response_format.json_schema.schema.
+        # A flat response_format.schema would silently yield an empty grammar.
+        wrapper = payload["response_format"]
+        assert set(wrapper) == {"type", "json_schema"}
+        assert wrapper["type"] == "json_schema"
+        assert set(wrapper["json_schema"]) == {"schema"}
+        schema = wrapper["json_schema"]["schema"]
+        assert set(schema["properties"]) == {
+            "status", "observation", "uncertainty",
+        }
+        assert set(schema["required"]) == set(schema["properties"])
+        assert schema["additionalProperties"] is False
         assert payload["messages"][1]["role"] == "user"
         original = json.loads(payload["messages"][1]["content"])
         assert original["current_wb_l1_and_previous_s16"]["preceding_action_id"]
@@ -72,6 +84,31 @@ def test_strict_json_request_schema_in_original_s60_and_parent_compatibility():
             "model", "messages", "temperature", "max_tokens", "stream",
         }
         await plain.close()
+    asyncio.run(go())
+
+
+def test_build10874_reject_flat_schema_and_empty_nested_schema_before_post():
+    """No fake-HTTP PASS may hide a build10874 parser-wrapper mismatch."""
+    async def go():
+        cfg = _config()
+        shadow = S2BGatedL2Shadow(enabled=True, config=cfg, timeout_s=.5)
+        source = _input()
+        shadow.observe(source, owner_read=_read(source))
+        request = shadow._request
+        assert request is not None
+        payload = json.loads(shadow._adapter._payload(request))
+        nested_schema = payload["response_format"]["json_schema"]["schema"]
+
+        for wrong_wrapper in (
+            {"type": "json_schema", "schema": nested_schema},
+            {"type": "json_schema", "json_schema": {"schema": {}}},
+            {"type": "json_schema", "json_schema": nested_schema},
+        ):
+            malformed = {**payload, "response_format": wrong_wrapper}
+            adapter = LoopbackDisplacementAdapter(cfg, lambda _req: malformed)
+            with pytest.raises(TransportUnconfirmed):
+                adapter._payload(request)
+        await shadow.close()
     asyncio.run(go())
 
 
