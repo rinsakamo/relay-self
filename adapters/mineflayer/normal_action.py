@@ -15,6 +15,7 @@ from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
     WorldConsequence,
+    WorldConsequenceStatus,
     build_mineflayer_command,
     execute_mineflayer_command,
 )
@@ -371,6 +372,22 @@ class NormalActionReceipt:
 
 
 @dataclass(frozen=True, slots=True)
+class NormalPostMoveEatingReadback:
+    """Read-only S15/S16 original evidence; never certifies physical STOP."""
+
+    session_id: str
+    action_id: str
+    s16_terminal: str
+    s15_clear_ack_applied: bool
+    clear_ack_seq: int
+    after_probe_seq: int
+    readback_source: Provenance
+    settling_status: str = "WORLD_TICK_IDLE_NOT_ATTESTED"
+    physically_stopped_proven: bool = False
+    eat_issuance_authorized: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class NormalActionClosedReadback:
     """Typed S16 closure delivered after original ActionSupervisor terminal."""
 
@@ -421,6 +438,50 @@ class NormalSessionActionExecutor:
         # alone does not qualify post-clear settling. EAT stays fenced until
         # a distinct original-source settling owner is integrated.
         self._post_move_settling_unqualified = False
+
+    def read_only_post_move_eat_boundary(
+        self, receipt: NormalActionReceipt,
+    ) -> NormalPostMoveEatingReadback:
+        """Inspect the SAME S49 supervisor and native S15 clear ACK, read-only.
+
+        L22 sampled quiet, L23 Paper callback ticks and S50 input-off reports
+        do not prove tick-aligned effective STOP. Do not un-fence EAT here.
+        """
+        if not isinstance(receipt, NormalActionReceipt):
+            raise NormalActionRejected("original S49 Action receipt required")
+        terminal, consequence = receipt.terminal, receipt.consequence
+        clear = consequence.cleanup_receipt
+        after = consequence.after_observation
+        if (
+            terminal.state is not ActionState.OUTCOME
+            or consequence.status is not WorldConsequenceStatus.EXECUTED
+            or terminal.action_id != consequence.action_id
+            or terminal.action_id not in self._dispatched
+            or consequence.session_id != self.session_id
+            or consequence.action_ref != "MOVE_BACKWARD"
+            or clear is None or after is None
+            or clear.session_id != self.session_id
+            or clear.effect != "clear_controls"
+            or clear.result != "applied"
+            or clear.provenance.source != "mineflayer"
+            or after.session_id != self.session_id
+            or after.kind != "probe"
+            or not after.request_id
+            or after.provenance.source != "mineflayer"
+            or not clear.seq < after.seq
+            or not self._post_move_settling_unqualified
+            or self.supervisor.get(terminal.action_id) is not terminal
+        ):
+            raise NormalActionRejected("original clear/after source not qualified")
+        return NormalPostMoveEatingReadback(
+            session_id=self.session_id,
+            action_id=terminal.action_id,
+            s16_terminal=terminal.state.value,
+            s15_clear_ack_applied=True,
+            clear_ack_seq=clear.seq,
+            after_probe_seq=after.seq,
+            readback_source=after.provenance,
+        )
 
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
