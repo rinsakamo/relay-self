@@ -1,0 +1,73 @@
+{
+  "h1": {
+    "applicability": "CONDITIONS_UNRESOLVED",
+    "cited_ids": [
+      "Z1B_T40_T60",
+      "Z2A_T46_T66"
+    ],
+    "falsification_test": "If zombie moves > 1.5m from start_xz_m, then CONSTANT_VELOCITY is false.",
+    "model_request_sha256": "5572136f4941b1bad3aef9134f86beca9388679e930a29d572f6148ba2041e91",
+    "model_response_sha256": "abdcb54e06cb766ea52365e476fd216cabad008f2a24344a8bda8a41e0e4a09c",
+    "no_action_authority": true,
+    "no_learning_admission": true,
+    "policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+    "prior_source_sha256": [
+      "31dd510390c75492c023889f7f0d876c702bebea422314fe8151474762b7e49e",
+      "3e70f39251d30cd16952e8a2fdf8a5141bbe0ea777c6160ba7a0b5609fb6c32d"
+    ],
+    "reason": "Limited evidence; chase_causality is NOT_ATTESTED and no current player coordinates are available for TARGET_APPROACH.",
+    "source_kind": "PREPARED_L2_POLICY_UNADMITTED_V1",
+    "speed_m_per_tick": null,
+    "strategy": "STATIONARY"
+  },
+  "world": {
+    "schema": "L_ZOMBIE_Z2B_PREPARED_POLICY_WORLD_V3",
+    "classification": "Z2B_PAPER_PREPARED_L2_POLICY_SCORED_SOURCE_ONLY",
+    "original_paper_sha256": "1c20c9e7aa456cdf163edf56a3caab3eead2431febb3f40743896054730e4815",
+    "policy_sha256": "5ab25d00180e72b739474f4aaca93317421b2f275975cb737775b7061dbde4ed",
+    "model_request_sha256": "5572136f4941b1bad3aef9134f86beca9388679e930a29d572f6148ba2041e91",
+    "model_response_sha256": "abdcb54e06cb766ea52365e476fd216cabad008f2a24344a8bda8a41e0e4a09c",
+    "world_uuid": "0c73cad5-ad84-4112-a708-4a1fb9ff9fc4",
+    "zombie_uuid": "1427da04-3095-4045-93b1-74a8f9d17b8f",
+    "source_first_tick": 27,
+    "issued_tick": 37,
+    "target_tick": 57,
+    "frozen_before_next_tick": true,
+    "forecast_kind": "ZOMBIE_HORIZONTAL_XZ_METERS",
+    "strategy": "STATIONARY",
+    "player_xz_m": [
+      -6.5,
+      -1.5
+    ],
+    "model_prepared_xz_m": [
+      -2.5,
+      -1.5
+    ],
+    "future_actual_xz_m": [
+      -3.983553173838,
+      -1.525954708854
+    ],
+    "prepared_policy_error_m": 1.4837801948120548,
+    "cheap_stationary_error_m": 1.4837801948120548,
+    "cheap_velocity_error_m": 1.4837801948120548,
+    "prepared_policy_owner": "EARLIER_EPOCH_MODEL_PREPARED_SHADOW",
+    "model_live_in_world_calls": 0,
+    "model_original_wire_cryptographically_joined_by_this_parser": true,
+    "actual_real_gguf_mapping_verified_by_this_parser": false,
+    "native_mineflayer_exact_paper_tick_join": false,
+    "self_action_count": 0,
+    "learning_admission": false,
+    "l0_promotion": false,
+    "qualification_go": false
+  },
+  "receipt": {
+    "classification": "SAVED_Z2B_ORIGINAL_REPLAY_PASS_NOT_LIVE_ATTESTATION",
+    "archived_files_checked": 68,
+    "prepared_policy_error_m": 1.4837801948120548,
+    "new_model_calls": 0,
+    "new_worlds": 0,
+    "client_tick_join": "CLIENT_TICK_JOIN_UNATTESTED",
+    "qualification": "QUALIFICATION_NO_GO",
+    "science": "SCIENCE_NOT_RUN"
+  }
+}

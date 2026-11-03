@@ -1,0 +1,27 @@
+{
+  "review_kind": "HOST_REVIEW_OF_PRESERVED_H1_AND_H2_PROSE_NOT_AN_INDEPENDENT_MODEL_OR_HUMAN_REVIEW",
+  "Z2c_H2": "PASS_DEV_EXPERIENCE_DELIVERED_TO_VERIFIED_REAL_GEMMA",
+  "B1_N": "PASS_LIMITED_DEV_WITHIN_PREDECLARED_0.02M",
+  "numeric_limitation": "The reported 1.483553173838 equals abs(delta_x), not the exact horizontal Euclidean distance. Agreement within tolerance does not prove two-axis calculation.",
+  "B1_U": "PARTIAL_NOT_ESTABLISHED",
+  "B1_U_evidence": "CONDITIONS_UNRESOLVED and CHASE_CAUSALITY_UNATTESTED were selected; rationale mentions potential acquisition at freeze, but does not explicitly contrast unavailable preparation-time player coordinates with available Paper freeze-time coordinates. No causal pursuit claim observed; complete temporal understanding is not established.",
+  "B1_Q": "FAIL",
+  "B1_Q_evidence": "H1 actually chose STATIONARY and falsification explicitly named CONSTANT_VELOCITY. H2 says old_falsification_named_strategy=STATIONARY and omits OLD_FALSIFICATION_NAMES_OTHER_RULE. Rationale never identifies this contradiction.",
+  "Z2c_R": "RAW_CANDIDATE_SAVED_PROPOSED_NOT_ADMITTED_TYPED_REVISION_REJECTED",
+  "D_revision_consistency": "FAIL",
+  "D_evidence": [
+    "ABSTAIN_PENDING_MORE_EVIDENCE conflicts with proposed_strategy=TARGET_APPROACH instead of ABSTAIN.",
+    "TARGET_APPROACH has null proposed_speed_m_per_tick, so its prediction is not fully specified.",
+    "next_falsification_target and prose both name TARGET_APPROACH, but prose refers to old t57 and completed-world movement; it fails to unambiguously define a separate future World/freeze/20-tick test.",
+    "0.5m is stored as an unverified candidate threshold. The reply does not explicitly justify or establish it as validated knowledge."
+  ],
+  "B2": "NOT_ESTABLISHED_NO_NEW_WORLD_NO_ADMISSION",
+  "C": "NOT_RUN_NO_AUTONOMOUS_EXPERIMENT_SELECTION_OR_EXECUTION",
+  "prompt_scaffolding_limit": "Issue labels, source IDs, strategy choices, temporal distinction and causal warning were supplied by host prompt/schema. Their selection alone is not independent discovery or understanding.",
+  "next_experiment_candidates_not_authorized_here": [
+    "Offline apparatus: require an explicit H1 selected-rule versus named-falsification comparison in bounded prose and keep numeric/semantic scoring separate.",
+    "A separately authorized future H2 could request a fully specified abstention or TARGET_APPROACH hypothesis; this run cannot be regenerated.",
+    "A separately authorized future World could freeze player/zombie coordinates and speed before exact +20 ticks and preregister a holdout/error threshold. No World or call is authorized by this report."
+  ],
+  "classification": "DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+}
