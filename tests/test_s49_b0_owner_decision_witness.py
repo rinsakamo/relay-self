@@ -8,6 +8,7 @@ import asyncio
 from dataclasses import replace
 
 import pytest
+
 import test_s49_completed_decision_bridge as s49_test
 from adapters.mineflayer.s49_b0_owner_decision_witness import (
     S49B0DecisionWitness,
