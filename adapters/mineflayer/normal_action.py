@@ -417,6 +417,10 @@ class NormalSessionActionExecutor:
         self._dispatched: set[str] = set()
         self._count = 0
         self._last_issued_probe_seq = -1
+        # Once a physical MOVE was issued, S49's native S15 clear/S16 closure
+        # alone does not qualify post-clear settling. EAT stays fenced until
+        # a distinct original-source settling owner is integrated.
+        self._post_move_settling_unqualified = False
 
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
@@ -529,6 +533,7 @@ class NormalSessionActionExecutor:
             or choice.food_before != probe.snapshot.food
             or choice.item_name is None or choice.item_slot is None
             or probe.seq <= self._last_issued_probe_seq
+            or self._post_move_settling_unqualified
             or assess_normal_eating_observation(probe)
             is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
             or not any(
@@ -647,6 +652,9 @@ class NormalSessionActionExecutor:
         command = build_mineflayer_command(issued, result)
         # Consumed BEFORE any external IO. Incomplete physical work is UNKNOWN.
         self._dispatched.add(command.action_id)
+        # A MOVE issuer cannot infer physical quiescence merely from terminal
+        # S16 or a couple of stable-looking native position probes.
+        self._post_move_settling_unqualified = True
         self._last_issued_probe_seq = max(self._last_issued_probe_seq, probe.seq)
         self._count += 1
         try:
