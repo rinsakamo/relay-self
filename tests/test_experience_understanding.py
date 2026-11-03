@@ -35,12 +35,20 @@ def experience(eid="E_A"):
 
 
 def understanding(uid="U_A", *, parent=(), evid=("E_A",)):
-    return Understanding(uid, "ORIGINAL_HYPOTHESIS" if not parent
-                         else "POST_OUTCOME_REINTERPRETATION", SHA_B,
-                         "MODEL_RAW", "STATIONARY", "CONDITIONS_UNRESOLVED",
-                         "Previous model asserted a stationary candidate.",
-                         "If future motion exceeds threshold, retest STATIONARY.",
-                         parent, evid)
+    return Understanding(
+        understanding_id=uid,
+        stage="ORIGINAL_HYPOTHESIS" if not parent else "POST_OUTCOME_REINTERPRETATION",
+        original_response_sha256=SHA_B,
+        source_kind="MODEL_RAW",
+        source_strategy="STATIONARY",
+        original_decision="ORIGINAL_FORECAST_SELECTION",
+        original_speed_m_per_tick=None,
+        applicability="CONDITIONS_UNRESOLVED",
+        reason_original="Previous model asserted a stationary candidate.",
+        falsification_original="If future motion exceeds threshold, retest STATIONARY.",
+        parent_ids=parent,
+        evidence_ids=evid,
+    )
 
 
 def connected():
@@ -98,6 +106,10 @@ def test_invalid_original_experience_rejected(bad):
 
 @pytest.mark.parametrize("bad", [
     dict(source_strategy=""),
+    dict(original_decision=""),
+    dict(original_speed_m_per_tick=True),
+    dict(original_speed_m_per_tick=float("nan")),
+    dict(original_speed_m_per_tick=-0.1),
     dict(original_response_sha256="wrong"),
     dict(epistemic_status="ACCEPTED_LEARNING"),
     dict(parent_ids=("U_A",)),
@@ -165,6 +177,9 @@ def test_actual_archived_z2b_z2c_eu_pair_replay_without_any_new_real_actions():
     assert "CONSTANT_VELOCITY" in h1.falsification_original
     assert h2.parent_ids == (h1.understanding_id,)
     assert h2.source_strategy == "TARGET_APPROACH"
+    assert h2.original_decision == "ABSTAIN_PENDING_MORE_EVIDENCE"
+    assert h2.original_speed_m_per_tick is None
+    assert h1.original_decision == "ORIGINAL_FORECAST_SELECTION"
     assert h2.epistemic_status == "UNADMITTED_MODEL_CLAIM"
     assert graph.links[-1].review == "NUMERIC_LIMITED_SEMANTIC_FAIL"
     assert graph.links[-1].review_provenance == "HOST_SEMANTIC_REVIEW_NOT_INDEPENDENT"
