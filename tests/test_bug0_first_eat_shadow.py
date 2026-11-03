@@ -243,7 +243,8 @@ def test_existing_s51_runner_shadow_path_never_sends_eat_with_scripted_originals
         def decide(self, read):
             assert read is earlier
             return SimpleNamespace(
-                kind="EAT", eat_choice=object(), sensor_reading=7.0,
+                kind="EAT", eat_choice=SimpleNamespace(item_name="bread"),
+                sensor_reading=7.0,
             )
 
     def fake_official(jar_path):
