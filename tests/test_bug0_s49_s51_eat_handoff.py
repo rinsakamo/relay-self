@@ -29,6 +29,7 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerInventoryItem
 from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action_supervision import ActionSupervisor
 from relay_self.eat_hunger import EatCursor, EatRejected
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
@@ -525,7 +526,7 @@ def test_original_s15_s16_source_readback_never_promotes_stop_to_eat():
     assert row.session_id == owner.session_id
     assert row.action_id == receipt.terminal.action_id
     assert row.s15_clear_ack_applied
-    assert row.s16_terminal == "OUTCOME"
+    assert row.s16_terminal == "outcome"
     assert row.clear_ack_seq == 3 and row.after_probe_seq == 4
     assert row.readback_source == receipt.consequence.after_observation.provenance
     assert row.settling_status == "WORLD_TICK_IDLE_NOT_ATTESTED"
@@ -572,7 +573,7 @@ def test_original_s15_readback_rejects_corrupt_or_foreign_boundary(variant):
     elif variant == "not-owner":
         owner.supervisor = ActionSupervisor()
     elif variant == "not-closed":
-        owner.supervisor = ActionSupervisor()
+        owner.supervisor = s15.issued_chain()[-2]
     elif variant == "future-clear":
         consequence = replace(
             consequence, cleanup_receipt=replace(
