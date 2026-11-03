@@ -12,6 +12,10 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_body_m0_projection import (
+    B0CognitionViews,
+    compose_b0_cognition_views,
+)
 from adapters.mineflayer.s49_completed_decision_bridge import S49OriginalCompletedBatch
 from experiments.metabolism_viability import initial_body, observe_energy
 
@@ -24,6 +28,7 @@ class S49B0WitnessRejected(ValueError):
 class S49OriginalB0Decision:
     original_probe: MineflayerObservation
     original_decision: B0Decision
+    original_view: B0CognitionViews
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +64,16 @@ class S49B0DecisionWitness:
             # The exact existing B0 owner makes this decision and maintains
             # its own native source freshness. This is NOT a B0.tick().
             decision = self.ledger.decide(original_probe)
-            self._rows.append(S49OriginalB0Decision(original_probe, decision))
+            # Original S projection must occur now, while B0's mutable
+            # native-seq cursor still equals THIS decision's probe.
+            views = compose_b0_cognition_views(
+                original_probe, self.ledger, decision,
+                self_id="self-s49-b0-dev",
+                epoch_id=f"b0-owner-native-{original_probe.seq}",
+            )
+            self._rows.append(S49OriginalB0Decision(
+                original_probe, decision, views,
+            ))
         except Exception:
             self._failed = True
             self._rows.clear()
@@ -114,6 +128,13 @@ def validate_original_b0_decisions(batch: S49OriginalB0DecisionBatch) -> None:
             or record.original_decision.body_tick != ledger.body.tick
             or record.original_decision.sensor_reading
             != observe_energy(ledger.body, ledger.sensor).reading
+            or not isinstance(record.original_view, B0CognitionViews)
+            or record.original_view.world.self_body is not record.original_view.body
+            or record.original_view.body.observation is None
+            or record.original_view.body.observation.native_seq != original.probe.seq
+            or record.original_view.body.observation.session_id != batch.session_id
+            or record.original_view.l0_kind != record.original_decision.kind
+            or record.original_view.sensor_tick != ledger.body.tick
         ):
             raise S49B0WitnessRejected("B0 decision/probe/ledger source mismatch")
         last_seq = original.probe.seq
