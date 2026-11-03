@@ -7,6 +7,7 @@ on:
       - 'adapters/mineflayer/l_zombie_z2c_feedback_contract.py'
       - 'tools/l_zombie_z2c_h2_original_feedback.py'
       - 'tests/test_l_zombie_z2c_feedback_contract.py'
+      - 'docs/l-zombie-z2c-posterror-h2-20261103.md'
       - '.github/workflows/l-zombie-z2c-h2-source-only-dev.yml'
 permissions:
   contents: read
