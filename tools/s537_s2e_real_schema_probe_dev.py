@@ -82,7 +82,7 @@ def probe_once(
     """One localhost POST. No retry, fallback, polling, or redirected request."""
     if not 0 < timeout_s <= 60:
         raise ValueError("invalid timeout")
-    cfg = LoopbackTransportConfig(
+    LoopbackTransportConfig(
         model=model, port=port, max_tokens=max_tokens, whole_s=timeout_s,
         read_s=min(timeout_s, 15.0), structured_json=True,
     )
@@ -190,7 +190,10 @@ def main() -> int:
         "qualification": "NO_GO",
         "science": "NOT_RUN",
     }
-    request_data = b""
+    request_data = json.dumps(
+        probe_payload(args.model_alias, args.max_tokens),
+        ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8")
     response_data = b""
     try:
         # Record one attempt before the call; a broken connection is still an attempt.
