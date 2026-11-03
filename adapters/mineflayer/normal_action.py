@@ -466,7 +466,6 @@ class NormalSessionActionExecutor:
             or clear.provenance.source != "mineflayer"
             or after.session_id != self.session_id
             or after.kind != "probe"
-            or not after.request_id
             or after.provenance.source != "mineflayer"
             or not clear.seq < after.seq
             or not self._post_move_settling_unqualified
