@@ -110,6 +110,20 @@ def inspect_bug0_first_eat_shadow(
         )
     ):
         raise Bug0FirstEatShadowRejected("no eligible food in current native source")
+    previous_count = sum(
+        item.count
+        for item in earlier.snapshot.inventory
+        if item.name == selection.item_name and item.slot == selection.item_slot
+    )
+    current_count = sum(
+        item.count
+        for item in current.snapshot.inventory
+        if item.name == selection.item_name and item.slot == selection.item_slot
+    )
+    if previous_count <= 0 or current_count != previous_count:
+        raise Bug0FirstEatShadowRejected(
+            "food inventory changed between original pre-EAT probes"
+        )
     return Bug0FirstEatShadow(
         session_id=owner.session_id,
         intent_id=owner.intent.current_intent.intent_id,
