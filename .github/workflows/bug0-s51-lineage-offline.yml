@@ -24,11 +24,11 @@ jobs:
       - name: Static contracts
         run: |
           python tools/check_repository.py
-          python -m compileall -q adapters/mineflayer/eat_execution.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py
+          python -m compileall -q adapters/mineflayer/eat_execution.py adapters/mineflayer/normal_action.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py tests/test_bug0_s49_s51_eat_handoff.py
           ruff check adapters/mineflayer/eat_execution.py adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_s51_eat_owner_binding.py
       - name: Original S49 S51 and Bug-0 bounded tests
         run: |
-          python -m pytest -q tests/test_bug0_s51_eat_owner_binding.py tests/test_feature_s51_eat_execution.py tests/test_feature_s46_eat.py tests/test_feature_s49_normal_runtime.py
+          python -m pytest -q tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_s51_eat_owner_binding.py tests/test_feature_s51_eat_execution.py tests/test_feature_s46_eat.py tests/test_feature_s49_normal_runtime.py
       - name: No physical World or model run
         run: |
           echo 'OFFLINE_ONLY; World=0; Gemma=0; physical_Action=0; Learning_write=0'
