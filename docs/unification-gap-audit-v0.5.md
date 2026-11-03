@@ -133,3 +133,12 @@ This Draft **does not** update protected main, rewrite existing owner contracts,
 [Contract A: Cognitive Intent Slots / Physical Action Authority](contracts/intent-slots-action-authority-v0.5.md) now specifies the **candidate design**, not executable acceptance. It distinguishes cognitive task commitments, **multiple potentially simultaneous body-directed Execution Intents**, and the **single existing S49 physical Action issuer**. The current S49 `IntentCommitment` owner is single-current and MOVE-only, but is not an architectural limit. Cognitive outputs must pass owner-derived currentness, physical-admission, per-channel conflict/grant and supervision fences before any original `SkillExecution`/`ActionLifecycle` path or its owner-reviewed extension. It specifies guarded Plan revision, runtime capacity, suspension vs physical stop, post-S16 settling, and A-01–A-20 negative controls with staged A0–A3 implementation.
 
 **Status: A DESIGN_DRAFTED / OWNER REVIEW REQUIRED / OFFLINE IMPLEMENTATION NOT RUN.** Existing product owner S #537 must resolve the precise slot-local commitment representation, whether existing `ExecutionBinding` suffices without a new type, physical quiescence qualification and scoped generation identity. A is **not** marked `DESIGN_ACCEPTED` or implemented. B and C remain open.
+
+
+## 10. Bug-0 minimum embodied scope (2026-11-03)
+
+The user-selected Bug-0 image is a **«fluent-speaking zombie»**: small, imperfect embodied control with MOVE/STOP, EVADE, EAT, ATTACK, REST, WAIT/OBSERVE; narrow projections for the three Self models; and minimal conditional learning from real WorldBody results. See [Bug-0 Minimum Embodied Self contract](contracts/bug0-minimal-embodied-self-v0.5.md) for the action vs Intent/Skill distinctions, A/B/C mapping, and 16 proposed offline negative/positive acceptance cases.
+
+**Explicit deferral:** D = advanced internal joint SelfWorld × SelfBody World simulation, E = MySelf autonomous training / long-term competence optimization. Neither is required for Bug-0; their future interface boundary remains open.
+
+**No status promotion:** the new contract is a design slice, not an approved food-use/attack/rest API, owner review, an executed test, a physical Action grant, or a verified end-to-end learning loop. A/B/C stay OPEN; all qualification and source-attestation caveats remain.
