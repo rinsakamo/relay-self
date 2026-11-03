@@ -54,7 +54,7 @@ def read(repo: Path, relative: str) -> tuple[dict, str]:
 
 def build_z2c_eu_ledger(repo: Path) -> EULedger:
     """Pure archived original replay; no provider, user Memory or Action owner."""
-    if type(repo) is not Path or not repo.is_absolute() or not repo.is_dir() or repo.is_symlink():
+    if not isinstance(repo, Path) or not repo.is_absolute() or not repo.is_dir() or repo.is_symlink():
         raise EUPairRejected("absolute existing repo root required")
     old, paper, replay = original_z2b_h2_sources(repo / WORLD_SOURCE)
     h2 = audit_saved_h2(repo / WORLD_SOURCE, repo / H2_SOURCE / "h2-original")
