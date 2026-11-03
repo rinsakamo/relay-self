@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s49_completed_decision_bridge import S49OriginalCompletedBatch
-from experiments.metabolism_viability import initial_body
+from experiments.metabolism_viability import initial_body, observe_energy
 
 
 class S49B0WitnessRejected(ValueError):
@@ -113,9 +113,7 @@ def validate_original_b0_decisions(batch: S49OriginalB0DecisionBatch) -> None:
             or record.original_probe.seq <= last_seq
             or record.original_decision.body_tick != ledger.body.tick
             or record.original_decision.sensor_reading
-            != ledger.sensor.bias + ledger.sensor.gain * ledger.body.energy
-            # Quantization is handled by the existing M0 sensor; check through
-            # actual M0 observe_energy instead of a hand-computed interpolation.
+            != observe_energy(ledger.body, ledger.sensor).reading
         ):
             raise S49B0WitnessRejected("B0 decision/probe/ledger source mismatch")
         last_seq = original.probe.seq
