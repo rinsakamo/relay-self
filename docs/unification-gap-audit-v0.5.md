@@ -127,3 +127,9 @@ This Draft **does not** update protected main, rewrite existing owner contracts,
 - [Ontology](ontology.md), [Architecture](architecture.md), [Runtime Principles](runtime-principles.md)
 - [Intent Commitment](contracts/intent-commitment.md), [Skill Execution](contracts/skill-execution.md), [Action Lifecycle](contracts/action-lifecycle.md), [Action Supervision](contracts/action-supervision.md)
 - [v0.5 parent #717](https://github.com/rinsakamo/relay-self/issues/717), [S #537](https://github.com/rinsakamo/relay-self/issues/537), [cross-lane #636](https://github.com/rinsakamo/relay-self/issues/636), [L #431](https://github.com/rinsakamo/relay-self/issues/431), [AC #426](https://github.com/rinsakamo/relay-self/issues/426), [V #619](https://github.com/rinsakamo/relay-self/issues/619)
+
+## 9. Detailed contract A — design proposal recorded (2026-11-03)
+
+[Contract A: Cognitive Intent Slots / Physical Action Authority](contracts/intent-slots-action-authority-v0.5.md) now specifies the **candidate design**, not executable acceptance. It separates slot-scoped cognitive task commitment from the **single existing physical Execution Intent owner**; cognitive outputs must pass an S49-owner admission bridge before the original `SkillExecution`/`ActionLifecycle` path. It specifies guarded Plan revision, runtime capacity, suspension vs physical stop, resource exclusivity and post-S16 settling, source/authority fences, 14 negative-control invariants, and staged A0–A3 owner implementation.
+
+**Status: A DESIGN_DRAFTED / OWNER REVIEW REQUIRED / OFFLINE IMPLEMENTATION NOT RUN.** Existing product owner S #537 must resolve the precise slot-local commitment representation, whether existing `ExecutionBinding` suffices without a new type, physical quiescence qualification and scoped generation identity. A is **not** marked `DESIGN_ACCEPTED` or implemented. B and C remain open.
