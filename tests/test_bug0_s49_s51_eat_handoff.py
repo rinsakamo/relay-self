@@ -11,6 +11,7 @@ import pytest
 
 import test_feature_s46_eat as s46
 from adapters.mineflayer.eat_execution import (
+    EatingExecutionRejected,
     IssuedEatingExecutor,
     validate_issued_eating_binding,
 )
@@ -21,6 +22,7 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerInventoryItem
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.eat_hunger import EatCursor
 from relay_self.intent import IntentCommitment
@@ -209,3 +211,80 @@ def test_same_s49_owner_can_admit_new_eat_intent_after_prior_release(monkeypatch
         asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
     assert owner.supervisor.get(propose.action_id).intent_id == "eat-when-hungry"
     assert owner.intent.current_intent.intent_id == "eat-when-hungry"
+
+
+class ScriptedNativeSession(MineflayerProcessSession):
+    """Same S51 transport API, but no Node/world/socket; receipt source is fixture."""
+
+    def __init__(self, before, action_id, *, consume_applied=True):
+        self._started = SimpleNamespace(session_id=before.session_id)
+        self._process = SimpleNamespace(returncode=None)
+        self.commands = []
+        after = replace(
+            before, seq=before.seq + 3,
+            request_id=f"{action_id}-after-eating-00",
+            snapshot=replace(
+                before.snapshot, food=12.0,
+                inventory=(MineflayerInventoryItem("bread", 1, 4),),
+            ),
+        )
+        self._frames = [
+            MineflayerEffectResult(
+                before.session_id, before.seq + 1,
+                f"{action_id}-equip", "equip_item", "applied", None,
+            ),
+            MineflayerEffectResult(
+                before.session_id, before.seq + 2,
+                f"{action_id}-consume", "consume_held",
+                "applied" if consume_applied else "rejected",
+                None if consume_applied else "native-denied",
+            ),
+            after,
+        ]
+
+    async def receive(self):
+        assert self._frames, "unexpected extra native read"
+        return self._frames.pop(0)
+
+    async def send_equip_item(self, action_id, *, item_name):
+        self.commands.append(("equip", action_id, item_name))
+
+    async def send_consume_held(self, action_id):
+        self.commands.append(("consume", action_id))
+
+    async def send_observe(self, request_id):
+        self.commands.append(("observe", request_id))
+
+
+def test_original_s49_supervisor_and_actual_s51_verifier_with_scripted_native_frames():
+    before, choice, owner, _ = fixture()
+    propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
+    session = ScriptedNativeSession(before, propose.action_id)
+    receipt = asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+    assert receipt.terminal is owner.supervisor.get(propose.action_id)
+    assert receipt.terminal.state is ActionState.OUTCOME
+    assert receipt.outcome.action_id == propose.action_id
+    assert receipt.outcome.food_before == 7.0
+    assert receipt.outcome.food_after == 12.0
+    assert receipt.outcome.count_before == 2
+    assert receipt.outcome.count_after == 1
+    assert session.commands == [
+        ("equip", propose.action_id + "-equip", "bread"),
+        ("consume", propose.action_id + "-consume"),
+        ("observe", propose.action_id + "-after-eating-00"),
+    ]
+    assert owner.supervisor.open_actions == ()
+
+
+def test_original_s49_marks_unknown_if_scripted_native_consume_is_rejected():
+    before, choice, owner, _ = fixture()
+    propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
+    session = ScriptedNativeSession(before, propose.action_id, consume_applied=False)
+    with pytest.raises(EatingExecutionRejected, match="native consume_held rejected"):
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+    assert owner.supervisor.get(propose.action_id).state is ActionState.UNKNOWN
+    assert session.commands == [
+        ("equip", propose.action_id + "-equip", "bread"),
+        ("consume", propose.action_id + "-consume"),
+    ]
+    assert owner.supervisor.open_actions == ()
