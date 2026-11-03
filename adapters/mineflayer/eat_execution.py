@@ -15,13 +15,13 @@ from adapters.mineflayer.python_protocol import (
 )
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor, UnknownSupervisedAction
-from relay_self.intent import IntentCommitment
-from relay_self.skill import SkillExecution, SkillState
 from relay_self.eat_hunger import (
     EatChoice,
     EatingOutcome,
     EatStatus,
 )
+from relay_self.intent import IntentCommitment
+from relay_self.skill import SkillExecution, SkillState
 
 
 class EatingExecutionRejected(ValueError):
