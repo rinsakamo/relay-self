@@ -78,7 +78,7 @@ def assert_build10874_shape(payload: dict[str, object]) -> None:
 def probe_once(
     *,
     model: str, port: int, max_tokens: int, timeout_s: float,
-) -> tuple[dict[str, object], bytes, bytes]:
+) -> tuple[int, bytes, bytes]:
     """One localhost POST. No retry, fallback, polling, or redirected request."""
     if not 0 < timeout_s <= 60:
         raise ValueError("invalid timeout")
@@ -102,18 +102,19 @@ def probe_once(
         raw = response.read(RESPONSE_LIMIT + 1)
     finally:
         conn.close()
-    if len(raw) > RESPONSE_LIMIT:
-        raise TransportUnconfirmed("oversized HTTP completion")
-    if status != 200:
-        raise TransportUnconfirmed(f"HTTP status {status}, not a successful completion")
+    return status, data, raw
 
+
+def validate_completion(model: str, port: int, max_tokens: int, raw: bytes) -> dict:
+    """Use original S60-B1 response validator with the exact strict schema."""
+    cfg = LoopbackTransportConfig(
+        model=model, port=port, max_tokens=max_tokens, structured_json=True,
+    )
     async def validate() -> str:
-        adapter = LoopbackDisplacementAdapter(cfg, lambda _request: payload)
+        adapter = LoopbackDisplacementAdapter(cfg, lambda _request: {})
         return adapter._validate_response(raw, max_tokens)
 
-    accepted = asyncio.run(validate())
-    return {"status": "HTTP_VALIDATED_READ_ONLY", "review": json.loads(accepted)}, data, raw
-
+    return json.loads(asyncio.run(validate()))
 
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -195,14 +196,22 @@ def main() -> int:
         # Record one attempt before the call; a broken connection is still an attempt.
         report["model_http_attempts"] = 1
         report["status"] = "HTTP_ATTEMPTED_UNCONFIRMED"
-        outcome, request_data, response_data = probe_once(
+        http_status, request_data, response_data = probe_once(
             model=args.model_alias, port=args.model_port,
             max_tokens=args.max_tokens, timeout_s=args.timeout_s,
         )
-        report["status"] = outcome["status"]
         report["http_completion_observed"] = True
-        report["structured_response_validated"] = True
-        report["review"] = outcome["review"]
+        report["http_status"] = http_status
+        report["response_oversized"] = len(response_data) > RESPONSE_LIMIT
+        if http_status != 200 or report["response_oversized"]:
+            report["status"] = "HTTP_COMPLETED_UNQUALIFIED"
+        else:
+            report["status"] = "HTTP_COMPLETED_SCHEMA_REJECTED"
+            report["review"] = validate_completion(
+                args.model_alias, args.model_port, args.max_tokens, response_data,
+            )
+            report["status"] = "HTTP_VALIDATED_READ_ONLY"
+            report["structured_response_validated"] = True
     except (OSError, TimeoutError, ValueError, TransportUnconfirmed) as exc:
         report["reason"] = type(exc).__name__
     finally:
