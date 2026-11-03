@@ -142,3 +142,8 @@ The user-selected Bug-0 image is a **«fluent-speaking zombie»**: small, imperf
 **Explicit deferral:** D = advanced internal joint SelfWorld × SelfBody World simulation, E = MySelf autonomous training / long-term competence optimization. Neither is required for Bug-0; their future interface boundary remains open.
 
 **No status promotion:** the new contract is a design slice, not an approved food-use/attack/rest API, owner review, an executed test, a physical Action grant, or a verified end-to-end learning loop. A/B/C stay OPEN; all qualification and source-attestation caveats remain.
+
+
+## 11. Bug-0 existing capability reuse audit (2026-11-03)
+
+[Existing-assets / Grand-Null audit](bug0-existing-assets-audit-20261103.md) searched `main`'s untruncated Git tree and the relevant S/WB/P1/M/L Drafts. **Corrective finding:** native EAT/ATTACK already exist on the Mineflayer bridge and controlled EAT/FIGHT/FLEE Skills already exist in `main`; S46/S51 EAT, P1 WAIT-based fatigue recovery, WB SelfWorld/SelfBody views, S10/L learning and S49 source-custody owner routes are also present in separate Draft branches. Do not duplicate these owners or count independent branches as one integrated World loop. The remaining Bug-0 work is owner-approved **composition, currentness and cross-epoch evidence**. Bug-0 original contract was corrected from “new EAT/ATTACK physical command” to “existing primitives with unmerged S49 binding”. A/B/C remain OWNER REVIEW REQUIRED; D/E deferred.
