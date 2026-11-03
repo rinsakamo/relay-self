@@ -228,6 +228,11 @@ async def qualify(
         "science_success": False,
         "g3_go": False,
     }
+    if bug0_first_eat_shadow:
+        report["physical_eat_authorized"] = False
+        report["actual_native_actions"] = []
+        report["food_commands_issued"] = 0
+        report["independent_eat_grant_attested"] = False
     server = collector = session = temp = None
     ledger = None
     native_output = command_output = None
