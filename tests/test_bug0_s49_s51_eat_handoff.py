@@ -10,6 +10,8 @@ from types import SimpleNamespace
 import pytest
 
 import test_feature_s46_eat as s46
+import test_mineflayer_execution_qualification as s15
+from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from adapters.mineflayer.eat_execution import (
     EatingExecutionRejected,
     IssuedEatingExecutor,
@@ -20,6 +22,7 @@ from adapters.mineflayer.normal_action import (
     NormalActionStage,
     NormalEatingAuthorization,
     NormalEatingObservationStatus,
+    NormalActionReceipt,
     NormalSessionActionExecutor,
     assess_normal_eating_observation,
 )
@@ -484,3 +487,104 @@ def test_prior_move_with_unqualified_postclear_settling_blocks_eat():
         ))
     assert owner._dispatched == set()
     assert owner.supervisor.open_actions == ()
+
+
+def original_s15_closure_in_s49_owner():
+    """Typed S15/S16 original-like fixture: not independent live World truth."""
+    owner_intent = s15.intent_owner()
+    owner = NormalSessionActionExecutor("s15-session", owner_intent)
+    *_, supervisor, issued = s15.issued_chain()
+    assert issued.state is ActionState.ISSUED
+    owner.supervisor = supervisor
+    owner._dispatched.add(issued.action_id)
+    owner._post_move_settling_unqualified = True
+    original = WorldConsequence(
+        action_id=issued.action_id,
+        binding_id="binding-move-away-1",
+        action_ref="MOVE_BACKWARD",
+        status=WorldConsequenceStatus.EXECUTED,
+        session_id="s15-session",
+        before_observation=s15.observation(1, 0.0, 0.0),
+        dispatch_receipt=s15.effect(2, issued.action_id, "set_control"),
+        cleanup_receipt=s15.effect(3, issued.action_id + "-s15-clear", "clear_controls"),
+        after_observation=s15.observation(4, 0.0, 0.20),
+        movement_distance=0.20,
+        cleanup_attempted=True,
+        error=None,
+        provenance=s15.provenance("original-execution"),
+    )
+    terminal = supervisor.record_outcome(
+        issued.action_id, at_ns=14, provenance=s15.provenance("terminal"),
+    )
+    return owner, NormalActionReceipt(terminal, original, s15.provenance("source"))
+
+
+def test_original_s15_s16_source_readback_never_promotes_stop_to_eat():
+    owner, receipt = original_s15_closure_in_s49_owner()
+    row = owner.read_only_post_move_eat_boundary(receipt)
+    assert row.session_id == owner.session_id
+    assert row.action_id == receipt.terminal.action_id
+    assert row.s15_clear_ack_applied
+    assert row.s16_terminal == "OUTCOME"
+    assert row.clear_ack_seq == 3 and row.after_probe_seq == 4
+    assert row.readback_source == receipt.consequence.after_observation.provenance
+    assert row.settling_status == "WORLD_TICK_IDLE_NOT_ATTESTED"
+    assert row.physically_stopped_proven is False
+    assert row.eat_issuance_authorized is False
+    assert owner._post_move_settling_unqualified is True
+
+
+@pytest.mark.parametrize("variant", (
+    "wrong-session", "bad-clear-effect", "bad-clear-result",
+    "foreign-after", "not-dispatched", "not-owner", "not-closed",
+    "future-clear", "settling-lie",
+))
+def test_original_s15_readback_rejects_corrupt_or_foreign_boundary(variant):
+    owner, receipt = original_s15_closure_in_s49_owner()
+    consequence = receipt.consequence
+    if variant == "wrong-session":
+        consequence = replace(consequence, session_id="foreign-world")
+    elif variant == "bad-clear-effect":
+        consequence = replace(
+            consequence, cleanup_receipt=replace(
+                consequence.cleanup_receipt, effect="set_control",
+            ),
+        )
+    elif variant == "bad-clear-result":
+        # Must be a valid typed WorldConsequence. Downgrade the consequence to
+        # FAILED with an error to carry a rejected clear receipt.
+        consequence = replace(
+            consequence, status=WorldConsequenceStatus.FAILED,
+            cleanup_receipt=replace(
+                consequence.cleanup_receipt,
+                result="rejected", error="not-applied",
+            ),
+            error="clear_failed",
+        )
+    elif variant == "foreign-after":
+        consequence = replace(
+            consequence, after_observation=replace(
+                consequence.after_observation, session_id="foreign-world",
+            ),
+        )
+    elif variant == "not-dispatched":
+        owner._dispatched.clear()
+    elif variant == "not-owner":
+        owner.supervisor = ActionSupervisor()
+    elif variant == "not-closed":
+        owner.supervisor = ActionSupervisor()
+    elif variant == "future-clear":
+        consequence = replace(
+            consequence, cleanup_receipt=replace(
+                consequence.cleanup_receipt, seq=8,
+            ),
+        )
+    elif variant == "settling-lie":
+        owner._post_move_settling_unqualified = False
+    if variant in {
+        "wrong-session", "bad-clear-effect", "bad-clear-result",
+        "foreign-after", "future-clear",
+    }:
+        receipt = replace(receipt, consequence=consequence)
+    with pytest.raises((NormalActionRejected, ValueError, TypeError)):
+        owner.read_only_post_move_eat_boundary(receipt)
