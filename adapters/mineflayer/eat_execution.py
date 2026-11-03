@@ -213,8 +213,6 @@ class IssuedEatingExecutor:
             or choice.status is not EatStatus.CANDIDATE
             or issued.state is not ActionState.ISSUED
             or not issued.is_current_snapshot
-            or supervisor.get(issued.action_id) is not issued
-            or supervisor.open_actions != (issued,)
             or issued.action_id in self._attempted
             or choice.session_id != session.started.session_id
             or before.session_id != choice.session_id
