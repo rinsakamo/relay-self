@@ -19,19 +19,32 @@ Structured mode adds a **sixth** request field:
 {
   "response_format": {
     "type": "json_schema",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "status": {"type": "string", "enum": ["ADVISORY", "DEFER"]},
-        "observation": {"type": "string", "minLength": 1, "maxLength": 320},
-        "uncertainty": {"type": "string", "minLength": 1, "maxLength": 320}
-      },
-      "required": ["status", "observation", "uncertainty"],
-      "additionalProperties": false
+    "json_schema": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["ADVISORY", "DEFER"]},
+          "observation": {"type": "string", "minLength": 1, "maxLength": 320},
+          "uncertainty": {"type": "string", "minLength": 1, "maxLength": 320}
+        },
+        "required": ["status", "observation", "uncertainty"],
+        "additionalProperties": false
+      }
     }
   }
 }
 ```
+
+**Build10874 compatibility correction (S2-E, 2026-11-03):**
+Preworld audit in [Issue #537](https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6593612373)
+found the prior flat `response_format.schema` ignored by the local
+`tools/server/server-common.cpp` at `e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d`.
+The build10874 parser selects `response_format.json_schema.schema`; a
+missing wrapper yields the unrestricted empty object schema. The new nested
+wrapper is fixed in the S60-B1 source and negative-tested before a POST is
+ever allowed. This is a **static contract correction only**; no real
+build10874 HTTP, backend grammar-enforcement or physical World is proven.
+The preserved PR #704 BLOCKED_PREWORLD evidence is not reclassified.
 
 The same S60-B1 response validator checks a **JSON object with exactly
 these three keys**, bounded strings, permitted status, stop finish reason,
