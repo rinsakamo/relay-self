@@ -4,6 +4,7 @@ on:
     branches:
       - research/m616-s49-original-completion-admission-20261101
       - research/m616-s49-action-source-receipts-20261102
+      - research/m616-s49-s14-planned-original-join-20261103
   workflow_dispatch:
 
 permissions:
@@ -24,8 +25,8 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
       - name: M-owned static contracts
         run: |
-          ruff check experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py experiments/metabolism_s49_original_owner_receipts.py tests/test_metabolism_s49_original_owner_receipts.py
-          python -m compileall -q experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py experiments/metabolism_s49_original_owner_receipts.py tests/test_metabolism_s49_original_owner_receipts.py
+          ruff check experiments/metabolism_s49_s14_planned_owner_join.py tools/m616_s49_s14_owner_bootstrap.py tools/m616_s49_s14_live_owner_dev.py tests/test_m616_s49_s14_planned_owner_join.py experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py experiments/metabolism_s49_original_owner_receipts.py tests/test_metabolism_s49_original_owner_receipts.py
+          python -m compileall -q experiments/metabolism_s49_s14_planned_owner_join.py tools/m616_s49_s14_owner_bootstrap.py tools/m616_s49_s14_live_owner_dev.py tests/test_m616_s49_s14_planned_owner_join.py experiments/metabolism_s49_owner_admission.py tests/test_metabolism_s49_owner_admission.py tests/test_m616_s49_live_owner_dev.py tools/m616_s49_saved_report_check.py tools/m616_s49_owner_bootstrap.py tools/m616_s49_live_owner_dev.py experiments/metabolism_s49_original_owner_receipts.py tests/test_metabolism_s49_original_owner_receipts.py
           python tools/check_repository.py
       - name: Checkout original actual S49 readback owner, pinned and read-only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,5 +61,37 @@ jobs:
               "tests/test_m616_s49_live_owner_dev.py",
               "tests/test_metabolism_s49_original_owner_receipts.py",
               "product_s49_contract/tests/test_s49_completed_decision_bridge.py",
+          ]))
+          PY
+
+      - name: Checkout separately pinned S14 original planned owner (S #701)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 2e76ba467def10c1e0675eb3ebbe325682d5e8d2
+          path: product_s14_contract
+          persist-credentials: false
+      - name: New S14 original planned + existing M S16 cross-owner contracts
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          root = Path.cwd()
+          s = root / "product_s14_contract"
+          for p in (root, s / "tests", s, s / "src"):
+              sys.path.insert(0, str(p))
+
+          import adapters.mineflayer.s49_original_planned_postaction as owner
+          import adapters.mineflayer.s49_normal_session_real_ci as actual_s49
+          assert Path(owner.__file__).resolve().is_relative_to(s)
+          assert Path(actual_s49.__file__).resolve().is_relative_to(s)
+          import experiments
+          experiments.__path__.append(str(root / "experiments"))
+          from experiments import metabolism_s49_s14_planned_owner_join as m
+          assert Path(m.__file__).resolve().is_relative_to(root)
+          import pytest
+          raise SystemExit(pytest.main([
+              "-q",
+              "tests/test_m616_s49_s14_planned_owner_join.py",
+              "product_s14_contract/tests/test_s49_original_planned_postaction.py",
           ]))
           PY
