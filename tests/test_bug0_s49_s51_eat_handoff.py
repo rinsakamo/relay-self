@@ -66,6 +66,14 @@ def fixture(*, current_name="eat-when-hungry"):
     return before, choice, owner, session
 
 
+def prior_probe(current):
+    """Previous synthetic native probe: same session, separate request and seq."""
+    return replace(
+        current, seq=current.seq - 1,
+        request_id="bug0-earlier-native-food-window",
+    )
+
+
 def grants(before, choice, intent_id, action_id="bug0-s49-issued-eat"):
     base = dict(
         intent_id=intent_id, session_id=before.session_id,
@@ -104,7 +112,7 @@ def test_original_s49_owner_reaches_s51_and_marks_unexecuted_action_unknown(monk
     )
     monkeypatch.setattr(IssuedEatingExecutor, "execute", forbid_native_io)
     with pytest.raises(OfflineNoNativeIO):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     issued = owner.supervisor.get(propose.action_id)
     assert issued.state is ActionState.UNKNOWN
     assert issued.intent_id == owner.intent.current_intent.intent_id
@@ -152,7 +160,7 @@ def test_bad_eat_authorizations_or_source_never_issue(bad, monkeypatch):
 
     monkeypatch.setattr(IssuedEatingExecutor, "execute", unexpected)
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert owner.supervisor.open_actions == ()
     assert owner._dispatched == set()
 
@@ -165,7 +173,7 @@ def test_reconsideration_fences_unsafe_eat_before_issue():
         at_ns=2, provenance=source("urgent"),
     )
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert not owner.supervisor.open_actions and not owner._dispatched
 
 
@@ -187,7 +195,7 @@ def test_concurrent_move_action_blocks_eat():
         authorized, at_ns=5, deadline_ns=80, provenance=source("issued"),
     )
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert len(owner.supervisor.open_actions) == 1
     assert propose.action_id not in owner._dispatched
 
@@ -197,12 +205,12 @@ def test_reused_native_source_is_fenced_after_failed_non_idempotent_handoff(monk
     propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
     monkeypatch.setattr(IssuedEatingExecutor, "execute", forbid_native_io)
     with pytest.raises(OfflineNoNativeIO):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     new_propose, new_issue = grants(
         before, choice, owner.intent.current_intent.intent_id, action_id="new-eat",
     )
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, before, new_propose, new_issue))
+        asyncio.run(owner.execute_eat(session, choice, before, new_propose, new_issue, previous_probe=prior_probe(before)))
     assert "new-eat" not in owner._dispatched
 
 
@@ -219,7 +227,7 @@ def test_same_s49_owner_can_admit_new_eat_intent_after_prior_release(monkeypatch
     propose, issue = grants(before, choice, "eat-when-hungry")
     monkeypatch.setattr(IssuedEatingExecutor, "execute", forbid_native_io)
     with pytest.raises(OfflineNoNativeIO):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert owner.supervisor.get(propose.action_id).intent_id == "eat-when-hungry"
     assert owner.intent.current_intent.intent_id == "eat-when-hungry"
 
@@ -271,7 +279,7 @@ def test_original_s49_supervisor_and_actual_s51_verifier_with_scripted_native_fr
     before, choice, owner, _ = fixture()
     propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
     session = ScriptedNativeSession(before, propose.action_id)
-    receipt = asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+    receipt = asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert receipt.terminal is owner.supervisor.get(propose.action_id)
     assert receipt.terminal.state is ActionState.OUTCOME
     assert receipt.outcome.action_id == propose.action_id
@@ -292,7 +300,7 @@ def test_original_s49_marks_unknown_if_scripted_native_consume_is_rejected():
     propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
     session = ScriptedNativeSession(before, propose.action_id, consume_applied=False)
     with pytest.raises(EatingExecutionRejected, match="native consume_held rejected"):
-        asyncio.run(owner.execute_eat(session, choice, before, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, before, propose, issue, previous_probe=prior_probe(before)))
     assert owner.supervisor.get(propose.action_id).state is ActionState.UNKNOWN
     assert session.commands == [
         ("equip", propose.action_id + "-equip", "bread"),
@@ -332,7 +340,7 @@ def test_observed_threat_or_nonviable_body_fences_s49_eat(variant):
     assert status is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
     propose, issue = grants(unsafe, choice, owner.intent.current_intent.intent_id)
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue, previous_probe=prior_probe(unsafe)))
     assert owner._dispatched == set()
     assert owner.supervisor.open_actions == ()
 
@@ -356,7 +364,7 @@ def test_truncated_native_entity_registry_cannot_admit_eat():
     )
     propose, issue = grants(unsafe, choice, owner.intent.current_intent.intent_id)
     with pytest.raises(NormalActionRejected):
-        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue))
+        asyncio.run(owner.execute_eat(session, choice, unsafe, propose, issue, previous_probe=prior_probe(unsafe)))
     assert owner.supervisor.open_actions == ()
 
 
@@ -411,3 +419,48 @@ def test_s49_eat_shadow_flag_cannot_start_world_without_independent_dev_gate(
     assert "read-only EAT shadow needs explicit DEV gate" in report["error"]
     assert report["actual_native_actions"] == []
     assert "session_id" not in report
+
+
+@pytest.mark.parametrize("variant", (
+    "same-sequence", "foreign-session", "same-request", "too-old",
+    "unstable-position", "prior-threat", "non-probe",
+))
+def test_eat_requires_two_stable_same_session_native_probes(variant):
+    before, choice, owner, session = fixture()
+    propose, issue = grants(before, choice, owner.intent.current_intent.intent_id)
+    previous = prior_probe(before)
+    if variant == "same-sequence":
+        previous = replace(previous, seq=before.seq)
+    elif variant == "foreign-session":
+        previous = replace(previous, session_id="forged-previous-world")
+    elif variant == "same-request":
+        previous = replace(previous, request_id=before.request_id)
+    elif variant == "too-old":
+        previous = replace(previous, seq=before.seq - 33)
+    elif variant == "unstable-position":
+        moved = replace(
+            previous.snapshot.position,
+            x=previous.snapshot.position.x + 0.2,
+        )
+        previous = replace(
+            previous, snapshot=replace(previous.snapshot, position=moved),
+        )
+    elif variant == "prior-threat":
+        entity = s46.case().snapshot.nearby_entities[0]
+        previous = replace(
+            previous, snapshot=replace(
+                previous.snapshot, nearby_entities=(entity,),
+                nearby_entities_coverage=replace(
+                    previous.snapshot.nearby_entities_coverage,
+                    candidate_count=1,
+                ),
+            ),
+        )
+    else:
+        previous = replace(previous, kind="health", request_id=None)
+    with pytest.raises(NormalActionRejected):
+        asyncio.run(owner.execute_eat(
+            session, choice, before, propose, issue, previous_probe=previous,
+        ))
+    assert owner.supervisor.open_actions == ()
+    assert owner._dispatched == set()
