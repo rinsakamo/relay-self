@@ -49,9 +49,6 @@ def observe_m_s49_b0_owner_decisions(
             S49OriginalB0DecisionBatch,
             validate_original_b0_decisions,
         )
-        from adapters.mineflayer.self_body_m0_projection import (
-            compose_b0_cognition_views,
-        )
 
         planned = observe_s49_s14_planned(
             enabled=True, original_l0=original_l0,
@@ -83,13 +80,10 @@ def observe_m_s49_b0_owner_decisions(
         for item in original_b0.original_decisions:
             probe = item.original_probe
             decision = item.original_decision
-            views = compose_b0_cognition_views(
-                probe, ledger, decision,
-                self_id="self-s49-b0-dev",
-                epoch_id=f"b0-owner-native-{probe.seq}",
-            )
+            # The S owner projected the original view at decision-time.
+            # A later M call cannot re-project from its advanced B0 seq cursor.
             measured = read_b0_resource_context(
-                views, owner_decision=decision,
+                item.original_view, owner_decision=decision,
                 config=ledger.config, sensor=ledger.sensor,
                 noise_bound=None,
             )
