@@ -10,6 +10,7 @@ import json
 from dataclasses import replace
 
 import pytest
+import test_postmain_s42_world_contrast as s42
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_epoch_two
 from adapters.mineflayer.s49_completed_decision_bridge import (
     read_original_s49_completions,
@@ -20,7 +21,6 @@ from adapters.mineflayer.s49_original_planned_postaction import (
     bounded_original_s49_planned_row,
 )
 import test_metabolism_s49_owner_admission as m_fixture
-import test_postmain_s42_world_contrast as s42
 
 from experiments.metabolism_s49_s14_planned_owner_join import (
     M616S14PlannedLease,
