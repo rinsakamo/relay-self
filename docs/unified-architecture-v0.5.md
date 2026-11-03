@@ -95,7 +95,7 @@ The initial implementation may use fixed conservative maxima per L0/L1/L2. The e
 
 **Cognitive concurrency != Skill concurrency != physical Action concurrency.** Several slots can read/process source-qualified snapshots; only the existing authorized S49 execution boundary physically issues actions in present Minecraft development. S49 remains the sole issuer while future arbitration and resource locking are designed.
 
-The existing repository contract has *one Current Intent per `IntentCommitment` owner*. Multi-slot commitments are a future extension subject to contract A. Do not silently multiply intent owners, make an L2 advisory an Action grant, or reinterpret a local skill failure as automatic Intent failure. Reconsideration request is separate from CONTINUE/RELEASE; local Plan/Skill changes may occur while the same commitment remains valid.
+The existing repository contract has *one Current Intent per `IntentCommitment` owner*, but **the architecture does not limit the number of concurrently valid body-directed Execution Intents to one**. Multiple Goal-derived Intents may remain committed while sharing a WorldBody; the single S49 physical issuer admits/decodes only compatible and actually authorized control requests, with arbitration and leases **per resource channel**, not by arbitrarily merging all Intents. Current S49's single owner and serial MOVE-only behavior are an implementation boundary to be extended only through contract A's reviewed owner/currentness and multi-channel checks. Do not let an L2 advisory mint a grant or treat local Skill failure as automatic Intent failure; reconsideration request is separate from CONTINUE/RELEASE.
 
 ## 5. Reality, authority, time and learning
 
