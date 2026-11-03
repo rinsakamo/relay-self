@@ -686,6 +686,8 @@ async def qualify(
                     session, "bug0-first-eat-preissue-native-01",
                 )
                 shadow = inspect_bug0_first_eat_shadow(owner, before, fresh)
+                if shadow.candidate_item != food_item:
+                    raise S51PhysicalFailure("fresh native food candidate changed item")
                 report["bug0_first_eat_shadow"] = asdict(shadow)
                 report["actual_native_actions"] = []
                 report["food_commands_issued"] = 0
