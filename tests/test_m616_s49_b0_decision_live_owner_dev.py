@@ -5,13 +5,13 @@ import asyncio
 import json
 
 import pytest
-import test_m616_s49_b0_original_decision_only as b0fixture
-import test_metabolism_s49_owner_admission as original_fixture
-
 from adapters.mineflayer.s49_b0_owner_decision_witness import bounded_original_b0_decision_row
 from adapters.mineflayer.s49_original_planned_postaction import (
     bounded_original_s49_planned_row,
 )
+
+import test_m616_s49_b0_original_decision_only as b0fixture
+import test_metabolism_s49_owner_admission as original_fixture
 from tools.m616_s49_b0_decision_live_owner_dev import (
     M616B0DecisionLiveTap,
     run_original_s49_with_m_b0_readback,
