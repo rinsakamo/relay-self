@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
+from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
     WorldConsequence,
     build_mineflayer_command,
@@ -29,6 +30,7 @@ from relay_self.action_outcome import (
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.eat_hunger import EatChoice, EatStatus
 from relay_self.execution_binding import (
     BoundExecutionCandidate,
     start_and_propose_bound_execution,
@@ -36,6 +38,7 @@ from relay_self.execution_binding import (
 from relay_self.intent import IntentCommitment
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
+from relay_self.skill import SkillExecution
 from relay_self.reactive_l0 import (
     L0Step,
     ReactiveL0,
@@ -289,6 +292,43 @@ class NormalActionAuthorization:
             raise NormalActionRejected("independent typed Action authorization required")
 
 
+
+@dataclass(frozen=True, slots=True)
+class NormalEatingAuthorization:
+    """Caller-provided independent EAT-specific grant; not a signed capability.
+
+    It is NOT interchangeable with MOVE-specific NormalActionAuthorization.
+    External principal/source qualification remains the S/R caller's duty.
+    """
+
+    stage: NormalActionStage
+    authority_id: str
+    intent_id: str
+    session_id: str
+    action_id: str
+    probe_seq: int
+    probe_request_id: str
+    food_item: str
+    food_slot: int
+    granted: bool
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.stage, NormalActionStage)
+            or not all(isinstance(x, str) and x for x in (
+                self.authority_id, self.intent_id, self.session_id,
+                self.action_id, self.probe_request_id, self.food_item,
+            ))
+            or type(self.probe_seq) is not int or self.probe_seq < 0
+            or type(self.food_slot) is not int or self.food_slot < 0
+            or type(self.granted) is not bool
+            or not isinstance(self.provenance, Provenance)
+            or self.provenance.source == "mineflayer"
+        ):
+            raise NormalActionRejected("independent scoped EAT authorization required")
+
+
 @dataclass(frozen=True, slots=True)
 class NormalActionReceipt:
     terminal: ActionLifecycle
@@ -342,6 +382,7 @@ class NormalSessionActionExecutor:
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
+        self._last_issued_probe_seq = -1
 
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
@@ -405,6 +446,112 @@ class NormalSessionActionExecutor:
             ):
                 raise NormalActionRejected("authority is not scoped to this exact event")
 
+
+    def require_eating_authorizations(
+        self, choice: EatChoice, probe: MineflayerObservation,
+        propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+    ) -> None:
+        """Only the existing S49 issuer may admit this serial EAT request.
+
+        A matching typed grant is still NOT independent proof of who granted it.
+        No safety or freshness beyond the given native source is manufactured.
+        """
+        current = self.intent.current_intent
+        if (
+            not isinstance(choice, EatChoice)
+            or choice.status is not EatStatus.CANDIDATE
+            or not isinstance(probe, MineflayerObservation)
+            or probe.kind != "probe" or not probe.request_id
+            or probe.provenance.source != "mineflayer"
+            or probe.session_id != self.session_id
+            or choice.session_id != self.session_id
+            or choice.probe_seq != probe.seq
+            or choice.provenance != probe.provenance
+            or choice.food_before != probe.snapshot.food
+            or choice.item_name is None or choice.item_slot is None
+            or probe.seq <= self._last_issued_probe_seq
+            or probe.snapshot.nearby_entities_coverage.truncated
+            or not any(
+                item.name == choice.item_name
+                and item.slot == choice.item_slot and item.count > 0
+                for item in probe.snapshot.inventory
+            )
+            or current is None or self.intent.pending_reconsideration is not None
+            or not isinstance(propose, NormalEatingAuthorization)
+            or not isinstance(issue, NormalEatingAuthorization)
+            or propose.stage is not NormalActionStage.PROPOSE
+            or issue.stage is not NormalActionStage.ISSUE
+            or not propose.granted or not issue.granted
+            or propose.authority_id == issue.authority_id
+            or propose.provenance == issue.provenance
+            or propose.action_id in self._dispatched
+            or self.supervisor.open_actions
+        ):
+            raise NormalActionRejected("S49 EAT source/Intent/Action admission invalid")
+        for grant in (propose, issue):
+            if (
+                grant.intent_id != current.intent_id
+                or grant.session_id != self.session_id
+                or grant.action_id != propose.action_id
+                or grant.probe_seq != probe.seq
+                or grant.probe_request_id != probe.request_id
+                or grant.food_item != choice.item_name
+                or grant.food_slot != choice.item_slot
+            ):
+                raise NormalActionRejected("S49 EAT grant is not scoped to this source")
+
+    async def execute_eat(
+        self, session: MineflayerProcessSession, choice: EatChoice,
+        probe: MineflayerObservation,
+        propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
+    ) -> EatingActionReceipt:
+        """Same original S49 supervisor issues, unchanged S51 performs EAT.
+
+        Bounded owner integration candidate; existing normal-session runtime
+        does not call this path. Real-world authorization is not self-granted.
+        """
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+        ):
+            raise NormalActionRejected("S49 EAT live Mineflayer session mismatch")
+        self.require_eating_authorizations(choice, probe, propose, issue)
+        t = 100 + 10 * self._count
+        origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
+        skill = SkillExecution.start(
+            f"skill:eat:{self.session_id}:{probe.seq}:{self._count}",
+            skill_id="eat", intent_commitment=self.intent,
+            at_ns=t, provenance=origin,
+        )
+        proposed = ActionLifecycle.propose(
+            propose.action_id, skill_execution=skill,
+            intent_commitment=self.intent, at_ns=t, provenance=origin,
+        )
+        authorized = proposed.authorize(
+            at_ns=t + 1, provenance=propose.provenance,
+            authority=propose.authority_id,
+        )
+        issued = self.supervisor.issue(
+            authorized, at_ns=t + 2, deadline_ns=t + 100,
+            provenance=issue.provenance,
+        )
+        # Irreversible effect may begin next: never reissue this ID or source.
+        self._dispatched.add(issued.action_id)
+        self._last_issued_probe_seq = probe.seq
+        self._count += 1
+        try:
+            return await IssuedEatingExecutor().execute(
+                session, self.supervisor, issued, choice, probe,
+                skill_execution=skill, intent_commitment=self.intent,
+            )
+        except BaseException:
+            if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                self.supervisor.mark_unknown(
+                    issued.action_id, at_ns=t + 3, provenance=origin,
+                )
+            raise
+
     async def execute(
         self, session: MineflayerProcessSession, step: L0Step,
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
@@ -437,6 +584,7 @@ class NormalSessionActionExecutor:
         command = build_mineflayer_command(issued, result)
         # Consumed BEFORE any external IO. Incomplete physical work is UNKNOWN.
         self._dispatched.add(command.action_id)
+        self._last_issued_probe_seq = max(self._last_issued_probe_seq, probe.seq)
         self._count += 1
         try:
             consequence = await execute_mineflayer_command(
