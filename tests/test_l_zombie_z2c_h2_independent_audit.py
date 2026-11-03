@@ -4,7 +4,8 @@ from __future__ import annotations
 import io
 import json
 import shutil
-from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -61,11 +62,8 @@ def test_68_real_original_files_and_synthetic_h2_full_valid_readback(tmp_path, m
     assert not report["qualification_go"]
     assert not report["science_run"]
     out = tmp_path / "independent-report.json"
-    assert auditor.main_args if False else True
     # CLI cannot share local monkeypatch state; it runs its own source replay.
-    from subprocess import run
-    import sys
-    cp = run(
+    cp = subprocess.run(
         [sys.executable, "-m", "tools.l_zombie_z2c_h2_independent_audit",
          "--original-root", str(REAL_OLD_ROOT),
          "--h2-root", str(root), "--report", str(out)],
@@ -73,7 +71,7 @@ def test_68_real_original_files_and_synthetic_h2_full_valid_readback(tmp_path, m
     )
     assert cp.returncode == 0, cp.stderr
     assert json.loads(out.read_text())["full_h2_contract_verified"]
-    cp2 = run(
+    cp2 = subprocess.run(
         [sys.executable, "-m", "tools.l_zombie_z2c_h2_independent_audit",
          "--original-root", str(REAL_OLD_ROOT),
          "--h2-root", str(root), "--report", str(out)],
