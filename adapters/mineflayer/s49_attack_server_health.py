@@ -53,6 +53,8 @@ def parse_health_log(
     lines = log.splitlines()
     start_hits = [i for i, line in enumerate(lines) if f"[Server] {start}" in line]
     end_hits = [i for i, line in enumerate(lines) if f"[Server] {end}" in line]
+    if not start_hits and not end_hits:
+        return None  # The single stdout collector may not have flushed yet.
     if len(start_hits) != 1 or len(end_hits) > 1:
         raise ServerHealthReadbackRejected("missing or duplicated Paper health marker")
     if not end_hits:
