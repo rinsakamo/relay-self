@@ -224,6 +224,40 @@ def test_actual_original_supervisor_path_mocked_transport_is_one_shot(monkeypatc
     assert len([x for x in session.sent if x[0] == "attack"]) == 1
 
 
+
+def test_rejected_native_attack_marks_original_supervisor_unknown_no_replay(
+    monkeypatch,
+):
+    first, second = _pair()
+    owner = _owner(first)
+    eid = second.snapshot.nearby_entities[0].entity_id
+    propose, issue = _grants(owner, second, eid)
+
+    class RejectedNativeSession(FakeNativeSession):
+        async def send_attack_entity(self, action_id, *, entity_id):
+            await super().send_attack_entity(action_id, entity_id=entity_id)
+            self.frames[0] = replace(
+                self.frames[0], result="rejected", error="entity_not_found",
+            )
+
+    session = RejectedNativeSession(second)
+    monkeypatch.setattr(normal_action, "MineflayerProcessSession", RejectedNativeSession)
+    monkeypatch.setattr(attack_execution, "MineflayerProcessSession", RejectedNativeSession)
+    with pytest.raises(AttackExecutionRejected, match="not applied"):
+        asyncio.run(owner.execute_attack(
+            session, first, second, eid, propose, issue,
+        ))
+    assert owner.supervisor.get(propose.action_id).state is ActionState.UNKNOWN
+    assert owner.supervisor.open_actions == ()
+    assert owner._count == 1
+    assert propose.action_id in owner._dispatched
+    with pytest.raises(NormalActionRejected):
+        asyncio.run(owner.execute_attack(
+            session, first, second, eid, propose, issue,
+        ))
+    assert len([x for x in session.sent if x[0] == "attack"]) == 1
+
+
 def test_native_effect_ack_is_not_damage_and_requires_fresh_target():
     first, second = _pair()
     entity_id = second.snapshot.nearby_entities[0].entity_id
