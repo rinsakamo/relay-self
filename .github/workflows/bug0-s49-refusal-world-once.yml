@@ -11,6 +11,7 @@ jobs:
   one-native-s49-refusal-world:
     # Only the explicitly operator-approved commit may launch this World.
     # Any docs, tests, or bugfix push is SKIPPED, never an automatic retry.
+    # Explicit DEV one-World invocation after offline CI #41790031004 SUCCESS.
     if: ${{ github.event.head_commit.message == 'run-bug0-s49-refusal-once-20261104' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
