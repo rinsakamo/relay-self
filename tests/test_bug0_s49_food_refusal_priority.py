@@ -15,12 +15,12 @@ import pytest
 import test_bug0_s49_food_l0 as food_cases
 import test_feature_s46_eat as s46
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
+from adapters.mineflayer.python_protocol import MineflayerInventoryItem
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from adapters.mineflayer.s49_food_refusal_dev import (
     S49FoodRefusalFailure,
     run_s49_food_refusal_matrix,
 )
-from adapters.mineflayer.python_protocol import MineflayerInventoryItem
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 
