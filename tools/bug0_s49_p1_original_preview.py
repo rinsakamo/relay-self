@@ -51,7 +51,10 @@ def preview(report: dict, *, p1_checkout: Path) -> dict:
     # claim any current World tick is authenticated by this experiment.
     sys.path.insert(0, str(p1_checkout.resolve()))
     from experiments.fatigue_p1 import (
-        FatigueFrame, FatigueProfile, advance, initial_state,
+        FatigueFrame,
+        FatigueProfile,
+        advance,
+        initial_state,
     )
     profile = FatigueProfile(enabled=True)
     s0 = initial_state(profile, report["session_id"])
