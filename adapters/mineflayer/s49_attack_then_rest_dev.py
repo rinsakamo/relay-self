@@ -8,8 +8,8 @@ attack ACK, even when the Paper zombie Health difference is observed.
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
