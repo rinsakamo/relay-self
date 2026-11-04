@@ -30,6 +30,7 @@ async def run_s49_attack_then_rest_dev(
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path,
     rest_intent_hook: Callable[[], Awaitable[None]] | None = None,
+    attack_pre_issue_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -57,6 +58,7 @@ async def run_s49_attack_then_rest_dev(
     # read-only Paper before/after Health. No second ATTACK on any failure.
     attack_receipt = await run_s49_attack_dev(
         session, server, owner, report, health_log=health_log,
+        before_execute_hook=attack_pre_issue_hook,
     )
     if (
         attack_receipt.terminal.state is not ActionState.OUTCOME
