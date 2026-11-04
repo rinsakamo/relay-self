@@ -17,7 +17,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from adapters.mineflayer.bug0_first_eat_shadow import Bug0FirstEatShadow
 
-
 _DOMAIN = b"relay-self/bug0-first-eat-operator-v1\x00"
 _MAX_WINDOW_MS = 60_000
 
