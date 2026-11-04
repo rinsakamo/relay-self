@@ -33,10 +33,10 @@ jobs:
       - name: Repository contracts, source syntax and Ruff
         run: |
           python tools/check_repository.py
-          python -m compileall -q adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py
-          ruff check adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py
+          python -m compileall -q adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_unified_food_runner.py
+          ruff check adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_unified_food_runner.py
       - name: Mixed native actions + existing S49 S51 regressions
         run: |
-          python -m pytest -q tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_food_refusal_priority.py tests/test_bug0_s49_food_l0.py tests/test_feature_s49_normal_runtime.py tests/test_s49_cleanup.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_first_eat_dev_world.py tests/test_feature_s51_eat_execution.py
+          python -m pytest -q tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_unified_food_runner.py tests/test_bug0_s49_food_refusal_priority.py tests/test_bug0_s49_food_l0.py tests/test_feature_s49_normal_runtime.py tests/test_s49_cleanup.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_first_eat_dev_world.py tests/test_feature_s51_eat_execution.py
       - name: No physical Action inference
         run: echo 'DEV_OFFLINE / WORLD_0 / ACTION_0 / QUALIFICATION_NO_GO'
