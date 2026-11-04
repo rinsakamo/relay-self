@@ -19,7 +19,6 @@ from adapters.mineflayer.bug0_eat_grant_contract import (
 )
 from adapters.mineflayer.bug0_first_eat_shadow import inspect_bug0_first_eat_shadow
 
-
 NOW = 1_800_000_000_000
 
 
@@ -143,7 +142,7 @@ def test_overlong_operator_window_and_noncanonical_signature_reject():
     with pytest.raises(Bug0EatGrantRejected):
         replace(p.statement, expires_at_utc_ms=NOW + 120_000)
     with pytest.raises(Bug0EatGrantRejected):
-        replace(p, signature_hex=p.signature_hex.upper().replace("A", "G"))
+        replace(p, signature_hex="g" + p.signature_hex[1:])
 
 
 def test_verifier_is_read_only_and_does_not_claim_replay_prevention():
