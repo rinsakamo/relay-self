@@ -405,5 +405,11 @@ def test_first_eat_handoff_is_not_automatically_called_by_s51_shadow():
     import adapters.mineflayer.s51_eat_real_ci as s51
 
     source = inspect.getsource(s51.qualify)
-    assert "handoff_authorized_first_eat(" not in source
+    # The default-off physical DEV branch is separate. The original
+    # --bug0-first-eat-shadow branch must still exit before any EAT call.
+    shadow_section = source.split("if bug0_first_eat_shadow:", 1)[1].split(
+        "if bug0_first_eat_dev:", 1,
+    )[0]
+    assert "handoff_authorized_first_eat(" not in shadow_section
+    assert "raise Bug0FirstEatShadowCompleted" in shadow_section
     assert "IssuedEatingExecutor().execute(" in source  # legacy S51 path
