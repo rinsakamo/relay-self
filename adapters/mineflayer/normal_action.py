@@ -31,7 +31,7 @@ from relay_self.action_outcome import (
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.eat_hunger import EatChoice, EatCursor, EatStatus
+from relay_self.eat_hunger import EatChoice, EatCursor, EatingOutcome, EatStatus
 from relay_self.execution_binding import (
     BoundExecutionCandidate,
     start_and_propose_bound_execution,
@@ -355,6 +355,8 @@ class NormalFoodL0:
             self._closed_eat
             or last is None or last.selection != "EAT"
             or not isinstance(receipt, EatingActionReceipt)
+            or not isinstance(receipt.terminal, ActionLifecycle)
+            or not isinstance(receipt.outcome, EatingOutcome)
             or receipt.terminal.state is not ActionState.OUTCOME
             or receipt.outcome.session_id != self.session_id
             or receipt.terminal.action_id != receipt.outcome.action_id
