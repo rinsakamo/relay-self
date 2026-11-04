@@ -1,0 +1,174 @@
+name: Bug-0 original S49 P1 sensor margin WAIT vs REST one DEV World
+on:
+  push:
+    branches:
+      - dev/bug0-p1-sensor-threshold-20261105
+
+permissions:
+  contents: read
+
+jobs:
+  one-world:
+    # One explicit disposable DEV world; never automatically retry ATTACK.
+    if: ${{ github.event.head_commit.message == 'run-bug0-p1-sensor-margin-once-20261105' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_BUG0_P1_PAPER_DEV_ONLY: '1'
+      S49_BUG0_P1_MARGIN_DEV_ONLY: '1'
+      S49_P1_ORIGINAL_CHECKOUT: ${{ github.workspace }}/p1-original
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      NODE_OPTIONS: ''
+    steps:
+      - name: Checkout one exact original S49 owner HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Pinned unmodified original P1 model checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Pre-World original owner and Paper source negatives
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1
+          python -m pytest -q tests/test_bug0_p1_sensor_threshold.py tests/test_bug0_s49_p1_prospective_rest.py tests/test_bug0_s49_paper_health_order.py tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_attack_then_rest_dev.py
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              assert sock.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Download official pinned Paper 1.21.8 STABLE #60
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version='1.21.8'
+          url=f'https://fill.papermc.io/v3/projects/paper/versions/{version}/builds'
+          request=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-Bug0-DEV/1.0 (https://github.com/rinsakamo/relay-self)'})
+          with urllib.request.urlopen(request,timeout=50) as res:
+              data=res.read(3000000)
+          assert len(data)<3000000
+          builds=json.loads(data)
+          builds=[x for x in builds if x.get('channel')=='STABLE' and x.get('id')==60]
+          assert len(builds)==1, 'pinned Paper build unavailable'
+          p=builds[0]['downloads']['server:default']
+          assert p['name']=='paper-1.21.8-60.jar'
+          assert p['size']==52811717
+          assert p['checksums']['sha256']=='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          uri=urllib.parse.urlparse(p['url'])
+          assert uri.scheme=='https' and uri.hostname=='fill-data.papermc.io' and uri.path.startswith('/v1/objects/')
+          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'paper-1.21.8.jar'
+          digest=hashlib.sha256()
+          n=0
+          with urllib.request.urlopen(urllib.request.Request(p['url'],headers={'User-Agent':'RelaySelf-Bug0-DEV/1.0'}),timeout=120) as stream, target.open('xb') as out:
+              while chunk:=stream.read(1024*1024):
+                  n+=len(chunk)
+                  assert n<=p['size']
+                  digest.update(chunk)
+                  out.write(chunk)
+          assert n==52811717 and digest.hexdigest()==p['checksums']['sha256']
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf8') as f:
+              f.write('S49_P1_PAPER_JAR='+str(target)+'\n')
+          print('PINNED_PAPER_1_21_8_DEV_OK')
+          PY
+      - name: Build isolated callback-only Paper source plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_p1_paper_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib,os,pathlib
+          plugin=pathlib.Path('adapters/mineflayer/s49_p1_paper_dev/target/relay-s49-p1-source-dev-0.1.0-dev.jar').resolve()
+          assert plugin.is_file() and not plugin.is_symlink()
+          digest=hashlib.sha256(plugin.read_bytes()).hexdigest()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf8') as f:
+              f.write('S49_P1_PLUGIN_JAR='+str(plugin)+'\n')
+              f.write('S49_P1_PLUGIN_SHA256='+digest+'\n')
+          print('S49_READ_ONLY_PAPER_PLUGIN_DEV_SHA256='+digest)
+          PY
+      - name: Install pinned original Mineflayer
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version!=='4.39.0') process.exit(2)"
+      - name: One S49 ATTACK and predecision quantized P1 sensor WAIT REST L0 choice
+        run: |
+          mkdir -p p1-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --bug0-p1-margin-dev \
+            --report p1-evidence/s49_p1_paper_world.json \
+            --server-log p1-evidence/paper_original.log
+      - name: Causal three-threshold comparison on exact original Paper source
+        run: |
+          python -B tools/bug0_p1_margin_post.py \
+            --report p1-evidence/s49_p1_paper_world.json \
+            --paper-log p1-evidence/paper_original.log \
+            --p1-checkout p1-original \
+            --out p1-evidence/p1_margin_source_comparison.json
+      - name: Verify actual native S49 L0 choice versus three sensor policies
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('p1-evidence/s49_p1_paper_world.json').read_text())
+          p=json.loads(Path('p1-evidence/p1_margin_source_comparison.json').read_text())
+          assert r['status']=='PASS', r.get('error')
+          assert r['classification']=='DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE'
+          assert r['s49_dev_server']=='PINNED_PAPER_1_21_8'
+          assert len(r['actual_native_actions'])==1
+          assert r['actual_native_actions'][0]['kind']=='ATTACK'
+          assert r['actual_native_actions'][0]['terminal']=='outcome'
+          assert r['attack_effect_commands_issued']==1
+          assert r['attack_server_health_drop_observed'] is True
+          assert r['rest_action_issued'] is False
+          assert r['rest_observation']['sample_count']==9
+          assert r['p1_paper_tick_source']['source_full_tick_activity_independently_attested'] is False
+          assert r['p1_paper_tick_source']['paper_choice_marker_tick'] > r['p1_paper_tick_source']['paper_fight_event_tick']
+          assert r['p1_paper_tick_source']['paper_selected_intent']==r['rest_choice']['selected']
+          assert p['classification']=='DEV_P1_SENSOR_MARGIN_SOURCE_CAUSAL_COMPARISON'
+          assert p['source_future_tick_used_for_decision'] is False
+          assert p['original_s49_l0_selected']==r['rest_choice']['selected']
+          assert p['one_native_attack_and_no_post_choice_action'] is True
+          assert p['default_P1_model_fatigue_predecision']==0
+          assert p['experimental_P1_model_fatigue_predecision']>0
+          assert p['original_s49_l0_selected']==('REST' if p['safety_margin_rest'] else 'WAIT')
+          assert p['source_full_tick_independently_attested'] is False
+          assert p['P1_real_fatigue_measured'] is False
+          assert p['P1_runtime_body_state_installed'] is False
+          assert p['m_energy_credit_or_waiver'] is False
+          assert p['qualification_go'] is False and p['science_run'] is False
+          assert r['node_exit']==0 and r['server_exit']==0
+          print('S49_P1_SENSOR_MARGIN_NATIVE_CHOICE_DEV_PASS / PHYSICAL_FATIGUE_UNATTESTED')
+          print('COMPARE_SHADOW_NOMINAL_MARGIN_FLIP='+str(p['nominal_vs_margin_flip']))
+          print('CHOSEN='+str(p['original_s49_l0_selected']))
+          PY
+      - name: Final SHA256 original World and P1 candidate evidence
+        if: always()
+        run: |
+          if test -d p1-evidence; then
+            (cd p1-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Preserve Paper log, S49 receipts, virtual model and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-p1-sensor-margin-one-world
+          path: p1-evidence/
+          if-no-files-found: warn
+          retention-days: 30

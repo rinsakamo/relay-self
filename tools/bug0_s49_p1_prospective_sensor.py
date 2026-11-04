@@ -24,6 +24,7 @@ from adapters.mineflayer.s49_p1_paper_dev import (
     _int,
     _rows,
 )
+from tools.bug0_p1_sensor_threshold import sensitivity
 
 P1_EXACT_COMMIT = "0ab76b4e46efd914877e543a65de58b6cfc71326"
 EXPERIMENTAL_WAIT_RECOVERY = 0.002
@@ -57,7 +58,8 @@ def _prefix(log: str, *, nonce: str) -> dict[str, Any]:
     """Read all consecutive callback ticks already logged, never invent WAIT."""
     if not re.fullmatch(r"[a-z0-9]{12,32}", nonce):
         raise S49P1SourceRejected("invalid live source nonce")
-    if _rows(log, "SOURCE_FAULT") or _rows(log, "REST") or _rows(log, "STOP"):
+    if (_rows(log, "SOURCE_FAULT") or _rows(log, "REST")
+            or _rows(log, "CHOICE") or _rows(log, "STOP")):
         raise S49P1SourceRejected("stale/post-REST Paper source is not prospective")
     starts = _rows(log, "START")
     fights = _rows(log, "FIGHT")
@@ -144,15 +146,16 @@ def _prefix(log: str, *, nonce: str) -> dict[str, Any]:
 
 def prospective_request(
     paper_log: str, *, nonce: str, session_id: str, probe_seq: int,
-    p1_checkout: Path,
+    p1_checkout: Path, sensor_policy: str = "nominal",
 ) -> dict[str, Any]:
     """Use only a pre-decision Paper prefix to decide an L0 REST *request*."""
     if (
         not isinstance(session_id, str) or not session_id
         or session_id.replace("-", "")[:20] != nonce
         or type(probe_seq) is not int or probe_seq < 1
+        or sensor_policy not in ("nominal", "margin")
     ):
-        raise S49P1SourceRejected("foreign S49 native probe/session")
+        raise S49P1SourceRejected("foreign S49 native probe/session/policy")
     source = _prefix(paper_log, nonce=nonce)
     original_head, digest = _p1_source(p1_checkout)
     from experiments.fatigue_p1 import (
@@ -199,10 +202,14 @@ def prospective_request(
     sensor = FatigueSensor(quantum=0.01)
     observation = observe(experimental_profile, experimental_state, sensor)
     default_observation = observe(default, default_state, sensor)
-    request = (
-        observation.reading >= EXPERIMENTAL_SENSOR_THRESHOLD
-        and experimental_state.fatigue > 0
+    policy = sensitivity(
+        float(observation.reading), quantum=0.01,
+        threshold=EXPERIMENTAL_SENSOR_THRESHOLD, margin=0.025,
     )
+    request = (
+        policy.nominal_rest if sensor_policy == "nominal"
+        else policy.safety_margin_rest
+    ) and experimental_state.fatigue > 0
     return {
         "source_kind": SOURCE_KIND,
         "original_s49_session_id": session_id,
@@ -228,10 +235,15 @@ def prospective_request(
         "model_experimental_sensor_reading": observation.reading,
         "model_default_sensor_reading": default_observation.reading,
         "experimental_sensor_threshold": EXPERIMENTAL_SENSOR_THRESHOLD,
+        "sensitivity": policy.to_dict(),
+        "sensor_decision_policy": sensor_policy,
+        "nominal_rest_shadow": policy.nominal_rest,
+        "uncertainty_guard_rest_shadow": policy.uncertainty_guard_rest,
+        "safety_margin_rest_shadow": policy.safety_margin_rest,
         "request_rest": request,
         "reason": (
             "MODEL_FATIGUE_ABOVE_THRESHOLD_DEV_PROFILE"
-            if request else "MODEL_FATIGUE_NOT_ABOVE_THRESHOLD"
+            if request else "MODEL_FATIGUE_BELOW_MARGIN_OR_THRESHOLD"
         ),
         "original_P1_runtime_state_installed": False,
         "p1_real_fatigue_attested": False,
@@ -250,12 +262,15 @@ def main() -> None:
     parser.add_argument("--p1-checkout", type=Path, required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--probe-seq", type=int, required=True)
+    parser.add_argument("--sensor-policy", choices=["nominal", "margin"],
+                        default="nominal")
     args = parser.parse_args()
     nonce = args.session_id.replace("-", "")[:20]
     output = prospective_request(
         args.paper_log.read_text(encoding="utf-8"),
         nonce=nonce, session_id=args.session_id, probe_seq=args.probe_seq,
         p1_checkout=args.p1_checkout.resolve(),
+        sensor_policy=args.sensor_policy,
     )
     print(json.dumps(output, sort_keys=True, allow_nan=False))
 

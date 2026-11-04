@@ -36,6 +36,7 @@ async def run_s49_attack_then_rest_dev(
     prospective_rest_request: Callable[
         [MineflayerObservation], Awaitable[dict[str, Any]]
     ] | None = None,
+    choice_marker_hook: Callable[[str], Awaitable[None]] | None = None,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -134,21 +135,30 @@ async def run_s49_attack_then_rest_dev(
         "action_issued": choice.action_issued,
         "permission_granted": choice.permission_granted,
     }
+    required_choice = "REST" if rest_requested else "WAIT"
     if (
-        choice.selected != "REST"
-        or choice.preferred != "REST"
+        choice.selected != required_choice
+        or choice.preferred != ("REST" if rest_requested else None)
         or choice.action_issued or choice.permission_granted
         or first.seq <= attack_receipt.after_probe.seq
         or owner._count != 1 or owner.supervisor.open_actions
+        or (required_choice == "WAIT" and choice.fallback is not None)
     ):
         raise S49AttackRestDevRejected(
-            "post-ATTACK original native L0 REST intent not admitted"
+            "post-ATTACK original native L0 selected unexpected choice"
         )
-    report["rest_intent_selected"] = True
-    if rest_intent_hook is not None:
-        # Optional bounded Paper World tick marker, never an Action issuer.
+    report["rest_intent_selected"] = choice.selected == "REST"
+    report["post_attack_l0_selected"] = choice.selected
+    if choice_marker_hook is not None:
+        # Real server tick marker labels the actual WAIT or REST decision.
+        await choice_marker_hook(choice.selected)
+    elif rest_intent_hook is not None:
+        if choice.selected != "REST":
+            raise S49AttackRestDevRejected(
+                "legacy REST-only marker cannot identify WAIT choice"
+            )
         await rest_intent_hook()
-    report["stage"] = "BUG0_POST_ATTACK_REST_NATIVE_STATIONARY_SAMPLES"
+    report["stage"] = "BUG0_POST_ATTACK_CHOICE_NATIVE_STATIONARY_SAMPLES"
     observations = [first]
     for index in range(8):
         await asyncio.sleep(0.4)

@@ -11,6 +11,9 @@ commands:
   s49p1rest:
     usage: '/s49p1rest <nonce>'
     description: 'Console-only post-Action REST decision marker'
+  s49p1choice:
+    usage: '/s49p1choice <nonce> <WAIT|REST>'
+    description: 'Console-only DEV post-Action original L0 decision marker'
   s49p1stop:
     usage: '/s49p1stop <nonce>'
     description: 'Console-only DEV source stop; no World Action'

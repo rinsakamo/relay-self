@@ -27,15 +27,24 @@ def evaluate_source(
         or report.get("classification") not in (
             "DEV_ONLY_S49_PAPER_FIGHT_TICK_AND_REST_CALLBACK_SOURCE",
             "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST",
+            "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
         )
         or report.get("s49_dev_server") != "PINNED_PAPER_1_21_8"
-        or report.get("rest_intent_selected") is not True
+        or report.get("rest_intent_selected") is not (
+            report.get("rest_choice", {}).get("selected") == "REST"
+        )
         or report.get("p1_paper_source_scope")
             != "DEV_CALLBACK_BOUNDED_NO_R_ATTESTATION"
     ):
         raise ValueError("one original Paper S49 source-bound DEV session required")
     nonce = report["session_id"].replace("-", "")[:20]
-    source = inspect_paper_tick_source(paper_log, nonce=nonce, native_report=report)
+    margin = report.get("classification") == "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE"
+    source = inspect_paper_tick_source(
+        paper_log, nonce=nonce, native_report=report,
+        expected_choice=report.get("rest_choice", {}).get("selected")
+            if margin else "REST",
+        marker_style="choice" if margin else "legacy",
+    )
     checked_head = subprocess.run(
         ["git", "-C", str(p1_checkout), "rev-parse", "HEAD"],
         check=True, capture_output=True, text=True,
@@ -62,8 +71,10 @@ def evaluate_source(
     if experimental_wait_rate is not None and (
         type(experimental_wait_rate) is not float
         or experimental_wait_rate != 0.002
-        or report.get("classification")
-            != "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST"
+        or report.get("classification") not in (
+            "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST",
+            "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
+        )
     ):
         raise ValueError("only frozen nondefault DEV 0.002 recovery is allowed")
     default_profile = FatigueProfile(enabled=True)
@@ -83,6 +94,7 @@ def evaluate_source(
     state = initial_state(
         profile, source["native_session_id"], world_tick=first_tick - 1,
     )
+    choice_tick = source["paper_choice_marker_tick"]
     fatigue_at_rest = None
     recovered_before_rest = 0.0
     recovered_after_rest = 0.0
@@ -125,12 +137,12 @@ def evaluate_source(
             FatigueFrame(source["native_session_id"], world_tick, activity, **kw),
         )
         state = transition.after
-        after_rest = world_tick > source["paper_rest_marker_tick"]
+        after_rest = world_tick > choice_tick
         if after_rest:
             recovered_after_rest += transition.recovered
         else:
             recovered_before_rest += transition.recovered
-        if world_tick >= source["paper_rest_marker_tick"] and fatigue_at_rest is None:
+        if world_tick >= choice_tick and fatigue_at_rest is None:
             fatigue_at_rest = transition.after.fatigue
         if len(evaluated) < 600:
             evaluated.append({
@@ -142,7 +154,7 @@ def evaluate_source(
                 "P1_model_recovered": transition.recovered,
                 "source_type": "PAPER_CALLBACK_INTERVAL_DEV_NOT_FULL_TICK_ATTESTED",
             })
-        if world_tick >= source["paper_rest_marker_tick"] + 9:
+        if world_tick >= choice_tick + 9:
             break
     fight_steps = [x for x in evaluated if x["activity_from_callback"] == "FIGHT"]
     wait_steps = [x for x in evaluated if x["activity_from_callback"] == "WAIT"]
@@ -173,6 +185,8 @@ def evaluate_source(
         "source_fight_event_world_tick": source["paper_fight_event_tick"],
         "source_fight_callback_world_tick": source["paper_fight_callback_tick"],
         "source_rest_intent_world_tick": source["paper_rest_marker_tick"],
+        "source_choice_world_tick": source["paper_choice_marker_tick"],
+        "source_original_l0_choice": source["paper_selected_intent"],
         "source_tick_callback_count": source["total_consecutive_source_callback_rows"],
         "model_evaluated_tick_count": len(evaluated),
         "model_stop_reason": stopped_reason,

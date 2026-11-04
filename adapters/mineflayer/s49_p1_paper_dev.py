@@ -69,10 +69,16 @@ def _float(row: dict[str, str], key: str) -> float:
 
 def inspect_paper_tick_source(
     log: str, *, nonce: str, native_report: dict[str, Any],
+    expected_choice: str = "REST",
+    marker_style: str = "legacy",
 ) -> dict[str, Any]:
     """Pure source-shape check, no independent source authenticity promotion."""
     if not re.fullmatch(r"[a-z0-9]{12,32}", nonce):
         raise S49P1SourceRejected("invalid nonce")
+    if (expected_choice not in ("REST", "WAIT")
+            or marker_style not in ("legacy", "choice")
+            or (marker_style == "legacy" and expected_choice == "WAIT")):
+        raise S49P1SourceRejected("unsupported source decision marker")
     if (
         native_report.get("status") != "PENDING_NATIVE_JOIN"
         and native_report.get("status") != "PASS"
@@ -83,23 +89,30 @@ def inspect_paper_tick_source(
         not isinstance(actions, list) or len(actions) != 1
         or actions[0].get("kind") != "ATTACK"
         or actions[0].get("terminal") != "outcome"
-        or native_report.get("rest_intent_selected") is not True
+        or native_report.get("rest_intent_selected") is not (expected_choice == "REST")
+        or (expected_choice == "WAIT" and
+            native_report.get("rest_choice", {}).get("selected") != "WAIT")
         or native_report.get("rest_action_issued") is not False
         or native_report.get("attack_server_health_drop_observed") is not True
     ):
         raise S49P1SourceRejected("not original one ATTACK then REST")
     if _rows(log, "SOURCE_FAULT"):
         raise S49P1SourceRejected("server source overflow or missing World/player")
-    starts, rests, stops, fights, ticks = (
+    starts, rests, stops, fights, ticks, choices = (
         _rows(log, key)
-        for key in ("START", "REST", "STOP", "FIGHT", "TICK")
+        for key in ("START", "REST", "STOP", "FIGHT", "TICK", "CHOICE")
     )
+    markers = rests if marker_style == "legacy" else choices
     if (
-        any(len(v) != 1 for v in (starts, rests, stops, fights))
+        any(len(v) != 1 for v in (starts, stops, fights, markers))
+        or (marker_style == "choice" and rests)
+        or (marker_style == "legacy" and choices)
         or not 20 <= len(ticks) <= 480
     ):
-        raise S49P1SourceRejected("incomplete or duplicate source brackets")
-    start, rest, stop, fight = starts[0], rests[0], stops[0], fights[0]
+        raise S49P1SourceRejected("incomplete or contradictory source brackets")
+    start, marker, stop, fight = starts[0], markers[0], stops[0], fights[0]
+    if marker_style == "choice" and marker.get("selected") != expected_choice:
+        raise S49P1SourceRejected("wrong native L0 choice marker")
     world = start.get("world")
     player_uuid = start.get("player")
     if (
@@ -110,7 +123,7 @@ def inspect_paper_tick_source(
         or fight["attacker"] != player_uuid
         or _float(fight, "damage") <= 0
         or any(r.get("nonce") != nonce or r.get("world") != world
-               for r in (start, rest, stop, fight, *ticks))
+               for r in (start, marker, stop, fight, *ticks))
         or stop.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
         or start.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
         or _int(stop, "faults") != 0
@@ -118,10 +131,10 @@ def inspect_paper_tick_source(
         raise S49P1SourceRejected("foreign or unbounded Paper source")
     began = _int(start, "tick")
     ended = _int(stop, "tick")
-    rest_tick = _int(rest, "tick")
+    choice_tick = _int(marker, "tick")
     fight_tick = _int(fight, "tick")
-    if not began <= fight_tick < rest_tick <= ended:
-        raise S49P1SourceRejected("FIGHT/REST source order missing")
+    if not began <= fight_tick < choice_tick <= ended:
+        raise S49P1SourceRejected("FIGHT/choice source order missing")
     if _int(stop, "index") != len(ticks):
         raise S49P1SourceRejected("incomplete tick publisher")
     rows = []
@@ -160,7 +173,7 @@ def inspect_paper_tick_source(
         or not fight_tick <= combat_callbacks[0]["world_tick"] <= fight_tick + 1
     ):
         raise S49P1SourceRejected("not one Paper fight source tick")
-    post_rest = [x for x in rows if x["world_tick"] >= rest_tick + 2]
+    post_rest = [x for x in rows if x["world_tick"] >= choice_tick + 2]
     if len(post_rest) < 8:
         raise S49P1SourceRejected("no bounded post-REST tick coverage")
     # Keep both all-frame originals and a separately scoped post-REST interval.
@@ -179,7 +192,9 @@ def inspect_paper_tick_source(
         "native_attack_action_id": actions[0]["action_id"],
         "paper_fight_event_tick": fight_tick,
         "paper_fight_callback_tick": combat_callbacks[0]["world_tick"],
-        "paper_rest_marker_tick": rest_tick,
+        "paper_rest_marker_tick": choice_tick if expected_choice == "REST" else None,
+        "paper_choice_marker_tick": choice_tick,
+        "paper_selected_intent": expected_choice,
         "world_tick_start": began, "world_tick_last_callback": last,
         "world_tick_stop": ended,
         "total_consecutive_source_callback_rows": len(rows),
@@ -221,12 +236,15 @@ async def run_s49_p1_paper_dev(
     report: dict[str, Any], log_path: Path, *,
     prospective_rest_dev: bool = False,
     p1_checkout: Path | None = None,
+    margin_choice_dev: bool = False,
 ) -> None:
     """One S49 original ATTACK->REST, with server-only source hooks."""
     if not isinstance(session, MineflayerProcessSession):
         raise S49P1SourceRejected("original process required")
     if (
         type(prospective_rest_dev) is not bool
+        or type(margin_choice_dev) is not bool
+        or (margin_choice_dev and not prospective_rest_dev)
         or (prospective_rest_dev and (
             not isinstance(p1_checkout, Path)
             or not p1_checkout.is_absolute()
@@ -253,6 +271,15 @@ async def run_s49_p1_paper_dev(
                 key="REST", nonce=nonce,
             )
 
+        async def mark_choice(selected: str) -> None:
+            if selected not in ("REST", "WAIT"):
+                raise S49P1SourceRejected("unsafe S49 native choice marker")
+            await _send_and_wait(
+                server, log_path,
+                command=f"s49p1choice {nonce} {selected}",
+                key="CHOICE", nonce=nonce,
+            )
+
         async def pre_decision_sensor(probe: object) -> dict[str, Any]:
             # Separate pinned P1 evaluator reads the already published
             # Paper prefix. It has no server command, Body mutation or
@@ -266,12 +293,19 @@ async def run_s49_p1_paper_dev(
                 "--session-id", session.started.session_id,
                 "--probe-seq", str(probe.seq),
             ]
+            if margin_choice_dev:
+                args.extend(["--sensor-policy", "margin"])
             result = await asyncio.to_thread(
                 subprocess.run, args, capture_output=True, text=True,
                 timeout=12, check=True,
             )
             raw = json.loads(result.stdout)
-            if raw.get("request_rest") is not True:
+            if margin_choice_dev:
+                if raw.get("sensor_decision_policy") != "margin":
+                    raise S49P1SourceRejected(
+                        "margin sensor not evaluated before original L0"
+                    )
+            elif raw.get("request_rest") is not True:
                 raise S49P1SourceRejected(
                     "prospective experimental P1 sensor did not request REST"
                 )
@@ -285,6 +319,9 @@ async def run_s49_p1_paper_dev(
         }
         if prospective_rest_dev:
             args["prospective_rest_request"] = pre_decision_sensor
+        if margin_choice_dev:
+            args.pop("rest_intent_hook")
+            args["choice_marker_hook"] = mark_choice
         await run_s49_attack_then_rest_dev(
             session, server, owner, report, **args,
         )
@@ -296,9 +333,12 @@ async def run_s49_p1_paper_dev(
                 key="STOP", nonce=nonce,
             )
     report["status"] = "PENDING_NATIVE_JOIN"
+    selected = report.get("rest_choice", {}).get("selected")
     checked = inspect_paper_tick_source(
         log_path.read_text(encoding="utf-8"),
         nonce=nonce, native_report=report,
+        expected_choice=selected if margin_choice_dev else "REST",
+        marker_style="choice" if margin_choice_dev else "legacy",
     )
     if prospective_rest_dev:
         sensor = report.get("prospective_p1_sensor")
@@ -306,14 +346,16 @@ async def run_s49_p1_paper_dev(
             not isinstance(sensor, dict)
             or sensor.get("source_kind")
                 != "PAPER_PRE_DECISION_CALLBACK_P1_VIRTUAL_SENSOR_DEV"
-            or sensor.get("request_rest") is not True
+            or (not margin_choice_dev and sensor.get("request_rest") is not True)
+            or (margin_choice_dev and
+                sensor.get("request_rest") is not (selected == "REST"))
             or sensor.get("model_default_fatigue_pre_decision") != 0
             or not 0 < sensor.get("model_experimental_fatigue_pre_decision", -1) <= 1
             or sensor.get("paper_source_uuid") != checked["paper_world"]
             or not (
                 checked["paper_fight_callback_tick"]
                 <= sensor["source_as_of_tick"]
-                < checked["paper_rest_marker_tick"]
+                < checked["paper_choice_marker_tick"]
                 <= checked["world_tick_last_callback"]
             )
         ):
@@ -321,9 +363,15 @@ async def run_s49_p1_paper_dev(
                 "late/foreign retrospective REST model sensor cannot be admitted"
             )
         report["prospective_p1_s49_join"] = {
-            "status": "DEV_NONDEFAULT_PROFILE_MODEL_SENSOR_REST_CHOSEN",
+            "status": (
+                "DEV_THRESHOLD_MARGIN_MODEL_SENSOR_NATIVE_CHOICE"
+                if margin_choice_dev
+                else "DEV_NONDEFAULT_PROFILE_MODEL_SENSOR_REST_CHOSEN"
+            ),
             "source_as_of_server_tick": sensor["source_as_of_tick"],
             "rest_marker_server_tick": checked["paper_rest_marker_tick"],
+            "choice_marker_server_tick": checked["paper_choice_marker_tick"],
+            "actual_original_l0_choice": selected,
             "model_fatigue_pre_decision": (
                 sensor["model_experimental_fatigue_pre_decision"]
             ),
