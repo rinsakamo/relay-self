@@ -222,10 +222,16 @@ async def run_s49_p1_paper_dev(
         raise S49P1SourceRejected("original process required")
     nonce = session.started.session_id.replace("-", "")[:20]
     report["p1_paper_source_scope"] = "DEV_CALLBACK_BOUNDED_NO_R_ATTESTATION"
-    report["stage"] = "S49_P1_PAPER_SOURCE_START"
-    await _send_and_wait(
-        server, log_path, command=f"s49p1start {nonce}", key="START", nonce=nonce,
-    )
+    source_started = False
+    report["stage"] = "S49_P1_PAPER_SOURCE_WAIT_FOR_NATIVE_ADMISSION"
+    async def mark_attack_source() -> None:
+        nonlocal source_started
+        await _send_and_wait(
+            server, log_path, command=f"s49p1start {nonce}",
+            key="START", nonce=nonce,
+        )
+        source_started = True
+
     try:
         async def mark_rest() -> None:
             await _send_and_wait(
@@ -236,12 +242,15 @@ async def run_s49_p1_paper_dev(
         await run_s49_attack_then_rest_dev(
             session, server, owner, report,
             health_log=log_path, rest_intent_hook=mark_rest,
+            attack_pre_issue_hook=mark_attack_source,
         )
     finally:
-        # A STOP never reissues an ATTACK; preserve error/UNKNOWN and clean up.
-        await _send_and_wait(
-            server, log_path, command=f"s49p1stop {nonce}", key="STOP", nonce=nonce,
-        )
+        # Never mask a pre-issue refusal or reissue an ATTACK.
+        if source_started:
+            await _send_and_wait(
+                server, log_path, command=f"s49p1stop {nonce}",
+                key="STOP", nonce=nonce,
+            )
     report["status"] = "PENDING_NATIVE_JOIN"
     checked = inspect_paper_tick_source(
         log_path.read_text(encoding="utf-8"),
