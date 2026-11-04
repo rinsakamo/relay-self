@@ -13,6 +13,7 @@ from typing import Any, Awaitable, Callable
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.s49_attack_dev import run_s49_attack_dev
 from adapters.mineflayer.s49_attack_server_health import TARGET_TAG
@@ -32,6 +33,9 @@ async def run_s49_attack_then_rest_dev(
     rest_intent_hook: Callable[[], Awaitable[None]] | None = None,
     attack_pre_issue_hook: Callable[[], Awaitable[None]] | None = None,
     paper_health_sequential: bool = False,
+    prospective_rest_request: Callable[
+        [MineflayerObservation], Awaitable[dict[str, Any]]
+    ] | None = None,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -100,7 +104,27 @@ async def run_s49_attack_then_rest_dev(
         session, f"s49-attack-rest-{sid}-baseline",
     )
     policy = S49BasicPriorityL0(sid, max_decisions=12)
-    choice = policy.decide(first, rest_requested=True)
+    rest_requested = True
+    if prospective_rest_request is not None:
+        # This is an optional DEV read-only P1 *model sensor* obtained before
+        # the L0 decision, never a grant or an oracle based on REST outcomes.
+        # A missing, foreign, ambiguous or nonpositive reading is NOT REST.
+        sensor = await prospective_rest_request(first)
+        if (
+            not isinstance(sensor, dict)
+            or sensor.get("original_s49_session_id") != sid
+            or sensor.get("native_probe_seq") != first.seq
+            or sensor.get("source_kind")
+                != "PAPER_PRE_DECISION_CALLBACK_P1_VIRTUAL_SENSOR_DEV"
+            or type(sensor.get("request_rest")) is not bool
+            or sensor.get("p1_real_fatigue_attested") is not False
+        ):
+            raise S49AttackRestDevRejected(
+                "no valid prospective P1 model sensor for original S49 decision"
+            )
+        rest_requested = sensor["request_rest"]
+        report["prospective_p1_sensor"] = sensor
+    choice = policy.decide(first, rest_requested=rest_requested)
     report["rest_choice"] = {
         "selected": choice.selected,
         "preferred": choice.preferred,

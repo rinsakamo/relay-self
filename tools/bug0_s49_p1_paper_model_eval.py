@@ -18,11 +18,16 @@ from adapters.mineflayer.s49_p1_paper_dev import inspect_paper_tick_source
 P1_EXACT_COMMIT = "0ab76b4e46efd914877e543a65de58b6cfc71326"
 
 
-def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
+def evaluate_source(
+    report: dict, paper_log: str, *, p1_checkout: Path,
+    experimental_wait_rate: float | None = None,
+) -> dict:
     if (
         report.get("status") != "PASS"
-        or report.get("classification")
-            != "DEV_ONLY_S49_PAPER_FIGHT_TICK_AND_REST_CALLBACK_SOURCE"
+        or report.get("classification") not in (
+            "DEV_ONLY_S49_PAPER_FIGHT_TICK_AND_REST_CALLBACK_SOURCE",
+            "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST",
+        )
         or report.get("s49_dev_server") != "PINNED_PAPER_1_21_8"
         or report.get("rest_intent_selected") is not True
         or report.get("p1_paper_source_scope")
@@ -45,6 +50,7 @@ def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
     from experiments.fatigue_p1 import (
         FatigueFrame,
         FatigueProfile,
+        Rate,
         advance,
         initial_state,
     )
@@ -53,7 +59,21 @@ def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
 
     if Path(original_p1.__file__).resolve() != original.resolve():
         raise ValueError("loaded P1 module is not pinned original checkout")
-    profile = FatigueProfile(enabled=True)
+    if experimental_wait_rate is not None and (
+        type(experimental_wait_rate) is not float
+        or experimental_wait_rate != 0.002
+        or report.get("classification")
+            != "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST"
+    ):
+        raise ValueError("only frozen nondefault DEV 0.002 recovery is allowed")
+    default_profile = FatigueProfile(enabled=True)
+    profile = (
+        default_profile if experimental_wait_rate is None
+        else FatigueProfile(
+            enabled=True,
+            wait_recovery_per_world_tick=Rate(experimental_wait_rate),
+        )
+    )
     rows = source["source_tick_rows"]
     fight_index = next(
         i for i, x in enumerate(rows)
@@ -134,6 +154,18 @@ def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         "original_p1_commit": checked_head,
         "original_p1_module_sha256": p1_source_digest,
         "original_p1_profile_sha256": profile.sha256,
+        "original_p1_default_profile_sha256": default_profile.sha256,
+        "model_profile_kind": (
+            "ORIGINAL_P1_DEFAULT"
+            if experimental_wait_rate is None
+            else "FROZEN_NONDEFAULT_P1_DEV_HYPOTHESIS"
+        ),
+        "model_wait_recovery_rate_per_tick": (
+            profile.wait_recovery_per_world_tick.value
+        ),
+        "original_p1_default_recovery_rate_per_tick": (
+            default_profile.wait_recovery_per_world_tick.value
+        ),
         "original_s49_session_id": report["session_id"],
         "original_s49_action_id": source["native_attack_action_id"],
         "source_world_uuid": source["paper_world"],
@@ -170,11 +202,16 @@ def main() -> None:
     parser.add_argument("--paper-log", type=Path, required=True)
     parser.add_argument("--p1-checkout", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--experimental-wait-rate", type=float,
+        choices=[0.002], default=None,
+    )
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf-8"))
     result = evaluate_source(
         report, args.paper_log.read_text(encoding="utf-8"),
         p1_checkout=args.p1_checkout,
+        experimental_wait_rate=args.experimental_wait_rate,
     )
     args.out.write_text(
         json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8",
