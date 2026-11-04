@@ -7,12 +7,10 @@ independent combat AI, second supervisor or implied damage claims.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import asdict
 from typing import Any
 
 from adapters.mineflayer.attack_execution import AttackActionReceipt
 from adapters.mineflayer.normal_action import (
-    NormalActionRejected,
     NormalActionStage,
     NormalAttackingAuthorization,
     NormalSessionActionExecutor,
@@ -131,7 +129,7 @@ async def run_s49_attack_dev(
     if previous is None or current is None:
         raise S49AttackDevRejected("two native near-zombie probes not obtained")
     target_id = current.snapshot.nearby_entities[0].entity_id
-    report["stage"] = "BUG0_S49_ORIGINAL_ATTACk_ADMISSION"
+    report["stage"] = "BUG0_S49_ORIGINAL_ATTACK_ADMISSION"
     action_id = f"bug0-s49-attack-{sid}"
     shared = {
         "intent_id": owner.intent.current_intent.intent_id,
