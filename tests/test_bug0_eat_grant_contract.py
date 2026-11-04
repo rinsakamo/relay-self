@@ -91,7 +91,7 @@ def test_two_separate_pinned_external_signatures_verify_but_never_authorize_acti
     "unknown-issue-key", "swapped-keys", "tampered-propose-scope",
     "tampered-issue-scope", "both-signed-foreign-world",
     "both-signed-wrong-food", "stage-mismatch", "same-principal",
-    "same-nonce", "action-mismatch", "expired", "future",
+    "same-nonce", "same-key-different-label", "action-mismatch", "expired", "future",
 ))
 def test_independent_operator_proof_rejects_untrusted_or_stale_scope(fault):
     owner, shadow, p, i, keys, first, second = case()
@@ -125,6 +125,9 @@ def test_independent_operator_proof_rejects_untrusted_or_stale_scope(fault):
         i = _sign(replace(i.statement, authority_id=p.statement.authority_id), second)
     elif fault == "same-nonce":
         i = _sign(replace(i.statement, nonce=p.statement.nonce), second)
+    elif fault == "same-key-different-label":
+        i = _sign(i.statement, first)
+        keys["issue_public_keys"] = {"operator-issue": _pub(first)}
     elif fault == "action-mismatch":
         i = _sign(replace(i.statement, action_id="other-action"), second)
     elif fault == "expired":
