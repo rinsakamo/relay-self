@@ -69,6 +69,10 @@ class S51PhysicalFailure(RuntimeError):
     """Real observed appetite, consumption or Action outcome was insufficient."""
 
 
+class Bug0FirstEatShadowCompleted(Exception):
+    """Explicit no-Action exit through the existing S51 cleanup/final report."""
+
+
 def _recording_session_type(native_output, command_output):
     """Tee original bridge bytes without replacing decoding or IO errors."""
     class RecordingReader:
@@ -124,6 +128,7 @@ async def qualify(
     b0_v6_phase: str | None = None, b0_v6_arm: str | None = None,
     dev_only: bool = False,
     b1_local_adaptation: bool = False, b1_retention: bool = True,
+    bug0_first_eat_shadow: bool = False,
 ) -> int:
     # B0 DEV is a separate opt-in on the existing S51 owner, never a
     # qualification bypass. It uses a fresh unqualified disposable World.
@@ -134,6 +139,21 @@ async def qualify(
         raise ValueError("DEV/B1 mode switches must be explicit boolean")
     if b1_local_adaptation and not dev_only:
         raise ValueError("B1 local adaptation is DEV_ONLY")
+    if (
+        type(bug0_first_eat_shadow) is not bool
+        or (
+            bug0_first_eat_shadow
+            and (
+                food_item != "bread" or food_source != "inventory"
+                or rsee is not None or confirmation is not None or preflight_only
+                or dev_only or b1_local_adaptation
+                or b0_v2_arm is not None or b0_v6_phase is not None
+                or b0_v6_arm is not None or b0_forage_policy != "native_only"
+                or b0_sensor != "on"
+            )
+        )
+    ):
+        raise ValueError("Bug-0 first EAT shadow requires bread/inventory only")
     if dev_only and (
         food_item != "rotten_flesh"
         or (food_source, b1_local_adaptation) not in (
@@ -199,11 +219,20 @@ async def qualify(
         "food_acquisition_autonomous": False,
         "automatic_goal_selection": False,
         "real_model_calls": 0,
-        "mode": "DEV" if dev_only else "QUALIFICATION_CANDIDATE",
+        "mode": (
+            "BUG0_FIRST_EAT_NONISSUING_DEV"
+            if bug0_first_eat_shadow else
+            "DEV" if dev_only else "QUALIFICATION_CANDIDATE"
+        ),
         "engineering_qualified": False,
         "science_success": False,
         "g3_go": False,
     }
+    if bug0_first_eat_shadow:
+        report["physical_eat_authorized"] = False
+        report["actual_native_actions"] = []
+        report["food_commands_issued"] = 0
+        report["independent_eat_grant_attested"] = False
     server = collector = session = temp = None
     ledger = None
     native_output = command_output = None
@@ -245,6 +274,13 @@ async def qualify(
             path.exists() or path.is_symlink() for path in (native_path, command_path)
         ):
             raise S31ABlocked("fresh native evidence paths required; no overwrite")
+        if bug0_first_eat_shadow and (
+            os.environ.get("S51_BUG0_FIRST_EAT_SHADOW_DEV_ONLY") != "1"
+            or os.environ.get("NODE_OPTIONS")
+        ):
+            raise S31ABlocked(
+                "Bug-0 first-EAT nonissuing World requires explicit separate DEV gate"
+            )
         if os.environ.get("RELAYSELF_V6_NATIVE_CLOCK_V1"):
             raise S31ABlocked("V6 raw clock producer not R-qualified for S51")
         if os.environ.get("NODE_OPTIONS"):
@@ -277,6 +313,11 @@ async def qualify(
             )
         if os.environ.get("S51_REAL_SERVER_CI") != "1":
             raise S31ABlocked("explicit real-survival qualification environment required")
+        if bug0_first_eat_shadow:
+            report["stage"] = "DEV_UNQUALIFIED_FRESH_DISPOSABLE_WORLD"
+            report["world_source"] = "NEW_DEV_MOJANG_WORLD_NOT_RSEE_GOLDEN"
+            report["physical_eat_authorized"] = False
+            report["untrusted_operator_grant_not_inferred"] = True
         if food_item == "rotten_flesh":
             # Not a permission token: physical permission is external and
             # per-run. Never use the legacy unqualified-download B0 path.
@@ -331,8 +372,8 @@ async def qualify(
         report["server_config_sha256"] = hashlib.sha256(
             (root / "server.properties").read_bytes(),
         ).hexdigest()
-        if rsee is not None or dev_only:
-            # Reserve both originals before Java. Never truncate an old stream.
+        if rsee is not None or dev_only or bug0_first_eat_shadow:
+            # Reserve original native/command bytes before Java. Never overwrite.
             native_output = native_path.open("xb")
             command_output = command_path.open("xb")
             report["native_stdout_path"] = str(native_path)
@@ -340,15 +381,16 @@ async def qualify(
             if rsee is not None:
                 report["clone_prelaunch_binding"] = copied
         report["stage"] = (
-            "DEV_OWNED_WORLD_JAVA_START" if dev_only
+            "DEV_OWNED_WORLD_JAVA_START"
+            if (dev_only or bug0_first_eat_shadow)
             else "JAVA_START_ONESHOT_BOUNDARY"
         )
         report["java_start_attempted"] = True
         server, collector, _ = await _ready_server(root, jar, server_log)
         report["java_pid"] = server.pid
-        if dev_only:
+        if dev_only or bug0_first_eat_shadow:
             # Reuse the exact existing S51 recording owner, NOT a new launcher.
-            # The native source is unqualified DEV even when an outcome exists.
+            # Native source remains DEV, no R qualification or EAT grant.
             session_type = _recording_session_type(native_output, command_output)
             session = await session_type.launch(
                 MineflayerLaunchConfig(
@@ -621,6 +663,48 @@ async def qualify(
                 raise S51PhysicalFailure("actual native hunger + inventory gate not reached")
             _command(server, "effect clear RelaySelf minecraft:hunger")
             await server.stdin.drain()
+            if bug0_first_eat_shadow:
+                # Existing S51 staging and genuine Mineflayer acquisition
+                # are reused. The original S49 owner's fresh (no-MOVE)
+                # state is inspected, but no proposed/authorized/ISSUED
+                # Action, equip/consume, food energy credit or learning occurs.
+                from adapters.mineflayer.bug0_first_eat_shadow import (
+                    inspect_bug0_first_eat_shadow,
+                )
+                from adapters.mineflayer.normal_action import (
+                    NormalSessionActionExecutor,
+                )
+
+                shadow_intent = IntentCommitment()
+                shadow_intent.commit(
+                    "eat-when-hungry", objective="observe native bread eligibility",
+                    at_ns=1, provenance=p("bug0-read-only-intent"),
+                )
+                owner = NormalSessionActionExecutor(sid, shadow_intent)
+                report["stage"] = "BUG0_FIRST_EAT_NATIVE_REOBSERVE_NO_ACTION"
+                fresh = await _correlated_observe(
+                    session, "bug0-first-eat-preissue-native-01",
+                )
+                shadow = inspect_bug0_first_eat_shadow(owner, before, fresh)
+                if shadow.candidate_item != food_item:
+                    raise S51PhysicalFailure("fresh native food candidate changed item")
+                report["bug0_first_eat_shadow"] = asdict(shadow)
+                report["actual_native_actions"] = []
+                report["food_commands_issued"] = 0
+                report["physical_eat_authorized"] = False
+                report["independent_eat_grant_attested"] = False
+                report["m_energy_credited"] = False
+                report["learning_in_world"] = False
+                report["status"] = "PASS"
+                report["classification"] = (
+                    "BUG0_FIRST_EAT_NATIVE_SHADOW_NO_ACTION_DEV_ONLY"
+                )
+                report["stage"] = "BUG0_NONISSUING_OBSERVATION_COMPLETE"
+                rc = 0
+                # This controlled exit still executes the existing original
+                # Node/Java shutdown and immutable report publication below.
+                raise Bug0FirstEatShadowCompleted
+
             report["before"] = {
                 "food": before.snapshot.food,
                 "food_item": food_item,
@@ -731,6 +815,8 @@ async def qualify(
             )
             report["stage"] = "CLOSED"
             rc = 0
+    except Bug0FirstEatShadowCompleted:
+        pass
     except (S31ABlocked, B0RSEERejected, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
@@ -777,8 +863,11 @@ async def qualify(
         )
         # DEV never touches a V6 or B0 one-shot grant. Its World launch is
         # tracked independently and does not certify source identity.
-        report["grant_consumed"] = (report["physical_java_started"] if not dev_only else False)
-        if dev_only:
+        report["grant_consumed"] = (
+            report["physical_java_started"]
+            if not (dev_only or bug0_first_eat_shadow) else False
+        )
+        if dev_only or bug0_first_eat_shadow:
             report["dev_world_started"] = report["physical_java_started"]
         for stream in (native_output, command_output):
             if stream is not None:
@@ -849,6 +938,10 @@ def main() -> int:
         help="read-only pinned RSEE verification; never starts a World",
     )
     parser.add_argument("--confirm", help="operator acknowledgement; NOT a physical grant")
+    parser.add_argument(
+        "--bug0-first-eat-shadow", action="store_true",
+        help="DEV-only staged native first-EAT reobservation; no eating Action issued",
+    )
     args = parser.parse_args()
     fields = (
         args.rsee_checkout, args.rsee_jar, args.rsee_snapshot,
@@ -868,6 +961,7 @@ def main() -> int:
         b0_forage_policy=args.b0_forage_policy,
         b0_sensor=args.b0_sensor, b0_v2_arm=args.b0_v2_arm,
         b0_v6_phase=args.b0_v6_phase, b0_v6_arm=args.b0_v6_arm,
+        bug0_first_eat_shadow=args.bug0_first_eat_shadow,
     ))
 
 
