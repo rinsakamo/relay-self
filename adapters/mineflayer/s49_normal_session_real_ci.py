@@ -70,6 +70,11 @@ class S49PhysicalFailure(RuntimeError):
     """The real native World did not support the claimed autonomous behavior."""
 
 
+class Bug0FoodLoopDevCompleted(Exception):
+    """Bounded S49 native food loop closed, with original cleanup remaining."""
+
+
+
 def read_only_bug0_eat_window(
     cursor: EatCursor, probe: MineflayerObservation,
 ) -> dict[str, object]:
@@ -307,6 +312,7 @@ async def qualify(
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
     bug0_eat_shadow: bool = False,
+    bug0_food_loop_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -339,6 +345,15 @@ async def qualify(
             bug0_eat_shadow and os.environ.get("S49_BUG0_EAT_SHADOW_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("Bug-0 read-only EAT shadow needs explicit DEV gate")
+        if (
+            type(bug0_food_loop_dev) is not bool
+            or (bug0_food_loop_dev and (
+                os.environ.get("S49_BUG0_FOOD_LOOP_DEV_ONLY") != "1"
+                or stage_r_dev or completed_l0_dev or completed_l0 is not None
+                or bug0_eat_shadow or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("S49 food L0 DEV requires separate exclusive gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -359,15 +374,31 @@ async def qualify(
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
             raise S49PhysicalFailure("frozen governed retained source changed")
         intent = IntentCommitment()
+        intent_name = "eat-when-hungry" if bug0_food_loop_dev else "escape-threat"
         intent.commit(
-            "escape-threat", objective="escape near zombie", at_ns=1,
-            provenance=source("committed-existing-intent"),
+            intent_name,
+            objective=(
+                "one native EAT and post-EAT L0 WAIT"
+                if bug0_food_loop_dev else "escape near zombie"
+            ),
+            at_ns=1, provenance=source("committed-existing-intent"),
         )
         host = NormalWorldL0(
-            sid, "escape-threat", retained, max_events=3, max_action_requests=2,
+            sid, intent_name, retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        if bug0_food_loop_dev:
+            # The S49 original launcher/session/executor owns this DEV branch;
+            # S51 is a delegate only. The zombie-only normal loop is unchanged.
+            from adapters.mineflayer.s49_food_loop_dev import run_s49_food_loop
+
+            await run_s49_food_loop(session, server, executor, report)
+            report["status"] = "PASS"
+            report["classification"] = "DEV_ONLY_S49_FOOD_L0_EAT_WAIT_OUTCOME"
+            report["stage"] = "BUG0_S49_FOOD_L0_CLOSED"
+            rc = 0
+            raise Bug0FoodLoopDevCompleted
         if eat_cursor is not None:
             report["bug0_eat_shadow"] = []
             report["bug0_eat_shadow_only"] = True
@@ -636,6 +667,8 @@ async def qualify(
         )
         report["stage"] = "CLOSED"
         rc = 0
+    except Bug0FoodLoopDevCompleted:
+        pass
     except asyncio.CancelledError as exc:
         cancellations.append(exc)
         report["status"] = "FAIL"
@@ -754,10 +787,12 @@ def main() -> int:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--completed-l0-dev", action="store_true")
     parser.add_argument("--bug0-eat-shadow", action="store_true")
+    parser.add_argument("--bug0-food-loop-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
         bug0_eat_shadow=args.bug0_eat_shadow,
+        bug0_food_loop_dev=args.bug0_food_loop_dev,
     ))
 
 
