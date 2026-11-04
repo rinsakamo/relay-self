@@ -316,6 +316,7 @@ async def qualify(
     bug0_food_refusal_dev: bool = False,
     bug0_unified_survival_dev: bool = False,
     bug0_attack_dev: bool = False,
+    bug0_attack_health_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -388,6 +389,17 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("original S49 ATTACK needs exclusive DEV gate")
+        if (
+            type(bug0_attack_health_dev) is not bool
+            or (bug0_attack_health_dev and (
+                os.environ.get("S49_BUG0_ATTACK_HEALTH_DEV_ONLY") != "1"
+                or bug0_attack_dev or bug0_food_loop_dev
+                or bug0_food_refusal_dev or bug0_unified_survival_dev
+                or bug0_eat_shadow or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("original ATTACK Paper health check requires exclusive DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -426,15 +438,23 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
-        if bug0_attack_dev:
+        if bug0_attack_dev or bug0_attack_health_dev:
             # Original S49 session/executor/supervisor is the ONLY Action owner.
             # The transport callback has no independent issuer or grant.
             from adapters.mineflayer.s49_attack_dev import run_s49_attack_dev
 
-            await run_s49_attack_dev(session, server, executor, report)
+            await run_s49_attack_dev(
+                session, server, executor, report,
+                health_log=server_log if bug0_attack_health_dev else None,
+            )
             report["status"] = "PASS"
             report["classification"] = (
-                "DEV_ONLY_S49_SUPERVISED_ATTACK_EFFECT_APPLIED"
+                "DEV_ONLY_S49_ATTACK_PAPER_HEALTH_DROP"
+                if bug0_attack_health_dev
+                and report.get("attack_server_health_drop_observed") is True
+                else "DEV_ONLY_S49_ATTACK_PAPER_NO_HEALTH_DROP"
+                if bug0_attack_health_dev
+                else "DEV_ONLY_S49_SUPERVISED_ATTACK_EFFECT_APPLIED"
             )
             report["stage"] = "BUG0_S49_ATTACK_EFFECT_CLOSED"
             rc = 0
@@ -943,6 +963,7 @@ def main() -> int:
     parser.add_argument("--bug0-food-refusal-dev", action="store_true")
     parser.add_argument("--bug0-unified-survival-dev", action="store_true")
     parser.add_argument("--bug0-attack-dev", action="store_true")
+    parser.add_argument("--bug0-attack-health-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -951,6 +972,7 @@ def main() -> int:
         bug0_food_refusal_dev=args.bug0_food_refusal_dev,
         bug0_unified_survival_dev=args.bug0_unified_survival_dev,
         bug0_attack_dev=args.bug0_attack_dev,
+        bug0_attack_health_dev=args.bug0_attack_health_dev,
     ))
 
 
