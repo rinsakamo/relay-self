@@ -11,6 +11,7 @@ jobs:
   one-native-world-health:
     # Operator authorizes one new World; only exact commit message runs it.
     # A rejected, unknown or no-damage ATTACK must NEVER be auto-replayed.
+    # New operator-scoped World, offline #41817592467 exact-head SUCCESS.
     if: ${{ github.event.head_commit.message == 'run-bug0-s49-attack-health-once-20261104' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
