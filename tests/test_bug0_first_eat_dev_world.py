@@ -144,6 +144,8 @@ def test_opt_in_one_action_runner_delegates_original_s49_s51(tmp_path, monkeypat
     report = json.loads(report_path.read_text())
     assert rc == 0
     assert report["status"] == "PASS"
+    assert report["action_terminal"] == "outcome"
+    assert report["actual_native_actions"][0]["terminal"] == "outcome"
     assert report["classification"] == "DEV_ONLY_BUG0_FIRST_EAT_S49_S51_PHYSICAL_OUTCOME"
     assert report["dev_authorization_scope"] == (
         "ONE_DISPOSABLE_WORLD_ONE_FIRST_EAT_LOCAL_OPERATOR_DEV"
