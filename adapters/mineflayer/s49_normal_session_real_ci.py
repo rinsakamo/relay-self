@@ -313,6 +313,7 @@ async def qualify(
     raw_capture_root: Path | None = None,
     bug0_eat_shadow: bool = False,
     bug0_food_loop_dev: bool = False,
+    bug0_food_refusal_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -354,6 +355,16 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("S49 food L0 DEV requires separate exclusive gate")
+        if (
+            type(bug0_food_refusal_dev) is not bool
+            or (bug0_food_refusal_dev and (
+                os.environ.get("S49_BUG0_FOOD_REFUSAL_DEV_ONLY") != "1"
+                or bug0_food_loop_dev or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or bug0_eat_shadow
+                or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("S49 native refusal matrix needs exclusive DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -374,12 +385,16 @@ async def qualify(
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
             raise S49PhysicalFailure("frozen governed retained source changed")
         intent = IntentCommitment()
-        intent_name = "eat-when-hungry" if bug0_food_loop_dev else "escape-threat"
+        intent_name = (
+            "eat-when-hungry" if (bug0_food_loop_dev or bug0_food_refusal_dev)
+            else "escape-threat"
+        )
         intent.commit(
             intent_name,
             objective=(
                 "one native EAT and post-EAT L0 WAIT"
-                if bug0_food_loop_dev else "escape near zombie"
+                if (bug0_food_loop_dev or bug0_food_refusal_dev)
+                else "escape near zombie"
             ),
             at_ns=1, provenance=source("committed-existing-intent"),
         )
@@ -397,6 +412,17 @@ async def qualify(
             report["status"] = "PASS"
             report["classification"] = "DEV_ONLY_S49_FOOD_L0_EAT_WAIT_OUTCOME"
             report["stage"] = "BUG0_S49_FOOD_L0_CLOSED"
+            rc = 0
+            raise Bug0FoodLoopDevCompleted
+        if bug0_food_refusal_dev:
+            from adapters.mineflayer.s49_food_refusal_dev import (
+                run_s49_food_refusal_matrix,
+            )
+
+            await run_s49_food_refusal_matrix(session, server, executor, report)
+            report["status"] = "PASS"
+            report["classification"] = "DEV_ONLY_S49_FOOD_REFUSAL_NATIVE_3_CONDITIONS"
+            report["stage"] = "BUG0_S49_REFUSAL_CLOSED"
             rc = 0
             raise Bug0FoodLoopDevCompleted
         if eat_cursor is not None:
@@ -788,11 +814,13 @@ def main() -> int:
     parser.add_argument("--completed-l0-dev", action="store_true")
     parser.add_argument("--bug0-eat-shadow", action="store_true")
     parser.add_argument("--bug0-food-loop-dev", action="store_true")
+    parser.add_argument("--bug0-food-refusal-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
         bug0_eat_shadow=args.bug0_eat_shadow,
         bug0_food_loop_dev=args.bug0_food_loop_dev,
+        bug0_food_refusal_dev=args.bug0_food_refusal_dev,
     ))
 
 
