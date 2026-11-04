@@ -42,6 +42,7 @@ def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         raise ValueError("original P1 module missing")
     p1_source_digest = hashlib.sha256(original.read_bytes()).hexdigest()
     sys.path.insert(0, str(p1_checkout.resolve()))
+    from experiments import fatigue_p1 as original_p1
     from experiments.fatigue_p1 import (
         FatigueFrame,
         FatigueProfile,
@@ -49,6 +50,8 @@ def evaluate_source(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         initial_state,
     )
 
+    if Path(original_p1.__file__).resolve() != original.resolve():
+        raise ValueError("loaded P1 module is not pinned original checkout")
     profile = FatigueProfile(enabled=True)
     rows = source["source_tick_rows"]
     fight_index = next(
