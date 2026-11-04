@@ -63,7 +63,9 @@ async def run_s49_food_loop(
     report["real_model_calls"] = 0
     report["actual_native_actions"] = []
 
-    def remember(decision: object) -> None:
+    def remember(decision: object, probe: object) -> None:
+        # Preserve the *actual* nearby native witnesses whenever a safe
+        # food decision is refused; never suppress a risk to force EAT.
         report["food_l0_trace"].append({
             "probe_seq": decision.probe_seq,
             "food": decision.food,
@@ -72,10 +74,25 @@ async def run_s49_food_loop(
             "risk": decision.native_risk,
             "item": decision.candidate_item,
             "preferred": decision.preferred,
+            "native_nearby": [
+                {"name": e.name, "entity_id": e.entity_id,
+                 "distance_m": e.distance}
+                for e in probe.snapshot.nearby_entities
+            ],
+            "coverage_truncated": probe.snapshot.nearby_entities_coverage.truncated,
             "s49_action_count": owner._count,
         })
 
     _command(server, "gamerule doMobSpawning false")
+    # Disposable DEV operator staging only: natural passive/unknown mobs
+    # may have spawned before the first S49 read. Clear ALL non-player
+    # entities before asking the native food gate, without weakening it.
+    # Later original S49 zombies are deliberately summoned separately.
+    _command(server, "kill @e[type=!minecraft:player]")
+    report["initial_nonplayer_clear_command"] = (
+        "kill @e[type=!minecraft:player]"
+    )
+    report["food_risk_policy_unchanged"] = True
     _command(server, "gamemode survival RelaySelf")
     _command(server, "give RelaySelf minecraft:bread 3")
     _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
@@ -90,7 +107,7 @@ async def run_s49_food_loop(
             session, f"s49-bug0-food-l0-{idx:02d}",
         )
         decision = food.decide(reading)
-        remember(decision)
+        remember(decision, reading)
         if decision.selected == "EAT":
             before = reading
             break
@@ -105,7 +122,7 @@ async def run_s49_food_loop(
     await server.stdin.drain()
     fresh = await _correlated_observe(session, "s49-bug0-food-l0-preissue")
     selection = food.decide(fresh)
-    remember(selection)
+    remember(selection, fresh)
     if selection.selected != "EAT" or selection.candidate_item != "bread":
         raise S49FoodLoopRejected("current source no longer selects bread EAT")
     shadow = inspect_bug0_first_eat_shadow(owner, before, fresh)
@@ -172,7 +189,7 @@ async def run_s49_food_loop(
     report["stage"] = "BUG0_S49_POST_EAT_NATIVE_REOBSERVATION"
     post = await _correlated_observe(session, "s49-bug0-food-l0-after")
     decision = food.decide(post)
-    remember(decision)
+    remember(decision, post)
     report["next_food_decision"] = {
         "selected": decision.selected,
         "reason": decision.reason,

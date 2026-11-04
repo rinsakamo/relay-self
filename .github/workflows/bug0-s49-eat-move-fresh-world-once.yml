@@ -1,0 +1,104 @@
+name: Bug-0 S49 EAT then MOVE fresh-grant one-shot real World
+on:
+  push:
+    branches:
+      - dev/bug0-s49-eat-move-fresh-grant-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  one-native-s49-unified-world:
+    # The only physical World run is the explicitly authorized named commit;
+    # arbitrary fixes/test/docs pushes must never replay an issued Action.
+    # Fresh user authorization 2026-11-04; preflight #41808571763 SUCCESS.
+    # Operator scoped exactly one DEV World after offline #41798607905 SUCCESS.
+    if: ${{ github.event.head_commit.message == 'run-bug0-s49-eat-move-fresh-once-20261104' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_BUG0_UNIFIED_SURVIVAL_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout precisely authorized one-World HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Existing S49 Python runtime dependency
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1
+      - name: Pin Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One real original S49 session EAT then native zombie response
+        run: |
+          mkdir -p world-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --bug0-unified-survival-dev \
+            --report world-evidence/s49_unified.json \
+            --server-log world-evidence/paper.log
+      - name: Original S49 native food, REST decision, physical MOVE and STOP fence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('world-evidence/s49_unified.json').read_text())
+          assert r['status'] == 'PASS', r.get('error')
+          assert r['classification'] == 'DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES'
+          assert r['unified_actual_action_order'] == ['EAT','MOVE_AWAY','MOVE_AWAY']
+          assert [x['selected'] for x in r['decisions']] == ['WAIT','MOVE_AWAY','MOVE_AWAY']
+          actions = r['actual_native_actions']
+          assert len(actions) == 3
+          assert actions[0]['kind'] == 'EAT' and actions[0]['same_supervisor']
+          assert all(x['terminal'] == 'outcome' for x in actions)
+          assert all(x['movement_m'] > 0.05 for x in actions[1:])
+          assert r['before']['food'] < r['after']['food']
+          assert r['before']['bread_count'] - r['after']['bread_count'] == 1
+          assert r['next_food_decision']['selected'] == 'WAIT'
+          assert r['unified_rest_candidate']['selected'] == 'DEFER'
+          assert r['unified_rest_candidate']['preferred'] == 'REST'
+          assert r['post_move_eat_fenced'] is True
+          assert r['rest_physical_execution'] == 'NOT_RUN'
+          assert r['attack_physical_execution'] == 'NOT_RUN'
+          assert [x['preferred'] for x in r['unified_priority_trace']] == [
+              None, 'MOVE_AWAY', 'MOVE_AWAY'
+          ]
+          assert r['food_commands_issued'] == 2
+          assert r['learning_in_world'] is False
+          assert r['m_energy_credited'] is False
+          assert r['real_model_calls'] == 0
+          assert r['node_exit'] == 0 and r['server_exit'] == 0
+          print('ORIGINAL_S49_EAT_MOVE_DEV_PASS', r['before'], r['after'],
+                r['unified_actual_action_order'], r['unified_rest_candidate'])
+          PY
+      - name: Hash physical evidence even on blocked or failed run
+        if: always()
+        run: |
+          if test -d world-evidence; then
+            (cd world-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Preserve native source report and Paper server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-s49-one-owner-eat-move-dev
+          path: world-evidence/
+          if-no-files-found: warn
+          retention-days: 30
