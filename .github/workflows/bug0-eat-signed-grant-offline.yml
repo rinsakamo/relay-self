@@ -35,7 +35,6 @@ jobs:
         run: |
           python tools/check_repository.py
           python -m compileall -q adapters/mineflayer/bug0_eat_grant_contract.py tests/test_bug0_eat_grant_contract.py
-          ruff check --diff adapters/mineflayer/bug0_eat_grant_contract.py tests/test_bug0_eat_grant_contract.py || true
           ruff check adapters/mineflayer/bug0_eat_grant_contract.py tests/test_bug0_eat_grant_contract.py
       - name: Signature verification and original source/Action regressions
         run: |
