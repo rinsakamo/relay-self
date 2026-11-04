@@ -8,9 +8,9 @@ from types import SimpleNamespace
 
 import pytest
 
+import adapters.mineflayer.s51_eat_real_ci as s51
 import test_bug0_first_eat_shadow as b0
 import test_bug0_s49_s51_eat_handoff as earlier_owner
-import adapters.mineflayer.s51_eat_real_ci as s51
 
 
 def test_physical_dev_requires_distinct_gate_before_java(tmp_path, monkeypatch):
