@@ -48,7 +48,7 @@ jobs:
       - name: Pre-World original owner and Paper source negatives
         run: |
           python -m pip install --disable-pip-version-check pytest==9.1.1
-          python -m pytest -q tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_attack_then_rest_dev.py
+          python -m pytest -q tests/test_bug0_s49_paper_health_order.py tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_attack_then_rest_dev.py
           test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
           python - <<'PY'
           import socket
