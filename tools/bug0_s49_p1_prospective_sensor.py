@@ -18,14 +18,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tools.bug0_p1_sensor_threshold import sensitivity
-
 from adapters.mineflayer.s49_p1_paper_dev import (
     S49P1SourceRejected,
     _float,
     _int,
     _rows,
 )
+from tools.bug0_p1_sensor_threshold import sensitivity
 
 P1_EXACT_COMMIT = "0ab76b4e46efd914877e543a65de58b6cfc71326"
 EXPERIMENTAL_WAIT_RECOVERY = 0.002
