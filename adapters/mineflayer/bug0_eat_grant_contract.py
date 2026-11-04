@@ -200,6 +200,8 @@ def verify_external_first_eat_pair(
         raise Bug0EatGrantRejected("signed stages or exact current first-EAT scope differ")
     _verify_one(propose, "PROPOSE", propose_public_keys, now_utc_ms)
     _verify_one(issue, "ISSUE", issue_public_keys, now_utc_ms)
+    if propose_public_keys[p.authority_id] == issue_public_keys[i.authority_id]:
+        raise Bug0EatGrantRejected("PROPOSE and ISSUE require distinct pinned keys")
     digest = hashlib.sha256(
         json.dumps(_scope(p), ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
