@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import replace
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -15,6 +13,8 @@ from adapters.mineflayer import (
     normal_action,
     s49_attack_dev,
     s49_attack_server_health,
+)
+from adapters.mineflayer import (
     s49_normal_session_real_ci as s49,
 )
 from adapters.mineflayer.s49_attack_server_health import (
