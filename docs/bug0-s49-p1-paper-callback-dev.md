@@ -1,7 +1,7 @@
 # Bug-0 P1 — real Paper callback ticks, one DEV World
 
 This is the first developer experiment to bind original S49 ATTACK→REST
-to a server-side actual World-tick callback timeline. Earlier #733 ran
+to a server-side monotone Bukkit tick callback timeline. Earlier #733 ran
 only *invented* P1 tick numbers, so no real-tick model result could be
 claimed there.
 
