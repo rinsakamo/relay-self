@@ -11,7 +11,6 @@ from adapters.mineflayer.s49_p1_paper_dev import (
     inspect_paper_tick_source,
 )
 
-
 SESSION = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 WORLD = "11111111-2222-3333-4444-555555555555"
 PLAYER = "99999999-aaaa-bbbb-cccc-111111111111"
@@ -82,16 +81,16 @@ def test_paper_source_fails_closed_on_missing_or_ambiguous_tick(change):
     source = sample_log()
     scope = native()
     if change == "gap":
-        source = "\n".join(l for l in source.splitlines()
-                           if "S49P1_TICK " not in l or "tick=120 " not in l)
+        source = "\n".join(line for line in source.splitlines()
+                           if "S49P1_TICK " not in line or "tick=120 " not in line)
     elif change == "duplicate-fight":
         source += (
             f"\nS49P1_FIGHT nonce={NONCE} world={WORLD} tick=103 "
             f"attacker={PLAYER} target={TARGET} damage=0.94"
         )
     elif change == "missing-fight":
-        source = "\n".join(l for l in source.splitlines()
-                           if "S49P1_FIGHT " not in l)
+        source = "\n".join(line for line in source.splitlines()
+                           if "S49P1_FIGHT " not in line)
     elif change == "wrong-nonce":
         source = source.replace("S49P1_REST nonce=" + NONCE,
                                 "S49P1_REST nonce=wrongnonce12345")
@@ -116,8 +115,8 @@ def test_paper_source_fails_closed_on_missing_or_ambiguous_tick(change):
         source = source.replace("tick=125 index=25 x=2.5",
                                 "tick=125 index=25 x=NaN")
     elif change == "missing-stop":
-        source = "\n".join(l for l in source.splitlines()
-                           if "S49P1_STOP " not in l)
+        source = "\n".join(line for line in source.splitlines()
+                           if "S49P1_STOP " not in line)
     elif change == "replay-start":
         source += "\n" + source.splitlines()[0]
     elif change == "source-fault":
