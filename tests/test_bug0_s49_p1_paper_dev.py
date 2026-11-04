@@ -34,7 +34,7 @@ def native():
 def sample_log():
     lines = [
         f"S49P1_START nonce={NONCE} world={WORLD} tick=100 "
-        f"player={PLAYER} coverage=CALLBACK_BOUNDARY_NOT_FULL_TICK",
+        f"player={PLAYER} coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK",
         f"S49P1_FIGHT nonce={NONCE} world={WORLD} tick=103 "
         f"attacker={PLAYER} target={TARGET} damage=0.94",
         f"S49P1_REST nonce={NONCE} world={WORLD} tick=115 index=15",
@@ -51,7 +51,7 @@ def sample_log():
         lines.append(line)
     lines.append(
         f"S49P1_STOP nonce={NONCE} world={WORLD} tick=131 "
-        "index=30 faults=0 coverage=CALLBACK_BOUNDARY_NOT_FULL_TICK"
+        "index=30 faults=0 coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK"
     )
     return "\n".join(lines)
 
