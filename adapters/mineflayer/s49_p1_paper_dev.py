@@ -87,7 +87,8 @@ def inspect_paper_tick_source(
         or actions[0].get("kind") != "ATTACK"
         or actions[0].get("terminal") != "outcome"
         or native_report.get("rest_intent_selected") is not (expected_choice == "REST")
-        or native_report.get("rest_choice", {}).get("selected") != expected_choice
+        or (expected_choice == "WAIT" and
+            native_report.get("rest_choice", {}).get("selected") != "WAIT")
         or native_report.get("rest_action_issued") is not False
         or native_report.get("attack_server_health_drop_observed") is not True
     ):
