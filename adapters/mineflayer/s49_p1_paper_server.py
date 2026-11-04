@@ -10,6 +10,8 @@ import os
 import shutil
 from pathlib import Path
 
+from adapters.mineflayer.s31a_real_server_ci import S31ABlocked
+
 PAPER_1218_SHA256 = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 PAPER_1218_SIZE = 52811717
 PLUGIN_JAR = "relay-s49-p1-source-dev-0.1.0-dev.jar"
@@ -21,7 +23,7 @@ CONFIG = (
 )
 
 
-class S49P1PaperBlocked(ValueError):
+class S49P1PaperBlocked(S31ABlocked):
     """Pinned Paper/plugin bytes or sole-World startup gate absent."""
 
 
