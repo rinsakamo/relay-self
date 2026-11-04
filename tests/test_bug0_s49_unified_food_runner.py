@@ -6,6 +6,7 @@ This catches API-shape errors which pure L0 tests cannot detect.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -90,3 +91,62 @@ def test_original_s49_shared_food_cursor_reaches_scoped_handoff_without_io(monke
     assert report["learning_in_world"] is False
     assert not owner._dispatched and not owner.supervisor.open_actions
     assert "effect clear RelaySelf minecraft:hunger" in staged_commands
+    assert staged_commands[:3] == [
+        "gamerule doMobSpawning false",
+        "kill @e[type=!minecraft:player]",
+        "gamemode survival RelaySelf",
+    ]
+    assert report["food_risk_policy_unchanged"] is True
+    assert report["initial_nonplayer_clear_command"] == (
+        "kill @e[type=!minecraft:player]"
+    )
+    assert all(row["native_nearby"] == [] for row in report["food_l0_trace"])
+
+
+def test_original_s49_runner_retains_unqualified_native_entity_refusal(monkeypatch):
+    # The operator's clear command is not authority to ignore a subsequently
+    # observed unknown mob. Same-session native source must still veto EAT.
+    infected = cases.sample(food=20, bread=3, seq=110, zombie=True)
+    witness = infected.snapshot.nearby_entities[0]
+    infected = replace(infected, snapshot=replace(
+        infected.snapshot,
+        nearby_entities=(replace(witness, name="cow"),),
+    ))
+    intent = IntentCommitment()
+    intent.commit(
+        "escape-threat", objective="no unknown food risk",
+        at_ns=1, provenance=Provenance("offline-fixture", "intent"),
+    )
+    owner = NormalSessionActionExecutor(infected.session_id, intent)
+    fake_session = SimpleNamespace(started=SimpleNamespace(
+        session_id=infected.session_id,
+    ))
+
+    class FakeStdin:
+        async def drain(self):
+            pass
+
+    fake_server = SimpleNamespace(stdin=FakeStdin())
+    commands = []
+
+    async def no_delay(_):
+        pass
+
+    async def read(_session, _id):
+        return infected
+
+    monkeypatch.setattr(runner, "_command", lambda _, c: commands.append(c))
+    monkeypatch.setattr(runner, "_correlated_observe", read)
+    monkeypatch.setattr(runner.asyncio, "sleep", no_delay)
+    report = {}
+    with pytest.raises(runner.S49FoodLoopRejected, match="UNQUALIFIED_NEARBY_ENTITY"):
+        asyncio.run(runner.run_s49_food_loop(
+            fake_session, fake_server, owner, report,
+        ))
+    assert report["food_l0_trace"][0]["native_nearby"][0]["name"] == "cow"
+    assert report["food_l0_trace"][0]["selected"] == "DEFER"
+    assert "kill @e[type=!minecraft:player]" in commands
+    assert owner._count == 0
+    assert not owner._dispatched
+    assert not owner.supervisor.open_actions
+    assert report["actual_native_actions"] == []
