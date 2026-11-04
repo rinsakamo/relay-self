@@ -51,7 +51,7 @@ async def run_s49_food_loop(
     ):
         raise S49FoodLoopRejected("original fresh S49 owner/source required")
     sid = owner.session_id
-    food = S49BasicPriorityL0(sid, max_decisions=20)
+    food = S49BasicPriorityL0(sid, max_decisions=32)
     report["stage"] = "BUG0_S49_NATIVE_FOOD_L0"
     report["food_l0_trace"] = []
     report["food_commands_issued"] = 0
