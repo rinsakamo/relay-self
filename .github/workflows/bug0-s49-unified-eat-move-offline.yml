@@ -1,0 +1,42 @@
+name: Bug-0 S49 one-supervisor EAT then MOVE DEV offline
+on:
+  push:
+    branches:
+      - dev/bug0-s49-one-supervisor-eat-move-20261104
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug0-s49-eat-then-move-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  s49-unified-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact DEV HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install original test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository contracts, source syntax and Ruff
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py
+          ruff check adapters/mineflayer/s49_basic_priority_l0.py adapters/mineflayer/s49_food_loop_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_s49_unified_survival.py
+      - name: Mixed native actions + existing S49 S51 regressions
+        run: |
+          python -m pytest -q tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_food_refusal_priority.py tests/test_bug0_s49_food_l0.py tests/test_feature_s49_normal_runtime.py tests/test_s49_cleanup.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_first_eat_dev_world.py tests/test_feature_s51_eat_execution.py
+      - name: No physical Action inference
+        run: echo 'DEV_OFFLINE / WORLD_0 / ACTION_0 / QUALIFICATION_NO_GO'
