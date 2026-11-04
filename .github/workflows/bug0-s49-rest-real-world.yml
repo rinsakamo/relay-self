@@ -40,6 +40,9 @@ jobs:
           java-version: '21'
       - name: Original Python runtime test tools
         run: python -m pip install --disable-pip-version-check pytest==9.1.1
+      - name: REST negative gates preflight before physical World
+        run: |
+          python -m pytest -q tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_food_refusal_priority.py tests/test_bug0_s49_unified_survival.py
       - name: Verify original Mineflayer 4.39.0
         run: |
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
