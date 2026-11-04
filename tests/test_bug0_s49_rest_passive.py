@@ -108,16 +108,19 @@ def test_rest_candidate_rejects_danger_or_other_authority(kind):
     elif kind == "stale-owner":
         owner._count = 1
     elif kind == "truncated":
-        sample = replace(sample, snapshot=replace(
-            sample.snapshot,
+        # The wire-format permits truncated coverage only when the first
+        # 16 native registry facts are actually present.
+        with_mob = fixtures.sample(food=20, seq=100, zombie=True)
+        mob = with_mob.snapshot.nearby_entities[0]
+        sample = replace(with_mob, snapshot=replace(
+            with_mob.snapshot,
             nearby_entities_coverage=replace(
-                sample.snapshot.nearby_entities_coverage,
+                with_mob.snapshot.nearby_entities_coverage,
                 candidate_count=17, truncated=True,
             ),
             nearby_entities=tuple(
-                replace(sample.snapshot.nearby_entities[0],
-                        entity_id=1000+i) for i in range(16)
-            ) if sample.snapshot.nearby_entities else (),
+                replace(mob, entity_id=1000 + i) for i in range(16)
+            ),
         ))
     with pytest.raises((S49RestRejected, ValueError)):
         safe_rest_decision(owner, policy, sample)
