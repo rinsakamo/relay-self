@@ -10,8 +10,8 @@ import pytest
 
 import test_bug0_s49_attack_owner as original
 import test_bug0_s49_food_refusal_priority as fixtures
-from adapters.mineflayer import s49_rest_dev
 from adapters.mineflayer import s49_normal_session_real_ci as s49
+from adapters.mineflayer import s49_rest_dev
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from adapters.mineflayer.s49_rest_dev import (
     S49RestRejected,
@@ -24,7 +24,6 @@ from adapters.mineflayer.s49_rest_paper_time import (
     parse_game_time,
     read_game_time,
 )
-
 
 NONCE = "abcde123456789abcd00"
 
