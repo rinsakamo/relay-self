@@ -75,13 +75,15 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (!dev || !(sender instanceof ConsoleCommandSender)
-                || args.length != 1 || !args[0].matches("[a-z0-9]{12,32}")) {
+                || args.length < 1 || args.length > 2
+                || !args[0].matches("[a-z0-9]{12,32}")) {
             return false;
         }
         String cmd = command.getName().toLowerCase(java.util.Locale.ROOT);
         Player p = player();
         if (p == null) return false;
         if (cmd.equals("s49p1start")) {
+            if (args.length != 1) return false;
             if (started || stopped || armed) return false;
             started = true;
             armed = true;
@@ -95,6 +97,15 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             return true;
         }
         if (!armed || !nonce.equals(args[0]) || !matches(p)) return false;
+        if (cmd.equals("s49p1choice")) {
+            if (args.length != 2
+                    || !(args[1].equals("WAIT") || args[1].equals("REST"))) return false;
+            getLogger().info("S49P1_CHOICE nonce=" + nonce
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
+                + " index=" + total + " selected=" + args[1]);
+            return true;
+        }
+        if (args.length != 1) return false;
         if (cmd.equals("s49p1rest")) {
             getLogger().info("S49P1_REST nonce=" + nonce
                 + " world=" + world + " tick=" + Bukkit.getCurrentTick()
