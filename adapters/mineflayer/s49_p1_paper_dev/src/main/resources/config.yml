@@ -1,0 +1,4 @@
+# Only a fresh isolated user-approved DEV World may opt into this plugin.
+dev-enabled: false
+target-player: RelaySelf
+max-ticks: 480
