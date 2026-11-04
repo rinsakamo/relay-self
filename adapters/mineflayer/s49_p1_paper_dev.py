@@ -243,6 +243,7 @@ async def run_s49_p1_paper_dev(
             session, server, owner, report,
             health_log=log_path, rest_intent_hook=mark_rest,
             attack_pre_issue_hook=mark_attack_source,
+            paper_health_sequential=True,
         )
     finally:
         # Never mask a pre-issue refusal or reissue an ATTACK.
