@@ -11,6 +11,7 @@ jobs:
   original-s49-supervised-attack-once:
     # One physical World, only the exact operator-approved commit message.
     # A failed/partial physical strike MUST NEVER be automatically retried.
+    # User authorized fresh Bug-0 DEV trial after offline #41813997934 SUCCESS.
     if: ${{ github.event.head_commit.message == 'run-bug0-s49-supervised-attack-once-20261104' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
