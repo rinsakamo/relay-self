@@ -24,6 +24,33 @@ The existing S49 owner has `NormalSessionActionExecutor`, one original `IntentCo
 - Exact-head offline CI is [here](https://github.com/rinsakamo/relay-self/actions/workflows/bug0-first-eat-shadow-offline.yml), running original S49/S51/S46 regressions alongside the new tests. The final source SHA and pass/fail outcome must be read from the completed exact-head run; a previous HEAD's green build is not current qualification.
 - The S51 runner's **default path is unchanged** if `--bug0-first-eat-shadow` is absent; no existing historical qualification or source is overwritten.
 
+## Source-bound first physical EAT handoff — offline-ready, not live-authorized
+
+After the original nonissuing first-EAT shadow has found a food candidate, the new
+`handoff_authorized_first_eat()` **accepts but never creates** two existing
+`NormalEatingAuthorization` values. It re-evaluates the exact current/previous
+native snapshot pair, retains the same original S49 `NormalSessionActionExecutor`,
+matches action/session/Intent/probe request+seq/item+slot against the shadow,
+then delegates **one** native EAT transaction to existing
+`NormalSessionActionExecutor.execute_eat()` → `IssuedEatingExecutor` (S51).
+
+This function is **not called by the existing S51 runner**. The positive
+offline test uses synthetic `MineflayerEffectResult` + `MineflayerObservation`
+frames to test real source/Action linking and S51 verification without
+starting Minecraft. Its supplied grant objects come from the **test fixture**;
+they are **not independently authenticated real operator grants**. Therefore
+the result is a **structural owner handoff** only, not evidence that physical
+EAT may be launched under the production issuer.
+
+**S-owner work still required:** a genuine independently authorized external
+DEV operator must supply one action-scoped PROPOSE and ISSUE decision whose
+principal/source and single-use lifetime can be verified *at issue time*
+rather than internally created strings. The S51 native runner will not
+synthesize them. Source staleness, World-owned issuer identity, physical
+occupancy and any prior MOVE/frozen settling boundary must be independently
+checked before allowing native execution. No unattended approval, grant
+fallback or silent auto-retry is permitted.
+
 ## Owner-operated new DEV World (not yet executed)
 
 A future approved *single* disposable DEV shadow may use the existing S51 preflight and runtime only after S-owner resource/grant approval, pinned sources and fresh output paths. Suggested invocation template (not executed here):
