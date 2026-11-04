@@ -11,6 +11,7 @@ jobs:
   one-native-s49-unified-world:
     # The only physical World run is the explicitly authorized named commit;
     # arbitrary fixes/test/docs pushes must never replay an issued Action.
+    # Operator scoped exactly one DEV World after offline #41798607905 SUCCESS.
     if: ${{ github.event.head_commit.message == 'run-bug0-s49-one-owner-eat-move-once-20261104' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
