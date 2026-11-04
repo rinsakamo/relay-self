@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import re
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
