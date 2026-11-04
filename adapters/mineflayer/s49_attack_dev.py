@@ -12,10 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.attack_execution import AttackActionReceipt
-from adapters.mineflayer.s49_attack_server_health import (
-    TARGET_TAG,
-    sample_tagged_zombie_health,
-)
 from adapters.mineflayer.normal_action import (
     NormalActionStage,
     NormalAttackingAuthorization,
@@ -23,6 +19,10 @@ from adapters.mineflayer.normal_action import (
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
+from adapters.mineflayer.s49_attack_server_health import (
+    TARGET_TAG,
+    sample_tagged_zombie_health,
+)
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
 from relay_self.provenance import Provenance
