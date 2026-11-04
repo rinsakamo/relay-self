@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -29,6 +29,9 @@ async def run_s49_attack_then_rest_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path,
+    rest_intent_hook: Callable[[], Awaitable[None]] | None = None,
+    attack_pre_issue_hook: Callable[[], Awaitable[None]] | None = None,
+    paper_health_sequential: bool = False,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -54,8 +57,15 @@ async def run_s49_attack_then_rest_dev(
 
     # Existing one-shot original S49 ATTACK, including separately bracketed
     # read-only Paper before/after Health. No second ATTACK on any failure.
+    # Keep the historical ATTACK adapter call shape unchanged unless this
+    # explicitly gated Paper source has an additional read-only hook.
+    attack_kw: dict[str, Any] = {"health_log": health_log}
+    if attack_pre_issue_hook is not None:
+        attack_kw["before_execute_hook"] = attack_pre_issue_hook
+    if paper_health_sequential:
+        attack_kw["paper_source_sequential"] = True
     attack_receipt = await run_s49_attack_dev(
-        session, server, owner, report, health_log=health_log,
+        session, server, owner, report, **attack_kw,
     )
     if (
         attack_receipt.terminal.state is not ActionState.OUTCOME
@@ -111,6 +121,9 @@ async def run_s49_attack_then_rest_dev(
             "post-ATTACK original native L0 REST intent not admitted"
         )
     report["rest_intent_selected"] = True
+    if rest_intent_hook is not None:
+        # Optional bounded Paper World tick marker, never an Action issuer.
+        await rest_intent_hook()
     report["stage"] = "BUG0_POST_ATTACK_REST_NATIVE_STATIONARY_SAMPLES"
     observations = [first]
     for index in range(8):

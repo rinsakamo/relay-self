@@ -1,0 +1,16 @@
+name: S49P1Dev
+main: io.github.rinsakamo.relays49p1.S49P1SourcePlugin
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'S49 read-only player tick/activity recorder DEV, disabled by default'
+load: POSTWORLD
+commands:
+  s49p1start:
+    usage: '/s49p1start <nonce>'
+    description: 'Console-only bounded DEV tick source start'
+  s49p1rest:
+    usage: '/s49p1rest <nonce>'
+    description: 'Console-only post-Action REST decision marker'
+  s49p1stop:
+    usage: '/s49p1stop <nonce>'
+    description: 'Console-only DEV source stop; no World Action'

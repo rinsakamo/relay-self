@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from adapters.mineflayer.attack_execution import AttackActionReceipt
 from adapters.mineflayer.normal_action import (
@@ -40,6 +40,8 @@ async def run_s49_attack_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path | None = None,
+    before_execute_hook: Callable[[], Awaitable[None]] | None = None,
+    paper_source_sequential: bool = False,
 ) -> AttackActionReceipt:
     if (
         not isinstance(owner, NormalSessionActionExecutor)
@@ -173,6 +175,9 @@ async def run_s49_attack_dev(
     # Independent Minecraft *server-side* Health sample. This is a distinct
     # read-only observation source, not an additional Action or grant. If it
     # fails, stop BEFORE issuing the one irreversible ATTACK.
+    if type(paper_source_sequential) is not bool:
+        raise S49AttackDevRejected("invalid optional server-only Health source mode")
+    health_kw = {"paper_source_sequential": True} if paper_source_sequential else {}
     before_health = None
     nonce = sid.replace("-", "")[:20]
     if health_log is not None:
@@ -181,13 +186,17 @@ async def run_s49_attack_dev(
         )
         report["attack_server_health_drop_observed"] = False
         before_health = await sample_tagged_zombie_health(
-            server, health_log, stage="before", nonce=nonce,
+            server, health_log, stage="before", nonce=nonce, **health_kw,
         )
         report["attack_server_health_before"] = asdict(before_health)
         if before_health.health != 20.0:
             raise S49AttackDevRejected(
                 "target already injured before original S49 ATTACK admission"
             )
+    if before_execute_hook is not None:
+        # Read-only server telemetry hook after native admission/health source,
+        # before the one irreversible ATTACK; never grants an Action.
+        await before_execute_hook()
     report["attack_action_id"] = action_id
     report["attack_target_entity_id"] = target_id
     report["attack_effect_commands_issued"] = "UNKNOWN_IF_INTERRUPTED"
@@ -244,7 +253,7 @@ async def run_s49_attack_dev(
         # before/after data sample can show a measured Health difference.
         await asyncio.sleep(1.0)
         after_health = await sample_tagged_zombie_health(
-            server, health_log, stage="after", nonce=nonce,
+            server, health_log, stage="after", nonce=nonce, **health_kw,
         )
         report["attack_server_health_after"] = asdict(after_health)
         damage_drop = before_health.health - after_health.health

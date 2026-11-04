@@ -84,6 +84,7 @@ def parse_health_log(
 
 async def sample_tagged_zombie_health(
     server: object, log_path: Path, *, stage: str, nonce: str,
+    paper_source_sequential: bool = False,
 ) -> ServerHealthSample:
     """Query Minecraft's authoritative server NBT Health without an Action.
 
@@ -100,13 +101,55 @@ async def sample_tagged_zombie_health(
     end = f"RSELF_HEALTH_{nonce}_{stage}_END"
     # Minecraft tag scopes precisely the zombie created by this DEV operator.
     # Its number must still be corroborated by complete native 1/1 coverage.
-    for cmd in (
+    if type(paper_source_sequential) is not bool:
+        raise ServerHealthReadbackRejected("invalid optional console ordering mode")
+    commands = (
         f"say {start}",
         f"data get entity @e[type=minecraft:zombie,tag={TARGET_TAG},limit=1] Health",
         f"say {end}",
-    ):
-        _command(server, cmd)
-    await server.stdin.drain()
+    )
+    if paper_source_sequential:
+        # Paper may log chat (/say) asynchronously, after a later native
+        # /data result, even when commands were issued in correct order.
+        # This DEV-only mode waits for the original single collector to
+        # publish each stage before emitting the next command. The old
+        # Mojang/ATTACK source path remains untouched.
+        for index, cmd in enumerate(commands):
+            _command(server, cmd)
+            await server.stdin.drain()
+            for _ in range(80):
+                lines = log_path.read_text(encoding="utf-8").splitlines()
+                begins = [
+                    i for i, line in enumerate(lines)
+                    if f"[Server] {start}" in line
+                ]
+                if len(begins) > 1:
+                    raise ServerHealthReadbackRejected("duplicate health START")
+                if index == 0:
+                    ready = len(begins) == 1
+                elif index == 1:
+                    ready = bool(begins) and len([
+                        line for line in lines[begins[0] + 1:]
+                        if "has the following entity data:" in line
+                    ]) == 1
+                else:
+                    ends = [
+                        line for line in lines if f"[Server] {end}" in line
+                    ]
+                    if len(ends) > 1:
+                        raise ServerHealthReadbackRejected("duplicate health END")
+                    ready = len(ends) == 1
+                if ready:
+                    break
+                await asyncio.sleep(0.1)
+            else:
+                raise ServerHealthReadbackRejected(
+                    "sequential Paper Health source stage did not complete"
+                )
+    else:
+        for cmd in commands:
+            _command(server, cmd)
+        await server.stdin.drain()
     for _ in range(80):
         text = log_path.read_text(encoding="utf-8")
         result = parse_health_log(text, stage=stage, nonce=nonce)

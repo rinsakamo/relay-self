@@ -319,6 +319,7 @@ async def qualify(
     bug0_attack_health_dev: bool = False,
     bug0_rest_dev: bool = False,
     bug0_attack_rest_dev: bool = False,
+    bug0_p1_paper_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -426,10 +427,30 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("ATTACK to REST needs exclusive original S49 DEV gate")
+        if (
+            type(bug0_p1_paper_dev) is not bool
+            or (bug0_p1_paper_dev and (
+                os.environ.get("S49_BUG0_P1_PAPER_DEV_ONLY") != "1"
+                or bug0_rest_dev or bug0_attack_rest_dev
+                or bug0_attack_health_dev or bug0_attack_dev
+                or bug0_food_loop_dev or bug0_food_refusal_dev
+                or bug0_unified_survival_dev or bug0_eat_shadow
+                or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("S49 P1 Paper requires exclusive original DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        report.update(await asyncio.to_thread(_fetch_official_server, root / "minecraft.jar"))
+        if bug0_p1_paper_dev:
+            from adapters.mineflayer.s49_p1_paper_server import stage_paper_dev
+
+            report.update(await asyncio.to_thread(stage_paper_dev, root))
+        else:
+            report.update(await asyncio.to_thread(
+                _fetch_official_server, root / "minecraft.jar",
+            ))
         _write_config(root)
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar", server_log,
@@ -465,6 +486,18 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        if bug0_p1_paper_dev:
+            from adapters.mineflayer.s49_p1_paper_dev import run_s49_p1_paper_dev
+
+            await run_s49_p1_paper_dev(
+                session, server, executor, report, server_log,
+            )
+            report["status"] = "PASS"
+            report["classification"] = (
+                "DEV_ONLY_S49_PAPER_FIGHT_TICK_AND_REST_CALLBACK_SOURCE"
+            )
+            rc = 0
+            raise Bug0FoodLoopDevCompleted
         if bug0_attack_rest_dev:
             from adapters.mineflayer.s49_attack_then_rest_dev import (
                 run_s49_attack_then_rest_dev,
@@ -1013,6 +1046,7 @@ def main() -> int:
     parser.add_argument("--bug0-attack-health-dev", action="store_true")
     parser.add_argument("--bug0-rest-dev", action="store_true")
     parser.add_argument("--bug0-attack-rest-dev", action="store_true")
+    parser.add_argument("--bug0-p1-paper-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1024,6 +1058,7 @@ def main() -> int:
         bug0_attack_health_dev=args.bug0_attack_health_dev,
         bug0_rest_dev=args.bug0_rest_dev,
         bug0_attack_rest_dev=args.bug0_attack_rest_dev,
+        bug0_p1_paper_dev=args.bug0_p1_paper_dev,
     ))
 
 
