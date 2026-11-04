@@ -13,6 +13,25 @@ import test_bug0_first_eat_shadow as b0
 import test_bug0_s49_s51_eat_handoff as earlier_owner
 
 
+def test_recorded_session_subclass_accepts_original_base_launch_kwargs(tmp_path):
+    """Real base launch uses raw_capture_root= even if DEV did not request it."""
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+
+    class Reader:
+        async def readline(self):
+            return b""
+
+    process = SimpleNamespace(
+        stdin=object(), stdout=Reader(), returncode=None,
+    )
+    with (tmp_path / "native.jsonl").open("xb") as native:
+        with (tmp_path / "commands.jsonl").open("xb") as commands:
+            session_type = s51._recording_session_type(native, commands)
+            session = session_type(process, raw_capture_root=None)
+            assert isinstance(session, MineflayerProcessSession)
+            assert session.process_returncode is None
+
+
 def test_physical_dev_requires_distinct_gate_before_java(tmp_path, monkeypatch):
     monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
     monkeypatch.delenv("S51_BUG0_FIRST_EAT_DEV_ONLY", raising=False)
