@@ -74,10 +74,13 @@ async def run_s49_attack_then_rest_dev(
         "fight_event_p1_attested": False,
         "p1_fight_tick_source": None,
     }
-    # Independent operator staging: the original target is removed after
-    # the one ATTACK terminal; not a new Self Action nor a defense claim.
-    # Prefer removing ONLY the uniquely tagged staging target.
-    command = f"kill @e[type=minecraft:zombie,tag={TARGET_TAG}]"
+    # Operator-only transition: teleport the tagged NoAI target far away.
+    # KILL would create drops/XP entities and contaminate the bounded native
+    # no-nearby-entity REST gate. Neither is a Self-issued Action or defense.
+    command = (
+        "execute at RelaySelf run tp "
+        f"@e[type=minecraft:zombie,tag={TARGET_TAG}] ~100 ~ ~"
+    )
     _command(server, command)
     report.setdefault("operator_world_commands", []).append(command)
     await server.stdin.drain()
