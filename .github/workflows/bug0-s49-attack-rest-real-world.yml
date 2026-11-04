@@ -1,0 +1,121 @@
+name: Bug-0 one native ATTACK then REST and exact original P1 model shadow
+on:
+  push:
+    branches:
+      - dev/bug0-s49-attack-then-rest-p1-shadow-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  one-physical-world:
+    # Explicit one-time trigger only. Do not auto-replay an unknown ATTACK.
+    if: ${{ github.event.head_commit.message == 'run-bug0-attack-then-rest-p1-shadow-once-20261104' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_BUG0_ATTACK_REST_DEV_ONLY: '1'
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      NODE_OPTIONS: ''
+    steps:
+      - name: Checkout one authorized original S49 HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Checkout pinned unmodified original P1 owner for offline-only preview
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Original S49 and P1 preflight
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1
+          python -m pytest -q tests/test_bug0_s49_attack_then_rest_dev.py
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          test -f p1-original/experiments/fatigue_p1.py
+      - name: Verify original Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One original S49 ATTACK and subsequent native REST intent
+        run: |
+          mkdir -p attack-rest-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --bug0-attack-rest-dev \
+            --report attack-rest-evidence/s49_attack_rest.json \
+            --server-log attack-rest-evidence/paper.log
+      - name: Separate command/outcome, native stillness and P1 real-world claims
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('attack-rest-evidence/s49_attack_rest.json').read_text())
+          assert r['status']=='PASS', r.get('error')
+          assert r['classification']=='DEV_ONLY_S49_ONE_ATTACK_THEN_REST_NATIVE_SAMPLES'
+          a=r['actual_native_actions']
+          assert len(a)==1 and a[0]['kind']=='ATTACK' and a[0]['terminal']=='outcome'
+          assert r['attack_effect_commands_issued']==1
+          assert r['rest_intent_selected'] is True and r['rest_action_issued'] is False
+          assert r['rest_choice']['selected']=='REST'
+          assert r['rest_observation']['sample_count']==9
+          assert r['rest_observation']['native_stationary_sample_candidate'] is True
+          assert r['attack_rest_link']['attack_after_probe_seq'] < r['attack_rest_link']['rest_baseline_probe_seq']
+          p=r['p1_scope']
+          assert p['physical_p1_fight_tick_attested'] is False
+          assert p['physical_p1_wait_ticks_attested']==0
+          assert p['p1_fatigue_before'] is None and p['p1_fatigue_after'] is None
+          assert p['p1_fatigue_recovery_attested'] is False
+          assert p['m_basal_cost_waived'] is False
+          assert r['learning_in_world'] is False and r['m_energy_credited'] is False
+          assert r['node_exit']==0 and r['server_exit']==0
+          print('ONE_S49_ATTACK_THEN_REST_NATIVE_PASS / REAL_P1_RECOVERY_UNATTESTED')
+          PY
+      - name: Original pinned P1 reference hypothetical replay NOT World fatigue
+        run: |
+          python -B tools/bug0_s49_p1_original_preview.py \
+            --report attack-rest-evidence/s49_attack_rest.json \
+            --p1-checkout p1-original \
+            --out attack-rest-evidence/p1_hypothetical_reference.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('attack-rest-evidence/p1_hypothetical_reference.json').read_text())
+          assert p['status']=='ORIGINAL_P1_OFFLINE_HYPOTHETICAL_REPLAY_ONLY'
+          assert p['hypothetical_after_one_fight_event']>0
+          assert p['hypothetical_after_two_wait_ticks']==0
+          assert p['physical_p1_recovery_attested'] is False
+          assert p['model_tick_source_from_real_world'] is False
+          assert p['p1_owner_state_installed_in_s49'] is False
+          PY
+      - name: SHA256 immutable original report, model shadow and Paper log
+        if: always()
+        run: |
+          if test -d attack-rest-evidence; then
+            (cd attack-rest-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Preserve source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-s49-attack-rest-one-world-original-p1-shadow
+          path: attack-rest-evidence/
+          if-no-files-found: warn
+          retention-days: 30

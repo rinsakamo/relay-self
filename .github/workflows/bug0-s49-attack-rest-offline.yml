@@ -1,0 +1,42 @@
+name: Bug-0 one ATTACK then REST original S49 offline
+on:
+  push:
+    branches:
+      - dev/bug0-s49-attack-then-rest-p1-shadow-20261104
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug0-s49-attack-rest-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install pinned offline tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Contracts syntax and Ruff
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s49_attack_then_rest_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tools/bug0_s49_p1_original_preview.py tests/test_bug0_s49_attack_then_rest_dev.py
+          ruff check adapters/mineflayer/s49_attack_then_rest_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tools/bug0_s49_p1_original_preview.py tests/test_bug0_s49_attack_then_rest_dev.py
+      - name: Joint source gates and S49 ATTACK REST EAT MOVE regression
+        run: |
+          python -m pytest -q tests/test_bug0_s49_attack_then_rest_dev.py tests/test_bug0_s49_attack_paper_health.py tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_unified_survival.py tests/test_bug0_s49_food_refusal_priority.py tests/test_s50_p1_wait.py tests/test_s49_cleanup.py
+      - name: No physical P1 inference
+        run: echo 'OFFLINE_ONLY / WORLD_0 / P1_RECOVERY_UNATTESTED / NO_NEW_ACTION_ISSUER'
