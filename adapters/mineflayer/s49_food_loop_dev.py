@@ -67,7 +67,7 @@ async def run_s49_food_loop(
         report["food_l0_trace"].append({
             "probe_seq": decision.probe_seq,
             "food": decision.food,
-            "selected": decision.selection,
+            "selected": decision.selected,
             "reason": decision.reason,
             "risk": decision.native_risk,
             "item": decision.candidate_item,
@@ -91,7 +91,7 @@ async def run_s49_food_loop(
         )
         decision = food.decide(reading)
         remember(decision)
-        if decision.selection == "EAT":
+        if decision.selected == "EAT":
             before = reading
             break
         if decision.reason not in ("NOT_HUNGRY",):
@@ -106,7 +106,7 @@ async def run_s49_food_loop(
     fresh = await _correlated_observe(session, "s49-bug0-food-l0-preissue")
     selection = food.decide(fresh)
     remember(selection)
-    if selection.selection != "EAT" or selection.candidate_item != "bread":
+    if selection.selected != "EAT" or selection.candidate_item != "bread":
         raise S49FoodLoopRejected("current source no longer selects bread EAT")
     shadow = inspect_bug0_first_eat_shadow(owner, before, fresh)
     if shadow.candidate_item != "bread" or (
@@ -174,7 +174,7 @@ async def run_s49_food_loop(
     decision = food.decide(post)
     remember(decision)
     report["next_food_decision"] = {
-        "selected": decision.selection,
+        "selected": decision.selected,
         "reason": decision.reason,
         "probe_seq": decision.probe_seq,
         "food": decision.food,
@@ -182,7 +182,7 @@ async def run_s49_food_loop(
     }
     if (
         post.seq <= receipt.outcome.after_probe_seq
-        or decision.selection != "WAIT"
+        or decision.selected != "WAIT"
         or decision.reason != "NOT_HUNGRY"
         or decision.food < 14
         or receipt.outcome.food_after <= receipt.outcome.food_before
