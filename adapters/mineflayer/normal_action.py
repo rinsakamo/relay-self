@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
+from adapters.mineflayer.attack_execution import AttackActionReceipt, IssuedAttackingExecutor
 from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
     WorldConsequence,
@@ -441,6 +442,40 @@ class NormalEatingAuthorization:
 
 
 @dataclass(frozen=True, slots=True)
+class NormalAttackingAuthorization:
+    """Operator-scoped one-time ATTACK fallback, never inferred from L0.
+
+    This typed object is not independent attestation of the operator/principal.
+    """
+
+    stage: NormalActionStage
+    authority_id: str
+    intent_id: str
+    session_id: str
+    action_id: str
+    probe_seq: int
+    probe_request_id: str
+    target_entity_id: int
+    granted: bool
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.stage, NormalActionStage)
+            or not all(isinstance(x, str) and x for x in (
+                self.authority_id, self.intent_id, self.session_id,
+                self.action_id, self.probe_request_id,
+            ))
+            or type(self.probe_seq) is not int or self.probe_seq < 0
+            or type(self.target_entity_id) is not int or self.target_entity_id < 0
+            or type(self.granted) is not bool
+            or not isinstance(self.provenance, Provenance)
+            or self.provenance.source == "mineflayer"
+        ):
+            raise NormalActionRejected("scoped original S49 ATTACK grant required")
+
+
+@dataclass(frozen=True, slots=True)
 class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
@@ -700,6 +735,130 @@ class NormalSessionActionExecutor:
                 or grant.food_slot != choice.item_slot
             ):
                 raise NormalActionRejected("S49 EAT grant is not scoped to this source")
+
+    def require_attack_authorizations(
+        self, previous_probe: MineflayerObservation,
+        probe: MineflayerObservation, target_entity_id: int,
+        propose: NormalAttackingAuthorization,
+        issue: NormalAttackingAuthorization,
+    ) -> None:
+        """One fresh original S49 native zombie, one explicit ATTACK fallback."""
+        if (
+            not isinstance(previous_probe, MineflayerObservation)
+            or not isinstance(probe, MineflayerObservation)
+            or previous_probe.kind != "probe" or probe.kind != "probe"
+            or not previous_probe.request_id or not probe.request_id
+            or previous_probe.request_id == probe.request_id
+            or previous_probe.session_id != self.session_id
+            or probe.session_id != self.session_id
+            or previous_probe.provenance.source != "mineflayer"
+            or probe.provenance.source != "mineflayer"
+            or not previous_probe.seq < probe.seq <= previous_probe.seq + 32
+            or type(target_entity_id) is not int or target_entity_id < 0
+            or self._count != 0 or self._dispatched
+            or self._post_move_settling_unqualified
+            or self._last_issued_probe_seq >= probe.seq
+            or self.supervisor.open_actions
+            or self.intent.current_intent is None
+            or self.intent.pending_reconsideration is not None
+            or not isinstance(propose, NormalAttackingAuthorization)
+            or not isinstance(issue, NormalAttackingAuthorization)
+            or propose.stage is not NormalActionStage.PROPOSE
+            or issue.stage is not NormalActionStage.ISSUE
+            or not propose.granted or not issue.granted
+            or propose.authority_id == issue.authority_id
+            or propose.provenance == issue.provenance
+        ):
+            raise NormalActionRejected("original S49 ATTACK source/owner not eligible")
+        for observation in (previous_probe, probe):
+            snapshot = observation.snapshot
+            coverage = snapshot.nearby_entities_coverage
+            if (
+                coverage.truncated or coverage.candidate_count != 1
+                or len(snapshot.nearby_entities) != 1
+                or snapshot.health <= 0
+            ):
+                raise NormalActionRejected("native ATTACK target coverage/health not safe")
+            entity = snapshot.nearby_entities[0]
+            if (
+                entity.name != "zombie"
+                or entity.entity_id != target_entity_id
+                or entity.distance > 2.8
+                or entity.distance < 0.1
+            ):
+                raise NormalActionRejected("ATTACK target not same near zombie")
+        earlier = previous_probe.snapshot.nearby_entities[0]
+        current = probe.snapshot.nearby_entities[0]
+        if any(
+            abs(getattr(earlier.position, k)
+                - getattr(current.position, k)) > 0.25
+            or abs(getattr(previous_probe.snapshot.position, k)
+                - getattr(probe.snapshot.position, k)) > 0.05
+            for k in ("x", "y", "z")
+        ):
+            raise NormalActionRejected("ATTACK target/body moved during admission window")
+        for grant in (propose, issue):
+            if (
+                grant.intent_id != self.intent.current_intent.intent_id
+                or grant.session_id != self.session_id
+                or grant.action_id != propose.action_id
+                or grant.probe_seq != probe.seq
+                or grant.probe_request_id != probe.request_id
+                or grant.target_entity_id != target_entity_id
+            ):
+                raise NormalActionRejected("ATTACK fallback authorization source mismatch")
+
+    async def execute_attack(
+        self, session: MineflayerProcessSession,
+        previous_probe: MineflayerObservation,
+        probe: MineflayerObservation, target_entity_id: int,
+        propose: NormalAttackingAuthorization,
+        issue: NormalAttackingAuthorization,
+    ) -> AttackActionReceipt:
+        """Issue one operator-approved attack from THIS original S49 supervisor."""
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+        ):
+            raise NormalActionRejected("original S49 native attack session required")
+        self.require_attack_authorizations(
+            previous_probe, probe, target_entity_id, propose, issue,
+        )
+        t = 100 + 10 * self._count
+        origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
+        skill = SkillExecution.start(
+            f"skill:attack:{self.session_id}:{probe.seq}",
+            skill_id="attack", intent_commitment=self.intent,
+            at_ns=t, provenance=origin,
+        )
+        proposed = ActionLifecycle.propose(
+            propose.action_id, skill_execution=skill,
+            intent_commitment=self.intent, at_ns=t, provenance=origin,
+        )
+        authorized = proposed.authorize(
+            at_ns=t + 1, provenance=propose.provenance,
+            authority=propose.authority_id,
+        )
+        issued = self.supervisor.issue(
+            authorized, at_ns=t + 2, deadline_ns=t + 100,
+            provenance=issue.provenance,
+        )
+        self._dispatched.add(issued.action_id)
+        self._last_issued_probe_seq = probe.seq
+        self._count += 1
+        try:
+            return await IssuedAttackingExecutor().execute(
+                session, self.supervisor, issued, probe,
+                target_entity_id=target_entity_id,
+                skill_execution=skill, intent_commitment=self.intent,
+            )
+        except BaseException:
+            if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                self.supervisor.mark_unknown(
+                    issued.action_id, at_ns=t + 3, provenance=origin,
+                )
+            raise
 
     async def execute_eat(
         self, session: MineflayerProcessSession, choice: EatChoice,
