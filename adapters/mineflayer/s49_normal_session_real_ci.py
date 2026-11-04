@@ -317,6 +317,7 @@ async def qualify(
     bug0_unified_survival_dev: bool = False,
     bug0_attack_dev: bool = False,
     bug0_attack_health_dev: bool = False,
+    bug0_rest_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -400,6 +401,18 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("original ATTACK Paper health check requires exclusive DEV gate")
+        if (
+            type(bug0_rest_dev) is not bool
+            or (bug0_rest_dev and (
+                os.environ.get("S49_BUG0_REST_DEV_ONLY") != "1"
+                or bug0_attack_health_dev or bug0_attack_dev
+                or bug0_food_loop_dev or bug0_food_refusal_dev
+                or bug0_unified_survival_dev or bug0_eat_shadow
+                or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("original S49 REST requires exclusive DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -422,14 +435,15 @@ async def qualify(
         intent = IntentCommitment()
         intent_name = (
             "eat-when-hungry" if (bug0_food_loop_dev or bug0_food_refusal_dev)
-            else "escape-threat"
+            else "rest-observe" if bug0_rest_dev else "escape-threat"
         )
         intent.commit(
             intent_name,
             objective=(
                 "one native EAT and post-EAT L0 WAIT"
                 if (bug0_food_loop_dev or bug0_food_refusal_dev)
-                else "escape near zombie"
+                else "one REST intent and bounded stationary native observation"
+                if bug0_rest_dev else "escape near zombie"
             ),
             at_ns=1, provenance=source("committed-existing-intent"),
         )
@@ -438,6 +452,14 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        if bug0_rest_dev:
+            from adapters.mineflayer.s49_rest_dev import run_s49_rest_dev
+
+            await run_s49_rest_dev(session, server, executor, report)
+            report["status"] = "PASS"
+            report["classification"] = "DEV_ONLY_S49_REST_INTENT_STATIONARY_SAMPLES"
+            rc = 0
+            raise Bug0FoodLoopDevCompleted
         if bug0_attack_dev or bug0_attack_health_dev:
             # Original S49 session/executor/supervisor is the ONLY Action owner.
             # The transport callback has no independent issuer or grant.
@@ -475,8 +497,8 @@ async def qualify(
                 or report.get("action_terminal") != "outcome"
             ):
                 raise S49PhysicalFailure("unified owner did not close EAT first")
-            # REST is a real decision-only hold. No recovery or extra issuer
-            # is invented from the absence of native movement.
+            # REST is an intent-only selection, not another physical Action.
+            # An original P1 authenticated WAIT tick is still missing.
             resting_probe = await _correlated_observe(
                 session, f"s49-unified-rest-candidate-{sid}",
             )
@@ -487,9 +509,10 @@ async def qualify(
                 "selected": resting.selected, "preferred": resting.preferred,
                 "reason": resting.reason, "probe_seq": resting.probe_seq,
                 "issued": False, "energy_recovered_attested": False,
+                "p1_fatigue_recovery_attested": False,
             }
             if (
-                resting.selected != "DEFER" or resting.preferred != "REST"
+                resting.selected != "REST" or resting.preferred != "REST"
                 or executor._count != 1 or executor.supervisor.open_actions
             ):
                 raise S49PhysicalFailure("REST candidate changed original Action owner")
@@ -964,6 +987,7 @@ def main() -> int:
     parser.add_argument("--bug0-unified-survival-dev", action="store_true")
     parser.add_argument("--bug0-attack-dev", action="store_true")
     parser.add_argument("--bug0-attack-health-dev", action="store_true")
+    parser.add_argument("--bug0-rest-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -973,6 +997,7 @@ def main() -> int:
         bug0_unified_survival_dev=args.bug0_unified_survival_dev,
         bug0_attack_dev=args.bug0_attack_dev,
         bug0_attack_health_dev=args.bug0_attack_health_dev,
+        bug0_rest_dev=args.bug0_rest_dev,
     ))
 
 
