@@ -7,9 +7,15 @@ independent combat AI, second supervisor or implied damage claims.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.attack_execution import AttackActionReceipt
+from adapters.mineflayer.s49_attack_server_health import (
+    TARGET_TAG,
+    sample_tagged_zombie_health,
+)
 from adapters.mineflayer.normal_action import (
     NormalActionStage,
     NormalAttackingAuthorization,
@@ -33,6 +39,7 @@ def attack_dev_source(reference: str) -> Provenance:
 async def run_s49_attack_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor, report: dict[str, Any],
+    *, health_log: Path | None = None,
 ) -> AttackActionReceipt:
     if (
         not isinstance(owner, NormalSessionActionExecutor)
@@ -43,6 +50,7 @@ async def run_s49_attack_dev(
         or owner._count != 0 or owner._dispatched
         or owner.supervisor.open_actions
         or owner._post_move_settling_unqualified
+        or (health_log is not None and not isinstance(health_log, Path))
     ):
         raise S49AttackDevRejected("fresh original S49 sole issuer required")
     sid = owner.session_id
@@ -76,9 +84,15 @@ async def run_s49_attack_dev(
         "effect clear RelaySelf minecraft:hunger",
     )
     await asyncio.sleep(2)
+    summon_nbt = (
+        '{NoAI:1b,Silent:1b,PersistenceRequired:1b,'
+        f'Tags:["{TARGET_TAG}"]}}'
+        if health_log is not None
+        else "{NoAI:1b,Silent:1b,PersistenceRequired:1b}"
+    )
     await stage(
         "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
-        "{NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+        + summon_nbt,
     )
     policy = S49BasicPriorityL0(sid, max_decisions=14)
     previous = None
@@ -156,6 +170,24 @@ async def run_s49_attack_dev(
     owner.require_attack_authorizations(
         previous, current, target_id, propose, issue,
     )
+    # Independent Minecraft *server-side* Health sample. This is a distinct
+    # read-only observation source, not an additional Action or grant. If it
+    # fails, stop BEFORE issuing the one irreversible ATTACK.
+    before_health = None
+    nonce = sid.replace("-", "")[:20]
+    if health_log is not None:
+        report["attack_health_readback_scope"] = (
+            "PAPER_OPERATOR_STAGED_TAGGED_ZOMBIE_ONLY"
+        )
+        report["attack_server_health_drop_observed"] = False
+        before_health = await sample_tagged_zombie_health(
+            server, health_log, stage="before", nonce=nonce,
+        )
+        report["attack_server_health_before"] = asdict(before_health)
+        if before_health.health != 20.0:
+            raise S49AttackDevRejected(
+                "target already injured before original S49 ATTACK admission"
+            )
     report["attack_action_id"] = action_id
     report["attack_target_entity_id"] = target_id
     report["attack_effect_commands_issued"] = "UNKNOWN_IF_INTERRUPTED"
@@ -206,5 +238,29 @@ async def run_s49_attack_dev(
         "source_independently_attested": False,
         "outcome_scope": "ATTACK_COMMAND_EFFECT_APPLIED_ONLY",
     }
+    if before_health is not None:
+        # Wait for server-side combat ticks without replaying native ATTACK.
+        # This does not qualify physical damage by itself: only the Paper
+        # before/after data sample can show a measured Health difference.
+        await asyncio.sleep(1.0)
+        after_health = await sample_tagged_zombie_health(
+            server, health_log, stage="after", nonce=nonce,
+        )
+        report["attack_server_health_after"] = asdict(after_health)
+        damage_drop = before_health.health - after_health.health
+        report["attack_server_health_delta"] = damage_drop
+        report["attack_server_health_drop_observed"] = damage_drop > 0
+        report["attack_evidence"]["server_health_drop_observed"] = damage_drop > 0
+        report["attack_evidence"]["server_health_delta"] = damage_drop
+        report["attack_evidence"]["server_health_source"] = (
+            "ORIGINAL_PAPER_SERVER_CONSOLE"
+        )
+        # Do NOT promote this to independent causal/principal attestation.
+        report["attack_evidence"]["damage_attested"] = False
+        report["attack_evidence"]["target_death_attested"] = False
+        report["attack_evidence"]["source_independently_attested"] = False
+        report["attack_evidence"]["outcome_scope"] = (
+            "ATTACK_COMMAND_ACK_PLUS_PAPER_HEALTH_READBACK"
+        )
     report["stage"] = "BUG0_S49_ATTACK_EFFECT_CLOSED"
     return receipt
