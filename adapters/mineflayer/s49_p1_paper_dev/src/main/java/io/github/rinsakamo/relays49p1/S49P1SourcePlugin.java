@@ -87,17 +87,17 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             armed = true;
             nonce = args[0];
             world = p.getWorld().getUID().toString();
-            priorTick = p.getWorld().getFullTime();
+            priorTick = Bukkit.getCurrentTick();
             getLogger().info("S49P1_START nonce=" + nonce
                 + " world=" + world + " tick=" + priorTick
                 + " player=" + p.getUniqueId()
-                + " coverage=CALLBACK_BOUNDARY_NOT_FULL_TICK");
+                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
             return true;
         }
         if (!armed || !nonce.equals(args[0]) || !matches(p)) return false;
         if (cmd.equals("s49p1rest")) {
             getLogger().info("S49P1_REST nonce=" + nonce
-                + " world=" + world + " tick=" + p.getWorld().getFullTime()
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
                 + " index=" + total);
             return true;
         }
@@ -105,9 +105,9 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             armed = false;
             stopped = true;
             getLogger().info("S49P1_STOP nonce=" + nonce
-                + " world=" + world + " tick=" + p.getWorld().getFullTime()
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
                 + " index=" + total + " faults=" + sourceFaults
-                + " coverage=CALLBACK_BOUNDARY_NOT_FULL_TICK");
+                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
             return true;
         }
         return false;
@@ -122,7 +122,7 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             getLogger().severe("S49P1_SOURCE_FAULT reason=NO_PLAYER_OR_WORLD");
             return;
         }
-        long tick = p.getWorld().getFullTime();
+        long tick = Bukkit.getCurrentTick();
         if (tick <= priorTick) return;
         if (tick != priorTick + 1 || total >= 480) {
             sourceFaults++;
@@ -177,7 +177,7 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
                 || !z.getScoreboardTags().contains(TAG)) return;
         fightCount++;
         getLogger().info("S49P1_FIGHT nonce=" + nonce
-            + " world=" + world + " tick=" + p.getWorld().getFullTime()
+            + " world=" + world + " tick=" + Bukkit.getCurrentTick()
             + " attacker=" + p.getUniqueId() + " target=" + z.getUniqueId()
             + " damage=" + e.getFinalDamage());
     }
