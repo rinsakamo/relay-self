@@ -314,6 +314,7 @@ async def qualify(
     bug0_eat_shadow: bool = False,
     bug0_food_loop_dev: bool = False,
     bug0_food_refusal_dev: bool = False,
+    bug0_unified_survival_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -365,6 +366,16 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("S49 native refusal matrix needs exclusive DEV gate")
+        if (
+            type(bug0_unified_survival_dev) is not bool
+            or (bug0_unified_survival_dev and (
+                os.environ.get("S49_BUG0_UNIFIED_SURVIVAL_DEV_ONLY") != "1"
+                or bug0_food_loop_dev or bug0_food_refusal_dev
+                or bug0_eat_shadow or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("unified EAT/MOVE requires exclusive S49 DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -403,6 +414,41 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        unified_policy = None
+        unified_probe_choice = {}
+        if bug0_unified_survival_dev:
+            # Reuse original S49 native session and EXACT same executor.
+            # The shared priority policy selects EAT; after its terminal
+            # the original zombie World L0 can issue admitted MOVE Actions.
+            from adapters.mineflayer.s49_food_loop_dev import run_s49_food_loop
+
+            unified_policy = await run_s49_food_loop(
+                session, server, executor, report,
+            )
+            if (
+                executor._count != 1 or executor.supervisor.open_actions
+                or report.get("action_terminal") != "outcome"
+            ):
+                raise S49PhysicalFailure("unified owner did not close EAT first")
+            # REST is a real decision-only hold. No recovery or extra issuer
+            # is invented from the absence of native movement.
+            resting_probe = await _correlated_observe(
+                session, f"s49-unified-rest-candidate-{sid}",
+            )
+            resting = unified_policy.decide(
+                resting_probe, rest_requested=True,
+            )
+            report["unified_rest_candidate"] = {
+                "selected": resting.selected, "preferred": resting.preferred,
+                "reason": resting.reason, "probe_seq": resting.probe_seq,
+                "issued": False, "energy_recovered_attested": False,
+            }
+            if (
+                resting.selected != "DEFER" or resting.preferred != "REST"
+                or executor._count != 1 or executor.supervisor.open_actions
+            ):
+                raise S49PhysicalFailure("REST candidate changed original Action owner")
+            report["unified_priority_trace"] = []
         if bug0_food_loop_dev:
             # The S49 original launcher/session/executor owns this DEV branch;
             # S51 is a delegate only. The zombie-only normal loop is unchanged.
@@ -450,6 +496,18 @@ async def qualify(
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if unified_policy is not None:
+                candidate = unified_policy.decide(reading)
+                unified_probe_choice[reading.seq] = candidate
+                report["unified_priority_trace"].append({
+                    "probe_seq": reading.seq,
+                    "selected": candidate.selected,
+                    "preferred": candidate.preferred,
+                    "fallback": candidate.fallback,
+                    "reason": candidate.reason,
+                    "food": candidate.food,
+                    "issued": False,
+                })
             if eat_cursor is not None:
                 report["bug0_eat_shadow"].append(
                     read_only_bug0_eat_window(eat_cursor, reading)
@@ -502,6 +560,21 @@ async def qualify(
 
         async def on_action(step):
             probe = probes[step.choice.probe_seq]
+            if unified_policy is not None:
+                # The single shared native decision gate must have suppressed
+                # EAT and preferred defense, before frozen S14 admission.
+                joint = unified_probe_choice.get(probe.seq)
+                if (
+                    joint is None or joint.selected != "DEFER"
+                    or joint.preferred != "MOVE_AWAY"
+                    or joint.fallback != "ATTACK"
+                    or step.choice.selection is not WorldChoiceKind.MOVE_AWAY
+                    or executor.supervisor.open_actions
+                    or executor._count not in (1, 2)
+                ):
+                    raise S49PhysicalFailure(
+                        "shared food/move priority did not admit original defense"
+                    )
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
             )
@@ -640,7 +713,8 @@ async def qualify(
             or [s.choice.selection.value for s in trace]
             != ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
             or len({s.choice.entity_id for s in trace}) != 3
-            or len(report["actual_native_actions"]) != 2
+            or len(report["actual_native_actions"])
+            != (3 if unified_policy is not None else 2)
             or executor.supervisor.open_actions
             or executor.supervisor.get(trace[1].action_request_id).state is not ActionState.OUTCOME
             or executor.supervisor.get(trace[2].action_request_id).state is not ActionState.OUTCOME
@@ -649,6 +723,31 @@ async def qualify(
             or host.events != 3
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
+        if unified_policy is not None:
+            actions = report["actual_native_actions"]
+            if (
+                actions[0].get("kind") != "EAT"
+                or actions[0].get("terminal") != "outcome"
+                or actions[1].get("terminal") != "outcome"
+                or actions[2].get("terminal") != "outcome"
+                or executor._count != 3 or executor.supervisor.open_actions
+                or executor._post_move_settling_unqualified is not True
+                or len(report["unified_priority_trace"]) != 3
+                or [
+                    x["preferred"] for x in report["unified_priority_trace"]
+                ] != [None, "MOVE_AWAY", "MOVE_AWAY"]
+            ):
+                raise S49PhysicalFailure(
+                    "original S49 EAT->MOVE->MOVE or STOP safety missing"
+                )
+            report["unified_actual_action_order"] = ["EAT", "MOVE_AWAY", "MOVE_AWAY"]
+            report["post_move_eat_fenced"] = True
+            report["rest_physical_execution"] = "NOT_RUN"
+            report["attack_physical_execution"] = "NOT_RUN"
+            report["independent_eat_grant_attested"] = False
+            report["source_independently_attested"] = False
+            report["learning_in_world"] = False
+            report["m_energy_credited"] = False
         if stage_r is not None:
             report["stage_r_decision_revisions"] = [
                 {"event_seq": step.event_seq,
@@ -687,7 +786,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+            "DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES"
+            if unified_policy is not None
+            else "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
             if stage_r is not None
             else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
         )
@@ -815,12 +916,14 @@ def main() -> int:
     parser.add_argument("--bug0-eat-shadow", action="store_true")
     parser.add_argument("--bug0-food-loop-dev", action="store_true")
     parser.add_argument("--bug0-food-refusal-dev", action="store_true")
+    parser.add_argument("--bug0-unified-survival-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
         bug0_eat_shadow=args.bug0_eat_shadow,
         bug0_food_loop_dev=args.bug0_food_loop_dev,
         bug0_food_refusal_dev=args.bug0_food_refusal_dev,
+        bug0_unified_survival_dev=args.bug0_unified_survival_dev,
     ))
 
 
