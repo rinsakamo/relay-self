@@ -16,6 +16,8 @@ from adapters.mineflayer import (
     attack_execution,
     normal_action,
     s49_attack_dev,
+)
+from adapters.mineflayer import (
     s49_normal_session_real_ci as s49,
 )
 from adapters.mineflayer.attack_execution import (
