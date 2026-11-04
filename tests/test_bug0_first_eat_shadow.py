@@ -9,13 +9,13 @@ import test_bug0_s49_s51_eat_handoff as prior_handoff
 import test_feature_s46_eat as s46
 from adapters.mineflayer.bug0_first_eat_shadow import (
     Bug0FirstEatShadowRejected,
-    inspect_bug0_first_eat_shadow,
     handoff_authorized_first_eat,
+    inspect_bug0_first_eat_shadow,
 )
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
+from adapters.mineflayer.s51_eat_real_ci import qualify
 from relay_self.action import ActionState
 from relay_self.eat_hunger import EatCursor
-from adapters.mineflayer.s51_eat_real_ci import qualify
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 
