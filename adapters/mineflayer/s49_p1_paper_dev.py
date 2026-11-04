@@ -69,10 +69,13 @@ def _float(row: dict[str, str], key: str) -> float:
 
 def inspect_paper_tick_source(
     log: str, *, nonce: str, native_report: dict[str, Any],
+    expected_choice: str = "REST",
 ) -> dict[str, Any]:
     """Pure source-shape check, no independent source authenticity promotion."""
     if not re.fullmatch(r"[a-z0-9]{12,32}", nonce):
         raise S49P1SourceRejected("invalid nonce")
+    if expected_choice not in ("REST", "WAIT"):
+        raise S49P1SourceRejected("unsupported source decision")
     if (
         native_report.get("status") != "PENDING_NATIVE_JOIN"
         and native_report.get("status") != "PASS"
@@ -83,23 +86,29 @@ def inspect_paper_tick_source(
         not isinstance(actions, list) or len(actions) != 1
         or actions[0].get("kind") != "ATTACK"
         or actions[0].get("terminal") != "outcome"
-        or native_report.get("rest_intent_selected") is not True
+        or native_report.get("rest_intent_selected") is not (expected_choice == "REST")
+        or native_report.get("rest_choice", {}).get("selected") != expected_choice
         or native_report.get("rest_action_issued") is not False
         or native_report.get("attack_server_health_drop_observed") is not True
     ):
         raise S49P1SourceRejected("not original one ATTACK then REST")
     if _rows(log, "SOURCE_FAULT"):
         raise S49P1SourceRejected("server source overflow or missing World/player")
-    starts, rests, stops, fights, ticks = (
+    starts, rests, stops, fights, ticks, choices = (
         _rows(log, key)
-        for key in ("START", "REST", "STOP", "FIGHT", "TICK")
+        for key in ("START", "REST", "STOP", "FIGHT", "TICK", "CHOICE")
     )
+    markers = rests if expected_choice == "REST" else choices
     if (
-        any(len(v) != 1 for v in (starts, rests, stops, fights))
+        any(len(v) != 1 for v in (starts, stops, fights, markers))
+        or (expected_choice == "WAIT" and rests)
+        or (expected_choice == "REST" and choices)
         or not 20 <= len(ticks) <= 480
     ):
-        raise S49P1SourceRejected("incomplete or duplicate source brackets")
-    start, rest, stop, fight = starts[0], rests[0], stops[0], fights[0]
+        raise S49P1SourceRejected("incomplete or contradictory source brackets")
+    start, marker, stop, fight = starts[0], markers[0], stops[0], fights[0]
+    if expected_choice == "WAIT" and marker.get("selected") != "WAIT":
+        raise S49P1SourceRejected("wrong native L0 choice marker")
     world = start.get("world")
     player_uuid = start.get("player")
     if (
@@ -110,7 +119,7 @@ def inspect_paper_tick_source(
         or fight["attacker"] != player_uuid
         or _float(fight, "damage") <= 0
         or any(r.get("nonce") != nonce or r.get("world") != world
-               for r in (start, rest, stop, fight, *ticks))
+               for r in (start, marker, stop, fight, *ticks))
         or stop.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
         or start.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
         or _int(stop, "faults") != 0
@@ -118,10 +127,10 @@ def inspect_paper_tick_source(
         raise S49P1SourceRejected("foreign or unbounded Paper source")
     began = _int(start, "tick")
     ended = _int(stop, "tick")
-    rest_tick = _int(rest, "tick")
+    choice_tick = _int(marker, "tick")
     fight_tick = _int(fight, "tick")
-    if not began <= fight_tick < rest_tick <= ended:
-        raise S49P1SourceRejected("FIGHT/REST source order missing")
+    if not began <= fight_tick < choice_tick <= ended:
+        raise S49P1SourceRejected("FIGHT/choice source order missing")
     if _int(stop, "index") != len(ticks):
         raise S49P1SourceRejected("incomplete tick publisher")
     rows = []
@@ -160,7 +169,7 @@ def inspect_paper_tick_source(
         or not fight_tick <= combat_callbacks[0]["world_tick"] <= fight_tick + 1
     ):
         raise S49P1SourceRejected("not one Paper fight source tick")
-    post_rest = [x for x in rows if x["world_tick"] >= rest_tick + 2]
+    post_rest = [x for x in rows if x["world_tick"] >= choice_tick + 2]
     if len(post_rest) < 8:
         raise S49P1SourceRejected("no bounded post-REST tick coverage")
     # Keep both all-frame originals and a separately scoped post-REST interval.
@@ -179,7 +188,9 @@ def inspect_paper_tick_source(
         "native_attack_action_id": actions[0]["action_id"],
         "paper_fight_event_tick": fight_tick,
         "paper_fight_callback_tick": combat_callbacks[0]["world_tick"],
-        "paper_rest_marker_tick": rest_tick,
+        "paper_rest_marker_tick": choice_tick if expected_choice == "REST" else None,
+        "paper_choice_marker_tick": choice_tick,
+        "paper_selected_intent": expected_choice,
         "world_tick_start": began, "world_tick_last_callback": last,
         "world_tick_stop": ended,
         "total_consecutive_source_callback_rows": len(rows),
