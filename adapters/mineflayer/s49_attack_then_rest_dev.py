@@ -31,6 +31,7 @@ async def run_s49_attack_then_rest_dev(
     *, health_log: Path,
     rest_intent_hook: Callable[[], Awaitable[None]] | None = None,
     attack_pre_issue_hook: Callable[[], Awaitable[None]] | None = None,
+    paper_health_sequential: bool = False,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -61,6 +62,8 @@ async def run_s49_attack_then_rest_dev(
     attack_kw: dict[str, Any] = {"health_log": health_log}
     if attack_pre_issue_hook is not None:
         attack_kw["before_execute_hook"] = attack_pre_issue_hook
+    if paper_health_sequential:
+        attack_kw["paper_source_sequential"] = True
     attack_receipt = await run_s49_attack_dev(
         session, server, owner, report, **attack_kw,
     )
