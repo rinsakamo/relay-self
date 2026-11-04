@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -29,6 +29,7 @@ async def run_s49_attack_then_rest_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path,
+    rest_intent_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> None:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -111,6 +112,9 @@ async def run_s49_attack_then_rest_dev(
             "post-ATTACK original native L0 REST intent not admitted"
         )
     report["rest_intent_selected"] = True
+    if rest_intent_hook is not None:
+        # Optional bounded Paper World tick marker, never an Action issuer.
+        await rest_intent_hook()
     report["stage"] = "BUG0_POST_ATTACK_REST_NATIVE_STATIONARY_SAMPLES"
     observations = [first]
     for index in range(8):
