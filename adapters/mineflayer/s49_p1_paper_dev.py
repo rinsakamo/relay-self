@@ -8,7 +8,10 @@ full World-tick activity or formal R evidence.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -215,11 +218,22 @@ async def _send_and_wait(
 async def run_s49_p1_paper_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor,
-    report: dict[str, Any], log_path: Path,
+    report: dict[str, Any], log_path: Path, *,
+    prospective_rest_dev: bool = False,
+    p1_checkout: Path | None = None,
 ) -> None:
     """One S49 original ATTACK->REST, with server-only source hooks."""
     if not isinstance(session, MineflayerProcessSession):
         raise S49P1SourceRejected("original process required")
+    if (
+        type(prospective_rest_dev) is not bool
+        or (prospective_rest_dev and (
+            not isinstance(p1_checkout, Path)
+            or not p1_checkout.is_absolute()
+            or not p1_checkout.is_dir()
+        ))
+    ):
+        raise S49P1SourceRejected("pinned original P1 checkout required for DEV sensor")
     nonce = session.started.session_id.replace("-", "")[:20]
     report["p1_paper_source_scope"] = "DEV_CALLBACK_BOUNDED_NO_R_ATTESTATION"
     source_started = False
@@ -239,11 +253,40 @@ async def run_s49_p1_paper_dev(
                 key="REST", nonce=nonce,
             )
 
+        async def pre_decision_sensor(probe: object) -> dict[str, Any]:
+            # Separate pinned P1 evaluator reads the already published
+            # Paper prefix. It has no server command, Body mutation or
+            # Self Action authority. Never infer from post-REST samples.
+            assert p1_checkout is not None
+            args = [
+                sys.executable, "-B",
+                "tools/bug0_s49_p1_prospective_sensor.py",
+                "--paper-log", str(log_path),
+                "--p1-checkout", str(p1_checkout),
+                "--session-id", session.started.session_id,
+                "--probe-seq", str(probe.seq),
+            ]
+            result = await asyncio.to_thread(
+                subprocess.run, args, capture_output=True, text=True,
+                timeout=12, check=True,
+            )
+            raw = json.loads(result.stdout)
+            if raw.get("request_rest") is not True:
+                raise S49P1SourceRejected(
+                    "prospective experimental P1 sensor did not request REST"
+                )
+            return raw
+
+        args: dict[str, Any] = {
+            "health_log": log_path,
+            "rest_intent_hook": mark_rest,
+            "attack_pre_issue_hook": mark_attack_source,
+            "paper_health_sequential": True,
+        }
+        if prospective_rest_dev:
+            args["prospective_rest_request"] = pre_decision_sensor
         await run_s49_attack_then_rest_dev(
-            session, server, owner, report,
-            health_log=log_path, rest_intent_hook=mark_rest,
-            attack_pre_issue_hook=mark_attack_source,
-            paper_health_sequential=True,
+            session, server, owner, report, **args,
         )
     finally:
         # Never mask a pre-issue refusal or reissue an ATTACK.
@@ -257,6 +300,37 @@ async def run_s49_p1_paper_dev(
         log_path.read_text(encoding="utf-8"),
         nonce=nonce, native_report=report,
     )
+    if prospective_rest_dev:
+        sensor = report.get("prospective_p1_sensor")
+        if (
+            not isinstance(sensor, dict)
+            or sensor.get("source_kind")
+                != "PAPER_PRE_DECISION_CALLBACK_P1_VIRTUAL_SENSOR_DEV"
+            or sensor.get("request_rest") is not True
+            or sensor.get("model_default_fatigue_pre_decision") != 0
+            or not 0 < sensor.get("model_experimental_fatigue_pre_decision", -1) <= 1
+            or sensor.get("paper_source_uuid") != checked["paper_world"]
+            or not (
+                checked["paper_fight_callback_tick"]
+                <= sensor["source_as_of_tick"]
+                < checked["paper_rest_marker_tick"]
+                <= checked["world_tick_last_callback"]
+            )
+        ):
+            raise S49P1SourceRejected(
+                "late/foreign retrospective REST model sensor cannot be admitted"
+            )
+        report["prospective_p1_s49_join"] = {
+            "status": "DEV_NONDEFAULT_PROFILE_MODEL_SENSOR_REST_CHOSEN",
+            "source_as_of_server_tick": sensor["source_as_of_tick"],
+            "rest_marker_server_tick": checked["paper_rest_marker_tick"],
+            "model_fatigue_pre_decision": (
+                sensor["model_experimental_fatigue_pre_decision"]
+            ),
+            "original_default_model_fatigue_pre_decision": 0,
+            "source_future_read_for_decision": False,
+            "independent_physical_fatigue_recovery": False,
+        }
     # Full raw row sequence remains in original server log; expose bounded summary.
     report["p1_paper_tick_source"] = {
         k: v for k, v in checked.items() if k != "source_tick_rows"
