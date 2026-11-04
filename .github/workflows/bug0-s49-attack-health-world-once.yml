@@ -1,0 +1,109 @@
+name: Bug-0 original S49 Paper Health after one ATTACK World
+on:
+  push:
+    branches:
+      - dev/bug0-s49-attack-health-readback-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  one-native-world-health:
+    # Operator authorizes one new World; only exact commit message runs it.
+    # A rejected, unknown or no-damage ATTACK must NEVER be auto-replayed.
+    # New operator-scoped World, offline #41817592467 exact-head SUCCESS.
+    if: ${{ github.event.head_commit.message == 'run-bug0-s49-attack-health-once-20261104' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_BUG0_ATTACK_HEALTH_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout one authorized exact HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Original Python runtime test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1
+      - name: Verify original Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One real original S49 ATTACK with Paper server-side Health readback
+        run: |
+          mkdir -p attack-health-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --bug0-attack-health-dev \
+            --report attack-health-evidence/s49_attack_health.json \
+            --server-log attack-health-evidence/paper.log
+      - name: Distinguish command ACK, measured Health delta and causal inference
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('attack-health-evidence/s49_attack_health.json').read_text())
+          assert r['status'] == 'PASS', r.get('error')
+          actions = r['actual_native_actions']
+          assert len(actions) == 1 and actions[0]['kind'] == 'ATTACK'
+          assert actions[0]['terminal'] == 'outcome'
+          assert actions[0]['same_supervisor'] is True
+          assert r['attack_effect_commands_issued'] == 1
+          assert r['attack_action_terminal'] == 'outcome'
+          e = r['attack_evidence']
+          assert e['before_probe_seq'] < e['effect_seq'] < e['after_probe_seq']
+          assert e['native_effect_result'] == 'applied'
+          assert e['damage_attested'] is False
+          assert e['target_death_attested'] is False
+          assert e['source_independently_attested'] is False
+          assert e['outcome_scope'] == 'ATTACK_COMMAND_ACK_PLUS_PAPER_HEALTH_READBACK'
+          before = r['attack_server_health_before']
+          after = r['attack_server_health_after']
+          assert before['target_tag'] == after['target_tag'] == 'RelaySelfAttackTarget'
+          assert before['source'] == after['source'] == 'ORIGINAL_PAPER_SERVER_CONSOLE'
+          assert before['health'] == 20.0
+          assert before['marker_start'] != after['marker_start']
+          assert 0 < after['health'] <= before['health']
+          assert r['attack_server_health_delta'] == before['health']-after['health']
+          assert e['server_health_delta'] == r['attack_server_health_delta']
+          assert r['real_model_calls'] == 0
+          assert r['learning_in_world'] is False and r['m_energy_credited'] is False
+          assert r['node_exit'] == 0 and r['server_exit'] == 0
+          if r['attack_server_health_drop_observed']:
+              assert r['classification'] == 'DEV_ONLY_S49_ATTACK_PAPER_HEALTH_DROP'
+              assert r['attack_server_health_delta'] > 0
+              print('DEV_PAPER_HEALTH_DROP_OBSERVED', before['health'], after['health'])
+          else:
+              assert r['classification'] == 'DEV_ONLY_S49_ATTACK_PAPER_NO_HEALTH_DROP'
+              print('DEV_PAPER_NO_HEALTH_DROP_OBSERVED: COMMAND_ACK_ONLY')
+          PY
+      - name: SHA256 immutable original sources even on blocked or failed trial
+        if: always()
+        run: |
+          if test -d attack-health-evidence; then
+            (cd attack-health-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Preserve original Paper console and S49 source report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-s49-attack-server-health-one-world
+          path: attack-health-evidence/
+          if-no-files-found: warn
+          retention-days: 30
