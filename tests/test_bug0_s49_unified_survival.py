@@ -40,8 +40,8 @@ def test_one_priority_owner_orders_food_rest_then_close_zombie_defense():
     assert (full.selected, full.reason) == ("WAIT", "NOT_HUNGRY")
     assert (hunger.selected, hunger.candidate_item) == ("EAT", "bread")
     assert hunger.candidate_slot is not None
-    assert (restored.selected, restored.preferred) == ("DEFER", "REST")
-    assert restored.reason == "REST_EXECUTOR_NOT_CONNECTED"
+    assert (restored.selected, restored.preferred) == ("REST", "REST")
+    assert restored.reason == "REST_INTENT_ONLY_P1_WAIT_UNATTESTED"
     assert (watch.selected, watch.reason) == (
         "WAIT", "DISTANT_ZOMBIE_MONITOR",
     )
