@@ -83,7 +83,7 @@ def test_priority_rest_is_candidate_only_and_native_risk_takes_precedence():
     rest = policy.decide(p, rest_requested=True)
     threat = policy.decide(sample(food=13, seq=p.seq + 1, zombie=True), rest_requested=True)
     assert (rest.selected, rest.preferred, rest.reason) == (
-        "DEFER", "REST", "REST_EXECUTOR_NOT_CONNECTED",
+        "REST", "REST", "REST_INTENT_ONLY_P1_WAIT_UNATTESTED",
     )
     assert (threat.selected, threat.preferred, threat.fallback) == (
         "DEFER", "MOVE_AWAY", "ATTACK",
