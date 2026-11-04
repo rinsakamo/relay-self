@@ -25,7 +25,6 @@ from adapters.mineflayer.s49_attack_server_health import (
 )
 from relay_self.action import ActionState
 
-
 NONCE = "abcdef01234567890123"
 
 
