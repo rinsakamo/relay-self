@@ -13,18 +13,24 @@ import pytest
 
 import test_bug0_s49_food_refusal_priority as cases
 from adapters.mineflayer import (
-    attack_execution, normal_action, s49_attack_dev,
+    attack_execution,
+    normal_action,
+    s49_attack_dev,
     s49_normal_session_real_ci as s49,
 )
 from adapters.mineflayer.attack_execution import (
-    AttackExecutionRejected, verify_attack_effect,
+    AttackExecutionRejected,
+    verify_attack_effect,
 )
 from adapters.mineflayer.normal_action import (
-    NormalActionRejected, NormalActionStage, NormalAttackingAuthorization,
+    NormalActionRejected,
+    NormalActionStage,
+    NormalAttackingAuthorization,
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.python_protocol import (
-    MineflayerEffectResult, MineflayerEntityHurt,
+    MineflayerEffectResult,
+    MineflayerEntityHurt,
 )
 from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
