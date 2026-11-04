@@ -39,12 +39,12 @@ from relay_self.execution_binding import (
 from relay_self.intent import IntentCommitment
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
-from relay_self.skill import SkillExecution
 from relay_self.reactive_l0 import (
     L0Step,
     ReactiveL0,
     ReactiveL0Rejected,
 )
+from relay_self.skill import SkillExecution
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
