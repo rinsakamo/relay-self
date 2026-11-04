@@ -317,6 +317,7 @@ async def qualify(
     bug0_unified_survival_dev: bool = False,
     bug0_attack_dev: bool = False,
     bug0_attack_health_dev: bool = False,
+    bug0_rest_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -400,6 +401,18 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("original ATTACK Paper health check requires exclusive DEV gate")
+        if (
+            type(bug0_rest_dev) is not bool
+            or (bug0_rest_dev and (
+                os.environ.get("S49_BUG0_REST_DEV_ONLY") != "1"
+                or bug0_attack_dev or bug0_attack_health_dev
+                or bug0_food_loop_dev or bug0_food_refusal_dev
+                or bug0_unified_survival_dev or bug0_eat_shadow
+                or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked("REST requires exclusive original S49 DEV-only gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -438,6 +451,18 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(sid, intent)
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
+        if bug0_rest_dev:
+            from adapters.mineflayer.s49_rest_dev import run_s49_rest_dev
+
+            await run_s49_rest_dev(
+                session, server, executor, report, server_log=server_log,
+            )
+            report["status"] = "PASS"
+            report["classification"] = (
+                "DEV_ONLY_S49_REST_PAPER_TICKS_AND_STATIONARY_ENDPOINTS"
+            )
+            rc = 0
+            raise Bug0FoodLoopDevCompleted
         if bug0_attack_dev or bug0_attack_health_dev:
             # Original S49 session/executor/supervisor is the ONLY Action owner.
             # The transport callback has no independent issuer or grant.
@@ -964,6 +989,7 @@ def main() -> int:
     parser.add_argument("--bug0-unified-survival-dev", action="store_true")
     parser.add_argument("--bug0-attack-dev", action="store_true")
     parser.add_argument("--bug0-attack-health-dev", action="store_true")
+    parser.add_argument("--bug0-rest-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -973,6 +999,7 @@ def main() -> int:
         bug0_unified_survival_dev=args.bug0_unified_survival_dev,
         bug0_attack_dev=args.bug0_attack_dev,
         bug0_attack_health_dev=args.bug0_attack_health_dev,
+        bug0_rest_dev=args.bug0_rest_dev,
     ))
 
 
