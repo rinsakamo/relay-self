@@ -1,0 +1,42 @@
+name: Bug-0 S49 first physical EAT DEV preflight offline
+on:
+  push:
+    branches:
+      - dev/bug0-first-eat-world-action-20261104
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug0-first-physical-eat-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  first-eat-dev-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact DEV commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install offline tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository, syntax and lint
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_first_eat_dev_world.py
+          ruff check adapters/mineflayer/s51_eat_real_ci.py tests/test_bug0_first_eat_dev_world.py
+      - name: DEV runner and original S49/S51 regressions (no World)
+        run: |
+          python -m pytest -q tests/test_bug0_first_eat_dev_world.py tests/test_bug0_first_eat_shadow.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_s51_eat_owner_binding.py tests/test_feature_s51_eat_execution.py tests/test_feature_s46_eat.py tests/test_feature_s49_normal_runtime.py
+      - name: No physical success claim from offline CI
+        run: echo 'DEV_OFFLINE / WORLD_0 / ACTION_0 / NO_QUALIFICATION'
