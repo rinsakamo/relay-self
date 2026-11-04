@@ -2,7 +2,7 @@
 
 Pure source-grounded prioritization only. An Action is never authorized, issued,
 or executed here. S49 sole issuer, its S14 admissions and S51 delegated EAT
-remain separate. Unsupported attack/rest and threatened movement DEFER.
+remain separate. Unsupported attack and threatened movement DEFER; REST only selects intent.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 class BasicPriorityDecision:
     session_id: str
     probe_seq: int
-    selected: str  # WAIT | EAT | DEFER (only EAT is a positive candidate)
+    selected: str  # WAIT | EAT | REST | DEFER (REST is intent, not physical Action)
     reason: str
     preferred: str | None  # MOVE_AWAY | ATTACK | REST | EAT
     fallback: str | None
@@ -86,9 +86,11 @@ class S49BasicPriorityL0:
                 "EAT", observed.reason, "EAT", None,
             )
         elif rest_requested:
-            # REST is not yet backed by a genuine original native Action.
+            # P1 recovery is physical full-tick WAIT, not an extra REST Action.
+            # Selection merely expresses an intent to rest. Neither this
+            # choice nor an idle probe can attest fatigue recovery.
             selected, reason, preferred, fallback = (
-                "DEFER", "REST_EXECUTOR_NOT_CONNECTED", "REST", None,
+                "REST", "REST_INTENT_ONLY_P1_WAIT_UNATTESTED", "REST", None,
             )
         else:
             selected, reason, preferred, fallback = (
