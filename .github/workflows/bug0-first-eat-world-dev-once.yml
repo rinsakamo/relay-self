@@ -11,7 +11,7 @@ jobs:
   bug0-one-real-first-eat:
     # Exactly one operator-authorized commit triggers this physical experiment.
     # Later documentation or fixes cannot silently rerun a real World.
-    if: ${{ github.event.head_commit.message == 'run-bug0-first-eat-world-once-after-env-fix' }}
+    if: ${{ github.event.head_commit.message == 'run-bug0-first-eat-world-once-after-node-constructor-fix' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
