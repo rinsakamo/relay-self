@@ -42,7 +42,7 @@ jobs:
           ruff check adapters/mineflayer/s49_p1_paper_dev.py adapters/mineflayer/s49_p1_paper_server.py adapters/mineflayer/s49_normal_session_real_ci.py tools/bug0_s49_p1_paper_model_eval.py tests/test_bug0_s49_p1_paper_dev.py
       - name: Paper source gates and original S49 regression
         run: |
-          python -m pytest -q tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_attack_then_rest_dev.py tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_attack_paper_health.py tests/test_bug0_s49_unified_survival.py tests/test_s50_p1_wait.py
+          python -m pytest -q tests/test_bug0_s49_paper_health_order.py tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_attack_then_rest_dev.py tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_attack_paper_health.py tests/test_bug0_s49_unified_survival.py tests/test_s50_p1_wait.py
       - name: Compile isolated read-only S49 P1 Paper plugin
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_p1_paper_dev/pom.xml -DskipTests package
