@@ -59,7 +59,7 @@ jobs:
           r = json.loads(Path("world-evidence/report.json").read_text())
           assert r["status"] == "PASS", r.get("error")
           assert r["classification"] == "DEV_ONLY_BUG0_FIRST_EAT_S49_S51_PHYSICAL_OUTCOME"
-          assert r["action_terminal"] == "OUTCOME"
+          assert r["action_terminal"] == "outcome"  # ActionState.OUTCOME.value
           assert r["before"]["food"] < r["after"]["food"]
           assert r["after"]["item_count_delta"] == 1
           assert len(r["actual_native_actions"]) == 1
