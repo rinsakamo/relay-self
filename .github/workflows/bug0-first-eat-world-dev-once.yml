@@ -1,0 +1,84 @@
+name: Bug-0 first S49 to S51 real Minecraft EAT DEV one-shot
+on:
+  push:
+    branches:
+      - dev/bug0-first-eat-world-action-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  bug0-one-real-first-eat:
+    # Exactly one operator-authorized commit triggers this physical experiment.
+    # Later documentation or fixes cannot silently rerun a real World.
+    if: ${{ github.event.head_commit.message == 'run-bug0-first-eat-world-once' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S51_REAL_SERVER_CI: '1'
+      S51_BUG0_FIRST_EAT_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+    steps:
+      - name: Checkout committed S49 to S51 DEV runner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Pin Mineflayer original runtime
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One disposable real World, one initial S49 owner EAT, no retry
+        run: |
+          mkdir -p world-evidence
+          python -B -m adapters.mineflayer.s51_eat_real_ci \
+            --bug0-first-eat-dev --food-item bread --food-source inventory \
+            --report world-evidence/report.json \
+            --server-log world-evidence/paper.log
+      - name: Assert native food stock and original S49 terminal
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("world-evidence/report.json").read_text())
+          assert r["status"] == "PASS", r.get("error")
+          assert r["classification"] == "DEV_ONLY_BUG0_FIRST_EAT_S49_S51_PHYSICAL_OUTCOME"
+          assert r["action_terminal"] == "OUTCOME"
+          assert r["before"]["food"] < r["after"]["food"]
+          assert r["after"]["item_count_delta"] == 1
+          assert len(r["actual_native_actions"]) == 1
+          assert r["actual_native_actions"][0]["s49_owner"] is True
+          assert r["m_energy_credited"] is False
+          assert r["independent_eat_grant_attested"] is False
+          print("BUG0_DEV_FIRST_EAT_WORLD_PASS food", r["before"]["food"],
+                "->", r["after"]["food"], "stock_delta",
+                r["after"]["item_count_delta"])
+          PY
+      - name: Preserve immutable output hashes even on failure
+        if: always()
+        run: |
+          if test -d world-evidence; then
+            (cd world-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Upload original World, native and command evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-original-s49-s51-first-eat-dev-one-world
+          path: world-evidence/
+          if-no-files-found: warn
+          retention-days: 30
