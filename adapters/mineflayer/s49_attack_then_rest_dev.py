@@ -56,9 +56,13 @@ async def run_s49_attack_then_rest_dev(
 
     # Existing one-shot original S49 ATTACK, including separately bracketed
     # read-only Paper before/after Health. No second ATTACK on any failure.
+    # Keep the historical ATTACK adapter call shape unchanged unless this
+    # explicitly gated Paper source has an additional read-only hook.
+    attack_kw: dict[str, Any] = {"health_log": health_log}
+    if attack_pre_issue_hook is not None:
+        attack_kw["before_execute_hook"] = attack_pre_issue_hook
     attack_receipt = await run_s49_attack_dev(
-        session, server, owner, report, health_log=health_log,
-        before_execute_hook=attack_pre_issue_hook,
+        session, server, owner, report, **attack_kw,
     )
     if (
         attack_receipt.terminal.state is not ActionState.OUTCOME
