@@ -108,8 +108,8 @@ def inspect_paper_tick_source(
         or _float(fight, "damage") <= 0
         or any(r.get("nonce") != nonce or r.get("world") != world
                for r in (start, rest, stop, fight, *ticks))
-        or stop.get("coverage") != "CALLBACK_BOUNDARY_NOT_FULL_TICK"
-        or start.get("coverage") != "CALLBACK_BOUNDARY_NOT_FULL_TICK"
+        or stop.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
+        or start.get("coverage") != "SERVER_TICK_CALLBACK_NOT_FULL_TICK"
         or _int(stop, "faults") != 0
     ):
         raise S49P1SourceRejected("foreign or unbounded Paper source")
