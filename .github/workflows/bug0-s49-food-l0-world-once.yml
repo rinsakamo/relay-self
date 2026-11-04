@@ -1,0 +1,94 @@
+name: Bug-0 original S49 hunger EAT WAIT one-shot real World DEV
+on:
+  push:
+    branches:
+      - dev/bug0-s49-normal-food-loop-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  s49-native-food-once:
+    # A code, test or documentation push must NOT create another physical EAT.
+    # DEV operator triggered exactly this one World after offline CI #41780532787 SUCCESS.
+    if: ${{ github.event.head_commit.message == 'run-bug0-s49-food-l0-once-20261104' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_BUG0_FOOD_LOOP_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exactly operator authorized S49 DEV commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Existing S49 Python runtime test dependency
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1
+      - name: Pin original Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One S49 World, native WAIT to EAT and native WAIT, no retry
+        run: |
+          mkdir -p world-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --bug0-food-loop-dev \
+            --report world-evidence/s49_food_loop.json \
+            --server-log world-evidence/paper.log
+      - name: Assert S49-owned native reobserved WAIT after EAT
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("world-evidence/s49_food_loop.json").read_text())
+          assert r["status"] == "PASS", r.get("error")
+          assert r["classification"] == "DEV_ONLY_S49_FOOD_L0_EAT_WAIT_OUTCOME"
+          actions = r["actual_native_actions"]
+          assert len(actions) == 1 and actions[0]["kind"] == "EAT"
+          assert actions[0]["s49_owner"] and actions[0]["same_supervisor"]
+          assert actions[0]["terminal"] == "outcome"
+          assert r["action_terminal"] == "outcome"
+          assert r["before"]["food"] < r["after"]["food"]
+          assert r["before"]["bread_count"] - r["after"]["bread_count"] == 1
+          assert any(x["selected"] == "EAT" for x in r["food_l0_trace"])
+          assert r["next_food_decision"]["selected"] == "WAIT"
+          assert r["next_food_decision"]["reason"] == "NOT_HUNGRY"
+          assert r["next_food_decision"]["probe_seq"] > r["after"]["probe_seq"]
+          assert r["node_exit"] == 0 and r["server_exit"] == 0
+          assert r["m_energy_credited"] is False
+          assert r["learning_in_world"] is False
+          assert r["independent_eat_grant_attested"] is False
+          print("S49_FOOD_LOOP_DEV_PASS", r["before"], r["after"],
+                r["next_food_decision"])
+          PY
+      - name: Hash World/Paper/native evidence even when experiment fails
+        if: always()
+        run: |
+          if test -d world-evidence; then
+            (cd world-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Keep immutable S49 source report and Paper evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-s49-food-native-one-world-dev
+          path: world-evidence/
+          if-no-files-found: warn
+          retention-days: 30

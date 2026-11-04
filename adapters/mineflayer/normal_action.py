@@ -31,7 +31,7 @@ from relay_self.action_outcome import (
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.eat_hunger import EatChoice, EatStatus
+from relay_self.eat_hunger import EatChoice, EatCursor, EatingOutcome, EatStatus
 from relay_self.execution_binding import (
     BoundExecutionCandidate,
     start_and_propose_bound_execution,
@@ -39,12 +39,12 @@ from relay_self.execution_binding import (
 from relay_self.intent import IntentCommitment
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
-from relay_self.skill import SkillExecution
 from relay_self.reactive_l0 import (
     L0Step,
     ReactiveL0,
     ReactiveL0Rejected,
 )
+from relay_self.skill import SkillExecution
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
@@ -290,6 +290,82 @@ def assess_normal_eating_observation(
     if probe.snapshot.nearby_entities:
         return NormalEatingObservationStatus.OBSERVED_ENTITY_NEARBY
     return NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+
+
+@dataclass(frozen=True, slots=True)
+class NormalFoodDecision:
+    """Cheap native-source food decision; neither an S49 Action nor authority."""
+
+    selection: str
+    reason: str
+    probe_seq: int
+    food: float
+    choice: EatChoice
+    risk: NormalEatingObservationStatus
+
+
+class NormalFoodL0:
+    """S49-scoped food L0 for bounded DEV episodes, not a new Action issuer.
+
+    Reuses S46 EatCursor and S49's limited native risk gate. The same owner
+    observes the outcome and may choose WAIT again; it cannot forge a grant,
+    issue a physical Action, credit energy, or override the movement/STOP fence.
+    """
+
+    def __init__(self, session_id: str, *, max_decisions: int = 20) -> None:
+        if type(max_decisions) is not int or not 2 <= max_decisions <= 64:
+            raise NormalActionRejected("bounded food L0 decision budget required")
+        self.session_id = session_id
+        self.cursor = EatCursor(session_id, hunger_threshold=14.0)
+        self.max_decisions = max_decisions
+        self.decisions = 0
+        self._closed_eat = False
+        self._last_decision: NormalFoodDecision | None = None
+
+    def decide(self, probe: MineflayerObservation) -> NormalFoodDecision:
+        if (
+            not isinstance(probe, MineflayerObservation)
+            or probe.session_id != self.session_id
+            or self.decisions >= self.max_decisions
+        ):
+            raise NormalActionRejected("food L0 requires bounded own-session native probe")
+        risk = assess_normal_eating_observation(probe)
+        choice = self.cursor.choose(probe)  # enforces original native sequence
+        if choice.status is EatStatus.NOT_HUNGRY:
+            selection, reason = "WAIT", "NOT_HUNGRY"
+        elif risk is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED:
+            selection, reason = "WAIT", "NATIVE_OBSERVATION_RISK"
+        elif choice.status is EatStatus.NO_FOOD:
+            selection, reason = "WAIT", "NO_INVENTORY_FOOD"
+        elif self._closed_eat:
+            selection, reason = "WAIT", "ONE_EAT_BUDGET_USED"
+        else:
+            selection, reason = "EAT", "HUNGRY_WITH_FOOD_AND_BOUNDED_EMPTY_REGISTRY"
+        result = NormalFoodDecision(
+            selection, reason, probe.seq, choice.food_before, choice, risk,
+        )
+        self.decisions += 1
+        self._last_decision = result
+        return result
+
+    def acknowledge_verified_eat(self, receipt: EatingActionReceipt) -> None:
+        """Admit only S49-owned, S51-verified terminal; not a nutrition credit."""
+        last = self._last_decision
+        if (
+            self._closed_eat
+            or last is None or last.selection != "EAT"
+            or not isinstance(receipt, EatingActionReceipt)
+            or not isinstance(receipt.terminal, ActionLifecycle)
+            or not isinstance(receipt.outcome, EatingOutcome)
+            or receipt.terminal.state is not ActionState.OUTCOME
+            or receipt.outcome.session_id != self.session_id
+            or receipt.terminal.action_id != receipt.outcome.action_id
+            or receipt.outcome.food_before != last.food
+            or receipt.outcome.food_after <= receipt.outcome.food_before
+            or receipt.outcome.after_probe_seq <= last.probe_seq
+        ):
+            raise NormalActionRejected("food L0 cannot acknowledge unverified EAT")
+        self._closed_eat = True
 
 
 class NormalActionStage(str, Enum):
