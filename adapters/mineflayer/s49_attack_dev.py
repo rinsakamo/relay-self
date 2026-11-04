@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from adapters.mineflayer.attack_execution import AttackActionReceipt
 from adapters.mineflayer.normal_action import (
@@ -40,6 +40,7 @@ async def run_s49_attack_dev(
     session: MineflayerProcessSession, server: object,
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path | None = None,
+    before_execute_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> AttackActionReceipt:
     if (
         not isinstance(owner, NormalSessionActionExecutor)
@@ -188,6 +189,10 @@ async def run_s49_attack_dev(
             raise S49AttackDevRejected(
                 "target already injured before original S49 ATTACK admission"
             )
+    if before_execute_hook is not None:
+        # Read-only server telemetry hook after native admission/health source,
+        # before the one irreversible ATTACK; never grants an Action.
+        await before_execute_hook()
     report["attack_action_id"] = action_id
     report["attack_target_entity_id"] = target_id
     report["attack_effect_commands_issued"] = "UNKNOWN_IF_INTERRUPTED"
