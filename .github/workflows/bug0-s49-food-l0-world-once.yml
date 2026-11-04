@@ -10,6 +10,7 @@ permissions:
 jobs:
   s49-native-food-once:
     # A code, test or documentation push must NOT create another physical EAT.
+    # DEV operator triggered exactly this one World after offline CI #41780532787 SUCCESS.
     if: ${{ github.event.head_commit.message == 'run-bug0-s49-food-l0-once-20261104' }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
