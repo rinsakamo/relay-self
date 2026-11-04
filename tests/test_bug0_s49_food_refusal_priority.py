@@ -33,17 +33,19 @@ def sample(*, food=20, seq=100, bread=3, zombie=False, truncated=False):
         if bread else (),
     )
     if truncated:
-        # Preserve the original strict native protocol invariant:
-        # all 1/1 returned entity slots filled, but 2 total candidates.
+        # Adapter pins its coverage max_entities to exactly 16. A genuinely
+        # truncated snapshot must provide 16 reported and >=17 candidates.
         witness = s46.case().snapshot.nearby_entities[0]
         p = replace(
             p, snapshot=replace(
                 p.snapshot,
-                nearby_entities=(witness,),
+                nearby_entities=tuple(
+                    replace(witness, entity_id=witness.entity_id + i)
+                    for i in range(16)
+                ),
                 nearby_entities_coverage=replace(
                     p.snapshot.nearby_entities_coverage,
-                    max_entities=1,
-                    candidate_count=2,
+                    candidate_count=17,
                     truncated=True,
                 ),
             ),
