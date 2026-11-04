@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.normal_action import (
+    NormalEatingAuthorization,
     NormalEatingObservationStatus,
     NormalSessionActionExecutor,
     assess_normal_eating_observation,
 )
+from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.eat_hunger import EatCursor, EatStatus
 
@@ -136,4 +139,63 @@ def inspect_bug0_first_eat_shadow(
         earlier_risk=earlier_risk.value,
         current_risk=current_risk.value,
         position_delta_max_m=delta,
+    )
+
+
+
+async def handoff_authorized_first_eat(
+    owner: NormalSessionActionExecutor,
+    session: MineflayerProcessSession,
+    earlier: MineflayerObservation,
+    current: MineflayerObservation,
+    observed: Bug0FirstEatShadow,
+    propose: NormalEatingAuthorization,
+    issue: NormalEatingAuthorization,
+) -> EatingActionReceipt:
+    """Use the existing S49 issuer and S51 verifier; NEVER manufacture grants.
+
+    This is deliberately NOT called by S51's first-EAT shadow runner.
+    Approval is externally owned, and these typed grant objects are NOT
+    independent principal attestation. The S owner must verify their actual
+    source before admitting any physical DEV World EAT through this function.
+    """
+    if (
+        not isinstance(observed, Bug0FirstEatShadow)
+        or not isinstance(propose, NormalEatingAuthorization)
+        or not isinstance(issue, NormalEatingAuthorization)
+    ):
+        raise Bug0FirstEatShadowRejected(
+            "external EAT authorizations and source-bound shadow required"
+        )
+    # Freshly recompute from the same original observation pair to prevent
+    # callers reusing an old candidate after hunger/inventory/threat changes.
+    actual = inspect_bug0_first_eat_shadow(owner, earlier, current)
+    if observed != actual:
+        raise Bug0FirstEatShadowRejected("EAT approval references stale shadow")
+    if (
+        proposed_action_id := propose.action_id
+    ) != issue.action_id or not proposed_action_id:
+        raise Bug0FirstEatShadowRejected("distinct grant action identities")
+    for grant in (propose, issue):
+        if (
+            grant.session_id != observed.session_id
+            or grant.intent_id != observed.intent_id
+            or grant.probe_seq != observed.current_probe_seq
+            or grant.probe_request_id != observed.current_probe_request_id
+            or grant.food_item != observed.candidate_item
+            or grant.food_slot != observed.candidate_slot
+        ):
+            raise Bug0FirstEatShadowRejected(
+                "EAT grant not scoped to original native candidate"
+            )
+    choice = EatCursor(owner.session_id).choose(current)
+    if (
+        choice.status is not EatStatus.CANDIDATE
+        or choice.item_name != observed.candidate_item
+        or choice.item_slot != observed.candidate_slot
+        or choice.food_before != observed.food_before
+    ):
+        raise Bug0FirstEatShadowRejected("current EAT choice differs from shadow")
+    return await owner.execute_eat(
+        session, choice, current, propose, issue, previous_probe=earlier,
     )
