@@ -133,8 +133,16 @@ def test_attack_denies_bad_native_source_or_authorization(bad):
         ))
     elif bad == "truncated":
         coverage = second.snapshot.nearby_entities_coverage
+        mob = second.snapshot.nearby_entities[0]
+        # A true native truncated registry carries 16 observed of 17
+        # candidates. Fabricating one observed of 17 violates the protocol.
         second = replace(second, snapshot=replace(
-            second.snapshot, nearby_entities_coverage=replace(
+            second.snapshot,
+            nearby_entities=tuple(
+                replace(mob, entity_id=mob.entity_id + i)
+                for i in range(16)
+            ),
+            nearby_entities_coverage=replace(
                 coverage, candidate_count=17, truncated=True,
             ),
         ))
