@@ -90,8 +90,10 @@ def _recording_session_type(native_output, command_output):
             return raw
 
     class RecordedSession(MineflayerProcessSession):
-        def __init__(self, process):
-            super().__init__(process)
+        def __init__(self, process, *, raw_capture_root: Path | None = None):
+            # Base launch always supplies this keyword, including None.
+            # Keep W3 capture custody intact alongside the DEV tee.
+            super().__init__(process, raw_capture_root=raw_capture_root)
             process.stdout = RecordingReader(process.stdout)
 
         async def _send(self, line):
