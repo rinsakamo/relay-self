@@ -5,12 +5,16 @@ from dataclasses import replace
 
 import pytest
 
+import test_bug0_s49_s51_eat_handoff as prior_handoff
 import test_feature_s46_eat as s46
 from adapters.mineflayer.bug0_first_eat_shadow import (
     Bug0FirstEatShadowRejected,
     inspect_bug0_first_eat_shadow,
+    handoff_authorized_first_eat,
 )
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
+from relay_self.action import ActionState
+from relay_self.eat_hunger import EatCursor
 from adapters.mineflayer.s51_eat_real_ci import qualify
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
@@ -304,3 +308,102 @@ def test_existing_s51_runner_shadow_path_never_sends_eat_with_scripted_originals
     )
     assert (tmp_path / "shadow.native.jsonl").is_file()
     assert (tmp_path / "shadow.commands.jsonl").is_file()
+
+
+def test_first_eat_supplied_owner_grants_delegate_to_same_s49_s51_supervisor():
+    """Scripted native receipts only; source pairing + actual S51 verification."""
+    owner, earlier, current = pair()
+    shadow = inspect_bug0_first_eat_shadow(owner, earlier, current)
+    choice = EatCursor(current.session_id).choose(current)
+    propose, issue = prior_handoff.grants(
+        current, choice, owner.intent.current_intent.intent_id,
+        action_id="bug0-initial-original-owner-eat",
+    )
+    session = prior_handoff.ScriptedNativeSession(current, propose.action_id)
+    observed = asyncio.run(handoff_authorized_first_eat(
+        owner, session, earlier, current, shadow, propose, issue,
+    ))
+    assert observed.terminal is owner.supervisor.get(propose.action_id)
+    assert observed.terminal.state is ActionState.OUTCOME
+    assert observed.outcome.food_before == 7
+    assert observed.outcome.food_after == 12
+    assert observed.outcome.count_before == 2
+    assert observed.outcome.count_after == 1
+    assert session.commands == [
+        ("equip", propose.action_id + "-equip", "bread"),
+        ("consume", propose.action_id + "-consume"),
+        ("observe", propose.action_id + "-after-eating-00"),
+    ]
+    assert owner.supervisor.open_actions == ()
+    assert owner._count == 1
+    assert owner._dispatched == {propose.action_id}
+    assert owner._post_move_settling_unqualified is False
+    # No second issuer was allocated by this one-time handoff.
+
+
+@pytest.mark.parametrize("fault", (
+    "missing-propose", "missing-issue", "wrong-action",
+    "wrong-intent", "wrong-session", "wrong-native-probe",
+    "wrong-request", "wrong-item", "wrong-slot",
+    "stale-native-shadow", "wrong-owner", "prior-move",
+    "shadow-candidate-tampered",
+))
+def test_first_eat_handoff_rejects_missing_grant_and_changed_world(fault):
+    owner, earlier, current = pair()
+    shadow = inspect_bug0_first_eat_shadow(owner, earlier, current)
+    choice = EatCursor(current.session_id).choose(current)
+    propose, issue = prior_handoff.grants(
+        current, choice, owner.intent.current_intent.intent_id,
+    )
+    session = prior_handoff.ScriptedNativeSession(current, propose.action_id)
+    if fault == "missing-propose":
+        propose = None
+    elif fault == "missing-issue":
+        issue = None
+    elif fault == "wrong-action":
+        issue = replace(issue, action_id="foreign-physical-action")
+    elif fault == "wrong-intent":
+        issue = replace(issue, intent_id="foreign-intent")
+    elif fault == "wrong-session":
+        issue = replace(issue, session_id="foreign-world")
+    elif fault == "wrong-native-probe":
+        issue = replace(issue, probe_seq=current.seq + 1)
+    elif fault == "wrong-request":
+        issue = replace(issue, probe_request_id="old-probe")
+    elif fault == "wrong-item":
+        issue = replace(issue, food_item="rotten_flesh")
+    elif fault == "wrong-slot":
+        issue = replace(issue, food_slot=choice.item_slot + 1)
+    elif fault == "stale-native-shadow":
+        current = replace(
+            current, snapshot=replace(current.snapshot, food=8),
+        )
+    elif fault == "wrong-owner":
+        owner = pair()[0]
+        owner.intent.complete(
+            "eat-when-hungry", reason="terminal",
+            at_ns=2, provenance=Provenance("test", "terminated"),
+        )
+    elif fault == "prior-move":
+        owner._post_move_settling_unqualified = True
+    elif fault == "shadow-candidate-tampered":
+        shadow = replace(shadow, candidate_item="rotten_flesh")
+    with pytest.raises((Bug0FirstEatShadowRejected, ValueError)):
+        asyncio.run(handoff_authorized_first_eat(
+            owner, session, earlier, current, shadow, propose, issue,
+        ))
+    assert session.commands == []
+    assert owner.supervisor.open_actions == ()
+    assert owner._count == 0
+
+
+def test_first_eat_handoff_is_not_automatically_called_by_s51_shadow():
+    # Code-path contract: the S51 runner must not call the optional
+    # capability without owner-supplied attestable PROPOSE+ISSUE grants.
+    import inspect
+
+    import adapters.mineflayer.s51_eat_real_ci as s51
+
+    source = inspect.getsource(s51.qualify)
+    assert "handoff_authorized_first_eat(" not in source
+    assert "IssuedEatingExecutor().execute(" in source  # legacy S51 path
