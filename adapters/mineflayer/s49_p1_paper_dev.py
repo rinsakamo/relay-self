@@ -70,12 +70,15 @@ def _float(row: dict[str, str], key: str) -> float:
 def inspect_paper_tick_source(
     log: str, *, nonce: str, native_report: dict[str, Any],
     expected_choice: str = "REST",
+    marker_style: str = "legacy",
 ) -> dict[str, Any]:
     """Pure source-shape check, no independent source authenticity promotion."""
     if not re.fullmatch(r"[a-z0-9]{12,32}", nonce):
         raise S49P1SourceRejected("invalid nonce")
-    if expected_choice not in ("REST", "WAIT"):
-        raise S49P1SourceRejected("unsupported source decision")
+    if (expected_choice not in ("REST", "WAIT")
+            or marker_style not in ("legacy", "choice")
+            or (marker_style == "legacy" and expected_choice == "WAIT")):
+        raise S49P1SourceRejected("unsupported source decision marker")
     if (
         native_report.get("status") != "PENDING_NATIVE_JOIN"
         and native_report.get("status") != "PASS"
@@ -99,16 +102,16 @@ def inspect_paper_tick_source(
         _rows(log, key)
         for key in ("START", "REST", "STOP", "FIGHT", "TICK", "CHOICE")
     )
-    markers = rests if expected_choice == "REST" else choices
+    markers = rests if marker_style == "legacy" else choices
     if (
         any(len(v) != 1 for v in (starts, stops, fights, markers))
-        or (expected_choice == "WAIT" and rests)
-        or (expected_choice == "REST" and choices)
+        or (marker_style == "choice" and rests)
+        or (marker_style == "legacy" and choices)
         or not 20 <= len(ticks) <= 480
     ):
         raise S49P1SourceRejected("incomplete or contradictory source brackets")
     start, marker, stop, fight = starts[0], markers[0], stops[0], fights[0]
-    if expected_choice == "WAIT" and marker.get("selected") != "WAIT":
+    if marker_style == "choice" and marker.get("selected") != expected_choice:
         raise S49P1SourceRejected("wrong native L0 choice marker")
     world = start.get("world")
     player_uuid = start.get("player")
@@ -233,12 +236,15 @@ async def run_s49_p1_paper_dev(
     report: dict[str, Any], log_path: Path, *,
     prospective_rest_dev: bool = False,
     p1_checkout: Path | None = None,
+    margin_choice_dev: bool = False,
 ) -> None:
     """One S49 original ATTACK->REST, with server-only source hooks."""
     if not isinstance(session, MineflayerProcessSession):
         raise S49P1SourceRejected("original process required")
     if (
         type(prospective_rest_dev) is not bool
+        or type(margin_choice_dev) is not bool
+        or (margin_choice_dev and not prospective_rest_dev)
         or (prospective_rest_dev and (
             not isinstance(p1_checkout, Path)
             or not p1_checkout.is_absolute()
@@ -265,6 +271,15 @@ async def run_s49_p1_paper_dev(
                 key="REST", nonce=nonce,
             )
 
+        async def mark_choice(selected: str) -> None:
+            if selected not in ("REST", "WAIT"):
+                raise S49P1SourceRejected("unsafe S49 native choice marker")
+            await _send_and_wait(
+                server, log_path,
+                command=f"s49p1choice {nonce} {selected}",
+                key="CHOICE", nonce=nonce,
+            )
+
         async def pre_decision_sensor(probe: object) -> dict[str, Any]:
             # Separate pinned P1 evaluator reads the already published
             # Paper prefix. It has no server command, Body mutation or
@@ -278,12 +293,19 @@ async def run_s49_p1_paper_dev(
                 "--session-id", session.started.session_id,
                 "--probe-seq", str(probe.seq),
             ]
+            if margin_choice_dev:
+                args.extend(["--sensor-policy", "margin"])
             result = await asyncio.to_thread(
                 subprocess.run, args, capture_output=True, text=True,
                 timeout=12, check=True,
             )
             raw = json.loads(result.stdout)
-            if raw.get("request_rest") is not True:
+            if margin_choice_dev:
+                if raw.get("sensor_decision_policy") != "margin":
+                    raise S49P1SourceRejected(
+                        "margin sensor not evaluated before original L0"
+                    )
+            elif raw.get("request_rest") is not True:
                 raise S49P1SourceRejected(
                     "prospective experimental P1 sensor did not request REST"
                 )
@@ -297,6 +319,9 @@ async def run_s49_p1_paper_dev(
         }
         if prospective_rest_dev:
             args["prospective_rest_request"] = pre_decision_sensor
+        if margin_choice_dev:
+            args.pop("rest_intent_hook")
+            args["choice_marker_hook"] = mark_choice
         await run_s49_attack_then_rest_dev(
             session, server, owner, report, **args,
         )
@@ -308,9 +333,12 @@ async def run_s49_p1_paper_dev(
                 key="STOP", nonce=nonce,
             )
     report["status"] = "PENDING_NATIVE_JOIN"
+    selected = report.get("rest_choice", {}).get("selected")
     checked = inspect_paper_tick_source(
         log_path.read_text(encoding="utf-8"),
         nonce=nonce, native_report=report,
+        expected_choice=selected if margin_choice_dev else "REST",
+        marker_style="choice" if margin_choice_dev else "legacy",
     )
     if prospective_rest_dev:
         sensor = report.get("prospective_p1_sensor")
@@ -318,14 +346,16 @@ async def run_s49_p1_paper_dev(
             not isinstance(sensor, dict)
             or sensor.get("source_kind")
                 != "PAPER_PRE_DECISION_CALLBACK_P1_VIRTUAL_SENSOR_DEV"
-            or sensor.get("request_rest") is not True
+            or (not margin_choice_dev and sensor.get("request_rest") is not True)
+            or (margin_choice_dev and
+                sensor.get("request_rest") is not (selected == "REST"))
             or sensor.get("model_default_fatigue_pre_decision") != 0
             or not 0 < sensor.get("model_experimental_fatigue_pre_decision", -1) <= 1
             or sensor.get("paper_source_uuid") != checked["paper_world"]
             or not (
                 checked["paper_fight_callback_tick"]
                 <= sensor["source_as_of_tick"]
-                < checked["paper_rest_marker_tick"]
+                < checked["paper_choice_marker_tick"]
                 <= checked["world_tick_last_callback"]
             )
         ):
@@ -333,9 +363,15 @@ async def run_s49_p1_paper_dev(
                 "late/foreign retrospective REST model sensor cannot be admitted"
             )
         report["prospective_p1_s49_join"] = {
-            "status": "DEV_NONDEFAULT_PROFILE_MODEL_SENSOR_REST_CHOSEN",
+            "status": (
+                "DEV_THRESHOLD_MARGIN_MODEL_SENSOR_NATIVE_CHOICE"
+                if margin_choice_dev
+                else "DEV_NONDEFAULT_PROFILE_MODEL_SENSOR_REST_CHOSEN"
+            ),
             "source_as_of_server_tick": sensor["source_as_of_tick"],
             "rest_marker_server_tick": checked["paper_rest_marker_tick"],
+            "choice_marker_server_tick": checked["paper_choice_marker_tick"],
+            "actual_original_l0_choice": selected,
             "model_fatigue_pre_decision": (
                 sensor["model_experimental_fatigue_pre_decision"]
             ),
