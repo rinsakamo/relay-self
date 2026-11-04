@@ -53,8 +53,16 @@ def sensitivity(reading: float, *, quantum: float = SENSOR_QUANTUM,
     lower = max(0.0, reading - quantum / 2)
     upper = min(1.0, reading + quantum / 2)
     nominal = reading >= threshold
-    guard = lower >= threshold
-    safe = lower >= threshold + margin
+    # Boundary comparisons in binary floats must respect mathematical
+    # equality (e.g. 0.08 - 0.005 == 0.05 + 0.025) without weakening the
+    # explicitly reserved 0.025 DEV safety margin.
+    boundary = threshold + margin
+    guard = lower >= threshold or math.isclose(
+        lower, threshold, abs_tol=1e-12, rel_tol=0,
+    )
+    safe = lower >= boundary or math.isclose(
+        lower, boundary, abs_tol=1e-12, rel_tol=0,
+    )
     return ThresholdChoice(
         reading=reading, quantum=quantum, threshold=threshold, margin=margin,
         admissible_lower=lower, admissible_upper=upper,
