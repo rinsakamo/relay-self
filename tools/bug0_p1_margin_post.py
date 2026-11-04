@@ -69,7 +69,7 @@ def compare_margin(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         or alternate["model_wait_steps"] < 8
         or standard["source_original_l0_choice"] != actual
         or alternate["source_original_l0_choice"] != actual
-        or standard["source_rest_intent_world_tick"] is not (
+        or standard["source_rest_intent_world_tick"] != (
             standard["source_choice_world_tick"] if actual == "REST" else None
         )
         or alternate["original_p1_profile_sha256"]
