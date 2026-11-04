@@ -41,6 +41,7 @@ async def run_s49_attack_dev(
     owner: NormalSessionActionExecutor, report: dict[str, Any],
     *, health_log: Path | None = None,
     before_execute_hook: Callable[[], Awaitable[None]] | None = None,
+    paper_source_sequential: bool = False,
 ) -> AttackActionReceipt:
     if (
         not isinstance(owner, NormalSessionActionExecutor)
@@ -174,6 +175,9 @@ async def run_s49_attack_dev(
     # Independent Minecraft *server-side* Health sample. This is a distinct
     # read-only observation source, not an additional Action or grant. If it
     # fails, stop BEFORE issuing the one irreversible ATTACK.
+    if type(paper_source_sequential) is not bool:
+        raise S49AttackDevRejected("invalid optional server-only Health source mode")
+    health_kw = {"paper_source_sequential": True} if paper_source_sequential else {}
     before_health = None
     nonce = sid.replace("-", "")[:20]
     if health_log is not None:
@@ -182,7 +186,7 @@ async def run_s49_attack_dev(
         )
         report["attack_server_health_drop_observed"] = False
         before_health = await sample_tagged_zombie_health(
-            server, health_log, stage="before", nonce=nonce,
+            server, health_log, stage="before", nonce=nonce, **health_kw,
         )
         report["attack_server_health_before"] = asdict(before_health)
         if before_health.health != 20.0:
@@ -249,7 +253,7 @@ async def run_s49_attack_dev(
         # before/after data sample can show a measured Health difference.
         await asyncio.sleep(1.0)
         after_health = await sample_tagged_zombie_health(
-            server, health_log, stage="after", nonce=nonce,
+            server, health_log, stage="after", nonce=nonce, **health_kw,
         )
         report["attack_server_health_after"] = asdict(after_health)
         damage_drop = before_health.health - after_health.health
