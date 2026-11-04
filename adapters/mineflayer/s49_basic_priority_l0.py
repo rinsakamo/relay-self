@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.normal_action import (
     NormalEatingObservationStatus,
     NormalFoodL0,
@@ -25,6 +26,8 @@ class BasicPriorityDecision:
     fallback: str | None
     food: float
     native_risk: str
+    candidate_item: str | None = None
+    candidate_slot: int | None = None
     action_issued: bool = False
     permission_granted: bool = False
 
@@ -35,6 +38,10 @@ class S49BasicPriorityL0:
     def __init__(self, session_id: str, *, max_decisions: int = 64) -> None:
         self.food = NormalFoodL0(session_id, max_decisions=max_decisions)
         self.session_id = session_id
+
+    def acknowledge_verified_eat(self, receipt: EatingActionReceipt) -> None:
+        """Record only the S49/S51 verified terminal, never mint EAT authority."""
+        self.food.acknowledge_verified_eat(receipt)
 
     def decide(
         self, probe: MineflayerObservation, *, rest_requested: bool = False,
@@ -56,10 +63,17 @@ class S49BasicPriorityL0:
             # No physical MOVE/ATTACK route or verified immediate response
             # is supplied by this policy-only projection.
             zombies = [e for e in probe.snapshot.nearby_entities if e.name == "zombie"]
-            if zombies:
+            close_zombies = [z for z in zombies if z.distance < 4.0]
+            if close_zombies:
                 selected, reason, preferred, fallback = (
                     "DEFER", "ZOMBIE_PRESENT_NO_DEFENSE_ADMISSION",
                     "MOVE_AWAY", "ATTACK",
+                )
+            elif zombies:
+                # The original S49 native movement gate also WAITs at >=4m.
+                # A distant zombie is still not proof of global food safety.
+                selected, reason, preferred, fallback = (
+                    "WAIT", "DISTANT_ZOMBIE_MONITOR", None, None,
                 )
             else:
                 selected, reason, preferred, fallback = (
@@ -84,4 +98,6 @@ class S49BasicPriorityL0:
             session_id=self.session_id, probe_seq=observed.probe_seq,
             selected=selected, reason=reason, preferred=preferred,
             fallback=fallback, food=observed.food, native_risk=risk.value,
+            candidate_item=observed.choice.item_name,
+            candidate_slot=observed.choice.item_slot,
         )

@@ -17,10 +17,10 @@ from adapters.mineflayer.bug0_first_eat_shadow import (
 from adapters.mineflayer.normal_action import (
     NormalActionStage,
     NormalEatingAuthorization,
-    NormalFoodL0,
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
+from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
 from relay_self.provenance import Provenance
 
@@ -36,7 +36,7 @@ def dev_source(ref: str) -> Provenance:
 async def run_s49_food_loop(
     session: object, server: object, owner: NormalSessionActionExecutor,
     report: dict[str, Any],
-) -> None:
+) -> S49BasicPriorityL0:
     """Select EAT from native hunger, issue through S49, then select WAIT.
 
     The original S49 runner owns Java/Node launch/cleanup. This method never
@@ -51,7 +51,7 @@ async def run_s49_food_loop(
     ):
         raise S49FoodLoopRejected("original fresh S49 owner/source required")
     sid = owner.session_id
-    food = NormalFoodL0(sid, max_decisions=20)
+    food = S49BasicPriorityL0(sid, max_decisions=32)
     report["stage"] = "BUG0_S49_NATIVE_FOOD_L0"
     report["food_l0_trace"] = []
     report["food_commands_issued"] = 0
@@ -67,10 +67,11 @@ async def run_s49_food_loop(
         report["food_l0_trace"].append({
             "probe_seq": decision.probe_seq,
             "food": decision.food,
-            "selected": decision.selection,
+            "selected": decision.selected,
             "reason": decision.reason,
-            "risk": decision.risk.value,
-            "item": decision.choice.item_name,
+            "risk": decision.native_risk,
+            "item": decision.candidate_item,
+            "preferred": decision.preferred,
             "s49_action_count": owner._count,
         })
 
@@ -90,7 +91,7 @@ async def run_s49_food_loop(
         )
         decision = food.decide(reading)
         remember(decision)
-        if decision.selection == "EAT":
+        if decision.selected == "EAT":
             before = reading
             break
         if decision.reason not in ("NOT_HUNGRY",):
@@ -105,11 +106,11 @@ async def run_s49_food_loop(
     fresh = await _correlated_observe(session, "s49-bug0-food-l0-preissue")
     selection = food.decide(fresh)
     remember(selection)
-    if selection.selection != "EAT" or selection.choice.item_name != "bread":
+    if selection.selected != "EAT" or selection.candidate_item != "bread":
         raise S49FoodLoopRejected("current source no longer selects bread EAT")
     shadow = inspect_bug0_first_eat_shadow(owner, before, fresh)
     if shadow.candidate_item != "bread" or (
-        shadow.candidate_slot != selection.choice.item_slot
+        shadow.candidate_slot != selection.candidate_slot
     ):
         raise S49FoodLoopRejected("original S49 DEV food candidate changed")
     report["bug0_first_eat_shadow"] = asdict(shadow)
@@ -173,7 +174,7 @@ async def run_s49_food_loop(
     decision = food.decide(post)
     remember(decision)
     report["next_food_decision"] = {
-        "selected": decision.selection,
+        "selected": decision.selected,
         "reason": decision.reason,
         "probe_seq": decision.probe_seq,
         "food": decision.food,
@@ -181,7 +182,7 @@ async def run_s49_food_loop(
     }
     if (
         post.seq <= receipt.outcome.after_probe_seq
-        or decision.selection != "WAIT"
+        or decision.selected != "WAIT"
         or decision.reason != "NOT_HUNGRY"
         or decision.food < 14
         or receipt.outcome.food_after <= receipt.outcome.food_before
@@ -202,3 +203,4 @@ async def run_s49_food_loop(
         "probe_seq": receipt.outcome.after_probe_seq,
     }
     report["physical_eat_executed"] = True
+    return food
