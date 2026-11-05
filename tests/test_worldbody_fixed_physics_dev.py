@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -11,7 +12,12 @@ from adapters.mineflayer.worldbody_direct_selfbody import (
     DirectMoveExperience,
     DirectWorldBodyObservationRejected,
     rest_from_observed_motor_output,
+    direct_move_experience,
 )
+from adapters.mineflayer.normal_action import NormalActionReceipt
+from adapters.mineflayer.execution import WorldConsequenceStatus
+from relay_self.action import ActionState
+from relay_self.provenance import Provenance
 from adapters.mineflayer.worldbody_paper_server import (
     WorldBodyStagingRejected,
     stage_fixed_worldbody,
@@ -42,6 +48,38 @@ def test_direct_move_loss_selects_rest_without_worldbody_truth():
     assert choice.reason == "OBSERVED_MOTOR_OUTPUT_LOSS"
     assert choice.output_ratio == pytest.approx(0.24 / 0.62)
     assert choice.worldbody_truth_accessed is False
+
+
+def test_original_uncorrelated_s16_after_requires_new_native_present():
+    # Reproduce original physical World #41996911111's observed import bug:
+    # the S15 internal after-probe carries no request_id. It is NOT Present.
+    from test_bug0_s49_food_refusal_priority import sample
+
+    correlated = sample(food=20, seq=52)
+    original_after = replace(correlated, seq=49, request_id=None)
+    receipt = NormalActionReceipt(
+        terminal=SimpleNamespace(state=ActionState.OUTCOME, action_id="move-a"),
+        consequence=SimpleNamespace(
+            action_id="move-a", session_id=correlated.session_id,
+            status=WorldConsequenceStatus.EXECUTED,
+            movement_distance=0.4, after_observation=original_after,
+        ),
+        source=Provenance("s49", "original"),
+    )
+    with pytest.raises(DirectWorldBodyObservationRejected):
+        direct_move_experience(receipt, original_after)
+    with pytest.raises(DirectWorldBodyObservationRejected):
+        direct_move_experience(receipt, replace(correlated, seq=49))
+    with pytest.raises(DirectWorldBodyObservationRejected):
+        direct_move_experience(
+            receipt, replace(correlated, session_id="foreign-session")
+        )
+    actual = direct_move_experience(receipt, correlated)
+    assert actual.action_distance_m == 0.4
+    assert actual.native_seq == 52
+    assert actual.source_ref.startswith("native-probe:")
+    assert actual.hidden_worldbody_fatigue_accessed is False
+    assert actual.worldbody_rate_accessed is False
 
 
 def test_direct_output_without_loss_is_wait_not_rest():
