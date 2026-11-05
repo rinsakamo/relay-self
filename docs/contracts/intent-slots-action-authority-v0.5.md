@@ -324,3 +324,72 @@ Keep current S49 sequential MOVE route untouched for compatibility. First add **
 - An emergency L0 Intent/viability guard can override specific competing **channels**, not necessarily revoke all other Intents. Actual cancellation/clear evidence and in-flight outcomes remain independently necessary.
 
 **Architectural correction:** the global invariant is **single authoritative body-issuer per controlled WorldBody**, together with bounded concurrent Intent owners and channel-level arbitration. In general, `Intent count != cognitive slot count != concurrently issued control count != issuer count`. The existing S49 implementation is a narrower serial special case and does not establish a global one-Intent invariant.
+
+---
+
+## 13. A resolution proposal — minimal owner binding and phased acceptance (2026-11-05)
+
+> **PROPOSED / OWNER S #537 REVIEW REQUIRED / NOT DESIGN_ACCEPTED.** Resolve the four review choices from §10 and the additional frame questions from §12.6 conservatively. This is docs-only: no additional authority, real World, model, Action or main change.
+
+### A-R1 — Slot-local cognition is capacity, not a physical Intent owner
+
+A slot is a bounded runtime binding to a cognitive task: task reference, slot instance/generation, current source, deadline and compute admission. Goal, Question, durable Commitment and memories remain at their existing semantic owners. **Do not create an independent IntentCommitment per slot by default.** If a real task demands independent commitment transitions that existing owners cannot express, require Grand Null and owner review; that owner still cannot issue physical Actions.
+
+Slot SUSPEND_REQUESTED fences new output promotion; SUSPENDED does not establish that an LLM/GPU process stopped, a physical Action was cancelled, or its control inputs cleared. Resume requires fresh generation/source and actual resource admission. A Goal surviving restart cannot revive an old runtime slot or in-memory IntentCommitment.
+
+### A-R2 — S49 validates live physical owners, not matching IDs
+
+**A0/A1:** preserve the current one Current Intent per existing S49 IntentCommitment, SkillExecution.start, ActionLifecycle.propose and one open physical primitive guard.
+
+**Future multi-Intent:** multiple independent body-directed commitments may be live, but only owner-created/accepted references from the legitimate S runtime context can bind them to admission. Candidate references require same World/session/body, owner instance and current commitment revision, live Intent ID, source generation, exact capability scope, issuer principal/grant and expiry. **Matching text IDs, user-created owner instances and authority strings are not evidence of legitimacy.** Each effect must validate its own real owner/currentness and scope. Today's single-owner Skill/Action seam must not be bypassed to accept future multi-Intent frames; defer additional effects until a reviewed extension exists.
+
+**Grand Null default:** reuse S49 authority, binding/trace and S14/S15/S16 evidence. No durable PhysicalAdmissionRecord, universal owner registry or second issuer by default. A transient decision-epoch join may group validated references but cannot authorize itself. If existing ExecutionBinding is absent or insufficient, identify exact missing information before creating a new owner.
+
+### A-R3 — Version and reconsideration scopes
+
+Fence future admissions independently on (a) physical context: self instance, world session, body actor, source/native sequence, issuer and scoped grant; and (b) cognitive context: slot instance/generation where applicable, genuine live Intent owner/revision, plan ID/revision, and eventually channel command/lease generation. These are **local generations**, not one global counter. Reject prior-session, stale model output, expired Plan or foreign owner.
+
+Plan revisions record a trigger, predecessor and new future method. They **do not** automatically RELEASE and recommit the same Intent; a material commitment change uses the existing REQUEST_RECONSIDERATION then CONTINUE/RELEASE events with separate provenance. New Plans may not broaden the live Intent's permitted Action scope. Already issued Action history cannot be retrospectively altered.
+
+### A-R4 — Channel conflicts, settling and partial dispatch
+
+**Current:** sequential S49, single in-flight Action. Multiple goals/Intents can remain advisory without implying same-tick physical concurrency.
+
+**Future ControlFrame:** S49 alone validates an exact per-channel capability/conflict map, owner-scoped authority, cross-channel dependencies, bounded control leases and deadlines. Reserve compatible resources at the one issuer before dispatch. A frame is a source/correlation/admission envelope, **not automatically one atomic ActionLifecycle**. Record which channel effects were issued/ACKed/cleared and what each independently observed; any failed/UNKNOWN part forbids a frame-wide success claim. Discrete ATTACK-like pulses are not replayed after uncertainty.
+
+Action OUTCOME, S15 clear, input release and post-clear physical settling are distinct. Keep conflicting resources unavailable until sufficient same-session original clear/input/settling evidence, or conservatively UNKNOWN. A fixed eight-tick sample is not universal proof of quiescence. L0 emergency may fence new conflicting output and ask the sole issuer for supported stop/clear, but cannot retroactively cancel a pulse or assert physical stoppage without evidence.
+
+### A-R5 — Admission order
+
+1. Read current World/session/body and qualified source, then require a valid observation/currentness window.
+2. Validate producer generation, live Intent owner from authentic S context, Plan revision, required capability and bounded deadline.
+3. Validate exact physical issuer principal, scoped grant and each effect's actual channel/resources; reject untrusted authority strings.
+4. Validate current Skill/Action lifecycle association and existing open Action/lease/settling conflicts; a proposed ControlFrame cannot override current S49's single-Action rule.
+5. If invalid: DENY without issue. If temporarily unavailable/UNKNOWN: DEFER or fail closed, preserving original unresolved evidence and never inventing success.
+6. At the existing issuer only, reserve and issue admitted effects via established S49/S14/S15/S16; supervise separately to OUTCOME/TIMEOUT/UNKNOWN, then release resources on actual clear/settling evidence.
+
+This is a **contract algorithm sketch**, not an executable API.
+
+### Extra negative tests (A-21–A-30)
+
+| ID | Negative control | Required behavior |
+| --- | --- | --- |
+| A-21 | L2 slot constructs same textual Intent ID as S49 | No physical authority |
+| A-22 | Old slot generation or another World session | No new issuance |
+| A-23 | New Plan with unchanged live Intent | Future method changes without silent Intent replacement |
+| A-24 | Two live candidates with existing single-owner S49 | Second deferred; no forged composite owner |
+| A-25 | S15 clear / S16 OUTCOME yet post-clear motion continues | Physical resource not declared quiescent |
+| A-26 | One channel issued, another failed/unknown | No frame-wide success; per-effect provenance |
+| A-27 | Logical L2 cancellation but backend still busy | New output fenced; resources not falsely released |
+| A-28 | Emergency L0 conflicts with in-flight pulse/held control | Fence future issue; explicit stop/clear evidence |
+| A-29 | Fabricated authority or independently constructed same-ID owner | Reject before Action admission |
+| A-30 | Expired control lease, capability map or unsettled input | No conflicting new issue |
+
+### Owner handoff and acceptance
+
+- **A-D0 DESIGN:** review R1–R5 and A-01–A-30 against actual S49 owner, executable Intent/Skill/Action contracts and DEV evidence; mark A DESIGN_ACCEPTED only after S owner agreement. Physical concurrency need **not** be implemented to accept an architectural contract.
+- **A-I0 OFFLINE:** validate owner/source/generation rejection and Plan/suspension semantics without a World or new physical Action.
+- **A-I1 SERIAL PRODUCT:** attach multiple cognitive Goal/Intent candidates to the unchanged single-owner S49 sequential adapter; report accepted/deferred candidates and next-epoch outcomes.
+- **A-I2 FUTURE:** review multi-live body-directed owner representation and per-channel primitive mapping; verify offline frames before any opt-in DEV World; never infer atomic same-tick operation.
+
+**Safety stop:** when live owner/currentness or quiescence cannot be established, stay on the existing sequential S49 path. Contract A does not approve Memory/Learning updates, energy debits, real-world grants or qualification claims.
