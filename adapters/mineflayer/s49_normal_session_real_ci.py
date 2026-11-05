@@ -322,6 +322,7 @@ async def qualify(
     bug0_p1_paper_dev: bool = False,
     bug0_p1_prospective_rest_dev: bool = False,
     bug0_p1_margin_dev: bool = False,
+    worldbody_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -434,7 +435,7 @@ async def qualify(
             or (bug0_p1_paper_dev and (
                 os.environ.get("S49_BUG0_P1_PAPER_DEV_ONLY") != "1"
                 or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev
-                or bug0_rest_dev or bug0_attack_rest_dev
+                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev
                 or bug0_attack_health_dev or bug0_attack_dev
                 or bug0_food_loop_dev or bug0_food_refusal_dev
                 or bug0_unified_survival_dev or bug0_eat_shadow
@@ -450,7 +451,7 @@ async def qualify(
                 or os.environ.get("S49_BUG0_P1_PROSPECTIVE_REST_ONLY") != "1"
                 or not os.environ.get("S49_P1_ORIGINAL_CHECKOUT", "").startswith("/")
                 or bug0_p1_paper_dev or bug0_p1_margin_dev
-                or bug0_rest_dev or bug0_attack_rest_dev or bug0_attack_health_dev
+                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev or bug0_attack_health_dev
                 or bug0_attack_dev or bug0_food_loop_dev
                 or bug0_food_refusal_dev or bug0_unified_survival_dev
                 or bug0_eat_shadow or stage_r_dev or completed_l0_dev
@@ -467,7 +468,7 @@ async def qualify(
                 or os.environ.get("S49_BUG0_P1_MARGIN_DEV_ONLY") != "1"
                 or not os.environ.get("S49_P1_ORIGINAL_CHECKOUT", "").startswith("/")
                 or bug0_p1_paper_dev or bug0_p1_prospective_rest_dev
-                or bug0_rest_dev or bug0_attack_rest_dev
+                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev
                 or bug0_attack_health_dev or bug0_attack_dev
                 or bug0_unified_survival_dev or bug0_eat_shadow
                 or bug0_food_loop_dev or bug0_food_refusal_dev
@@ -476,10 +477,32 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("exclusive S49 P1 margin DEV gate required")
+        if (
+            type(worldbody_dev) is not bool
+            or (worldbody_dev and (
+                os.environ.get("S49_WORLDBODY_DEV_ONLY") != "1"
+                or bug0_p1_paper_dev or bug0_p1_prospective_rest_dev
+                or bug0_p1_margin_dev or bug0_attack_rest_dev
+                or bug0_rest_dev or bug0_attack_health_dev
+                or bug0_attack_dev or bug0_eat_shadow
+                or bug0_food_loop_dev or bug0_food_refusal_dev
+                or bug0_unified_survival_dev or stage_r_dev or completed_l0_dev
+                or completed_l0 is not None or live_probe is not None
+            ))
+        ):
+            raise S31ABlocked(
+                "one original S49 WorldBody owner and exclusive DEV World gate required"
+            )
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        if bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
+        if worldbody_dev:
+            from adapters.mineflayer.worldbody_paper_server import (
+                stage_fixed_worldbody,
+            )
+
+            report.update(await asyncio.to_thread(stage_fixed_worldbody, root))
+        elif bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
             from adapters.mineflayer.s49_p1_paper_server import stage_paper_dev
 
             report.update(await asyncio.to_thread(stage_paper_dev, root))
@@ -669,6 +692,7 @@ async def qualify(
         # Exact S16 Action receipts, captured only AFTER the original executor
         # has completed and checked its terminal outcome. Optional diagnostic.
         closed_receipts = {}
+        worldbody_experiences = []
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -831,6 +855,14 @@ async def qualify(
                 })
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
+            if worldbody_dev:
+                # Only original native S16 + SelfBody Present, NEVER server
+                # WorldBody truth, model fatigue, or operator log.
+                from adapters.mineflayer.worldbody_direct_selfbody import (
+                    direct_move_experience,
+                )
+
+                worldbody_experiences.append(direct_move_experience(receipt))
             if completed_l0 is not None or completed_l0_dev:
                 closed_receipts[step.action_request_id] = receipt
             report["actual_native_actions"].append({
@@ -901,6 +933,80 @@ async def qualify(
             or host.events != 3
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
+        if worldbody_dev:
+            from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
+            from adapters.mineflayer.s49_rest_dev import inspect_rest_native_samples
+            from adapters.mineflayer.worldbody_direct_selfbody import (
+                rest_from_observed_motor_output,
+            )
+
+            if (
+                len(worldbody_experiences) != 2
+                or len(report["actual_native_actions"]) != 2
+                or executor._count != 2 or executor.supervisor.open_actions
+            ):
+                raise S49PhysicalFailure("WorldBody needs two original S16 MOVE outcomes")
+            decision = rest_from_observed_motor_output(*worldbody_experiences)
+            report["worldbody_direct_motor_observations"] = [{
+                "session_id": x.session_id,
+                "action_id": x.action_id,
+                "native_seq": x.native_seq,
+                "action_distance_m": x.action_distance_m,
+                "source_ref": x.source_ref,
+                "observed_fields": list(x.observed_fields),
+                "hidden_worldbody_fatigue_accessed": False,
+                "worldbody_rate_accessed": False,
+            } for x in worldbody_experiences]
+            report["worldbody_direct_rest_request"] = {
+                "session_id": decision.session_id,
+                "first_action_id": decision.first_action_id,
+                "last_action_id": decision.last_action_id,
+                "first_move_m": decision.first_move_m,
+                "last_move_m": decision.last_move_m,
+                "output_ratio": decision.output_ratio,
+                "rest_requested": decision.rest_requested,
+                "reason": decision.reason,
+                "worldbody_truth_accessed": False,
+            }
+            report["worldbody_true_fatigue_received_by_self"] = False
+            report["worldbody_physics_write_from_self"] = False
+            report["stage"] = "WORLDBODY_POST_MOVE_L0_AND_REST"
+            _command(server, "kill @e[type=!minecraft:player]")
+            await server.stdin.drain()
+            await asyncio.sleep(2.0)
+            baseline = await _correlated_observe(
+                session, f"worldbody-rest-{sid}-baseline"
+            )
+            rest_choice = S49BasicPriorityL0(sid).decide(
+                baseline, rest_requested=decision.rest_requested,
+            )
+            report["worldbody_postmove_l0_choice"] = {
+                "selected": rest_choice.selected,
+                "reason": rest_choice.reason,
+                "preferred": rest_choice.preferred,
+                "probe_seq": rest_choice.probe_seq,
+                "native_source_ref": baseline.provenance.reference,
+                "rest_action_issued": rest_choice.action_issued,
+            }
+            if (
+                not decision.rest_requested or rest_choice.selected != "REST"
+                or rest_choice.action_issued or rest_choice.permission_granted
+            ):
+                raise S49PhysicalFailure(
+                    "physical motor loss not observed or original L0 REST declined"
+                )
+            stationary = [baseline]
+            for index in range(8):
+                await asyncio.sleep(4.0)
+                stationary.append(await _correlated_observe(
+                    session, f"worldbody-rest-{sid}-{index:02d}",
+                ))
+            report["worldbody_rest_native_observation"] = (
+                inspect_rest_native_samples(stationary, session_id=sid)
+            )
+            report["worldbody_rest_action_count"] = 0
+            report["worldbody_physics_verified_from_server_log"] = False
+            report["worldbody_rest_choice_is_not_physical_recovery_proof"] = True
         if unified_policy is not None:
             actions = report["actual_native_actions"]
             if (
@@ -1102,6 +1208,7 @@ def main() -> int:
     parser.add_argument("--bug0-p1-paper-dev", action="store_true")
     parser.add_argument("--bug0-p1-prospective-rest-dev", action="store_true")
     parser.add_argument("--bug0-p1-margin-dev", action="store_true")
+    parser.add_argument("--worldbody-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1116,6 +1223,7 @@ def main() -> int:
         bug0_p1_paper_dev=args.bug0_p1_paper_dev,
         bug0_p1_prospective_rest_dev=args.bug0_p1_prospective_rest_dev,
         bug0_p1_margin_dev=args.bug0_p1_margin_dev,
+        worldbody_dev=args.worldbody_dev,
     ))
 
 
