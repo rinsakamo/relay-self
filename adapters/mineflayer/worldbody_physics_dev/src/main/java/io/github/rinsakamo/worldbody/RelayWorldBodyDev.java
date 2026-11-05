@@ -9,6 +9,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 /**
  * Isolated DEV physical WorldBody. This is server-side authority, not a
@@ -27,6 +29,7 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     private static final double NORMAL_AGAIN_AT = 0.05;
     private static final float NORMAL_WALK_SPEED = 0.20f;
     private static final float SLOW_WALK_SPEED = 0.08f;
+    private static final int SLOWNESS_AMPLIFIER = 4; // server-owned Slowness V
     private static final double MOVE_EPSILON = 0.005;
     private static final double MAX_ONE_EVENT_HORIZONTAL_MOVEMENT = 1.0;
 
@@ -105,15 +108,29 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
         if (!slowed && fatigue >= SLOW_AT) {
             slowed = true;
             p.setWalkSpeed(SLOW_WALK_SPEED);
+            // The server walk-speed ability alone was NOT reflected by the
+            // pinned Mineflayer 4.39 client: both native MOVE outcomes were
+            // 0.62690657 m in original World #41999248107 despite 0.08 walk
+            // speed. The World therefore also applies an actual vanilla
+            // Slowness effect (network-replicated physical constraint).
+            p.addPotionEffect(new PotionEffect(
+                PotionEffectType.SLOWNESS, 12000, SLOWNESS_AMPLIFIER,
+                true, false, false
+            ));
             getLogger().info("WORLDBODY_EFFECT world=" + world
                 + " player=" + owner + " tick=" + now
-                + " change=DEGRADED actual_walk_speed=" + p.getWalkSpeed());
+                + " change=DEGRADED actual_walk_speed=" + p.getWalkSpeed()
+                + " native_effect=SLOWNESS_V"
+                + " potion_active=" + p.hasPotionEffect(PotionEffectType.SLOWNESS));
         } else if (slowed && fatigue <= NORMAL_AGAIN_AT) {
             slowed = false;
             p.setWalkSpeed(NORMAL_WALK_SPEED);
+            p.removePotionEffect(PotionEffectType.SLOWNESS);
             getLogger().info("WORLDBODY_EFFECT world=" + world
                 + " player=" + owner + " tick=" + now
-                + " change=RECOVERED actual_walk_speed=" + p.getWalkSpeed());
+                + " change=RECOVERED actual_walk_speed=" + p.getWalkSpeed()
+                + " native_effect=NONE"
+                + " potion_active=" + p.hasPotionEffect(PotionEffectType.SLOWNESS));
         }
         if (now % 5 == 0 || travelled >= MOVE_EPSILON) {
             // Operator-only server truth log, NEVER a SelfBody input.
@@ -149,6 +166,7 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         if (TARGET.equals(e.getPlayer().getName())) {
             e.getPlayer().setWalkSpeed(NORMAL_WALK_SPEED);
+            e.getPlayer().removePotionEffect(PotionEffectType.SLOWNESS);
             initialized = false;
         }
     }
@@ -156,6 +174,9 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         Player p = target();
-        if (p != null) p.setWalkSpeed(NORMAL_WALK_SPEED);
+        if (p != null) {
+            p.setWalkSpeed(NORMAL_WALK_SPEED);
+            p.removePotionEffect(PotionEffectType.SLOWNESS);
+        }
     }
 }
