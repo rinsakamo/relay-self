@@ -123,6 +123,15 @@ def test_world_authoritative_physics_never_exposes_self_mutation_or_sensor():
     assert "STILL_RECOVERY_PER_SERVER_TICK = 0.003" in code
     assert "p.setWalkSpeed(SLOW_WALK_SPEED)" in code
     assert "p.setWalkSpeed(NORMAL_WALK_SPEED)" in code
+    # Original real World #41999248107 showed a server-only walk-speed
+    # attribute change, but the client still moved 0.62690657 m twice.
+    # The physical World must transmit a native movement constraint too.
+    assert "PotionEffectType.SLOWNESS" in code
+    assert "SLOWNESS_AMPLIFIER = 4" in code
+    assert "p.addPotionEffect(new PotionEffect(" in code
+    assert "p.removePotionEffect(PotionEffectType.SLOWNESS)" in code
+    assert "native_effect=SLOWNESS_V" in code
+    assert "potion_active=" in code
     assert "getConfig().getDouble" not in code
     assert "getConfig().getInt" not in code
     assert "onCommand(" not in code
