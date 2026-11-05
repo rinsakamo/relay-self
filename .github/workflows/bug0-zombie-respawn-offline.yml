@@ -1,0 +1,47 @@
+name: Bug-0 World-owned zombie 600-tick respawn offline
+on:
+  push:
+    branches:
+      - dev/bug0-zombie-respawn-30s-20261105
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug0-zombie-respawn-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact DEV branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Original repo contract
+        run: python tools/check_repository.py
+      - name: Pure 600-tick state-machine boundary and negative tests
+        run: |
+          mkdir -p /tmp/relay-respawn-test
+          javac --release 21 -d /tmp/relay-respawn-test \
+            adapters/mineflayer/zombie_respawn_dev/src/main/java/io/github/rinsakamo/respawn/RespawnCycle.java \
+            adapters/mineflayer/zombie_respawn_dev/src/test/java/io/github/rinsakamo/respawn/RespawnCycleTest.java
+          java -ea -cp /tmp/relay-respawn-test io.github.rinsakamo.respawn.RespawnCycleTest
+      - name: Compile isolated Paper 1.21.8 DEV plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/zombie_respawn_dev/target/relay-zombie-respawn-dev-0.1.0-dev.jar
+      - name: No World or Self-side capability granted
+        run: echo 'DEV_OFFLINE_ONLY WORLD_0 ACTION_0 NO_S49_CHANGE NO_WORLD_RULE_WRITE_FROM_SELF'

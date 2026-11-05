@@ -1,0 +1,5 @@
+# Disabled unless an independently approved disposable Paper DEV World opts in.
+# The 600-tick physical delay and spawn rules are server-side constants.
+# This file does not expose any Self-side timer/rate/API.
+dev-enabled: false
+target-player: RelaySelf
