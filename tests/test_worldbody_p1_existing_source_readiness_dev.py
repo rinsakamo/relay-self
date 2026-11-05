@@ -79,8 +79,8 @@ def test_existing_inspector_rejects_bad_source_before_any_p1_frame(variant):
     scope = native()
     if variant == "gapped-tick":
         log = "\n".join(
-            l for l in log.splitlines() if "S49P1_TICK " not in l
-            or "tick=120 " not in l
+            line for line in log.splitlines() if "S49P1_TICK " not in line
+            or "tick=120 " not in line
         )
     elif variant == "foreign-world":
         log = log.replace("world=11111111-2222-3333-4444-555555555555 tick=120",
@@ -91,7 +91,8 @@ def test_existing_inspector_rejects_bad_source_before_any_p1_frame(variant):
             "tick=122 index=22 x=2.5 y=-60.0 z=0.5 move_events=0 move_distance=0.0 fight_events=0 swing_events=1",
         )
     elif variant == "missing-fight":
-        log = "\n".join(l for l in log.splitlines() if "S49P1_FIGHT " not in l)
+        log = "\n".join(line for line in log.splitlines()
+                        if "S49P1_FIGHT " not in line)
     elif variant == "foreign-original-action":
         scope["actual_native_actions"][0]["terminal"] = "unknown"
     else:
@@ -102,6 +103,7 @@ def test_existing_inspector_rejects_bad_source_before_any_p1_frame(variant):
 
 def test_no_worldbody_or_p1_physics_write_implicit_in_source_adapter():
     import inspect
+
     import adapters.mineflayer.worldbody_p1_source_candidates as module
 
     code = inspect.getsource(module)
