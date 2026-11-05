@@ -4,3 +4,13 @@ version: '0.1.0-dev'
 api-version: '1.21.8'
 description: 'Isolated World-owned fixed physical movement/rest mechanism; no Self knobs'
 load: POSTWORLD
+commands:
+  p1bodyarm:
+    usage: '/p1bodyarm <original-session-nonce>'
+    description: 'Console-only DEV start of pinned P1 World-owned physical source'
+  p1bodyaction:
+    usage: '/p1bodyaction <nonce> <begin|closed> <original-action-token>'
+    description: 'Console-only original S49 lifecycle witness; cannot issue MOVE or tune P1'
+  p1bodystop:
+    usage: '/p1bodystop <nonce>'
+    description: 'Console-only seal P1 World physical DEV source'

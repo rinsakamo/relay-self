@@ -10,6 +10,8 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -35,6 +37,7 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     private static final double MOVE_EPSILON = 0.005;
     private static final double MAX_ONE_EVENT_HORIZONTAL_MOVEMENT = 1.0;
 
+    private P1PaperPhysicalRuntimeDev p1Physical = null;
     private boolean enabledForDev = false;
     private boolean initialized = false;
     private double fatigue = 0;
@@ -54,6 +57,22 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
         if (!TARGET.equals(getConfig().getString("target-player"))
                 || !Bukkit.getMinecraftVersion().equals("1.21.8")) {
             throw new IllegalStateException("unqualified WorldBody DEV World");
+        }
+        if (getConfig().getBoolean("p1-law-dev-enabled", false)) {
+            // Separate exclusive physical law, immutable pinned original P1.
+            // Legacy fixed-hysteresis WorldBody is NOT activated in this mode.
+            p1Physical = new P1PaperPhysicalRuntimeDev(this);
+            Bukkit.getPluginManager().registerEvents(p1Physical, this);
+            Bukkit.getScheduler().runTaskTimer(
+                    this, p1Physical::worldTick, 1L, 1L
+            );
+            getLogger().info("P1WORLD_READY original_p1="
+                    + P1WorldTickGateDev.ORIGINAL_P1_HEAD
+                    + " profile=" + P1WorldTickGateDev.ORIGINAL_ENABLED_PROFILE_SHA
+                    + " legacy_worldbody_active=false"
+                    + " world_rates_self_mutable=false"
+                    + " source_qualification=DEV_UNATTESTED");
+            return;
         }
         enabledForDev = true;
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -195,7 +214,17 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     }
 
     @Override
+    public boolean onCommand(CommandSender sender, Command command,
+                             String alias, String[] args) {
+        return p1Physical != null && p1Physical.command(sender, command, args);
+    }
+
+    @Override
     public void onDisable() {
+        if (p1Physical != null) {
+            p1Physical.close();
+            return;
+        }
         Player p = target();
         if (p != null) {
             p.setWalkSpeed(NORMAL_WALK_SPEED);
