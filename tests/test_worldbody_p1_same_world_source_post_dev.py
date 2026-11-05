@@ -224,3 +224,25 @@ def test_reused_read_only_collector_has_no_new_world_action_or_fatigue_write():
     assert "p1_source_bound_tick_admitted_count" not in runner
     assert "P1FatigueLaw.advance(" not in plugin
     assert "p.setWalkSpeed(" not in plugin
+
+def test_real_world_stop_source_can_seal_after_node_quit_before_world_shutdown():
+    """Regression for World #42032607432: read-only STOP was rejected on quit."""
+    plugin = Path(
+        "adapters/mineflayer/s49_p1_paper_dev/src/main/java/"
+        "io/github/rinsakamo/relays49p1/S49P1SourcePlugin.java"
+    ).read_text(encoding="utf-8")
+    runner = Path("adapters/mineflayer/s49_normal_session_real_ci.py").read_text()
+    stop = plugin.index('if (cmd.equals("s49p1stop"))')
+    present_check = plugin.index("Player p = player();", stop)
+    assert stop < present_check  # sealing requires retained nonce, not online p
+    assert "!nonce.equals(args[0]) || pendingAction != null" in plugin
+    assert "armed = false;" in plugin[stop:present_check]
+    marker = '_command(server, f"s49p1stop {p1_same_world_nonce}")'
+    assert marker in runner
+    section = runner[runner.index(marker):]
+    assert section.index("await server.stdin.drain()") < (
+        section.index("await asyncio.sleep(0.75)")
+    )
+    assert section.index("await asyncio.sleep(0.75)") < (
+        section.index('report["worldbody_p1_source_wait_attested"] = False')
+    )
