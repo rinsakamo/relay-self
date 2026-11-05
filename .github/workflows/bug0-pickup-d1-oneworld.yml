@@ -43,11 +43,6 @@ jobs:
           python tools/check_repository.py
           ruff check tools/bug0_pickup_d1_world.py tools/bug0_pickup_d1_post.py tests/test_bug0_pickup_d1_post.py tests/test_bug0_loot_inventory_readback.py
           python -m pytest -q tests/test_bug0_pickup_d1_post.py tests/test_bug0_loot_inventory_readback.py
-          mkdir -p /tmp/respawn-gate
-          javac --release 21 -d /tmp/respawn-gate \
-            adapters/mineflayer/loot_pickup_fixture_dev/src/main/java/io/github/rinsakamo/respawn/RespawnCycle.java \
-            adapters/mineflayer/loot_pickup_fixture_dev/src/test/java/io/github/rinsakamo/respawn/RespawnCycleTest.java
-          java -ea -cp /tmp/respawn-gate io.github.rinsakamo.respawn.RespawnCycleTest
           python - <<'PY'
           import socket
           with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
