@@ -1,0 +1,6 @@
+name: RelayZombieRespawnDev
+main: io.github.rinsakamo.respawn.RelayZombieRespawnDev
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'World-owned DEV zombie death -> 600 world ticks -> one new real entity; no Self control surface'
+load: POSTWORLD
