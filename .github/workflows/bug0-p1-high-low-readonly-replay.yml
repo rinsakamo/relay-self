@@ -1,0 +1,160 @@
+name: Bug-0 P1 high REST versus low WAIT original artifact read-only replay
+on:
+  push:
+    branches:
+      - dev/bug0-p1-high-low-margin-20261105
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  replay:
+    if: ${{ github.event.head_commit.message == 'run-bug0-p1-high-postread-once-20261105' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_P1_ORIGINAL_CHECKOUT: ${{ github.workspace }}/p1-original
+    steps:
+      - name: Checkout corrected read-only evaluator only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Frozen original P1 repository — never modify
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Read original one-World HIGH artifact — never rerun ATTACK
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-p1-high-rest-one-world
+          run-id: 41947095526
+          github-token: ${{ github.token }}
+          path: p1-high
+      - name: Read original one-World LOW artifact — never rerun ATTACK
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-p1-sensor-margin-one-world
+          run-id: 41927124487
+          github-token: ${{ github.token }}
+          path: p1-low
+      - name: Frozen originals and P1 exact model audit
+        run: |
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          (cd p1-high && sha256sum --check SHA256SUMS.txt)
+          (cd p1-low && sha256sum --check SHA256SUMS.txt)
+          python tools/check_repository.py
+      - name: Read-only paired replay from immutable original worlds
+        run: |
+          mkdir -p replay-evidence
+          python -B tools/bug0_p1_margin_post.py \
+            --report p1-high/s49_p1_paper_world.json \
+            --paper-log p1-high/paper_original.log \
+            --p1-checkout p1-original \
+            --out replay-evidence/high_model_replay.json
+          python -B tools/bug0_p1_margin_post.py \
+            --report p1-low/s49_p1_paper_world.json \
+            --paper-log p1-low/paper_original.log \
+            --p1-checkout p1-original \
+            --out replay-evidence/low_model_replay.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          high=json.loads(Path('replay-evidence/high_model_replay.json').read_text())
+          low=json.loads(Path('replay-evidence/low_model_replay.json').read_text())
+          rh=json.loads(Path('p1-high/s49_p1_paper_world.json').read_text())
+          rl=json.loads(Path('p1-low/s49_p1_paper_world.json').read_text())
+          assert high['classification']==low['classification']=='DEV_P1_SENSOR_MARGIN_SOURCE_CAUSAL_COMPARISON'
+          assert high['original_p1_commit']==low['original_p1_commit']=='0ab76b4e46efd914877e543a65de58b6cfc71326'
+          assert high['experimental_wait_recovery_per_tick']==0.001
+          assert low['experimental_wait_recovery_per_tick']==0.002
+          assert high['original_s49_session_id']!=low['original_s49_session_id']
+          assert high['source_world_uuid']!=low['source_world_uuid']
+          assert high['original_s49_l0_selected']=='REST'
+          assert low['original_s49_l0_selected']=='WAIT'
+          assert high['safety_margin_rest'] is True
+          assert low['safety_margin_rest'] is False
+          assert high['nominal_rest_shadow'] is True
+          assert low['nominal_rest_shadow'] is True
+          assert high['experimental_P1_model_fatigue_predecision']>0.08
+          assert 0<low['experimental_P1_model_fatigue_predecision']<0.05
+          assert high['default_P1_model_fatigue_predecision']==0
+          assert low['default_P1_model_fatigue_predecision']==0
+          for r,p in ((rh,high),(rl,low)):
+              assert r['status']=='PASS'
+              assert r['s49_dev_server']=='PINNED_PAPER_1_21_8'
+              assert len(r['actual_native_actions'])==1
+              assert r['actual_native_actions'][0]['kind']=='ATTACK'
+              assert r['actual_native_actions'][0]['terminal']=='outcome'
+              assert r['rest_action_issued'] is False
+              assert r['attack_server_health_drop_observed'] is True
+              assert r['attack_server_health_before']['health']==20
+              assert 19<r['attack_server_health_after']['health']<20
+              assert r['rest_observation']['sample_count']==9
+              assert r['p1_paper_tick_source']['paper_selected_intent']==p['original_s49_l0_selected']
+              assert p['source_as_of_predecision_tick']<p['source_choice_marker_tick']
+              assert p['source_future_tick_used_for_decision'] is False
+              assert p['one_native_attack_and_no_post_choice_action'] is True
+              assert p['source_full_tick_independently_attested'] is False
+              assert p['P1_real_fatigue_measured'] is False
+              assert p['P1_runtime_body_state_installed'] is False
+              assert p['m_energy_credit_or_waiver'] is False
+              assert p['qualification_go'] is False and p['science_run'] is False
+              assert r['node_exit']==0 and r['server_exit']==0
+          summary={
+              'classification':'DEV_TWO_DISPOSABLE_PAPER_WORLDS_VIRTUAL_P1_RATE_CONTRAST',
+              'original_p1_exact_commit':high['original_p1_commit'],
+              'high_source_run_id':41947095526,
+              'low_source_run_id':41927124487,
+              'high_original_s49_session':high['original_s49_session_id'],
+              'low_original_s49_session':low['original_s49_session_id'],
+              'high_model_fatigue_predecision':high['experimental_P1_model_fatigue_predecision'],
+              'low_model_fatigue_predecision':low['experimental_P1_model_fatigue_predecision'],
+              'high_dev_wait_recovery_rate':0.001,
+              'low_dev_wait_recovery_rate':0.002,
+              'high_original_l0_choice':'REST',
+              'low_original_l0_choice':'WAIT',
+              'same_exact_original_P1_evaluator':True,
+              'same_recovery_rate_between_conditions':False,
+              'different_paper_worlds_and_sessions':True,
+              'source_original_hash_check':'PASS',
+              'original_attacks_per_world':1,
+              'source_future_decision_leak':False,
+              'p1_actual_physical_fatigue_measured':False,
+              'p1_full_world_tick_attested_by_independent_R':False,
+              'original_p1_live_owner_integrated':False,
+              'physical_survival_advantage_proven':False,
+              'qualification_go':False,
+              'science_run':False,
+          }
+          Path('replay-evidence/paired_high_low_comparison.json').write_text(
+              json.dumps(summary,sort_keys=True,indent=2)+'\n')
+          print('ORIGINAL_HIGH_REST_AND_LOW_WAIT_READ_ONLY_PAIRED_DEV_PASS')
+          print('HIGH='+str(summary['high_model_fatigue_predecision']))
+          print('LOW='+str(summary['low_model_fatigue_predecision']))
+          PY
+      - name: Preserve raw source SHA manifests unchanged with new comparison
+        if: always()
+        run: |
+          mkdir -p replay-evidence/high-original replay-evidence/low-original
+          cp -n p1-high/* replay-evidence/high-original/ 2>/dev/null || true
+          cp -n p1-low/* replay-evidence/low-original/ 2>/dev/null || true
+          (cd replay-evidence && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+      - name: Publish independent read-only comparison and both originals
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug0-p1-two-worlds-readonly-high-rest-low-wait
+          path: replay-evidence/
+          if-no-files-found: warn
+          retention-days: 30
