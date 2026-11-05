@@ -1070,7 +1070,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES"
+            "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
+            if worldbody_dev
+            else "DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES"
             if unified_policy is not None
             else "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
             if stage_r is not None
