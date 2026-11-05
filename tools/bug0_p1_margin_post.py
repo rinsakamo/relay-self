@@ -15,12 +15,14 @@ from tools.bug0_s49_p1_paper_model_eval import evaluate_source
 
 
 def compare_margin(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
-    if (
-        report.get("status") != "PASS"
-        or report.get("classification")
-            != "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE"
-    ):
-        raise ValueError("one original margin DEV World required")
+    mode = report.get("classification")
+    rates = {
+        "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE": 0.002,
+        "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE": 0.001,
+    }
+    if report.get("status") != "PASS" or mode not in rates:
+        raise ValueError("one original rate-bound margin DEV World required")
+    expected_rate = rates[mode]
     sensor = report.get("prospective_p1_sensor")
     joined = report.get("prospective_p1_s49_join")
     actual = report.get("rest_choice", {}).get("selected")
@@ -36,7 +38,7 @@ def compare_margin(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         or joined.get("actual_original_l0_choice") != actual
         or joined.get("source_future_read_for_decision") is not False
         or joined.get("independent_physical_fatigue_recovery") is not False
-        or sensor.get("experimental_wait_recovery_per_tick") != 0.002
+        or sensor.get("experimental_wait_recovery_per_tick") != expected_rate
         or sensor.get("original_default_wait_recovery_per_tick") != 0.1
         or not isinstance(sensor.get("sensitivity"), dict)
     ):
@@ -54,7 +56,8 @@ def compare_margin(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         raise ValueError("L0 choice did not follow frozen margin sensor")
     standard = evaluate_source(report, paper_log, p1_checkout=p1_checkout)
     alternate = evaluate_source(
-        report, paper_log, p1_checkout=p1_checkout, experimental_wait_rate=0.002,
+        report, paper_log, p1_checkout=p1_checkout,
+        experimental_wait_rate=expected_rate,
     )
     if (
         standard["source_world_uuid"] != alternate["source_world_uuid"]
@@ -117,6 +120,8 @@ def compare_margin(report: dict, paper_log: str, *, p1_checkout: Path) -> dict:
         "source_as_of_predecision_tick": as_of,
         "source_choice_marker_tick": boundary,
         "source_callback_tick_rows": standard["source_tick_callback_count"],
+        "experimental_wait_recovery_per_tick": expected_rate,
+        "experimental_profile_mode": mode,
         "sensor_quantum": table.quantum,
         "base_threshold": table.threshold,
         "uncertainty_lower_bound": table.admissible_lower,
