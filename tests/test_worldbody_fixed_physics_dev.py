@@ -132,6 +132,15 @@ def test_world_authoritative_physics_never_exposes_self_mutation_or_sensor():
     assert "p.removePotionEffect(PotionEffectType.SLOWNESS)" in code
     assert "native_effect=SLOWNESS_V" in code
     assert "potion_active=" in code
+    # The two preceding real Worlds still showed identical S16 movement
+    # despite server walkSpeed and potion Slowness V. The physical destination
+    # itself must be constrained by Paper; Self still cannot adjust this.
+    assert "DEGRADED_SERVER_MOVE_FACTOR = 0.35" in code
+    assert "EventPriority.HIGHEST" in code
+    assert "e.setTo(adjusted)" in code
+    assert "WORLDBODY_RESTRICT world=" in code
+    assert "PLAYER_MOVE_DESTINATION" in code
+    assert "onCommand(" not in code
     assert "getConfig().getDouble" not in code
     assert "getConfig().getInt" not in code
     assert "onCommand(" not in code
