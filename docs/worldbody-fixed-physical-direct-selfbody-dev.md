@@ -99,3 +99,42 @@ The next one-World test must use a **different explicit one-shot
 trigger**. It must leave the previous failed original and SHA manifest
 unchanged. Self's REST selection remains contingent on real native
 locomotor output evidence; predicted/model fatigue can never force it.
+
+## Second preserved failure — native Slowness alone did not reach Mineflayer 4.39
+
+The separately authorized second original Paper World
+[#42009783381](https://github.com/rinsakamo/relay-self/actions/runs/42009783381)
+also **FAILED** (execution HEAD `a3bc4ee92f537f0c94b99638faf43776c45162c7`).
+Paper recorded `native_effect=SLOWNESS_V potion_active=true` and
+`actual_walk_speed=0.08` in original `WORLDBODY_EFFECT` at tick251,
+but the two original S49 S16 MOVE outcomes were **again both
+0.6269065734210617 m**, output ratio 1.0. SelfBody requested no REST,
+original L0 selected **WAIT**; WorldBody did NOT physically alter
+Mineflayer's native movement. Node/Java exit0. The original source was
+preserved unmodified:
+[artifact #13406747238](https://github.com/rinsakamo/relay-self/actions/runs/42009783381/artifacts/13406747238),
+ZIP SHA256 `24df64086a1a027a6a203eb38755c65c416a13ca78171b947e8e72aa3a482acd`.
+
+### New World-authoritative movement restriction hypothesis
+
+Native `setWalkSpeed` and `Slowness V` alone had no measurable
+effect on pinned Mineflayer movement. Instead of inventing or
+lowering a Self fatigue threshold, **the World enforces accepted
+player movement itself**. In the degraded WorldBody state,
+Paper's `PlayerMoveEvent#setTo` is set to a destination with
+only 35% of the requested horizontal displacement. This ratio
+is a compile-time World-owned body law. Server-owned
+`WORLDBODY_RESTRICT` records requested/accepted distance
+**for the external, post-World operator auditor only**.
+
+Self still sees *only original S16 MOVE OUTCOME distance* and
+fresh matched native Present, not the Paper restriction event,
+slowness, true fatigue or World recovery coefficients. If its
+native movement does not change, the new World is **also FAIL**
+despite an accepted server motion cap. The REST threshold remains
+ratio<0.8 with no experimenter-selected rest intent.
+
+All previous World originals and their failed classifications
+are retained. A third, separately gated disposable World must use
+a new explicit one-shot message, never a replay. This remains
+DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
