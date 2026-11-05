@@ -979,7 +979,12 @@ async def qualify(
             report["worldbody_true_fatigue_received_by_self"] = False
             report["worldbody_physics_write_from_self"] = False
             report["stage"] = "WORLDBODY_POST_MOVE_L0_AND_REST"
-            _command(server, "kill @e[type=!minecraft:player]")
+            # Do not /kill: zombie drops and XP would contaminate a
+            # source-qualified empty/resting native Present.
+            _command(
+                server,
+                "execute at RelaySelf run tp @e[type=!minecraft:player] ~100 ~ ~",
+            )
             await server.stdin.drain()
             await asyncio.sleep(2.0)
             baseline = await _correlated_observe(
