@@ -8,20 +8,20 @@ from types import SimpleNamespace
 
 import pytest
 
+from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.normal_action import NormalActionReceipt
 from adapters.mineflayer.worldbody_direct_selfbody import (
     DirectMoveExperience,
     DirectWorldBodyObservationRejected,
-    rest_from_observed_motor_output,
     direct_move_experience,
+    rest_from_observed_motor_output,
 )
-from adapters.mineflayer.normal_action import NormalActionReceipt
-from adapters.mineflayer.execution import WorldConsequenceStatus
-from relay_self.action import ActionState
-from relay_self.provenance import Provenance
 from adapters.mineflayer.worldbody_paper_server import (
     WorldBodyStagingRejected,
     stage_fixed_worldbody,
 )
+from relay_self.action import ActionState
+from relay_self.provenance import Provenance
 
 JAVA = Path(
     "adapters/mineflayer/worldbody_physics_dev/src/main/java/"
