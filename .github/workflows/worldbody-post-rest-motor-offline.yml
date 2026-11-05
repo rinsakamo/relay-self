@@ -1,0 +1,52 @@
+name: WorldBody post REST third original S49 motor output DEV offline
+on:
+  push:
+    branches:
+      - dev/worldbody-post-rest-motor-retest-20261105
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worldbody-post-rest-third-dev-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact S49 owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Frozen offline toolchain
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Python source and repo contracts
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q tools/worldbody_post_rest_motor_retest_post.py adapters/mineflayer/normal_action.py adapters/mineflayer/worldbody_direct_selfbody.py adapters/mineflayer/worldbody_paper_server.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_worldbody_fixed_physics_dev.py tests/test_worldbody_post_rest_motor_retest.py
+          ruff check tools/worldbody_post_rest_motor_retest_post.py adapters/mineflayer/normal_action.py adapters/mineflayer/worldbody_direct_selfbody.py adapters/mineflayer/worldbody_paper_server.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_worldbody_fixed_physics_dev.py
+      - name: Fixed WorldBody law, S16 direct and source-negative tests
+        run: |
+          python -m pytest -q tests/test_worldbody_fixed_physics_dev.py tests/test_self_body.py tests/test_self_body_m0_projection.py tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_attack_then_rest_dev.py
+      - name: Compile separate fixed-law Paper 1.21.8 WorldBody
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/worldbody_physics_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/worldbody_physics_dev/target/relay-worldbody-physics-dev-0.1.0-dev.jar
+      - name: No physical claims from offline
+        run: |
+          echo 'DEV_POST_REST_THIRD_MOTOR_OFFLINE / ZERO_WORLD / S49_SAME_OWNER_ORIGINAL_S16_ONLY / WORLD_RULES_PINNED'
