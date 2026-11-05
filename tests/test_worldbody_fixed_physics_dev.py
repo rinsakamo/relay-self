@@ -140,10 +140,16 @@ def test_world_authoritative_physics_never_exposes_self_mutation_or_sensor():
     assert "e.setTo(adjusted)" in code
     assert "WORLDBODY_RESTRICT world=" in code
     assert "PLAYER_MOVE_DESTINATION" in code
-    assert "onCommand(" not in code
+    # Legacy #738 has no Command handler: the new override dispatches
+    # only when the separately gated original-P1 DEV runtime exists.
+    assert "return p1Physical != null && p1Physical.command(" in code
+    assert 'getConfig().getBoolean("p1-law-dev-enabled", false)' in code
     assert "getConfig().getDouble" not in code
     assert "getConfig().getInt" not in code
-    assert "onCommand(" not in code
+    # Legacy #738 has no Command handler: the new override dispatches
+    # only when the separately gated original-P1 DEV runtime exists.
+    assert "return p1Physical != null && p1Physical.command(" in code
+    assert 'getConfig().getBoolean("p1-law-dev-enabled", false)' in code
     assert "public double getFatigue" not in code
     assert "public void setFatigue" not in code
     assert "WORLDBODY_INTERNAL" in code
