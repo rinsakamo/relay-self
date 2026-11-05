@@ -1,0 +1,51 @@
+name: Bug-0 successful R1 original evidence read-only metrics
+on:
+  push:
+    branches:
+      - dev/bug0-r1-success-original-audit-20261105
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Fetch exact new successful R1 artifact, World 0
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-zombie-respawn-r1-native-witness-new-world
+          repository: rinsakamo/relay-self
+          run-id: 42052393111
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original-success
+      - name: Check original SHA256 without modifying artifacts
+        run: |
+          cd original-success
+          test -f report.json
+          test -f operator_post_audit.json
+          test -f paper_original.log
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - name: Print exact bounded Paper tick and native evidence readout
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('original-success')
+          s=json.loads((p/'report.json').read_text(encoding='utf8'))
+          a=json.loads((p/'operator_post_audit.json').read_text(encoding='utf8'))
+          keys=('classification','world_uuid','old_zombie_uuid','new_zombie_uuid','death_tick',
+                'scheduled_tick','respawn_tick','delay_ticks_observed','operator_kill',
+                'autonomous_self_kill','pickup_proven','eat_proven')
+          print('R1_SUCCESS_ORIGINAL_AUDIT='+json.dumps({k:a.get(k) for k in keys},sort_keys=True))
+          print('R1_SUCCESS_SELF_NATIVE='+json.dumps({
+              'initial':s.get('native_initial'),
+              'after_respawn':s.get('native_respawn'),
+              'node_exit':s.get('node_exit'),'java_exit':s.get('java_exit'),
+              'original_s49_actions':s.get('original_s49_actions'),
+              'status':s.get('status')
+          },sort_keys=True))
+          print('READ_ONLY_POST_WORLD_AUDIT_PASSED; NEW_WORLDS_0; ACTION_0')
+          PY
