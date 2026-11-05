@@ -101,7 +101,11 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
         raise ValueError("duplicate uncontrolled speed transition")
     if (
         effects[0].get("actual_walk_speed") not in ("0.08", "0.07999999821186066")
+        or effects[0].get("native_effect") != "SLOWNESS_V"
+        or effects[0].get("potion_active") != "true"
         or effects[-1].get("actual_walk_speed") not in ("0.2", "0.20000000298023224")
+        or effects[-1].get("native_effect") != "NONE"
+        or effects[-1].get("potion_active") != "false"
     ):
         # This is an exact DEV Paper rule, not a Self-observed fatigue value.
         raise ValueError("wrong actual Paper movement ability")
@@ -110,7 +114,7 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
         raise ValueError("recovery claimed after source stopped")
     return {
         "classification": "DEV_ORIGINAL_S49_WORLDBODY_FIXED_PHYSICAL_EFFECT_AND_REST",
-        "physical_source": "ORIGINAL_PAPER_PLUGIN_SERVER_SIDE_PLAYER_WALK_SPEED",
+        "physical_source": "ORIGINAL_PAPER_PLUGIN_WALK_SPEED_AND_NATIVE_SLOWNESS_V",
         "server_world_uuid": identity[0],
         "server_player_uuid": identity[1],
         "worldbody_true_fatigue_and_rates_usable_by_self": False,
@@ -120,6 +124,8 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
         "first_speed_degradation_tick": ticks[0],
         "final_physical_speed_recovery_tick": ticks[-1],
         "physical_speed_transition_sequence": types,
+        "server_native_slowness_on_degrade": True,
+        "server_native_slowness_removed_on_recovery": True,
         "actual_walk_speed_restored": True,
         "original_l0_rest_intent": True,
         "original_rest_additional_native_actions": 0,
