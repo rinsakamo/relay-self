@@ -151,6 +151,10 @@ final class P1PaperPhysicalRuntimeDev implements Listener {
         if (engine == null || stopped || sourceFault) return;
         Player p = target();
         long tick = Bukkit.getCurrentTick();
+        // ARM may be executed in the same tick as this scheduler callback.
+        // Only the *next* consecutive tick is eligible for P1 advance;
+        // never fabricate a zero-duration physical WAIT.
+        if (tick == lastTick) return;
         if (!matches(p) || tick != lastTick + 1) {
             fail("PLAYER_WORLD_OR_TICK_GAP");
             return;
