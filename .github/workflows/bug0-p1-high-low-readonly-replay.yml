@@ -54,6 +54,8 @@ jobs:
           (cd p1-high && sha256sum --check SHA256SUMS.txt)
           (cd p1-low && sha256sum --check SHA256SUMS.txt)
           python tools/check_repository.py
+      - name: Install Python-only frozen import dependency (no Minecraft)
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1
       - name: Read-only paired replay from immutable original worlds
         run: |
           mkdir -p replay-evidence
