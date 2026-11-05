@@ -11,6 +11,11 @@ on:
       - 'tests/test_worldbody_p1_existing_law_parity_dev.py'
       - 'adapters/mineflayer/worldbody_p1_source_candidates.py'
       - 'tests/test_worldbody_p1_existing_source_readiness_dev.py'
+      - 'adapters/mineflayer/s49_p1_paper_dev/**'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'adapters/mineflayer/worldbody_paper_server.py'
+      - 'tools/worldbody_p1_same_world_source_post.py'
+      - 'tests/test_worldbody_p1_same_world_source_post_dev.py'
       - '.github/workflows/worldbody-p1-pinned-parity-offline.yml'
 
 permissions:
@@ -58,12 +63,14 @@ jobs:
       - name: Repo contract, exact P1 Python vs Java replay and negative cases
         run: |
           python tools/check_repository.py
-          python -m compileall -q tests/test_worldbody_p1_existing_law_parity_dev.py tests/test_worldbody_p1_existing_source_readiness_dev.py adapters/mineflayer/worldbody_p1_source_candidates.py
-          ruff check adapters/mineflayer/worldbody_p1_source_candidates.py tests/test_worldbody_p1_existing_source_readiness_dev.py tests/test_worldbody_p1_existing_law_parity_dev.py
-          python -m pytest -q tests/test_worldbody_p1_existing_law_parity_dev.py tests/test_worldbody_p1_existing_source_readiness_dev.py tests/test_bug0_s49_p1_paper_dev.py
+          python -m compileall -q tests/test_worldbody_p1_existing_law_parity_dev.py tests/test_worldbody_p1_existing_source_readiness_dev.py adapters/mineflayer/worldbody_p1_source_candidates.py adapters/mineflayer/worldbody_paper_server.py adapters/mineflayer/s49_normal_session_real_ci.py tools/worldbody_p1_same_world_source_post.py tests/test_worldbody_p1_same_world_source_post_dev.py
+          ruff check adapters/mineflayer/worldbody_p1_source_candidates.py tests/test_worldbody_p1_existing_source_readiness_dev.py tests/test_worldbody_p1_existing_law_parity_dev.py adapters/mineflayer/worldbody_paper_server.py adapters/mineflayer/s49_normal_session_real_ci.py tools/worldbody_p1_same_world_source_post.py tests/test_worldbody_p1_same_world_source_post_dev.py
+          python -m pytest -q tests/test_worldbody_p1_existing_law_parity_dev.py tests/test_worldbody_p1_existing_source_readiness_dev.py tests/test_worldbody_p1_same_world_source_post_dev.py tests/test_bug0_s49_p1_paper_dev.py tests/test_worldbody_fixed_physics_dev.py
       - name: Compile existing Paper plugin with new pure P1 class
         run: |
           mvn -B -ntp -f adapters/mineflayer/worldbody_physics_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/s49_p1_paper_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/s49_p1_paper_dev/target/relay-s49-p1-source-dev-0.1.0-dev.jar
       - name: No World/source/qualification claim
         run: |
-          echo 'DEV_P1_PARITY_AND_REUSED_CALLBACK_READINESS_ONLY / REAL_P1_WAIT_0 / WORLD_0 / S49_ACTION_0 / P1_SOURCE_BOUND_WAIT_NOT_ATTESTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'DEV_P1_PARITY_AND_SAME_WORLD_S49_PAPER_SOURCE_BRIDGE_OFFLINE / REAL_P1_WAIT_0 / WORLD_0 / S49_ACTION_0 / P1_SOURCE_BOUND_WAIT_NOT_ATTESTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
