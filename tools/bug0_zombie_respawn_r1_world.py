@@ -67,27 +67,58 @@ async def _wait_original(log: Path, marker: str, *, budget_s: float) -> str:
 
 
 async def _native_probe(session, request_id: str) -> dict:
-    await session.send_observe(request_id)
-    for _ in range(120):
-        frame = await asyncio.wait_for(session.receive(), timeout=6)
-        if (
-            isinstance(frame, MineflayerObservation)
-            and frame.kind == "probe"
-            and frame.request_id == request_id
-        ):
+    """Source-bound, limited read-only probes while native entity registry settles.
+
+    This does NOT retry an Action/World. Every sample has a distinct original
+    native request ID; incomplete or ambiguous coverage is retained as negative
+    evidence rather than relabelled a zombie sighting.
+    """
+    unready: list[dict] = []
+    for attempt in range(1, 11):
+        fresh_request = f"{request_id}-{attempt}"
+        await session.send_observe(fresh_request)
+        for _ in range(120):
+            frame = await asyncio.wait_for(session.receive(), timeout=6)
+            if not (
+                isinstance(frame, MineflayerObservation)
+                and frame.kind == "probe"
+                and frame.request_id == fresh_request
+            ):
+                continue
+            coverage = frame.snapshot.nearby_entities_coverage
             z = [e for e in frame.snapshot.nearby_entities if e.name == "zombie"]
-            if frame.snapshot.nearby_entities_coverage.truncated or len(z) != 1:
-                raise RespawnR1Rejected("complete one-zombie native probe required")
-            return {
-                "session_id": frame.session_id,
-                "seq": frame.seq,
-                "request_id": frame.request_id,
-                "zombie_entity_id": z[0].entity_id,
-                "zombie_distance": z[0].distance,
-                "native_source": frame.provenance.reference,
-                "candidate_count": frame.snapshot.nearby_entities_coverage.candidate_count,
+            source = {
+                "native_seq": frame.seq,
+                "request_id": fresh_request,
+                "zombie_count": len(z),
+                "candidate_count": coverage.candidate_count,
+                "truncated": coverage.truncated,
+                "entity_names": [
+                    {"name": e.name, "type": e.entity_type, "id": e.entity_id}
+                    for e in frame.snapshot.nearby_entities
+                ],
             }
-    raise RespawnR1Rejected("correlated native probe never returned")
+            if not coverage.truncated and len(z) == 1:
+                return {
+                    "session_id": frame.session_id,
+                    "seq": frame.seq,
+                    "request_id": fresh_request,
+                    "zombie_entity_id": z[0].entity_id,
+                    "zombie_distance": z[0].distance,
+                    "native_source": frame.provenance.reference,
+                    "candidate_count": coverage.candidate_count,
+                    "read_attempt": attempt,
+                    "unready_native_samples": unready,
+                }
+            unready.append(source)
+            break
+        else:
+            raise RespawnR1Rejected("bounded native response read failed")
+        await asyncio.sleep(0.6)
+    raise RespawnR1Rejected(
+        "no qualified native zombie after 10 fresh read-only probes: "
+        + json.dumps(unready, sort_keys=True)
+    )
 
 
 async def run(report_path: Path, log_path: Path) -> int:
