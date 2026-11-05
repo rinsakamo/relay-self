@@ -1067,6 +1067,11 @@ async def qualify(
             if worldbody_p1_source_dev:
                 _command(server, f"s49p1stop {p1_same_world_nonce}")
                 await server.stdin.drain()
+                # Console commands are processed on later Paper ticks. Give
+                # the independent source-only STOP a bounded chance to seal
+                # BEFORE native Node shutdown; still require the actual STOP
+                # marker in post-World audit, never infer it from this sleep.
+                await asyncio.sleep(0.75)
                 report["worldbody_p1_source_wait_attested"] = False
                 report["worldbody_p1_source_join_state"] = (
                     "PENDING_POST_WORLD_ORIGINAL_SOURCE_JOIN"
