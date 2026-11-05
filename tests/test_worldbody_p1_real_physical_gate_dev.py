@@ -15,7 +15,8 @@ from adapters.mineflayer.worldbody_paper_server import (
     WorldBodyStagingRejected,
     stage_fixed_worldbody,
 )
-from test_worldbody_p1_existing_law_parity_dev import original_p1
+
+pytest_plugins = ("test_worldbody_p1_existing_law_parity_dev",)
 
 ROOT = Path(
     "adapters/mineflayer/worldbody_physics_dev/src/main/java/"
