@@ -80,7 +80,9 @@ jobs:
     # ONE fresh DEV run from an explicit commit whose message names its exact
     # immediate parent SHA. A rerun of the same workflow attempt is forbidden.
     # This is separate from the consumed #738 original World triggers.
-    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[P1WORLD-ONCE]') && github.run_attempt == 1 }}
+    # Consumed one-shot trial completed: #42032607432 FAIL (source STOP),
+    # distinct corrected World #42034103175 PASS. No further World runs.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
