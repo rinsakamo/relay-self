@@ -1,0 +1,45 @@
+name: Bug-0 R1 native witness correction offline
+on:
+  push:
+    branches:
+      - dev/bug0-zombie-respawn-r1-native-witness-20261105
+
+permissions:
+  contents: read
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Repository, offline source and World tick audit
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_zombie_respawn_r1_world.py tools/bug0_zombie_respawn_r1_post.py tests/test_bug0_zombie_respawn_r1_post.py tests/test_bug0_zombie_respawn_r1_native_probe.py
+          ruff check tools/bug0_zombie_respawn_r1_world.py tools/bug0_zombie_respawn_r1_post.py tests/test_bug0_zombie_respawn_r1_post.py tests/test_bug0_zombie_respawn_r1_native_probe.py
+          python -m pytest -q tests/test_bug0_zombie_respawn_r1_post.py tests/test_bug0_zombie_respawn_r1_native_probe.py
+      - name: World-only pure gate and Paper plugin compile
+        run: |
+          mkdir -p /tmp/respawn-gate
+          javac --release 21 -d /tmp/respawn-gate \
+            adapters/mineflayer/zombie_respawn_dev/src/main/java/io/github/rinsakamo/respawn/RespawnCycle.java \
+            adapters/mineflayer/zombie_respawn_dev/src/test/java/io/github/rinsakamo/respawn/RespawnCycleTest.java
+          java -ea -cp /tmp/respawn-gate io.github.rinsakamo.respawn.RespawnCycleTest
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+      - name: No native World or Action from offline
+        run: echo 'R1_PREWORLD_OFFLINE WORLD_0 ACTION_0'
