@@ -84,6 +84,21 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             return false;
         }
         String cmd = command.getName().toLowerCase(java.util.Locale.ROOT);
+        // STOP seals the earlier attached session even after native Node
+        // disconnects. The original session nonce/world/player identities
+        // were fixed at START; a fresh Player is NOT a precondition to seal.
+        // Never accept a second STOP or one while an S49 action is open.
+        if (cmd.equals("s49p1stop")) {
+            if (args.length != 1 || !armed || stopped
+                    || !nonce.equals(args[0]) || pendingAction != null) return false;
+            armed = false;
+            stopped = true;
+            getLogger().info("S49P1_STOP nonce=" + nonce
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
+                + " index=" + total + " faults=" + sourceFaults
+                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
+            return true;
+        }
         Player p = player();
         if (p == null) return false;
         if (cmd.equals("s49p1start")) {
@@ -135,16 +150,6 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             getLogger().info("S49P1_REST nonce=" + nonce
                 + " world=" + world + " tick=" + Bukkit.getCurrentTick()
                 + " index=" + total);
-            return true;
-        }
-        if (cmd.equals("s49p1stop")) {
-            if (pendingAction != null) return false;
-            armed = false;
-            stopped = true;
-            getLogger().info("S49P1_STOP nonce=" + nonce
-                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
-                + " index=" + total + " faults=" + sourceFaults
-                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
             return true;
         }
         return false;
