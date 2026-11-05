@@ -1,5 +1,4 @@
 """D1 native inventory truth never manufactures World loot/drop facts."""
-from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
