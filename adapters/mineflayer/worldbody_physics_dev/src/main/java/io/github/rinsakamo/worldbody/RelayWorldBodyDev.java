@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -30,6 +31,7 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
     private static final float NORMAL_WALK_SPEED = 0.20f;
     private static final float SLOW_WALK_SPEED = 0.08f;
     private static final int SLOWNESS_AMPLIFIER = 4; // server-owned Slowness V
+    private static final double DEGRADED_SERVER_MOVE_FACTOR = 0.35;
     private static final double MOVE_EPSILON = 0.005;
     private static final double MAX_ONE_EVENT_HORIZONTAL_MOVEMENT = 1.0;
 
@@ -144,9 +146,10 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
         priorTick = now;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         if (!enabledForDev || !initialized
+                || e instanceof PlayerTeleportEvent
                 || !TARGET.equals(e.getPlayer().getName()) || e.getTo() == null
                 || !e.getPlayer().getUniqueId().toString().equals(owner)) return;
         Location from = e.getFrom(), to = e.getTo();
@@ -155,10 +158,30 @@ public final class RelayWorldBodyDev extends JavaPlugin implements Listener {
         double x = to.getX() - from.getX();
         double z = to.getZ() - from.getZ();
         double distance = Math.hypot(x, z);
-        // Reject operator teleport-like displacements; never count them as work.
+        // Reject teleports/abnormal movements; do not interpret operator
+        // staging as bodily exertion. In degraded state, the *World* actually
+        // alters the server-authoritative movement destination. Previous two
+        // genuine Worlds #41999248107/#42009783381 proved that just changing
+        // Player.walkSpeed or applying Slowness V did NOT reduce original
+        // Mineflayer 4.39 move outcome (both 0.62690657 m).
         if (Double.isFinite(distance) && distance >= MOVE_EPSILON
                 && distance <= MAX_ONE_EVENT_HORIZONTAL_MOVEMENT) {
-            horizontalThisTick += distance;
+            double accepted = distance;
+            if (slowed) {
+                accepted = distance * DEGRADED_SERVER_MOVE_FACTOR;
+                Location adjusted = to.clone();
+                adjusted.setX(from.getX() + x * DEGRADED_SERVER_MOVE_FACTOR);
+                adjusted.setZ(from.getZ() + z * DEGRADED_SERVER_MOVE_FACTOR);
+                // Paper applies the returned location as authoritative;
+                // the client should get a native correction. Never claim
+                // physical loss unless the original S16 outcome proves it.
+                e.setTo(adjusted);
+                getLogger().info("WORLDBODY_RESTRICT world=" + world
+                    + " player=" + owner + " tick=" + Bukkit.getCurrentTick()
+                    + " requested_m=" + distance + " accepted_m=" + accepted
+                    + " server_constraint=PLAYER_MOVE_DESTINATION");
+            }
+            horizontalThisTick += accepted;
         }
     }
 
