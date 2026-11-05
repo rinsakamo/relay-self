@@ -1,0 +1,4 @@
+# World-owned DEV physics. The constants are built into the plugin and
+# cannot be set by Self, Mineflayer, L0, L1 or L2.
+dev-enabled: false
+target-player: RelaySelf
