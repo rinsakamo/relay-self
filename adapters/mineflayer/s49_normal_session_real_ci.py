@@ -1052,7 +1052,11 @@ async def qualify(
             }
             report["worldbody_true_fatigue_received_by_self"] = False
             report["worldbody_physics_write_from_self"] = False
-            report["stage"] = "WORLDBODY_POST_MOVE_L0_AND_REST"
+            report["stage"] = (
+                "PINNED_P1_POST_MOVE_NATIVE_WAIT_OR_REST"
+                if worldbody_p1_physics_dev
+                else "WORLDBODY_POST_MOVE_L0_AND_REST"
+            )
             # Do not /kill: zombie drops and XP would contaminate a
             # source-qualified empty/resting native Present.
             _command(
@@ -1104,9 +1108,14 @@ async def qualify(
                 stationary.append(await _correlated_observe(
                     session, f"worldbody-rest-{sid}-{index:02d}",
                 ))
-            report["worldbody_rest_native_observation"] = (
-                inspect_rest_native_samples(stationary, session_id=sid)
+            stationary_result = inspect_rest_native_samples(
+                stationary, session_id=sid,
             )
+            report[
+                "worldbody_p1_native_quiet_observation"
+                if worldbody_p1_physics_dev
+                else "worldbody_rest_native_observation"
+            ] = stationary_result
             if worldbody_p1_source_dev:
                 _command(server, f"s49p1stop {p1_same_world_nonce}")
                 if worldbody_p1_physics_dev:
@@ -1187,7 +1196,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
+            "DEV_ONLY_PINNED_P1_WORLD_PHYSICAL_CAP_NATIVE_S49"
+            if worldbody_p1_physics_dev
+            else "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
             if worldbody_dev
             else "DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES"
             if unified_policy is not None
