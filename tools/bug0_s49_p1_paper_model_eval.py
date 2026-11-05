@@ -39,7 +39,10 @@ def evaluate_source(
     ):
         raise ValueError("one original Paper S49 source-bound DEV session required")
     nonce = report["session_id"].replace("-", "")[:20]
-    margin = report.get("classification") == "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE"
+    margin = report.get("classification") in (
+        "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
+        "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE",
+    )
     source = inspect_paper_tick_source(
         paper_log, nonce=nonce, native_report=report,
         expected_choice=report.get("rest_choice", {}).get("selected")
