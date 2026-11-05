@@ -250,7 +250,7 @@ final class P1PaperPhysicalRuntimeDev implements Listener {
         acceptedThisTick += allowed;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFight(EntityDamageByEntityEvent e) {
         if (e.getDamager() instanceof Player p && matches(p)) {
             fightEvents++;
