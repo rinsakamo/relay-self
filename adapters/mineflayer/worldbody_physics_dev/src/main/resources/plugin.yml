@@ -1,0 +1,6 @@
+name: RelayWorldBodyDev
+main: io.github.rinsakamo.worldbody.RelayWorldBodyDev
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'Isolated World-owned fixed physical movement/rest mechanism; no Self knobs'
+load: POSTWORLD
