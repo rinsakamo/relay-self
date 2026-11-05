@@ -12,7 +12,7 @@ jobs:
     # ONE fresh DEV run from an explicit commit whose message names its exact
     # immediate parent SHA. A rerun of the same workflow attempt is forbidden.
     # This is separate from the consumed #738 original World triggers.
-    if: ${{ startsWith(github.event.head_commit.message, 'run-p1-same-world-source-once-20261105-from:') && github.run_attempt == 1 }}
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
