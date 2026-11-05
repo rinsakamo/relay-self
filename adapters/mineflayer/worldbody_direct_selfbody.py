@@ -10,6 +10,8 @@ import math
 from dataclasses import dataclass
 
 from adapters.mineflayer.normal_action import NormalActionReceipt
+from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.self_body_projection import project_body_present
 from relay_self.action import ActionState
@@ -45,17 +47,35 @@ class DirectRestRequest:
     worldbody_truth_accessed: bool = False
 
 
-def direct_move_experience(receipt: NormalActionReceipt) -> DirectMoveExperience:
+def direct_move_experience(
+    receipt: NormalActionReceipt, correlated_probe: MineflayerObservation,
+) -> DirectMoveExperience:
+    # Original S15 uses send_observe() without request_id, so its internal
+    # after-observation is NOT a qualified Body Present. An independently
+    # requested native probe must follow the closed S16 before SelfBody reads.
+    if not isinstance(receipt, NormalActionReceipt):
+        raise DirectWorldBodyObservationRejected("original S49 S16 receipt required")
+    consequence = receipt.consequence
+    after = consequence.after_observation
     if (
-        not isinstance(receipt, NormalActionReceipt)
-        or receipt.terminal.state is not ActionState.OUTCOME
-        or receipt.consequence.movement_distance is None
-        or not math.isfinite(receipt.consequence.movement_distance)
-        or receipt.consequence.movement_distance <= 0
-        or receipt.consequence.after_observation is None
+        receipt.terminal.state is not ActionState.OUTCOME
+        or consequence.status is not WorldConsequenceStatus.EXECUTED
+        or receipt.terminal.action_id != consequence.action_id
+        or consequence.movement_distance is None
+        or not math.isfinite(consequence.movement_distance)
+        or consequence.movement_distance <= 0
+        or not isinstance(after, MineflayerObservation)
+        or not isinstance(correlated_probe, MineflayerObservation)
+        or correlated_probe.kind != "probe"
+        or not correlated_probe.request_id
+        or correlated_probe.session_id != consequence.session_id
+        or correlated_probe.seq <= after.seq
+        or correlated_probe.provenance.source != "mineflayer"
     ):
-        raise DirectWorldBodyObservationRejected("original S16 MOVE outcome required")
-    native = project_mineflayer_present(receipt.consequence.after_observation)
+        raise DirectWorldBodyObservationRejected(
+            "closed S16 + new later correlated SelfBody native probe required"
+        )
+    native = project_mineflayer_present(correlated_probe)
     observed = project_body_present(native)
     view = compose_self_body_view(
         session_id=observed.session_id,
