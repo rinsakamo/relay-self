@@ -596,3 +596,98 @@ A slot is time-limited **cognitive compute capacity** for analyzing those commit
 | A-48 | Self/session restart while an internal record pointer or grant was retained | Old pointer/authority invalid; no implicit resurrection of active physical issue |
 
 **Owner-review decision still required:** select the smallest S-owned Self-scoped lifecycle representation and its trust boundary; keep existing executable contracts unchanged until focused offline negative tests pass. This user-selected conceptual ownership decision **does not mark all Contract A API details DESIGN_ACCEPTED**.
+
+---
+
+## 16. Intent signal dynamics and outcome feedback (user-proposed refinement, 2026-11-06)
+
+> **DESIGN PROPOSAL CONSISTENT WITH USER DIRECTION / S #537 OWNER REVIEW REQUIRED / NOT IMPLEMENTED.** A single Self's concurrent Intents may each have an independently changing **signal strength** and lifecycle. World/WorldBody effects supply externally owned physical consequences; their source-qualified observation can change which Intent is most relevant next. This is a closed-loop scheduling hypothesis, not a claim that the physics guarantees safe arbitration or that any convergence or learning has been demonstrated.
+
+### 16.1 Three different notions: commitment, activation, physical eligibility
+
+Do **not** collapse the following into a single priority number or state enum:
+
+1. **Commitment lifecycle (per Intent):** whether this Self is still committed to the objective. Reuse the executable `IntentCommitment` semantics initially: `COMMITTED`, explicit `RECONSIDERATION_REQUESTED` then `CONTINUE / RELEASE`, and terminal `COMPLETED / FAILED / INVALIDATED`. A newly committed instance must not silently replace an older one. This layer is Self-scoped as in §15.
+2. **Signal/activation (per Intent, time-varying):** how strongly currently observed or predicted conditions call for attention/action *given this Self's context*. The initial product can expose a bounded, documented, source-qualified `strength`, accompanied by `confidence/UNKNOWN`, urgency/deadline and triggering observations. The value is **not** necessarily constant during one commitment and is **not itself a physical permission**.
+3. **Execution eligibility and scheduling:** whether the Intent is physically runnable *now*, temporarily deferred/blocked, or associated with an already executing Skill/Action. It is a source- and resource-dependent **derived view**, not automatic release/recommit of the Intent. `EAT` may stay committed at high strength while `ATTACK` temporarily occupies an incompatible input channel.
+
+A high activation signal cannot override viability constraints, actual WorldBody capability, authorized grant, current source, incompatible control channels, protected L0 response, or required clear/settling. Unknown signal values must not be silently converted to zero or maximum.
+
+### 16.2 Minimal signal snapshot (conceptual API, no new semantic owner)
+
+```text
+SelfIntentView {
+  self_instance, intent_instance_id, intent_kind, objective,
+  commitment_revision, commitment_state,  # owned by existing S lifecycle
+  activation: {
+    strength: bounded score | UNKNOWN,
+    confidence: bounded estimate | UNKNOWN,
+    evidence_refs: [...], observed_source_generation,
+    computed_at, valid_until,
+    urgency_or_deadline: optional source-qualified data
+  },
+  execution_view: {
+    runnable | deferred | blocked | in_flight | unknown,
+    blocker_reason, next_revalidate_source,
+    skill_or_action_refs: [...]
+  }
+}
+```
+
+This is an **illustrative read model**. An epoch-local activation view can be derived from SelfWorld/SelfBody/MySelf evidence and does not justify a new permanent signal owner, global store or runtime central controller. Only the original S owner updates the commitment lifecycle; only S49 admits physical commands. The activation `strength` is relative to the chosen model and context; no universal inter-Intent calibration is asserted. Do not label a scalar as measured bodily pressure if it is inferred from degraded motor output or a WorldBody-private state.
+
+### 16.3 Runtime regulation without a prewritten universal priority order
+
+1. **Observe:** collect current source-qualified World, body and Self model readings (including stale/missing/UNKNOWN), plus previous issued Action receipts and *separate* observed effects.
+2. **Update activation:** estimate Intent-specific need/salience, urgency, prediction error and confidence. A threat can strengthen `EVADE/ATTACK`; hunger strengthens `EAT`; impaired motor output can strengthen `REST`. Signals can coexist and need not sum to 1.
+3. **Filter admissibility:** check hard safety/viability limits, legitimate physical S49 grant, real body capabilities, freshness, actor/session, channel conflict and in-flight/settling. If `EAT` is blocked by ongoing `ATTACK`, defer **its execution** without erasing the EAT commitment or forcing its signal to zero.
+4. **Arbitrate bounded eligible requests:** urgency, activation, deadline, age of deferral, expected value/uncertainty and locally justified hysteresis can inform selection, sequencing or compatible composition; do not hard-code that the largest `strength` always wins. Use protected emergency L0 when needed and preserve WAIT/DEFER/ABSTAIN.
+5. **Issue only through S49:** selected request does not yet imply `Action` authorization or WorldBody effect; one issuer performs the original grant/skill/action validation.
+6. **Update from outcomes:** the next epoch sees independently observed result, uncertainty, body constraints and resource cost; revise activation, eligibility and Plan. A real EAT success can lower hunger-related pressure; a failed attack, unchanged danger or missing evidence may leave threat pressure high. Only explicit justified commitment events complete, invalidate or release an Intent.
+
+A lower signal **does not itself mean a completed Intent**; an ACTION OUTCOME **does not itself mean success of the Goal**. By contrast, a credible terminal Goal outcome may justify closing the commitment under its actual owner. No L2/L1/L0 parameter learning, Memory/Habit write or value-gradient update is approved by this regulation design; those are Contract C responsibilities.
+
+### 16.4 Example: one Self with ATTACK and EAT
+
+```text
+Epoch N: observed threat and hunger
+  EAT    COMMITTED, signal substantial, physically DEFERRED (hand/attack conflict)
+  ATTACK COMMITTED, signal urgent, physically ELIGIBLE
+  -> S49 admits authorized ATTACK; record call / hit / damage / death separately
+
+Epoch N+1: verified threat gone (if actually observed)
+  ATTACK -> only if justified: COMPLETED, or signal decreases while retained
+  EAT    -> remains same committed instance; eligibility recalculated
+  -> S49 may authorize EAT, not infer it from a previous attack receipt
+
+Epoch N+2: if food consumption and hunger change are actually observed
+  EAT signal may fall; complete only when objective-specific conditions met
+  REST or EXPLORE can become eligible according to fresh body/world evidence
+```
+
+This is *feedback-driven competition*, not a deterministic promise that WorldBody automatically resolves controller conflicts. Conflicting simultaneous commands on one actuator must still be rejected/sequenced by S49 **before** WorldBody dispatch; the World cannot be asked to repair a missing grant, erase an irreversible attack pulse, or retroactively solve contradictory controls. Equally, coupled feedback can oscillate or fail to converge if observations are delayed, resources depleted or goals incompatible.
+
+### 16.5 Stability and limits
+
+- Avoid winner flip-flop: use bounded hysteresis, minimum justified hold or cooldown **only when safe**; never delay urgent L0 or preserve an invalid commitment merely because its signal was strong.
+- Avoid starvation: record age, reason and outcome of deferral, then reconsider or escalate when admissible. Do not automatically grant execution solely because an Intent waited.
+- Avoid positive feedback based on self-reported success: distinguish requested Action, S15/ACK, S16 physical effect and Goal-level criteria; source and uncertainty remain visible.
+- Keep physical rules outside Self. World/WorldBody owns hunger/fatigue/recovery/damage, and Self changes its estimates and behavioral choice, never the World transition coefficients.
+- Dynamic signal evaluation and short-term arbitration belong to **Contract A**. Learning the signal-update function, outcome preferences, retention or crystallization belongs to **Contract C**; projecting the signal through Persistent Cognition and three models belongs to **Contract B**.
+
+### 16.6 Additional design negative controls (A-49–A-58)
+
+| ID | Input | Expected behavior |
+| --- | --- | --- |
+| A-49 | Strong EAT signal but attack occupies incompatible physical channel | EAT stays committed, execution deferred; no illegal EAT issue |
+| A-50 | EAT strength decreases without food/hunger effect evidence | No automatic `COMPLETED` |
+| A-51 | ATTACK call reports applied while target death unobserved | Goal not declared complete and threat signal not forcibly zeroed |
+| A-52 | Missing/stale SelfBody activation input | Explicit UNKNOWN/DEFER; no fabricated zero pressure |
+| A-53 | Weak urgent L0 score but hard safety guard requires action | Safety/admission boundary dominates ordinary score |
+| A-54 | High activation with forged grant or stale source | No physical issue |
+| A-55 | ATTACK/EAT alternate every epoch under noisy readings | Bounded hysteresis/deferral trace; no unsafe permanent latch |
+| A-56 | Intent deferred for a long duration | Commitment preserved or legitimately reconsidered; no automatic Action grant |
+| A-57 | Real WorldBody recovery or hunger improvement after valid action | Update signal from fresh evidence; never modify World rules |
+| A-58 | Slot suspended or Plan revised while EAT remains committed | No silent Intent release, owner reassignment or physical cancellation |
+
+**Acceptance path:** S #537 reviews signal read-model ownership and temporal eligibility, checks existing Intent/Skill/Action/state APIs, and tests a small serial offline ATTACK/EAT/REST progression plus stale/false-success controls. Values and hysteresis thresholds are test fixtures until calibrated, not World truth. Keep Contract A `DESIGN_PROPOSED / OWNER_REVIEW_REQUIRED`; no product/runtime learning or real World authority is implied.
