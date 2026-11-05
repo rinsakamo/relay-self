@@ -147,6 +147,7 @@ def _prefix(log: str, *, nonce: str) -> dict[str, Any]:
 def prospective_request(
     paper_log: str, *, nonce: str, session_id: str, probe_seq: int,
     p1_checkout: Path, sensor_policy: str = "nominal",
+    experimental_wait_rate: float = EXPERIMENTAL_WAIT_RECOVERY,
 ) -> dict[str, Any]:
     """Use only a pre-decision Paper prefix to decide an L0 REST *request*."""
     if (
@@ -154,6 +155,8 @@ def prospective_request(
         or session_id.replace("-", "")[:20] != nonce
         or type(probe_seq) is not int or probe_seq < 1
         or sensor_policy not in ("nominal", "margin")
+        or type(experimental_wait_rate) is not float
+        or experimental_wait_rate not in (0.001, EXPERIMENTAL_WAIT_RECOVERY)
     ):
         raise S49P1SourceRejected("foreign S49 native probe/session/policy")
     source = _prefix(paper_log, nonce=nonce)
@@ -173,7 +176,7 @@ def prospective_request(
     default = FatigueProfile(enabled=True)
     experimental = FatigueProfile(
         enabled=True,
-        wait_recovery_per_world_tick=Rate(EXPERIMENTAL_WAIT_RECOVERY),
+        wait_recovery_per_world_tick=Rate(experimental_wait_rate),
     )
     if default.wait_recovery_per_world_tick.value != 0.1:
         raise S49P1SourceRejected("pinned P1 default recovery assumption changed")
@@ -227,7 +230,7 @@ def prospective_request(
         "original_p1_default_profile_sha256": default.sha256,
         "experimental_p1_profile_sha256": experimental_profile.sha256,
         "original_default_wait_recovery_per_tick": 0.1,
-        "experimental_wait_recovery_per_tick": EXPERIMENTAL_WAIT_RECOVERY,
+        "experimental_wait_recovery_per_tick": experimental_wait_rate,
         "model_default_fatigue_pre_decision": default_state.fatigue,
         "model_experimental_fatigue_pre_decision": experimental_state.fatigue,
         "model_default_recovery_pre_decision": default_recovered,
@@ -262,6 +265,8 @@ def main() -> None:
     parser.add_argument("--p1-checkout", type=Path, required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--probe-seq", type=int, required=True)
+    parser.add_argument("--experimental-wait-rate", type=float,
+                        choices=[0.001, 0.002], default=0.002)
     parser.add_argument("--sensor-policy", choices=["nominal", "margin"],
                         default="nominal")
     args = parser.parse_args()
@@ -271,6 +276,7 @@ def main() -> None:
         nonce=nonce, session_id=args.session_id, probe_seq=args.probe_seq,
         p1_checkout=args.p1_checkout.resolve(),
         sensor_policy=args.sensor_policy,
+        experimental_wait_rate=args.experimental_wait_rate,
     )
     print(json.dumps(output, sort_keys=True, allow_nan=False))
 

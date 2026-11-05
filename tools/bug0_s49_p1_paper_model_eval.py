@@ -28,6 +28,7 @@ def evaluate_source(
             "DEV_ONLY_S49_PAPER_FIGHT_TICK_AND_REST_CALLBACK_SOURCE",
             "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST",
             "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
+            "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE",
         )
         or report.get("s49_dev_server") != "PINNED_PAPER_1_21_8"
         or report.get("rest_intent_selected") is not (
@@ -38,7 +39,10 @@ def evaluate_source(
     ):
         raise ValueError("one original Paper S49 source-bound DEV session required")
     nonce = report["session_id"].replace("-", "")[:20]
-    margin = report.get("classification") == "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE"
+    margin = report.get("classification") in (
+        "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
+        "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE",
+    )
     source = inspect_paper_tick_source(
         paper_log, nonce=nonce, native_report=report,
         expected_choice=report.get("rest_choice", {}).get("selected")
@@ -70,13 +74,18 @@ def evaluate_source(
         raise ValueError("loaded P1 module is not pinned original checkout")
     if experimental_wait_rate is not None and (
         type(experimental_wait_rate) is not float
-        or experimental_wait_rate != 0.002
+        or experimental_wait_rate not in (0.001, 0.002)
         or report.get("classification") not in (
             "DEV_ONLY_S49_P1_EXPERIMENTAL_SENSOR_PROSPECTIVE_REST",
             "DEV_ONLY_S49_P1_MARGIN_SENSOR_NATIVE_CHOICE",
+            "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE",
         )
+        or (report.get("classification") == "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE"
+            and experimental_wait_rate != 0.001)
+        or (report.get("classification") != "DEV_ONLY_S49_P1_HIGH_SENSOR_NATIVE_CHOICE"
+            and experimental_wait_rate != 0.002)
     ):
-        raise ValueError("only frozen nondefault DEV 0.002 recovery is allowed")
+        raise ValueError("unsupported nondefault DEV profile/rate pair")
     default_profile = FatigueProfile(enabled=True)
     profile = (
         default_profile if experimental_wait_rate is None
@@ -218,7 +227,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
         "--experimental-wait-rate", type=float,
-        choices=[0.002], default=None,
+        choices=[0.001, 0.002], default=None,
     )
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf-8"))

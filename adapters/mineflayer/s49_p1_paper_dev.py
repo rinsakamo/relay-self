@@ -237,6 +237,7 @@ async def run_s49_p1_paper_dev(
     prospective_rest_dev: bool = False,
     p1_checkout: Path | None = None,
     margin_choice_dev: bool = False,
+    high_fatigue_dev: bool = False,
 ) -> None:
     """One S49 original ATTACK->REST, with server-only source hooks."""
     if not isinstance(session, MineflayerProcessSession):
@@ -244,7 +245,9 @@ async def run_s49_p1_paper_dev(
     if (
         type(prospective_rest_dev) is not bool
         or type(margin_choice_dev) is not bool
+        or type(high_fatigue_dev) is not bool
         or (margin_choice_dev and not prospective_rest_dev)
+        or (high_fatigue_dev and not margin_choice_dev)
         or (prospective_rest_dev and (
             not isinstance(p1_checkout, Path)
             or not p1_checkout.is_absolute()
@@ -295,15 +298,26 @@ async def run_s49_p1_paper_dev(
             ]
             if margin_choice_dev:
                 args.extend(["--sensor-policy", "margin"])
+            if high_fatigue_dev:
+                args.extend(["--experimental-wait-rate", "0.001"])
             result = await asyncio.to_thread(
                 subprocess.run, args, capture_output=True, text=True,
                 timeout=12, check=True,
             )
             raw = json.loads(result.stdout)
             if margin_choice_dev:
-                if raw.get("sensor_decision_policy") != "margin":
+                if (
+                    raw.get("sensor_decision_policy") != "margin"
+                    or raw.get("experimental_wait_recovery_per_tick") != (
+                        0.001 if high_fatigue_dev else 0.002
+                    )
+                ):
                     raise S49P1SourceRejected(
-                        "margin sensor not evaluated before original L0"
+                        "wrong frozen DEV P1 profile before original L0"
+                    )
+                if high_fatigue_dev and raw.get("request_rest") is not True:
+                    raise S49P1SourceRejected(
+                        "high-fatigue model cannot justify REST: no Action replay"
                     )
             elif raw.get("request_rest") is not True:
                 raise S49P1SourceRejected(
@@ -349,6 +363,10 @@ async def run_s49_p1_paper_dev(
             or (not margin_choice_dev and sensor.get("request_rest") is not True)
             or (margin_choice_dev and
                 sensor.get("request_rest") is not (selected == "REST"))
+            or (high_fatigue_dev and sensor.get("request_rest") is not True)
+            or sensor.get("experimental_wait_recovery_per_tick") != (
+                0.001 if high_fatigue_dev else 0.002
+            )
             or sensor.get("model_default_fatigue_pre_decision") != 0
             or not 0 < sensor.get("model_experimental_fatigue_pre_decision", -1) <= 1
             or sensor.get("paper_source_uuid") != checked["paper_world"]
