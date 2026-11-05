@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.s49_p1_paper_dev import (
-    _float, _int, _rows as _existing_s49_rows,
+    _float,
+    _int,
+)
+from adapters.mineflayer.s49_p1_paper_dev import (
+    _rows as _existing_s49_rows,
 )
 
 
