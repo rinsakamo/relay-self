@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import asdict
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import tempfile
 import time
+from dataclasses import asdict
+from pathlib import Path
 
 from adapters.mineflayer.loot_pickup_readback import (
     LootPickupReadbackRejected,

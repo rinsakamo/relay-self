@@ -8,7 +8,7 @@ from tools.bug0_pickup_d1_post import PickupD1AuditRejected, audit
 
 W = "11111111-1111-4111-8111-111111111111"
 P = "22222222-2222-4222-8222-222222222222"
-I = "33333333-3333-4333-8333-333333333333"
+ITEM_UUID = "33333333-3333-4333-8333-333333333333"
 LOG = (
     f"RSELF_LOOT_STAGED world={W} owner={P} entity={I} item=rotten_flesh "
     "count=1 tick=120 source=OPERATOR_FIXTURE_NOT_ZOMBIE_DROP\n"
@@ -41,7 +41,7 @@ def test_positive():
 
 
 @pytest.mark.parametrize("log", [
-    LOG.replace(f"entity={I}", "entity=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", 1),
+    LOG.replace(f"entity={ITEM_UUID}", "entity=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", 1),
     LOG.replace("count=1 tick=122", "count=2 tick=122"),
     LOG.replace("tick=122", "tick=119"),
     LOG.replace("ACTUAL_PAPER_PICKUP_EVENT", "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP"),
