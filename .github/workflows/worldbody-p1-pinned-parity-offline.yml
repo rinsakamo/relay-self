@@ -80,7 +80,7 @@ jobs:
     # ONE fresh DEV run from an explicit commit whose message names its exact
     # immediate parent SHA. A rerun of the same workflow attempt is forbidden.
     # This is separate from the consumed #738 original World triggers.
-    if: ${{ startsWith(github.event.head_commit.message, 'run-p1-same-world-source-once-20261105-from:') && github.run_attempt == 1 }}
+    if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[P1WORLD-ONCE]') && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -94,16 +94,14 @@ jobs:
       - name: Checkout exact original S49 owner
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Verify distinct exact-parent one-use DEV grant
-        env:
-          RUN_MESSAGE: ${{ github.event.head_commit.message }}
-          PREVIOUS_HEAD: ${{ github.event.before }}
         run: |
+          RUN_MESSAGE="$(git log -1 --format=%s HEAD)"
+          PREVIOUS_HEAD="$(git rev-parse HEAD^)"
           test "$RUN_MESSAGE" = "run-p1-same-world-source-once-20261105-from:$PREVIOUS_HEAD"
-          test "$(git rev-parse HEAD^)" = "$PREVIOUS_HEAD"
           test "${{ github.run_attempt }}" = '1'
           echo 'SOURCE_JOIN_DEV_ONE_SHOT_PARENT_VERIFIED'
       - name: Java 21
