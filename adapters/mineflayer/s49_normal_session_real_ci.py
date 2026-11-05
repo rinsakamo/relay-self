@@ -324,6 +324,7 @@ async def qualify(
     bug0_p1_margin_dev: bool = False,
     worldbody_dev: bool = False,
     worldbody_p1_source_dev: bool = False,
+    worldbody_p1_physics_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -506,6 +507,18 @@ async def qualify(
             raise S31ABlocked(
                 "P1 same-World source needs original S49 WorldBody-only DEV owner"
             )
+        if (
+            type(worldbody_p1_physics_dev) is not bool
+            or (worldbody_p1_physics_dev and (
+                not worldbody_dev or not worldbody_p1_source_dev
+                or os.environ.get("S49_WB_P1_PHYSICAL_DEV_ONLY") != "1"
+                or stage_r_dev or completed_l0_dev
+                or live_probe is not None or completed_l0 is not None
+            ))
+        ):
+            raise S31ABlocked(
+                "P1 physical World needs distinct exclusive S49 DEV gate"
+            )
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -517,6 +530,7 @@ async def qualify(
             report.update(await asyncio.to_thread(
                 stage_fixed_worldbody, root,
                 source_bridge_dev=worldbody_p1_source_dev,
+                p1_physics_dev=worldbody_p1_physics_dev,
             ))
         elif bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
             from adapters.mineflayer.s49_p1_paper_server import stage_paper_dev
@@ -542,6 +556,10 @@ async def qualify(
             # Read-only console marker on the SAME disposable World / native
             # session, before any S49 Action. Not Action authority or WAIT proof.
             _command(server, f"s49p1start {p1_same_world_nonce}")
+            if worldbody_p1_physics_dev:
+                # Fixed original P1 World law is armed only by separate DEV
+                # operator, not via Self's native Action or any rate-setting.
+                _command(server, f"p1bodyarm {p1_same_world_nonce}")
             await server.stdin.drain()
             report["worldbody_p1_source_nonce"] = p1_same_world_nonce
             report["worldbody_p1_source_join_state"] = (
@@ -845,6 +863,13 @@ async def qualify(
                     f"{step.action_request_id}",
                 )
                 await server.stdin.drain()
+            if worldbody_p1_physics_dev:
+                _command(
+                    server,
+                    f"p1bodyaction {p1_same_world_nonce} begin "
+                    f"{step.action_request_id}",
+                )
+                await server.stdin.drain()
             if stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
@@ -876,6 +901,13 @@ async def qualify(
                 _command(
                     server,
                     f"s49p1action {p1_same_world_nonce} closed "
+                    f"{step.action_request_id}",
+                )
+                await server.stdin.drain()
+            if worldbody_p1_physics_dev:
+                _command(
+                    server,
+                    f"p1bodyaction {p1_same_world_nonce} closed "
                     f"{step.action_request_id}",
                 )
                 await server.stdin.drain()
@@ -1044,7 +1076,17 @@ async def qualify(
                 "rest_action_issued": rest_choice.action_issued,
             }
             if (
-                not decision.rest_requested or rest_choice.selected != "REST"
+                (
+                    worldbody_p1_physics_dev
+                    and rest_choice.selected != (
+                        "REST" if decision.rest_requested else "WAIT"
+                    )
+                )
+                or (
+                    not worldbody_p1_physics_dev
+                    and (not decision.rest_requested
+                         or rest_choice.selected != "REST")
+                )
                 or rest_choice.action_issued or rest_choice.permission_granted
             ):
                 raise S49PhysicalFailure(
@@ -1053,7 +1095,8 @@ async def qualify(
             if worldbody_p1_source_dev:
                 # This marks original L0's selected intent, NOT a physical
                 # WAIT witness and NOT a P1 credited recovery event.
-                _command(server, f"s49p1choice {p1_same_world_nonce} REST")
+                _command(server, f"s49p1choice {p1_same_world_nonce} "
+                         f"{rest_choice.selected}")
                 await server.stdin.drain()
             stationary = [baseline]
             for index in range(8):
@@ -1066,6 +1109,8 @@ async def qualify(
             )
             if worldbody_p1_source_dev:
                 _command(server, f"s49p1stop {p1_same_world_nonce}")
+                if worldbody_p1_physics_dev:
+                    _command(server, f"p1bodystop {p1_same_world_nonce}")
                 await server.stdin.drain()
                 # Console commands are processed on later Paper ticks. Give
                 # the independent source-only STOP a bounded chance to seal
@@ -1284,6 +1329,7 @@ def main() -> int:
     parser.add_argument("--bug0-p1-margin-dev", action="store_true")
     parser.add_argument("--worldbody-dev", action="store_true")
     parser.add_argument("--worldbody-p1-source-dev", action="store_true")
+    parser.add_argument("--worldbody-p1-physics-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1300,6 +1346,7 @@ def main() -> int:
         bug0_p1_margin_dev=args.bug0_p1_margin_dev,
         worldbody_dev=args.worldbody_dev,
         worldbody_p1_source_dev=args.worldbody_p1_source_dev,
+        worldbody_p1_physics_dev=args.worldbody_p1_physics_dev,
     ))
 
 
