@@ -110,8 +110,8 @@ def stage_fixed_worldbody(
     physics_config = CONFIG
     if p1_physics_dev:
         physics_config += (
-            "# Original P1 #626 standard law, server-owned and immutable\\n"
-            "p1-law-dev-enabled: true\\n"
+            "# Original P1 #626 standard law, server-owned and immutable\n"
+            "p1-law-dev-enabled: true\n"
         )
     (cfg / "config.yml").write_text(physics_config, encoding="utf-8")
     if source_plugin is not None:
