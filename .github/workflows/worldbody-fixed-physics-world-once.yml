@@ -9,7 +9,11 @@ permissions:
 
 jobs:
   one-world:
-    if: ${{ github.event.head_commit.message == 'run-worldbody-fixed-authoritative-cap-once-20261105' }}
+    # Consumed exact one-shot trigger. Two overlapping commits independently
+    # invoked #42011766214 and #42011801141; both completed, so NO new World
+    # may be started from this branch. Future physical trials need a fresh
+    # child with a unique trigger AND exact expected previous commit SHA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
