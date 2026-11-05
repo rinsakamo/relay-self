@@ -393,3 +393,119 @@ This is a **contract algorithm sketch**, not an executable API.
 - **A-I2 FUTURE:** review multi-live body-directed owner representation and per-channel primitive mapping; verify offline frames before any opt-in DEV World; never infer atomic same-tick operation.
 
 **Safety stop:** when live owner/currentness or quiescence cannot be established, stay on the existing sequential S49 path. Contract A does not approve Memory/Learning updates, energy debits, real-world grants or qualification claims.
+
+---
+
+## 14. Owner-identity admission API review — same-ID collision and issuance boundary (2026-11-06)
+
+> **API DESIGN PROPOSAL / S #537 OWNER REVIEW REQUIRED / NO EXECUTABLE CHANGE.** This section reconciles §13 with executable `src/relay_self/{intent,skill,action,action_supervision}.py` on the current `main`. It neither claims that S49 has a multi-Intent owner registry nor certifies real physical concurrency.
+
+### 14.1 Code-derived gap that must not be papered over
+
+Observed API facts (read from the current owner code, not inferred from a future implementation):
+
+1. `IntentCommitment.current_intent` derives a fresh immutable `CurrentIntent` from owner-local events. Its `intent_id` uniqueness is **only within one owner lifetime**; there is currently no owner-instance identifier or global generation token in the public value.
+2. `SkillExecution.start(..., intent_commitment=owner)` requires an actual current intent and stores **only the resulting textual `intent_id`**. The returned immutable Skill has `execution_id`, `skill_id`, `intent_id` and its own snapshot lineage; it does **not** carry an immutable reference to the originating Intent owner.
+3. `ActionLifecycle.propose(..., skill_execution=skill, intent_commitment=owner)` rejects non-current/non-STARTED Skill snapshots, requires a current Intent and checks `skill.intent_id == owner.current_intent.intent_id`. It does **not** establish the object identity of the owner used at Skill start.
+4. `ActionLifecycle.authorize(... authority: str)` records authority input but does not authenticate the external principal/grant. `ActionSupervisor.issue` retains a single Action lifecycle under `action_id` but is **not** the issuer's cross-owner permission registry.
+5. These lifecycle libraries are not in themselves a secure physical dispatcher. The existing S49/adapter context remains responsible for trustworthy owner binding, scoped physical grants, source/currentness, resource exclusion and real native effects.
+
+**Concrete collision:** independent owner A and owner B may both legally commit an `intent_id="eat"` in their separate lifetimes. `SkillExecution.start(owner=A)` followed by `ActionLifecycle.propose(skill_from_A, owner=B)` can satisfy the present *text equality* check if the Skill is current and STARTED. It is therefore unsafe to treat the current low-level proposal seam as a cross-owner provenance proof. The initial S49 single-owner path avoids needing to validate arbitrary owners, but a future multi-owner path **must introduce a trusted binding check before calling these APIs or strengthen their supported owner seam under S review**.
+
+### 14.2 A-S49-1: proposed typed adapter boundary (illustrative, **not** current Python symbols)
+
+```python
+# Conceptual shapes, NOT imports or executable API.
+@dataclass(frozen=True)
+class ProposedEffect:
+    source_ref: NativeObservationRef       # world/session/native generation
+    producer_task_ref: TaskGeneration | None
+    plan_ref: PlanGeneration | None
+    intent_hint: str | None                 # advisory; never a capability
+    required_capability: BodyCapability
+    command: PrimitiveRequest              # channel, target, bounded duration
+    requested_deadline: Deadline
+
+# S49-private, non-serializable, never constructed by a model/slot:
+@dataclass(frozen=True)
+class LiveOwnerBinding:
+    s49_runtime_identity: RuntimeIdentity
+    world_session: WorldSession
+    physical_body: BodyIdentity
+    owner_handle: PrivateOwnerHandle        # resolves to the exact trusted Python owner
+    owner_event_revision: int               # local history revision, NOT global truth
+    current_intent_id: str
+    grant_scope: PhysicalGrantScope         # independently checked at S49 admission
+    source_generation: SourceGeneration
+
+def s49_admit_effect(
+    proposal: ProposedEffect,
+    *,
+    context: S49RuntimeContext,              # authentic in-process owner, not model input
+) -> AdmissionResult:                       # ADMIT / DEFER / DENY
+    ...
+```
+
+Required validation (performed **inside** the existing S49 runtime, not by a free-standing cognitive caller):
+
+- Resolve owner from the S49 **trusted private allow-list / local owner context**. In current single-owner mode this is the exact already-known `IntentCommitment` Python object; no public registration API is needed. A future bounded multi-owner table, if needed, belongs *inside the same S runtime*, with registration only from its trusted owner setup path. Reject user/model-created owner objects even if their fields are identical.
+- Check owner **object identity / privately held handle**, current active Intent, owner-local event revision, correct actor/world/session and current physical grant. `id(owner)` or a copied string is not a durable capability; a process restart invalidates every private handle. Derive event revision from the actual owner state (for example current event count); do not trust an unverified caller-supplied integer.
+- Validate the proposal's source and Plan/slot generations against live currentness and reconcile body capability with the **authoritative** WorldBody/adapter view, not SelfBody belief. Binding to a slot is optional; a legitimate urgent L0 may run without creating a persistent cognitive slot.
+- The admission response retains the **same verified owner instance** through Skill start, Action proposal, and scoped authorization. The S context keeps transient per-Skill/Action causal association sufficient to reject a later same-text-ID substitution. This is a local correlation function, **not** a second issuer or independent durable semantics owner.
+- If a link cannot be verified, reject/defer the new effect. Neither `ActionLifecycle.propose` success nor a matching `authority` string elevates an invalid proposal.
+
+**Implementation choice:** first implement an S49-local `assert_bound_owner(skill, trusted_owner, source)` or equivalent guard at the adapter seam, **before** modifying immutable Skill/Action contracts. If that guard cannot retain provenance safely across legitimately deferred execution, S owner must explicitly decide whether to extend `SkillExecution` with an immutable owner-generation binding and update `ActionLifecycle.propose` correspondingly. This is a tested alternative, not permission to add a global Intent registry or untrusted caller-selected owner ID.
+
+### 14.3 A-S49-2: admission lifecycle and TOCTOU fence
+
+```text
+cognitive proposal (advisory)
+  -> resolve owner in S49 local trusted context
+  -> validate actual current Intent + owner revision + session
+  -> source/capability/Plan/lease/grant/deadline preflight
+  -> within S49's one serialized admission boundary:
+        recheck all mutable owner/source/grant preconditions
+        SkillExecution.start(actual_live_owner)
+        ActionLifecycle.propose(actual_live_skill, same_owner)
+        ActionLifecycle.authorize(real S49-scoped authority)
+        ActionSupervisor.issue(current authorized lifecycle)
+        native dispatch + source-bound follow-up (original S14/S15/S16)
+  -> independent terminal Action evidence + input clear + settling
+```
+
+`AUTHORIZE` and `ISSUE` must not be split by an unguarded asynchronous gap in the current implementation. **Important gap:** today's `ActionLifecycle` supports `PROPOSED -> DENIED`, but after `AUTHORIZED` it only supports `ISSUED`; there is no general `AUTHORIZED -> CANCELLED` transition. A pre-issue source/grant loss cannot be falsely recorded as `OUTCOME`, `TIMEOUT`, or `UNKNOWN` (those require `ISSUED`). For current serial S49, preflight and final recheck should occur before authorization, and the owner must preserve any incomplete authorized attempt as an unresolved/explicitly rejected admission record rather than invent a terminal physical result. **If a future async/partial issuance path requires cancellation of an authorized-but-unissued command, S review must define that lifecycle extension separately** with independent tests.
+
+`ActionSupervisor` supervises issued primitives; a terminal Action receipt is not proof of input-clear or settled movement. Logical task suspension/release can fence future admissions without mutating already-issued Action history.
+
+### 14.4 A-S49-3: future multi-Intent / ControlFrame mapping
+
+A bounded `ControlFrame` is an **issuer-local correlation envelope** for proposed compatible channel requests. It is not a super-Intent, not itself a durable physical owner and not a substitute for the existing primitive lifecycle.
+
+```text
+Frame F:
+  locomotion effect M -> verified owner A, Skill M, Action M, source SM
+  attack effect H     -> verified owner B, Skill H, Action H, source SH
+  orientation effect O-> verified owner B (or independently authorized C)
+  frame lease / conflict map / per-effect outcome and native order
+```
+
+Each emitted primitive carries exactly one **primary legitimate** `SkillExecution` and `ActionLifecycle` association under today's one-parent primitive schema; **supporting Goals/Intents** can be cross-referenced for cognitive explanation, never forged as a composite primary physical parent. When several Intents jointly propose an inseparable physical effect, S must explicitly arbitrate one primary authorized execution association or define a future reviewed multi-parent API; it cannot concatenate textual Intent IDs.
+
+Pre-dispatch frame validation is all-or-nothing for its **planned** effect set. After the first native output, actual dispatch is not assumed atomic: record per-effect `NOT_SENT / SENT / ACKED / OUTCOME / UNKNOWN` distinctions and physical clear/settling separately. A failed later channel cannot erase already-sent commands. Do not replay uncertain pulses. Actual shared effects (e.g. damage while moving) may be causally linked to multiple proposals but must not be counted twice as independent physical successes.
+
+### 14.5 A-31–A-40 executable regression plan (future S owner, not yet run)
+
+| ID | Situation | Required behavior |
+| --- | --- | --- |
+| A-31 | Two `IntentCommitment` objects A/B both `intent_id="eat"`; Skill starts from A, proposal attempts binding to B | Low-level equality gap reproduced in a *controlled offline negative setup*; S49 adapter rejects cross-owner association before physical issue |
+| A-32 | A's `reconsider(CONTINUE)` advances owner events while Intent ID remains equal | Old binding rejected until a fresh S49-owned bind/recheck |
+| A-33 | B presents copied owner handle, `id(owner)` or authority string | Not admitted; only S49's privately held in-process owner identity is trusted |
+| A-34 | Different `world_session`, actor or expired grant with otherwise identical fields | No issue, old evidence preserved |
+| A-35 | Plan revision changes route while live Intent stays current | No hidden Intent release/recommit; stale prior Plan cannot issue |
+| A-36 | Grant/source expires after validation but before authorization | Final recheck denies/defer without creating AUTHORIZED/ISSUED Action |
+| A-37 | Source expires after AUTHORIZE but before ISSUE | Explicitly unresolved boundary; never invent terminal physical evidence; extension required if this path is permitted |
+| A-38 | One frame proposed with MOVE and ATTACK from different legitimate owners while current S49 supports one open Action | No concurrent issue; defer incompatible/future effects and retain provenance |
+| A-39 | Partially native-dispatched frame then failure/UNKNOWN | Preserve sent child effects, no blanket success/cancel/replay |
+| A-40 | Owner process restart, stale slot completion or expired held-control lease | Invalid previous handles and no new physical Action until fresh admission |
+
+**Owner acceptance criteria:** S #537 checks the exact mismatch with its concrete adapter, chooses the minimal private owner-binding implementation (or justifies a stronger Skill/Action seam), confirms existing command/clear/settling behavior, and approves A-31–A-40. Only then mark the **Contract A API design** `DESIGN_ACCEPTED`; actual offline code and real World claims are separate milestones. S review cannot be replaced by this documentation commit.
