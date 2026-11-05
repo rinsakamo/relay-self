@@ -1,6 +1,6 @@
 # P1 × WorldBody — 既存疲労法則再利用の監査・統合契約（2026-11-05）
 
-> **DOCS-ONLY / IMPLEMENTATION NOT RUN / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.** 本文は既存repoを読んだ後の差分監査と次の実装受入条件。現行 #738 の成功・失敗World原本、main、P1 owner、R/V資格、S49 Action権限は変更しない。新しい実World/LLM実行権限を発生させない。
+> **OFFLINE NUMERICAL PARITY IMPLEMENTATION IN PROGRESS / NO WORLD WIRING / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.** 本文は既存repoを読んだ後の差分監査と次の実装受入条件。現行 #738 の成功・失敗World原本、main、P1 owner、R/V資格、S49 Action権限は変更しない。新しい実World/LLM実行権限を発生させない。
 
 ## 参照した正本（読了した実装）
 
@@ -66,3 +66,10 @@
 ## 結論 / 証拠上限
 
 **#738のlegacy固定法則 (2.0/m, 0.003/tick, thresholdと0.35固定制限) をP1と呼んではならない。** 旧#738の2実World PASSは『別のWorld法則による物理的低下→SelfBodyの低下観測→L0 REST→World回復』に限って保持する。この文書の追加だけではP1準拠のWorldBodyは実装されず、実World/R資格/V科学は未実施。最初に必要なのは新法則ではなく**既存P1 ownerとPaper実行境界の接続**である。
+
+## 2026-11-05 implementation slice — pure Java P1 parity (no World)
+
+- Added isolated `worldbody_physics_dev/.../P1FatigueLaw.java` reproducing P1 `Rate`, `FatigueProfile`, per-tick `advance`, continuous `capability`, and quantized sensor calculations. It is **not instantiated by** the existing Paper plugin and introduces no server-time WAIT inference, Action issuer, or Self API.
+- Added `tests/test_worldbody_p1_existing_law_parity_dev.py` to independently import original P1 `experiments/fatigue_p1.py` from **exact original Git commit `0ab76b4e...`**, compare each Java result after every tick, and reject malformed activity/time shapes. Python P1 owner source is not copied to this branch.
+- New exclusive offline workflow `.github/workflows/worldbody-p1-pinned-parity-offline.yml` checks out P1 original separately and fails closed if SHA differs. It compiles the pure Java class and existing Paper plugin; **never triggers a World**. Workflow SUCCESS must be observed before claiming parity (source alone does not prove it).
+- Not implemented: S/R independently authenticated full-tick WAIT classifier, P1 real owner/World lifecycle binding, Paper physical capability enforcement using P1, M basal real join, third post-rest MOVE, R qualification and V science.
