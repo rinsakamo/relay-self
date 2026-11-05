@@ -50,7 +50,7 @@ def test_law_paper_path_is_exclusive_and_only_dev_activated():
     assert "MAX_EVENT_BLOCKS = 1.0" in original
     assert "world_authority=true" in original
     assert "independent_s_r_attestation=false" in original
-    assert "0.35" not in original
+    assert "DEGRADED_SERVER_MOVE_FACTOR" not in original
     assert "MOVE_FATIGUE_PER_METRE = 2.0" not in original
     assert "getConfig().getDouble" not in original
     assert "onCommand(" not in original  # owner marker only, no Self command
