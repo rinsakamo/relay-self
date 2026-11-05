@@ -1,0 +1,60 @@
+name: Bug-0 P1 high low prospective fatigue DEV offline
+on:
+  push:
+    branches:
+      - dev/bug0-p1-high-low-margin-20261105
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bug0-p1-high-low-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_P1_ORIGINAL_CHECKOUT: ${{ github.workspace }}/p1-original
+    steps:
+      - name: Checkout one exact S49 owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Read-only exact original P1 checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install offline fixed tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Python syntax, contracts and Ruff
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s49_p1_paper_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_attack_then_rest_dev.py tools/bug0_s49_p1_paper_model_eval.py tools/bug0_s49_p1_prospective_sensor.py tools/bug0_s49_p1_prospective_post.py tools/bug0_p1_sensor_threshold.py tools/bug0_p1_margin_post.py tests/test_bug0_s49_p1_prospective_rest.py tests/test_bug0_p1_sensor_threshold.py tests/test_bug0_p1_high_low_dev.py
+          ruff check tools/bug0_p1_sensor_threshold.py tools/bug0_p1_margin_post.py tests/test_bug0_p1_sensor_threshold.py tests/test_bug0_p1_high_low_dev.py adapters/mineflayer/s49_p1_paper_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_attack_then_rest_dev.py tools/bug0_s49_p1_paper_model_eval.py tools/bug0_s49_p1_prospective_sensor.py tools/bug0_s49_p1_prospective_post.py tests/test_bug0_s49_p1_prospective_rest.py
+      - name: P1 real owner source and causal predecision negative controls
+        run: |
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          python -m pytest -q tests/test_bug0_p1_sensor_threshold.py tests/test_bug0_p1_high_low_dev.py tests/test_bug0_s49_p1_prospective_rest.py tests/test_bug0_s49_p1_paper_dev.py tests/test_bug0_s49_paper_health_order.py tests/test_bug0_s49_attack_then_rest_dev.py tests/test_bug0_s49_rest_dev.py tests/test_bug0_s49_attack_paper_health.py tests/test_s50_p1_wait.py
+      - name: Compile isolated original Paper DEV plugin unchanged
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_p1_paper_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_p1_paper_dev/target/relay-s49-p1-source-dev-0.1.0-dev.jar
+      - name: Explicitly no physical recovery certification
+        run: echo 'OFFLINE_ONLY / P1_ALTERNATE_PROFILE_HYPOTHESIS / SOURCE_UNATTESTED / NO_WORLD'
