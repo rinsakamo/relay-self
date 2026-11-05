@@ -55,7 +55,7 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
         }
         int configuredTicks = getConfig().getInt("max-ticks", -1);
         if (!TARGET.equals(getConfig().getString("target-player"))
-                || (configuredTicks != 480 && configuredTicks != 1200)
+                || (configuredTicks != 480 && configuredTicks != 2400)
                 || !Bukkit.getMinecraftVersion().equals("1.21.8")) {
             throw new IllegalStateException("wrong source profile");
         }
