@@ -125,6 +125,34 @@ class NormalWorldL0(ReactiveL0):
                 # Passive witness failures cannot veto original S49 owner.
                 pass
 
+    def extend_after_worldbody_rest_dev(self, *, token: object) -> None:
+        """Separate, bounded DEV approval: ONE extra genuine L0 event/MOVE.
+
+        Keeps the same original S49 L0 and original ActionSupervisor. This is
+        not an Action grant, does not affect WorldBody physics, and cannot be
+        exercised in default product paths. Existing PROPOSE/ISSUE checks
+        still apply to a fresh native threat before any third MOVE.
+        """
+        if (
+            type(token) is not object
+            or getattr(self, "_worldbody_retest_extended", False)
+            or self.intent_id != "escape-threat"
+            or self.max_events != 3 or self.max_action_requests != 2
+            or self.events != 3 or self.action_requests != 2
+            or len(self._seen_entities) != 3
+            or len(self._used_action_ids) != 2
+            or self._stage_r_dev_token is not None
+            or self._stage_t_dev_token is not None
+            or self._stage_r_dev_commit is not None
+            or self._stage_t_dev_commit is not None
+        ):
+            raise NormalActionRejected(
+                "WorldBody REST retest needs exactly two original closed L0 moves"
+            )
+        self.max_events = 4
+        self.max_action_requests = 3
+        self._worldbody_retest_extended = True
+
     def bind_stage_r_dev_owner(self, *, token: object) -> None:
         """Explicit opt-in from sole S49 runner; no default learning authority."""
         if (self._stage_r_dev_token is not None

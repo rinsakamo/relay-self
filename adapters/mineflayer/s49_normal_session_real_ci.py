@@ -323,6 +323,7 @@ async def qualify(
     bug0_p1_prospective_rest_dev: bool = False,
     bug0_p1_margin_dev: bool = False,
     worldbody_dev: bool = False,
+    worldbody_retest_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -341,6 +342,7 @@ async def qualify(
     stage_r = None
     rc = 2
     cancellations: list[asyncio.CancelledError] = []
+    worldbody_active = worldbody_dev or worldbody_retest_dev
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
@@ -435,7 +437,7 @@ async def qualify(
             or (bug0_p1_paper_dev and (
                 os.environ.get("S49_BUG0_P1_PAPER_DEV_ONLY") != "1"
                 or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev
-                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev
+                or worldbody_active or bug0_rest_dev or bug0_attack_rest_dev
                 or bug0_attack_health_dev or bug0_attack_dev
                 or bug0_food_loop_dev or bug0_food_refusal_dev
                 or bug0_unified_survival_dev or bug0_eat_shadow
@@ -451,7 +453,7 @@ async def qualify(
                 or os.environ.get("S49_BUG0_P1_PROSPECTIVE_REST_ONLY") != "1"
                 or not os.environ.get("S49_P1_ORIGINAL_CHECKOUT", "").startswith("/")
                 or bug0_p1_paper_dev or bug0_p1_margin_dev
-                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev or bug0_attack_health_dev
+                or worldbody_active or bug0_rest_dev or bug0_attack_rest_dev or bug0_attack_health_dev
                 or bug0_attack_dev or bug0_food_loop_dev
                 or bug0_food_refusal_dev or bug0_unified_survival_dev
                 or bug0_eat_shadow or stage_r_dev or completed_l0_dev
@@ -468,7 +470,7 @@ async def qualify(
                 or os.environ.get("S49_BUG0_P1_MARGIN_DEV_ONLY") != "1"
                 or not os.environ.get("S49_P1_ORIGINAL_CHECKOUT", "").startswith("/")
                 or bug0_p1_paper_dev or bug0_p1_prospective_rest_dev
-                or worldbody_dev or bug0_rest_dev or bug0_attack_rest_dev
+                or worldbody_active or bug0_rest_dev or bug0_attack_rest_dev
                 or bug0_attack_health_dev or bug0_attack_dev
                 or bug0_unified_survival_dev or bug0_eat_shadow
                 or bug0_food_loop_dev or bug0_food_refusal_dev
@@ -479,7 +481,11 @@ async def qualify(
             raise S31ABlocked("exclusive S49 P1 margin DEV gate required")
         if (
             type(worldbody_dev) is not bool
-            or (worldbody_dev and (
+            or type(worldbody_retest_dev) is not bool
+            or (worldbody_dev and worldbody_retest_dev)
+            or (worldbody_retest_dev
+                and os.environ.get("S49_WORLDBODY_RETEST_DEV_ONLY") != "1")
+            or (worldbody_active and (
                 os.environ.get("S49_WORLDBODY_DEV_ONLY") != "1"
                 or bug0_p1_paper_dev or bug0_p1_prospective_rest_dev
                 or bug0_p1_margin_dev or bug0_attack_rest_dev
@@ -496,7 +502,7 @@ async def qualify(
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        if worldbody_dev:
+        if worldbody_active:
             from adapters.mineflayer.worldbody_paper_server import (
                 stage_fixed_worldbody,
             )
@@ -855,7 +861,7 @@ async def qualify(
                 })
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
-            if worldbody_dev:
+            if worldbody_active:
                 # Only original native S16 + SelfBody Present, NEVER server
                 # WorldBody truth, model fatigue, or operator log.
                 from adapters.mineflayer.worldbody_direct_selfbody import (
@@ -941,7 +947,7 @@ async def qualify(
             or host.events != 3
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
-        if worldbody_dev:
+        if worldbody_active:
             from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
             from adapters.mineflayer.s49_rest_dev import inspect_rest_native_samples
             from adapters.mineflayer.worldbody_direct_selfbody import (
@@ -1020,6 +1026,95 @@ async def qualify(
             report["worldbody_rest_action_count"] = 0
             report["worldbody_physics_verified_from_server_log"] = False
             report["worldbody_rest_choice_is_not_physical_recovery_proof"] = True
+            if worldbody_retest_dev:
+                # Same original live L0 cursor and SAME ActionSupervisor, with
+                # one explicitly gated extra event / extra independent Action
+                # authorization. Never re-issue a failed or unknown MOVE.
+                from adapters.mineflayer.worldbody_direct_selfbody import (
+                    check_post_rest_motor_output,
+                )
+
+                if (
+                    host.events != 3 or host.action_requests != 2
+                    or executor._count != 2 or executor.supervisor.open_actions
+                    or len(worldbody_experiences) != 2
+                    or len(report["worldbody_rest_native_observation"]["samples"]) != 9
+                ):
+                    raise S49PhysicalFailure(
+                        "no safe two-S16 original REST prefix for retest"
+                    )
+                rest_last_seq = stationary[-1].seq
+                host.extend_after_worldbody_rest_dev(token=object())
+                report["stage"] = "WORLDBODY_REST_THEN_SAME_S49_THIRD_MOVE"
+                # Operator stages a NEW independent zombie threat to request
+                # a normal S49 MOVE after REST. No manual MOVE is sent;
+                # original L0 and S14/S15/S16 must independently authorize it.
+                _command(
+                    server,
+                    "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+                    "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                )
+                await server.stdin.drain()
+                third_steps = await asyncio.wait_for(
+                    host.run_session(
+                        observation_source, probe=reprobe, grant=decide_grant,
+                        on_action_request=on_action, max_frames=140,
+                    ),
+                    timeout=38,
+                )
+                if (
+                    len(third_steps) != 1
+                    or third_steps[0].choice.selection is not WorldChoiceKind.MOVE_AWAY
+                    or not third_steps[0].asks_for_action
+                    or third_steps[0].event_seq <= trace[-1].event_seq
+                    or third_steps[0].choice.entity_id in {
+                        old.choice.entity_id for old in trace
+                    }
+                    or host.events != 4 or host.action_requests != 3
+                    or len(worldbody_experiences) != 3
+                    or len(report["actual_native_actions"]) != 3
+                    or executor._count != 3 or executor.supervisor.open_actions
+                    or report["actual_native_actions"][-1]["terminal"] != "outcome"
+                ):
+                    raise S49PhysicalFailure(
+                        "no freshly authorized third original S49 MOVE after REST"
+                    )
+                report["decisions"].append({
+                    "event_seq": third_steps[0].event_seq,
+                    "entity_id": third_steps[0].choice.entity_id,
+                    "probe_seq": third_steps[0].choice.probe_seq,
+                    "distance_m": third_steps[0].choice.distance_m,
+                    "selected": third_steps[0].choice.selection.value,
+                    "issued": third_steps[0].asks_for_action,
+                })
+                recovered = check_post_rest_motor_output(
+                    *worldbody_experiences,
+                    final_rest_probe_seq=rest_last_seq,
+                )
+                report["worldbody_post_rest_retest"] = {
+                    "session_id": recovered.session_id,
+                    "pre_rest_first_action": recovered.pre_rest_first_action,
+                    "pre_rest_exhausted_action": recovered.pre_rest_exhausted_action,
+                    "post_rest_action": recovered.post_rest_action,
+                    "pre_rest_first_m": recovered.pre_rest_first_m,
+                    "pre_rest_exhausted_m": recovered.pre_rest_exhausted_m,
+                    "post_rest_m": recovered.post_rest_m,
+                    "recovery_over_exhausted_ratio": (
+                        recovered.recovery_over_exhausted_ratio
+                    ),
+                    "recovery_over_first_ratio": recovered.recovery_over_first_ratio,
+                    "regained_motor_output": recovered.regained_motor_output,
+                    "source_refs": list(recovered.source_refs),
+                    "final_rest_probe_seq": rest_last_seq,
+                    "worldbody_truth_accessed": recovered.worldbody_truth_accessed,
+                    "server_internal_recovery_used_by_l0": False,
+                    "three_separate_original_s16_move_outcomes": True,
+                    "post_rest_world_rule_unchanged": True,
+                }
+                if not recovered.regained_motor_output:
+                    raise S49PhysicalFailure(
+                        "post REST third original S16 MOVE did not regain output"
+                    )
         if unified_policy is not None:
             actions = report["actual_native_actions"]
             if (
@@ -1083,7 +1178,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
+            "DEV_ONLY_WORLDBODY_ORIGINAL_S49_POST_REST_THIRD_MOTOR_OUTCOME"
+            if worldbody_retest_dev
+            else "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
             if worldbody_dev
             else "DEV_ONLY_S49_SINGLE_OWNER_EAT_THEN_TWO_MOVES"
             if unified_policy is not None
@@ -1224,6 +1321,7 @@ def main() -> int:
     parser.add_argument("--bug0-p1-prospective-rest-dev", action="store_true")
     parser.add_argument("--bug0-p1-margin-dev", action="store_true")
     parser.add_argument("--worldbody-dev", action="store_true")
+    parser.add_argument("--worldbody-retest-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1239,6 +1337,7 @@ def main() -> int:
         bug0_p1_prospective_rest_dev=args.bug0_p1_prospective_rest_dev,
         bug0_p1_margin_dev=args.bug0_p1_margin_dev,
         worldbody_dev=args.worldbody_dev,
+        worldbody_retest_dev=args.worldbody_retest_dev,
     ))
 
 

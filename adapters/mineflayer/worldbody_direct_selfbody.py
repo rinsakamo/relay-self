@@ -128,3 +128,95 @@ def rest_from_observed_motor_output(
         rest_requested=rest,
         reason="OBSERVED_MOTOR_OUTPUT_LOSS" if rest else "NO_OUTPUT_LOSS_PROVEN",
     )
+
+
+@dataclass(frozen=True, slots=True)
+class DirectMotorRecoveryCheck:
+    """Fallible SelfBody readout, never a WorldBody recovery certificate."""
+
+    session_id: str
+    pre_rest_first_action: str
+    pre_rest_exhausted_action: str
+    post_rest_action: str
+    pre_rest_first_m: float
+    pre_rest_exhausted_m: float
+    post_rest_m: float
+    recovery_over_exhausted_ratio: float
+    recovery_over_first_ratio: float
+    regained_motor_output: bool
+    source_refs: tuple[str, str, str]
+    worldbody_truth_accessed: bool = False
+
+
+def check_post_rest_motor_output(
+    first: DirectMoveExperience,
+    exhausted: DirectMoveExperience,
+    recovered_candidate: DirectMoveExperience,
+    *,
+    final_rest_probe_seq: int,
+) -> DirectMotorRecoveryCheck:
+    """Compare THREE original S16 MOVE outcomes + later SelfBody Present.
+
+    The intermediate original S49 REST must have selected a safe intention and
+    collected native stationary probes; the caller supplies the last original
+    sample seq, not an operator's Paper WorldBody log. A third different MOVE
+    must be authorized and closed by original S49; this function never issues
+    a command or changes WorldBody recovery physics.
+    """
+    if (
+        not all(isinstance(x, DirectMoveExperience) for x in (
+            first, exhausted, recovered_candidate,
+        ))
+        or type(final_rest_probe_seq) is not int
+        or final_rest_probe_seq < 0
+        or len({
+            first.session_id, exhausted.session_id,
+            recovered_candidate.session_id,
+        }) != 1
+        or len({
+            first.action_id, exhausted.action_id,
+            recovered_candidate.action_id,
+        }) != 3
+        or not (
+            first.native_seq < exhausted.native_seq
+            < final_rest_probe_seq < recovered_candidate.native_seq
+        )
+        or any(
+            x.hidden_worldbody_fatigue_accessed or x.worldbody_rate_accessed
+            or not isinstance(x.source_ref, str)
+            or not x.source_ref.startswith(
+                f"native-probe:{x.session_id}:{x.native_seq}:"
+            )
+            or type(x.action_distance_m) not in (float, int)
+            or not math.isfinite(x.action_distance_m)
+            or not 0 < x.action_distance_m <= 32
+            for x in (first, exhausted, recovered_candidate)
+        )
+        or exhausted.action_distance_m >= first.action_distance_m * 0.8
+    ):
+        raise DirectWorldBodyObservationRejected(
+            "fresh original triple S16 and intervening REST native source required"
+        )
+    ratio_exhausted = (
+        recovered_candidate.action_distance_m / exhausted.action_distance_m
+    )
+    ratio_first = recovered_candidate.action_distance_m / first.action_distance_m
+    # Predeclared DEV output-only decision, neither absolute fatigue nor a
+    # guarantee that REST caused the change. Independent World post-audit
+    # establishes the separate server-state recovery time relation.
+    regained = ratio_exhausted >= 1.8 and ratio_first >= 0.7
+    return DirectMotorRecoveryCheck(
+        session_id=first.session_id,
+        pre_rest_first_action=first.action_id,
+        pre_rest_exhausted_action=exhausted.action_id,
+        post_rest_action=recovered_candidate.action_id,
+        pre_rest_first_m=first.action_distance_m,
+        pre_rest_exhausted_m=exhausted.action_distance_m,
+        post_rest_m=recovered_candidate.action_distance_m,
+        recovery_over_exhausted_ratio=ratio_exhausted,
+        recovery_over_first_ratio=ratio_first,
+        regained_motor_output=regained,
+        source_refs=(
+            first.source_ref, exhausted.source_ref, recovered_candidate.source_ref,
+        ),
+    )
