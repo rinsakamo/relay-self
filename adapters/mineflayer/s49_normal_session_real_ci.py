@@ -323,6 +323,7 @@ async def qualify(
     bug0_p1_prospective_rest_dev: bool = False,
     bug0_p1_margin_dev: bool = False,
     worldbody_dev: bool = False,
+    worldbody_p1_source_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -493,6 +494,18 @@ async def qualify(
             raise S31ABlocked(
                 "one original S49 WorldBody owner and exclusive DEV World gate required"
             )
+        if (
+            type(worldbody_p1_source_dev) is not bool
+            or (worldbody_p1_source_dev and (
+                not worldbody_dev
+                or os.environ.get("S49_WB_P1_SOURCE_DEV_ONLY") != "1"
+                or live_probe is not None or completed_l0 is not None
+                or completed_l0_dev or stage_r_dev
+            ))
+        ):
+            raise S31ABlocked(
+                "P1 same-World source needs original S49 WorldBody-only DEV owner"
+            )
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -501,7 +514,10 @@ async def qualify(
                 stage_fixed_worldbody,
             )
 
-            report.update(await asyncio.to_thread(stage_fixed_worldbody, root))
+            report.update(await asyncio.to_thread(
+                stage_fixed_worldbody, root,
+                source_bridge_dev=worldbody_p1_source_dev,
+            ))
         elif bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
             from adapters.mineflayer.s49_p1_paper_server import stage_paper_dev
 
@@ -521,6 +537,16 @@ async def qualify(
         )
         sid = session.started.session_id
         report["session_id"] = sid
+        p1_same_world_nonce = sid.replace("-", "")[:20]
+        if worldbody_p1_source_dev:
+            # Read-only console marker on the SAME disposable World / native
+            # session, before any S49 Action. Not Action authority or WAIT proof.
+            _command(server, f"s49p1start {p1_same_world_nonce}")
+            await server.stdin.drain()
+            report["worldbody_p1_source_nonce"] = p1_same_world_nonce
+            report["worldbody_p1_source_join_state"] = (
+                "SAME_SESSION_MARKERS_UNATTESTED_UNTIL_POST_WORLD"
+            )
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
@@ -810,6 +836,15 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
+            if worldbody_p1_source_dev:
+                # A Paper console marker is read-only and cannot issue MOVE.
+                # Source plugin accepts one action at a time and logs tick.
+                _command(
+                    server,
+                    f"s49p1action {p1_same_world_nonce} begin "
+                    f"{step.action_request_id}",
+                )
+                await server.stdin.drain()
             if stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
@@ -837,6 +872,13 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            if worldbody_p1_source_dev:
+                _command(
+                    server,
+                    f"s49p1action {p1_same_world_nonce} closed "
+                    f"{step.action_request_id}",
+                )
+                await server.stdin.drain()
             if eat_cursor is not None:
                 # Diagnostic only: the original S15 cleanup ACK and S16 terminal
                 # cannot establish effective physical STOP or release EAT.
@@ -1008,6 +1050,11 @@ async def qualify(
                 raise S49PhysicalFailure(
                     "physical motor loss not observed or original L0 REST declined"
                 )
+            if worldbody_p1_source_dev:
+                # This marks original L0's selected intent, NOT a physical
+                # WAIT witness and NOT a P1 credited recovery event.
+                _command(server, f"s49p1choice {p1_same_world_nonce} REST")
+                await server.stdin.drain()
             stationary = [baseline]
             for index in range(8):
                 await asyncio.sleep(4.0)
@@ -1017,6 +1064,18 @@ async def qualify(
             report["worldbody_rest_native_observation"] = (
                 inspect_rest_native_samples(stationary, session_id=sid)
             )
+            if worldbody_p1_source_dev:
+                _command(server, f"s49p1stop {p1_same_world_nonce}")
+                await server.stdin.drain()
+                # Console commands are processed on later Paper ticks. Give
+                # the independent source-only STOP a bounded chance to seal
+                # BEFORE native Node shutdown; still require the actual STOP
+                # marker in post-World audit, never infer it from this sleep.
+                await asyncio.sleep(0.75)
+                report["worldbody_p1_source_wait_attested"] = False
+                report["worldbody_p1_source_join_state"] = (
+                    "PENDING_POST_WORLD_ORIGINAL_SOURCE_JOIN"
+                )
             report["worldbody_rest_action_count"] = 0
             report["worldbody_physics_verified_from_server_log"] = False
             report["worldbody_rest_choice_is_not_physical_recovery_proof"] = True
@@ -1224,6 +1283,7 @@ def main() -> int:
     parser.add_argument("--bug0-p1-prospective-rest-dev", action="store_true")
     parser.add_argument("--bug0-p1-margin-dev", action="store_true")
     parser.add_argument("--worldbody-dev", action="store_true")
+    parser.add_argument("--worldbody-p1-source-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1239,6 +1299,7 @@ def main() -> int:
         bug0_p1_prospective_rest_dev=args.bug0_p1_prospective_rest_dev,
         bug0_p1_margin_dev=args.bug0_p1_margin_dev,
         worldbody_dev=args.worldbody_dev,
+        worldbody_p1_source_dev=args.worldbody_p1_source_dev,
     ))
 
 

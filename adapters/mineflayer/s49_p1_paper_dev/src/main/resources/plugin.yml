@@ -17,3 +17,6 @@ commands:
   s49p1stop:
     usage: '/s49p1stop <nonce>'
     description: 'Console-only DEV source stop; no World Action'
+  s49p1action:
+    usage: '/s49p1action <nonce> <begin|closed> <action-token>'
+    description: 'Console-only original S49 MOVE lifecycle marker, read-only; not P1 WAIT proof'

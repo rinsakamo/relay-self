@@ -43,6 +43,8 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
     private long teleportCount = 0;
     private long playerDamageCount = 0;
     private long sourceFaults = 0;
+    private int tickBudget = 480;
+    private String pendingAction = null;
 
     @Override
     public void onEnable() {
@@ -51,11 +53,13 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             getLogger().info("S49P1_DISABLED_DEFAULT");
             return;
         }
+        int configuredTicks = getConfig().getInt("max-ticks", -1);
         if (!TARGET.equals(getConfig().getString("target-player"))
-                || getConfig().getInt("max-ticks", -1) != 480
+                || (configuredTicks != 480 && configuredTicks != 2400)
                 || !Bukkit.getMinecraftVersion().equals("1.21.8")) {
             throw new IllegalStateException("wrong source profile");
         }
+        tickBudget = configuredTicks;
         Bukkit.getPluginManager().registerEvents(this, this);
         dev = true;
         Bukkit.getScheduler().runTaskTimer(this, this::tickRead, 1L, 1L);
@@ -75,11 +79,26 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (!dev || !(sender instanceof ConsoleCommandSender)
-                || args.length < 1 || args.length > 2
+                || args.length < 1 || args.length > 3
                 || !args[0].matches("[a-z0-9]{12,32}")) {
             return false;
         }
         String cmd = command.getName().toLowerCase(java.util.Locale.ROOT);
+        // STOP seals the earlier attached session even after native Node
+        // disconnects. The original session nonce/world/player identities
+        // were fixed at START; a fresh Player is NOT a precondition to seal.
+        // Never accept a second STOP or one while an S49 action is open.
+        if (cmd.equals("s49p1stop")) {
+            if (args.length != 1 || !armed || stopped
+                    || !nonce.equals(args[0]) || pendingAction != null) return false;
+            armed = false;
+            stopped = true;
+            getLogger().info("S49P1_STOP nonce=" + nonce
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
+                + " index=" + total + " faults=" + sourceFaults
+                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
+            return true;
+        }
         Player p = player();
         if (p == null) return false;
         if (cmd.equals("s49p1start")) {
@@ -97,6 +116,27 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             return true;
         }
         if (!armed || !nonce.equals(args[0]) || !matches(p)) return false;
+        if (cmd.equals("s49p1action")) {
+            // Read-only S49 lifecycle marker. It cannot issue/authorize MOVE,
+            // assert physical input release, or provide a P1 WAIT witness.
+            if (args.length != 3 || !args[2].matches("[a-z0-9-]{1,64}")) {
+                return false;
+            }
+            if (args[1].equals("begin")) {
+                if (pendingAction != null) return false;
+                pendingAction = args[2];
+            } else if (args[1].equals("closed")) {
+                if (!args[2].equals(pendingAction)) return false;
+                pendingAction = null;
+            } else {
+                return false;
+            }
+            getLogger().info("S49P1_ACTION nonce=" + nonce
+                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
+                + " index=" + total + " phase=" + args[1]
+                + " action=" + args[2]);
+            return true;
+        }
         if (cmd.equals("s49p1choice")) {
             if (args.length != 2
                     || !(args[1].equals("WAIT") || args[1].equals("REST"))) return false;
@@ -110,15 +150,6 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
             getLogger().info("S49P1_REST nonce=" + nonce
                 + " world=" + world + " tick=" + Bukkit.getCurrentTick()
                 + " index=" + total);
-            return true;
-        }
-        if (cmd.equals("s49p1stop")) {
-            armed = false;
-            stopped = true;
-            getLogger().info("S49P1_STOP nonce=" + nonce
-                + " world=" + world + " tick=" + Bukkit.getCurrentTick()
-                + " index=" + total + " faults=" + sourceFaults
-                + " coverage=SERVER_TICK_CALLBACK_NOT_FULL_TICK");
             return true;
         }
         return false;
@@ -135,7 +166,7 @@ public final class S49P1SourcePlugin extends JavaPlugin implements Listener {
         }
         long tick = Bukkit.getCurrentTick();
         if (tick <= priorTick) return;
-        if (tick != priorTick + 1 || total >= 480) {
+        if (tick != priorTick + 1 || total >= tickBudget) {
             sourceFaults++;
             armed = false;
             getLogger().severe("S49P1_SOURCE_FAULT reason=GAPPED_OR_OVERFLOW");
