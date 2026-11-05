@@ -1,0 +1,66 @@
+name: WorldBody P1 exact-owner offline numerical parity (no World)
+on:
+  push:
+    branches:
+      - dev/p1-worldbody-reuse-audit-20261105
+  pull_request:
+    branches:
+      - dev/worldbody-fixed-physical-rest-20261105
+    paths:
+      - 'adapters/mineflayer/worldbody_physics_dev/src/main/java/io/github/rinsakamo/worldbody/P1FatigueLaw.java'
+      - 'tests/test_worldbody_p1_existing_law_parity_dev.py'
+      - '.github/workflows/worldbody-p1-pinned-parity-offline.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worldbody-p1-parity-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-p1-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      P1_SOURCE_ROOT: ${{ github.workspace }}/p1-original
+    steps:
+      - name: Checkout exact WorldBody candidate (no World trigger)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Checkout original P1 owner, immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Fail closed on non-original P1 HEAD
+        run: |
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          test -s p1-original/experiments/fatigue_p1.py
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Frozen Python test dependency
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1
+      - name: Repo contract, exact P1 Python vs Java replay and negative cases
+        run: |
+          python tools/check_repository.py
+          python -m compileall -q tests/test_worldbody_p1_existing_law_parity_dev.py
+          python -m pytest -q tests/test_worldbody_p1_existing_law_parity_dev.py
+      - name: Compile existing Paper plugin with new pure P1 class
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/worldbody_physics_dev/pom.xml -DskipTests package
+      - name: No World/source/qualification claim
+        run: |
+          echo 'DEV_P1_ORIGINAL_JAVA_OFFLINE_PARITY_ONLY / WORLD_0 / S49_ACTION_0 / P1_SOURCE_BOUND_WAIT_NOT_ATTESTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
