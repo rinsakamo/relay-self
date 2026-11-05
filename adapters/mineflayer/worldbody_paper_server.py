@@ -27,7 +27,7 @@ class WorldBodyStagingRejected(S31ABlocked):
     pass
 
 
-def stage_fixed_worldbody(root: Path) -> dict:
+def stage_fixed_worldbody(root: Path, *, source_bridge_dev: bool = False) -> dict:
     if (
         os.environ.get("S49_REAL_SERVER_CI") != "1"
         or os.environ.get("S49_WORLDBODY_DEV_ONLY") != "1"
@@ -48,6 +48,11 @@ def stage_fixed_worldbody(root: Path) -> dict:
             raise WorldBodyStagingRejected("only immutable regular absolute artifacts")
         return path
 
+    if type(source_bridge_dev) is not bool or (source_bridge_dev and (
+        os.environ.get("S49_WB_P1_SOURCE_DEV_ONLY") != "1"
+    )):
+        raise WorldBodyStagingRejected("explicit same-World P1 source DEV gate required")
+
     paper = require("S49_WB_PAPER_JAR")
     plugin = require("S49_WB_PLUGIN_JAR")
     expect = os.environ.get("S49_WB_PLUGIN_SHA256", "")
@@ -63,6 +68,23 @@ def stage_fixed_worldbody(root: Path) -> dict:
     ):
         raise WorldBodyStagingRejected("wrong Paper/plugin bytes or unpinned build")
 
+    # Validate the existing #734 collector as a *second read-only plugin*.
+    # A missing/wrong plugin fails before altering disposable World files.
+    source_plugin = None
+    source_sha = None
+    if source_bridge_dev:
+        source_plugin = require("S49_WB_P1_SOURCE_PLUGIN_JAR")
+        source_sha = os.environ.get("S49_WB_P1_SOURCE_PLUGIN_SHA256", "")
+        from adapters.mineflayer.s49_p1_paper_server import PLUGIN_JAR as SOURCE_JAR
+        if (
+            source_plugin.name != SOURCE_JAR
+            or source_plugin == paper or source_plugin == plugin
+            or source_plugin.stat().st_size < 1000
+            or len(source_sha) != 64
+            or any(ch not in "0123456789abcdef" for ch in source_sha)
+            or hashlib.sha256(source_plugin.read_bytes()).hexdigest() != source_sha
+        ):
+            raise WorldBodyStagingRejected("wrong reused #734 read-only source plugin")
     shutil.copyfile(paper, root / "minecraft.jar")
     folder = root / "plugins"
     folder.mkdir(mode=0o700)
@@ -70,6 +92,17 @@ def stage_fixed_worldbody(root: Path) -> dict:
     cfg = folder / "RelayWorldBodyDev"
     cfg.mkdir(mode=0o700)
     (cfg / "config.yml").write_text(CONFIG, encoding="utf-8")
+    if source_plugin is not None:
+        shutil.copyfile(source_plugin, folder / source_plugin.name)
+        source_cfg = folder / "S49P1Dev"
+        source_cfg.mkdir(mode=0o700)
+        (source_cfg / "config.yml").write_text(
+            "# Reused #734 read-only Paper callback recorder; no P1 state or Action\n"
+            "dev-enabled: true\n"
+            "target-player: RelaySelf\n"
+            "max-ticks: 2400\n",
+            encoding="utf-8",
+        )
     return {
         "s49_dev_server": "PINNED_PAPER_1_21_8",
         "s49_worldbody_plugin_sha256": expect,
@@ -77,4 +110,7 @@ def stage_fixed_worldbody(root: Path) -> dict:
         "worldbody_truth_exported_to_self": False,
         "worldbody_rule_mutation_surface": False,
         "original_s49_issuer_unchanged": True,
+        "worldbody_p1_same_world_source_dev": source_bridge_dev,
+        "worldbody_p1_source_plugin_sha256": source_sha,
+        "worldbody_p1_source_is_not_full_tick_wait_attestation": True,
     }
