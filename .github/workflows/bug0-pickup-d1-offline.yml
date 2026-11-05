@@ -1,0 +1,41 @@
+name: Bug-0 PICKUP D1 native inventory + Paper event offline
+on:
+  push:
+    branches:
+      - dev/bug0-pickup-source-d1-20261106
+
+permissions:
+  contents: read
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Repo source and read-only native pickup tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/loot_pickup_readback.py tests/test_bug0_loot_inventory_readback.py
+          ruff check adapters/mineflayer/loot_pickup_readback.py tests/test_bug0_loot_inventory_readback.py
+          python -m pytest -q tests/test_bug0_loot_inventory_readback.py tests/test_bug0_zombie_respawn_r1_post.py
+      - name: Compile operator-only separate Paper pickup witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/loot_pickup_fixture_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/loot_pickup_fixture_dev/target/relay-loot-pickup-dev-0.1.0-dev.jar
+      - name: Offline proves no true pickup
+        run: echo 'D1_OFFLINE_ONLY WORLD_0 ACTION_0 PICKUP_NOT_PHYSICALLY_TESTED'

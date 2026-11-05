@@ -1,0 +1,10 @@
+name: RelayPickupFixtureDev
+main: io.github.rinsakamo.loot.RelayPickupFixtureDev
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'Isolated operator-only rotten_flesh pickup source observation, not zombie loot'
+load: POSTWORLD
+commands:
+  rselfstagefood:
+    description: 'Operator console only: stage one tagged real rotten_flesh item for pickup D1'
+    usage: '/rselfstagefood'
