@@ -27,7 +27,10 @@ class WorldBodyStagingRejected(S31ABlocked):
     pass
 
 
-def stage_fixed_worldbody(root: Path, *, source_bridge_dev: bool = False) -> dict:
+def stage_fixed_worldbody(
+    root: Path, *, source_bridge_dev: bool = False,
+    p1_physics_dev: bool = False,
+) -> dict:
     if (
         os.environ.get("S49_REAL_SERVER_CI") != "1"
         or os.environ.get("S49_WORLDBODY_DEV_ONLY") != "1"
@@ -52,6 +55,17 @@ def stage_fixed_worldbody(root: Path, *, source_bridge_dev: bool = False) -> dic
         os.environ.get("S49_WB_P1_SOURCE_DEV_ONLY") != "1"
     )):
         raise WorldBodyStagingRejected("explicit same-World P1 source DEV gate required")
+
+    if (
+        type(p1_physics_dev) is not bool
+        or (p1_physics_dev and (
+            not source_bridge_dev
+            or os.environ.get("S49_WB_P1_PHYSICAL_DEV_ONLY") != "1"
+        ))
+    ):
+        raise WorldBodyStagingRejected(
+            "P1 physical DEV needs distinct owner grant and same-World source"
+        )
 
     paper = require("S49_WB_PAPER_JAR")
     plugin = require("S49_WB_PLUGIN_JAR")
@@ -91,7 +105,15 @@ def stage_fixed_worldbody(root: Path, *, source_bridge_dev: bool = False) -> dic
     shutil.copyfile(plugin, folder / PLUGIN_JAR)
     cfg = folder / "RelayWorldBodyDev"
     cfg.mkdir(mode=0o700)
-    (cfg / "config.yml").write_text(CONFIG, encoding="utf-8")
+    # Preserve the legacy #738 config and physical coefficients verbatim.
+    # The new DEV mode is opt-in and mutually exclusive at Paper onEnable.
+    physics_config = CONFIG
+    if p1_physics_dev:
+        physics_config += (
+            "# Original P1 #626 standard law, server-owned and immutable\\n"
+            "p1-law-dev-enabled: true\\n"
+        )
+    (cfg / "config.yml").write_text(physics_config, encoding="utf-8")
     if source_plugin is not None:
         shutil.copyfile(source_plugin, folder / source_plugin.name)
         source_cfg = folder / "S49P1Dev"
@@ -106,7 +128,11 @@ def stage_fixed_worldbody(root: Path, *, source_bridge_dev: bool = False) -> dic
     return {
         "s49_dev_server": "PINNED_PAPER_1_21_8",
         "s49_worldbody_plugin_sha256": expect,
-        "worldbody_profile": "SERVER_FIXED_WALK_SPEED_UNOBSERVED_FATIGUE",
+        "worldbody_profile": (
+            "PINNED_ORIGINAL_P1_PER_WORLD_TICK_CAP_DEV"
+            if p1_physics_dev else "SERVER_FIXED_WALK_SPEED_UNOBSERVED_FATIGUE"
+        ),
+        "worldbody_p1_physics_dev": p1_physics_dev,
         "worldbody_truth_exported_to_self": False,
         "worldbody_rule_mutation_surface": False,
         "original_s49_issuer_unchanged": True,
