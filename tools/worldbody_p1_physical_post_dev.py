@@ -14,7 +14,31 @@ import re
 from pathlib import Path
 from typing import Any
 
-from adapters.mineflayer.s49_p1_paper_dev import _float, _int, _rows
+from adapters.mineflayer.s49_p1_paper_dev import (
+    _float, _int, _rows as _existing_s49_rows,
+)
+
+
+def _rows(log: str, key: str) -> list[dict[str, str]]:
+    # Reuse the existing #734 strict Paper parser for S49P1 rows.
+    if key.startswith("S49P1_"):
+        return _existing_s49_rows(log, key.removeprefix("S49P1_"))
+    if not key.startswith("P1WORLD_"):
+        raise P1PhysicalPostRejected("unexpected Paper marker kind")
+    marker = key + " "
+    rows = []
+    for line in log.splitlines():
+        if marker not in line:
+            continue
+        tokens = line.split(marker, 1)[1].split()
+        if not tokens or any(token.count("=") != 1 for token in tokens):
+            raise P1PhysicalPostRejected("malformed P1 Paper marker")
+        kv = [token.split("=", 1) for token in tokens]
+        entry = dict(kv)
+        if len(entry) != len(kv):
+            raise P1PhysicalPostRejected("duplicate P1 Paper marker fields")
+        rows.append(entry)
+    return rows
 
 P1_SHA = "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0"
 P1_HEAD = "0ab76b4e46efd914877e543a65de58b6cfc71326"
