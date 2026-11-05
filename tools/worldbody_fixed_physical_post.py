@@ -85,11 +85,24 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
     attached = _rows(paper_log, "ATTACH")
     effects = _rows(paper_log, "EFFECT")
     samples = _rows(paper_log, "INTERNAL")
+    restrictions = _rows(paper_log, "RESTRICT")
     if len(attached) != 1 or len(effects) < 2 or len(samples) < 20:
         raise ValueError("WorldBody physical server truth transition absent")
+    if not restrictions:
+        raise ValueError("server authoritative physical destination never constrained")
+    if any(
+        row.get("server_constraint") != "PLAYER_MOVE_DESTINATION"
+        or float(row["requested_m"]) <= 0
+        or not math.isclose(
+            float(row["accepted_m"]) / float(row["requested_m"]),
+            0.35, rel_tol=0, abs_tol=1e-12,
+        )
+        for row in restrictions
+    ):
+        raise ValueError("server movement constraint was not actually applied")
     identity = (attached[0].get("world"), attached[0].get("player"))
     if any((x.get("world"), x.get("player")) != identity
-           for x in [*effects, *samples]):
+           for x in [*effects, *samples, *restrictions]):
         raise ValueError("foreign WorldBody physical source")
     ticks = [int(e["tick"]) for e in effects]
     if ticks != sorted(ticks) or len(set(ticks)) != len(ticks):
@@ -114,7 +127,7 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
         raise ValueError("recovery claimed after source stopped")
     return {
         "classification": "DEV_ORIGINAL_S49_WORLDBODY_FIXED_PHYSICAL_EFFECT_AND_REST",
-        "physical_source": "ORIGINAL_PAPER_PLUGIN_WALK_SPEED_AND_NATIVE_SLOWNESS_V",
+        "physical_source": "ORIGINAL_PAPER_PLUGIN_WALK_SPEED_SLOWNESS_AND_SERVER_DESTINATION",
         "server_world_uuid": identity[0],
         "server_player_uuid": identity[1],
         "worldbody_true_fatigue_and_rates_usable_by_self": False,
@@ -125,6 +138,8 @@ def compare_fixed_worldbody(report: dict[str, Any], paper_log: str) -> dict[str,
         "final_physical_speed_recovery_tick": ticks[-1],
         "physical_speed_transition_sequence": types,
         "server_native_slowness_on_degrade": True,
+        "paper_authoritative_movement_restriction_events": len(restrictions),
+        "paper_authoritative_movement_restriction_ratio": 0.35,
         "server_native_slowness_removed_on_recovery": True,
         "actual_walk_speed_restored": True,
         "original_l0_rest_intent": True,
