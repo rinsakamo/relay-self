@@ -9,10 +9,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from adapters.mineflayer.normal_action import NormalActionReceipt
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.normal_action import NormalActionReceipt
 from adapters.mineflayer.present_projection import project_mineflayer_present
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_body_projection import project_body_present
 from relay_self.action import ActionState
 from relay_self.self_body import BodyOrigin, compose_self_body_view
