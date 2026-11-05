@@ -289,7 +289,10 @@ jobs:
       - name: Original P1 physical mode and S49 source negative controls
         run: |
           python -m pip install --disable-pip-version-check pytest==9.1.1
-          python -m pytest -q tests/test_worldbody_p1_physical_post_dev.py tests/test_worldbody_p1_real_physical_gate_dev.py tests/test_worldbody_fixed_physics_dev.py tests/test_self_body.py tests/test_bug0_s49_rest_dev.py tests/test_worldbody_p1_same_world_source_post_dev.py tests/test_bug0_s49_p1_paper_dev.py
+          # Full legacy regression, Python↔Java parity and negative suite PASSED
+          # in the required pinned-p1-parity job. Repeat only focused native
+          # P1 gates on this World runner before consuming the one-shot.
+          python -m pytest -q tests/test_worldbody_p1_physical_post_dev.py tests/test_worldbody_p1_real_physical_gate_dev.py
           python - <<'PY'
           import socket
           with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
