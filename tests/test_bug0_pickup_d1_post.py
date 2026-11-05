@@ -10,9 +10,9 @@ W = "11111111-1111-4111-8111-111111111111"
 P = "22222222-2222-4222-8222-222222222222"
 ITEM_UUID = "33333333-3333-4333-8333-333333333333"
 LOG = (
-    f"RSELF_LOOT_STAGED world={W} owner={P} entity={I} item=rotten_flesh "
+    f"RSELF_LOOT_STAGED world={W} owner={P} entity={ITEM_UUID} item=rotten_flesh "
     "count=1 tick=120 source=OPERATOR_FIXTURE_NOT_ZOMBIE_DROP\n"
-    f"RSELF_LOOT_PICKED world={W} owner={P} entity={I} item=rotten_flesh "
+    f"RSELF_LOOT_PICKED world={W} owner={P} entity={ITEM_UUID} item=rotten_flesh "
     "count=1 tick=122 source=ACTUAL_PAPER_PICKUP_EVENT\n"
 )
 REPORT = {
