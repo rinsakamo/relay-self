@@ -862,7 +862,15 @@ async def qualify(
                     direct_move_experience,
                 )
 
-                worldbody_experiences.append(direct_move_experience(receipt))
+                # S15's internal after observation lacks a request_id.
+                # Obtain a NEW original session-correlated native Present;
+                # never relabel the uncorrelated S15 packet as SelfBody truth.
+                correlated = await _correlated_observe(
+                    session, f"worldbody-direct-{sid}-{receipt.terminal.action_id}"
+                )
+                worldbody_experiences.append(
+                    direct_move_experience(receipt, correlated)
+                )
             if completed_l0 is not None or completed_l0_dev:
                 closed_receipts[step.action_request_id] = receipt
             report["actual_native_actions"].append({
