@@ -398,7 +398,7 @@ This is a **contract algorithm sketch**, not an executable API.
 
 ## 14. Owner-identity admission API review — same-ID collision and issuance boundary (2026-11-06)
 
-> **API DESIGN PROPOSAL / S #537 OWNER REVIEW REQUIRED / NO EXECUTABLE CHANGE.** This section reconciles §13 with executable `src/relay_self/{intent,skill,action,action_supervision}.py` on the current `main`. It neither claims that S49 has a multi-Intent owner registry nor certifies real physical concurrency.
+> **HISTORICAL API DESIGN EXPLORATION — SUPERSEDED IN OWNERSHIP MODEL BY §15 / S #537 OWNER REVIEW REQUIRED / NO EXECUTABLE CHANGE.** The multiple-independent-owner model explored here is *not* the selected v0.5 target. Same-ID tests remain valuable as cross-Self or forged-object negative controls. This section reconciles §13 with executable `src/relay_self/{intent,skill,action,action_supervision}.py` on the current `main`. It neither claims that S49 has a multi-Intent owner registry nor certifies real physical concurrency.
 
 ### 14.1 Code-derived gap that must not be papered over
 
@@ -509,3 +509,90 @@ Pre-dispatch frame validation is all-or-nothing for its **planned** effect set. 
 | A-40 | Owner process restart, stale slot completion or expired held-control lease | Invalid previous handles and no new physical Action until fresh admission |
 
 **Owner acceptance criteria:** S #537 checks the exact mismatch with its concrete adapter, chooses the minimal private owner-binding implementation (or justifies a stronger Skill/Action seam), confirms existing command/clear/settling behavior, and approves A-31–A-40. Only then mark the **Contract A API design** `DESIGN_ACCEPTED`; actual offline code and real World claims are separate milestones. S review cannot be replaced by this documentation commit.
+
+---
+
+## 15. One Self, one Intent ownership scope, multiple live Intents (user-selected, 2026-11-06)
+
+> **USER-ADOPTED DESIGN DIRECTION / DETAILS S #537 OWNER REVIEW REQUIRED / NOT IMPLEMENTED.** This is a correction to §13–14's proposed *multiple independent physical Intent owners inside one Self*. It does not retroactively alter current main, real World grants or the tested S49 serial path. Where §1, §13, or §14 speaks of several independent body-directed Intent owners **within the same Self**, read those passages as an earlier design alternative, not the preferred architecture.
+
+### 15.1 Terminology and ownership invariant
+
+**At the conceptual level, the owner of the Self's Intent commitments is that Self instance.** In this sentence "Self" means the *identity/scope of one continuously operating agent*, not a newly invented central reasoning controller, database for all memories, or a second Action issuer. MySelf/SelfWorld/SelfBody may propose Goals or knowledge; they do not individually own physical commitment authority.
+
+A single Self may hold many independently current, deferred or reconsidering Intent records. Their lifecycles are **per Intent**; ownership scope is **one Self**. Thus:
+
+```text
+Self A (one logical Intent ownership scope)
+    Intent[EVADE]       CURRENT / ACTIVE candidate
+    Intent[EAT]         CURRENT / DEFERRED physically
+    Intent[ATTACK]      CURRENT / competing candidate
+    Intent[REST]        CURRENT / pending condition
+        |
+        |  bounded, source-qualified proposals / arbitration
+        v
+    one existing S49 physical Action issuer
+        |
+    original Skill -> Action -> WorldBody -> sourced outcomes
+
+Self B (separate ownership scope) -- cannot authorize Self A's body
+```
+
+Here `Intent[EAT]` is an example label; a particular commitment has its own **unique runtime identity**, and several commitments of the *same type* may exist only if the Self's commitment rules permit them. A retained Intent does not consume a cognitive slot or imply a concurrently active physical Action.
+
+This preserves the established v0.5 principle that **Self is a process, not a centralized independent controller**. The S-owned executable subsystem implements the *Self-scoped Intent lifecycle*; it is not ontologically a second Self.
+
+### 15.2 Proposed minimal executable representation
+
+**Target contract (not yet executable):** one Self-scoped Intent-management boundary with `0..N` live Intent records, each with its own objective, event/provenance history, state, local revision and reconsideration request/decision. It must prevent silent replacement of any record. Use a bounded collection inside the existing S runtime, **not** one independent globally authoritative Owner per Goal, slot or Intent.
+
+Grand Null migration:
+- First preserve existing `IntentCommitment`, which implements **one Current Intent per object** and must not be falsely described as already multi-Intent. A Self-local facade/collection can *reuse* multiple existing lifecycle objects as internal record mechanisms while exposing **one Self-bound authority scope**. Distinguish an internal lifecycle object from an autonomous semantic/physical Owner.
+- The alternative is extending the existing Intent owner itself to hold a keyed collection and per-Intent transitions; choose it only if the wrapper approach adds non-reconstructible state or problematic lifecycle coupling. Do not rewrite a mature single-current API just to improve names.
+- No global registry, per-slot Intent owner, per-Goal owner or extra physical dispatcher. Cross-epoch durability and restart reconstruction require their own B/owner contract; no implicit persistence claim here.
+
+Candidate API vocabulary (conceptual, not Python imports):
+
+```text
+SelfIntentScope(self_instance, world_session, physical_body):
+  commit(intent_key, objective, provenance) -> intent_revision
+  request_reconsideration(intent_key, trigger, provenance)
+  reconsider(intent_key, CONTINUE | RELEASE, provenance)
+  close(intent_key, COMPLETED | FAILED | INVALIDATED, provenance)
+  current(intent_key) -> SelfBoundIntentSnapshot | None
+  current_all() -> bounded snapshots (for arbitration only)
+  validate_for_execution(intent_key, expected_revision, source, grant)
+       -> trusted, S49-private binding | DEFER | DENY
+```
+
+The scope is associated with **one Self**. `current_all()` does not authorize physical Actions. Each new Action requires S49 source/capability/currentness/resource/permission checks and still binds through the existing Skill/Action owner interface for the selected primary Intent. The existing S49 one-current-intent serial adapter remains an explicit compatibility stage.
+
+### 15.3 Identity and same-ID collision after this choice
+
+- **Within one Self:** allocate unique commitment instance IDs in its Intent scope and reject duplicates/reuse for that scope's declared lifetime. Intent *kind* (`EAT`, `ATTACK`) and *instance ID* are separate. There is no need to rely on random UUID collision probabilities for correctness if uniqueness is checked.
+- **Between different Self instances or Worlds:** the same textual Intent ID must never establish cross-Self physical authority. S49 validates `self_instance / body / session`, trusted local Intent scope membership, record revision and actual scoped grant. Identical text is not a capability.
+- **Within a single Self during migration:** internal `IntentCommitment` objects may be used for implementation convenience, but a caller cannot directly substitute a fabricated object of the same `intent_id` into `SkillExecution.start` / `ActionLifecycle.propose` and obtain an authorized S49 Action. The trusted Self-scoped facade selects the real internal record.
+- Consequently old §14's "multiple independent Owner A/B *inside the same Self*" is **not an ordinary runtime assumption**. Retain its same-ID test as an **adversarial substitution test**, and test two independent Self scopes separately.
+
+### 15.4 Intent vs slot vs physical execution
+
+A Self may keep `EAT` and `ATTACK` Intent commitments current while `ATTACK` is selected for execution. `EAT` is *deferred for physical effects*, not necessarily released or suspended as a committed objective. If `ATTACK` resolves and food is still relevant, the same EAT commitment can be considered without inventing a new owner.
+
+A slot is time-limited **cognitive compute capacity** for analyzing those commitments. It is neither the owner of Intent identity nor a permission to issue Actions. Intent scope and slot lifecycle are orthogonal.
+
+**Physical action authority remains S49's**, with original S14/S15/S16/Supervisor handling. No Self API, memory update, Plan revision or L2 recommendation independently grants a native Action. Multi-channel ControlFrame remains future opt-in under the same issuer.
+
+### 15.5 Owner-review tests updated to this direction
+
+| ID | Scenario | Required result |
+| --- | --- | --- |
+| A-41 | One Self retains EAT + ATTACK while only one physical Action is active | Both commitments remain identifiable; original S49 single-Action issuance unchanged |
+| A-42 | EAT deferred during ATTACK, then re-evaluated at a new source epoch | Retained EAT may resume after genuine revalidation; no hidden recommit |
+| A-43 | Same `intent_key`/instance ID committed twice in one Self scope | Duplicate rejected before any physical binding |
+| A-44 | Two Self scopes use identical textual Intent ID | Cannot cross-bind World/body/grant or issue for the other Self |
+| A-45 | Forged internal `IntentCommitment` object with copied ID inside one Self | S49 rejects unless bound to trusted record in its Self scope |
+| A-46 | Independent Goal/Plan/slot task ends while Self Intent is current | Intent unaffected unless explicit legitimate reconsideration/closure |
+| A-47 | Current serial adapter receives multiple simultaneously current Intent candidates | Select/defer via same Self scope; no fabricated multi-Action capability |
+| A-48 | Self/session restart while an internal record pointer or grant was retained | Old pointer/authority invalid; no implicit resurrection of active physical issue |
+
+**Owner-review decision still required:** select the smallest S-owned Self-scoped lifecycle representation and its trust boundary; keep existing executable contracts unchanged until focused offline negative tests pass. This user-selected conceptual ownership decision **does not mark all Contract A API details DESIGN_ACCEPTED**.
