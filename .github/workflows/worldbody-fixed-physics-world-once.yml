@@ -1,4 +1,4 @@
-name: WorldBody native Slowness plus fixed fatigue recovery one DEV Paper World
+name: WorldBody authoritative destination cap and rest one Paper DEV World
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   one-world:
-    if: ${{ github.event.head_commit.message == 'run-worldbody-fixed-native-slowness-once-20261105' }}
+    if: ${{ github.event.head_commit.message == 'run-worldbody-fixed-authoritative-cap-once-20261105' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -96,14 +96,14 @@ jobs:
         run: |
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
           node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version!=='4.39.0') process.exit(2)"
-      - name: One distinct original World under fixed WorldBody native slowness and direct S16 REST
+      - name: One distinct original World under fixed WorldBody physical destination cap and S16 REST
         run: |
           mkdir -p worldbody-evidence
           python -B -m adapters.mineflayer.s49_normal_session_real_ci \
             --worldbody-dev \
             --report worldbody-evidence/s49_original_worldbody.json \
             --server-log worldbody-evidence/paper_original.log
-      - name: Independent Paper Slowness/recovery and exact S16 outcome post-World audit
+      - name: Independent Paper authoritative destination/slowness/recovery and S16 outcome audit
         run: |
           python -B tools/worldbody_fixed_physical_post.py \
             --report worldbody-evidence/s49_original_worldbody.json \
@@ -119,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: worldbody-fixed-native-slowness-one-world
+          name: worldbody-fixed-authoritative-cap-one-world
           path: worldbody-evidence/
           if-no-files-found: warn
           retention-days: 30
