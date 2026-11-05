@@ -2,3 +2,7 @@
 # cannot be set by Self, Mineflayer, L0, L1 or L2.
 dev-enabled: false
 target-player: RelaySelf
+
+# Explicit mutually exclusive DEV mode. Immutable P1 standard rates are compiled
+# from pinned original #626; this flag NEVER exposes a rate-setting interface.
+p1-law-dev-enabled: false
