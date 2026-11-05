@@ -1,0 +1,3 @@
+# Default disabled. No Self access to spawn or rule mutation.
+dev-enabled: false
+target-player: RelaySelf
