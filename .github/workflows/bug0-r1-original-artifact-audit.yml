@@ -1,0 +1,51 @@
+name: Bug-0 R1 immutable original artifact read-only audit
+on:
+  push:
+    branches:
+      - dev/bug0-r1-original-artifact-audit-20261105
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Download exact failed R1 artifact (no World, no Action)
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-zombie-respawn-r1-original-one-world
+          repository: rinsakamo/relay-self
+          run-id: 42051052687
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original-r1
+      - name: Original manifest SHA256
+        run: |
+          cd original-r1
+          test -f report.json
+          test -f paper_original.log
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - name: Read-only diagnosis from original JSON and server events
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          folder=pathlib.Path('original-r1')
+          r=json.loads((folder/'report.json').read_text(encoding='utf-8'))
+          print('R1_ORIGINAL_RESULT='+json.dumps({
+              k:r.get(k) for k in (
+                  'stage','status','classification','failure','node_exit',
+                  'java_exit','server_cleanup_error','node_cleanup_error',
+                  'real_paper_started','session_id','paper_initial',
+                  'paper_death','paper_respawn','native_initial','native_respawn'
+              )
+          },sort_keys=True,ensure_ascii=False))
+          lines=(folder/'paper_original.log').read_text(encoding='utf-8').splitlines()
+          print('PAPER_TOTAL_LINES',len(lines))
+          for i,line in enumerate(lines,1):
+              if any(x in line for x in ('RSELF_RESPAWN_','[ERROR]','[WARN]','[RelayZombieRespawnDev]','Exception')):
+                  print(f'PAPER_ORIGINAL_LINE_{i}: '+line[:400])
+          print('R1_READ_ONLY_AUDIT_COMPLETE; WORLD_0; ACTION_0')
+          PY
