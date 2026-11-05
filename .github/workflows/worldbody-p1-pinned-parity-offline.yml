@@ -245,6 +245,7 @@ jobs:
       S49_WORLDBODY_DEV_ONLY: '1'
       S49_WB_P1_SOURCE_DEV_ONLY: '1'
       S49_WB_P1_PHYSICAL_DEV_ONLY: '1'
+      P1_SOURCE_ROOT: ${{ github.workspace }}/p1-original
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
       NODE_OPTIONS: ''
@@ -255,6 +256,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
           persist-credentials: false
+      - name: Checkout the immutable original P1 Python source for pre-World tests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1-original
+          persist-credentials: false
+      - name: Verify original P1 owner source before any physical World
+        run: |
+          test "$(git -C p1-original rev-parse HEAD)" = "0ab76b4e46efd914877e543a65de58b6cfc71326"
+          test -s p1-original/experiments/fatigue_p1.py
       - name: Verify distinct exact-parent one-use DEV grant
         run: |
           RUN_MESSAGE="$(git log -1 --format=%s HEAD)"
