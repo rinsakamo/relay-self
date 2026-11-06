@@ -327,6 +327,7 @@ async def qualify(
     unified_c1_dev: bool = False,
     unified_c1_two_intents_dev: bool = False,
     unified_c1_journal_dev: bool = False,
+    unified_c1_physical_fence_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -345,6 +346,7 @@ async def qualify(
     stage_r = None
     motion_dev = None
     journal_dev = None
+    physical_fence_dev = None
     rc = 2
     cancellations: list[asyncio.CancelledError] = []
     worldbody_active = worldbody_dev or worldbody_retest_dev
@@ -505,6 +507,17 @@ async def qualify(
                 "one original S49 WorldBody owner and exclusive DEV World gate required"
             )
         if (
+            type(unified_c1_physical_fence_dev) is not bool
+            or (unified_c1_physical_fence_dev and (
+                not unified_c1_dev or not unified_c1_two_intents_dev
+                or not unified_c1_journal_dev
+                or os.environ.get("S49_C1_PHYSICAL_FENCE_DEV_ONLY") != "1"
+            ))
+        ):
+            raise S31ABlocked(
+                "C1 pre-ISSUE physical fence requires separate DEV-only grant"
+            )
+        if (
             type(unified_c1_journal_dev) is not bool
             or (unified_c1_journal_dev and (
                 not unified_c1_dev or not unified_c1_two_intents_dev
@@ -541,6 +554,27 @@ async def qualify(
             raise S31ABlocked(
                 "C1/S10 original S49 DEV requires a separate exclusive runner gate"
             )
+        if unified_c1_physical_fence_dev:
+            from relay_self.c1_physical_action_fence import (
+                OriginalS49PhysicalFence,
+            )
+
+            fence_path = report_path.parent / "c1_physical_action_fence.json"
+            if fence_path.exists():
+                physical_fence_dev = OriginalS49PhysicalFence.restore(
+                    fence_path, self_id="s49-original-self",
+                )
+                report["physical_fence_restored_before_world"] = True
+            else:
+                physical_fence_dev = OriginalS49PhysicalFence.create(
+                    fence_path, self_id="s49-original-self",
+                )
+                report["physical_fence_restored_before_world"] = False
+            # Fail BEFORE provisioning any World when a previous attempt
+            # was only PREPARED and may have been physically dispatched.
+            physical_fence_dev.require_clear()
+            report["physical_fence_unresolved_before_world"] = False
+            report["physical_fence_prior_actions"] = len(physical_fence_dev.actions)
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -934,10 +968,24 @@ async def qualify(
                             "second original S49 Action did not consume current S10 owner"
                         )
             if stage_r is None:
+                # Original S49 executor invokes this callback AFTER checking
+                # both grants but BEFORE supervisor ISSUE / any adapter IO.
+                def reserve_original_before_issue() -> None:
+                    assert step.grant is not None
+                    if physical_fence_dev is not None:
+                        physical_fence_dev.prepare(
+                            session_id=sid, intent_id=step.grant.intent_id,
+                            action_id=step.action_request_id, probe=probe,
+                        )
+
                 receipt = await executor.execute(
                     session, step, bound, probe,
                     authorize(step, NormalActionStage.PROPOSE),
                     authorize(step, NormalActionStage.ISSUE),
+                    pre_issue_reservation=(
+                        reserve_original_before_issue
+                        if physical_fence_dev is not None else None
+                    ),
                 )
             else:
                 from adapters.mineflayer.normal_action import (
@@ -963,6 +1011,10 @@ async def qualify(
             if active_motion_dev is not None:
                 # Read only ORIGINAL S16 terminal from SAME executor supervisor.
                 active_motion_dev.accept_original_terminal(step, probe, receipt)
+            if physical_fence_dev is not None:
+                # Seal ONLY a verified original S16 outcome; an interrupted
+                # Action leaves PREPARED/UNKNOWN and blocks a future World.
+                physical_fence_dev.close(receipt, probe)
             if eat_cursor is not None:
                 # Diagnostic only: the original S15 cleanup ACK and S16 terminal
                 # cannot establish effective physical STOP or release EAT.
@@ -1194,6 +1246,43 @@ async def qualify(
                         "new_physical_action_after_restore": False,
                         "general_persistent_cognition_migrated": False,
                         "physical_action_write_ahead_fence": False,
+                    }
+                if physical_fence_dev is not None:
+                    from relay_self.c1_physical_action_fence import (
+                        OriginalS49PhysicalFence,
+                    )
+
+                    restored_fence = OriginalS49PhysicalFence.restore(
+                        physical_fence_dev.path,
+                        self_id="s49-original-self",
+                    )
+                    actual_ids = [
+                        a["action"] for a in report["actual_native_actions"]
+                    ]
+                    if (
+                        restored_fence.unresolved
+                        or restored_fence.sha256 != physical_fence_dev.sha256
+                        or len(actual_ids) != 3
+                        or [x["action_id"] for x in restored_fence.actions][-3:]
+                        != actual_ids
+                        or any(
+                            x["status"] != "S16_OUTCOME"
+                            for x in restored_fence.actions[-3:]
+                        )
+                    ):
+                        raise S49PhysicalFailure(
+                            "physical pre-ISSUE fence did not retain 3 exact S16 closures"
+                        )
+                    report["c1_physical_fence"] = {
+                        "path": physical_fence_dev.path.name,
+                        "sha256": restored_fence.sha256,
+                        "action_ids": actual_ids,
+                        "prior_action_count": report["physical_fence_prior_actions"],
+                        "all_current_s16_outcomes": True,
+                        "unresolved": False,
+                        "new_action_after_recovery": False,
+                        "physical_exactly_once_attested": False,
+                        "independent_world_truth_attested": False,
                     }
                 report["unified_c1_second_original_owner"] = {
                     "intent_id": next_c1.intent_id,
@@ -1457,7 +1546,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_C1_DURABLE_TWO_INTENT_S10_RESTART_READ"
+            "DEV_ONLY_S49_C1_PREISSUE_FENCE_TWO_INTENTS"
+            if unified_c1_physical_fence_dev
+            else "DEV_ONLY_S49_C1_DURABLE_TWO_INTENT_S10_RESTART_READ"
             if unified_c1_journal_dev
             else "DEV_ONLY_S49_C1_S10_TWO_ORIGINAL_INTENT_ACTION_EXPERIENCES"
             if unified_c1_two_intents_dev
@@ -1610,6 +1701,7 @@ def main() -> int:
     parser.add_argument("--unified-c1-dev", action="store_true")
     parser.add_argument("--unified-c1-two-intents-dev", action="store_true")
     parser.add_argument("--unified-c1-journal-dev", action="store_true")
+    parser.add_argument("--unified-c1-physical-fence-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1629,6 +1721,7 @@ def main() -> int:
         unified_c1_dev=args.unified_c1_dev,
         unified_c1_two_intents_dev=args.unified_c1_two_intents_dev,
         unified_c1_journal_dev=args.unified_c1_journal_dev,
+        unified_c1_physical_fence_dev=args.unified_c1_physical_fence_dev,
     ))
 
 
