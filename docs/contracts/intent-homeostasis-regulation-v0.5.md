@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract A / Standing HOMEOSTASIS and imperfect bodily control
 
-> **Status: DESIGN CANDIDATE / S #537 REVIEW REQUIRED / NOT IMPLEMENTED.**
+> **Status: A-H ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / S #537 OWNER API REVIEW + IMPLEMENTATION PENDING.**
+> [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md) adopts the conceptual HOMEOSTASIS/incomplete-control distinction; no executor changes or offline test claims follow.
 > User direction, 2026-11-06. Companion to [Contract A](intent-slots-action-authority-v0.5.md) §§15–16 and [Unified v0.5](../unified-architecture-v0.5.md). No new physical issuer, grant, independent owner, real World authorization, Memory write or learning permission.
 
 ## A-H1. One Self, ongoing regulation, multiple episodic Intents
