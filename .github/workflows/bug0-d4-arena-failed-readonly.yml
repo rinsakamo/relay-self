@@ -1,0 +1,55 @@
+name: Bug-0 D4 second source-guarded real World failed original SHA audit
+on:
+  push:
+    branches:
+      - dev/bug0-d4-arena-failed-original-audit-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exactly failed D4 physical World original
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d4-arena-clean-natural-meat-eat-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42205130594
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d4-original
+      - name: Rehash immutable original and read source/error without World
+        run: |
+          cd d4-original
+          test -f report.json && test -f paper_original.log && test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('.')
+          report=json.loads((p/'report.json').read_text(encoding='utf8'))
+          keys=(
+              'status','stage','classification','failure','real_world_started',
+              'session_id','initial_paper','native_initial','d4_baseline_inventory',
+              'operator_world_staging','operator_world_kill','attack_count',
+              's49_actions','paper_loot_death','paper_respawn_death',
+              'real_rotten_flesh_count','d4_natural_count',
+              'd4_stage','d4_paper_item_spawn','d4_paper_item_pickup',
+              'd4_pickup_passive','d4_native_after_pickup',
+              'd4_unqualified_pickup_probes','d4_food_policy_trace',
+              'd4_eat_action_id','d4_eat_terminal','d4_eat_outcome',
+              'd4_post_eat','d4_next_food_decision','native_respawn',
+              'node_exit','java_exit','cleanup_done')
+          print('D4_FAILED_ORIGINAL_REPORT='+json.dumps(
+              {k:report.get(k) for k in keys},sort_keys=True,ensure_ascii=False
+          ))
+          log=(p/'paper_original.log').read_text(encoding='utf8')
+          print('D4_ORIGINAL_PAPER_LINES='+str(len(log.splitlines())))
+          for i,line in enumerate(log.splitlines(),1):
+              if any(k in line for k in (
+                  'RSELF_', 'Teleported', 'Modified entity', 'Killed',
+                  'Failed', 'Could not', '[ERROR]', 'Exception'
+              )):
+                  print('D4_ORIGINAL_PAPER_LINE_'+str(i)+'='+line[:1300])
+          print('D4_FAILED_SHA256_READ_ONLY_WORLD_0_ACTION_0_PASS')
+          PY
