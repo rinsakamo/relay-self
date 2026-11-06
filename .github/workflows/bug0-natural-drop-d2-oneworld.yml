@@ -92,8 +92,8 @@ jobs:
                   jar=pathlib.Path(rel).resolve()
                   assert jar.is_file() and not jar.is_symlink()
                   digest=hashlib.sha256(jar.read_bytes()).hexdigest()
-                  f.write(var+'_JAR='+str(jar)+'\\n')
-                  f.write(var+'_SHA256='+digest+'\\n')
+                  f.write(var+'_JAR='+str(jar)+'\n')
+                  f.write(var+'_SHA256='+digest+'\n')
                   print(var+'_SHA256='+digest)
           PY
       - name: Install pinned Mineflayer 4.39
