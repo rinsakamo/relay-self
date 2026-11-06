@@ -1,6 +1,7 @@
 # RelaySelf v0.5 — Bug-0 Minimum Embodied Self («流暢にしゃべるゾンビ»)
 
-> **STATUS: DESIGN DRAFT / OWNER REVIEW REQUIRED / NOT IMPLEMENTED.**
+> **STATUS: BUG-0 CONCEPTUAL SCOPE FROZEN (2026-11-07) / OWNER INTEGRATION AND END-TO-END TESTS OPEN.**
+> [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md). #742 now tracks real zombie loot/pickup/eat/600-tick respawn and repeat cycles; past DRAFT/open review questions remain technical work, not blockers to v0.5 design closure.
 > Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), Draft [#718](https://github.com/rinsakamo/relay-self/pull/718). This is a bounded **initial scope**, not a new action grant, code authority, physics model, learning approval, proof of success, or revision of main. Applies only to existing legally authorized owners.
 
 ## 0. Why this slice
