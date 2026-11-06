@@ -21,6 +21,7 @@ from adapters.mineflayer.bug0_intent_motion_learning import (
     learn_from_motion_experience,
 )
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalSessionActionExecutor
+from relay_self.c1_motion_journal import C1MotionJournal
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
@@ -56,6 +57,7 @@ class S49C1MotionDevJoin:
         retained_motion: LearningPreferenceState,
         *,
         self_id: str,
+        journal: C1MotionJournal | None = None,
     ) -> None:
         if (
             not isinstance(intent, IntentCommitment)
@@ -65,11 +67,20 @@ class S49C1MotionDevJoin:
             or not isinstance(retained_motion, LearningPreferenceState)
             or retained_motion.target_id != "motion_decimeters"
             or type(self_id) is not str or not self_id or any(c.isspace() for c in self_id)
+            or (
+                journal is not None
+                and (
+                    not isinstance(journal, C1MotionJournal)
+                    or journal.self_id != self_id
+                    or journal.state is not retained_motion
+                )
+            )
         ):
             raise IntentMotionRejected("original S49 Intent/executor and S10 owner required")
         self.intent = intent
         self.executor = executor
         self.retained_motion = retained_motion
+        self.journal = journal
         self.self_id = self_id
         self.initial_intent_id = intent.current_intent.intent_id
         self.forecast: IntentMotionForecast | None = None
@@ -201,6 +212,13 @@ class S49C1MotionDevJoin:
             )
             if learning.previous_state is not self.retained_motion:
                 raise IntentMotionRejected("S10 owner identity changed during commit")
+        if self.journal is not None:
+            # Persist the experience identity and exact S10 new revision as
+            # ONE atomic snapshot BEFORE installing the in-process successor.
+            # On any disk/conflict failure the original Intent is terminal,
+            # no next physical Action or silent reapplication is permitted.
+            self.journal.commit(experience, learning)
+        if learning is not None:
             self.retained_motion = learning.new_state
         self._terminal = S49C1DevTerminal(experience, learning)
         return self._terminal
