@@ -20,7 +20,6 @@ from relay_self.c1_physical_action_fence import (
     PhysicalReplay,
     UnresolvedPhysicalAction,
 )
-from relay_self.provenance import Provenance
 from test_s49_c1_motion_owner_dev import (
     _joined_original_owner,
     _record_synthetic_original_terminal,
