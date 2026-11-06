@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract C3: Conditional crystallization and re-escalation
 
-> **Status: C3 CONCEPTUAL DIRECTION USER-ADOPTED (2026-11-06) / OWNER REVIEW AND IMPLEMENTATION PENDING.** Prepared 2026-11-06. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [A Intent/Action](intent-slots-action-authority-v0.5.md). Owner references: [#431 Learning/Habit](https://github.com/rinsakamo/relay-self/issues/431), [#426 development](https://github.com/rinsakamo/relay-self/issues/426), [#537 Action](https://github.com/rinsakamo/relay-self/issues/537), [#619 science](https://github.com/rinsakamo/relay-self/issues/619).
+> **Status: C3 ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / OWNER REVIEW AND IMPLEMENTATION PENDING.**
+> [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md) preserves autonomous eventual L0 installation as a future technical possibility, not current Bug-0 code. Prepared 2026-11-06. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [A Intent/Action](intent-slots-action-authority-v0.5.md). Owner references: [#431 Learning/Habit](https://github.com/rinsakamo/relay-self/issues/431), [#426 development](https://github.com/rinsakamo/relay-self/issues/426), [#537 Action](https://github.com/rinsakamo/relay-self/issues/537), [#619 science](https://github.com/rinsakamo/relay-self/issues/619).
 
 ## C3.0 Core definition and Grand Null
 
