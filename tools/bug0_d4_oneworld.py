@@ -99,7 +99,7 @@ def qualified_native_precombat_hunger(
     return 0 < observation.snapshot.food < EatCursor(session_id).threshold
 
 
-async def run(report_path: Path, log_path: Path) -> int:
+async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
         "classification": "D4_WORLD_NOT_RUN",
@@ -180,6 +180,7 @@ async def run(report_path: Path, log_path: Path) -> int:
         )
         owner = NormalSessionActionExecutor(
             sid, intent, max_sequential_attacks=8,
+            max_intent_epochs=2 if post_respawn_dev is not None else 1,
         )
         policy = S49BasicPriorityL0(sid, max_decisions=30)
 
@@ -402,10 +403,22 @@ async def run(report_path: Path, log_path: Path) -> int:
             if d4_eaten
             else "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
         )
+        if post_respawn_dev is not None:
+            # Optional D5 child only. D4's original no-hook entrypoint and
+            # source/eat evidence remain unchanged and reusable by audit.
+            if not d4_eaten:
+                raise S49D3Rejected(
+                    "D5 requires first genuine natural pickup and EAT"
+                )
+            await post_respawn_dev(session, server, owner, report, log_path)
+            report["classification"] = "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
         rc = 0
     except Exception as exc:
         report["status"] = "FAIL"
-        report["classification"] = "D4_NATURAL_EAT_UNQUALIFIED"
+        report["classification"] = (
+            "D5_SECOND_INTENT_UNQUALIFIED"
+            if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED"
+        )
         report["failure"] = f"{type(exc).__name__}: {exc}"
     finally:
         if session is not None:
