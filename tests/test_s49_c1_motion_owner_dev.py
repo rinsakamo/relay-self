@@ -80,6 +80,8 @@ def test_original_supervisor_terminal_one_experience_then_same_intent_owner_next
     assert terminal.experience.measured_total_m == pytest.approx(0.31)
     assert terminal.experience.intent_goal_verified is False
     assert intent.current_intent is None
+    # Intent's logical terminal must not predate the original S49 Action.
+    assert intent.events[-1].at_ns > receipt.terminal.events[-1].at_ns
     assert terminal.learning.previous_state.value == 7
     assert terminal.learning.new_state.value == 6
     assert owner.retained_motion is terminal.learning.new_state
@@ -94,6 +96,7 @@ def test_original_supervisor_terminal_one_experience_then_same_intent_owner_next
         next_native, next_intent_id="next-escape-threat",
     )
     assert intent.current_intent.intent_id == "next-escape-threat"
+    assert intent.events[-1].at_ns > intent.events[-2].at_ns
     assert next_forecast.owner_revision == 1
     assert next_forecast.predicted_total_m == 0.6
     assert next_forecast.source_provenance == next_native.provenance
