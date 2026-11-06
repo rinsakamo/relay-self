@@ -1,0 +1,41 @@
+name: Bug-0 D1 real World preflight (offline)
+on:
+  push:
+    branches:
+      - dev/bug0-pickup-d1-oneworld-20261106
+
+permissions:
+  contents: read
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Source-qualified native Paper D1 probes and negative tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_pickup_d1_world.py tools/bug0_pickup_d1_post.py adapters/mineflayer/loot_pickup_readback.py tests/test_bug0_pickup_d1_post.py
+          ruff check tools/bug0_pickup_d1_world.py tools/bug0_pickup_d1_post.py adapters/mineflayer/loot_pickup_readback.py tests/test_bug0_pickup_d1_post.py tests/test_bug0_loot_inventory_readback.py
+          python -m pytest -q tests/test_bug0_pickup_d1_post.py tests/test_bug0_loot_inventory_readback.py
+      - name: Compile independent Paper 1.21.8 item event witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/loot_pickup_fixture_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/loot_pickup_fixture_dev/target/relay-loot-pickup-dev-0.1.0-dev.jar
+      - name: No World or actual pickup from offline
+        run: echo 'D1_PREWORLD_OFFLINE WORLD_0 ACTION_0'

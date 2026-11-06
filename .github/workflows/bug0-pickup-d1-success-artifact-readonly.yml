@@ -1,0 +1,60 @@
+name: Bug-0 D1 successful one-World immutable artifact read-only audit
+on:
+  push:
+    branches:
+      - dev/bug0-pickup-d1-oneworld-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    if: ${{ github.event.head_commit.message == 'audit-bug0-d1-original-success-20261106' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exact successful original, NO World
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-pickup-d1-original-one-world
+          repository: rinsakamo/relay-self
+          run-id: 42056812285
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d1-original
+      - name: Audit original immutable SHA and report scopes
+        run: |
+          cd d1-original
+          test -f report.json
+          test -f paper_original.log
+          test -f operator_post_audit.json
+          sha256sum -c SHA256SUMS.txt
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('.')
+          report=json.loads((root/'report.json').read_text(encoding='utf-8'))
+          audit=json.loads((root/'operator_post_audit.json').read_text(encoding='utf-8'))
+          for name,keys in [
+              ('D1_ORIGINAL_PAPER_NATIVE', (
+                  'classification','world_uuid','player_uuid','item_uuid',
+                  'staged_tick','collected_tick','native_before_seq',
+                  'native_after_seq','native_rotten_flesh_delta',
+                  'operator_item_fixture','vanilla_zombie_drop_proven',
+                  'self_move_for_pickup_proven','self_attack_proven','self_eat_proven')),
+              ('D1_ORIGINAL_RUN', (
+                  'status','stage','classification','node_exit','java_exit',
+                  'session_id','native_before_attempt','native_after_attempt',
+                  'native_before','native_after','native_pickup_gain',
+                  'unqualified_native_after')),
+          ]:
+              source=audit if name.startswith('D1_ORIGINAL_PAPER') else report
+              print(name+'='+json.dumps({k:source.get(k) for k in keys},
+                                         sort_keys=True,ensure_ascii=False))
+          assert audit['operator_item_fixture'] is True
+          assert audit['vanilla_zombie_drop_proven'] is False
+          assert audit['self_move_for_pickup_proven'] is False
+          assert audit['self_attack_proven'] is False
+          assert audit['self_eat_proven'] is False
+          assert report['original_s49_actions']==0
+          assert report['status']=='PASS_DEV'
+          assert report['node_exit']==report['java_exit']==0
+          print('D1_ORIGINAL_HASH_AND_SCOPE_AUDIT_PASSED WORLD_0 ACTION_0')
+          PY
