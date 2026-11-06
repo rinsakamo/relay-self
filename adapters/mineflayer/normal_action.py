@@ -1075,6 +1075,7 @@ class NormalSessionActionExecutor:
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
         *, timeout_s: float = 9,
+        pre_issue_reservation: Callable[[], None] | None = None,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -1095,6 +1096,15 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        # DEV opt-in: reserve the original MOVE before ActionSupervisor
+        # ISSUE and before Mineflayer physical IO. Inability to persist
+        # the reservation is a hard stop, not a new Action authority.
+        if pre_issue_reservation is not None:
+            if not callable(pre_issue_reservation):
+                raise NormalActionRejected(
+                    "physical pre-ISSUE reservation must be callable"
+                )
+            pre_issue_reservation()
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,

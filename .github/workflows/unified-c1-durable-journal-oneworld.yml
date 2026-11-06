@@ -1,0 +1,183 @@
+name: Unified C1 durable S10 two Intent experiences real World DEV
+on:
+  push:
+    branches:
+      - dev/unified-c1-durable-journal-20261106
+
+permissions:
+  contents: read
+
+jobs:
+  one-world-two-intents:
+    if: ${{ github.event.head_commit.message == 'run-unified-c1-durable-journal-oneworld-once-20261106' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_UNIFIED_C1_DEV_ONLY: '1'
+      S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY: '1'
+      S49_C1_JOURNAL_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Exactly one trigger document and pinned predecessor source
+        run: |
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-c1-durable-journal-trigger-20261106.md"
+          test "$(git show -s --format=%s HEAD)" = "run-unified-c1-durable-journal-oneworld-once-20261106"
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('docs/unified-c1-durable-journal-trigger-20261106.md').read_text()
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert 'parent_source_head: '+parent in p
+          assert 'scope: ONE WORLD TWO ORIGINAL INTENTS THREE MOVE ACTIONS TWO C1 EXPERIENCES' in p
+          PY
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_c1_motion_owner_dev.py tests/test_s49_c1_motion_owner_dev.py
+          ruff check src/relay_self/c1_motion_journal.py tests/test_c1_motion_journal.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_c1_motion_owner_dev.py tests/test_s49_c1_motion_owner_dev.py
+          python -m pytest -q tests/test_c1_motion_journal.py tests/test_persistent_cognition.py tests/test_s49_c1_motion_owner_dev.py tests/test_bug0_intent_motion_source_join.py tests/test_bug0_intent_motion_learning.py
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              assert sock.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Install original Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+          java -version
+      - name: ONE original S49 physical World, two consecutive Intents, three Actions
+        run: |
+          mkdir -p unified-c1-journal-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --unified-c1-dev --unified-c1-two-intents-dev --unified-c1-journal-dev \
+            --report unified-c1-journal-evidence/original_s49.json \
+            --server-log unified-c1-journal-evidence/original_minecraft.log
+      - name: Independently verify original S49 before/dispatch/clear/after and both experiences
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          root=Path('unified-c1-journal-evidence')
+          r=json.loads((root/'original_s49.json').read_text())
+          assert r['status']=='PASS', r.get('error')
+          assert r['classification']=='DEV_ONLY_S49_C1_DURABLE_TWO_INTENT_S10_RESTART_READ'
+          assert r['unified_c1_dev_enabled'] is True
+          assert r['unified_c1_two_intents_dev_enabled'] is True
+          assert r['real_model_calls']==0 and r['learning_in_world'] is True
+          assert [d['selected'] for d in r['decisions']]==['WAIT','MOVE_AWAY','MOVE_AWAY']
+          a=r['actual_native_actions']
+          assert len(a)==3 and len({x['action'] for x in a})==3
+          first=r['unified_c1_original_owner']
+          second=r['unified_c1_second_original_owner']
+          assert first['original_intent_id']=='escape-threat'
+          assert first['original_intent_terminal']=='completed'
+          assert first['external_goal_verified'] is False
+          assert first['action_ids']==[a[0]['action'],a[1]['action']]
+          assert first['retained_revision']==first['next_consumed_revision']==1
+          assert first['retained_value'] in (6,7,8)
+          assert math.isclose(first['next_forecast_m'],first['retained_value']/10,abs_tol=1e-10)
+          assert first['next_l0_action_issued'] is True
+          assert first['learned_decision_policy'] is False
+          assert first['independent_source_attestation'] is False
+          assert first['durable_replay_journal'] is True
+          assert first['decision_probe_seq']==[x['probe_seq'] for x in a[:2]]
+          assert second['intent_id']==first['next_intent_id']=='next-escape-threat'
+          assert second['prior_next_intent_read_revision']==first['next_consumed_revision']
+          assert second['pre_action_s10_revision']==first['retained_revision']==1
+          assert second['pre_action_forecast_m']==first['next_forecast_m']
+          assert second['original_l0_probe_seq']>first['next_source_seq']
+          assert second['one_physical_action_id']==a[2]['action']
+          assert second['one_action_s16_state']=='outcome'
+          assert second['terminal_kind']=='completed'
+          assert second['new_s10_revision']==2
+          assert second['new_s10_value'] in range(5,10)
+          from relay_self.c1_motion_journal import (
+              C1JournalConflict, C1MotionJournal,
+          )
+          journal=C1MotionJournal.restore(
+              root/'c1_motion_journal.json', self_id='s49-original-self',
+          )
+          assert len(journal.experience_ids)==2
+          assert r['c1_journal_prior_experiences']==0
+          assert r['c1_journal_restored_before_world'] is False
+          assert journal.experience_ids == (
+              first['experience_id'], second['experience_id'],
+          )
+          assert journal.state.value==second['new_s10_value']
+          assert journal.state.revision==second['new_s10_revision']
+          assert journal.state.last_update is not None
+          assert journal.state.last_update.feedback_id == (
+              'intent-motion:'+second['experience_id']
+          )
+          assert r['c1_journal']['sha256']==journal.sha256
+          assert r['c1_journal']['experience_ids']==list(journal.experience_ids)
+          assert r['c1_journal']['fresh_restore_equal_to_original_owner'] is True
+          assert r['c1_journal']['physical_action_write_ahead_fence'] is False
+          assert r['c1_journal']['general_persistent_cognition_migrated'] is False
+          assert second['same_original_intent_owner'] is True
+          assert second['same_original_action_executor'] is True
+          assert second['learned_decision_policy'] is False
+          assert second['independently_attested_world_truth'] is False
+          assert second['durable_journal'] is True
+          assert second['external_goal_verified'] is False
+          assert second['experience_id']!=first['experience_id']
+          assert r['node_exit']==0 and r['server_exit']==0
+          for x in a:
+              assert x['terminal']=='outcome'
+              assert x['source']==r['session_id']
+              verify_native_action_evidence(x['execution_evidence'],action_id=x['action'],
+                  session_id=r['session_id'],movement_m=x['movement_m'])
+              assert x['probe_seq']<x['execution_evidence']['before_observation']['seq']
+          assert math.isclose(first['measured_total_m'],sum(x['movement_m'] for x in a[:2]),abs_tol=1e-9)
+          assert math.isclose(second['measured_total_m'],a[2]['movement_m'],abs_tol=1e-9)
+          assert a[2]['probe_seq']>a[1]['execution_evidence']['after_observation']['seq']
+          (root/'independent_readback.json').write_text(json.dumps({
+              'scope':'ONE_REAL_WORLD_TWO_ORIGINAL_INTENT_EXPERIENCES_DEV',
+              'all_original_action_ids':[x['action'] for x in a],
+              'first_s10_revision':first['retained_revision'],
+              'second_action_pre_s10_revision':second['pre_action_s10_revision'],
+              'second_s10_revision':second['new_s10_revision'],
+              'first_experience_id':first['experience_id'],
+              'second_experience_id':second['experience_id'],
+              'durable_c1_sha256':journal.sha256,
+              'durable_restored_s10_revision':journal.state.revision,
+              'durable_deduplicated_experience_ids':list(journal.experience_ids),
+              'physical_action_replay_fence':False,
+              'world_truth_independently_attested':False,
+              'learned_action_policy_improvement':False,
+          },sort_keys=True,indent=2)+'\n')
+          print('DEV_ORIGINAL_S49_DURABLE_TWO_INTENTS_RESTART_PASS')
+          PY
+      - name: Manifest real original World traces, source report, SHA256 even if failure
+        if: always()
+        run: |
+          if test -d unified-c1-journal-evidence; then
+            (cd unified-c1-journal-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Preserve one-World original evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-c1-durable-journal-original-oneworld-20261106
+          path: unified-c1-journal-evidence/
+          if-no-files-found: warn
+          retention-days: 30

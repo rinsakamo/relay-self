@@ -1,0 +1,129 @@
+name: Unified C1 S49 one original native World
+on:
+  push:
+    branches:
+      - dev/unified-c1-original-s49-owner-next-intent-20261106
+permissions:
+  contents: read
+jobs:
+  one-world:
+    if: ${{ github.event.head_commit.message == 'run-unified-c1-s49-oneworld-once-20261106' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      S49_UNIFIED_C1_DEV_ONLY: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Strict one-use source HEAD and original owner preflight
+        run: |
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-c1-original-s49-world-trigger-20261106.md"
+          test "$(git show -s --format=%s HEAD)" = "run-unified-c1-s49-oneworld-once-20261106"
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('docs/unified-c1-original-s49-world-trigger-20261106.md').read_text()
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert 'parent_source_head: '+parent in p
+          assert 'scope: ONE S49 WORLD TWO MOVE ACTIONS ONE C1 EXPERIENCE NEXT INTENT READ ONLY' in p
+          PY
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check adapters/mineflayer/bug0_intent_motion_learning.py adapters/mineflayer/s49_c1_motion_owner_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_c1_motion_owner_dev.py
+          python -m pytest -q tests/test_s49_c1_motion_owner_dev.py tests/test_bug0_intent_motion_source_join.py tests/test_bug0_intent_motion_learning.py
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
+              assert s.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Original unmodified Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+          java -version
+      - name: ONE original S49 bounded physical World with C1 S10
+        run: |
+          mkdir -p unified-c1-world-evidence
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci \
+            --unified-c1-dev \
+            --report unified-c1-world-evidence/original_s49.json \
+            --server-log unified-c1-world-evidence/original_minecraft.log
+      - name: Independent decoded native Action and next Intent audit
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          r=json.loads(Path('unified-c1-world-evidence/original_s49.json').read_text())
+          assert r['status']=='PASS',r.get('error')
+          assert r['classification']=='DEV_ONLY_S49_C1_S10_NEXT_ORIGINAL_FORECAST_NOT_NEXT_ACTION'
+          assert r['unified_c1_dev_enabled'] is True
+          assert r['unified_c1_physical_grant_inferred'] is False
+          assert r['real_model_calls']==0 and r['learning_in_world'] is True
+          assert [d['selected'] for d in r['decisions']]==['WAIT','MOVE_AWAY','MOVE_AWAY']
+          a=r['actual_native_actions']
+          assert len(a)==2 and len({x['action'] for x in a})==2
+          c=r['unified_c1_original_owner']
+          assert c['original_intent_id']=='escape-threat'
+          assert c['original_intent_terminal']=='completed'
+          assert c['external_goal_verified'] is False
+          assert c['action_ids']==[x['action'] for x in a]
+          assert c['next_intent_id']=='next-escape-threat'
+          assert c['retained_revision']==c['next_consumed_revision']==1
+          assert c['retained_value'] in (6,7,8)
+          assert math.isclose(c['next_forecast_m'],c['retained_value']/10,abs_tol=1e-10)
+          assert c['next_l0_action_issued'] is False
+          assert c['learned_decision_policy'] is False
+          assert c['durable_replay_journal'] is False
+          assert c['independent_source_attestation'] is False
+          assert len(c['decision_probe_seq'])==len(c['s15_before_seq'])==2
+          assert all(x<y for x,y in zip(c['decision_probe_seq'],c['s15_before_seq']))
+          assert r['node_exit']==0 and r['server_exit']==0
+          for i,x in enumerate(a):
+              assert x['terminal']=='outcome'
+              assert x['source']==r['session_id']
+              assert x['probe_seq']==c['decision_probe_seq'][i]
+              verify_native_action_evidence(x['execution_evidence'],action_id=x['action'],
+                  session_id=r['session_id'],movement_m=x['movement_m'])
+          assert math.isclose(c['measured_total_m'],sum(x['movement_m'] for x in a),abs_tol=1e-9)
+          assert c['next_source_seq']>a[-1]['execution_evidence']['after_observation']['seq']
+          Path('unified-c1-world-evidence/independent_readback.json').write_text(json.dumps({
+              'scope':'DECODED_NATIVE_S49_C1_S10_NEXT_INTENT_READBACK_DEV',
+              'actions':c['action_ids'],'movement_sum_m':c['measured_total_m'],
+              'S10_revision':c['retained_revision'],'next_forecast_m':c['next_forecast_m'],
+              'independent_world_truth_attested':False,
+              'next_action_issued':False,'learning_quality_proven':False,
+          },indent=2,sort_keys=True)+'\n')
+          print('DEV_S49_C1_REAL_WORLD_SOURCE_JOIN_S10_NEXT_FORECAST_PASS')
+          PY
+      - name: Save original World report/log and SHA256 on every outcome
+        if: always()
+        run: |
+          if test -d unified-c1-world-evidence; then
+            (cd unified-c1-world-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Archive original one-World evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-c1-original-s49-oneworld-20261106
+          path: unified-c1-world-evidence/
+          if-no-files-found: warn
+          retention-days: 30
