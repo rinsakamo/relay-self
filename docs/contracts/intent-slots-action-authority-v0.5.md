@@ -1,6 +1,7 @@
 # RelaySelf v0.5 — Contract A: Cognitive Intent Slots / Physical Action Authority
 
-> **Status: DETAILED DESIGN CANDIDATE / OWNER REVIEW REQUIRED / NOT EXECUTABLE.**
+> **Status: A ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / OWNER API REVIEW + IMPLEMENTATION PENDING / NOT EXECUTABLE.**
+> This resolves the architectural choice, not the owner-specific acceptance tests: see [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md). Historical design-proposal labels within this document describe earlier iterations.
 >
 > Parent [#717](https://github.com/rinsakamo/relay-self/issues/717); review on [Draft PR #718](https://github.com/rinsakamo/relay-self/pull/718). This refines [Unified Architecture v0.5](../unified-architecture-v0.5.md), not `main` executable contracts. `main@4348a614900c1d0828581a8eec2c523ba5ae237f` is the audited baseline.
 >
