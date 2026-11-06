@@ -323,6 +323,7 @@ def test_unified_c1_two_intents_requires_extra_dev_gate_before_world(
 ):
     import asyncio
     import json
+
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
     monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
