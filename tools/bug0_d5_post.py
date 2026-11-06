@@ -31,8 +31,15 @@ def audit(log: str, report: dict) -> dict:
     # The real D4 prefix remains intact: D5 emits no second death/drop.
     # Reuse D4's established Paper, native pickup, EAT and tick audit
     # against the exact same original log, with only its scope label restored.
+    first_eat = report.get("d4_natural_food_pickup_eat_proven")
+    if type(first_eat) is not bool:
+        raise D5OriginalAuditRejected("missing original D4 conditional EAT outcome")
     original_d4 = dict(
-        report, classification="D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS",
+        report,
+        classification=(
+            "D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS"
+            if first_eat else "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
+        ),
     )
     try:
         d4 = audit_d4(log, original_d4)
@@ -107,6 +114,8 @@ def audit(log: str, report: dict) -> dict:
         "same_session_id": sid,
         "same_supervisor": True,
         "old_intent_action_count": old_count,
+        "first_real_food_eaten": first_eat,
+        "first_world_zero_loot_valid": not first_eat,
         "new_intent_id": a["intent_id"],
         "new_zombie_entity_id": new_id,
         "new_action_id": a["action_id"],
