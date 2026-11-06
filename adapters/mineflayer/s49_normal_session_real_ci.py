@@ -867,6 +867,8 @@ async def qualify(
                 or values["plan"].selected is None
                 or values["plan"].selected.candidate_id != "MOVE_AWAY"
                 or values["admission"].status.value != "admitted"
+                or values["policies"][-2].required_intent_id
+                != step.grant.intent_id
             ):
                 raise S49PhysicalFailure("full S14 native admission was not independently satisfied")
             binding = ExecutionBinding(
