@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import pytest
 
+from tools.bug0_s49_combat_d3_oneworld import S49D3Rejected, paper_death_seen
 from tools.bug0_s49_combat_d3_post import D3CombatAuditRejected, audit
 
 WORLD = "11111111-1111-4111-8111-111111111111"
@@ -117,3 +118,9 @@ def test_one_hit_is_allowed_but_not_labelled_repeated():
     result = audit(LOG, report)
     assert result["original_s49_attack_action_count"] == 1
     assert result["autonomous_target_selection_proven"] is False
+
+def test_operator_only_paper_death_gate_prevents_attack_after_real_death():
+    assert paper_death_seen(LOG) is True
+    assert paper_death_seen(LOG.split("RSELF_RESPAWN_DEATH")[0]) is False
+    with pytest.raises(S49D3Rejected, match="duplicated"):
+        paper_death_seen(LOG + LOG.splitlines()[2] + "\n")
