@@ -220,3 +220,44 @@ Present can be recomputed at the next epoch from approved sources and retained c
 | B-21 | SelfBody's native source session has advanced while SelfWorld refers to an older epoch | Record bounded, explicitly ordered disagreement or mark stale/unavailable; never invent synchronized observation |
 
 **Review open:** exact existing S/WB/Present adapter join points, available MySelf inputs and per-field source age budgets still need owner approval. Neither this refinement nor an older WB-branch class is a new executable contract. Keep B \`DESIGN_IN_PROGRESS / OWNER_REVIEW_REQUIRED\`.
+
+---
+
+## B10. Cognitively reachable World and Body snapshots (user-selected 2026-11-06)
+
+> DESIGN DIRECTION / NOT A NEW RUNTIME OWNER OR EXECUTABLE API. The relevant snapshot is **the world and body within the reach of SelfWorld and SelfBody cognition**, not the Minecraft server's full state.
+
+### B10.1 Two distinct snapshots
+
+**Qualified observation snapshot** means currently sampled, permitted World/WorldBody facts within actual observer coverage. Preserve world session, native sequence, request ID, observation origin, radius/cap/truncation where available, and known sampling age. Existing WB WorldObservation and BodyObservation already provide bounded source-qualified readouts.
+
+**Cognitive snapshot** means the read-only state that SelfWorld or SelfBody can currently represent from those observations **and** earlier approved Memory, belief, prediction, hypothesis or interoceptive information. Each reading keeps its individual origin and age, not a single fictitious World time. Existing WB SelfWorldView and SelfBodyView are compatible initial mechanisms; they are not independent persistence owners.
+
+World/server state may contain hidden entities, unobserved chunks or actual private body parameters. These are **not automatically exposed to Self**. A remembered entity may appear in SelfWorld, but is not currently OBSERVED. Fatigue not attested by an authorized body source remains WorldBody-UNKNOWN even if SelfBody predicts impairment.
+
+### B10.2 Model-specific views flow into Present
+
+World observation -> SelfWorld (current external surroundings + old world beliefs/Memory).
+WorldBody / body interoception -> SelfBody (current physical sensing + body history/Capability).
+Persistent Cognition -> MySelf (identity reference, continuing commitments, experience).
+All three -> Present Projection (current source-qualified Need, appraisal, tension, Goal/Intent signals).
+
+The three source epochs need **not** be identical. Join only compatible Self/session identities and explicitly ordered source readings, retaining per-field freshness, inference level, mismatches and UNKNOWN. A Present projection does not materialize an omniscient full-world or fully synchronized physical snapshot.
+
+Cognitive reach is **epistemic rather than a literal single sensing-radius limit**: the Self may know of a distant place from memory while its current condition is unknown. Observed area, remembered area and predicted possible area remain different.
+
+### B10.3 Implementation restraint
+
+Reuse existing WB partial projections and original external source. Avoid a whole-server API, periodic giant world copy, new global world registry or new self-memory owner. External World saves/checkpoints may support DEV reproducibility, but they are not Self's sensory experience. Any requested new observation must use its already legitimate source/authorization path, not unrestricted World access.
+
+### B10.4 Extra design negative controls (B-22 through B-26, NOT RUN)
+
+| ID | Input | Required result |
+| --- | --- | --- |
+| B-22 | A zombie is remembered at a location outside current coverage | REMEMBERED / PREDICTED / UNKNOWN, never current OBSERVED |
+| B-23 | Truncated entity sampling or capped coverage | No global absence/safety inference |
+| B-24 | SelfBody estimates hidden fatigue with no qualified WorldBody fatigue | Estimated subjective condition only; physical truth UNKNOWN |
+| B-25 | SelfWorld and SelfBody have ordered but different native sequence values | Explicit individual source ages; no fabricated synchronized World |
+| B-26 | An operator has a complete offline World save invisible to Self | Not used as SelfWorld perception or SelfBody sensation |
+
+**Decision:** B adopts partial, cognition-reachable, source-tagged snapshots. Current observed reality, remembered evidence, inference, predictions and UNKNOWN are not collapsed. No implementation, new authority or owner approval is implied.
