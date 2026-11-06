@@ -13,6 +13,7 @@ from adapters.mineflayer.bug0_intent_motion_learning import (
     close_motion_intent_experience,
     learn_from_motion_experience,
 )
+from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt
 from relay_self.learning import (
     LearningUpdateAuthority,
@@ -122,7 +123,8 @@ def test_s49_selection_to_s15_negative_controls(case):
         )),)
     elif case == "missing_before":
         receipts = (replace(receipt, consequence=replace(
-            receipt.consequence, before_observation=None,
+            receipt.consequence, status=WorldConsequenceStatus.FAILED,
+            error="missing S15 before source", before_observation=None,
         )),)
     elif case == "wrong_receipt_source":
         receipts = (replace(
