@@ -1,0 +1,39 @@
+name: Bug-0 D3 original S49 genuine multi-ATTACK Paper kill preflight
+on:
+  push:
+    branches:
+      - dev/bug0-s49-combat-d3-oneworld-20261106
+permissions:
+  contents: read
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Original S49 authority, native source and killer attribution regression
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_s49_combat_d3_oneworld.py tools/bug0_s49_combat_d3_post.py tests/test_bug0_s49_combat_d3_post.py
+          ruff check tools/bug0_s49_combat_d3_oneworld.py tools/bug0_s49_combat_d3_post.py tests/test_bug0_s49_combat_d3_post.py
+          python -m pytest -q tests/test_bug0_s49_combat_d3_post.py tests/test_bug0_s49_repeat_attack.py tests/test_bug0_s49_attack_owner.py
+      - name: Compile independent Paper zombie respawn and real killer source plugins
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+      - name: No World or physical Action from offline
+        run: echo 'D3_S49_ORIGINAL_ISSUER_OFFLINE_WORLD_0_ACTION_0_KILL_UNPROVEN'

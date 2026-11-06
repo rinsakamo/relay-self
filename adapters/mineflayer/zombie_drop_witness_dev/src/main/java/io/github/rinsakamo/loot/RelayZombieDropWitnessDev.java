@@ -79,7 +79,9 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
                 + " tick=" + deathTick + " rotten_count=" + expectedCount
                 + " killer=" + (zombie.getKiller() == null
                     ? "UNKNOWN" : zombie.getKiller().getUniqueId())
-                + " source=ACTUAL_PAPER_ENTITY_DEATH_DROPS");
+                + " source=ACTUAL_PAPER_ENTITY_DEATH_DROPS"
+                + " killer_is_relay_self=" + (zombie.getKiller() != null
+                    && TARGET.equals(zombie.getKiller().getName())));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

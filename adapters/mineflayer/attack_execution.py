@@ -64,7 +64,7 @@ def verify_attack_effect(
 ) -> None:
     """Verify ATTACK ACK; opt-in disappearance is NOT proof of death.
 
-    Absence is admissible only with a complete fresh 0/0 native registry;
+    Absence is admissible only with complete fresh 0-2 item-only native registry;
     a different visible mob, truncated coverage or foreign source fails closed.
     Original one-shot strict behavior is the default.
     """
@@ -72,11 +72,17 @@ def verify_attack_effect(
         raise AttackExecutionRejected("explicit boolean disappearance mode required")
     old = _target_from(before, entity_id)
     coverage = after.snapshot.nearby_entities_coverage
+    # A killed target can disappear while its actual dropped Item Entity
+    # enters the same native registry. Never classify such an item as a new
+    # zombie or independent proof of death; that is Paper's job.
+    observed = after.snapshot.nearby_entities
     missing = bool(
         allow_target_disappearance
         and not coverage.truncated
-        and coverage.candidate_count == 0
-        and not after.snapshot.nearby_entities
+        and coverage.candidate_count == len(observed)
+        and len(observed) <= 2
+        and all(entity.name == "item" for entity in observed)
+        and not any(entity.entity_id == entity_id for entity in observed)
     )
     latest = None if missing else _target_from(after, entity_id)
     if (
