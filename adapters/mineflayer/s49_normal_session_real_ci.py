@@ -860,6 +860,7 @@ async def qualify(
             values, epoch = _native_epoch_two(
                 ActionSupervisor(), intent, owner, owner,
                 expected_revision=owner.revision, native=native,
+                required_intent_id=step.grant.intent_id,
             )
             if (
                 epoch.cognition_requested
