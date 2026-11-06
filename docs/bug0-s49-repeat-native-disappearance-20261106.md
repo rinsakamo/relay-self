@@ -18,7 +18,7 @@ handle multiple source-qualified strikes followed by a lethal disappearance.
   unique new action_id, closed prior Action and no pending reconsideration.
   Mixing MOVE/EAT into this budget is not permitted.
 - The opt-in `allow_target_disappearance` allows an ACK-applied ATTACK
-  with a subsequent complete **0/0 native entity registry**, solely as
+  with a subsequent complete **0–2 native item-only entities** (or empty registry), solely as
   **ATTACK_COMMAND_APPLIED_TARGET_NOT_VISIBLE**. This is **NOT death,
   damage, kill attribution, a zombie drop, another attack authorization,
   or proof that the World killed this target**. Other entities, truncated,
