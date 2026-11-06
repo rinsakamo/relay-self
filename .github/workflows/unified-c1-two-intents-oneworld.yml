@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   one-world-two-intents:
-    if: ${{ github.event.head_commit.message == 'run-unified-c1-two-intents-oneworld-once-20261106' }}
+    if: ${{ github.event.head_commit.message == 'run-unified-c1-two-intents-s14-fixed-oneworld-once-20261106' }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
     env:
@@ -37,12 +37,12 @@ jobs:
           java-version: '21'
       - name: Exactly one trigger document and pinned predecessor source
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-c1-two-intents-world-trigger-20261106.md"
-          test "$(git show -s --format=%s HEAD)" = "run-unified-c1-two-intents-oneworld-once-20261106"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-c1-two-intents-s14-fixed-trigger-20261106.md"
+          test "$(git show -s --format=%s HEAD)" = "run-unified-c1-two-intents-s14-fixed-oneworld-once-20261106"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-c1-two-intents-world-trigger-20261106.md').read_text()
+          p=Path('docs/unified-c1-two-intents-s14-fixed-trigger-20261106.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE WORLD TWO ORIGINAL INTENTS THREE MOVE ACTIONS TWO C1 EXPERIENCES' in p
