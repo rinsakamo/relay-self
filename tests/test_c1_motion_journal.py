@@ -193,3 +193,32 @@ def test_no_reseeding_while_existing_legacy_cognition_snapshot_is_separate(tmp_p
     save_persistent_cognition(general, PersistentCognition(identity))
     _first(tmp_path / "c1.json")
     assert load_persistent_cognition(general) == PersistentCognition(identity)
+
+
+
+def test_original_s49_journal_requires_its_own_dev_gate_before_world(
+    monkeypatch, tmp_path,
+):
+    import asyncio
+
+    from adapters.mineflayer.s49_normal_session_real_ci import qualify
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY", "1")
+    monkeypatch.delenv("S49_C1_JOURNAL_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    path = tmp_path / "blocked.json"
+    rc = asyncio.run(qualify(
+        path, tmp_path / "absent-server.log",
+        unified_c1_dev=True, unified_c1_two_intents_dev=True,
+        unified_c1_journal_dev=True,
+    ))
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert rc == 2
+    assert report["stage"] == "START"
+    assert report["status"] == "BLOCKED"
+    assert "durable journal" in report["error"]
+    assert report["actual_native_actions"] == []
+    assert report["learning_in_world"] is False
+    assert not (tmp_path / "c1_motion_journal.json").exists()
