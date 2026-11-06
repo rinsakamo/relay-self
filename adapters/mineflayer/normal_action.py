@@ -850,6 +850,7 @@ class NormalSessionActionExecutor:
             or (
                 current is not None
                 and current.intent_id != self._epoch_intent_id
+                and bool(self._dispatched)
             )
             or not isinstance(propose, NormalEatingAuthorization)
             or not isinstance(issue, NormalEatingAuthorization)
@@ -899,6 +900,7 @@ class NormalSessionActionExecutor:
             or (
                 self.intent.current_intent is not None
                 and self.intent.current_intent.intent_id != self._epoch_intent_id
+                and bool(self._dispatched)
             )
             or propose.action_id in self._dispatched
             or self._post_move_settling_unqualified
