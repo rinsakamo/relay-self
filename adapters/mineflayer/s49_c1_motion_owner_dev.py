@@ -22,8 +22,8 @@ from adapters.mineflayer.bug0_intent_motion_learning import (
 )
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalSessionActionExecutor
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from relay_self.c1_motion_journal import C1MotionJournal
 from relay_self.action import ActionState
+from relay_self.c1_motion_journal import C1MotionJournal
 from relay_self.intent import IntentCommitment
 from relay_self.learning import (
     LearningCommitResult,
