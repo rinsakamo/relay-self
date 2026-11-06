@@ -1,0 +1,53 @@
+name: Bug-0 D5 failed World immutable original diagnosis only
+on:
+  push:
+    branches:
+      - dev/bug0-d5-s49-realworld-two-intents-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    if: ${{ github.event.head_commit.message == 'audit-bug0-d5-failed-world-diagnostics-once-20261107' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: bug0-d5-second-intent-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42238505268
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original
+      - name: Verify original SHA and print bounded failure facts (no World)
+        run: |
+          set -eu
+          (cd original && sha256sum -c SHA256SUMS.txt)
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('original')
+          r=json.loads((root/'report.json').read_text(encoding='utf-8'))
+          keys=['stage','status','classification','failure','session_id',
+                'real_world_started','d4_natural_food_pickup_eat_proven',
+                'd4_precombat_hunger_qualified','attack_count',
+                'paper_loot_death','paper_respawn','native_respawn',
+                'd5_new_zombie_native','d5_rearm','d5_second_action',
+                'd5_owner_total_action_count','d5_supervisor_open_count',
+                'd5_same_supervisor_identity','node_exit','java_exit',
+                'cleanup_done']
+          print('D5_IMMUTABLE_FAILED_WORLD_REPORT')
+          print(json.dumps({k:r.get(k) for k in keys},indent=2,ensure_ascii=False))
+          log=(root/'paper_original.log').read_text(encoding='utf-8')
+          markers=[line for line in log.splitlines()
+                   if 'RSELF_NATURAL_DROP_' in line or 'RSELF_RESPAWN_' in line]
+          print('D5_PAPER_ORIGINAL_MARKERS')
+          print('\n'.join(markers[-24:]))
+          assert r.get('status')=='FAIL', 'this job diagnoses the failed run only'
+          print('READ_ONLY_WORLD_0_ACTION_0_NO_RETRY')
+          PY
