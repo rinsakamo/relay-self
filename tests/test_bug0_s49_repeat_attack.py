@@ -146,3 +146,38 @@ def test_missing_does_not_override_source_failures(bad):
             before, ack, after, action_id="a", entity_id=eid,
             allow_target_disappearance=True,
         )
+
+
+def test_repeated_attack_cannot_follow_unknown_outcome(monkeypatch):
+    first, second = base._pair()
+    owner = NormalSessionActionExecutor(
+        first.session_id, base._owner(first).intent, max_sequential_attacks=2,
+    )
+    eid = second.snapshot.nearby_entities[0].entity_id
+
+    class NativeRejects(base.FakeNativeSession):
+        async def send_attack_entity(self, action_id, *, entity_id):
+            await super().send_attack_entity(action_id, entity_id=entity_id)
+            self.frames[0] = replace(
+                self.frames[0], result="rejected", error="entity_not_found",
+            )
+
+    session = NativeRejects(second)
+    monkeypatch.setattr(normal_action, "MineflayerProcessSession", NativeRejects)
+    monkeypatch.setattr(attack_execution, "MineflayerProcessSession", NativeRejects)
+    propose, issue = base._grants(owner, second, eid)
+    with pytest.raises(AttackExecutionRejected):
+        asyncio.run(owner.execute_attack(
+            session, first, second, eid, propose, issue,
+        ))
+    assert owner.supervisor.get(propose.action_id).state is ActionState.UNKNOWN
+    assert owner.supervisor.open_actions == ()
+    assert owner._attack_count == owner._count == 1
+    pre = replace(second, seq=110, request_id="unknown-rearm-prev")
+    cur = replace(second, seq=111, request_id="unknown-rearm-fresh")
+    p2, i2 = base._grants(owner, cur, eid)
+    p2 = replace(p2, action_id="not-authorized-after-unknown")
+    i2 = replace(i2, action_id="not-authorized-after-unknown")
+    with pytest.raises(NormalActionRejected):
+        owner.require_attack_authorizations(pre, cur, eid, p2, i2)
+    assert len([x for x in session.sent if x[0] == "attack"]) == 1
