@@ -9,30 +9,32 @@
 Unify the general RelaySelf ontology (Persistent Cognition, Present Projection, Embodied Boundary, Environment, Authority / Provenance) with the embodied Minecraft architecture (MySelf, SelfWorld, SelfBody, L0/L1/L2, World/WorldBody) **without changing which component owns truth, memory, action issuance, or learning authorization**.
 
 ```text
-World / WorldBody / physical compute substrate / elapsed time
-           | source-qualified observation, interoception, costs
-           v
-Persistent Cognition -----> Present / observer-relative models
-   (durable owners)            MySelf | SelfWorld | SelfBody
-                                   |
-                                   v
-                      Self as ongoing cognitive activity
-           multiple Needs / Goals / Questions / Commitments
-             value gradients + experience + prediction
-                temporal Goal/Plan composition
-                           |
-          bounded, transient L0 / L1 / L2 cognitive slots
-          (committed Intent, attention, budget, deadlines)
-                           |
-                transient Skill/Action candidates
-                           |
-          existing admissibility / authorization / supervision
-                           |
-                 single S49 physical Action issuer
-                           |
-          World / WorldBody effects -> qualified outcome
-                           |
-             experience integration / possible learning
+Persistent Cognition                         World / WorldBody
+(existing governed durable objects)         (external source-of-record)
+        |                                          |
+        +----> MySelf                              +-- world evidence --+
+        |       (self / goals / competence)                           |
+        +----> SelfWorld <---------------------------------------------+
+        |       (environment / others / causal estimates)
+        :                                          |
+        : approved body history                    +-- body evidence --> SelfBody
+        + - - - - - - - - - - - - - - - - - - - - - > (interoception / limits)
+                (secondary, source-qualified use)
+                     MySelf      SelfWorld      SelfBody
+                         \          |          /
+                          v         v         v
+                            Present Projection
+                  (current appraisal / Need / Goal / Intent
+                      signals, uncertainty, disagreements)
+                                     |
+             bounded L0 / L1 / L2 slots and Intent arbitration
+                                     |
+                     original S49 Skill/Action admission
+                                     |
+                World / WorldBody qualified actual outcomes
+                                     |
+             fresh observation and separately governed
+                   experience-integration candidates
 ```
 
 This is an **explanatory map**, not an assertion that the whole diagram exists as one connected program. No new `SelfController`, `SlotManager`, world-state source, universal Plan store, physical issuer or generic cognitive-value scalar is authorized by this baseline.
@@ -45,7 +47,7 @@ This is an **explanatory map**, not an assertion that the whole diagram exists a
 - **SelfWorld**: a subjective, source-bounded and incomplete model of surroundings, events, affordances, causality, uncertainty, and other agents. **SelfOther** is the model of another agent within SelfWorld, including beliefs about that other's beliefs. Neither is authoritative World truth.
 - **SelfBody**: the individual's fallible internal model of its body, bodily limits, motion dynamics, viability, performance and resource capacity. It is not WorldBody or a new motor/action authority.
 
-These are **semantic perspectives/representations**, not necessarily three permanent processes, three databases, or three independent update owners. Current WB implementations provide ephemeral, read-only views. Durable or reconstructible representations and authority to revise them are a detailed-contract problem (B).
+These are **semantic perspectives/representations**, not necessarily three permanent processes, three databases, or three independent update owners. Their *main sources* are deliberately asymmetric: MySelf and SelfWorld consult Persistent Cognition heavily, while SelfBody chiefly consults source-qualified WorldBody/interoceptive data. SelfWorld also needs fresh World observations; SelfBody may consult approved bodily memories and Capability Models; MySelf can consult qualified consequences. They may actively interpret, predict and disagree, but currently audited WB view objects are read-only with respect to persistent state, Action issuance and external truth. Their judgments converge **as attributed contributions** in Present Projection, not automatically by majority vote. Durable or reconstructible representations and authority to revise them remain detailed Contract B decisions.
 
 **Persistent Cognition** retains the established objects and their ownership: Identity Specification, Self-Model, Relationship/Other Models, Goal, Commitment, Question, Evidence, Assessment, Belief, Memory, dispositions, Capability Model, and governed Experience Integration. **Present Projection** remains the transient, source-aware current activation. `Goal != Current Intent`, `Evidence != Belief`, `Belief != Memory`, `Identity Specification != Self-Model`.
 
