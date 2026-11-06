@@ -210,3 +210,17 @@ def test_wrong_target_and_revision_do_not_cross_self_or_owner():
         _learn(exp, other)
     with pytest.raises(IntentMotionRejected):
         _learn(exp, replace(state, revision=2))
+
+
+def test_same_intent_owner_accepts_latest_attempt_and_rejects_old_replay():
+    intent, first, receipts, _ = _scenario()
+    intent.commit("next-escape-intent", objective="move again", at_ns=3,
+                  provenance=Provenance("test", "next"))
+    intent.complete("next-escape-intent", reason="attempt assessed", at_ns=4,
+                    provenance=Provenance("test", "next"))
+    with pytest.raises(IntentMotionRejected):
+        _close(intent, first, receipts)
+    second = replace(first, intent_id="next-escape-intent")
+    second_receipt = replace(receipts[0], terminal=replace(
+        receipts[0].terminal, intent_id="next-escape-intent"))
+    assert _close(intent, second, (second_receipt,)).terminal_kind.value == "completed"

@@ -130,14 +130,16 @@ def close_motion_intent_experience(
         forecast.predicted_total_m
     ) or forecast.predicted_total_m < 0:
         raise IntentMotionRejected("invalid motion forecast")
+    # The original owner retains prior Intent events. Only its latest attempt
+    # can be closed: an older terminal must never be replayed after a successor.
     events = intent.events
-    if not events or events[0].kind is not IntentEventKind.COMMITTED:
+    starts = [i for i, event in enumerate(events) if event.kind is IntentEventKind.COMMITTED]
+    if not starts:
         raise IntentMotionRejected("an original committed Intent is required")
-    if events[0].intent_id != forecast.intent_id or any(
-        event.intent_id != forecast.intent_id for event in events
-    ):
-        raise IntentMotionRejected("foreign Intent event lineage")
-    terminal = events[-1]
+    attempt = events[starts[-1]:]
+    if any(event.intent_id != forecast.intent_id for event in attempt):
+        raise IntentMotionRejected("foreign or superseded Intent event lineage")
+    terminal = attempt[-1]
     if terminal.kind not in {
         IntentEventKind.COMPLETED, IntentEventKind.FAILED,
         IntentEventKind.INVALIDATED, IntentEventKind.RECONSIDERED_RELEASE,
