@@ -20,6 +20,7 @@ from adapters.mineflayer.normal_action import (
     NormalAttackingAuthorization,
     NormalSessionActionExecutor,
 )
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
     _correlated_observe,
@@ -30,7 +31,6 @@ from adapters.mineflayer.s31a_real_server_ci import (
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.eat_hunger import EatCursor
 from relay_self.intent import IntentCommitment
