@@ -261,3 +261,36 @@ Reuse existing WB partial projections and original external source. Avoid a whol
 | B-26 | An operator has a complete offline World save invisible to Self | Not used as SelfWorld perception or SelfBody sensation |
 
 **Decision:** B adopts partial, cognition-reachable, source-tagged snapshots. Current observed reality, remembered evidence, inference, predictions and UNKNOWN are not collapsed. No implementation, new authority or owner approval is implied.
+
+---
+
+## B11. Periodic autosave of cognitive snapshots (user-selected MVP direction, 2026-11-06)
+
+> **B DESIGN DECISION / NOT IMPLEMENTED.** The initial snapshot mechanism is a **configurable fixed-interval autosave** of the *currently cognitively reachable* SelfWorld and SelfBody readouts. No full server World snapshot, special always-on event-sourced capture pipeline, or model inference on every tick is required.
+
+### B11.1 Minimal behavior
+
+1. On a configured interval (a tunable implementation setting, not a hard-coded law of cognition), serialize the **latest already-available** source-qualified SelfWorld and SelfBody cognitive views or their minimal read-only representations. If a view is unavailable, save its explicit UNKNOWN/UNAVAILABLE status; do not force a World read, Action or L2 call solely to fill the checkpoint.
+2. Capture the same checkpoint's self identity, world/session, checkpoint time and per-view *original observation* native sequence/request, coverage/truncation, origin, age/freshness and evidence/approved-Memory references. Different model observation times are allowed and must **not** be rewritten to the autosave timestamp.
+3. Use bounded local snapshot retention or rotation and simple atomic save/failure reporting. Save failures may retain the previous checkpoint; they must not block the real-time L0/S49 path or imply that no new World event occurred.
+4. Present Projection is recomputed from current qualified inputs and the three cognitive views as needed. A saved snapshot is an **operational checkpoint/cache**, not new authoritative Evidence, an approved durable Memory, or a new Persistent Cognition writer.
+
+**Important temporal separation:** autosave frequency does **not** define Action observation freshness. S49 may require a newer, differently timed native observation immediately before admission and must keep existing source/grant/clear/settling checks. A snapshot saved 1 second ago can still contain a 20-second-old entity reading; saving does not make that reading fresh.
+
+### B11.2 Recovery and evidence
+
+A checkpoint from a previous World session can be **read as historical cognitive context** if source identity and permission allow, but it cannot be restored as a present native observation, live action authorization, current body truth, or confirmed active physical Intent. After restart, fresh source-qualified body/world data is required to establish a new Present and physical eligibility. Independently governed standing Goal/Commitment persistence is still a separate responsibility.
+
+For first implementation, favor the **smallest snapshot file and interval configuration that actually supports the DEV loop**; a more elaborate differential/event stream, auto-learning archival system, and universal persistence owner are explicitly deferred. Missing observation between saves is not filled in by interpolation except as separately labeled prediction.
+
+### B11.3 Additional acceptance cases (B-27–B-31; NOT RUN)
+
+| ID | Case | Required result |
+| --- | --- | --- |
+| B-27 | Autosave tick with no new native observation | Checkpoint retains original source seq/time/age; does not claim fresh World observation |
+| B-28 | SelfWorld and SelfBody latest native samples are from different times | Save both with distinct source refs; no fabricated synchronized whole-World frame |
+| B-29 | Snapshot file write fails | Explicit checkpoint error, previous valid snapshot preserved where feasible, no S49 authorization impact |
+| B-30 | Restore checkpoint after World/session restart | Historical context only until new qualified observation; no old Action grant or live body state resurrection |
+| B-31 | Stored snapshot references inferred enemy position or body fatigue | Origin remains INFERRED/PREDICTED/UNKNOWN, not converted to OBSERVED or physical WorldBody truth |
+
+**Scope:** B decides *when/how to capture its available cognitive readouts*, not a new Memory lifecycle. The configurable interval and bounded retention defaults can be selected in owner-reviewed implementation tests; Contract B does not assert that this autosave mechanism currently exists.
