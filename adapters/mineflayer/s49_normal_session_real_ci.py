@@ -325,6 +325,7 @@ async def qualify(
     worldbody_dev: bool = False,
     worldbody_retest_dev: bool = False,
     unified_c1_dev: bool = False,
+    unified_c1_two_intents_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -502,6 +503,16 @@ async def qualify(
                 "one original S49 WorldBody owner and exclusive DEV World gate required"
             )
         if (
+            type(unified_c1_two_intents_dev) is not bool
+            or (unified_c1_two_intents_dev and (
+                not unified_c1_dev
+                or os.environ.get("S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY") != "1"
+            ))
+        ):
+            raise S31ABlocked(
+                "C1 second original Intent requires independent exclusive DEV epoch gate"
+            )
+        if (
             type(unified_c1_dev) is not bool
             or (unified_c1_dev and (
                 os.environ.get("S49_UNIFIED_C1_DEV_ONLY") != "1"
@@ -587,6 +598,12 @@ async def qualify(
             )
             report["unified_c1_dev_enabled"] = True
             report["unified_c1_physical_grant_inferred"] = False
+            report["unified_c1_two_intents_dev_enabled"] = (
+                unified_c1_two_intents_dev
+            )
+        active_motion_dev = motion_dev
+        successor_join = None
+        next_c1 = None
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
         if bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
             from adapters.mineflayer.s49_p1_paper_dev import run_s49_p1_paper_dev
@@ -782,21 +799,32 @@ async def qualify(
             return reading
 
         def decide_grant(choice, event_seq):
+            current = intent.current_intent
+            if (
+                current is None
+                or current.intent_id not in (
+                    ("escape-threat", "next-escape-threat")
+                    if unified_c1_two_intents_dev else ("escape-threat",)
+                )
+            ):
+                raise S49PhysicalFailure("original S49 Intent owner absent or changed")
             if choice.selection is not WorldChoiceKind.MOVE_AWAY:
                 raise S49PhysicalFailure("WAIT attempted to request Action")
             return L0ActionGrant(
                 authority_id=f"s49-preconfigured-escape-{event_seq}",
                 action_id=f"s49-native-move-{event_seq}",
-                intent_id="escape-threat", session_id=sid,
+                intent_id=current.intent_id, session_id=sid,
                 event_seq=event_seq, probe_seq=choice.probe_seq,
                 entity_id=choice.entity_id, granted=True,
                 provenance=source(f"l0-request-{event_seq}"),
             )
 
         def authorize(step, stage):
+            if step.grant is None or intent.current_intent is None:
+                raise S49PhysicalFailure("missing original current Intent/Action grant")
             return NormalActionAuthorization(
                 stage=stage, authority_id=f"s49-{stage.value.lower()}-{step.event_seq}",
-                intent_id="escape-threat", session_id=sid,
+                intent_id=step.grant.intent_id, session_id=sid,
                 action_id=step.action_request_id, event_seq=step.event_seq,
                 probe_seq=step.choice.probe_seq, entity_id=step.choice.entity_id,
                 granted=True,
@@ -842,7 +870,8 @@ async def qualify(
                 raise S49PhysicalFailure("full S14 native admission was not independently satisfied")
             binding = ExecutionBinding(
                 binding_id=f"s49-binding-{step.event_seq}",
-                candidate_ref="MOVE_AWAY", required_intent_id="escape-threat",
+                candidate_ref="MOVE_AWAY",
+                required_intent_id=step.grant.intent_id,
                 skill_execution_id=f"s49-skill-{step.event_seq}",
                 skill_ref="escape-movement", action_id=step.action_request_id,
                 action_ref="MOVE_BACKWARD",
@@ -853,9 +882,22 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
-            if motion_dev is not None:
-                # S49's exact first/next original choice BEFORE executor S15.
-                motion_dev.prepare_original_action(step, probe)
+            if active_motion_dev is not None:
+                # Exact original owner/selection source before S15 dispatch.
+                action_forecast = active_motion_dev.prepare_original_action(
+                    step, probe,
+                )
+                if successor_join is not None and active_motion_dev is successor_join:
+                    if (
+                        next_c1 is None
+                        or action_forecast.intent_id != next_c1.intent_id
+                        or action_forecast.owner_revision != next_c1.owner_revision
+                        or action_forecast.predicted_total_m != next_c1.predicted_total_m
+                        or action_forecast.source_probe_seq <= next_c1.source_probe_seq
+                    ):
+                        raise S49PhysicalFailure(
+                            "second original S49 Action did not consume current S10 owner"
+                        )
             if stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
@@ -883,9 +925,9 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
-            if motion_dev is not None:
-                # Only read ORIGINAL S16 terminal from SAME executor supervisor.
-                motion_dev.accept_original_terminal(step, probe, receipt)
+            if active_motion_dev is not None:
+                # Read only ORIGINAL S16 terminal from SAME executor supervisor.
+                active_motion_dev.accept_original_terminal(step, probe, receipt)
             if eat_cursor is not None:
                 # Diagnostic only: the original S15 cleanup ACK and S16 terminal
                 # cannot establish effective physical STOP or release EAT.
@@ -1409,6 +1451,7 @@ def main() -> int:
     parser.add_argument("--worldbody-dev", action="store_true")
     parser.add_argument("--worldbody-retest-dev", action="store_true")
     parser.add_argument("--unified-c1-dev", action="store_true")
+    parser.add_argument("--unified-c1-two-intents-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1426,6 +1469,7 @@ def main() -> int:
         worldbody_dev=args.worldbody_dev,
         worldbody_retest_dev=args.worldbody_retest_dev,
         unified_c1_dev=args.unified_c1_dev,
+        unified_c1_two_intents_dev=args.unified_c1_two_intents_dev,
     ))
 
 
