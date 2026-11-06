@@ -177,7 +177,10 @@ class S49C1MotionDevJoin:
         self.intent.complete(
             self.initial_intent_id,
             reason="S49 physical attempts assessed; external Goal remains unverified",
-            at_ns=(self.intent.last_at_ns or 0) + 1,
+            at_ns=max(
+                self.intent.last_at_ns or 0,
+                self.executor.supervisor.last_at_ns or 0,
+            ) + 1,
             provenance=Provenance("s49-c1-dev-owner", "terminal-original-intent"),
         )
         experience = close_motion_intent_experience(
@@ -231,7 +234,10 @@ class S49C1MotionDevJoin:
         )
         self.intent.commit(
             next_intent_id, objective="reassess motion from new native Present",
-            at_ns=(self.intent.last_at_ns or 0) + 1,
+            at_ns=max(
+                self.intent.last_at_ns or 0,
+                self.executor.supervisor.last_at_ns or 0,
+            ) + 1,
             provenance=Provenance("s49-c1-dev-owner", "next-original-intent"),
         )
         self._next_forecast = forecast
