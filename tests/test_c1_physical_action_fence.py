@@ -327,7 +327,9 @@ def test_crash_after_s16_seal_before_c1_commit_blocks_new_world(
 ):
     import asyncio
 
-    _, executor, _, step, selected, receipt, auth, p = _joined_original_owner()
+    owner, actual_executor, _, step, selected, receipt, auth, p = (
+        _joined_original_owner()
+    )
     # The actual original Self ID is used by the runner across BOTH files.
     physical_path = tmp_path / "c1_physical_action_fence.json"
     fence = OriginalS49PhysicalFence.create(
@@ -336,9 +338,6 @@ def test_crash_after_s16_seal_before_c1_commit_blocks_new_world(
     fence.prepare(
         session_id=selected.session_id, intent_id="escape-threat",
         action_id=step.action_request_id, probe=selected,
-    )
-    owner, actual_executor, _, step, selected, receipt, auth, p = (
-        _joined_original_owner()
     )
     _, receipt = _record_synthetic_original_terminal(
         owner, actual_executor, step, selected, receipt, auth, p,
