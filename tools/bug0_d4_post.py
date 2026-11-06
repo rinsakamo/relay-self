@@ -121,6 +121,7 @@ def audit(log: str, report: dict) -> dict:
         or sp["zombie"] != combat["killed_zombie_uuid"]
         or pk["zombie"] != combat["killed_zombie_uuid"]
         or sp["item"] != pk["item"]
+        or pk["player"] != combat["paper_killer_uuid"]
         or int(sp["count"]) != count
         or int(pk["count"]) != count
         or int(sp["tick"]) < combat["real_death_tick"]
@@ -140,12 +141,14 @@ def audit(log: str, report: dict) -> dict:
     next_choice = report.get("d4_next_food_decision")
     if (
         gathered["seq"] <= before["seq"]
+        or gathered["seq"] <= report["s49_actions"][-1]["after_seq"]
         or gathered["rotten_flesh"] != count
         or eaten["rotten_flesh"] != count - 1
         or not gathered["seq"] < eaten["seq"]
         or not isinstance(outcome, dict)
         or outcome.get("session_id") != sid
         or outcome.get("action_id") != report.get("d4_eat_action_id")
+        or outcome.get("action_id") in {a["action_id"] for a in report["s49_actions"]}
         or outcome.get("consumed_item") != "rotten_flesh"
         or outcome.get("count_before") != count
         or outcome.get("count_after") != count - 1
