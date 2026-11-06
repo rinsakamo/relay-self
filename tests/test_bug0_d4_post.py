@@ -61,6 +61,16 @@ REPORT = dict(
     d4_native_after_pickup=AFTER_PICK,
     d4_post_eat=AFTER_EAT,
     d4_native_pickup_attempt=1,
+    d4_food_policy_trace=[
+        {"selected": "DEFER", "reason": "ZOMBIE_PRESENT_NO_DEFENSE_ADMISSION",
+         "risk": "OBSERVED_ENTITY_NEARBY", "seq": 30, "item": None},
+        {"selected": "EAT", "reason": "HUNGRY_WITH_FOOD_AND_BOUNDED_EMPTY_REGISTRY",
+         "risk": "NO_NEARBY_ENTITY_OBSERVED", "seq": 33, "item": "rotten_flesh"},
+    ],
+    d4_preissue_choice={
+        "selected": "EAT", "item": "rotten_flesh",
+        "seq": 34, "risk": "NO_NEARBY_ENTITY_OBSERVED",
+    },
     d4_eat_action_id="real-s49-eat",
     d4_eat_outcome={
         "session_id": "s", "action_id": "real-s49-eat",
@@ -168,3 +178,23 @@ def test_operator_must_not_kill_original_managed_zombie():
     ]
     with pytest.raises(D4NaturalEatRejected):
         audit(LOG, report)
+
+def test_native_ghost_deferral_must_not_be_relabelled_safe():
+    for bad in ("policy", "preissue", "stale"):
+        report = deepcopy(REPORT)
+        if bad == "policy":
+            report["d4_food_policy_trace"][-1]["selected"] = "DEFER"
+        elif bad == "preissue":
+            report["d4_preissue_choice"]["risk"] = "OBSERVED_ENTITY_NEARBY"
+        else:
+            report["d4_preissue_choice"]["seq"] = 39
+        with pytest.raises(D4NaturalEatRejected):
+            audit(LOG, report)
+
+
+def test_last_real_rotten_flesh_eaten_then_empty_inventory_wait_is_valid():
+    report = deepcopy(REPORT)
+    report["d4_next_food_decision"]["reason"] = "NO_INVENTORY_FOOD"
+    result = audit(LOG, report)
+    assert result["real_eat_proven"] is True
+    assert result["unlimited_survival_proven"] is False
