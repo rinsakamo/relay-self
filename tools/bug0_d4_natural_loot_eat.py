@@ -20,6 +20,7 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
+from relay_self.eat_hunger import EatCursor, EatStatus
 from relay_self.provenance import Provenance
 from tools.bug0_pickup_d1_world import _inventory, _original_marker
 
@@ -186,9 +187,61 @@ async def run_natural_loot_eat(
         **fields,
     )
     report["d4_stage"] = "ORIGINAL_S49_S51_REAL_ROTTEN_FLESH_EAT"
+    native_choice = EatCursor(sid).choose(current)
+    if (
+        native_choice.status is not EatStatus.CANDIDATE
+        or native_choice.item_name != later.candidate_item
+        or native_choice.item_slot != later.candidate_slot
+        or native_choice.probe_seq != later.probe_seq
+    ):
+        raise NaturalD4Rejected("current S49/EatCursor native food source disagrees")
     owner.require_eating_authorizations(
-        later if False else food.food.cursor.choose(
-            await _correlated_observe(session, "d4-shadow-NEVER_USE")
-        ), current, propose, issue, previous_probe=earlier,
+        native_choice, current, propose, issue, previous_probe=earlier,
     )
-    raise NaturalD4Rejected("placeholder protection: grant binding not yet wired")
+    report["d4_eat_action_id"] = action_id
+    report["d4_self_eat_issued"] = True
+    try:
+        receipt = await owner.execute_eat(
+            session, native_choice, current,
+            propose, issue, previous_probe=earlier,
+        )
+    finally:
+        report["d4_eat_terminal"] = (
+            owner.supervisor.get(action_id).state.value
+            if action_id in owner._dispatched else "NOT_ISSUED"
+        )
+    if (
+        receipt.terminal.state is not ActionState.OUTCOME
+        or receipt.terminal is not owner.supervisor.get(action_id)
+        or receipt.outcome.consumed_item != "rotten_flesh"
+        or receipt.outcome.count_before != natural_count
+        or receipt.outcome.count_after != natural_count - 1
+        or receipt.outcome.food_after <= receipt.outcome.food_before
+        or owner.supervisor.open_actions
+    ):
+        raise NaturalD4Rejected("native rotten flesh EAT outcome unqualified")
+    food.acknowledge_verified_eat(receipt)
+    report["d4_eat_outcome"] = asdict(receipt.outcome)
+    post = await _correlated_observe(session, "d4-native-post-eat-epoch")
+    next_decision = food.decide(post)
+    report["d4_post_eat"] = _inventory(post)
+    report["d4_next_food_decision"] = {
+        "selected": next_decision.selected,
+        "reason": next_decision.reason,
+        "food": next_decision.food,
+        "seq": next_decision.probe_seq,
+    }
+    if (
+        post.seq <= receipt.outcome.after_probe_seq
+        or _rotten(post) != natural_count - 1
+        or not (
+            next_decision.selected == "WAIT"
+            and next_decision.reason in (
+                "NOT_HUNGRY", "ONE_EAT_BUDGET_USED",
+            )
+        )
+        or owner.supervisor.open_actions
+    ):
+        raise NaturalD4Rejected("post-EAT original source epoch not safely closed")
+    report["d4_stage"] = "NATURAL_MEAT_PICKED_AND_EATEN_ONE_EPOCH"
+    return True
