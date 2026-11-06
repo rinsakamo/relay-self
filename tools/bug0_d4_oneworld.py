@@ -406,10 +406,8 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
         if post_respawn_dev is not None:
             # Optional D5 child only. D4's original no-hook entrypoint and
             # source/eat evidence remain unchanged and reusable by audit.
-            if not d4_eaten:
-                raise S49D3Rejected(
-                    "D5 requires first genuine natural pickup and EAT"
-                )
+            # A genuine zero-loot death is a valid World outcome. Do not
+            # require or fabricate EAT before the next independent Intent.
             await post_respawn_dev(session, server, owner, report, log_path)
             report["classification"] = "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
         rc = 0
