@@ -326,6 +326,7 @@ async def qualify(
     worldbody_retest_dev: bool = False,
     unified_c1_dev: bool = False,
     unified_c1_two_intents_dev: bool = False,
+    unified_c1_journal_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -343,6 +344,7 @@ async def qualify(
     server = collector = session = staging = temp = None
     stage_r = None
     motion_dev = None
+    journal_dev = None
     rc = 2
     cancellations: list[asyncio.CancelledError] = []
     worldbody_active = worldbody_dev or worldbody_retest_dev
@@ -503,6 +505,16 @@ async def qualify(
                 "one original S49 WorldBody owner and exclusive DEV World gate required"
             )
         if (
+            type(unified_c1_journal_dev) is not bool
+            or (unified_c1_journal_dev and (
+                not unified_c1_dev or not unified_c1_two_intents_dev
+                or os.environ.get("S49_C1_JOURNAL_DEV_ONLY") != "1"
+            ))
+        ):
+            raise S31ABlocked(
+                "C1 durable journal requires exclusive S49 2-Intent DEV gate"
+            )
+        if (
             type(unified_c1_two_intents_dev) is not bool
             or (unified_c1_two_intents_dev and (
                 not unified_c1_dev
@@ -586,15 +598,33 @@ async def qualify(
             )
             from relay_self.learning import LearningPreferenceState
 
-            # Separate from original L0's governed risk_weight state.
-            # This initial motion magnitude is a deliberately seeded DEV model.
+            # This S10 owner is separate from L0's frozen risk_weight.
+            motion_state = LearningPreferenceState(
+                "motion_decimeters", 7, 0, 10, 0,
+                source("unified-c1-seeded-motion-model"),
+            )
+            if unified_c1_journal_dev:
+                from relay_self.c1_motion_journal import C1MotionJournal
+
+                journal_path = report_path.parent / "c1_motion_journal.json"
+                if journal_path.exists():
+                    # A prior persisted S10 state is never silently reseeded.
+                    journal_dev = C1MotionJournal.restore(
+                        journal_path, self_id="s49-original-self",
+                    )
+                    report["c1_journal_restored_before_world"] = True
+                else:
+                    journal_dev = C1MotionJournal.create(
+                        journal_path, self_id="s49-original-self",
+                        seed=motion_state,
+                    )
+                    report["c1_journal_restored_before_world"] = False
+                motion_state = journal_dev.state
+                report["c1_journal_source"] = "ORIGINAL_S49_S10_OWNER_ATOMIC_LOCAL_SNAPSHOT"
+                report["c1_journal_before_revision"] = motion_state.revision
             motion_dev = S49C1MotionDevJoin(
-                intent, executor,
-                LearningPreferenceState(
-                    "motion_decimeters", 7, 0, 10, 0,
-                    source("unified-c1-seeded-motion-model"),
-                ),
-                self_id="s49-original-self",
+                intent, executor, motion_state,
+                self_id="s49-original-self", journal=journal_dev,
             )
             report["unified_c1_dev_enabled"] = True
             report["unified_c1_physical_grant_inferred"] = False
@@ -1091,7 +1121,7 @@ async def qualify(
                 await asyncio.wait_for(staging, timeout=20)
                 successor_join = S49C1MotionDevJoin(
                     intent, executor, motion_dev.retained_motion,
-                    self_id=motion_dev.self_id,
+                    self_id=motion_dev.self_id, journal=journal_dev,
                 )
                 active_motion_dev = successor_join
                 next_host = NormalWorldL0(
@@ -1133,6 +1163,34 @@ async def qualify(
                     )
                 second_terminal = successor_join.close_original_intent()
                 report["unified_c1_original_owner"]["next_l0_action_issued"] = True
+                if journal_dev is not None:
+                    from relay_self.c1_motion_journal import C1MotionJournal
+
+                    recovered = C1MotionJournal.restore(
+                        journal_dev.path, self_id=motion_dev.self_id,
+                    )
+                    if (
+                        recovered.state != successor_join.retained_motion
+                        or recovered.sha256 != journal_dev.sha256
+                        or recovered.experience_ids != (
+                            terminal_c1.experience.experience_id,
+                            second_terminal.experience.experience_id,
+                        )
+                    ):
+                        raise S49PhysicalFailure(
+                            "C1 journal restart could not reproduce exact S10 owner"
+                        )
+                    report["c1_journal"] = {
+                        "schema": 1, "path": journal_dev.path.name,
+                        "sha256": recovered.sha256,
+                        "experience_ids": list(recovered.experience_ids),
+                        "retained_revision": recovered.state.revision,
+                        "retained_value": recovered.state.value,
+                        "fresh_restore_equal_to_original_owner": True,
+                        "new_physical_action_after_restore": False,
+                        "general_persistent_cognition_migrated": False,
+                        "physical_action_write_ahead_fence": False,
+                    }
                 report["unified_c1_second_original_owner"] = {
                     "intent_id": next_c1.intent_id,
                     "original_l0_event_seq": next_trace[0].event_seq,
@@ -1395,7 +1453,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_C1_S10_TWO_ORIGINAL_INTENT_ACTION_EXPERIENCES"
+            "DEV_ONLY_S49_C1_DURABLE_TWO_INTENT_S10_RESTART_READ"
+            if unified_c1_journal_dev
+            else "DEV_ONLY_S49_C1_S10_TWO_ORIGINAL_INTENT_ACTION_EXPERIENCES"
             if unified_c1_two_intents_dev
             else "DEV_ONLY_S49_C1_S10_NEXT_ORIGINAL_FORECAST_NOT_NEXT_ACTION"
             if motion_dev is not None
@@ -1545,6 +1605,7 @@ def main() -> int:
     parser.add_argument("--worldbody-retest-dev", action="store_true")
     parser.add_argument("--unified-c1-dev", action="store_true")
     parser.add_argument("--unified-c1-two-intents-dev", action="store_true")
+    parser.add_argument("--unified-c1-journal-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1563,6 +1624,7 @@ def main() -> int:
         worldbody_retest_dev=args.worldbody_retest_dev,
         unified_c1_dev=args.unified_c1_dev,
         unified_c1_two_intents_dev=args.unified_c1_two_intents_dev,
+        unified_c1_journal_dev=args.unified_c1_journal_dev,
     ))
 
 
