@@ -1,6 +1,7 @@
 # RelaySelf — Unified Cognitive Architecture v0.5
 
-> **Status: CONCEPTUAL BASELINE FROZEN (2026-11-03) / DESIGN ONLY / NOT AN IMPLEMENTATION OR QUALIFICATION CLAIM.**
+> **Status: v0.5 ARCHITECTURE_DESIGN_COMPLETE / DESIGN FROZEN (2026-11-07 JST) / IMPLEMENTATION_PENDING / NOT A QUALIFICATION CLAIM.**
+> Closure record: [v0.5 Design Freeze / implementation handoff](unified-v0.5-design-freeze-20261107.md). A, B and C1–C4 are conceptually accepted; owner-specific executable API review, tests and integration remain separate.
 >
 > Tracking: [Unified Architecture v0.5 #717](https://github.com/rinsakamo/relay-self/issues/717). This document freezes agreed *conceptual invariants*, not the detailed execution contracts. The existing `main`, S/L/M/WB/G branches, evidence and physical/learning authority remain unchanged. Baseline inspected: `main@4348a614900c1d0828581a8eec2c523ba5ae237f`.
 
