@@ -1,0 +1,75 @@
+name: Bug-0 D3 successful original S49 physical multihit Paper source audit
+on:
+  push:
+    branches:
+      - dev/bug0-d3-success-source-audit-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Obtain exact successful physical original from separate run
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-s49-d3-death-fence-original-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42197424011
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d3-original-success
+      - name: Rehash and independently reproduce source-only D3 audit without a World
+        run: |
+          cd d3-original-success
+          test -f report.json && test -f paper_original.log
+          test -f operator_post_audit.json && test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cd ..
+          python - <<'PY'
+          import json,pathlib
+          from tools.bug0_s49_combat_d3_post import audit
+          p=pathlib.Path('d3-original-success')
+          report=json.loads((p/'report.json').read_text(encoding='utf8'))
+          original=json.loads((p/'operator_post_audit.json').read_text(encoding='utf8'))
+          independently=audit(
+              (p/'paper_original.log').read_text(encoding='utf8'),report
+          )
+          assert independently==original
+          keys=(
+              'classification','world_uuid','initial_zombie_uuid',
+              'killed_zombie_uuid','new_zombie_uuid','paper_killer_uuid',
+              'paper_killer_is_relay_self','real_death_tick','next_spawn_tick',
+              'source_delta_ticks','original_s49_attack_action_count',
+              'original_s49_action_id_unique','real_rotten_flesh_drop_count',
+              'real_rotten_flesh_pickup_proven','real_eat_proven',
+              'autonomous_target_selection_proven','qualification','science'
+          )
+          print('D3_ORIGINAL_INDEPENDENT_PAPER_AUDIT='+json.dumps(
+              {k:original.get(k) for k in keys},
+              ensure_ascii=False,sort_keys=True))
+          print('D3_ORIGINAL_S49_ACTION_SOURCE='+json.dumps(
+              report['s49_actions'],sort_keys=True))
+          print('D3_ORIGINAL_NATIVE_INITIAL='+json.dumps(
+              report['native_initial'],sort_keys=True))
+          print('D3_ORIGINAL_NATIVE_RESPAWN='+json.dumps(
+              report['native_respawn'],sort_keys=True))
+          print('D3_ORIGINAL_WORLD_CLEANUP='+json.dumps({
+              k:report.get(k) for k in (
+                  'status','stage','node_exit','java_exit','cleanup_done',
+                  'original_supervisor_open_count','real_rotten_flesh_count')
+          },sort_keys=True))
+          assert report['status']=='PASS_DEV'
+          assert report['node_exit']==report['java_exit']==0
+          assert original['paper_killer_is_relay_self'] is True
+          assert original['source_delta_ticks']==600
+          assert original['original_s49_attack_action_count']>=2
+          print('D3_INDEPENDENT_ORIGINAL_SHA_AND_SOURCE_PASS WORLD_0 ACTION_0')
+          PY
