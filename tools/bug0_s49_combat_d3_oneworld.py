@@ -42,6 +42,21 @@ class S49D3Rejected(RuntimeError):
     """A physically issued or source-qualified combat fact is not established."""
 
 
+def paper_death_seen(log: str) -> bool:
+    """Operator-only terminal gate: do not attempt a next strike on a corpse.
+
+    No Paper World truth is projected to the Self's native L0 policy.
+    The independent post-audit still must establish actual killer identity.
+    """
+    hits = [
+        line for line in log.splitlines()
+        if "RSELF_NATURAL_DROP_DEATH world=" in line
+    ]
+    if len(hits) > 1:
+        raise S49D3Rejected("duplicated original Paper death marker")
+    return len(hits) == 1
+
+
 def _target(probe, entity_id=None):
     cov = probe.snapshot.nearby_entities_coverage
     nearby = probe.snapshot.nearby_entities
@@ -165,11 +180,27 @@ async def run(report_path: Path, log_path: Path) -> int:
             if owner.supervisor.open_actions:
                 raise S49D3Rejected("S49 unresolved prior Action blocks attack")
             await asyncio.sleep(0.75)
+            if i > 1 and paper_death_seen(log_path.read_text(encoding="utf8")):
+                death_logged = True
+                break
             previous = await _correlated_observe(session, f"d3-hit-{i}-pre")
             await asyncio.sleep(0.25)
             current = await _correlated_observe(session, f"d3-hit-{i}-fresh")
-            mob = _target(previous, target_id)
-            _target(current, mob.entity_id)
+            if i > 1 and paper_death_seen(log_path.read_text(encoding="utf8")):
+                death_logged = True
+                break
+            try:
+                mob = _target(previous, target_id)
+                _target(current, mob.entity_id)
+            except S49D3Rejected:
+                if i > 1:
+                    # The Paper death can arrive after native after-attack ACK
+                    # but before the next native melee target sample settles.
+                    await asyncio.sleep(0.25)
+                    if paper_death_seen(log_path.read_text(encoding="utf8")):
+                        death_logged = True
+                        break
+                raise
             target_id = mob.entity_id
             chosen = policy.decide(current)
             if (
@@ -232,9 +263,7 @@ async def run(report_path: Path, log_path: Path) -> int:
                 "kill_attested_by_effect_ack": False,
                 "scope": "ORIGINAL_S49_NATIVE_ATTACK_COMMAND_ONLY",
             })
-            if "RSELF_NATURAL_DROP_DEATH world=" in log_path.read_text(
-                encoding="utf8",
-            ):
+            if paper_death_seen(log_path.read_text(encoding="utf8")):
                 death_logged = True
                 break
             if receipt.target_missing_in_native_view:
