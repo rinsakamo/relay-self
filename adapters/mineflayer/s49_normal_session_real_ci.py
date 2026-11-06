@@ -324,6 +324,7 @@ async def qualify(
     bug0_p1_margin_dev: bool = False,
     worldbody_dev: bool = False,
     worldbody_retest_dev: bool = False,
+    unified_c1_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -340,6 +341,7 @@ async def qualify(
     }
     server = collector = session = staging = temp = None
     stage_r = None
+    motion_dev = None
     rc = 2
     cancellations: list[asyncio.CancelledError] = []
     worldbody_active = worldbody_dev or worldbody_retest_dev
@@ -499,6 +501,23 @@ async def qualify(
             raise S31ABlocked(
                 "one original S49 WorldBody owner and exclusive DEV World gate required"
             )
+        if (
+            type(unified_c1_dev) is not bool
+            or (unified_c1_dev and (
+                os.environ.get("S49_UNIFIED_C1_DEV_ONLY") != "1"
+                or stage_r_dev or completed_l0_dev or completed_l0 is not None
+                or live_probe is not None or worldbody_active
+                or bug0_eat_shadow or bug0_food_loop_dev
+                or bug0_food_refusal_dev or bug0_unified_survival_dev
+                or bug0_attack_dev or bug0_attack_health_dev
+                or bug0_rest_dev or bug0_attack_rest_dev
+                or bug0_p1_paper_dev or bug0_p1_prospective_rest_dev
+                or bug0_p1_margin_dev
+            ))
+        ):
+            raise S31ABlocked(
+                "C1/S10 original S49 DEV requires a separate exclusive runner gate"
+            )
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -550,6 +569,24 @@ async def qualify(
             sid, intent_name, retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
+        if unified_c1_dev:
+            from adapters.mineflayer.s49_c1_motion_owner_dev import (
+                S49C1MotionDevJoin,
+            )
+            from relay_self.learning import LearningPreferenceState
+
+            # Separate from original L0's governed risk_weight state.
+            # This initial motion magnitude is a deliberately seeded DEV model.
+            motion_dev = S49C1MotionDevJoin(
+                intent, executor,
+                LearningPreferenceState(
+                    "motion_decimeters", 7, 0, 10, 0,
+                    source("unified-c1-seeded-motion-model"),
+                ),
+                self_id="s49-original-self",
+            )
+            report["unified_c1_dev_enabled"] = True
+            report["unified_c1_physical_grant_inferred"] = False
         eat_cursor = EatCursor(sid) if bug0_eat_shadow else None
         if bug0_p1_paper_dev or bug0_p1_prospective_rest_dev or bug0_p1_margin_dev:
             from adapters.mineflayer.s49_p1_paper_dev import run_s49_p1_paper_dev
@@ -816,6 +853,9 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
+            if motion_dev is not None:
+                # S49's exact first/next original choice BEFORE executor S15.
+                motion_dev.prepare_original_action(step, probe)
             if stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
@@ -843,6 +883,9 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            if motion_dev is not None:
+                # Only read ORIGINAL S16 terminal from SAME executor supervisor.
+                motion_dev.accept_original_terminal(step, probe, receipt)
             if eat_cursor is not None:
                 # Diagnostic only: the original S15 cleanup ACK and S16 terminal
                 # cannot establish effective physical STOP or release EAT.
@@ -947,6 +990,47 @@ async def qualify(
             or host.events != 3
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
+        if motion_dev is not None:
+            # The original S49 owner, not a diagnostic observer, ends the
+            # attempted Intent after all existing S16 Actions have closed.
+            # Follow-up remains read-only: no second L0 decision or Action.
+            terminal_c1 = motion_dev.close_original_intent()
+            next_native = await _correlated_observe(
+                session, f"s49-c1-next-intent-{sid}"
+            )
+            next_c1 = motion_dev.start_next_original_intent(
+                next_native, next_intent_id="next-escape-threat",
+            )
+            report["unified_c1_original_owner"] = {
+                "original_intent_id": terminal_c1.experience.forecast.intent_id,
+                "original_intent_terminal": terminal_c1.experience.terminal_kind.value,
+                "external_goal_verified": terminal_c1.experience.intent_goal_verified,
+                "experience_id": terminal_c1.experience.experience_id,
+                "action_ids": [
+                    r.terminal.action_id
+                    for r in terminal_c1.experience.action_receipts
+                ],
+                "decision_probe_seq": [
+                    p.seq for p in terminal_c1.experience.decision_probes
+                ],
+                "s15_before_seq": [
+                    r.consequence.before_observation.seq
+                    for r in terminal_c1.experience.action_receipts
+                ],
+                "motion_comparison": terminal_c1.experience.comparison.value,
+                "measured_total_m": terminal_c1.experience.measured_total_m,
+                "retained_revision": motion_dev.retained_motion.revision,
+                "retained_value": motion_dev.retained_motion.value,
+                "next_intent_id": next_c1.intent_id,
+                "next_source_seq": next_c1.source_probe_seq,
+                "next_forecast_m": next_c1.predicted_total_m,
+                "next_consumed_revision": next_c1.owner_revision,
+                "next_l0_action_issued": False,
+                "learned_decision_policy": False,
+                "durable_replay_journal": False,
+                "independent_source_attestation": False,
+            }
+            report["learning_in_world"] = terminal_c1.learning is not None
         if worldbody_active:
             from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
             from adapters.mineflayer.s49_rest_dev import inspect_rest_native_samples
@@ -1178,7 +1262,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_WORLDBODY_ORIGINAL_S49_POST_REST_THIRD_MOTOR_OUTCOME"
+            "DEV_ONLY_S49_C1_S10_NEXT_ORIGINAL_FORECAST_NOT_NEXT_ACTION"
+            if motion_dev is not None
+            else "DEV_ONLY_WORLDBODY_ORIGINAL_S49_POST_REST_THIRD_MOTOR_OUTCOME"
             if worldbody_retest_dev
             else "DEV_ONLY_WORLDBODY_FIXED_PHYSICS_DIRECT_S16_REST"
             if worldbody_dev
@@ -1322,6 +1408,7 @@ def main() -> int:
     parser.add_argument("--bug0-p1-margin-dev", action="store_true")
     parser.add_argument("--worldbody-dev", action="store_true")
     parser.add_argument("--worldbody-retest-dev", action="store_true")
+    parser.add_argument("--unified-c1-dev", action="store_true")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, completed_l0_dev=args.completed_l0_dev,
@@ -1338,6 +1425,7 @@ def main() -> int:
         bug0_p1_margin_dev=args.bug0_p1_margin_dev,
         worldbody_dev=args.worldbody_dev,
         worldbody_retest_dev=args.worldbody_retest_dev,
+        unified_c1_dev=args.unified_c1_dev,
     ))
 
 

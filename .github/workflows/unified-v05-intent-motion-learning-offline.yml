@@ -4,6 +4,7 @@ on:
     branches:
       - dev/unified-v05-intent-motion-learning-20261106
       - dev/unified-c1-s10-world-20261106
+      - dev/unified-c1-original-s49-owner-next-intent-20261106
 permissions:
   contents: read
 jobs:
@@ -25,8 +26,8 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
           python tools/check_repository.py
-          python -m compileall -q adapters/mineflayer/bug0_intent_motion_learning.py tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py
-          ruff check adapters/mineflayer/bug0_intent_motion_learning.py tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py
-          python -m pytest -q tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py tests/test_s49_completed_decision_bridge.py tests/test_learning_qualification.py
+          python -m compileall -q adapters/mineflayer/bug0_intent_motion_learning.py adapters/mineflayer/s49_c1_motion_owner_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py tests/test_s49_c1_motion_owner_dev.py
+          ruff check adapters/mineflayer/bug0_intent_motion_learning.py adapters/mineflayer/s49_c1_motion_owner_dev.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py tests/test_s49_c1_motion_owner_dev.py
+          python -m pytest -q tests/test_bug0_intent_motion_learning.py tests/test_bug0_intent_motion_source_join.py tests/test_s49_c1_motion_owner_dev.py tests/test_s49_completed_decision_bridge.py tests/test_learning_qualification.py
       - name: No World, issuer or model from offline
         run: echo 'UNIFIED_C1_LRN_OFFLINE_ONLY_NO_WORLD_NO_ACTION_NO_LLM_NO_PERFORMANCE_CLAIM'
