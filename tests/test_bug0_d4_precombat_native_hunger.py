@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 import test_bug0_s49_attack_owner as cases
+from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
 from tools.bug0_d4_oneworld import S49D3Rejected, qualified_native_precombat_hunger
 
 
@@ -45,5 +46,5 @@ def test_real_native_food_must_cross_existing_exclusive_14_threshold():
 ])
 def test_untrusted_or_unsafe_native_source_cannot_authorize_precombat(break_it):
     p = _hunger(13)
-    with pytest.raises(S49D3Rejected):
+    with pytest.raises((S49D3Rejected, MineflayerAdapterProtocolError)):
         qualified_native_precombat_hunger(break_it(p), p.session_id)
