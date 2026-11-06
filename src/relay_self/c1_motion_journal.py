@@ -369,8 +369,45 @@ class C1MotionJournal:
             ):
                 raise C1JournalConflict("S10 exact committed owner object is required")
             next_owner = learning.new_state
+        from adapters.mineflayer.execution import WorldConsequenceStatus
+        from relay_self.action import ActionState
+
         action_ids = [r.terminal.action_id for r in experience.action_receipts]
         sources = [p.seq for p in experience.decision_probes]
+        if (
+            len(action_ids) != len(sources)
+            or not action_ids or len(action_ids) > 8
+        ):
+            raise C1JournalError("invalid original S49 Action/source cardinality")
+        prior_after = -1
+        for i, (receipt, selected) in enumerate(
+            zip(experience.action_receipts, experience.decision_probes)
+        ):
+            physical = receipt.consequence
+            if (
+                receipt.terminal.intent_id != forecast.intent_id
+                or receipt.terminal.action_id != physical.action_id
+                or receipt.terminal.state is not ActionState.OUTCOME
+                or physical.status is not WorldConsequenceStatus.EXECUTED
+                or physical.session_id != forecast.session_id
+                or physical.before_observation is None
+                or physical.after_observation is None
+                or selected.session_id != forecast.session_id
+                or receipt.source != selected.provenance
+                or selected.seq <= prior_after
+                or physical.before_observation.seq <= selected.seq
+                or physical.after_observation.seq <= physical.before_observation.seq
+                or (
+                    i == 0 and (
+                        selected.seq != forecast.source_probe_seq
+                        or selected.provenance != forecast.source_provenance
+                    )
+                )
+            ):
+                raise C1JournalError(
+                    "original S49 source/Action/Intent evidence is not bound"
+                )
+            prior_after = physical.after_observation.seq
         source_data = [{
             "action": r.terminal.action_id,
             "terminal": r.terminal.state.value,
@@ -379,8 +416,6 @@ class C1MotionJournal:
             "before_seq": r.consequence.before_observation.seq,
             "after_seq": r.consequence.after_observation.seq,
         } for r, p in zip(experience.action_receipts, experience.decision_probes)]
-        if len(action_ids) != len(sources) or not action_ids or len(action_ids) > 8:
-            raise C1JournalError("invalid original S49 Action/source cardinality")
         entry = {
             "experience_id": experience.experience_id,
             "session_id": forecast.session_id,
