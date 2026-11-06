@@ -285,7 +285,14 @@ def test_restart_with_pending_physical_action_blocks_before_world_provision(
     import asyncio
 
     path = tmp_path / "c1_physical_action_fence.json"
-    fence, owner, _, _, _, _, _, _, _ = _prepared(path)
+    owner, _, _, step, selected, _, _, _ = _joined_original_owner()
+    fence = OriginalS49PhysicalFence.create(
+        path, self_id="s49-original-self",
+    )
+    fence.prepare(
+        session_id=selected.session_id, intent_id="escape-threat",
+        action_id=step.action_request_id, probe=selected,
+    )
     assert fence.unresolved and len(fence.actions) == 1
     monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
     monkeypatch.setenv("S49_UNIFIED_C1_DEV_ONLY", "1")
@@ -310,5 +317,5 @@ def test_restart_with_pending_physical_action_blocks_before_world_provision(
     assert body["actual_native_actions"] == []
     assert not (tmp_path / "c1_motion_journal.json").exists()
     assert OriginalS49PhysicalFence.restore(
-        path, self_id=owner.self_id,
+        path, self_id="s49-original-self",
     ).unresolved
