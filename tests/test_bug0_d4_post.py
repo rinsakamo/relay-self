@@ -53,11 +53,26 @@ REPORT = dict(
     d4_operator_removed_only_nonzombie_entities=True,
     operator_world_staging=[
         "kill @e[type=!minecraft:player,type=!minecraft:zombie]",
+        "effect give RelaySelf minecraft:hunger 70 20 true",
     ],
     d4_natural_count=1,
     d4_paper_item_spawn=SPAWN.strip(),
     d4_paper_item_pickup=PICKUP.strip(),
     d4_baseline_inventory=BASE_INV,
+    d4_precombat_hunger_qualified=True,
+    d4_precombat_hunger_last={
+        "session_id": "s", "seq": 8, "request_id": "d4-precombat-1", "food": 13,
+    },
+    d4_precombat_hunger_probes=[
+        {
+            "seq": 7, "request_id": "d4-precombat-0", "source": "native:7",
+            "food": 20, "health": 20,
+        },
+        {
+            "seq": 8, "request_id": "d4-precombat-1", "source": "native:8",
+            "food": 13, "health": 20,
+        },
+    ],
     d4_native_after_pickup=AFTER_PICK,
     d4_post_eat=AFTER_EAT,
     d4_native_pickup_attempt=1,
@@ -198,3 +213,20 @@ def test_last_real_rotten_flesh_eaten_then_empty_inventory_wait_is_valid():
     result = audit(LOG, report)
     assert result["real_eat_proven"] is True
     assert result["unlimited_survival_proven"] is False
+
+@pytest.mark.parametrize("break_it", [
+    lambda r: r.update(d4_precombat_hunger_qualified=False),
+    lambda r: r["d4_precombat_hunger_last"].update(food=14),
+    lambda r: r["d4_precombat_hunger_last"].update(food=0),
+    lambda r: r["d4_precombat_hunger_last"].update(seq=30),
+    lambda r: r["d4_precombat_hunger_probes"][-1].update(food=15),
+    lambda r: r["d4_precombat_hunger_probes"][-1].update(health=0),
+    lambda r: r["operator_world_staging"].remove(
+        "effect give RelaySelf minecraft:hunger 70 20 true"
+    ),
+])
+def test_precombat_qualifies_only_natively_observed_hunger_not_modified_l0(break_it):
+    report = deepcopy(REPORT)
+    break_it(report)
+    with pytest.raises(D4NaturalEatRejected):
+        audit(LOG, report)
