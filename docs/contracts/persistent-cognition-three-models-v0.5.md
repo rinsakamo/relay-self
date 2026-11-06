@@ -16,6 +16,8 @@
 
 **Decision target:** one logical Self identity, existing individually governed durable semantic owners, three *observer-relative lenses* on current evidence, one derived Present/Working Self, and explicit provenance for each field. Not three LLM agents, three always-on autonomous worlds or three persistent data lakes.
 
+**Source-routing refinement (user direction, 2026-11-06):** Persistent Cognition is a **primary** input for MySelf and SelfWorld; WorldBody-attested body information is the **primary** input for SelfBody; the independently interpreted three views then contribute to Present Projection. This is an *asymmetric default*, **not exclusive routing**: SelfWorld still needs current external World observations, SelfBody needs approved past bodily experience and capability estimates, and MySelf can consult present body/world consequences. See §B9.
+
 ## B1. Ownership mapping — what exists, what may be projected
 
 | Concept / update | Semantic owner or state authority | MySelf / SelfWorld / SelfBody role | B permission |
@@ -132,3 +134,89 @@ Expected ownership outcome: **no new persistent SelfWorld store, SelfBody store,
 **Handoff to C:** C may propose governed updates from source-qualified experience, but B's projections do not decide *whether* cognition improved, warrant an update, or authorize Memory/Habit/Skill/weights changes.
 
 **Hard guard:** main unchanged; S49 original physical issuer unchanged; prior WB/M/L branch achievements are not one integrated World run. `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN` remain distinct from a complete design document.
+
+---
+
+## B9. Asymmetric source routing and MAGI-style cognitive scopes (user-selected direction, 2026-11-06)
+
+> **DESIGN DIRECTION / MODEL-AND-DATA-ROUTING ONLY / IMPLEMENTATION NOT CLAIMED.** This section clarifies what the three observer-relative models actually do. The Evangelion MAGI analogy is about **division of evaluative responsibility**, not three equal authoritative voters, three personalities, three autonomous LLMs or independent memory stores.
+
+### B9.1 Primary upstream paths
+
+\`\`\`text
+ Governed Persistent Cognition                 External World / WorldBody
+ (identity, goal, belief, memory,                 (physical state, entities,
+  capability, relationship, ...)                  effects, time, resources)
+               |                                        |
+       +-------+-------+                       +--------+--------+
+       v               v                       v                 v
+    MySelf         SelfWorld <---qualified World observations   SelfBody
+ (self-history,   (environment, other agents,              (body sensation,
+  values, goals,   uncertainty, causal expectations)        dynamics, limits)
+  competence)                                                ^
+       ^             ^                                       |
+       |             |          approved past body experience / capability
+       +-------------+-------------------+----- from Persistent Cognition
+                      qualified cross-view evidence
+               \                 |                 /
+                \                |                /
+                 v               v               v
+                     Present Projection
+          (Working Self, current appraisal, attention,
+           Needs/Tensions, active Goals, Intent signals)
+                                |
+                    existing Contract A / S49
+                         physical admission
+                                |
+                  World/WorldBody actual effects
+                     -> next source-qualified epoch
+\`\`\`
+
+**This is a flow of reading and deriving cognitive assessments, not a call graph, hardwired service topology or write-authority graph.** A stored prior observation can be in Persistent Cognition while new source-attested WorldBody data is transient. External data must pass the current owned boundary adapter; SelfBody does **not** bypass the S49 or WorldBody authority boundary to read private physics parameters.
+
+| Model | Primary information source | The question it evaluates | Necessary secondary access |
+| --- | --- | --- | --- |
+| **MySelf** | Persistent Cognition: Identity Specification reference, Goal/Commitment, approved memory, Self-Model/Capability estimates | What do I aim for, what do I believe I can do, what is this event's meaning for my continuity and commitments? | Fresh body/world outcome via qualified views; actual identity directives remain governed, not writable by the viewpoint |
+| **SelfWorld** | Persistent Cognition: prior evidence, world beliefs/Other Models, remembered causal regularities **plus fresh observed World** | What exists or may happen outside me, and what does this imply about other agents and opportunities? | Qualified SelfBody state as needed for egocentric distance and affordance estimation; no other Self's private state |
+| **SelfBody** | External WorldBody/body-sensor/interoceptive observations and their time, provenance and reliability | What is my body doing/able to do, how strained or impaired does it seem, what may happen if I act? | Approved remembered bodily experience, Capability Model and predictive history; no private WorldBody state or coefficient edits |
+
+**World versus WorldBody:** SelfWorld's live factual feed is the **World-side external observation**, including perceived entities and terrain. SelfBody's live factual feed is **WorldBody/body-side observation** (body readback, health/food, movement, sensory consequences), although a Mineflayer Present event can carry both. One external snapshot may lawfully contribute to multiple viewpoints **without assigning the full snapshot's authority to each inference**.
+
+### B9.2 The three are active interpreters, not merely mirrored data columns
+
+Each model can **interpret, forecast, notice discrepancies, judge uncertainty and propose a current appraisal or Need/Question/Goal candidate** within its remit. "Read-only view" means that such computation has **no unconditional right to mutate external truth, existing Persistent Cognition, another Self, S49's Action state or learned policies**. It does not mean the model is cognitively passive.
+
+Example of one zombie encounter:
+
+- SelfWorld: recent coverage suggests a zombie is approaching; remembered encounters inform a **prediction**, not an attested hostility mind state.
+- SelfBody: observable health/hunger and qualified fatigue-like performance suggest the body is struggling; missing P1 source remains **UNKNOWN**.
+- MySelf: retained HOMEOSTASIS and an EAT Goal weigh against a threat-related commitment, with remembered experience and uncertain competence.
+- Present: **keeps all three attributed claims**, including divergence, and derives current appraisal/Need/Intent activations for Contract A. It need not use **majority voting** or force a consensus value.
+
+The internal mismatch may itself trigger inquiry or optional bounded L2 deliberation, but cannot authorize a physical Action, store a Memory, revise Identity Specification or assert that a proposed explanation is true.
+
+### B9.3 Present is an integrative projection, not a fourth owner
+
+The actual conceptual order is:
+
+1. **Retained source objects and evidence** remain at their genuine persistent or external owners, unchanged by rendering.
+2. **Three specialized interpretations** read whatever source is valid for their remit; source role is **primary**, not exclusive.
+3. **Present Projection** combines currently relevant conclusions, uncertainty, tension, attention and execution-Intent activity. It may expose conflicts rather than hide them.
+4. **S49** admits any actual Action using Contract A's authenticated current Intent/source/grant/physical-channel checks.
+5. **New effects** yield a new epoch of observations and new projections; only separate governed integration may update persistent beliefs, memory or learned competence (Contract C).
+
+Present can be recomputed at the next epoch from approved sources and retained commitments. It is not a third/fourth Memory writer, an omniscient synchronizer, a solver guaranteeing convergence or a runtime Self singleton. A Self's continuity is not guaranteed by reusing stale snapshots after World/session restart.
+
+### B9.4 New review controls (B-15–B-21; NOT RUN)
+
+| ID | Case | Required result |
+| --- | --- | --- |
+| B-15 | Persistent Memory refers to a zombie previously observed, but current World coverage is incomplete | SelfWorld can remember or infer, but must not label enemy's current presence/absence OBSERVED without fresh evidence |
+| B-16 | WorldBody reading shows low food, while MySelf recalls recent eating | SelfBody retains qualified current reading; MySelf and Present may disagree without overwriting observed food or Memory |
+| B-17 | Old bodily capability evidence is useful for predicting a new movement | SelfBody may reference approved experience as a PREDICTION, not promote it to WorldBody-authoritative observation |
+| B-18 | MySelf, SelfWorld and SelfBody output conflicting recommendations | Present preserves source/confidence per model; no synthetic majority vote or automatic S49 issue |
+| B-19 | One Mineflayer Present carries both entity and body fields | Both specialized views may use their proper fields with separate origin/field qualification, without duplicating semantic owners |
+| B-20 | A model emits a revised belief or new fact during interpretation | No durable mutation until its actual approved semantic owner applies a governed update |
+| B-21 | SelfBody's native source session has advanced while SelfWorld refers to an older epoch | Record bounded, explicitly ordered disagreement or mark stale/unavailable; never invent synchronized observation |
+
+**Review open:** exact existing S/WB/Present adapter join points, available MySelf inputs and per-field source age budgets still need owner approval. Neither this refinement nor an older WB-branch class is a new executable contract. Keep B \`DESIGN_IN_PROGRESS / OWNER_REVIEW_REQUIRED\`.
