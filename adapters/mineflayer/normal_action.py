@@ -37,7 +37,7 @@ from relay_self.execution_binding import (
     BoundExecutionCandidate,
     start_and_propose_bound_execution,
 )
-from relay_self.intent import IntentCommitment
+from relay_self.intent import IntentCommitment, IntentEventKind
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import (
@@ -527,6 +527,21 @@ class NormalPostMoveEatingReadback:
 
 
 @dataclass(frozen=True, slots=True)
+class NormalIntentEpochRearm:
+    """Read-only transition; no physical Action or second issuer granted."""
+
+    session_id: str
+    completed_intent_id: str
+    next_intent_id: str
+    completed_action_count: int
+    next_epoch: int
+    previous_zombie_entity_id: int
+    next_zombie_entity_id: int
+    next_native_source: Provenance
+    physically_issued: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class NormalActionClosedReadback:
     """Typed S16 closure delivered after original ActionSupervisor terminal."""
 
@@ -563,6 +578,7 @@ class NormalSessionActionExecutor:
     def __init__(
         self, session_id: str, intent: IntentCommitment,
         *, max_sequential_attacks: int = 1,
+        max_intent_epochs: int = 1,
     ) -> None:
         if (
             not isinstance(session_id, str) or not session_id
@@ -570,6 +586,8 @@ class NormalSessionActionExecutor:
             or intent.current_intent is None
             or type(max_sequential_attacks) is not int
             or not 1 <= max_sequential_attacks <= 32
+            or type(max_intent_epochs) is not int
+            or not 1 <= max_intent_epochs <= 4
         ):
             raise NormalActionRejected("active named session and bounded Intent/ATTACK grant required")
         self.session_id = session_id
@@ -579,11 +597,92 @@ class NormalSessionActionExecutor:
         self._count = 0
         self._attack_count = 0
         self._max_sequential_attacks = max_sequential_attacks
+        self._max_intent_epochs = max_intent_epochs
+        self._intent_epoch = 1
+        self._epoch_intent_id = intent.current_intent.intent_id
+        self._epoch_action_count_start = 0
+        self._epoch_attack_count = 0
         self._last_issued_probe_seq = -1
         # Once a physical MOVE was issued, S49's native S15 clear/S16 closure
         # alone does not qualify post-clear settling. EAT stays fenced until
         # a distinct original-source settling owner is integrated.
         self._post_move_settling_unqualified = False
+
+    def advance_intent_epoch(
+        self, next_native: MineflayerObservation,
+        *, previous_zombie_entity_id: int,
+    ) -> NormalIntentEpochRearm:
+        """Explicit DEV rearm after a COMPLETED Intent, not by elapsed time.
+
+        Retains the same session, supervisor, all issued Action IDs, old
+        terminal evidence, and monotonic probe counter. A fresh native
+        next-generation zombie is necessary but is NOT independent Paper
+        confirmation of a death, World tick or learning success.
+        """
+        events = self.intent.events
+        current = self.intent.current_intent
+        if (
+            self._max_intent_epochs <= 1
+            or self._intent_epoch >= self._max_intent_epochs
+            or not isinstance(next_native, MineflayerObservation)
+            or next_native.kind != "probe"
+            or not next_native.request_id
+            or next_native.provenance.source != "mineflayer"
+            or next_native.session_id != self.session_id
+            or next_native.seq <= self._last_issued_probe_seq
+            or next_native.snapshot.health <= 0
+            or next_native.snapshot.oxygen_level == 0
+            or next_native.snapshot.nearby_entities_coverage.truncated
+            or type(previous_zombie_entity_id) is not int
+            or previous_zombie_entity_id < 0
+            or self._post_move_settling_unqualified
+            or self.supervisor.open_actions
+            or not self._dispatched
+            or self._count <= self._epoch_action_count_start
+            or any(
+                self.supervisor.get(action_id).state is not ActionState.OUTCOME
+                for action_id in self._dispatched
+            )
+            or current is None
+            or self.intent.pending_reconsideration is not None
+            or current.intent_id == self._epoch_intent_id
+            or len(events) < 3
+            or events[-1].kind is not IntentEventKind.COMMITTED
+            or events[-1].intent_id != current.intent_id
+            or events[-2].kind is not IntentEventKind.COMPLETED
+            or events[-2].intent_id != self._epoch_intent_id
+        ):
+            raise NormalActionRejected(
+                "new Intent epoch requires completed old owner and fresh native source"
+            )
+        zombies = [
+            entity for entity in next_native.snapshot.nearby_entities
+            if entity.name == "zombie"
+        ]
+        if (
+            len(zombies) != 1
+            or zombies[0].entity_id == previous_zombie_entity_id
+            or next_native.snapshot.nearby_entities_coverage.candidate_count
+            != len(next_native.snapshot.nearby_entities)
+        ):
+            raise NormalActionRejected(
+                "one distinct authentic next-generation zombie is required"
+            )
+        record = NormalIntentEpochRearm(
+            session_id=self.session_id,
+            completed_intent_id=self._epoch_intent_id,
+            next_intent_id=current.intent_id,
+            completed_action_count=self._count,
+            next_epoch=self._intent_epoch + 1,
+            previous_zombie_entity_id=previous_zombie_entity_id,
+            next_zombie_entity_id=zombies[0].entity_id,
+            next_native_source=next_native.provenance,
+        )
+        self._intent_epoch += 1
+        self._epoch_intent_id = current.intent_id
+        self._epoch_action_count_start = self._count
+        self._epoch_attack_count = 0
+        return record
 
     def read_only_post_move_eat_boundary(
         self, receipt: NormalActionReceipt,
@@ -748,6 +847,10 @@ class NormalSessionActionExecutor:
                 for item in probe.snapshot.inventory
             )
             or current is None or self.intent.pending_reconsideration is not None
+            or (
+                current is not None
+                and current.intent_id != self._epoch_intent_id
+            )
             or not isinstance(propose, NormalEatingAuthorization)
             or not isinstance(issue, NormalEatingAuthorization)
             or propose.stage is not NormalActionStage.PROPOSE
@@ -790,8 +893,13 @@ class NormalSessionActionExecutor:
             or probe.provenance.source != "mineflayer"
             or not previous_probe.seq < probe.seq <= previous_probe.seq + 32
             or type(target_entity_id) is not int or target_entity_id < 0
-            or self._count != self._attack_count
-            or self._attack_count >= self._max_sequential_attacks
+            or self._count - self._epoch_action_count_start
+            != self._epoch_attack_count
+            or self._epoch_attack_count >= self._max_sequential_attacks
+            or (
+                self.intent.current_intent is not None
+                and self.intent.current_intent.intent_id != self._epoch_intent_id
+            )
             or propose.action_id in self._dispatched
             or self._post_move_settling_unqualified
             or self._last_issued_probe_seq >= probe.seq
@@ -890,6 +998,7 @@ class NormalSessionActionExecutor:
         self._last_issued_probe_seq = probe.seq
         self._count += 1
         self._attack_count += 1
+        self._epoch_attack_count += 1
         try:
             return await IssuedAttackingExecutor().execute(
                 session, self.supervisor, issued, probe,
