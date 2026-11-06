@@ -1,0 +1,78 @@
+name: Bug-0 D4 independent successful World original SHA native S51 EAT audit
+on:
+  push:
+    branches:
+      - audit/bug0-d4-success-original-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download immutable D4 original from separate completed real World
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d4-precombat-native-hunger-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42214631129
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original-d4
+      - name: Verify original manifest and independently reproduce D4 physical evidence
+        run: |
+          cd original-d4
+          test -f report.json && test -f paper_original.log
+          test -f operator_post_audit.json && test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cd ..
+          python - <<'PY'
+          import json,pathlib
+          from tools.bug0_d4_post import audit
+          p=pathlib.Path('original-d4')
+          report=json.loads((p/'report.json').read_text(encoding='utf8'))
+          operator=json.loads((p/'operator_post_audit.json').read_text(encoding='utf8'))
+          independently=audit((p/'paper_original.log').read_text(encoding='utf8'),report)
+          assert independently == operator
+          assert operator['classification']=='D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS'
+          assert operator['real_rotten_flesh_pickup_proven'] is True
+          assert operator['real_eat_proven'] is True
+          assert operator['self_move_to_loot_proven'] is False
+          assert operator['unlimited_survival_proven'] is False
+          assert operator['source_delta_ticks']==600
+          assert operator['paper_killer_is_relay_self'] is True
+          assert report['node_exit']==report['java_exit']==0
+          assert report['cleanup_done'] is True
+          keys=('classification','world_uuid','initial_zombie_uuid',
+             'new_zombie_uuid','paper_killer_is_relay_self',
+             'original_s49_attack_action_count','real_death_tick',
+             'real_rotten_flesh_drop_count','natural_item_uuid',
+             'paper_pickup_tick','native_rotten_flesh_before',
+             'native_rotten_flesh_after_pickup','native_rotten_flesh_after_eat',
+             'original_s49_eat_action_id','original_s49_total_actions',
+             'food_before_eating','food_after_eating','next_spawn_tick',
+             'source_delta_ticks','operator_induced_hunger',
+             'real_rotten_flesh_pickup_proven','real_eat_proven',
+             'self_move_to_loot_proven','unlimited_survival_proven')
+          print('D4_ORIGINAL_INDEPENDENT_AUDIT='+json.dumps(
+             {k:operator.get(k) for k in keys},sort_keys=True,ensure_ascii=False))
+          print('D4_NATIVE_PRECOMBAT_HUNGER='+json.dumps(
+             report.get('d4_precombat_hunger_last'),sort_keys=True))
+          print('D4_NATIVE_ATTACK_ACTIONS='+json.dumps(
+             report.get('s49_actions'),sort_keys=True))
+          print('D4_REAL_S51_EAT_OUTCOME='+json.dumps(
+             report.get('d4_eat_outcome'),sort_keys=True))
+          print('D4_NATIVE_POST_EAT='+json.dumps(
+             report.get('d4_post_eat'),sort_keys=True))
+          print('D4_WORLD_CLEANUP='+json.dumps(
+             {k:report.get(k) for k in ('node_exit','java_exit','cleanup_done',
+              'd4_final_supervisor_open_count')},sort_keys=True))
+          print('D4_INDEPENDENT_SHA_AND_PAPER_NATIVE_S51_SOURCE_PASS_WORLD0_ACTION0')
+          PY
