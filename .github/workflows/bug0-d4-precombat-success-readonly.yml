@@ -1,0 +1,81 @@
+name: Bug-0 D4 successful original natural rotten flesh EAT source audit
+on:
+  push:
+    branches:
+      - audit/bug0-d4-precombat-success-source-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download exact D4 successful one-World immutable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d4-precombat-native-hunger-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42214631129
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d4-original
+      - name: SHA manifest and independently reproduce Paper/item/EAT source audit
+        run: |
+          cd d4-original
+          test -f report.json
+          test -f paper_original.log
+          test -f operator_post_audit.json
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cd ..
+          python - <<'PY'
+          import json,pathlib
+          from tools.bug0_d4_post import audit
+          folder=pathlib.Path('d4-original')
+          report=json.loads((folder/'report.json').read_text(encoding='utf8'))
+          existing=json.loads((folder/'operator_post_audit.json').read_text(encoding='utf8'))
+          raw=(folder/'paper_original.log').read_text(encoding='utf8')
+          derived=audit(raw,report)
+          assert derived==existing
+          assert report['status']=='PASS_DEV'
+          assert report['node_exit']==report['java_exit']==0
+          assert report['cleanup_done'] is True
+          assert report['d4_natural_food_pickup_eat_proven'] is True
+          assert report['d4_precombat_hunger_qualified'] is True
+          assert derived['real_rotten_flesh_pickup_proven'] is True
+          assert derived['real_eat_proven'] is True
+          assert derived['source_delta_ticks']==600
+          assert report['d4_final_supervisor_open_count']==0
+          assert derived['self_move_to_loot_proven'] is False
+          print('D4_INDEPENDENT_WORLD_RESULT='+json.dumps({
+              k:existing[k] for k in (
+                  'classification','world_uuid','killed_zombie_uuid',
+                  'new_zombie_uuid','paper_killer_uuid',
+                  'real_death_tick','next_spawn_tick','source_delta_ticks',
+                  'original_s49_attack_action_count',
+                  'real_rotten_flesh_drop_count','natural_item_uuid',
+                  'paper_pickup_tick','native_rotten_flesh_before',
+                  'native_rotten_flesh_after_pickup',
+                  'native_rotten_flesh_after_eat',
+                  'original_s49_eat_action_id','original_s49_total_actions',
+                  'food_before_eating','food_after_eating',
+                  'real_rotten_flesh_pickup_proven','real_eat_proven',
+                  'autonomous_target_selection_proven','qualification','science',
+              )
+          },sort_keys=True,ensure_ascii=False))
+          print('D4_INDEPENDENT_NATIVE_HUNGER='+json.dumps({
+              'precombat':report['d4_precombat_hunger_last'],
+              'precombat_samples':len(report['d4_precombat_hunger_probes']),
+              'eat_outcome':report['d4_eat_outcome'],
+              'post_eat':report['d4_next_food_decision'],
+              'real_native_attack_actions':report['s49_actions'],
+          },sort_keys=True,ensure_ascii=False))
+          print('D4_INDEPENDENT_ORIGINAL_SHA_AND_SOURCE_PASS WORLD_0 ACTION_0')
+          PY
