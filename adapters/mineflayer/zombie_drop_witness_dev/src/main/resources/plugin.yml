@@ -1,0 +1,6 @@
+name: RelayZombieDropWitnessDev
+main: io.github.rinsakamo.loot.RelayZombieDropWitnessDev
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'Read only DEV source for actual zombie DeathEvent rotten flesh to actual ItemSpawn and Pickup events'
+load: POSTWORLD

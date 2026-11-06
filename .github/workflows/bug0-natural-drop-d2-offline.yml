@@ -1,0 +1,47 @@
+name: Bug-0 D2 genuine zombie death loot -> item audit offline
+on:
+  push:
+    branches:
+      - dev/bug0-d2-zombie-natural-drop-20261106
+permissions:
+  contents: read
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Source audit and negative tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_natural_drop_d2_world.py tools/bug0_natural_drop_d2_post.py tests/test_bug0_natural_drop_d2_post.py
+          ruff check tools/bug0_natural_drop_d2_world.py tools/bug0_natural_drop_d2_post.py tests/test_bug0_natural_drop_d2_post.py
+          python -m pytest -q tests/test_bug0_natural_drop_d2_post.py tests/test_bug0_pickup_d1_post.py tests/test_bug0_loot_inventory_readback.py
+      - name: Build separate read-only Paper 1.21.8 zombie loot witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/zombie_drop_witness_dev/target/relay-zombie-drop-witness-dev-0.1.0-dev.jar
+      - name: Original respawn 600tick gate still compiles
+        run: |
+          mkdir -p /tmp/respawn-gate
+          javac --release 21 -d /tmp/respawn-gate \
+            adapters/mineflayer/zombie_respawn_dev/src/main/java/io/github/rinsakamo/respawn/RespawnCycle.java \
+            adapters/mineflayer/zombie_respawn_dev/src/test/java/io/github/rinsakamo/respawn/RespawnCycleTest.java
+          java -ea -cp /tmp/respawn-gate io.github.rinsakamo.respawn.RespawnCycleTest
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+      - name: No real World or Self authority in D2 offline
+        run: echo 'D2_OFFLINE WORLD_0 ACTION_0 UNMODIFIED_DROPS'
