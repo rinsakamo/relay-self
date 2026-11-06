@@ -150,6 +150,24 @@ def audit(log: str, report: dict) -> dict:
     eaten = _native(report.get("d4_post_eat"), session_id=sid, desc="after-EAT")
     outcome = report.get("d4_eat_outcome")
     next_choice = report.get("d4_next_food_decision")
+    policy_trace = report.get("d4_food_policy_trace")
+    preissue = report.get("d4_preissue_choice")
+    if (
+        not isinstance(policy_trace, list) or not policy_trace
+        or not isinstance(preissue, dict)
+        or policy_trace[-1].get("selected") != "EAT"
+        or policy_trace[-1].get("item") != "rotten_flesh"
+        or policy_trace[-1].get("risk") != "NO_NEARBY_ENTITY_OBSERVED"
+        or preissue.get("selected") != "EAT"
+        or preissue.get("item") != "rotten_flesh"
+        or preissue.get("risk") != "NO_NEARBY_ENTITY_OBSERVED"
+        or type(policy_trace[-1].get("seq")) is not int
+        or type(preissue.get("seq")) is not int
+        or not gathered["seq"] < policy_trace[-1]["seq"] < preissue["seq"]
+        or type(outcome) is not dict
+        or not preissue["seq"] < outcome.get("after_probe_seq", -1)
+    ):
+        raise D4NaturalEatRejected("native S49 food L0 did not safely choose EAT")
     if (
         gathered["seq"] <= before["seq"]
         or gathered["seq"] <= report["s49_actions"][-1]["after_seq"]
