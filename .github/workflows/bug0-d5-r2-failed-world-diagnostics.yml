@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   diagnose:
-    if: ${{ github.event.head_commit.message == 'audit-bug0-d5-r2-failed-world-once-20261107' }}
+    if: ${{ github.event.head_commit.message == 'audit-bug0-d5-r2-failed-world-v2-once-20261107' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -18,10 +18,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 2
       - name: Exact read-only diagnosis trigger
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/bug0-d5-r2-failed-world-audit-trigger-20261107.md"
-          test "$(git show --format=%s -s HEAD)" = "audit-bug0-d5-r2-failed-world-once-20261107"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/bug0-d5-r2-failed-world-v2-trigger-20261107.md"
+          test "$(git show --format=%s -s HEAD)" = "audit-bug0-d5-r2-failed-world-v2-once-20261107"
       - uses: actions/download-artifact@v4
         with:
           name: bug0-d5-second-intent-r2-oneworld
