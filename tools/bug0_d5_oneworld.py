@@ -34,7 +34,7 @@ async def second_intent_after_real_respawn(
     first_count = owner._count
     old = owner.intent.current_intent
     if (
-        old is None or not report.get("d4_natural_food_pickup_eat_proven")
+        old is None or type(report.get("d4_natural_food_pickup_eat_proven")) is not bool
         or report.get("d4_final_action_count") != first_count
         or previous_id == next_id
         or owner.supervisor.open_actions
@@ -71,7 +71,7 @@ async def second_intent_after_real_respawn(
     # Lifecycle is performed by the existing IntentCommitment owner, not
     # the operator granting a second physical Action by elapsed time.
     owner.intent.complete(
-        old.intent_id, reason="first real kill/loot/EAT OUTCOMEs closed",
+        old.intent_id, reason="first real combat and conditional loot/EAT outcomes closed",
         at_ns=owner.intent.last_at_ns + 1,
         provenance=Provenance("bug0-d5-original-owner", "completed-first"),
     )
