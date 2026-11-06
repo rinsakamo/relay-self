@@ -796,6 +796,10 @@ class NormalSessionActionExecutor:
             or self._post_move_settling_unqualified
             or self._last_issued_probe_seq >= probe.seq
             or self.supervisor.open_actions
+            or any(
+                self.supervisor.get(action_id).state is not ActionState.OUTCOME
+                for action_id in self._dispatched
+            )
             or self.intent.current_intent is None
             or self.intent.pending_reconsideration is not None
             or not isinstance(propose, NormalAttackingAuthorization)
