@@ -1,0 +1,31 @@
+name: Bug-0 D5 S49 same-owner next Intent epoch and retained Action history OFFLINE
+on:
+  push:
+    branches:
+      - dev/bug0-d5-s49-next-intent-epoch-offline-20261106
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: One original S49 owner two Intent epochs; stale/UNKNOWN negative tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/normal_action.py tests/test_bug0_d5_intent_epoch_rearm.py
+          ruff check adapters/mineflayer/normal_action.py tests/test_bug0_d5_intent_epoch_rearm.py
+          python -m pytest -q tests/test_bug0_d5_intent_epoch_rearm.py tests/test_bug0_s49_repeat_attack.py tests/test_bug0_s49_attack_owner.py tests/test_bug0_s49_s51_eat_handoff.py tests/test_bug0_d4_post.py
+      - name: Zero physical World / zero actual original S49 Actions
+        run: echo 'D5_S49_NEXT_INTENT_REARM_OFFLINE_NO_WORLD_NO_NATIVE_ACTION_NO_LEARNING'
