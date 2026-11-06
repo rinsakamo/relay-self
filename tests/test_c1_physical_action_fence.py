@@ -62,7 +62,7 @@ def test_only_original_S16_terminal_and_native_set_clear_seals_preissue(tmp_path
     _, real_shape = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
-    fence.close(real_shape, selected)
+    fence.close(real_shape, selected, original_supervisor=executor.supervisor)
     assert not fence.unresolved
     assert fence.actions[0]["status"] == "S16_OUTCOME"
     assert fence.actions[0]["before_seq"] > selected.seq
@@ -73,7 +73,7 @@ def test_only_original_S16_terminal_and_native_set_clear_seals_preissue(tmp_path
     assert recovered.sha256 == fence.sha256
     assert recovered.actions == fence.actions
     with pytest.raises(PhysicalFenceError):
-        recovered.close(real_shape, selected)
+        recovered.close(real_shape, selected, original_supervisor=executor.supervisor)
     with pytest.raises(PhysicalReplay):
         recovered.prepare(
             session_id=selected.session_id, intent_id="escape-threat",
@@ -99,7 +99,8 @@ def test_forged_or_partial_S16_never_closes_physical_uncertainty(tmp_path, failu
     elif failure == "wrong_terminal":
         r = replace(r, terminal=receipt.terminal)
     elif failure == "wrong_intent":
-        r = replace(r, terminal=replace(r.terminal, intent_id="foreign-intent"))
+        # Intent foreign source is blocked without fabricating an ActionLifecycle.
+        fence._body["actions"][-1]["intent_id"] = "foreign-intent"
     elif failure == "foreign_session":
         probe = replace(probe, session_id="other-session")
     elif failure == "wrong_control":
@@ -137,7 +138,7 @@ def test_forged_or_partial_S16_never_closes_physical_uncertainty(tmp_path, failu
             error="S15 after absent",
         ))
     with pytest.raises(PhysicalFenceError):
-        fence.close(r, probe)
+        fence.close(r, probe, original_supervisor=executor.supervisor)
     assert OriginalS49PhysicalFence.restore(
         fence.path, self_id=owner.self_id,
     ).unresolved
@@ -160,7 +161,7 @@ def test_stale_separate_process_fence_snapshot_cannot_overwrite_owner(tmp_path):
     _, receipt = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
-    fence.close(receipt, selected)
+    fence.close(receipt, selected, original_supervisor=executor.supervisor)
     assert len(OriginalS49PhysicalFence.restore(
         path, self_id="self-a",
     ).actions) == 1
@@ -176,7 +177,7 @@ def test_corrupt_or_forged_fence_refuses_recovery(tmp_path, corruption):
     _, actual = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
-    fence.close(actual, selected)
+    fence.close(actual, selected, original_supervisor=executor.supervisor)
     if corruption == "invalid_json":
         path.write_text('{"truncated":', encoding="utf-8")
     else:
