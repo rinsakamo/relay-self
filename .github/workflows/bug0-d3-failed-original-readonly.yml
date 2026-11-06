@@ -1,0 +1,54 @@
+name: Bug-0 D3 FAILED S49 combat original Paper/native read-only audit
+on:
+  push:
+    branches:
+      - dev/bug0-d3-failed-original-readonly-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download exact failed D3 immutable original (World0)
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d3-s49-multihit-original-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42195923665
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d3-original
+      - name: SHA manifest + original Paper action trace
+        run: |
+          cd d3-original
+          test -f report.json && test -f paper_original.log
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('.')
+          r=json.loads((p/'report.json').read_text(encoding='utf8'))
+          keys=(
+              'status','stage','classification','failure','real_world_started',
+              'session_id','operator_world_staging','operator_world_kill',
+              's49_actions','owner_action_count','owner_attack_count',
+              'original_supervisor_open_count','initial_paper','native_initial',
+              'paper_respawn_death','paper_loot_death','paper_respawn',
+              'real_rotten_flesh_count','native_respawn','node_exit','java_exit',
+              'node_cleanup_error','java_cleanup_error','cleanup_done'
+          )
+          print('D3_FAILED_ORIGINAL_REPORT='+json.dumps(
+              {k:r.get(k) for k in keys},
+              sort_keys=True,ensure_ascii=False
+          ))
+          log=(p/'paper_original.log').read_text(encoding='utf8')
+          print('D3_PAPER_TOTAL_LINES='+str(len(log.splitlines())))
+          for i,line in enumerate(log.splitlines(),1):
+              if any(k in line for k in (
+                  'RSELF_', 'Modified entity', 'No entity', 'Teleported',
+                  'Killed', 'Failed', 'Unknown', '[ERROR]', 'Exception',
+              )):
+                  print('D3_PAPER_ORIGINAL_LINE_'+str(i)+'='+line[:1300])
+          print('D3_FAILED_READ_ONLY_ORIGINAL_SHA_PASS WORLD_0 ACTION_0')
+          PY
