@@ -49,6 +49,7 @@ REPORT = dict(
     d4_combat_closed_action_count=2,
     d4_final_action_count=3,
     d4_final_supervisor_open_count=0,
+    cleanup_done=True,
     d4_natural_count=1,
     d4_paper_item_spawn=SPAWN.strip(),
     d4_paper_item_pickup=PICKUP.strip(),
