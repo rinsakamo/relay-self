@@ -341,3 +341,58 @@ def test_unified_c1_two_intents_requires_extra_dev_gate_before_world(
     assert "second original Intent" in report["error"]
     assert not report["actual_native_actions"]
     assert report["learning_in_world"] is False
+
+
+
+def test_original_s14_admission_refuses_old_allowlist_and_accepts_exact_next_intent():
+    """Regression for real #760 first-World pre-ISSUE failure at S14."""
+    from adapters.mineflayer.s34_native_world_cognition_ci import (
+        S34EvidenceFailure,
+        _native_epoch_two,
+        _native_threat,
+    )
+    from relay_self.action_supervision import ActionSupervisor
+
+    owner, executor, intent, step, selected, receipt, auth, p = _joined_original_owner()
+    _, receipt = _record_synthetic_original_terminal(
+        owner, executor, step, selected, receipt, auth, p,
+    )
+    owner.close_original_intent()
+    after = receipt.consequence.after_observation
+    owner.start_next_original_intent(
+        replace(after, seq=after.seq + 2, request_id="next-intent-native"),
+        next_intent_id="next-escape-threat",
+    )
+    native = _native_threat(
+        selected, selected.request_id,
+        expected_entity_id=step.choice.entity_id,
+    )
+    original_risk = _synthetic_original_shape()[0][0].choice
+    assert original_risk.selection.value == "MOVE_AWAY"
+    # S34's historical fixed escape-threat allow-list cannot authorize
+    # a now-closed prior Intent.
+    with pytest.raises(S34EvidenceFailure):
+        _native_epoch_two(
+            ActionSupervisor(), intent, owner.retained_motion,
+            owner.retained_motion,
+            expected_revision=owner.retained_motion.revision, native=native,
+        )
+    # Feed the ORIGINAL risk_weight retained owner, not the C1 motion model.
+    import test_postmain_s42_world_contrast as s42
+
+    risk_owner, _, _, _, _ = s42._pair()
+    values, epoch = _native_epoch_two(
+        ActionSupervisor(), intent, risk_owner, risk_owner,
+        expected_revision=risk_owner.revision, native=native,
+        required_intent_id="next-escape-threat",
+    )
+    assert epoch.cognition_requested is False
+    assert values["plan"].selected.candidate_id == "MOVE_AWAY"
+    assert values["admission"].status.value == "admitted"
+    assert values["policies"][-2].required_intent_id == "next-escape-threat"
+    with pytest.raises(S34EvidenceFailure):
+        _native_epoch_two(
+            ActionSupervisor(), intent, risk_owner, risk_owner,
+            expected_revision=risk_owner.revision, native=native,
+            required_intent_id="foreign-or-superseded",
+        )
