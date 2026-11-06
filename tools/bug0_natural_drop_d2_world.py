@@ -144,44 +144,62 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         except (IndexError, ValueError) as exc:
             raise NaturalDropD2WorldRejected("actual Paper loot count absent") from exc
         report["real_vanilla_loot_count"] = amount
-        if not 1 <= amount <= 2:
+        if not 0 <= amount <= 2:
             raise NaturalDropD2WorldRejected(
-                "vanilla zero or out-of-scope loot: not restaged, not invented"
+                "real Paper zombie rotten_flesh count outside 0..2"
             )
-        report["stage"] = "PAPER_ITEM_ENTITY_AND_REAL_PICKUP"
-        report["paper_item_spawn"] = await _original_marker(
-            server_log, "RSELF_NATURAL_DROP_SPAWN world=", budget=12,
-        )
-        report["paper_item_pickup"] = await _original_marker(
-            server_log, "RSELF_NATURAL_DROP_PICKUP world=", budget=18,
-        )
+        if amount > 0:
+            report["stage"] = "PAPER_ITEM_ENTITY_AND_REAL_PICKUP"
+            report["paper_item_spawn"] = await _original_marker(
+                server_log, "RSELF_NATURAL_DROP_SPAWN world=", budget=12,
+            )
+            report["paper_item_pickup"] = await _original_marker(
+                server_log, "RSELF_NATURAL_DROP_PICKUP world=", budget=18,
+            )
 
-        report["stage"] = "NATIVE_LOOT_INVENTORY_GAIN"
-        samples = []
-        after = None
-        for attempt in range(1, 13):
-            read = await _correlated_observe(
-                session, f"d2-natural-drop-after-{attempt:02d}",
-            )
-            current = _inventory(read)
+            report["stage"] = "NATIVE_LOOT_INVENTORY_GAIN"
+            samples = []
+            after = None
+            for attempt in range(1, 13):
+                read = await _correlated_observe(
+                    session, f"d2-natural-drop-after-{attempt:02d}",
+                )
+                current = _inventory(read)
+                if (
+                    current["session_id"] == report["session_id"]
+                    and current["seq"] > report["native_before"]["seq"]
+                    and current["health"] > 0
+                    and current["rotten_flesh"] == amount
+                ):
+                    after = current
+                    report["native_after"] = after
+                    report["native_after_attempt"] = attempt
+                    break
+                samples.append(current)
+                await asyncio.sleep(0.4)
+            report["unqualified_native_after"] = samples
+            if after is None:
+                raise NaturalDropD2WorldRejected(
+                    "Paper natural loot collected but native inventory unqualified"
+                )
+
+        else:
+            # Zero vanilla loot is a first-class World outcome. Do not add food,
+            # retry the kill or invent a player pickup. The World clock must
+            # still advance to the original 600-tick regeneration.
+            report["stage"] = "REAL_ZERO_LOOT_NO_INVENTORY_GAIN"
+            no_meat = await _correlated_observe(session, "d2-native-zero-loot")
+            report["native_after"] = _inventory(no_meat)
+            report["native_after_attempt"] = 1
             if (
-                current["session_id"] == report["session_id"]
-                and current["seq"] > report["native_before"]["seq"]
-                and current["health"] > 0
-                and current["rotten_flesh"] == amount
+                report["native_after"]["session_id"] != report["session_id"]
+                or report["native_after"]["seq"] <= report["native_before"]["seq"]
+                or report["native_after"]["rotten_flesh"] != 0
+                or report["native_after"]["health"] <= 0
             ):
-                after = current
-                report["native_after"] = after
-                report["native_after_attempt"] = attempt
-                break
-            samples.append(current)
-            await asyncio.sleep(0.4)
-        report["unqualified_native_after"] = samples
-        if after is None:
-            raise NaturalDropD2WorldRejected(
-                "Paper natural loot collected but native inventory unqualified"
-            )
-
+                raise NaturalDropD2WorldRejected(
+                    "vanilla zero-loot source contradicted native inventory"
+                )
         report["stage"] = "PAPER_REAL_600TICK_RESPAWN"
         report["paper_respawn"] = await _original_marker(
             server_log, "RSELF_RESPAWN_SPAWN world=", budget=85,
@@ -197,7 +215,10 @@ async def qualify(report_path: Path, server_log: Path) -> int:
                 "new World generation not reflected in native source"
             )
         report["stage"] = "D2_SOURCE_CLOSED"
-        report["classification"] = "D2_OPERATOR_KILLED_REAL_ZOMBIE_NATURAL_DROP"
+        report["classification"] = (
+            "D2_OPERATOR_KILLED_REAL_ZOMBIE_NATURAL_DROP"
+            if amount > 0 else "D2_OPERATOR_KILLED_REAL_ZOMBIE_ZERO_LOOT"
+        )
         report["status"] = "PASS_DEV"
         rc = 0
     except Exception as exc:
