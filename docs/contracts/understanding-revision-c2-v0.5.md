@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract C2: Understanding-revision targets
 
-> **Status: USER-ENDORSED CONCEPTUAL DIRECTION / DESIGN ONLY / IMPLEMENTATION PENDING.** This is a record of the 2026-11-06 discussion, not a tested or owner-approved update API. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [B three-model projection](persistent-cognition-three-models-v0.5.md), next [C3 crystallization](conditional-crystallization-c3-v0.5.md).
+> **Status: C2 ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / OWNER API REVIEW + IMPLEMENTATION PENDING.**
+> [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md); typed interpretive revisions are adopted, not evidence of model updates in an integrated Self. This is a record of the 2026-11-06 discussion, not a tested or owner-approved update API. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [B three-model projection](persistent-cognition-three-models-v0.5.md), next [C3 crystallization](conditional-crystallization-c3-v0.5.md).
 
 ## C2.1 One source-qualified experience, zero or more proposed revisions
 
