@@ -1,6 +1,6 @@
 # Unified v0.5 — Contract C3: Conditional crystallization and re-escalation
 
-> **Status: C3 DESIGN PROPOSAL / USER REVIEW OPEN / NOT IMPLEMENTED.** Prepared 2026-11-06. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [A Intent/Action](intent-slots-action-authority-v0.5.md). Owner references: [#431 Learning/Habit](https://github.com/rinsakamo/relay-self/issues/431), [#426 development](https://github.com/rinsakamo/relay-self/issues/426), [#537 Action](https://github.com/rinsakamo/relay-self/issues/537), [#619 science](https://github.com/rinsakamo/relay-self/issues/619).
+> **Status: C3 CONCEPTUAL DIRECTION USER-ADOPTED (2026-11-06) / OWNER REVIEW AND IMPLEMENTATION PENDING.** Prepared 2026-11-06. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [A Intent/Action](intent-slots-action-authority-v0.5.md). Owner references: [#431 Learning/Habit](https://github.com/rinsakamo/relay-self/issues/431), [#426 development](https://github.com/rinsakamo/relay-self/issues/426), [#537 Action](https://github.com/rinsakamo/relay-self/issues/537), [#619 science](https://github.com/rinsakamo/relay-self/issues/619).
 
 ## C3.0 Core definition and Grand Null
 
@@ -111,4 +111,4 @@ These examples describe possible learning routes; they do not claim new learned 
 
 Start with **read-only/shadow conditional retrieval** reusing existing `HabitCue`, `HabitRule`, `HabitRepertoire`, `select_habit` source checks where applicable; compare with fixed-cheap behavior and later C1 experience results. Only if owner-approved and grounded should condition-limited retained L1 use be attempted; keep L0 auto-promotion out of Bug-0. Model and Skill/Action authority must remain independent. C4 will define the write authority, rollout, rollback and learning-validation admission, without reclassifying DEV success as QUAL/SCIENCE.
 
-**Classification: C3 DESIGN PROPOSAL / NO TESTS EXECUTED / NO NEW MEMORY, LEARNING OR ACTION OWNER / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+**Classification: C3 USER-ADOPTED CONCEPTUAL DIRECTION / OWNER/API REVIEW REQUIRED / NO TESTS EXECUTED / NO NEW MEMORY, LEARNING OR ACTION OWNER / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
