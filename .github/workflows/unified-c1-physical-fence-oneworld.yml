@@ -159,7 +159,7 @@ jobs:
           assert r['c1_journal']['sha256']==journal.sha256
           assert r['c1_journal']['experience_ids']==list(journal.experience_ids)
           assert r['c1_journal']['fresh_restore_equal_to_original_owner'] is True
-          assert r['c1_journal']['physical_action_write_ahead_fence'] is False
+          assert r['c1_journal']['physical_action_write_ahead_fence'] is True
           assert r['c1_journal']['general_persistent_cognition_migrated'] is False
           assert second['same_original_intent_owner'] is True
           assert second['same_original_action_executor'] is True
