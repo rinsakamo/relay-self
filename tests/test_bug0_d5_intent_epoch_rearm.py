@@ -14,8 +14,6 @@ import test_bug0_s49_attack_owner as base
 from adapters.mineflayer import attack_execution, normal_action
 from adapters.mineflayer.normal_action import (
     NormalActionRejected,
-    NormalActionStage,
-    NormalAttackingAuthorization,
     NormalSessionActionExecutor,
 )
 from relay_self.action import ActionState
