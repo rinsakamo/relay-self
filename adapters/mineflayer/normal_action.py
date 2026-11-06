@@ -560,18 +560,25 @@ def observe_closed_native_actions(
 class NormalSessionActionExecutor:
     """Caller-owned one-session Action supervisor, never implicit authority."""
 
-    def __init__(self, session_id: str, intent: IntentCommitment) -> None:
+    def __init__(
+        self, session_id: str, intent: IntentCommitment,
+        *, max_sequential_attacks: int = 1,
+    ) -> None:
         if (
             not isinstance(session_id, str) or not session_id
             or not isinstance(intent, IntentCommitment)
             or intent.current_intent is None
+            or type(max_sequential_attacks) is not int
+            or not 1 <= max_sequential_attacks <= 32
         ):
-            raise NormalActionRejected("active named session and Intent required")
+            raise NormalActionRejected("active named session and bounded Intent/ATTACK grant required")
         self.session_id = session_id
         self.intent = intent
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
+        self._attack_count = 0
+        self._max_sequential_attacks = max_sequential_attacks
         self._last_issued_probe_seq = -1
         # Once a physical MOVE was issued, S49's native S15 clear/S16 closure
         # alone does not qualify post-clear settling. EAT stays fenced until
@@ -783,7 +790,9 @@ class NormalSessionActionExecutor:
             or probe.provenance.source != "mineflayer"
             or not previous_probe.seq < probe.seq <= previous_probe.seq + 32
             or type(target_entity_id) is not int or target_entity_id < 0
-            or self._count != 0 or self._dispatched
+            or self._count != self._attack_count
+            or self._attack_count >= self._max_sequential_attacks
+            or propose.action_id in self._dispatched
             or self._post_move_settling_unqualified
             or self._last_issued_probe_seq >= probe.seq
             or self.supervisor.open_actions
@@ -842,6 +851,7 @@ class NormalSessionActionExecutor:
         probe: MineflayerObservation, target_entity_id: int,
         propose: NormalAttackingAuthorization,
         issue: NormalAttackingAuthorization,
+        *, allow_target_disappearance: bool = False,
     ) -> AttackActionReceipt:
         """Issue one operator-approved attack from THIS original S49 supervisor."""
         if (
@@ -875,11 +885,13 @@ class NormalSessionActionExecutor:
         self._dispatched.add(issued.action_id)
         self._last_issued_probe_seq = probe.seq
         self._count += 1
+        self._attack_count += 1
         try:
             return await IssuedAttackingExecutor().execute(
                 session, self.supervisor, issued, probe,
                 target_entity_id=target_entity_id,
                 skill_execution=skill, intent_commitment=self.intent,
+                allow_target_disappearance=allow_target_disappearance,
             )
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
