@@ -585,6 +585,29 @@ async def qualify(
                 ) from exc
             report["physical_fence_unresolved_before_world"] = False
             report["physical_fence_prior_actions"] = len(physical_fence_dev.actions)
+            # These two files commit separately. Any crash after a physical
+            # S16 close but before Intent-level C1/S10 commit must NEVER allow
+            # a restart to silently skip unassessed physical experience.
+            from relay_self.c1_motion_journal import C1MotionJournal
+
+            c1_path = report_path.parent / "c1_motion_journal.json"
+            if c1_path.exists():
+                prior_c1 = C1MotionJournal.restore(
+                    c1_path, self_id="s49-original-self",
+                )
+                original_action_keys = prior_c1.original_action_keys
+            else:
+                original_action_keys = ()
+            physical_action_keys = tuple(
+                (a["session_id"], a["action_id"])
+                for a in physical_fence_dev.actions
+            )
+            if physical_action_keys != original_action_keys:
+                report["physical_fence_c1_lineage_mismatch_before_world"] = True
+                raise S31ABlocked(
+                    "physical S16 and C1/S10 history differ: STOP before World"
+                )
+            report["physical_fence_c1_lineage_matched_before_world"] = True
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
