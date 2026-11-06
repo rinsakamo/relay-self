@@ -98,7 +98,7 @@ jobs:
           assert first['next_l0_action_issued'] is True
           assert first['learned_decision_policy'] is False
           assert first['independent_source_attestation'] is False
-          assert first['durable_replay_journal'] is False
+          assert first['durable_replay_journal'] is True
           assert first['decision_probe_seq']==[x['probe_seq'] for x in a[:2]]
           assert second['intent_id']==first['next_intent_id']=='next-escape-threat'
           assert second['prior_next_intent_read_revision']==first['next_consumed_revision']
@@ -117,6 +117,8 @@ jobs:
               root/'c1_motion_journal.json', self_id='s49-original-self',
           )
           assert len(journal.experience_ids)==2
+          assert r['c1_journal_prior_experiences']==0
+          assert r['c1_journal_restored_before_world'] is False
           assert journal.experience_ids == (
               first['experience_id'], second['experience_id'],
           )
@@ -135,7 +137,7 @@ jobs:
           assert second['same_original_action_executor'] is True
           assert second['learned_decision_policy'] is False
           assert second['independently_attested_world_truth'] is False
-          assert second['durable_journal'] is False
+          assert second['durable_journal'] is True
           assert second['external_goal_verified'] is False
           assert second['experience_id']!=first['experience_id']
           assert r['node_exit']==0 and r['server_exit']==0
