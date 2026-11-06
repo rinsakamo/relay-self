@@ -120,7 +120,11 @@ async def run_natural_loot_eat(
     earlier = None
     current = None
     report["d4_stage"] = "NATIVE_S49_ROTTEN_FLESH_FOOD_CHOICE"
-    for index in range(22):
+    # A killed zombie can remain temporarily in the native entity cache.
+    # NEVER treat Paper death/loot as a SelfWorld safety certificate. Simply
+    # reobserve authentic native source; only S49's unchanged food L0 can
+    # admit EAT when it genuinely sees NO nearby entity and is hungry.
+    for index in range(36):
         probe = await _correlated_observe(session, f"d4-food-choice-{index:02d}")
         decision = food.decide(probe)
         report["d4_food_policy_trace"].append({
@@ -135,11 +139,19 @@ async def run_natural_loot_eat(
         if decision.selected == "EAT" and decision.candidate_item == "rotten_flesh":
             earlier = probe
             break
-        if decision.reason not in ("NOT_HUNGRY",):
+        if decision.reason not in (
+            "NOT_HUNGRY",
+            "ZOMBIE_PRESENT_NO_DEFENSE_ADMISSION",
+            "DISTANT_ZOMBIE_MONITOR",
+            "UNQUALIFIED_NEARBY_ENTITY",
+            "COVERAGE_INCOMPLETE",
+        ):
             raise NaturalD4Rejected(
-                "native L0 refused EAT due to observed risk/food: " + decision.reason
+                "native L0 refuses unqualified food: " + decision.reason
             )
-        await asyncio.sleep(0.6)
+        # WAIT/DEFER only. No attack, stop override, EAT grant, or
+        # risk-suppression between genuine native probes.
+        await asyncio.sleep(0.5)
     if earlier is None:
         raise NaturalD4Rejected("DEV World did not generate native food hunger")
     _command(server, "effect clear RelaySelf minecraft:hunger")
@@ -147,6 +159,13 @@ async def run_natural_loot_eat(
     await asyncio.sleep(0.15)
     current = await _correlated_observe(session, "d4-rotten-preissue-fresh")
     later = food.decide(current)
+    report["d4_preissue_choice"] = {
+        "selected": later.selected,
+        "item": later.candidate_item,
+        "seq": later.probe_seq,
+        "reason": later.reason,
+        "risk": later.native_risk,
+    }
     if (
         later.selected != "EAT"
         or later.candidate_item != "rotten_flesh"
