@@ -1257,7 +1257,9 @@ async def qualify(
                         "fresh_restore_equal_to_original_owner": True,
                         "new_physical_action_after_restore": False,
                         "general_persistent_cognition_migrated": False,
-                        "physical_action_write_ahead_fence": False,
+                        "physical_action_write_ahead_fence": (
+                            physical_fence_dev is not None
+                        ),
                     }
                 if physical_fence_dev is not None:
                     from relay_self.c1_physical_action_fence import (
