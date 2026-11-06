@@ -256,3 +256,39 @@ def test_ungranted_physical_fence_dev_denies_before_world(monkeypatch, tmp_path)
     assert "pre-ISSUE physical fence" in body["error"]
     assert not (tmp_path / "c1_physical_action_fence.json").exists()
     assert body["actual_native_actions"] == []
+
+
+
+def test_restart_with_pending_physical_action_blocks_before_world_provision(
+    monkeypatch, tmp_path,
+):
+    import asyncio
+
+    path = tmp_path / "c1_physical_action_fence.json"
+    fence, owner, _, _, _, _, _, _, _ = _prepared(path)
+    assert fence.unresolved and len(fence.actions) == 1
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_C1_JOURNAL_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_C1_PHYSICAL_FENCE_DEV_ONLY", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report_path = tmp_path / "pending-blocked.json"
+    rc = asyncio.run(qualify(
+        report_path, tmp_path / "nonexistent-minecraft.log",
+        unified_c1_dev=True, unified_c1_two_intents_dev=True,
+        unified_c1_journal_dev=True,
+        unified_c1_physical_fence_dev=True,
+    ))
+    body = json.loads(report_path.read_text(encoding="utf-8"))
+    assert rc == 2
+    assert body["stage"] == "START"
+    assert body["status"] == "BLOCKED"
+    assert body["physical_fence_restored_before_world"] is True
+    assert body["physical_fence_unresolved_before_world"] is True
+    assert "STOP before World" in body["error"]
+    assert body["actual_native_actions"] == []
+    assert not (tmp_path / "c1_motion_journal.json").exists()
+    assert OriginalS49PhysicalFence.restore(
+        path, self_id=owner.self_id,
+    ).unresolved
