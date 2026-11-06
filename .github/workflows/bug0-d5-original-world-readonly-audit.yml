@@ -1,0 +1,62 @@
+name: Bug-0 D5 separate immutable World original post-audit (no World)
+on:
+  push:
+    branches:
+      - dev/bug0-d5-s49-realworld-two-intents-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    if: ${{ github.event.head_commit.message == 'audit-bug0-d5-original-world-once-20261106' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: d2df67a69587201be3eb92b8234265d74de00814
+          persist-credentials: false
+      - name: Download exact separate original World artifact, no World
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d5-second-intent-oneworld
+          repository: rinsakamo/relay-self
+          run-id: 42238505268
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: d5-original
+      - name: Original SHA and independent Paper/native S49 audit re-evaluation
+        run: |
+          set -eu
+          cd d5-original
+          test -f report.json
+          test -f paper_original.log
+          test -f operator_post_audit.json
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cd ..
+          python - <<'PY'
+          import json, pathlib
+          from tools.bug0_d5_post import audit
+          root=pathlib.Path('d5-original')
+          report=json.loads((root/'report.json').read_text(encoding='utf-8'))
+          log=(root/'paper_original.log').read_text(encoding='utf-8')
+          original=json.loads((root/'operator_post_audit.json').read_text(encoding='utf-8'))
+          independent=audit(log, report)
+          assert independent == original, 'independent recheck differs from original'
+          assert independent['classification']=='D5_REAL_S49_SECOND_INTENT_ATTACK_PASS'
+          assert independent['second_intent_attack_proven'] is True
+          assert independent['second_experience_cycle_completed'] is False
+          assert independent['second_kill_pickup_eat_proven'] is False
+          assert report['node_exit']==report['java_exit']==0
+          assert report['cleanup_done'] is True
+          print('D5_IMMUTABLE_ORIGINAL_INDEPENDENT_SHA_PAPER_NATIVE_AUDIT_PASS')
+          print('WORLD_0_ACTION_0_SECOND_EXPERIENCE_NOT_PROVEN')
+          print(json.dumps({k:independent[k] for k in
+                 ('classification','same_session_id','old_intent_action_count',
+                  'new_intent_id','new_zombie_entity_id','new_action_id',
+                  'second_intent_attack_proven','second_experience_cycle_completed')},
+                sort_keys=True))
+          PY

@@ -99,7 +99,7 @@ def qualified_native_precombat_hunger(
     return 0 < observation.snapshot.food < EatCursor(session_id).threshold
 
 
-async def run(report_path: Path, log_path: Path) -> int:
+async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
         "classification": "D4_WORLD_NOT_RUN",
@@ -180,21 +180,17 @@ async def run(report_path: Path, log_path: Path) -> int:
         )
         owner = NormalSessionActionExecutor(
             sid, intent, max_sequential_attacks=8,
+            max_intent_epochs=2 if post_respawn_dev is not None else 1,
         )
         policy = S49BasicPriorityL0(sid, max_decisions=30)
 
         # Operator configures only the arena's target; it never sends a bot
         # ATTACK or creates a second S49 issuer.
         report["stage"] = "OPERATOR_PREPARES_SINGLE_NEAR_LETHAL_TARGET"
-        commands = (
+        basic_commands = (
             "gamerule doMobSpawning false",
             "gamerule doMobLoot true",
             "gamemode survival RelaySelf",
-            # Operator-only DEV arena normalization: remove other World
-            # entities while preserving every zombie, notably the ONE
-            # original Paper-managed target and its 600tick respawn owner.
-            # No source-local loot is added, no player is moved/attacked.
-            "kill @e[type=!minecraft:player,type=!minecraft:zombie]",
             "tag @e[type=minecraft:zombie,limit=1] add RelaySelfAttackTarget",
             "execute at RelaySelf run tp "
             "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ~0.65 ~ ~",
@@ -203,9 +199,26 @@ async def run(report_path: Path, log_path: Path) -> int:
             "{NoAI:1b,Silent:1b,Health:1.6f}",
             "effect give RelaySelf minecraft:hunger 70 20 true",
         )
-        for cmd in commands:
+        # Operator cleanup must never remove the Paper-owned zombie. For
+        # D5 only, defer nonzombie cleanup until just before the first S49
+        # admission: R2 observed two native nearby entities despite the
+        # older early cleanup, with no ATTACK issued. Suppress mob drops
+        # from this fixture-only cleanup; restore real mob loot for the
+        # later actual zombie death.
+        nonzombie_clear = "kill @e[type=!minecraft:player,type=!minecraft:zombie]"
+        if post_respawn_dev is None:
+            before_hunger = basic_commands[:3] + (nonzombie_clear,) + basic_commands[3:]
+            after_hunger = ()
+        else:
+            before_hunger = basic_commands
+            after_hunger = (
+                "gamerule doMobLoot false",
+                nonzombie_clear,
+                "gamerule doMobLoot true",
+            )
+        report["operator_world_staging"] = list(before_hunger + after_hunger)
+        for cmd in before_hunger:
             _command(server, cmd)
-        report["operator_world_staging"] = list(commands)
         await server.stdin.drain()
         await asyncio.sleep(0.8)
 
@@ -243,6 +256,14 @@ async def run(report_path: Path, log_path: Path) -> int:
             raise S49D3Rejected(
                 "DEV native hunger never crossed original S49 EAT threshold"
             )
+
+        if after_hunger:
+            report["stage"] = "D5_DEV_LATE_NONZOMBIE_WORLD_CLEANUP"
+            for cmd in after_hunger:
+                _command(server, cmd)
+            await server.stdin.drain()
+            await asyncio.sleep(0.3)
+            report["d5_operator_late_cleanup_done"] = True
 
         report["stage"] = "ORIGINAL_S49_BOUNDED_NATIVE_ATTACKS"
         target_id = None
@@ -402,10 +423,20 @@ async def run(report_path: Path, log_path: Path) -> int:
             if d4_eaten
             else "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
         )
+        if post_respawn_dev is not None:
+            # Optional D5 child only. D4's original no-hook entrypoint and
+            # source/eat evidence remain unchanged and reusable by audit.
+            # A genuine zero-loot death is a valid World outcome. Do not
+            # require or fabricate EAT before the next independent Intent.
+            await post_respawn_dev(session, server, owner, report, log_path)
+            report["classification"] = "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
         rc = 0
     except Exception as exc:
         report["status"] = "FAIL"
-        report["classification"] = "D4_NATURAL_EAT_UNQUALIFIED"
+        report["classification"] = (
+            "D5_SECOND_INTENT_UNQUALIFIED"
+            if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED"
+        )
         report["failure"] = f"{type(exc).__name__}: {exc}"
     finally:
         if session is not None:
