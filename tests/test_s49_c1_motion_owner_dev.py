@@ -207,3 +207,136 @@ def test_unified_c1_runner_missing_exclusive_gate_blocks_before_world(
     assert report["actual_native_actions"] == []
     assert report["real_model_calls"] == 0
     assert report["learning_in_world"] is False
+
+    
+
+def test_two_original_intents_share_supervisor_and_reuse_revised_s10_at_second_action():
+    """Synthetic source-shaped three actions are NOT a physical-world claim."""
+    from adapters.mineflayer.normal_action import NormalActionReceipt
+    from relay_self.reactive_l0 import L0Step
+
+    owner, executor, intent, step, selected, receipt, auth, p = _joined_original_owner()
+    first_forecast, receipt = _record_synthetic_original_terminal(
+        owner, executor, step, selected, receipt, auth, p,
+    )
+    assert first_forecast.predicted_total_m == 0.7
+    first_closed = owner.close_original_intent()
+    next_native = replace(
+        receipt.consequence.after_observation,
+        seq=receipt.consequence.after_observation.seq + 2,
+        request_id="next-intent-preview",
+    )
+    predicted = owner.start_next_original_intent(
+        next_native, next_intent_id="next-escape-threat",
+    )
+    assert first_closed.learning.new_state is owner.retained_motion
+    successor = S49C1MotionDevJoin(
+        intent, executor, owner.retained_motion, self_id=owner.self_id,
+    )
+    selected2 = replace(
+        selected, seq=next_native.seq + 2, request_id="next-L0-action-choice",
+    )
+    choice2 = replace(
+        step.choice, probe_seq=selected2.seq, request_id=selected2.request_id,
+        provenance=selected2.provenance,
+    )
+    event2 = selected2.seq - 1
+    action2 = "next-intent-original-action"
+    step2 = L0Step(
+        choice2, event2, action2,
+        replace(
+            step.grant, action_id=action2, intent_id="next-escape-threat",
+            event_seq=event2, probe_seq=selected2.seq,
+        ),
+    )
+    forecast2 = successor.prepare_original_action(step2, selected2)
+    assert forecast2.intent_id == predicted.intent_id
+    assert forecast2.owner_revision == predicted.owner_revision == 1
+    assert forecast2.predicted_total_m == predicted.predicted_total_m == 0.6
+    assert forecast2.source_probe_seq > predicted.source_probe_seq
+    assert successor.executor is executor and successor.intent is intent
+
+    original = receipt.consequence
+    before2 = replace(
+        original.before_observation, seq=selected2.seq + 1,
+        request_id=None,
+    )
+    updated = replace(
+        original, action_id=action2, before_observation=before2,
+        dispatch_receipt=replace(
+            original.dispatch_receipt, action_id=action2, seq=selected2.seq + 2,
+        ),
+        cleanup_receipt=replace(
+            original.cleanup_receipt, action_id=action2 + "-s15-clear",
+            seq=selected2.seq + 3,
+        ),
+        after_observation=replace(
+            original.after_observation, seq=selected2.seq + 4,
+            request_id=None,
+        ),
+    )
+    # One original supervisor with two distinct Intents, Action IDs and
+    # source frames. This uses offline typed ActionLifecycle transitions.
+    skill2 = SkillExecution.start(
+        "next-intent-skill", skill_id="escape-movement",
+        intent_commitment=intent, at_ns=9, provenance=p,
+    )
+    proposed2 = ActionLifecycle.propose(
+        action2, skill_execution=skill2,
+        intent_commitment=intent, at_ns=10, provenance=p,
+    )
+    authorized2 = proposed2.authorize(
+        at_ns=11, provenance=p, authority="next-original-authority",
+    )
+    issued2 = executor.supervisor.issue(
+        authorized2, at_ns=12, deadline_ns=50, provenance=p,
+    )
+    executor._dispatched.add(action2)
+    terminal2 = executor.supervisor.record_outcome(
+        action2, at_ns=13, provenance=p,
+    )
+    assert issued2.action_id == action2
+    receipt2 = NormalActionReceipt(terminal2, updated, selected2.provenance)
+    successor.accept_original_terminal(step2, selected2, receipt2)
+    second_closed = successor.close_original_intent()
+    assert second_closed.experience.forecast is forecast2
+    assert second_closed.experience.decision_probes == (selected2,)
+    assert second_closed.experience.measured_total_m == pytest.approx(0.31)
+    assert second_closed.learning.previous_state is owner.retained_motion
+    assert second_closed.learning.new_state.revision == 2
+    assert second_closed.learning.new_state.value == 5
+    assert intent.current_intent is None
+    assert len([e for e in intent.events if e.kind.value == "committed"]) == 2
+    assert len([e for e in intent.events if e.kind.value == "completed"]) == 2
+    assert len(executor._dispatched) == 2
+
+    with pytest.raises(IntentMotionRejected):
+        successor.close_original_intent()
+    with pytest.raises(IntentMotionRejected):
+        owner.close_original_intent()
+    with pytest.raises(IntentMotionRejected):
+        successor.accept_original_terminal(step2, selected2, receipt2)
+
+
+def test_unified_c1_two_intents_requires_extra_dev_gate_before_world(
+    monkeypatch, tmp_path,
+):
+    import asyncio
+    import json
+    from adapters.mineflayer.s49_normal_session_real_ci import qualify
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_DEV_ONLY", "1")
+    monkeypatch.delenv("S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    path = tmp_path / "two-intents-blocked.json"
+    rc = asyncio.run(qualify(
+        path, tmp_path / "server.log", unified_c1_dev=True,
+        unified_c1_two_intents_dev=True,
+    ))
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert rc == 2 and report["status"] == "BLOCKED"
+    assert report["stage"] == "START"
+    assert "second original Intent" in report["error"]
+    assert not report["actual_native_actions"]
+    assert report["learning_in_world"] is False
