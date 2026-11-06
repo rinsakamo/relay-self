@@ -301,6 +301,15 @@ class C1MotionJournal:
     def experience_ids(self) -> tuple[str, ...]:
         return tuple(e["experience_id"] for e in self._body["entries"])
 
+    @property
+    def original_action_keys(self) -> tuple[tuple[str, str], ...]:
+        """Only original recorded (session, Action ID) evidence identities."""
+        return tuple(
+            (entry["session_id"], action_id)
+            for entry in self._body["entries"]
+            for action_id in entry["action_ids"]
+        )
+
     @classmethod
     def create(
         cls, path: str | os.PathLike[str], *,
