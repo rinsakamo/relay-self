@@ -16,7 +16,7 @@ Qualified Intent Experience (C1)
   -> retain/propose via genuine owner (C4 governance)
   -> bounded retrieval and shadow candidate
   -> qualified L1 conditioned preference / prediction reuse
-  -> optional independent formal L0 proposal (NOT automatic)
+  -> future self-directed L0 crystallization when a real bounded integration path exists (not implemented in Bug-0)
 
 Mismatch, unfamiliar cue, source staleness, unexpected cost or failure
   -> abstain / fall back to proven safe control / reconsider / L2
@@ -31,7 +31,7 @@ The important property is **reversibility of selection**, not erasure of the old
 | --- | --- | --- |
 | **L2** | Explain unknown observations, compare hypotheses, plan tests, revise model structure/conditions | Generates or evaluates candidate understanding; not an automatic action or learning authority |
 | **L1** | Contextual anticipation and conditional low-cost selection from retained experience | Applies cue-scoped preferences/predictions; the first target for ordinary crystallization |
-| **L0** | Bounded low-latency guard/closed-loop skill and existing tested reflex | Only narrowly formalized, deadline-safe and owner-authorized routines; may be excellent with no learned change |
+| **L0** | Bounded low-latency guard/closed-loop skill and existing tested reflex | Self can eventually develop/adopt guarded real-time routines within World, body and host resources; current executable integration is limited |
 
 Development is **not a compulsory L2 -> L1 -> L0 pipeline**. L1 can learn from its own C1 experiences; L0 outcomes can raise a question for L1/L2. A learned L1 habit may never become safe to promote to L0. A runtime may employ L0 to survive an uncertain condition while keeping the L2 investigation pending.
 
@@ -57,7 +57,7 @@ One reusable item should preserve the link between the *original understanding* 
 | **L1_RETAINED_REUSE** | Existing governed owner has admitted a condition-limited low-cost L1 selection/readout, which is later consulted | Independent proof of benefit or safe L0 execution |
 | **L0_PROMOTION_PROPOSED** | Explicit *proposal* for a formal reflex/Skill with guard, known errors, deadlines and rollback | Executable code, verified timing, physical admission or automatic promotion |
 
-An actual **L0 implementation/adoption** requires a *separate* owner-reviewed safety/authorization gate (C4, S/Skill contracts and DEV/QUAL rules). Calling an L1 habit 'L0' or observing repeated success does not satisfy that gate. An L2 answer selected in one episode is not a reusable Skill merely because it can be read back.
+Actual **L0 implementation/adoption** requires a real runtime path with bounded input cues, physical timing, source integrity and rollback/recovery (C4 and existing S/Skill contracts). These are **engineering and World constraints**, not a perpetual human approval step over the Self's learning. The architecture permits autonomous L0 skill development and installation when technically supported; this is **not implemented in the present Bug-0 runtime**. Calling an L1 habit 'L0' or observing repeated success does not itself implement that path. An L2 answer selected in one episode is not a reusable Skill merely because it can be read back.
 
 ## C3.4 Learning cost and useful long-horizon behavior
 
@@ -102,13 +102,17 @@ These examples describe possible learning routes; they do not claim new learned 
 | C3-07 | Model predicts standard floor motion, new ice disobeys | Preserve error, disable wrong scope, escalate when safe |
 | C3-08 | Repeated performance failure after L1 retention | No silent overwrite; owner-governed suspend/rollback request |
 | C3-09 | L1 habit has strong repetitions but unsafe/unbounded worst-case time | No L0 promotion |
-| C3-10 | A formal L0 candidate lacks safety/authority verification | Proposal only; current S49/Safety L0 unchanged |
+| C3-10 | An L0 candidate lacks a real executable path or verified bounded physical timing | Proposal only until that path exists; Self's learning itself is not permission-gated |
 | C3-11 | A later independent attempt reuses a rule but outcome fails | Reuse evidenced, improvement not claimed; C1 new failure episode |
 | C3-12 | Same source after World/session reset or expired owner revision | Old cue/action permission invalid, historical memory may remain |
 | C3-13 | L1 learns directly after observed failure, L0 triggers upward investigation | Both allowed; no compulsory L2-origin stage |
 
 ## C3.8 Implementation direction and remaining C4
 
-Start with **read-only/shadow conditional retrieval** reusing existing `HabitCue`, `HabitRule`, `HabitRepertoire`, `select_habit` source checks where applicable; compare with fixed-cheap behavior and later C1 experience results. Only if owner-approved and grounded should condition-limited retained L1 use be attempted; keep L0 auto-promotion out of Bug-0. Model and Skill/Action authority must remain independent. C4 will define the write authority, rollout, rollback and learning-validation admission, without reclassifying DEV success as QUAL/SCIENCE.
+Start with **read-only/shadow conditional retrieval** reusing existing `HabitCue`, `HabitRule`, `HabitRepertoire`, `select_habit` source checks where applicable; compare with fixed-cheap behavior and later C1 experience results. Once implemented with appropriate source/cue versioning, Self may autonomously apply condition-limited L1 habits. Bug-0 has no demonstrated autonomous L0 installer yet; this is an implementation staging choice, **not a ban on the Self eventually learning/refining L0 by itself**. Model and Skill/Action authority must remain independent. C4 will define the write authority, rollout, rollback and learning-validation admission, without reclassifying DEV success as QUAL/SCIENCE.
 
 **Classification: C3 USER-ADOPTED CONCEPTUAL DIRECTION / OWNER/API REVIEW REQUIRED / NO TESTS EXECUTED / NO NEW MEMORY, LEARNING OR ACTION OWNER / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+## C3.9 Self autonomy clarification (user correction, 2026-11-06)
+
+The Self's developmental freedom is limited by the World/WorldBody and its available cognitive resources (time, GPU, CPU, memory) and actual embodiment/interface capabilities, **not by a human-designed ladder of permissions to learn**. L2/L1/L0 are processing modes; any may be improved or learned through experience. Self may independently explore, adapt, abandon and eventually install its own L0 routines when the runtime can integrate them without forging external observations or bypassing actual World mechanics. Source version/physical admission checks are software integrity mechanisms, not an external mind governor. Do not mistake present Bug-0 absence of an autonomous L0 installer for a constitutional prohibition.
