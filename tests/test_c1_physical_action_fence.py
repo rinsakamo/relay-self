@@ -26,6 +26,22 @@ from test_s49_c1_motion_owner_dev import (
 )
 
 
+def _real_s15_cleanup_identity(receipt):
+    """Historical typed fixture uses Action ID as clear ID; genuine S15
+    always uses the distinct Action ID + '-s15-clear' cleanup identity.
+    Transform ONLY this synthetic fixture field to the real protocol shape.
+    """
+    consequence = receipt.consequence
+    return replace(
+        receipt, consequence=replace(
+            consequence, cleanup_receipt=replace(
+                consequence.cleanup_receipt,
+                action_id=receipt.terminal.action_id + "-s15-clear",
+            ),
+        ),
+    )
+
+
 def _prepared(path):
     owner, executor, intent, step, selected, receipt, auth, p = _joined_original_owner()
     fence = OriginalS49PhysicalFence.create(path, self_id=owner.self_id)
@@ -61,6 +77,7 @@ def test_only_original_S16_terminal_and_native_set_clear_seals_preissue(tmp_path
     _, real_shape = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
+    real_shape = _real_s15_cleanup_identity(real_shape)
     fence.close(real_shape, selected, original_supervisor=executor.supervisor)
     assert not fence.unresolved
     assert fence.actions[0]["status"] == "S16_OUTCOME"
@@ -92,6 +109,7 @@ def test_forged_or_partial_S16_never_closes_physical_uncertainty(tmp_path, failu
     _, r = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
+    r = _real_s15_cleanup_identity(r)
     probe = selected
     if failure == "wrong_selected":
         probe = replace(selected, request_id="foreign-native-request")
@@ -160,6 +178,7 @@ def test_stale_separate_process_fence_snapshot_cannot_overwrite_owner(tmp_path):
     _, receipt = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
+    receipt = _real_s15_cleanup_identity(receipt)
     fence.close(receipt, selected, original_supervisor=executor.supervisor)
     assert len(OriginalS49PhysicalFence.restore(
         path, self_id="self-a",
@@ -176,6 +195,7 @@ def test_corrupt_or_forged_fence_refuses_recovery(tmp_path, corruption):
     _, actual = _record_synthetic_original_terminal(
         owner, executor, step, selected, receipt, auth, p,
     )
+    actual = _real_s15_cleanup_identity(actual)
     fence.close(actual, selected, original_supervisor=executor.supervisor)
     if corruption == "invalid_json":
         path.write_text('{"truncated":', encoding="utf-8")
