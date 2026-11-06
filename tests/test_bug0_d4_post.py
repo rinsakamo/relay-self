@@ -50,6 +50,10 @@ REPORT = dict(
     d4_final_action_count=3,
     d4_final_supervisor_open_count=0,
     cleanup_done=True,
+    d4_operator_removed_only_nonzombie_entities=True,
+    operator_world_staging=[
+        "kill @e[type=!minecraft:player,type=!minecraft:zombie]",
+    ],
     d4_natural_count=1,
     d4_paper_item_spawn=SPAWN.strip(),
     d4_paper_item_pickup=PICKUP.strip(),
@@ -102,6 +106,7 @@ def test_server_source_must_match_real_item_count_and_killer(broken):
     ("d4_item_manual_stage", True),
     ("d4_operator_hunger_induced_for_dev", False),
     ("operator_world_kill", True),
+    ("d4_operator_removed_only_nonzombie_entities", False),
     ("d4_pickup_passive", False),
     ("d4_eat_terminal", "UNKNOWN"),
     ("d4_self_eat_issued", False),
@@ -155,3 +160,11 @@ def test_real_zero_loot_waits_for_original_world_respawn_but_does_not_eat():
     result = audit(no_meat_log, report)
     assert result["classification"] == "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
     assert result["real_eat_proven"] is False
+
+def test_operator_must_not_kill_original_managed_zombie():
+    report = deepcopy(REPORT)
+    report["operator_world_staging"] = [
+        "kill @e[type=!minecraft:player]",
+    ]
+    with pytest.raises(D4NaturalEatRejected):
+        audit(LOG, report)
