@@ -268,6 +268,8 @@ Reuse existing WB partial projections and original external source. Avoid a whol
 
 > **B DESIGN DECISION / NOT IMPLEMENTED.** The initial snapshot mechanism is a **configurable fixed-interval autosave** of the *currently cognitively reachable* SelfWorld and SelfBody readouts. No full server World snapshot, special always-on event-sourced capture pipeline, or model inference on every tick is required.
 
+**MVP autosave default: 60 seconds (user-selected, 2026-11-06).** The interval is configurable, best-effort, and refers to saving the available cognition checkpoint **only**: it is not a 60-second perception, control, SelfWorld/SelfBody refresh, or L0/L1/L2 scheduling period. S49's immediate source freshness checks remain independent. A process may miss checkpoints or gather newer observations between saves. The value is an engineering default, not an empirically validated optimum.
+
 ### B11.1 Minimal behavior
 
 1. On a configured interval (a tunable implementation setting, not a hard-coded law of cognition), serialize the **latest already-available** source-qualified SelfWorld and SelfBody cognitive views or their minimal read-only representations. If a view is unavailable, save its explicit UNKNOWN/UNAVAILABLE status; do not force a World read, Action or L2 call solely to fill the checkpoint.
