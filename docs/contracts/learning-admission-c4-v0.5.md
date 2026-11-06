@@ -1,6 +1,6 @@
 # Unified v0.5 — Contract C4: Governed learning admission, activation and rollback
 
-> **Status: C4 DESIGN PROPOSAL / USER REVIEW OPEN / NOT IMPLEMENTED.** Prepared 2026-11-06 after user adopted the C3 direction. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [C3 Conditional Crystallization](conditional-crystallization-c3-v0.5.md), [A physical authority](intent-slots-action-authority-v0.5.md), [B provenance](persistent-cognition-three-models-v0.5.md).
+> **Status: C4 CONCEPTUAL DIRECTION USER-ADOPTED (2026-11-06) / OWNER/API REVIEW AND IMPLEMENTATION PENDING.** Prepared 2026-11-06 after user adopted the C3 direction. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [C3 Conditional Crystallization](conditional-crystallization-c3-v0.5.md), [A physical authority](intent-slots-action-authority-v0.5.md), [B provenance](persistent-cognition-three-models-v0.5.md).
 
 ## C4.0 Principal distinction — cognition, retention and execution
 
@@ -101,7 +101,7 @@ Preserve `NO_PREDICTION`, Action `UNKNOWN`, absent World outcome and uncertainty
 
 C4 completes the **candidate conceptual boundary** for v0.5 A/B/C: one Self with multiple legitimate Intent commitments (A); source-bound three-view present/cognitive checkpoints (B); one experience per attempted Intent result (C1); scoped 0..n understanding candidates (C2); condition-limited reversible cognitive reuse (C3); governed owner-local admission and rollback (C4). Whether architecture design is formally closed is a separate user decision; owner-specific implementation/tests remain pending.
 
-**DEV_ONLY / C4 DESIGN_PROPOSAL USER_REVIEW_OPEN / NOT IMPLEMENTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.** No main change, Minecraft run, LLM call, Memory/Habit write or new Action privilege is claimed.
+**C4 ARCHITECTURE_DESIGN_COMPLETE / IMPLEMENTATION_PENDING / NOT IMPLEMENTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.** No main change, Minecraft run, LLM call, Memory/Habit write or new Action privilege is claimed.
 
 ## C4.8 Clarification of freedom versus authority (user correction, 2026-11-06)
 
