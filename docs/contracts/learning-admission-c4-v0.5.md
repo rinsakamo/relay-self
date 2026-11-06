@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract C4: Governed learning admission, activation and rollback
 
-> **Status: C4 CONCEPTUAL DIRECTION USER-ADOPTED (2026-11-06) / OWNER/API REVIEW AND IMPLEMENTATION PENDING.** Prepared 2026-11-06 after user adopted the C3 direction. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [C3 Conditional Crystallization](conditional-crystallization-c3-v0.5.md), [A physical authority](intent-slots-action-authority-v0.5.md), [B provenance](persistent-cognition-three-models-v0.5.md).
+> **Status: C4 ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / OWNER/API REVIEW AND IMPLEMENTATION PENDING.**
+> [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md). No per-experience human permission hierarchy is an architectural invariant; real source/owner/API constraints still apply. Prepared 2026-11-06 after user adopted the C3 direction. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), [C1 Intent Experience](intent-experience-c1-v0.5.md), [C2 Understanding Revision](understanding-revision-c2-v0.5.md), [C3 Conditional Crystallization](conditional-crystallization-c3-v0.5.md), [A physical authority](intent-slots-action-authority-v0.5.md), [B provenance](persistent-cognition-three-models-v0.5.md).
 
 ## C4.0 Principal distinction — cognition, retention and execution
 
