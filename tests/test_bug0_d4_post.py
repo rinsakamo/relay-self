@@ -190,3 +190,11 @@ def test_native_ghost_deferral_must_not_be_relabelled_safe():
             report["d4_preissue_choice"]["seq"] = 39
         with pytest.raises(D4NaturalEatRejected):
             audit(LOG, report)
+
+
+def test_last_real_rotten_flesh_eaten_then_empty_inventory_wait_is_valid():
+    report = deepcopy(REPORT)
+    report["d4_next_food_decision"]["reason"] = "NO_INVENTORY_FOOD"
+    result = audit(LOG, report)
+    assert result["real_eat_proven"] is True
+    assert result["unlimited_survival_proven"] is False
