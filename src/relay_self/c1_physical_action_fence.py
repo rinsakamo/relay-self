@@ -20,6 +20,7 @@ from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
+from relay_self.action_supervision import ActionSupervisor
 from relay_self.c1_motion_journal import (
     C1JournalError,
     _canonical,
@@ -224,16 +225,24 @@ class OriginalS49PhysicalFence:
 
     def close(
         self, receipt: NormalActionReceipt,
-        probe: MineflayerObservation,
+        probe: MineflayerObservation, *,
+        original_supervisor: ActionSupervisor,
     ) -> None:
         """Seal only an original S16 OUTCOME + exact native effect/clear evidence."""
         if (
             not self.unresolved
             or not isinstance(receipt, NormalActionReceipt)
             or not isinstance(probe, MineflayerObservation)
+            or not isinstance(original_supervisor, ActionSupervisor)
         ):
             raise PhysicalFenceError("original unresolved S49 Action receipt required")
         pending = self._body["actions"][-1]
+        try:
+            actual = original_supervisor.get(pending["action_id"])
+        except ValueError as exc:
+            raise PhysicalFenceError("original supervisor has no such Action") from exc
+        if actual is not receipt.terminal:
+            raise PhysicalFenceError("replayed/copied S16 terminal is not original owner")
         c = receipt.consequence
         before = c.before_observation
         after = c.after_observation
