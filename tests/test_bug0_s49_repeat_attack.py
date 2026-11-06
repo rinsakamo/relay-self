@@ -181,3 +181,32 @@ def test_repeated_attack_cannot_follow_unknown_outcome(monkeypatch):
     with pytest.raises(NormalActionRejected):
         owner.require_attack_authorizations(pre, cur, eid, p2, i2)
     assert len([x for x in session.sent if x[0] == "attack"]) == 1
+
+
+def test_lethal_native_target_absent_with_real_ground_item_candidate_is_not_death_proof():
+    _, before = base._pair()
+    eid = before.snapshot.nearby_entities[0].entity_id
+    ack = MineflayerEffectResult(
+        before.session_id, before.seq + 1,
+        "a", "attack_entity", "applied", None,
+    )
+    old = before.snapshot.nearby_entities[0]
+    item = replace(old, entity_id=eid + 1, name="item", entity_type="other")
+    after = replace(
+        before, seq=before.seq + 3, request_id="new-native-item-after",
+        snapshot=replace(
+            before.snapshot,
+            nearby_entities=(item,),
+            nearby_entities_coverage=replace(
+                before.snapshot.nearby_entities_coverage,
+                candidate_count=1, truncated=False,
+            ),
+        ),
+    )
+    with pytest.raises(AttackExecutionRejected):
+        verify_attack_effect(before, ack, after, action_id="a", entity_id=eid)
+    verify_attack_effect(
+        before, ack, after, action_id="a", entity_id=eid,
+        allow_target_disappearance=True,
+    )
+    assert not hasattr(ack, "target_death_attested")
