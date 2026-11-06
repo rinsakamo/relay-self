@@ -1,0 +1,3 @@
+# Only operator may enable this on one disposable DEV World.
+dev-enabled: false
+target-player: RelaySelf
