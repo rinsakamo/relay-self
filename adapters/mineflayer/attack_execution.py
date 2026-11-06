@@ -36,6 +36,7 @@ class AttackActionReceipt:
     damage_attested: bool = False
     target_death_attested: bool = False
     source_independently_attested: bool = False
+    target_missing_in_native_view: bool = False
 
 
 def _target_from(probe: MineflayerObservation, entity_id: int) -> object:
@@ -59,10 +60,25 @@ def verify_attack_effect(
     effect: MineflayerEffectResult,
     after: MineflayerObservation,
     *, action_id: str, entity_id: int,
+    allow_target_disappearance: bool = False,
 ) -> None:
-    """Verify just the original native command ACK and later target registry."""
+    """Verify ATTACK ACK; opt-in disappearance is NOT proof of death.
+
+    Absence is admissible only with a complete fresh 0/0 native registry;
+    a different visible mob, truncated coverage or foreign source fails closed.
+    Original one-shot strict behavior is the default.
+    """
+    if type(allow_target_disappearance) is not bool:
+        raise AttackExecutionRejected("explicit boolean disappearance mode required")
     old = _target_from(before, entity_id)
-    latest = _target_from(after, entity_id)
+    coverage = after.snapshot.nearby_entities_coverage
+    missing = bool(
+        allow_target_disappearance
+        and not coverage.truncated
+        and coverage.candidate_count == 0
+        and not after.snapshot.nearby_entities
+    )
+    latest = None if missing else _target_from(after, entity_id)
     if (
         before.session_id != after.session_id
         or not before.seq < effect.seq < after.seq
@@ -74,7 +90,7 @@ def verify_attack_effect(
         or before.snapshot.health <= 0
         or after.snapshot.health <= 0
         or old.distance > 2.8
-        or latest.distance > 16.0
+        or (latest is not None and latest.distance > 16.0)
         or any(
             abs(getattr(before.snapshot.position, k)
                 - getattr(after.snapshot.position, k)) > 0.3
@@ -95,6 +111,7 @@ class IssuedAttackingExecutor:
         supervisor: ActionSupervisor, issued: ActionLifecycle,
         before: MineflayerObservation, *, target_entity_id: int,
         skill_execution: SkillExecution, intent_commitment: IntentCommitment,
+        allow_target_disappearance: bool = False,
     ) -> AttackActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -117,6 +134,7 @@ class IssuedAttackingExecutor:
             or supervisor.open_actions != (issued,)
             or issued.action_id in self._attempted
             or before.session_id != session.started.session_id
+            or type(allow_target_disappearance) is not bool
         ):
             raise AttackExecutionRejected("original issued S49 ATTACK Skill/Action required")
         _target_from(before, target_entity_id)
@@ -168,6 +186,7 @@ class IssuedAttackingExecutor:
             verify_attack_effect(
                 before, effect, after,
                 action_id=issued.action_id, entity_id=target_entity_id,
+                allow_target_disappearance=allow_target_disappearance,
             )
             terminal = supervisor.record_outcome(
                 issued.action_id, at_ns=at_ns, provenance=after.provenance,
@@ -183,6 +202,10 @@ class IssuedAttackingExecutor:
                 after_probe=after, target_entity_id=target_entity_id,
                 observed_target_hurt=bool(target_hurt),
                 observed_hurt_source_entity_ids=target_hurt,
+                target_missing_in_native_view=not any(
+                    e.entity_id == target_entity_id
+                    for e in after.snapshot.nearby_entities
+                ),
             )
         except BaseException:
             if supervisor.get(issued.action_id).state is ActionState.ISSUED:
