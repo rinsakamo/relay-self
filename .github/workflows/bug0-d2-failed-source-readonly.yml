@@ -1,0 +1,54 @@
+name: Bug-0 D2 first FAILED World original read-only source audit
+on:
+  push:
+    branches:
+      - dev/bug0-d2-failed-original-audit-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download exact original failed D2 artifact, World 0
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d2-natural-zombie-loot-one-world
+          repository: rinsakamo/relay-self
+          run-id: 42188953900
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original-failed-d2
+      - name: SHA256 immutable original evidence and source diagnostics
+        run: |
+          cd original-failed-d2
+          test -f report.json
+          test -f paper_original.log
+          test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('.')
+          report=json.loads((p/'report.json').read_text(encoding='utf8'))
+          keys=(
+              'stage','status','classification','failure','node_exit','java_exit',
+              'node_cleanup_error','java_cleanup_error','session_id',
+              'paper_initial','paper_respawn_death','paper_loot_death',
+              'paper_item_spawn','paper_item_pickup','paper_respawn',
+              'native_initial','native_before','native_after','native_respawn',
+              'real_vanilla_loot_count','operator_console_commands',
+              'unqualified_native_after','cleanup_done'
+          )
+          print('D2_FAILED_ORIGINAL_REPORT='+json.dumps(
+              {k:report.get(k) for k in keys},sort_keys=True,ensure_ascii=False
+          ))
+          lines=(p/'paper_original.log').read_text(encoding='utf8').splitlines()
+          print('D2_PAPER_TOTAL_LINES='+str(len(lines)))
+          for index,line in enumerate(lines,1):
+              if any(marker in line for marker in (
+                  'RSELF_', '[ERROR]', 'Exception', '[WARN]',
+                  'Killed', 'Teleported', 'Unknown', 'No entity',
+              )):
+                  print('D2_PAPER_LINE_'+str(index)+'='+line[:900])
+          print('D2_READ_ONLY_AUDIT_DONE WORLD_0 ACTION_0')
+          PY
