@@ -1,0 +1,31 @@
+name: Bug-0 D5 real-World continuation source checks OFFLINE
+on:
+  push:
+    branches:
+      - dev/bug0-d5-s49-realworld-two-intents-20261106
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: D5 full original S49 Intent rearm and independent read-only evidence audit
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_d4_oneworld.py tools/bug0_d5_oneworld.py tools/bug0_d5_post.py tests/test_bug0_d5_world_post.py
+          ruff check tools/bug0_d4_oneworld.py tools/bug0_d5_oneworld.py tools/bug0_d5_post.py tests/test_bug0_d5_world_post.py
+          python -m pytest -q tests/test_bug0_d5_world_post.py tests/test_bug0_d5_intent_epoch_rearm.py tests/test_bug0_d4_post.py tests/test_bug0_d4_precombat_native_hunger.py tests/test_bug0_s49_repeat_attack.py tests/test_bug0_s49_attack_owner.py tests/test_bug0_s49_s51_eat_handoff.py
+      - name: No World no physical Action on source pushes
+        run: echo 'D5_WORLD_NOT_RUN_OFFLINE_NO_PHYSICAL_ACTION_NO_LEARNING'
