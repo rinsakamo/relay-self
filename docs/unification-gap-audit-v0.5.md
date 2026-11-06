@@ -1,6 +1,7 @@
 # RelaySelf v0.5 — Legacy/New Unification Gap Audit
 
-> **Status: DESIGN AUDIT / NO EXECUTABLE AUTHORITY.** Parent: [#717](https://github.com/rinsakamo/relay-self/issues/717). Companion: [unified-architecture-v0.5.md](unified-architecture-v0.5.md). Audited baseline `main@4348a614900c1d0828581a8eec2c523ba5ae237f` (2026-11-03); newer PRs are **not merged into main** and are not treated as one integrated Self.
+> **Status: HISTORICAL GAP AUDIT / A-B-C CONCEPTUAL DESIGN FROZEN 2026-11-07 / OWNER API AND IMPLEMENTATION OPEN / NO EXECUTABLE AUTHORITY.**
+> The older A/B/C OPEN and review checklists below record the 2026-11-03 state. Their conceptual decisions have since closed; see [Design Freeze and implementation handoff](unified-v0.5-design-freeze-20261107.md). Implementation gaps and tests are still open. Parent: [#717](https://github.com/rinsakamo/relay-self/issues/717). Companion: [unified-architecture-v0.5.md](unified-architecture-v0.5.md). Audited baseline `main@4348a614900c1d0828581a8eec2c523ba5ae237f` (2026-11-03); newer PRs are **not merged into main** and are not treated as one integrated Self.
 
 ## 1. Audit rubric
 
