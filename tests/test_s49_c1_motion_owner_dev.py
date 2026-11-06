@@ -177,3 +177,30 @@ def test_original_next_intent_source_and_history_fails_closed(case):
         owner.start_next_original_intent(fresh, next_intent_id=next_id)
     assert intent.current_intent is None
     assert owner.retained_motion.revision == 1
+
+
+
+def test_unified_c1_runner_missing_exclusive_gate_blocks_before_world(
+    monkeypatch, tmp_path,
+):
+    """No grant or opt-in: cannot even provision a disposable World."""
+    import asyncio
+    import json
+
+    from adapters.mineflayer.s49_normal_session_real_ci import qualify
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    monkeypatch.delenv("S49_UNIFIED_C1_DEV_ONLY", raising=False)
+    report_path = tmp_path / "blocked.json"
+    rc = asyncio.run(qualify(
+        report_path, tmp_path / "absent-server.log", unified_c1_dev=True,
+    ))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert rc == 2
+    assert report["status"] == "BLOCKED"
+    assert report["stage"] == "START"
+    assert "exclusive" in report["error"]
+    assert report["actual_native_actions"] == []
+    assert report["real_model_calls"] == 0
+    assert report["learning_in_world"] is False
