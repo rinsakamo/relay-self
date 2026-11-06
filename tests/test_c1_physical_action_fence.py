@@ -285,7 +285,7 @@ def test_restart_with_pending_physical_action_blocks_before_world_provision(
     import asyncio
 
     path = tmp_path / "c1_physical_action_fence.json"
-    owner, _, _, step, selected, _, _, _ = _joined_original_owner()
+    _, _, _, step, selected, _, _, _ = _joined_original_owner()
     fence = OriginalS49PhysicalFence.create(
         path, self_id="s49-original-self",
     )
