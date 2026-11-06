@@ -31,13 +31,12 @@ def _s49_two_probe_shape():
     # with their own native sequence and source references.
     internal = replace(
         selected, seq=selected.seq + 2, request_id=None,
-        provenance=Provenance("mineflayer", "s15-internal-before"),
     )
     dispatch = replace(receipt.consequence.dispatch_receipt, seq=selected.seq + 3)
     clear = replace(receipt.consequence.cleanup_receipt, seq=selected.seq + 4)
     after = replace(
         receipt.consequence.after_observation, seq=selected.seq + 5,
-        request_id=None, provenance=Provenance("mineflayer", "s15-internal-after"),
+        request_id=None,
     )
     source_shaped = NormalActionReceipt(
         receipt.terminal,
@@ -108,8 +107,8 @@ def test_s49_selection_to_s15_negative_controls(case):
     if case == "foreign_session":
         decisions = (replace(chosen, session_id="foreign-session"),)
     elif case == "wrong_source":
-        decisions = (replace(
-            chosen, provenance=Provenance("test", "not-mineflayer"),
+        receipts = (replace(
+            receipt, source=Provenance("test", "not-mineflayer"),
         ),)
     elif case == "wrong_request":
         decisions = (replace(chosen, request_id=None),)
@@ -153,16 +152,13 @@ def test_two_real_shaped_moves_still_one_experience_not_two():
     chosen2 = replace(
         first_decisions[0], seq=old_after.seq + 2,
         request_id="next-correlated-choice",
-        provenance=Provenance("mineflayer", "next-correlated-choice"),
     )
     internal2 = replace(
         r1.consequence.before_observation,
         seq=chosen2.seq + 2,
-        provenance=Provenance("mineflayer", "next-s15-internal-before"),
     )
     after2 = replace(
         old_after, seq=internal2.seq + 3,
-        provenance=Provenance("mineflayer", "next-s15-internal-after"),
     )
     second = NormalActionReceipt(
         terminal=replace(r1.terminal, action_id="second-s49-physical-action"),
