@@ -390,6 +390,24 @@ def test_original_s14_admission_refuses_old_allowlist_and_accepts_exact_next_int
     assert values["plan"].selected.candidate_id == "MOVE_AWAY"
     assert values["admission"].status.value == "admitted"
     assert values["policies"][-2].required_intent_id == "next-escape-threat"
+    from relay_self.execution_binding import (
+        ExecutionBinding,
+        resolve_execution_binding,
+    )
+
+    binding = ExecutionBinding(
+        binding_id="next-intent-native-source-bound",
+        candidate_ref="MOVE_AWAY", required_intent_id="next-escape-threat",
+        skill_execution_id="next-intent-real-s49-skill",
+        skill_ref="escape-movement", action_id="next-intent-native-move",
+        action_ref="MOVE_BACKWARD", provenance=p,
+    )
+    bound = resolve_execution_binding(
+        values["admission"], values["control"], values["route"],
+        intent, values["policies"][-2], binding,
+        provenance=p,
+    )
+    assert bound.intent_id == "next-escape-threat"
     with pytest.raises(S34EvidenceFailure):
         _native_epoch_two(
             ActionSupervisor(), intent, risk_owner, risk_owner,
