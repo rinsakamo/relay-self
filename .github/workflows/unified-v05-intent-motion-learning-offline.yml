@@ -5,6 +5,7 @@ on:
       - dev/unified-v05-intent-motion-learning-20261106
       - dev/unified-c1-s10-world-20261106
       - dev/unified-c1-original-s49-owner-next-intent-20261106
+      - dev/unified-c1-two-intents-oneworld-20261106
 permissions:
   contents: read
 jobs:

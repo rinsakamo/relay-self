@@ -378,7 +378,21 @@ async def _real_epoch_one(supervisor, adapter, native: NativeThreat):
 
 
 
-def _native_epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expected_revision, native: NativeThreat):
+def _native_epoch_two(
+    supervisor, intent, owner_snapshot, supplied_snapshot, *,
+    expected_revision, native: NativeThreat,
+    required_intent_id: str = "escape-threat",
+):
+    # Historical S34 callers continue to admit only the original escape
+    # Intent. A successor MUST name the exact live Intent explicitly: never
+    # silently allow all Intents or inherit a stale S14 admission criterion.
+    if (
+        not isinstance(required_intent_id, str)
+        or not required_intent_id.strip()
+        or intent.current_intent is None
+        or intent.current_intent.intent_id != required_intent_id
+    ):
+        raise S34EvidenceFailure("native S14 admission requires current exact Intent")
     if native.distance_m >= MAX_GOAL_DISTANCE_M:
         raise S34EvidenceFailure("no nearby second-epoch threat evidence")
     """Separate caller invocation: ATT/BLF/CNC/PRD/PLAN/ROUTE/fresh ADMISSION.
@@ -396,7 +410,7 @@ def _native_epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, 
     admission_guard = s19.ExecutionAdmissionCriterion(
         criterion_id="s19-fresh-admission",
         policy=s19.AdmissionPolicy.CURRENT_INTENT_ALLOW_LIST,
-        required_intent_id="escape-threat",
+        required_intent_id=required_intent_id,
         allowed_candidate_refs=("WAIT", "MOVE_AWAY"),
     )
     proposition = s19.PropositionKey("entity", "zombie-1", "nearby")
