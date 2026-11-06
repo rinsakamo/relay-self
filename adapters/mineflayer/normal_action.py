@@ -964,6 +964,7 @@ class NormalSessionActionExecutor:
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
         *, timeout_s: float = 9,
+        pre_issue_reservation: Callable[[], None] | None = None,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -984,6 +985,14 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        # DEV opt-in: durably reserve the exact original Action before
+        # supervisor ISSUE and before any physical Mineflayer IO. If the
+        # reservation fails, this issuer emits NO Action. An uncertain
+        # reservation may NEVER be automatically replayed after restart.
+        if pre_issue_reservation is not None:
+            if not callable(pre_issue_reservation):
+                raise NormalActionRejected("physical pre-ISSUE reservation must be callable")
+            pre_issue_reservation()
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
