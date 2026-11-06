@@ -1073,6 +1073,94 @@ async def qualify(
                 "independent_source_attestation": False,
             }
             report["learning_in_world"] = terminal_c1.learning is not None
+            if unified_c1_two_intents_dev:
+                if (
+                    staging is None or executor.supervisor.open_actions
+                    or next_c1.owner_revision != motion_dev.retained_motion.revision
+                    or intent.current_intent is None
+                    or intent.current_intent.intent_id != next_c1.intent_id
+                ):
+                    raise S49PhysicalFailure(
+                        "no original Intent handoff for a second S49 Action"
+                    )
+                # First external World stimulation must fully finish before
+                # the next target appears; no additional Action issuer.
+                await asyncio.wait_for(staging, timeout=20)
+                successor_join = S49C1MotionDevJoin(
+                    intent, executor, motion_dev.retained_motion,
+                    self_id=motion_dev.self_id,
+                )
+                active_motion_dev = successor_join
+                next_host = NormalWorldL0(
+                    sid, next_c1.intent_id, retained,
+                    max_events=1, max_action_requests=1,
+                )
+                # Same disposable World, session, Intent and executor. The
+                # operator controls only the external World target stimulus.
+                _command(server, "kill @e[type=minecraft:zombie]")
+                await server.stdin.drain()
+                await asyncio.sleep(2)
+                _command(
+                    server,
+                    "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+                    "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                )
+                await server.stdin.drain()
+                next_trace = await asyncio.wait_for(
+                    next_host.run_session(
+                        observation_source, probe=reprobe, grant=decide_grant,
+                        on_action_request=on_action, max_frames=90,
+                    ),
+                    timeout=40,
+                )
+                if (
+                    len(next_trace) != 1
+                    or next_trace[0].choice.selection
+                    is not WorldChoiceKind.MOVE_AWAY
+                    or not next_trace[0].asks_for_action
+                    or next_host.events != 1 or next_host.action_requests != 1
+                    or successor_join.action_count != 1
+                    or executor.supervisor.open_actions
+                    or executor._count != 3
+                    or len(report["actual_native_actions"]) != 3
+                    or next_trace[0].choice.probe_seq <= next_c1.source_probe_seq
+                ):
+                    raise S49PhysicalFailure(
+                        "second original L0 Intent did not close one real Action"
+                    )
+                second_terminal = successor_join.close_original_intent()
+                report["unified_c1_original_owner"]["next_l0_action_issued"] = True
+                report["unified_c1_second_original_owner"] = {
+                    "intent_id": next_c1.intent_id,
+                    "original_l0_event_seq": next_trace[0].event_seq,
+                    "original_l0_probe_seq": next_trace[0].choice.probe_seq,
+                    "pre_action_s10_revision": (
+                        second_terminal.experience.forecast.owner_revision
+                    ),
+                    "pre_action_forecast_m": (
+                        second_terminal.experience.forecast.predicted_total_m
+                    ),
+                    "prior_next_intent_read_revision": next_c1.owner_revision,
+                    "prior_next_intent_read_forecast_m": next_c1.predicted_total_m,
+                    "one_physical_action_id": (
+                        second_terminal.experience.action_receipts[0].terminal.action_id
+                    ),
+                    "one_action_s16_state": (
+                        second_terminal.experience.action_receipts[0].terminal.state.value
+                    ),
+                    "experience_id": second_terminal.experience.experience_id,
+                    "measured_total_m": second_terminal.experience.measured_total_m,
+                    "motion_comparison": second_terminal.experience.comparison.value,
+                    "terminal_kind": second_terminal.experience.terminal_kind.value,
+                    "new_s10_revision": successor_join.retained_motion.revision,
+                    "new_s10_value": successor_join.retained_motion.value,
+                    "external_goal_verified": False,
+                    "same_original_intent_owner": successor_join.intent is intent,
+                    "same_original_action_executor": successor_join.executor is executor,
+                    "learned_decision_policy": False,
+                    "independently_attested_world_truth": False,
+                    "durable_journal": False,
+                }
         if worldbody_active:
             from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
             from adapters.mineflayer.s49_rest_dev import inspect_rest_native_samples
@@ -1304,7 +1392,9 @@ async def qualify(
                 report["original_completion_observer"] = "OBSERVER_ERROR"
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_C1_S10_NEXT_ORIGINAL_FORECAST_NOT_NEXT_ACTION"
+            "DEV_ONLY_S49_C1_S10_TWO_ORIGINAL_INTENT_ACTION_EXPERIENCES"
+            if unified_c1_two_intents_dev
+            else "DEV_ONLY_S49_C1_S10_NEXT_ORIGINAL_FORECAST_NOT_NEXT_ACTION"
             if motion_dev is not None
             else "DEV_ONLY_WORLDBODY_ORIGINAL_S49_POST_REST_THIRD_MOTOR_OUTCOME"
             if worldbody_retest_dev
