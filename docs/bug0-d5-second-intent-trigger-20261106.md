@@ -31,3 +31,8 @@ D6's Self-owned MOVE to loot and a *complete second kill/pickup/EAT experience*
 remain separate unproven milestones.
 
 Related: #717, #742, Draft PR #759 and #762.
+
+## One-use dispatch record
+
+TRIGGERED_ONCE_HEAD = 063dd598903df3a9ae7d9c85395b6a28d82caae5
+This commit is the only approved physical World launch for D5 #764. Do not rerun the workflow on failure.
