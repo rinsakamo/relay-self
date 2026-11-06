@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract B: Persistent Cognition and three Self-model projections
 
-> **Status: B-D0 DESIGN_DRAFT / REVIEW OPEN / NOT IMPLEMENTED.** Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), Draft PR [#718](https://github.com/rinsakamo/relay-self/pull/718). Started 2026-11-06 after the user closed **A architectural design** as ARCHITECTURE_DESIGN_COMPLETE / IMPLEMENTATION_PENDING. A's approved concepts remain frozen; owner/API/World/qualification are separate gates. This document does not create new memory writers, physical World facts, runtime controllers or learning authority.
+> **Status: B ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / OWNER API REVIEW + IMPLEMENTATION PENDING.**
+> B9/B10/B11 (three active interpretation scopes, cognitively reachable snapshots, best-effort configurable 60-second autosave) are adopted; [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md). Earlier DRAFT/OPEN labels are historical or refer to executable owner details. Parent [#717](https://github.com/rinsakamo/relay-self/issues/717), Draft PR [#718](https://github.com/rinsakamo/relay-self/pull/718). Started 2026-11-06 after the user closed **A architectural design** as ARCHITECTURE_DESIGN_COMPLETE / IMPLEMENTATION_PENDING. A's approved concepts remain frozen; owner/API/World/qualification are separate gates. This document does not create new memory writers, physical World facts, runtime controllers or learning authority.
 
 ## B0. Design question and Grand Null answer
 
