@@ -572,7 +572,17 @@ async def qualify(
                 report["physical_fence_restored_before_world"] = False
             # Fail BEFORE provisioning any World when a previous attempt
             # was only PREPARED and may have been physically dispatched.
-            physical_fence_dev.require_clear()
+            from relay_self.c1_physical_action_fence import (
+                UnresolvedPhysicalAction,
+            )
+
+            try:
+                physical_fence_dev.require_clear()
+            except UnresolvedPhysicalAction as exc:
+                report["physical_fence_unresolved_before_world"] = True
+                raise S31ABlocked(
+                    "unresolved original S49 physical Action: STOP before World"
+                ) from exc
             report["physical_fence_unresolved_before_world"] = False
             report["physical_fence_prior_actions"] = len(physical_fence_dev.actions)
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
