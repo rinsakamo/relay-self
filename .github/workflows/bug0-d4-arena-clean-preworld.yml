@@ -1,0 +1,39 @@
+name: Bug-0 D4 source-guarded arena clean and S49 S51 EAT preflight
+on:
+  push:
+    branches:
+      - dev/bug0-d4-arena-source-guard-20261106
+permissions:
+  contents: read
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: One Action supervisor and source-qualified natural pickup + EAT
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d4_post.py tests/test_bug0_d4_post.py
+          ruff check tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d4_post.py tests/test_bug0_d4_post.py
+          python -m pytest -q tests/test_bug0_d4_post.py tests/test_bug0_s49_combat_d3_post.py tests/test_bug0_s49_repeat_attack.py tests/test_bug0_s49_attack_owner.py tests/test_bug0_loot_inventory_readback.py tests/test_bug0_s49_s51_eat_handoff.py
+      - name: Original Paper 1.21.8 death and item pickup plugin compilers
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+      - name: Real World 0 no physical Action issued
+        run: echo 'BUG0_D4_OFFLINE_PHYSICAL_WORLD_0_ACTUAL_ATTACK_0_ACTUAL_EAT_0'

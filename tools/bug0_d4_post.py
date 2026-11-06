@@ -52,6 +52,17 @@ def audit(log: str, report: dict) -> dict:
         or report.get("d4_self_move_for_item") is not False
         or report.get("d4_item_manual_stage") is not False
         or report.get("operator_world_kill") is not False
+        or report.get("d4_operator_removed_only_nonzombie_entities") is not True
+        or not isinstance(report.get("operator_world_staging"), list)
+        or report["operator_world_staging"].count(
+            "kill @e[type=!minecraft:player,type=!minecraft:zombie]"
+        ) != 1
+        or any(
+            cmd.startswith("kill ") and cmd != (
+                "kill @e[type=!minecraft:player,type=!minecraft:zombie]"
+            )
+            for cmd in report["operator_world_staging"]
+        )
         or report.get("d4_operator_hunger_induced_for_dev") is not True
         or report.get("self_goal_selected_autonomously") is not False
         or report.get("self_eat") is not ate
