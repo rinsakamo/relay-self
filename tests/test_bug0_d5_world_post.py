@@ -14,6 +14,7 @@ def _report():
         "status": "PASS_DEV",
         "classification": "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS",
         "node_exit": 0, "java_exit": 0, "cleanup_done": True,
+        "d4_natural_food_pickup_eat_proven": True,
         "d5_second_experience_completed": False,
         "d5_second_kill_attested": False,
         "d5_self_move_to_loot": False,
@@ -119,6 +120,24 @@ def test_d5_fences_second_action_staleness_and_replay(monkeypatch, field, value)
     report["d5_second_action"][field] = value
     with pytest.raises(post.D5OriginalAuditRejected):
         post.audit("original", report)
+
+
+def test_d5_genuine_zero_loot_is_valid_first_outcome(monkeypatch):
+    seen = []
+
+    def d4(_log, report):
+        seen.append(report["classification"])
+        return {"classification": report["classification"]}
+
+    monkeypatch.setattr(post, "audit_d4", d4)
+    report = _report()
+    report["d4_natural_food_pickup_eat_proven"] = False
+    result = post.audit("Paper genuine rotten_count=0", report)
+    assert seen == ["D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"]
+    assert result["first_world_zero_loot_valid"] is True
+    assert result["first_real_food_eaten"] is False
+    assert result["second_intent_attack_proven"] is True
+    assert result["second_experience_cycle_completed"] is False
 
 
 def test_d5_requires_independent_d4_first_cycle(monkeypatch):
