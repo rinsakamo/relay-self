@@ -191,7 +191,7 @@ def audit(log: str, report: dict) -> dict:
         or not isinstance(next_choice, dict)
         or next_choice.get("selected") != "WAIT"
         or next_choice.get("reason") not in (
-            "NOT_HUNGRY", "ONE_EAT_BUDGET_USED",
+            "NOT_HUNGRY", "ONE_EAT_BUDGET_USED", "NO_INVENTORY_FOOD",
         )
         or next_choice.get("seq") != eaten["seq"]
         or report.get("d4_native_pickup_attempt", 999) not in range(1, 13)
