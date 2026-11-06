@@ -65,7 +65,7 @@ async def run(report_path: Path, log_path: Path) -> int:
         "s49_actions": [], "original_action_issuer": "S49",
         "operator_world_staging": [],
         "operator_world_kill": False,
-        "operator_zombie_health_pinned_for_dev": 2.5,
+        "operator_zombie_health_pinned_for_dev": 1.6,
         "operator_staged_no_ai": True,
         "self_goal_selected_autonomously": False,
         "self_attack_principal_attested": False,
@@ -148,7 +148,7 @@ async def run(report_path: Path, log_path: Path) -> int:
             "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ~1.7 ~ ~",
             "data merge entity "
             "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] "
-            "{NoAI:1b,Silent:1b,Health:2.5f}",
+            "{NoAI:1b,Silent:1b,Health:1.6f}",
         )
         for cmd in commands:
             _command(server, cmd)
