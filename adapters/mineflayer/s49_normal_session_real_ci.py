@@ -1014,7 +1014,9 @@ async def qualify(
             if physical_fence_dev is not None:
                 # Seal ONLY a verified original S16 outcome; an interrupted
                 # Action leaves PREPARED/UNKNOWN and blocks a future World.
-                physical_fence_dev.close(receipt, probe)
+                physical_fence_dev.close(
+                    receipt, probe, original_supervisor=executor.supervisor,
+                )
             if eat_cursor is not None:
                 # Diagnostic only: the original S15 cleanup ACK and S16 terminal
                 # cannot establish effective physical STOP or release EAT.
