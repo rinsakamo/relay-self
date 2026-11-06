@@ -620,6 +620,8 @@ async def qualify(
                     )
                     report["c1_journal_restored_before_world"] = False
                 motion_state = journal_dev.state
+                journal_prior_ids = journal_dev.experience_ids
+                report["c1_journal_prior_experiences"] = len(journal_prior_ids)
                 report["c1_journal_source"] = "ORIGINAL_S49_S10_OWNER_ATOMIC_LOCAL_SNAPSHOT"
                 report["c1_journal_before_revision"] = motion_state.revision
             motion_dev = S49C1MotionDevJoin(
@@ -1102,7 +1104,7 @@ async def qualify(
                 "next_consumed_revision": next_c1.owner_revision,
                 "next_l0_action_issued": False,
                 "learned_decision_policy": False,
-                "durable_replay_journal": False,
+                "durable_replay_journal": journal_dev is not None,
                 "independent_source_attestation": False,
             }
             report["learning_in_world"] = terminal_c1.learning is not None
@@ -1173,6 +1175,7 @@ async def qualify(
                         recovered.state != successor_join.retained_motion
                         or recovered.sha256 != journal_dev.sha256
                         or recovered.experience_ids != (
+                            *journal_prior_ids,
                             terminal_c1.experience.experience_id,
                             second_terminal.experience.experience_id,
                         )
@@ -1184,6 +1187,7 @@ async def qualify(
                         "schema": 1, "path": journal_dev.path.name,
                         "sha256": recovered.sha256,
                         "experience_ids": list(recovered.experience_ids),
+                        "prior_experience_count": len(journal_prior_ids),
                         "retained_revision": recovered.state.revision,
                         "retained_value": recovered.state.value,
                         "fresh_restore_equal_to_original_owner": True,
@@ -1220,7 +1224,7 @@ async def qualify(
                     "same_original_action_executor": successor_join.executor is executor,
                     "learned_decision_policy": False,
                     "independently_attested_world_truth": False,
-                    "durable_journal": False,
+                    "durable_journal": journal_dev is not None,
                 }
         if worldbody_active:
             from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
