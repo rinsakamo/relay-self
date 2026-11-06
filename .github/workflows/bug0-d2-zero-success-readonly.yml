@@ -1,0 +1,59 @@
+name: Bug-0 D2 real-zero-drop success raw SHA and Paper tick audit
+on:
+  push:
+    branches:
+      - dev/bug0-d2-zero-success-original-audit-20261106
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exact successful zero-loot D2 World original
+        uses: actions/download-artifact@v4
+        with:
+          name: bug0-d2-zero-drop-safe-new-world
+          repository: rinsakamo/relay-self
+          run-id: 42189838830
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: original-d2-zero
+      - name: Verify SHA256 and print strictly read-only original scope
+        run: |
+          cd original-d2-zero
+          test -f report.json && test -f paper_original.log
+          test -f operator_post_audit.json && test -f SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('.')
+          r=json.loads((p/'report.json').read_text(encoding='utf8'))
+          a=json.loads((p/'operator_post_audit.json').read_text(encoding='utf8'))
+          reportkeys=(
+            'status','stage','classification','real_vanilla_loot_count',
+            'native_before','native_after','native_initial','native_respawn',
+            'paper_initial','paper_respawn_death','paper_loot_death',
+            'paper_item_spawn','paper_item_pickup','paper_respawn',
+            'original_s49_actions','node_exit','java_exit','cleanup_done')
+          auditkeys=(
+            'classification','world_uuid','old_zombie_uuid','new_zombie_uuid',
+            'death_tick','due_tick','respawn_tick','respawn_server_tick_delta',
+            'real_vanilla_rotten_flesh_count','native_inventory_rotten_flesh_delta',
+            'pickup_proven','self_attack_proven','self_eat_proven',
+            'endless_survival_proven','qualification','science')
+          print('D2_ZERO_ORIGINAL_REPORT='+json.dumps(
+            {k:r.get(k) for k in reportkeys},sort_keys=True,ensure_ascii=False))
+          print('D2_ZERO_ORIGINAL_AUDIT='+json.dumps(
+            {k:a.get(k) for k in auditkeys},sort_keys=True,ensure_ascii=False))
+          for i,line in enumerate((p/'paper_original.log').read_text(encoding='utf8').splitlines(),1):
+            if 'RSELF_NATURAL_DROP_' in line or 'RSELF_RESPAWN_' in line:
+              print('D2_ZERO_PAPER_SOURCE_LINE_'+str(i)+'='+line[:1000])
+          assert r['status']=='PASS_DEV'
+          assert r['real_vanilla_loot_count']==0
+          assert r['node_exit']==r['java_exit']==0
+          assert a['real_vanilla_rotten_flesh_count']==0
+          assert a['pickup_proven'] is False
+          assert a['respawn_server_tick_delta']>=600
+          print('D2_ZERO_SOURCE_SHA256_READONLY_PASS WORLD_0 ACTION_0')
+          PY
