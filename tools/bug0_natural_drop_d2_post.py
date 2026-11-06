@@ -39,7 +39,96 @@ class NaturalDropD2Rejected(ValueError):
     pass
 
 
+def _audit_real_zero_loot(log: str, report: dict) -> dict:
+    """Real valid zero drop, independently observed, never counted as pickup."""
+    if (
+        "RSELF_NATURAL_DROP_SPAWN" in log
+        or "RSELF_NATURAL_DROP_PICKUP" in log
+        or "RSELF_NATURAL_DROP_FAULT" in log
+        or "RSELF_RESPAWN_FAULT" in log
+        or "RSELF_NATURAL_DROP_DISABLED_DEFAULT" in log
+    ):
+        raise NaturalDropD2Rejected("zero-drop branch contradicts original Paper")
+    extracted: dict[str, re.Match[str]] = {}
+    for key in ("RESPAWN_DEATH", "DROP_DEATH", "RESPAWN_NEW"):
+        matches = list(SRC[key].finditer(log))
+        if len(matches) != 1:
+            raise NaturalDropD2Rejected("missing/duplicated zero-loot source " + key)
+        extracted[key] = matches[0]
+    death = extracted["RESPAWN_DEATH"].groupdict()
+    loot = extracted["DROP_DEATH"].groupdict()
+    next_generation = extracted["RESPAWN_NEW"].groupdict()
+    if (
+        death["world"] != loot["world"]
+        or death["world"] != next_generation["world"]
+        or death["zombie"] != loot["zombie"]
+        or next_generation["zombie"] == death["zombie"]
+        or int(death["tick"]) != int(loot["tick"])
+        or int(loot["count"]) != 0
+        or int(death["due"]) != int(death["tick"]) + 600
+        or int(next_generation["tick"]) < int(death["due"])
+        or int(death["gen"]) != 1
+        or int(next_generation["gen"]) != 2
+    ):
+        raise NaturalDropD2Rejected("real zero loot death/respawn identity mismatch")
+    before, after = report.get("native_before"), report.get("native_after")
+    initial, reborn = report.get("native_initial"), report.get("native_respawn")
+    if (
+        report.get("status") != "PASS_DEV"
+        or report.get("classification") != "D2_OPERATOR_KILLED_REAL_ZOMBIE_ZERO_LOOT"
+        or report.get("zombie_kill_principal") != "OPERATOR_CONSOLE_ONLY"
+        or report.get("item_origin") != "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
+        or report.get("real_vanilla_loot_count") != 0
+        or report.get("original_s49_actions") != 0
+        or report.get("self_move_issued") is not False
+        or report.get("self_eat_issued") is not False
+        or report.get("self_attack_issued") is not False
+        or report.get("node_exit") != 0 or report.get("java_exit") != 0
+        or not isinstance(before, dict) or not isinstance(after, dict)
+        or not isinstance(initial, dict) or not isinstance(reborn, dict)
+        or not report.get("session_id")
+        or len({
+            report["session_id"], before.get("session_id"), after.get("session_id"),
+            initial.get("session_id"), reborn.get("session_id"),
+        }) != 1
+        or type(before.get("seq")) is not int
+        or type(after.get("seq")) is not int
+        or before["seq"] >= after["seq"]
+        or type(initial.get("seq")) is not int
+        or type(reborn.get("seq")) is not int
+        or initial["seq"] >= reborn["seq"]
+        or initial.get("zombie_entity_id") == reborn.get("zombie_entity_id")
+        or before.get("rotten_flesh") != 0 or after.get("rotten_flesh") != 0
+        or before.get("health", 0) <= 0 or after.get("health", 0) <= 0
+        or report.get("paper_item_spawn") is not None
+        or report.get("paper_item_pickup") is not None
+    ):
+        raise NaturalDropD2Rejected("zero-drop Paper/native scope is incomplete")
+    return {
+        "classification": "D2_REAL_ZERO_VANILLA_ROTTEN_FLESH_WITH_600TICK_RESPAWN_PASS",
+        "world_uuid": death["world"],
+        "old_zombie_uuid": death["zombie"],
+        "new_zombie_uuid": next_generation["zombie"],
+        "death_tick": int(death["tick"]),
+        "due_tick": int(death["due"]),
+        "respawn_tick": int(next_generation["tick"]),
+        "respawn_server_tick_delta":
+            int(next_generation["tick"]) - int(death["tick"]),
+        "real_vanilla_rotten_flesh_count": 0,
+        "native_inventory_rotten_flesh_delta": 0,
+        "operator_killed": True,
+        "pickup_proven": False,
+        "self_attack_proven": False,
+        "self_eat_proven": False,
+        "endless_survival_proven": False,
+        "qualification": "NO_GO",
+        "science": "NOT_RUN",
+    }
+
+
 def audit(log: str, report: dict) -> dict:
+    if report.get("classification") == "D2_OPERATOR_KILLED_REAL_ZOMBIE_ZERO_LOOT":
+        return _audit_real_zero_loot(log, report)
     if (
         "RSELF_NATURAL_DROP_FAULT" in log
         or "RSELF_RESPAWN_FAULT" in log
