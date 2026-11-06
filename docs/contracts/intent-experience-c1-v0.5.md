@@ -1,6 +1,7 @@
 # Unified v0.5 — Contract C1: Intent-outcome experience and understanding pair
 
-> **Status: C1 CONCEPTUAL DIRECTION USER-ADOPTED / DETAIL OWNER REVIEW REQUIRED / NOT IMPLEMENTED.**
+> **Status: C1 ARCHITECTURE_DESIGN_COMPLETE / 2026-11-07 DESIGN FROZEN / FULL OWNER IMPLEMENTATION PENDING.**
+> One assessed attempted-Intent episode produces one experience; [v0.5 freeze handoff](../unified-v0.5-design-freeze-20261107.md). Specific S49→S10 DEV integration in #758/#760/#761 is separate from full C1 qualification.
 > Parent [#717](https://github.com/rinsakamo/relay-self/issues/717); Unified architecture [v0.5](../unified-architecture-v0.5.md); Contract A [Intent and Action](intent-slots-action-authority-v0.5.md); Contract B [three perspectives](persistent-cognition-three-models-v0.5.md).
 > User decision 2026-11-06: **one actually attempted Intent whose result is assessed produces one experience**. Experience does **not** tick every control epoch, occur on every primitive Action, or depend on the 60-second cognition autosave.
 
