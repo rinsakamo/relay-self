@@ -87,6 +87,7 @@ async def run(report_path: Path, log_path: Path) -> int:
         "self_attack_principal_attested": False,
         "self_move_to_loot": False, "self_eat": False,
         "d4_natural_food_pickup_eat_proven": False,
+        "d4_operator_removed_only_nonzombie_entities": True,
         "real_model_calls": 0, "learning_updated": False,
     }
     server = collector = session = temp = None
@@ -164,6 +165,11 @@ async def run(report_path: Path, log_path: Path) -> int:
             "gamerule doMobSpawning false",
             "gamerule doMobLoot true",
             "gamemode survival RelaySelf",
+            # Operator-only DEV arena normalization: remove other World
+            # entities while preserving every zombie, notably the ONE
+            # original Paper-managed target and its 600tick respawn owner.
+            # No source-local loot is added, no player is moved/attacked.
+            "kill @e[type=!minecraft:player,type=!minecraft:zombie]",
             "tag @e[type=minecraft:zombie,limit=1] add RelaySelfAttackTarget",
             "execute at RelaySelf run tp "
             "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ~0.65 ~ ~",
