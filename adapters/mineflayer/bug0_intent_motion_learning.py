@@ -12,6 +12,7 @@ from enum import Enum
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.epoch_continuation import read_retained_preference
 from relay_self.intent import IntentCommitment, IntentEventKind
@@ -59,6 +60,7 @@ class IntentMotionExperience:
     forecast: IntentMotionForecast
     terminal_kind: IntentEventKind
     action_receipts: tuple[NormalActionReceipt, ...]
+    decision_probes: tuple[MineflayerObservation, ...]
     measured_total_m: float | None
     comparison: MotionComparison
     tolerance_m: float
@@ -109,12 +111,19 @@ def close_motion_intent_experience(
     *,
     attempt_id: str,
     tolerance_m: float = 0.05,
+    decision_probes: tuple[MineflayerObservation, ...] | None = None,
 ) -> IntentMotionExperience:
     """Associate original S49 receipts at terminal Intent assessment, NOT per Action.
 
     Only a native observed motion magnitude is compared. S16 OUTCOME itself
     never certifies escape success. UNKNOWN closes without learning feedback.
     No storage operation is performed; callers deduplicate by experience_id.
+
+    Original S49's admission/decision probe and S15's internal before probe
+    are DIFFERENT native observations. The original caller passes the exact
+    decision_probes already held by its owner; NormalActionReceipt.source
+    binds each such probe. A missing argument is only a legacy offline shape
+    where receipt.source identifies consequence.before_observation itself.
     """
     if not isinstance(intent, IntentCommitment) or not isinstance(forecast, IntentMotionForecast):
         raise IntentMotionRejected("typed Intent and pre-result forecast required")
@@ -148,17 +157,40 @@ def close_motion_intent_experience(
     if not isinstance(forecast.source_provenance, Provenance):
         raise IntentMotionRejected("forecast source identity is missing")
 
+    if decision_probes is not None and (
+        type(decision_probes) is not tuple
+        or len(decision_probes) != len(receipts)
+        or not all(isinstance(p, MineflayerObservation) for p in decision_probes)
+    ):
+        raise IntentMotionRejected("one exact S49 decision probe per Action required")
+
     seen_actions: set[str] = set()
+    seen_decisions: set[tuple[int, str]] = set()
     last_after_seq = -1
     measured = 0.0
     complete = True
-    for receipt in receipts:
+    for index, receipt in enumerate(receipts):
         if not isinstance(receipt, NormalActionReceipt):
             raise IntentMotionRejected("requires original typed S49 receipt")
         action = receipt.terminal
         consequence = receipt.consequence
         before = consequence.before_observation
         after = consequence.after_observation
+        # Legacy synthetic tests contain the selected probe as S15 before.
+        # Live S49 MUST supply decision_probes because S15 re-observes.
+        selected = before if decision_probes is None else decision_probes[index]
+        if not isinstance(selected, MineflayerObservation):
+            raise IntentMotionRejected("original S49 decision probe missing")
+        if (
+            selected.kind != "probe"
+            or not selected.request_id
+            or selected.session_id != forecast.session_id
+            or selected.provenance.source != "mineflayer"
+            or receipt.source != selected.provenance
+            or (selected.seq, selected.request_id) in seen_decisions
+            or selected.seq <= last_after_seq
+        ):
+            raise IntentMotionRejected("decision source missing, replayed or foreign")
         if (
             action.action_id in seen_actions
             or action.intent_id != forecast.intent_id
@@ -168,14 +200,17 @@ def close_motion_intent_experience(
             or before.session_id != forecast.session_id
             or before.kind != "probe"
             or before.provenance.source != "mineflayer"
-            or receipt.source != before.provenance
-            or before.seq <= last_after_seq
-            or before.seq < forecast.source_probe_seq
+            or consequence.action_ref != "MOVE_BACKWARD"
+            or before.seq < selected.seq
+            or (decision_probes is not None and (
+                before.seq <= selected.seq
+                or before.provenance == selected.provenance
+            ))
         ):
             raise IntentMotionRejected("S49 original Intent/native source mismatch")
         if not seen_actions and (
-            before.seq != forecast.source_probe_seq
-            or before.provenance != forecast.source_provenance
+            selected.seq != forecast.source_probe_seq
+            or selected.provenance != forecast.source_provenance
         ):
             raise IntentMotionRejected("forecast is not bound to pre-Action native source")
         if (
@@ -196,6 +231,7 @@ def close_motion_intent_experience(
         else:
             measured += consequence.movement_distance
         seen_actions.add(action.action_id)
+        seen_decisions.add((selected.seq, selected.request_id))
         last_after_seq = after.seq
 
     if not complete:
@@ -214,6 +250,9 @@ def close_motion_intent_experience(
         forecast=forecast,
         terminal_kind=terminal.kind,
         action_receipts=receipts,
+        decision_probes=tuple(
+            r.consequence.before_observation for r in receipts
+        ) if decision_probes is None else decision_probes,
         measured_total_m=actual,
         comparison=comparison,
         tolerance_m=float(tolerance_m),
