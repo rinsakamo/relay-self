@@ -319,3 +319,91 @@ def test_restart_with_pending_physical_action_blocks_before_world_provision(
     assert OriginalS49PhysicalFence.restore(
         path, self_id="s49-original-self",
     ).unresolved
+
+
+
+def test_crash_after_s16_seal_before_c1_commit_blocks_new_world(
+    monkeypatch, tmp_path,
+):
+    import asyncio
+
+    _, executor, _, step, selected, receipt, auth, p = _joined_original_owner()
+    # The actual original Self ID is used by the runner across BOTH files.
+    physical_path = tmp_path / "c1_physical_action_fence.json"
+    fence = OriginalS49PhysicalFence.create(
+        physical_path, self_id="s49-original-self",
+    )
+    fence.prepare(
+        session_id=selected.session_id, intent_id="escape-threat",
+        action_id=step.action_request_id, probe=selected,
+    )
+    owner, actual_executor, _, step, selected, receipt, auth, p = (
+        _joined_original_owner()
+    )
+    _, receipt = _record_synthetic_original_terminal(
+        owner, actual_executor, step, selected, receipt, auth, p,
+    )
+    fence.close(
+        _real_s15_cleanup_identity(receipt), selected,
+        original_supervisor=actual_executor.supervisor,
+    )
+    # Simulate a crash BEFORE C1 terminal experience was durably committed.
+    assert not (tmp_path / "c1_motion_journal.json").exists()
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_UNIFIED_C1_TWO_INTENTS_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_C1_JOURNAL_DEV_ONLY", "1")
+    monkeypatch.setenv("S49_C1_PHYSICAL_FENCE_DEV_ONLY", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report_path = tmp_path / "cross-file-blocked.json"
+    rc = asyncio.run(qualify(
+        report_path, tmp_path / "never-created-server.log",
+        unified_c1_dev=True, unified_c1_two_intents_dev=True,
+        unified_c1_journal_dev=True, unified_c1_physical_fence_dev=True,
+    ))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert rc == 2 and report["status"] == "BLOCKED"
+    assert report["stage"] == "START"
+    assert report["physical_fence_c1_lineage_mismatch_before_world"] is True
+    assert "STOP before World" in report["error"]
+    assert report["actual_native_actions"] == []
+    assert not (tmp_path / "c1_motion_journal.json").exists()
+
+
+def test_completed_c1_and_physical_fence_can_reconcile_after_restart(tmp_path):
+    from relay_self.c1_motion_journal import C1MotionJournal
+
+    owner, executor, _, step, selected, receipt, auth, p = _joined_original_owner()
+    journal_path = tmp_path / "c1_motion_journal.json"
+    physical_path = tmp_path / "c1_physical_action_fence.json"
+    journal = C1MotionJournal.create(
+        journal_path, self_id=owner.self_id, seed=owner.retained_motion,
+    )
+    owner.journal = journal
+    fence = OriginalS49PhysicalFence.create(
+        physical_path, self_id=owner.self_id,
+    )
+    fence.prepare(
+        session_id=selected.session_id, intent_id="escape-threat",
+        action_id=step.action_request_id, probe=selected,
+    )
+    _, receipt = _record_synthetic_original_terminal(
+        owner, executor, step, selected, receipt, auth, p,
+    )
+    fence.close(
+        _real_s15_cleanup_identity(receipt), selected,
+        original_supervisor=executor.supervisor,
+    )
+    owner.close_original_intent()
+    restored_fence = OriginalS49PhysicalFence.restore(
+        physical_path, self_id=owner.self_id,
+    )
+    restored_c1 = C1MotionJournal.restore(
+        journal_path, self_id=owner.self_id,
+    )
+    restored_fence.require_clear()
+    assert tuple(
+        (a["session_id"], a["action_id"])
+        for a in restored_fence.actions
+    ) == restored_c1.original_action_keys
+    assert restored_c1.state.revision == 1
