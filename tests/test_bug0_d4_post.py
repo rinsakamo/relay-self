@@ -3,13 +3,9 @@ from copy import deepcopy
 
 import pytest
 
-from test_bug0_s49_combat_d3_post import (
-    LOG as D3_LOG,
-    MOB,
-    PLAYER,
-    REPORT as D3_REPORT,
-    WORLD,
-)
+from test_bug0_s49_combat_d3_post import LOG as D3_LOG
+from test_bug0_s49_combat_d3_post import MOB, PLAYER, WORLD
+from test_bug0_s49_combat_d3_post import REPORT as D3_REPORT
 from tools.bug0_d4_post import D4NaturalEatRejected, audit
 
 ITEM = "55555555-5555-4555-8555-555555555555"

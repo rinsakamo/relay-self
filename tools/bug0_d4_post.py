@@ -10,7 +10,8 @@ import json
 from pathlib import Path
 
 from tools.bug0_natural_drop_d2_post import SRC
-from tools.bug0_s49_combat_d3_post import D3CombatAuditRejected, audit as audit_combat
+from tools.bug0_s49_combat_d3_post import D3CombatAuditRejected
+from tools.bug0_s49_combat_d3_post import audit as audit_combat
 
 
 class D4NaturalEatRejected(ValueError):

@@ -33,9 +33,9 @@ from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_121
 from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
-from tools.bug0_natural_drop_d2_world import CONFIG, RESPAWN_JAR, WITNESS_JAR
-from tools.bug0_pickup_d1_world import _artifact, _original_marker, _inventory
 from tools.bug0_d4_natural_loot_eat import run_natural_loot_eat
+from tools.bug0_natural_drop_d2_world import CONFIG, RESPAWN_JAR, WITNESS_JAR
+from tools.bug0_pickup_d1_world import _artifact, _inventory, _original_marker
 from tools.bug0_zombie_respawn_r1_world import _native_probe
 
 
