@@ -64,6 +64,10 @@ def audit(log: str, report: dict) -> dict:
             for cmd in report["operator_world_staging"]
         )
         or report.get("d4_operator_hunger_induced_for_dev") is not True
+        or report.get("operator_world_staging", []).count(
+            "effect give RelaySelf minecraft:hunger 70 20 true"
+        ) != 1
+        or report.get("d4_precombat_hunger_qualified") is not True
         or report.get("self_goal_selected_autonomously") is not False
         or report.get("self_eat") is not ate
         or report.get("java_exit") != 0 or report.get("node_exit") != 0
@@ -100,6 +104,40 @@ def audit(log: str, report: dict) -> dict:
     before = _native(report.get("d4_baseline_inventory"), session_id=sid, desc="baseline")
     if before["rotten_flesh"] != 0:
         raise D4NaturalEatRejected("natural food came from preexisting inventory")
+    hunger = report.get("d4_precombat_hunger_last")
+    history = report.get("d4_precombat_hunger_probes")
+    first_attack = report["s49_actions"][0]
+    if (
+        not isinstance(hunger, dict)
+        or hunger.get("session_id") != sid
+        or not hunger.get("request_id")
+        or type(hunger.get("seq")) is not int
+        or type(hunger.get("food")) not in (int, float)
+        or not 0 < hunger["food"] < 14
+        or not before["seq"] < hunger["seq"] < first_attack["previous_seq"]
+        or not isinstance(history, list)
+        or not 1 <= len(history) <= 80
+        or history[-1].get("seq") != hunger["seq"]
+        or history[-1].get("request_id") != hunger["request_id"]
+        or history[-1].get("food") != hunger["food"]
+        or any(
+            not isinstance(sample, dict)
+            or not sample.get("source")
+            or type(sample.get("seq")) is not int
+            or type(sample.get("food")) not in (int, float)
+            or type(sample.get("health")) not in (int, float)
+            or sample["health"] <= 15
+            for sample in history
+        )
+        or any(
+            later["seq"] <= earlier["seq"]
+            or later["request_id"] == earlier["request_id"]
+            for earlier, later in zip(history, history[1:])
+        )
+    ):
+        raise D4NaturalEatRejected(
+            "operator-induced hunger did not yield a fresh native precombat qualification"
+        )
     if not ate:
         after = _native(report.get("d4_native_after_zero"), session_id=sid, desc="zero")
         if (

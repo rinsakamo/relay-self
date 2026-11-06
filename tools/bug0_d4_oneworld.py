@@ -20,6 +20,7 @@ from adapters.mineflayer.normal_action import (
     NormalAttackingAuthorization,
     NormalSessionActionExecutor,
 )
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
     _correlated_observe,
@@ -31,6 +32,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
 from relay_self.action import ActionState
+from relay_self.eat_hunger import EatCursor
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from tools.bug0_d4_natural_loot_eat import run_natural_loot_eat
@@ -72,6 +74,29 @@ def _target(probe, entity_id=None):
     ):
         raise S49D3Rejected("one complete original native melee zombie is required")
     return nearby[0]
+
+
+def qualified_native_precombat_hunger(
+    observation: MineflayerObservation, session_id: str,
+) -> bool:
+    """Read-only DEV gate before the original S49 combat; never issue EAT.
+
+    The operator uses vanilla Hunger; this predicate does not mutate food
+    or weaken the original S46/S49 appetite threshold. The zombie is still
+    alive and threatening here, so this is deliberately not an EAT grant.
+    """
+    if (
+        not isinstance(observation, MineflayerObservation)
+        or observation.kind != "probe"
+        or not observation.request_id
+        or observation.session_id != session_id
+        or observation.provenance.source != "mineflayer"
+        or observation.snapshot.health <= 15
+        or observation.snapshot.oxygen_level == 0
+        or observation.snapshot.nearby_entities_coverage.truncated
+    ):
+        raise S49D3Rejected("precombat hunger requires viable original native source")
+    return 0 < observation.snapshot.food < EatCursor(session_id).threshold
 
 
 async def run(report_path: Path, log_path: Path) -> int:
@@ -176,13 +201,48 @@ async def run(report_path: Path, log_path: Path) -> int:
             "data merge entity "
             "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] "
             "{NoAI:1b,Silent:1b,Health:1.6f}",
-            "effect give RelaySelf minecraft:hunger 25 20 true",
+            "effect give RelaySelf minecraft:hunger 70 20 true",
         )
         for cmd in commands:
             _command(server, cmd)
         report["operator_world_staging"] = list(commands)
         await server.stdin.drain()
         await asyncio.sleep(0.8)
+
+        # The earlier D4 original World showed food 20 -> 14 while L0
+        # correctly refused to EAT (threshold 14 is exclusive). Do not
+        # change L0, fabricate inventory, alter WorldBody coefficients or
+        # extend combat across the 600tick next-zombie spawn. Qualify the
+        # vanilla operator-induced hunger *before* the first strike, when
+        # there is no World-side respawn countdown yet.
+        report["stage"] = "OPERATOR_DEV_PRECOMBAT_NATIVE_HUNGER_WINDOW"
+        report["d4_precombat_hunger_probes"] = []
+        report["d4_precombat_hunger_qualified"] = False
+        for attempt in range(1, 81):
+            source = await _correlated_observe(
+                session, f"d4-precombat-native-hunger-{attempt:02d}",
+            )
+            report["d4_precombat_hunger_probes"].append({
+                "request_id": source.request_id,
+                "seq": source.seq,
+                "food": source.snapshot.food,
+                "health": source.snapshot.health,
+                "source": source.provenance.reference,
+            })
+            if qualified_native_precombat_hunger(source, sid):
+                report["d4_precombat_hunger_qualified"] = True
+                report["d4_precombat_hunger_last"] = {
+                    "seq": source.seq,
+                    "food": source.snapshot.food,
+                    "session_id": source.session_id,
+                    "request_id": source.request_id,
+                }
+                break
+            await asyncio.sleep(0.55)
+        if not report["d4_precombat_hunger_qualified"]:
+            raise S49D3Rejected(
+                "DEV native hunger never crossed original S49 EAT threshold"
+            )
 
         report["stage"] = "ORIGINAL_S49_BOUNDED_NATIVE_ATTACKS"
         target_id = None
