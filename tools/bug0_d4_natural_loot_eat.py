@@ -256,7 +256,7 @@ async def run_natural_loot_eat(
         or not (
             next_decision.selected == "WAIT"
             and next_decision.reason in (
-                "NOT_HUNGRY", "ONE_EAT_BUDGET_USED",
+                "NOT_HUNGRY", "ONE_EAT_BUDGET_USED", "NO_INVENTORY_FOOD",
             )
         )
         or owner.supervisor.open_actions
