@@ -10,10 +10,7 @@ import json
 import math
 from pathlib import Path
 
-from adapters.mineflayer.d7_live_staged_stop import (
-    CONTROL_KEYS,
-    D7LiveStopRejected,
-)
+from adapters.mineflayer.d7_live_staged_stop import CONTROL_KEYS
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d6_multigen_post import require_vanilla_paper_loot
