@@ -5,7 +5,7 @@ on:
       - dev/unified-v05-d7c2-multigen-pickup-observation-20261107
     types: [synchronize]
     paths:
-      - docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md
+      - docs/unified-v05-d7d-staged-stop-pr-r2-trigger-20261107.md
 
 permissions:
   contents: read
@@ -43,12 +43,12 @@ jobs:
           python-version: '3.12'
       - name: Strict one-time trigger and independent preworld negatives
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md"
-          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d6-staged-item-oneworld-once-20261107"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7d-staged-stop-pr-r2-trigger-20261107.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d7d-staged-stop-oneworld-pr-r2-once-20261107"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md').read_text()
+          p=Path('docs/unified-v05-d7d-staged-stop-pr-r2-trigger-20261107.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE WORLD D7D STAGED REAL ITEM S49 MOVE PICKUP S50 PAPER STOP SENSOR NO EAT' in p
