@@ -32,6 +32,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
 from relay_self.action import ActionState
+from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.eat_hunger import EatCursor
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
@@ -40,6 +41,7 @@ from relay_self.s49_nonmotion_physical_fence import (
     OriginalS49NonMotionFence,
 )
 from tools.bug0_d4_natural_loot_eat import run_natural_loot_eat
+from tools.bug0_d6_staged_move_world import preflight_move_fence
 from tools.bug0_natural_drop_d2_world import CONFIG, RESPAWN_JAR, WITNESS_JAR
 from tools.bug0_pickup_d1_world import _artifact, _inventory, _original_marker
 from tools.bug0_zombie_respawn_r1_world import _native_probe
@@ -130,6 +132,8 @@ def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotion
 async def run(
     report_path: Path, log_path: Path, *, post_respawn_dev=None,
     nonmotion_fence_path: Path | None = None,
+    post_death_loot_move_dev=None,
+    motion_fence_path: Path | None = None,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -148,6 +152,7 @@ async def run(
     }
     server = collector = session = temp = None
     nonmotion_fence = None
+    motion_fence = None
     rc = 2
     try:
         if (
@@ -156,6 +161,19 @@ async def run(
             or os.environ.get("NODE_OPTIONS")
         ):
             raise S49D3Rejected("exclusive source-bound S49 D3 World approval absent")
+        if post_death_loot_move_dev is not None:
+            if (
+                os.environ.get("D6_NATURAL_DROP_MOVE_WORLD_ONLY") != "1"
+                or not callable(post_death_loot_move_dev)
+                or nonmotion_fence_path is None
+                or motion_fence_path is None
+                or motion_fence_path.parent.resolve()
+                != report_path.parent.resolve()
+                or len({report_path, log_path, nonmotion_fence_path, motion_fence_path}) != 4
+            ):
+                raise S49D3Rejected("D6 natural-drop original S49 dual-fence grant absent")
+        elif motion_fence_path is not None:
+            raise S49D3Rejected("unscoped physical MOVE fence rejected")
         if nonmotion_fence_path is not None:
             if (
                 os.environ.get("S49_D5_NONMOTION_FENCE_DEV_ONLY") != "1"
@@ -175,6 +193,13 @@ async def run(
                 "restored_existing_empty": restored,
                 "prior_actions": len(nonmotion_fence.actions),
                 "filename": nonmotion_fence_path.name,
+            }
+        if motion_fence_path is not None:
+            motion_fence = preflight_move_fence(motion_fence_path)
+            report["motion_fence_preflight"] = {
+                "checked_before_world": True,
+                "prior_actions": len(motion_fence.actions),
+                "filename": motion_fence_path.name,
             }
         paper = _artifact(
             "BUG0_D4_PAPER_JAR", sha=PAPER_1218_SHA256, size=PAPER_1218_SIZE,
@@ -211,7 +236,9 @@ async def run(
         )
         report["real_world_started"] = True
         report["stage"] = "AUTHENTIC_MINEFLAYER_SESSION"
-        session = await _new_session()
+        session = await _new_session(
+            w4_native_orientation_dev=post_death_loot_move_dev is not None,
+        )
         sid = session.started.session_id
         report["session_id"] = sid
         await _original_marker(log_path, "RSELF_RESPAWN_READY", budget=12)
@@ -251,14 +278,32 @@ async def run(
             "{NoAI:1b,Silent:1b,Health:1.6f}",
             "effect give RelaySelf minecraft:hunger 70 20 true",
         )
+        if post_death_loot_move_dev is not None:
+            # DEV operator only positions the same managed zombie 2.2m
+            # behind Self's actual server yaw. Self's MOVE still comes from
+            # W4 native yaw and item geometry AFTER genuine zombie death.
+            # No hunger intervention: post-MOVE EAT remains forbidden.
+            basic_commands = tuple(
+                command.replace(
+                    "execute at RelaySelf run tp "
+                    "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ~0.65 ~ ~",
+                    "execute as RelaySelf at @s run tp "
+                    "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ^ ^ ^-2.2",
+                )
+                for command in basic_commands
+                if not command.startswith("effect give RelaySelf minecraft:hunger")
+            )
+            report["d6_operator_zombie_staged_behind_m"] = 2.2
+            report["d6_native_orientation_optin"] = True
+            report["d6_no_hunger_intervention"] = True
         # Operator cleanup must never remove the Paper-owned zombie. For
-        # D5 only, defer nonzombie cleanup until just before the first S49
+        # D5 and D6, defer nonzombie cleanup until just before the first S49
         # admission: R2 observed two native nearby entities despite the
         # older early cleanup, with no ATTACK issued. Suppress mob drops
         # from this fixture-only cleanup; restore real mob loot for the
         # later actual zombie death.
         nonzombie_clear = "kill @e[type=!minecraft:player,type=!minecraft:zombie]"
-        if post_respawn_dev is None:
+        if post_respawn_dev is None and post_death_loot_move_dev is None:
             before_hunger = basic_commands[:3] + (nonzombie_clear,) + basic_commands[3:]
             after_hunger = ()
         else:
@@ -283,32 +328,36 @@ async def run(
         report["stage"] = "OPERATOR_DEV_PRECOMBAT_NATIVE_HUNGER_WINDOW"
         report["d4_precombat_hunger_probes"] = []
         report["d4_precombat_hunger_qualified"] = False
-        for attempt in range(1, 81):
-            source = await _correlated_observe(
-                session, f"d4-precombat-native-hunger-{attempt:02d}",
-            )
-            report["d4_precombat_hunger_probes"].append({
-                "request_id": source.request_id,
-                "seq": source.seq,
-                "food": source.snapshot.food,
-                "health": source.snapshot.health,
-                "source": source.provenance.reference,
-            })
-            if qualified_native_precombat_hunger(source, sid):
-                report["d4_precombat_hunger_qualified"] = True
-                report["d4_precombat_hunger_last"] = {
+        if post_death_loot_move_dev is None:
+            for attempt in range(1, 81):
+                source = await _correlated_observe(
+                    session, f"d4-precombat-native-hunger-{attempt:02d}",
+                )
+                report["d4_precombat_hunger_probes"].append({
+                    "request_id": source.request_id,
                     "seq": source.seq,
                     "food": source.snapshot.food,
-                    "session_id": source.session_id,
-                    "request_id": source.request_id,
-                }
-                break
-            await asyncio.sleep(0.55)
-        if not report["d4_precombat_hunger_qualified"]:
-            raise S49D3Rejected(
-                "DEV native hunger never crossed original S49 EAT threshold"
-            )
-
+                    "health": source.snapshot.health,
+                    "source": source.provenance.reference,
+                })
+                if qualified_native_precombat_hunger(source, sid):
+                    report["d4_precombat_hunger_qualified"] = True
+                    report["d4_precombat_hunger_last"] = {
+                        "seq": source.seq,
+                        "food": source.snapshot.food,
+                        "session_id": source.session_id,
+                        "request_id": source.request_id,
+                    }
+                    break
+                await asyncio.sleep(0.55)
+            if not report["d4_precombat_hunger_qualified"]:
+                raise S49D3Rejected(
+                    "DEV native hunger never crossed original S49 EAT threshold"
+                )
+    
+        else:
+            report["d6_native_hunger_not_required_no_eat"] = True
+            report["d4_precombat_hunger_qualified"] = False
         if after_hunger:
             report["stage"] = "D5_DEV_LATE_NONZOMBIE_WORLD_CLEANUP"
             for cmd in after_hunger:
@@ -450,6 +499,7 @@ async def run(
             baseline=d4_baseline,
             natural_count=report["real_rotten_flesh_count"],
             physical_fence=nonmotion_fence,
+            natural_loot_move_dev=post_death_loot_move_dev,
         )
         report["self_eat"] = d4_eaten
         report["d4_natural_food_pickup_eat_proven"] = d4_eaten
@@ -465,18 +515,38 @@ async def run(
             == report["native_respawn"]["zombie_entity_id"]
             or owner.supervisor.open_actions
             or owner._attack_count != report["attack_count"]
-            or owner._count != owner._attack_count + int(d4_eaten)
+            or owner._count != (
+                owner._attack_count + int(d4_eaten)
+                + len(report.get("d6_original_s49_move_actions", ()))
+            )
         ):
             raise S49D3Rejected("same original S49 ATTACK/EAT owner or new World generation invalid")
         report["d4_final_action_count"] = owner._count
         report["d4_final_supervisor_open_count"] = len(owner.supervisor.open_actions)
         report["stage"] = "D4_WORLD_SOURCE_CLOSED"
         report["status"] = "PASS_DEV"
-        report["classification"] = (
-            "D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS"
-            if d4_eaten
-            else "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
-        )
+        if post_death_loot_move_dev is not None:
+            if d4_eaten or report["self_eat"]:
+                raise S49D3Rejected("D6 post-MOVE EAT is forbidden")
+            report["self_move_to_loot"] = bool(report.get("d6_original_s49_move_actions"))
+            if report["real_rotten_flesh_count"] > 0:
+                if (
+                    not report["self_move_to_loot"]
+                    or not report.get("d4_self_move_for_item")
+                    or report.get("d4_pickup_passive")
+                ):
+                    raise S49D3Rejected("genuine natural loot not collected by Self MOVE")
+                report["classification"] = (
+                    "D6_NATURAL_DROP_ORIGINAL_S49_ATTACK_MOVE_PICKUP_PASS"
+                )
+            else:
+                report["classification"] = "D6_NATURAL_ZERO_LOOT_NO_MOVE"
+        else:
+            report["classification"] = (
+                "D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS"
+                if d4_eaten
+                else "D4_GENUINE_ZERO_LOOT_NO_EAT_RESPAWN_PASS"
+            )
         if post_respawn_dev is not None:
             # Optional D5 child only. D4's original no-hook entrypoint and
             # source/eat evidence remain unchanged and reusable by audit.
@@ -552,6 +622,31 @@ async def run(
                 )
                 report["status"] = "FAIL"
                 report["classification"] = "D5_NONMOTION_FENCE_UNQUALIFIED"
+                rc = 2
+        if motion_fence_path is not None:
+            try:
+                original_motion = OriginalS49PhysicalFence.restore(
+                    motion_fence_path, self_id="s49-original-self",
+                )
+                report["motion_fence"] = {
+                    "sha256": original_motion.sha256,
+                    "unresolved": original_motion.unresolved,
+                    "action_ids": [x["action_id"] for x in original_motion.actions],
+                    "statuses": [x["status"] for x in original_motion.actions],
+                    "physical_exactly_once_attested": False,
+                }
+                if report["status"] == "PASS_DEV":
+                    original_motion.require_clear()
+                    if len(original_motion.actions) != len(
+                        report.get("d6_original_s49_move_actions", ())
+                    ):
+                        raise S49D3Rejected("original C1 physical MOVE count disagrees")
+            except Exception as exc:
+                report["motion_fence_readback_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+                report["status"] = "FAIL"
+                report["classification"] = "D6_NATURAL_MOVE_FENCE_UNQUALIFIED"
                 rc = 2
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
