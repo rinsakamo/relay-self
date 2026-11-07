@@ -43,6 +43,7 @@ async def run_natural_loot_eat(
     baseline: Any,
     natural_count: int,
     physical_fence: OriginalS49NonMotionFence | None = None,
+    natural_loot_move_dev=None,
 ) -> bool:
     """Return whether genuine natural meat was EATen; never synthesize loot.
 
@@ -88,6 +89,24 @@ async def run_natural_loot_eat(
     report["d4_paper_item_spawn"] = await _original_marker(
         log_path, "RSELF_NATURAL_DROP_SPAWN world=", budget=7,
     )
+    if natural_loot_move_dev is not None:
+        if (
+            not callable(natural_loot_move_dev)
+            or physical_fence is None
+            or owner.supervisor.open_actions
+        ):
+            raise NaturalD4Rejected("D6 physical natural loot source/owner absent")
+        # The callback consumes only fresh native item geometry. It may
+        # execute the SAME existing S49's bounded MOVE via C1 journal.
+        # Unlike D4, pickup must occur AFTER at least one original MOVE.
+        report["d4_stage"] = "D6_NATURAL_ITEM_NATIVE_S49_MOVE"
+        await natural_loot_move_dev(session, owner, report, log_path)
+        if (
+            not report.get("d6_original_s49_move_actions")
+            or owner.supervisor.open_actions
+            or not owner._post_move_settling_unqualified
+        ):
+            raise NaturalD4Rejected("no original S49 native source MOVE before pickup")
     report["d4_paper_item_pickup"] = await _original_marker(
         log_path, "RSELF_NATURAL_DROP_PICKUP world=", budget=12,
     )
@@ -113,7 +132,15 @@ async def run_natural_loot_eat(
         raise NaturalD4Rejected(
             "Paper pickup did not produce exact authentic native inventory gain"
         )
-    report["d4_pickup_passive"] = True
+    report["d4_pickup_passive"] = natural_loot_move_dev is None
+    if natural_loot_move_dev is not None:
+        report["d4_self_move_for_item"] = True
+        # A real pickup after MOVE does not establish tick-aligned physical
+        # STOP or authorize EAT. Leave S49 post-move fence untouched.
+        report["d4_stage"] = "D6_NATURAL_MEAT_SELF_MOVED_PICKED_EAT_BLOCKED"
+        report["d4_eat_terminal"] = "NOT_ISSUED_AFTER_MOVE"
+        report["d4_self_eat_issued"] = False
+        return False
 
     # DEV-only operator hunger stimulus was applied before combat; do not
     # conflate that environmental intervention with a Self-discovered Goal.
