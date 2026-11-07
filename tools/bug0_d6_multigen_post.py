@@ -47,6 +47,37 @@ def require_vanilla_paper_loot(raw: str) -> None:
         raise MultigenAuditRejected("Paper vanilla World loot rule never attested")
 
 
+def require_vanilla_zero_xp_cleanup(
+    epochs: list[dict], xp_cleanups: list[dict],
+) -> None:
+    """Pure audit: only residual XP after real zero, never meat or World law."""
+    expected_cmd = (
+        "execute at RelaySelf run kill "
+        "@e[type=minecraft:experience_orb,distance=..8]"
+    )
+    if (
+        not isinstance(epochs, list)
+        or not isinstance(xp_cleanups, list)
+        or len(xp_cleanups) != len(epochs)-1
+        or any(
+            not isinstance(row, dict)
+            or not isinstance(epochs[index-2], dict)
+            or row.get("generation") != index
+            or row.get("after_real_zero_generation") != index - 1
+            or row.get("command") != expected_cmd
+            or row.get("only_experience_orbs") is not True
+            or row.get("all_item_entities_untouched") is not True
+            or row.get("world_loot_rule_unchanged") is not True
+            or row.get("operator_dev_intervention") is not True
+            or epochs[index-2].get("real_rotten_count") != 0
+            for index, row in enumerate(xp_cleanups, 2)
+        )
+    ):
+        raise MultigenAuditRejected(
+            "vanilla zero followup XP-only cleanup is not source-scoped"
+        )
+
+
 def audit(
     original_log: str, report: dict, *, nonmotion_path: Path,
     motion_path: Path,
@@ -132,28 +163,7 @@ def audit(
     # It does not attest autonomous mob selection or WorldBody learning.
     xp_cleanups = report.get("d6_multigen_operator_xp_only_cleanup", [])
     if not operator_forced_zero:
-        expected_cmd = (
-            "execute at RelaySelf run kill "
-            "@e[type=minecraft:experience_orb,distance=..8]"
-        )
-        if (
-            not isinstance(xp_cleanups, list)
-            or len(xp_cleanups) != len(epochs)-1
-            or any(
-                row.get("generation") != index
-                or row.get("after_real_zero_generation") != index - 1
-                or row.get("command") != expected_cmd
-                or row.get("only_experience_orbs") is not True
-                or row.get("all_item_entities_untouched") is not True
-                or row.get("world_loot_rule_unchanged") is not True
-                or row.get("operator_dev_intervention") is not True
-                or epochs[index-2].get("real_rotten_count") != 0
-                for index, row in enumerate(xp_cleanups, 2)
-            )
-        ):
-            raise MultigenAuditRejected(
-                "vanilla zero followup XP-only cleanup is not source-scoped"
-            )
+        require_vanilla_zero_xp_cleanup(epochs, xp_cleanups)
     nonmotion = OriginalS49NonMotionFence.restore(
         nonmotion_path, self_id="s49-original-self",
     )
