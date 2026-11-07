@@ -1,0 +1,31 @@
+name: Unified v0.5 D5+C1 cross-lane owner smoke OFFLINE
+on:
+  push:
+    branches:
+      - dev/unified-v05-d5-c1-owner-integration-20261107
+
+permissions:
+  contents: read
+
+jobs:
+  owner-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Exact owner smoke, typed sources and replay negatives
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check tests/test_unified_d5_c1_owner_integration.py adapters/mineflayer/normal_action.py
+          python -m pytest -x -q tests/test_unified_d5_c1_owner_integration.py
+          echo 'D5_C1_SHARED_S49_OWNER_OFFLINE_SMOKE_PASS / NO_WORLD_OR_ACTION'
