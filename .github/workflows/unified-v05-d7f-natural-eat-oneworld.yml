@@ -5,7 +5,7 @@ on:
       - dev/unified-v05-d7e-live-stop-eat-20261107
     types: [synchronize]
     paths:
-      - docs/unified-v05-d7f-r2-real-natural-trigger-20261107.md
+      - docs/unified-v05-d7f-r3-real-natural-trigger-20261108.md
 
 permissions:
   contents: read
@@ -44,12 +44,12 @@ jobs:
           python-version: '3.12'
       - name: Strict one-time trigger and independent preworld negatives
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7f-r2-real-natural-trigger-20261107.md"
-          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d7f-r2-real-natural-world-once-20261107"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7f-r3-real-natural-trigger-20261108.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d7f-r3-real-natural-world-once-20261108"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-v05-d7f-r2-real-natural-trigger-20261107.md').read_text()
+          p=Path('docs/unified-v05-d7f-r3-real-natural-trigger-20261108.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE VANILLA WORLD D7F ORIGINAL NATURAL S49 ATTACK MOVE LIVE STOP S51 EAT' in p
