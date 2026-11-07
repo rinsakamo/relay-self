@@ -76,6 +76,7 @@ def audit(
         or report.get("self_eat") is not False
         or report.get("original_action_issuer") != "S49"
         or report.get("operator_staged_no_ai") is not True
+        or report.get("operator_zombie_health_pinned_for_dev") != 0.8
         or report.get("d6_operator_zombie_staged_behind_m") != 2.2
         or report.get("d6_native_orientation_optin") is not True
         or report.get("d6_no_hunger_intervention") is not True
