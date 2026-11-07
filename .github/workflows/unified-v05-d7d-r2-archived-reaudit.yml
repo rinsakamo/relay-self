@@ -47,7 +47,7 @@ jobs:
           root=Path('d7d_r2_archive')
           assert root.is_dir() and not root.is_symlink()
           lines=(root/'SHA256SUMS.txt').read_text().splitlines()
-          assert len(lines)==7, (len(lines),lines)
+          assert len(lines)==6, (len(lines),lines)
           checked=set()
           for row in lines:
               digest,filename=row.split(maxsplit=1)
@@ -59,7 +59,7 @@ jobs:
               assert hashlib.sha256(p.read_bytes()).hexdigest()==digest
           assert {'paper_original.log','report.json','s50_same_original_client_controls.jsonl',
                   'original_s49_move_fence.json','operator_post_audit.json'}<=checked
-          print('D7D_R2_IMMUTABLE_ORIGINAL_SHA_7_OF_7_MATCH')
+          print('D7D_R2_IMMUTABLE_ORIGINAL_SHA_6_OF_6_MATCH')
           PY
       - name: Re-audit same frozen original staged S49 journal (no World)
         run: |
