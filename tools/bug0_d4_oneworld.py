@@ -319,6 +319,11 @@ async def run(
                     and d7_native_controls_path is not None
                     and os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") == "1"
                     else ""
+                ) + (
+                    "d7f-managed-world-witness: true\n"
+                    if name == "RelayZombieDropWitnessDev"
+                    and d7f_natural_eat_dev is not None
+                    else ""
                 ), encoding="utf8",
             )
 
