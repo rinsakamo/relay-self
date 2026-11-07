@@ -141,6 +141,18 @@ async def continue_after_first_respawn(
         "original_move_action_ids": [
             x["action_id"] for x in report.get("d6_original_s49_move_actions", ())
         ],
+        "item_uuid": (
+            _uuid(report["d4_paper_item_spawn"], "item")
+            if first_rotten > 0 else None
+        ),
+        "item_spawn_tick": (
+            _tick(report["d4_paper_item_spawn"])
+            if first_rotten > 0 else None
+        ),
+        "item_pickup_tick": (
+            _tick(report["d4_paper_item_pickup"])
+            if first_rotten > 0 else None
+        ),
         "respawn_tick": _tick(report["paper_respawn"]),
     }]
     report["d6_multigen_generations"] = generations
