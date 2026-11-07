@@ -58,7 +58,10 @@ def audit_passive_controls(
         or report.get("d7_paper_effective_stop_proven") is not False
         or report.get("d7_eat_grant_issued") is not False
         or report.get("self_eat") is not False
-        or report.get("d6_post_move_eat_fenced") is not True
+        or (
+            bool(report.get("d6_original_s49_move_actions"))
+            and report.get("d6_post_move_eat_fenced") is not True
+        )
         or report.get("d6_multigen_no_eat") is not True
         or prior_audit.get("status") != "PASS_DEV"
         or prior_audit.get("no_eat_after_move") is not True
@@ -68,11 +71,32 @@ def audit_passive_controls(
         or prior_audit.get("session_id") != report.get("session_id")
     ):
         raise D7PassiveReadbackRejected("original S49 EAT fence and audited World absent")
-    moves = report.get("d6_original_s49_move_actions")
+    moves = report.get("d6_original_s49_move_actions", [])
+    if not isinstance(moves, list) or prior_audit.get("original_move_count") != len(moves):
+        raise D7PassiveReadbackRejected("original auditor MOVE count disagrees")
+    if not moves:
+        # This is a valid genuine all-zero natural World, not a positive
+        # post-MOVE STOP or EAT qualification. Preserve it as NOT_EXERCISED.
+        if (
+            not source.startswith('{"source":"S50_DEV_NATIVE_READBACK_V1"')
+            and '"source": "S50_DEV_NATIVE_READBACK_V1"' not in source.splitlines()[0]
+        ):
+            raise D7PassiveReadbackRejected("original S50 source absent in zero case")
+        return {
+            "classification": "D7_A_NO_MOVE_STOP_SOURCE_NOT_EXERCISED",
+            "source_session": report["session_id"],
+            "original_s49_move_action_ids": [],
+            "source_scope": "NO_PHYSICAL_S49_MOVE_OBSERVED",
+            "body_physically_stopped_proven": False,
+            "authenticated_S_owner_EAT_resume_grant": False,
+            "original_EAT_issued": False,
+            "server_effective_release_tick": "NOT_ATTESTED",
+            "full_Paper_world_tick_motor_coverage": "NOT_ATTESTED",
+            "qual": "NO_GO",
+            "science": "NOT_RUN",
+        }
     if (
-        not isinstance(moves, list) or not moves
-        or prior_audit.get("original_move_count") != len(moves)
-        or len({m.get("action_id") for m in moves}) != len(moves)
+        len({m.get("action_id") for m in moves}) != len(moves)
         or any(
             m.get("session_id") != report["session_id"]
             or m.get("terminal") != "outcome"
