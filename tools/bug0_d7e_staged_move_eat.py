@@ -62,7 +62,10 @@ async def after_real_staged_pickup_eat(
 
     food = S49BasicPriorityL0(sid, max_decisions=64)
     earlier = None
-    for i in range(48):
+    # R1 real World lowered Food only 20->15 in its 48 probes.
+    # Keep vanilla World hunger law and the original L0 threshold intact;
+    # allow the same bounded DEV observation 62 probes / <=34 seconds.
+    for i in range(62):
         p = await _correlated_observe(session, f"d7e-food-before-{i:02d}")
         decision = food.decide(p)
         report.setdefault("d7e_food_choices", []).append({
@@ -77,7 +80,7 @@ async def after_real_staged_pickup_eat(
             "UNQUALIFIED_NEARBY_ENTITY", "ZOMBIE_PRESENT_NO_DEFENSE_ADMISSION",
         ):
             raise D7ERealEatRejected("native L0 deferred unsafe food selection")
-        await asyncio.sleep(0.35)
+        await asyncio.sleep(0.55)
     if earlier is None:
         raise D7ERealEatRejected("real hunger/inventory did not produce S49 EAT choice")
 
