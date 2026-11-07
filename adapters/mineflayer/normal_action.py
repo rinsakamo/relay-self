@@ -46,6 +46,7 @@ from relay_self.reactive_l0 import (
     ReactiveL0Rejected,
 )
 from relay_self.skill import SkillExecution
+from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
@@ -966,6 +967,7 @@ class NormalSessionActionExecutor:
         propose: NormalAttackingAuthorization,
         issue: NormalAttackingAuthorization,
         *, allow_target_disappearance: bool = False,
+        physical_fence: OriginalS49NonMotionFence | None = None,
     ) -> AttackActionReceipt:
         """Issue one operator-approved attack from THIS original S49 supervisor."""
         if (
@@ -992,6 +994,16 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        # The fence is a DEV opt-in reservation, never independent authority.
+        # It is fsynced after original S49 admission and BEFORE supervisor
+        # ISSUE and ANY native ATTACK effect. Failure means no new Action.
+        if physical_fence is not None:
+            if not isinstance(physical_fence, OriginalS49NonMotionFence):
+                raise NormalActionRejected("typed original ATTACK fence required")
+            physical_fence.prepare_attack(
+                probe=probe, intent_id=self.intent.current_intent.intent_id,
+                action_id=propose.action_id, target_entity_id=target_entity_id,
+            )
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
@@ -1002,12 +1014,18 @@ class NormalSessionActionExecutor:
         self._attack_count += 1
         self._epoch_attack_count += 1
         try:
-            return await IssuedAttackingExecutor().execute(
+            result = await IssuedAttackingExecutor().execute(
                 session, self.supervisor, issued, probe,
                 target_entity_id=target_entity_id,
                 skill_execution=skill, intent_commitment=self.intent,
                 allow_target_disappearance=allow_target_disappearance,
             )
+            if physical_fence is not None:
+                physical_fence.close_attack(
+                    receipt=result, probe=probe, supervisor=self.supervisor,
+                    allow_target_disappearance=allow_target_disappearance,
+                )
+            return result
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
@@ -1020,6 +1038,7 @@ class NormalSessionActionExecutor:
         probe: MineflayerObservation,
         propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
         *, previous_probe: MineflayerObservation,
+        physical_fence: OriginalS49NonMotionFence | None = None,
     ) -> EatingActionReceipt:
         """Same original S49 supervisor issues, unchanged S51 performs EAT.
 
@@ -1050,6 +1069,13 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        if physical_fence is not None:
+            if not isinstance(physical_fence, OriginalS49NonMotionFence):
+                raise NormalActionRejected("typed original EAT fence required")
+            physical_fence.prepare_eat(
+                probe=probe, intent_id=self.intent.current_intent.intent_id,
+                action_id=propose.action_id, food_item=choice.item_name,
+            )
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
@@ -1059,10 +1085,16 @@ class NormalSessionActionExecutor:
         self._last_issued_probe_seq = probe.seq
         self._count += 1
         try:
-            return await IssuedEatingExecutor().execute(
+            result = await IssuedEatingExecutor().execute(
                 session, self.supervisor, issued, choice, probe,
                 skill_execution=skill, intent_commitment=self.intent,
             )
+            if physical_fence is not None:
+                physical_fence.close_eat(
+                    receipt=result, choice=choice, probe=probe,
+                    supervisor=self.supervisor,
+                )
+            return result
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
