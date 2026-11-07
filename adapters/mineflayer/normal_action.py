@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
+from adapters.mineflayer.d6_loot_approach import (
+    D6LootApproach,
+    source_qualified_loot_approach,
+)
 from adapters.mineflayer.attack_execution import AttackActionReceipt, IssuedAttackingExecutor
 from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
@@ -35,6 +39,7 @@ from relay_self.action_supervision import ActionSupervisor
 from relay_self.eat_hunger import EatChoice, EatCursor, EatingOutcome, EatStatus
 from relay_self.execution_binding import (
     BoundExecutionCandidate,
+    ExecutionBindingResult,
     start_and_propose_bound_execution,
 )
 from relay_self.intent import IntentCommitment, IntentEventKind
@@ -46,7 +51,7 @@ from relay_self.reactive_l0 import (
     ReactiveL0Rejected,
 )
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
-from relay_self.skill import SkillExecution
+from relay_self.skill import SkillExecution, SkillState
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
@@ -505,6 +510,41 @@ class NormalAttackingAuthorization:
 
 
 @dataclass(frozen=True, slots=True)
+class NormalLootMoveAuthorization:
+    """DEV-only item-target movement grant for the original S49 supervisor.
+
+    Not substitutable for zombie MOVE_AWAY or EAT/ATTACK grants.
+    Does NOT attest who provided the operator authority.
+    """
+
+    stage: NormalActionStage
+    authority_id: str
+    intent_id: str
+    session_id: str
+    action_id: str
+    probe_seq: int
+    probe_request_id: str
+    item_entity_id: int
+    granted: bool
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.stage, NormalActionStage)
+            or not all(isinstance(x, str) and x for x in (
+                self.authority_id, self.intent_id, self.session_id,
+                self.action_id, self.probe_request_id,
+            ))
+            or type(self.probe_seq) is not int or self.probe_seq < 0
+            or type(self.item_entity_id) is not int or self.item_entity_id < 0
+            or type(self.granted) is not bool
+            or not isinstance(self.provenance, Provenance)
+            or self.provenance.source == "mineflayer"
+        ):
+            raise NormalActionRejected("original S49 bounded D6 loot MOVE grant required")
+
+
+@dataclass(frozen=True, slots=True)
 class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
@@ -684,6 +724,151 @@ class NormalSessionActionExecutor:
         self._epoch_action_count_start = self._count
         self._epoch_attack_count = 0
         return record
+
+    def require_d6_loot_move_authorizations(
+        self, previous_probe: MineflayerObservation,
+        probe: MineflayerObservation, candidate: D6LootApproach,
+        propose: NormalLootMoveAuthorization,
+        issue: NormalLootMoveAuthorization,
+    ) -> None:
+        """Recompute source-only item direction before accepting scoped grants."""
+        current = self.intent.current_intent
+        if (
+            current is None
+            or current.intent_id != self._epoch_intent_id
+            or self.intent.pending_reconsideration is not None
+            or not isinstance(candidate, D6LootApproach)
+            or not isinstance(propose, NormalLootMoveAuthorization)
+            or not isinstance(issue, NormalLootMoveAuthorization)
+            or propose.stage is not NormalActionStage.PROPOSE
+            or issue.stage is not NormalActionStage.ISSUE
+            or not propose.granted or not issue.granted
+            or propose.authority_id == issue.authority_id
+            or propose.provenance == issue.provenance
+            or self.supervisor.open_actions
+            or probe.seq <= self._last_issued_probe_seq
+            or propose.action_id in self._dispatched
+        ):
+            raise NormalActionRejected("original D6 loot MOVE issuer/admission blocked")
+        if candidate != source_qualified_loot_approach(
+            previous_probe, probe, item_entity_id=candidate.item_entity_id,
+        ):
+            raise NormalActionRejected("item approach candidate is forged or stale")
+        for grant in (propose, issue):
+            if (
+                grant.intent_id != current.intent_id
+                or grant.session_id != self.session_id
+                or grant.session_id != probe.session_id
+                or grant.action_id != propose.action_id
+                or grant.probe_seq != probe.seq
+                or grant.probe_request_id != probe.request_id
+                or grant.item_entity_id != candidate.item_entity_id
+            ):
+                raise NormalActionRejected("D6 grant not tied to current native item")
+
+    async def execute_d6_loot_move(
+        self, session: MineflayerProcessSession,
+        previous_probe: MineflayerObservation,
+        probe: MineflayerObservation, candidate: D6LootApproach,
+        propose: NormalLootMoveAuthorization,
+        issue: NormalLootMoveAuthorization,
+        *, physical_fence: object,
+    ) -> NormalActionReceipt:
+        """Opt-in D6 item approach via existing S49/S15/S16; no alternate issuer.
+
+        This is a narrow Action-level DEV admission like the existing
+        ATTACK/EAT routes, NOT a claim of full S14 route adjudication.
+        The unmodified S15 MOVE_BACKWARD and C1 pre-ISSUE physical fence
+        are both required; never permit an unjournaled loot movement.
+        """
+        from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
+
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+            or not isinstance(physical_fence, OriginalS49PhysicalFence)
+        ):
+            raise NormalActionRejected("D6 original S49 live native and MOVE fence required")
+        self.require_d6_loot_move_authorizations(
+            previous_probe, probe, candidate, propose, issue,
+        )
+        t = 100 + 10 * self._count
+        origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
+        skill = SkillExecution.start(
+            f"skill:collect-loot:{self.session_id}:{probe.seq}",
+            skill_id="collect-loot", intent_commitment=self.intent,
+            at_ns=t, provenance=origin,
+        )
+        proposed = ActionLifecycle.propose(
+            propose.action_id, skill_execution=skill,
+            intent_commitment=self.intent, at_ns=t, provenance=origin,
+        )
+        binding = ExecutionBindingResult(
+            binding_id=f"d6-loot-{self.session_id}-{probe.seq}",
+            candidate_ref="COLLECT_LOOT",
+            intent_id=self.intent.current_intent.intent_id,
+            skill_execution_id=skill.execution_id,
+            skill_ref=skill.skill_id,
+            action_id=propose.action_id,
+            action_ref="MOVE_BACKWARD",
+            skill_state=SkillState.STARTED,
+            action_state=ActionState.PROPOSED,
+            provenance=origin,
+        )
+        authorized = proposed.authorize(
+            at_ns=t + 1, provenance=propose.provenance,
+            authority=propose.authority_id,
+        )
+        # The source-bound write-ahead record MUST complete before
+        # original supervisor ISSUE and before ANY native control command.
+        physical_fence.prepare(
+            session_id=self.session_id,
+            intent_id=self.intent.current_intent.intent_id,
+            action_id=propose.action_id, probe=probe,
+        )
+        issued = self.supervisor.issue(
+            authorized, at_ns=t + 2, deadline_ns=t + 100,
+            provenance=issue.provenance,
+        )
+        command = build_mineflayer_command(issued, binding)
+        self._dispatched.add(issued.action_id)
+        self._last_issued_probe_seq = probe.seq
+        self._post_move_settling_unqualified = True
+        self._count += 1
+        try:
+            consequence = await execute_mineflayer_command(
+                session, command, timeout_s=9, provenance=origin,
+            )
+            interpretation = interpret_world_consequence(
+                issued, binding, consequence, provenance=origin,
+            )
+            if interpretation.disposition is ActionOutcomeDisposition.OUTCOME:
+                terminal = record_interpreted_action_outcome(
+                    self.supervisor, interpretation, at_ns=t + 3,
+                )
+            else:
+                # No silent movement retry on ambiguous S15/IO.
+                terminal = self.supervisor.mark_unknown(
+                    issued.action_id, at_ns=t + 3, provenance=origin,
+                )
+            receipt = NormalActionReceipt(terminal, consequence, probe.provenance)
+            if (
+                terminal.state is not ActionState.OUTCOME
+                or consequence.status is not WorldConsequenceStatus.EXECUTED
+            ):
+                raise NormalActionRejected("D6 movement has no successful physical S16")
+            physical_fence.close(
+                receipt, probe, original_supervisor=self.supervisor,
+            )
+            # Movement success != physical pickup, food identity, or STOP.
+            return receipt
+        except BaseException:
+            if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                self.supervisor.mark_unknown(
+                    issued.action_id, at_ns=t + 3, provenance=origin,
+                )
+            raise
 
     def read_only_post_move_eat_boundary(
         self, receipt: NormalActionReceipt,
