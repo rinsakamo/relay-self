@@ -71,8 +71,13 @@ async def source_qualified_natural_move(
         if (
             live_result is None
             or live_result[0] is not owner
-            or len(report["d6_original_s49_move_actions"]) != 1
-            or owner._count != owner._attack_count + 1
+            or not 1 <= len(report["d6_original_s49_move_actions"]) <= 4
+            or live_result[1].terminal.action_id != (
+                report["d6_original_s49_move_actions"][-1]["action_id"]
+            )
+            or owner._count != (
+                owner._attack_count + len(report["d6_original_s49_move_actions"])
+            )
         ):
             raise D6LootApproachRejected("D7-F original natural live STOP source absent")
         report["d7f_same_original_attack_move_owner"] = True
