@@ -1,7 +1,6 @@
 """D7-E independent real S49/S51 food audit must reject fake success."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
