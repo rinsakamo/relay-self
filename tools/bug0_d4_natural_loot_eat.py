@@ -22,6 +22,7 @@ from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
 from relay_self.eat_hunger import EatCursor, EatStatus
 from relay_self.provenance import Provenance
+from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_pickup_d1_world import _inventory, _original_marker
 
 
@@ -41,6 +42,7 @@ async def run_natural_loot_eat(
     report: dict[str, Any], log_path: Path, *,
     baseline: Any,
     natural_count: int,
+    physical_fence: OriginalS49NonMotionFence | None = None,
 ) -> bool:
     """Return whether genuine natural meat was EATen; never synthesize loot.
 
@@ -223,6 +225,7 @@ async def run_natural_loot_eat(
         receipt = await owner.execute_eat(
             session, native_choice, current,
             propose, issue, previous_probe=earlier,
+            physical_fence=physical_fence,
         )
     finally:
         report["d4_eat_terminal"] = (
