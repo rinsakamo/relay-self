@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from tools.bug0_d7_paper_server_tick_post import D7PaperSourceRejected
 from tools.bug0_d7_postmove_native_controls_post import D7PassiveReadbackRejected
 from tools.bug0_d7_staged_stop_post import (
     D7StagedStopRejected,
@@ -180,7 +181,7 @@ def test_corrupt_source_or_fake_authority_fails_closed(mutation):
         native[2]["native_action_id"] = "foreign-clear"
     elif mutation == "fake_eat":
         report["d7_staged_original_eat_issued"] = True
-    with pytest.raises((D7StagedStopRejected, D7PassiveReadbackRejected)):
+    with pytest.raises((D7StagedStopRejected, D7PassiveReadbackRejected, D7PaperSourceRejected)):
         audit_staged_stop("\n".join(paper), report, original, native_wire(native))
 
 
