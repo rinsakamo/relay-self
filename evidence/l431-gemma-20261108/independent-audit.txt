@@ -1,0 +1,5 @@
+first schema=PASS request_sha=PASS raw_response=PASS
+revision schema=PASS request_sha=PASS raw_response=PASS
+first_input_leakage_string_check=PASS; manual inspection required
+first_skill_validator=PASS
+revision_skill_validator=REJECT ACTION_BUDGET_INVALID

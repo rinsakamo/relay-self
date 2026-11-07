@@ -150,3 +150,67 @@ def test_protocol_failure_preserves_raw_evidence(monkeypatch):
         gemma_l2([], endpoint="http://localhost:8000/v1/chat/completions",
                  model="test", timeout=2)
     assert caught.value.record["response_raw"] == raw
+
+
+def test_revision_context_stays_in_single_request(monkeypatch):
+    training = observed_training(make_trials(43, 16, phase="train"))
+    expected = proxy_l2(training)
+    captured = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self):
+            return json.dumps({"choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps(expected)}}]}).encode()
+
+    def send(request, *, timeout):
+        captured.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", send)
+    gemma_l2(training, endpoint="http://localhost:8000/v1/chat/completions", model="x",
+             timeout=2, revision_context={"failure_reason": "observed failure"})
+    assert len(captured) == 1
+    assert "observed failure" in captured[0]["messages"][1]["content"]
+
+
+def test_revision_stops_at_two_failures_and_preserves_prior():
+    from experiments.skill_crystallization_dev import WorldTrial
+    from experiments.skill_crystallization_revision_dev import failures
+
+    candidate, _ = _candidate_and_training()
+    prior = [{"source_session": "prior", "outcome_success": True}]
+    trials = [WorldTrial("ice", 2.3, (0.01,) * 5, f"s{i}") for i in range(3)]
+    rows = failures(candidate, trials, prior)
+    assert rows[0] == prior[0]
+    assert [x["source_session"] for x in rows[1:]] == ["s0", "s1"]
+    assert not any(x["outcome_success"] for x in rows[-2:])
+    assert len(prior) == 1
+
+
+def test_malformed_model_json_is_preserved(monkeypatch):
+    from experiments.skill_crystallization_dev import ModelCallFailure
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self):
+            return b'{"choices":[{"finish_reason":"stop","message":{"content":"{"}}]}'
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: Response())
+    with pytest.raises(ModelCallFailure) as caught:
+        gemma_l2([], endpoint="http://localhost:8000/v1/chat/completions", model="x", timeout=2)
+    assert caught.value.record["response_raw"]

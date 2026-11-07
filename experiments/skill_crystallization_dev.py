@@ -225,7 +225,8 @@ def proxy_l2(training: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
-             timeout: float) -> tuple[dict[str, Any], dict[str, Any]]:
+             timeout: float, revision_context: dict[str, Any] | None = None,
+             ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exactly one explicitly requested HTTP call; no retries or World actions."""
     parsed = urllib.parse.urlsplit(endpoint)
     if (parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost")
@@ -249,6 +250,7 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
             {"role": "user", "content": json.dumps({
                 "allowed_action": "MOVE_AWAY", "maximum_actions": 4, "target_distance": TARGET,
                 "train_experiences": training,
+                **({"revision_context": revision_context} if revision_context else {}),
             }, sort_keys=True, separators=(",", ":"))},
         ],
     }

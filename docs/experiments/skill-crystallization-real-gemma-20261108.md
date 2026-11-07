@@ -1,0 +1,19 @@
+# Skill crystallization: real Gemma DEV observation
+
+Parent `23440fbafe9b26ad7560a9d7cc34bd0d8972aa7f`; seed 20261108. This is a 1-D simulated World, not S49 Action authority, Memory/Habit admission, physical L0 installation, qualification, or science. Evidence and SHA256 manifest are in `evidence/l431-gemma-20261108/`.
+
+The first existing `--mode gemma` request used only 16 observed training attempts and the DSL; it contained no validation/holdout results, hidden effects, or CHEAP rule. Independent Python jsonschema 4.10.3 accepted both response objects against the existing wire schema. The first candidate also passed the stricter Skill Validator: normal surface, start distance [2.314917, 2.457525), target 3.2, up to 4 MOVE_AWAYs, ESCALATE. Eight cited normal training IDs. Finish stop; 1636 input / 217 output tokens, 8.275 s. Generation, validation, mock execution, and holdout evaluation occurred. There were no LLM calls inside the mock runner.
+
+| Holdout (32) | fixed L0 | CHEAP | Gemma skill with fixed fallback |
+|---|---:|---:|---:|
+| success | 19/32 | 32/32 | 19/32 |
+| mock actions | 64 | 77 | 64 |
+| skill selected | — | — | 8/32 normal |
+
+Validation success was 8/16, 16/16, 8/16 respectively. The candidate matched fixed L0 on these aggregate outcomes, not CHEAP. Failure outside applicability falls back to fixed L0; unknown/stale/wrong-session/incomplete cues are rejected. The nine existing negative controls passed. No independent per-execution latency, physical cost, misapplication or unknown-condition success metric was instrumented; mock action count is not measured physical cost. The 32-case result is not a scientific comparison.
+
+The existing ice-only shift did not select the normal-only Skill. A separate changed-motion normal cue was constructed from the existing shifted generator. The first two applicable attempts succeeded; `revision-initial.json` is retained, and its rollback text was written unconditionally and does **not** mean suspension occurred. The continuation consumes those two observations, adds new attempts until two consecutive failures, and stops after 12 applicable attempts (9 success, 3 failure). No future results were sent to Gemma. Only then was one revision call issued, including the old skill, observed traces and failure reason. Revision seed 20261111; reserved independent reevaluation seed 20261112. The revised proposal cited nine successful shift observations and proposed `max_actions: 5`; the wire schema allowed this integer, but the independent Skill Validator rejected it (`ACTION_BUDGET_INVALID`, permitted 1..4). No reevaluation or execution of the rejected revision occurred. Old skill remains suspended in this simulation and fixed L0 is the recorded rollback policy, not a production state transition. Recrystallization is not validated. No automatic model retries.
+
+Runtime evidence contains the current GGUF hash, process argv and maps, API metadata, GPU and server log. Model SHA256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`; build 10874; context 8192, parallel 1, reasoning off, JSON schema request, temperature 0. Response model id matched API alias. The revision had 3270 input / 222 output tokens, 9.878 s, finish stop. Request bytes and raw response bytes are separately retained. SHA256 manifest verifies originals, not an independent external attestation. After owned server shutdown, process absence and GPU snapshot were recorded; no other processes were stopped.
+
+Stage results: SKILL_GENERATED, SKILL_VALIDATED, L0_MOCK_EXECUTED, HOLDOUT_EVALUATED observed. A revision proposal was generated, but SKILL_REVISED and RECRYSTALLIZATION_VALIDATED are not established because it failed validation. Next work: make wire schema express the existing budget, independently measure execution timing and error/unknown/cost metrics, and design a separately authorized new experiment. Do not edit or replay these original responses.
