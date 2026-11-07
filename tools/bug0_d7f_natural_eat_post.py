@@ -203,11 +203,11 @@ def audit(
         or report.get("d4_final_action_count") != len(attack) + len(moves) + 1
         or not isinstance(eat, dict) or not isinstance(stop, dict)
         or not isinstance(action, str) or not action
-        or len(moves) != 1
+        or not 1 <= len(moves) <= 4
         or stop.get("classification") != "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
         or stop.get("session_id") != sid
-        or stop.get("action_id") != moves[0]["action_id"]
-        or stop.get("original_clear_seq") != moves[0]["s15_clear_seq"]
+        or stop.get("action_id") != moves[-1]["action_id"]
+        or stop.get("original_clear_seq") != moves[-1]["s15_clear_seq"]
         or stop.get("paper_world_uuid") != initial["world"]
         or stop.get("paper_player_uuid") != death["killer"]
         or stop.get("paper_item_uuid") != picked["item"]
@@ -300,8 +300,8 @@ def audit(
         ):
             raise D7FNaturalAuditRejected("original S50 session/evidence corrupt")
         if row.get("kind") == "EFFECT_ACK" and (
-            row.get("native_action_id") == moves[0]["action_id"] + "-s15-clear"
-            and row.get("native_seq") == moves[0]["s15_clear_seq"]
+            row.get("native_action_id") == moves[-1]["action_id"] + "-s15-clear"
+            and row.get("native_seq") == moves[-1]["s15_clear_seq"]
         ):
             if clear is not None:
                 raise D7FNaturalAuditRejected("duplicate original MOVE S15 clear")
@@ -323,7 +323,8 @@ def audit(
         "paper_zombie_uuid": initial["zombie"],
         "paper_item_uuid": picked["item"],
         "original_s49_attack_ids": [x["action_id"] for x in attack],
-        "original_s49_move_id": moves[0]["action_id"],
+        "original_s49_move_action_ids": [x["action_id"] for x in moves],
+        "original_s49_last_move_id": moves[-1]["action_id"],
         "original_s49_eat_id": action,
         "original_food_before": before, "original_food_after": after,
         "original_inventory_before": 1, "original_inventory_after": 0,
