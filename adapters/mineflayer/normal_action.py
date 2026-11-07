@@ -730,6 +730,7 @@ class NormalSessionActionExecutor:
         probe: MineflayerObservation, candidate: D6LootApproach,
         propose: NormalLootMoveAuthorization,
         issue: NormalLootMoveAuthorization,
+        *, allow_experience_orbs: bool = False,
     ) -> None:
         """Recompute source-only item direction before accepting scoped grants."""
         current = self.intent.current_intent
@@ -752,6 +753,7 @@ class NormalSessionActionExecutor:
             raise NormalActionRejected("original D6 loot MOVE issuer/admission blocked")
         if candidate != source_qualified_loot_approach(
             previous_probe, probe, item_entity_id=candidate.item_entity_id,
+            allow_experience_orbs=allow_experience_orbs,
         ):
             raise NormalActionRejected("item approach candidate is forged or stale")
         for grant in (propose, issue):
@@ -773,6 +775,7 @@ class NormalSessionActionExecutor:
         propose: NormalLootMoveAuthorization,
         issue: NormalLootMoveAuthorization,
         *, physical_fence: object,
+        allow_experience_orbs: bool = False,
     ) -> NormalActionReceipt:
         """Opt-in D6 item approach via existing S49/S15/S16; no alternate issuer.
 
@@ -792,6 +795,7 @@ class NormalSessionActionExecutor:
             raise NormalActionRejected("D6 original S49 live native and MOVE fence required")
         self.require_d6_loot_move_authorizations(
             previous_probe, probe, candidate, propose, issue,
+            allow_experience_orbs=allow_experience_orbs,
         )
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")

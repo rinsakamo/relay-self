@@ -49,6 +49,7 @@ def source_qualified_loot_approach(
     current: MineflayerObservation,
     *,
     item_entity_id: int,
+    allow_experience_orbs: bool = False,
 ) -> D6LootApproach:
     """Select only a geometrically safe BACKWARD candidate toward one native item.
 
@@ -71,6 +72,7 @@ def source_qualified_loot_approach(
         or not isinstance(previous.snapshot, MineflayerOrientedSnapshot)
         or not isinstance(current.snapshot, MineflayerOrientedSnapshot)
         or type(item_entity_id) is not int or item_entity_id < 0
+        or type(allow_experience_orbs) is not bool
         or current.snapshot.health <= 0
         or current.snapshot.oxygen_level == 0
     ):
@@ -78,21 +80,34 @@ def source_qualified_loot_approach(
     for observation in (previous, current):
         coverage = observation.snapshot.nearby_entities_coverage
         entities = observation.snapshot.nearby_entities
+        if coverage.truncated or coverage.candidate_count != len(entities):
+            raise D6LootApproachRejected("complete native entity registry required")
+        items = [e for e in entities if e.name == "item"]
+        extras = [e for e in entities if e.name != "item"]
+        # Real zombie death may spawn one or two vanilla XP orbs.
+        # This scoped allowance is read-only, NOT proof of global safety;
+        # any zombie, other entity, second item or truncated registry blocks.
         if (
-            coverage.truncated or coverage.candidate_count != len(entities)
-            or len(entities) != 1
-            or entities[0].name != "item"
-            or entities[0].entity_id != item_entity_id
+            len(items) != 1 or items[0].entity_id != item_entity_id
+            or (not allow_experience_orbs and extras)
+            or (allow_experience_orbs and (
+                len(extras) > 2
+                or any(e.name not in ("experience_orb", "xp_orb") for e in extras)
+            ))
         ):
-            raise D6LootApproachRejected("one identical item, no zombie/other entity required")
+            raise D6LootApproachRejected("one identical item and only allowed XP orbs required")
     pos0 = previous.snapshot.position
     pos1 = current.snapshot.position
     for axis in ("x", "y", "z"):
         if abs(getattr(pos1, axis) - getattr(pos0, axis)) > 0.05:
             raise D6LootApproachRejected("pre-ISSUE Self body not stationary")
-    old, target = (
-        previous.snapshot.nearby_entities[0],
-        current.snapshot.nearby_entities[0],
+    old = next(
+        e for e in previous.snapshot.nearby_entities
+        if e.name == "item"
+    )
+    target = next(
+        e for e in current.snapshot.nearby_entities
+        if e.name == "item"
     )
     if (
         abs(target.position.x - old.position.x) > 0.3
