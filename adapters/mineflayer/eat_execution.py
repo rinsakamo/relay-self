@@ -32,6 +32,11 @@ class EatingExecutionRejected(ValueError):
 class EatingActionReceipt:
     terminal: ActionLifecycle
     outcome: EatingOutcome
+    # Original native child receipts are retained only when a true EAT
+    # sequence finished. Optional fields preserve earlier read-only users.
+    equip_receipt: MineflayerEffectResult | None = None
+    consume_receipt: MineflayerEffectResult | None = None
+    after_probe: MineflayerObservation | None = None
 
 
 async def _expect(session, action_id: str, effect: str) -> MineflayerEffectResult:
@@ -258,7 +263,10 @@ class IssuedEatingExecutor:
             closed = supervisor.record_outcome(
                 issued.action_id, at_ns=at_ns, provenance=after.provenance,
             )
-            return EatingActionReceipt(closed, outcome)
+            return EatingActionReceipt(
+                closed, outcome, equip_receipt=equip,
+                consume_receipt=consume, after_probe=after,
+            )
         except BaseException:
             if supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 supervisor.mark_unknown(
