@@ -57,6 +57,11 @@ def audit(
         or report.get("d6_no_hunger_intervention") is not False
         or report.get("real_model_calls") != 0
         or report.get("learning_updated") is not False
+        or log.count("RSELF_NATURAL_DROP_READY ") != 1
+        or "d7f_managed_world_witness=true" not in next(
+            (line for line in log.splitlines()
+             if "RSELF_NATURAL_DROP_READY " in line), ""
+        )
         or "RSELF_NATURAL_DROP_FAULT" in log
         or "RSELF_RESPAWN_FAULT" in log
         or "RSELF_LOOT_STAGED" in log
