@@ -21,6 +21,32 @@ def _one(raw: str, marker: str, token: str) -> str:
     return line
 
 
+def require_vanilla_paper_loot(raw: str) -> None:
+    """Independent Paper command-result evidence for true vanilla drops.
+
+    D4 may briefly disable doMobLoot for operator-only nonzombie cleanup.
+    The last World-rule change before EVERY managed death must be TRUE;
+    a forced-zero trial can never borrow the natural RNG classification.
+    """
+    state = None
+    seen_explicit_true = False
+    deaths = 0
+    for line in raw.splitlines():
+        if "Gamerule doMobLoot is now set to: true" in line:
+            state = True
+            seen_explicit_true = True
+        elif "Gamerule doMobLoot is now set to: false" in line:
+            state = False
+        elif "RSELF_RESPAWN_DEATH world=" in line:
+            deaths += 1
+            if state is not True or not seen_explicit_true:
+                raise MultigenAuditRejected(
+                    "vanilla Paper doMobLoot was not true at genuine zombie death"
+                )
+    if deaths == 0 or not seen_explicit_true:
+        raise MultigenAuditRejected("Paper vanilla World loot rule never attested")
+
+
 def audit(
     original_log: str, report: dict, *, nonmotion_path: Path,
     motion_path: Path,
@@ -80,6 +106,17 @@ def audit(
             )
         ):
             raise MultigenAuditRejected("Paper World rule not pinned false across deaths")
+    else:
+        if (
+            report.get("d6_operator_forced_zero") is True
+            or report.get("d6_natural_drop_rng_unchanged") is False
+            or report.get("d6_controlled_zero_command")
+            or report.get("d6_controlled_zero_set_before_first_attack")
+        ):
+            raise MultigenAuditRejected(
+                "vanilla RNG trial must not inherit forced-zero World intervention"
+            )
+        require_vanilla_paper_loot(original_log)
     epochs = report.get("d6_multigen_generations")
     rearm = report.get("d6_multigen_rearms", [])
     if (
