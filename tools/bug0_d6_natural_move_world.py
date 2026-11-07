@@ -23,6 +23,8 @@ async def source_qualified_natural_move(
     report: dict, original_paper_log: Path, *,
     motion_fence: OriginalS49PhysicalFence,
     d7f_live_eat_dev: bool = False,
+    d8_next_generation_dev: bool = False,
+    d8_prior_rotten_count: int = 0,
 ) -> tuple | None:
     """No new Intent, no second supervisor, no operator MOVE or teleport."""
     if (
@@ -35,12 +37,27 @@ async def source_qualified_natural_move(
             report.get("d4_natural_count", 0),
         ) <= 0
         or not isinstance(motion_fence, OriginalS49PhysicalFence)
+        or (d8_next_generation_dev and (
+            owner._intent_epoch != 2 or owner._epoch_attack_count < 1
+            or type(d8_prior_rotten_count) is not int
+            or d8_prior_rotten_count < 0
+            or not report.get("d8_paper_current_zombie_uuid")
+        ))
     ):
         raise D6LootApproachRejected("original physical ATTACK closure required")
-    if "RSELF_NATURAL_DROP_PICKUP world=" in original_paper_log.read_text(
-        encoding="utf8"
-    ):
-        raise D6LootApproachRejected("natural item was picked up before original MOVE")
+    if d8_next_generation_dev:
+        paper_pickup_before = any(
+            "RSELF_NATURAL_DROP_PICKUP world=" in line
+            and f'zombie={report["d8_paper_current_zombie_uuid"]} ' in line
+            for line in original_paper_log.read_text(encoding="utf8").splitlines()
+        )
+    else:
+        paper_pickup_before = (
+            "RSELF_NATURAL_DROP_PICKUP world="
+            in original_paper_log.read_text(encoding="utf8")
+        )
+    if paper_pickup_before:
+        raise D6LootApproachRejected("current natural item was picked up before original MOVE")
     report["d6_d_paper_pickup_absent_before_move"] = True
     old_supervisor = owner.supervisor
     old_ids = frozenset(owner._dispatched)
@@ -52,6 +69,10 @@ async def source_qualified_natural_move(
         item_origin="ACTUAL_PAPER_ZOMBIE_DEATH_EVENT",
         allow_experience_orbs=True,
         d7_return_live_owner_dev=d7f_live_eat_dev,
+        d8_baseline_rotten_count=d8_prior_rotten_count,
+        d8_move_action_prefix=(
+            "d8-gen2-s49-item-back" if d8_next_generation_dev else None
+        ),
     )
     if (
         old_supervisor is not owner.supervisor
@@ -76,7 +97,7 @@ async def source_qualified_natural_move(
                 report["d6_original_s49_move_actions"][-1]["action_id"]
             )
             or owner._count != (
-                owner._attack_count + len(report["d6_original_s49_move_actions"])
+                old_actions + len(report["d6_original_s49_move_actions"])
             )
         ):
             raise D6LootApproachRejected("D7-F original natural live STOP source absent")
