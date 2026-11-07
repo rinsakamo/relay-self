@@ -18,12 +18,14 @@ from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observ
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
 from relay_self.provenance import Provenance
+from relay_self.s49_nonmotion_physical_fence import OriginalS49NonmotionFence
 from tools.bug0_d4_oneworld import S49D3Rejected, _target, run
 
 
 async def second_intent_after_real_respawn(
     session, server, owner: NormalSessionActionExecutor,
-    report: dict, log_path: Path,
+    report: dict, log_path: Path, *,
+    physical_fence: OriginalS49NonmotionFence | None = None,
 ) -> None:
     """One original supervisor, fresh next-generation native target, one ATTACK."""
     sid = owner.session_id
@@ -154,8 +156,21 @@ async def second_intent_after_real_respawn(
     )
     report["stage"] = "D5_SAME_ORIGINAL_S49_PHYSICAL_ATTACK"
     try:
+        attack_options = {}
+        if physical_fence is not None:
+            attack_options = {
+                "pre_issue_reservation": lambda: physical_fence.prepare_attack(
+                    session_id=sid, intent_id=second.intent_id,
+                    action_id=action_id, target_entity_id=next_id,
+                    probe=current,
+                ),
+                "post_outcome_commit": lambda receipt: physical_fence.close_attack(
+                    receipt, current, original_supervisor=owner.supervisor,
+                ),
+            }
         receipt = await owner.execute_attack(
             session, previous, current, next_id, propose, issue,
+            **attack_options,
         )
     finally:
         report["d5_owner_total_action_count"] = owner._count
@@ -199,10 +214,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--server-log", required=True, type=Path)
+    parser.add_argument("--nonmotion-fence-dev", action="store_true")
     args = parser.parse_args()
     raise SystemExit(asyncio.run(
-        run(args.report, args.server_log,
-            post_respawn_dev=second_intent_after_real_respawn),
+        run(
+            args.report, args.server_log,
+            post_respawn_dev=second_intent_after_real_respawn,
+            nonmotion_fence_dev=args.nonmotion_fence_dev,
+        ),
     ))
 
 
