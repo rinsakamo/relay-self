@@ -1,0 +1,34 @@
+name: Unified v0.5 D6-A native loot approach OFFLINE DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d6-loot-approach-source-20261107
+
+permissions:
+  contents: read
+jobs:
+  source-bound-loot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Validate source-only D6 native item and unmodified original S49
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/d6_loot_approach.py tests/test_d6_loot_approach.py
+          ruff check adapters/mineflayer/d6_loot_approach.py tests/test_d6_loot_approach.py
+          python -m pytest -q -x tests/test_d6_loot_approach.py
+      - name: Confirm no physical action or world
+        run: |
+          echo 'D6_A_NATIVE_LOOT_READ_ONLY / WORLD0 / ACTION0 / GRANT0 / EAT0 / LEARNING0'
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
