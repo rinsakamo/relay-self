@@ -120,7 +120,7 @@ jobs:
             --report unified-v05-d7d-staged-stop-evidence/report.json \
             --server-log unified-v05-d7d-staged-stop-evidence/paper_original.log \
             --move-fence unified-v05-d7d-staged-stop-evidence/original_s49_move_fence.json \
-            --d7-staged-controls unified-v05-d7d-staged-stop-evidence/s50_same_original_client_controls.jsonl
+            --d7-staged-controls "$PWD/unified-v05-d7d-staged-stop-evidence/s50_same_original_client_controls.jsonl"
       - name: Post-World independent Paper staged item native movement S49 physical ledger audit
         run: |
           python -B tools/bug0_d6_staged_move_post.py \
