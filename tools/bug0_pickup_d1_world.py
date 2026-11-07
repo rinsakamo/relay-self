@@ -92,7 +92,9 @@ def _inventory(read) -> dict:
     }
 
 
-async def qualify(report_path: Path, server_log: Path) -> int:
+async def qualify(
+    report_path: Path, server_log: Path, *, post_staged_move_dev=None,
+) -> int:
     report: dict[str, object] = {
         "status": "BLOCKED",
         "stage": "START",
@@ -114,6 +116,11 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             or os.environ.get("NODE_OPTIONS")
         ):
             raise PickupD1Rejected("one-shot read-only D1 World grant absent")
+        if post_staged_move_dev is not None and (
+            os.environ.get("D6_STAGED_LOOT_MOVE_WORLD_ONLY") != "1"
+            or not callable(post_staged_move_dev)
+        ):
+            raise PickupD1Rejected("explicit D6 staged MOVE one-world grant absent")
         paper = _artifact(
             "BUG0_PICKUP_PAPER_JAR",
             sha=PAPER_1218_SHA256, size=PAPER_1218_SIZE,
@@ -146,7 +153,9 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         await server.stdin.drain()
 
         report["stage"] = "ORIGINAL_NATIVE_SESSION"
-        session = await _new_session()
+        session = await _new_session(
+            w4_native_orientation_dev=post_staged_move_dev is not None,
+        )
         report["session_id"] = session.started.session_id
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
@@ -164,11 +173,18 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             raise PickupD1Rejected("baseline native inventory or health unqualified")
 
         report["stage"] = "OPERATOR_GROUND_ITEM_STAGE"
-        _command(server, "rselfstagefood")
+        _command(
+            server,
+            "rselfstagefood back" if post_staged_move_dev is not None
+            else "rselfstagefood",
+        )
         await server.stdin.drain()
         report["paper_staged"] = await _original_marker(
             server_log, "RSELF_LOOT_STAGED world=", budget=8,
         )
+        if post_staged_move_dev is not None:
+            report["stage"] = "D6_ORIGINAL_S49_MOVE_TO_OPERATOR_ITEM"
+            await post_staged_move_dev(session, report, server_log)
         report["stage"] = "WAIT_REAL_PAPER_PICKUP"
         report["paper_pickup"] = await _original_marker(
             server_log, "RSELF_LOOT_PICKED world=", budget=15,
@@ -201,11 +217,24 @@ async def qualify(report_path: Path, server_log: Path) -> int:
 
         report["status"] = "PASS_DEV"
         report["stage"] = "PAPER_NATIVE_PICKUP_CLOSED"
-        report["classification"] = "D1_OPERATOR_STAGED_PAPER_PICKUP_NATIVE_GAIN"
+        if post_staged_move_dev is not None:
+            if (
+                type(report.get("original_s49_actions")) is not int
+                or report["original_s49_actions"] < 1
+                or report.get("self_action_issued") is not True
+                or not report.get("d6_original_s49_move_actions")
+            ):
+                raise PickupD1Rejected("D6 same original S49 physical MOVE not proven")
+            report["classification"] = "D6_OPERATOR_STAGED_S49_MOVE_PICKUP_PASS"
+        else:
+            report["classification"] = "D1_OPERATOR_STAGED_PAPER_PICKUP_NATIVE_GAIN"
         rc = 0
     except Exception as exc:
         report["status"] = "FAIL"
-        report["classification"] = "D1_PICKUP_SOURCE_UNQUALIFIED"
+        report["classification"] = (
+            "D6_OPERATOR_STAGED_LOOT_MOVE_UNQUALIFIED"
+            if post_staged_move_dev is not None else "D1_PICKUP_SOURCE_UNQUALIFIED"
+        )
         report["failure"] = f"{type(exc).__name__}: {exc}"
     finally:
         if session is not None:
