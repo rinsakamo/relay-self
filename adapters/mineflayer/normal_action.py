@@ -933,6 +933,8 @@ class NormalSessionActionExecutor:
         paper_staged: str, paper_pickup: str,
         native_before: MineflayerObservation,
         native_after: MineflayerObservation,
+        natural_source_dev: bool = False,
+        paper_natural_death: str | None = None,
     ):
         """S49 live DEV-only one-use steady-body admission after original MOVE.
 
@@ -964,9 +966,29 @@ class NormalSessionActionExecutor:
         original = self.read_only_post_move_eat_boundary(receipt)
         if (
             original.action_id != receipt.terminal.action_id
-            or original.action_id != next(iter(self._dispatched), None)
-            or len(self._dispatched) != 1
-            or self._count != 1
+            or original.action_id not in self._dispatched
+            or len(self._dispatched) != self._count
+            or (
+                natural_source_dev
+                and (
+                    self._attack_count < 1
+                    or self._count != self._attack_count + 1
+                    or not isinstance(paper_natural_death, str)
+                    or "killer_is_relay_self=true" not in paper_natural_death
+                )
+            )
+            or (
+                not natural_source_dev
+                and (
+                    self._count != 1
+                    or self._attack_count != 0
+                    or paper_natural_death is not None
+                )
+            )
+            or any(
+                self.supervisor.get(action_id).state is not ActionState.OUTCOME
+                for action_id in self._dispatched
+            )
             or native_before.session_id != self.session_id
             or native_after.session_id != self.session_id
             or native_before.kind != "probe" or native_after.kind != "probe"
@@ -1006,6 +1028,8 @@ class NormalSessionActionExecutor:
             clear_seq=original.clear_ack_seq,
             original_stage_line=paper_staged,
             original_pickup_line=paper_pickup,
+            source_kind=("natural" if natural_source_dev else "staged"),
+            original_death_line=paper_natural_death,
         )
         self._d7_dev_stop_consumed = True
         self._d7_dev_eat_credit = 1
