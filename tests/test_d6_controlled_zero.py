@@ -34,7 +34,7 @@ def test_controlled_zero_scope_requires_separate_world_grant(monkeypatch, tmp_pa
     ))
     assert exit_code != 0
     body=json.loads(report.read_text())
-    assert body["real_world_started"] is not True if "real_world_started" in body else True
+    assert not body.get("real_world_started", False)
     assert not (tmp_path/"nonmotion.json").exists()
     assert not (tmp_path/"motion.json").exists()
     assert not (tmp_path/"paper.log").exists()
