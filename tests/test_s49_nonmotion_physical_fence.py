@@ -461,3 +461,127 @@ def test_d5_nonmotion_gate_cannot_provision_world_without_distinct_DEV_grant(
     assert report.get("real_world_started") is not True
     assert not (tmp_path / "s49_nonmotion_physical_fence.json").exists()
     assert not server_log.exists()
+
+
+
+@pytest.mark.parametrize("kind", ["ATTACK", "EAT"])
+def test_s16_completed_but_durable_close_failed_keeps_PREPARED_unknown(
+    monkeypatch, tmp_path, kind,
+):
+    path = tmp_path / "physical.json"
+    def interrupted_commit(_receipt):
+        raise OSError("simulated post-S16 journal commit interruption")
+    if kind == "ATTACK":
+        (
+            owner, native, before, probe, target, propose, issue,
+            fence, reserve, _,
+        ) = _attack_run(monkeypatch, path)
+        async def execute():
+            return await owner.execute_attack(
+                native, before, probe, target, propose, issue,
+                pre_issue_reservation=reserve,
+                post_outcome_commit=interrupted_commit,
+            )
+    else:
+        owner, native, before, choice, propose, issue, fence, reserve, _ = (
+            _eat_run(path)
+        )
+        async def execute():
+            return await owner.execute_eat(
+                native, choice, before, propose, issue,
+                previous_probe=eating.prior_probe(before),
+                pre_issue_reservation=reserve,
+                post_outcome_commit=interrupted_commit,
+            )
+    with pytest.raises(OSError, match="post-S16"):
+        asyncio.run(execute())
+    assert owner.supervisor.get(propose.action_id).state is ActionState.OUTCOME
+    assert owner.supervisor.open_actions == ()
+    assert len(native.sent if kind == "ATTACK" else native.commands) > 0
+    assert fence.unresolved
+    with pytest.raises(NonmotionActionUnknown):
+        OriginalS49NonmotionFence.restore(
+            path, self_id="s49-original-self",
+        ).require_clear()
+
+
+def test_d5_2_original_intent_acks_share_one_nonmotion_fence_and_supervisor(
+    monkeypatch, tmp_path,
+):
+    """D5 native-target next-generation rearm, not second physical World."""
+    from test_bug0_d5_intent_epoch_rearm import _completed, _new_native
+    from adapters.mineflayer.normal_action import NormalSessionActionExecutor
+
+    first, second = attack._pair()
+    owner = NormalSessionActionExecutor(
+        first.session_id, attack._owner(first).intent,
+        max_sequential_attacks=1, max_intent_epochs=2,
+    )
+    monkeypatch.setattr(normal_action, "MineflayerProcessSession", attack.FakeNativeSession)
+    monkeypatch.setattr(attack_execution, "MineflayerProcessSession", attack.FakeNativeSession)
+    native = attack.FakeNativeSession(second)
+    target = second.snapshot.nearby_entities[0].entity_id
+    propose, issue = attack._grants(owner, second, target)
+    physical = OriginalS49NonmotionFence.create(
+        tmp_path / "fence.json", self_id="s49-original-self",
+    )
+    original_supervisor = owner.supervisor
+    first_receipt = asyncio.run(owner.execute_attack(
+        native, first, second, target, propose, issue,
+        pre_issue_reservation=lambda: physical.prepare_attack(
+            session_id=owner.session_id, intent_id="escape-threat",
+            action_id=propose.action_id, target_entity_id=target, probe=second,
+        ),
+        post_outcome_commit=lambda receipt: physical.close_attack(
+            receipt, second, original_supervisor=owner.supervisor,
+        ),
+    ))
+    assert physical.actions[0]["status"] == "S16_OUTCOME"
+    old_action = first_receipt.terminal
+    _completed(owner)
+    reborn = _new_native(second, seq=140)
+    handoff = owner.advance_intent_epoch(
+        reborn, previous_zombie_entity_id=target,
+    )
+    assert handoff.next_epoch == 2 and owner.supervisor is original_supervisor
+    previous = replace(reborn, seq=141, request_id="d5-prev-native")
+    current = replace(reborn, seq=142, request_id="d5-next-native")
+    native.before = current
+    new_target = current.snapshot.nearby_entities[0].entity_id
+    next_propose, next_issue = attack._grants(owner, current, new_target)
+    next_propose = replace(next_propose, action_id="second-d5-attack")
+    next_issue = replace(next_issue, action_id="second-d5-attack")
+    next_receipt = asyncio.run(owner.execute_attack(
+        native, previous, current, new_target, next_propose, next_issue,
+        pre_issue_reservation=lambda: physical.prepare_attack(
+            session_id=owner.session_id,
+            intent_id=owner.intent.current_intent.intent_id,
+            action_id=next_propose.action_id,
+            target_entity_id=new_target, probe=current,
+        ),
+        post_outcome_commit=lambda receipt: physical.close_attack(
+            receipt, current, original_supervisor=owner.supervisor,
+        ),
+    ))
+    assert next_receipt.terminal.state is ActionState.OUTCOME
+    assert owner.supervisor is original_supervisor
+    assert owner.supervisor.get(propose.action_id) is old_action
+    assert owner.supervisor.get(next_propose.action_id) is next_receipt.terminal
+    fresh = OriginalS49NonmotionFence.restore(
+        physical.path, self_id="s49-original-self",
+    )
+    fresh.require_clear()
+    assert [row["action_id"] for row in fresh.actions] == [
+        propose.action_id, next_propose.action_id,
+    ]
+    assert [row["intent_id"] for row in fresh.actions] == [
+        "escape-threat", "d5-epoch2",
+    ]
+    assert [row["decision_seq"] for row in fresh.actions] == [
+        second.seq, current.seq,
+    ]
+    assert [row["status"] for row in fresh.actions] == [
+        "S16_OUTCOME", "S16_OUTCOME",
+    ]
+    assert next_receipt.damage_attested is False
+    assert next_receipt.target_death_attested is False
