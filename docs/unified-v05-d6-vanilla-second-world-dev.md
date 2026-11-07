@@ -1,0 +1,15 @@
+# D6-D5 R2 — second genuinely independent normal vanilla RNG World
+
+Parent [Draft PR #777](https://github.com/rinsakamo/relay-self/pull/777) exact verified source HEAD `732a35b7eb9c081a192a05c561bcaeee848fee5d`. Its first strict one-use [real World #42358191740](https://github.com/rinsakamo/relay-self/actions/runs/42358191740) **PASS_DEV** for genuine vanilla rotten_flesh=1 (Paper actual death tick73, original S49 physical ATTACK, original C1 fenced MOVE 0.626906m, actual same Paper item UUID pickup tick117, authentic native inventory 0→1, same original S49 owner), independent post audit and SHA/cleanup SUCCESS. This was NOT a zero-drop outcome and did NOT demonstrate a second original ATTACK. Post-MOVE EAT stayed fenced until independent physical STOP proof. Original R1 world/actions/ledgers remain immutable.
+
+The objective of **R2** is not to retry an uncertain Action or alter loot probability. Run a **fresh** disposable Paper World using the exact same vetted native and World logic in #777, with `doMobLoot=true` at every genuine zombie death. The original D4 nonzombie cleanup may briefly disable loot *before* any ATTACK but must restore true; independent source audit enforces this. No controlled-zero env var, no forced meat, no inventory/hunger interventions, no Self teleport. The actual random outcome is unknown before execution:
+
+- **If real first zombie drops zero**, the same original S49 ActionSupervisor must WAIT for real Paper-managed next zombie (actual death tick+600), fresh native zombie/Intent rearm, then issue a **new original S49 ATTACK** under fresh nonmotion physical journal, retaining prior original Action history. Continue up to four real World generations (CI budget only, not Self Goal limit). This is the currently missing natural-zero continuation proof.
+- **If real zombie drops meat**, source-qualified original S49 MOVE→genuine Paper same-item UUID PICKUP/native inventory proof may succeed as in R1; do NOT artificially force a zero outcome or call positive pickup a zero-drop loop. Any source rejection remains fail-closed and logs exact native positions/W4 yaw and source reason from already-received probes, never a second physical retry.
+- **If Action becomes UNKNOWN or unqualified**, never reissue it; preserve original report/Paper/journals and cleanup. EAT remains fenced after physical MOVE until independent STOP audit.
+
+All actual physical requests and World authority originate solely from the existing S49/S15/S16 owner and Paper. Same one World and one native session within this trial, but **new** World UUID, session, physical Action IDs and fresh original ATTACK+MOVE journal paths distinct from R1. Source exact HEAD offline CI before one-use docs trigger; independent read-only Paper 600tick/World loot true/Action and both journals audit. Preserve evidence ZIP, SHA256SUMS and cleanup.
+
+Four generations is *DEV CI observation budget only*, not product Self limit, indefinite autonomy or a successful survival goal. Do not conflate conditional RNG and experimental competence.
+
+Status: `DEV_ONLY / D6_D5_R2_SECOND_VANILLA_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
