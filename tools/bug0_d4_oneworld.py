@@ -163,6 +163,7 @@ async def run(
     d6_controlled_zero_dev: bool = False,
     d7_native_controls_path: Path | None = None,
     d7f_natural_eat_dev=None,
+    d8_two_generation_food_dev: bool = False,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -229,13 +230,26 @@ async def run(
                 or d7_native_controls_path is None
                 or nonmotion_fence_path is None or motion_fence_path is None
                 or d6_multigen_dev or d6_controlled_zero_dev
-                or post_respawn_dev is not None
+                or (post_respawn_dev is not None and not d8_two_generation_food_dev)
             ):
                 raise S49D3Rejected(
                     "D7-F one-source natural STOP/EAT source grant absent"
                 )
             report["d7f_live_eat_optin"] = True
             report["d7f_natural_eat_issued"] = False
+        if d8_two_generation_food_dev:
+            if (
+                os.environ.get("D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY") != "1"
+                or not callable(post_respawn_dev)
+                or d7f_natural_eat_dev is None
+                or post_death_loot_move_dev is None
+                or d7_native_controls_path is None
+                or nonmotion_fence_path is None or motion_fence_path is None
+                or d6_multigen_dev or d6_controlled_zero_dev
+            ):
+                raise S49D3Rejected("D8 two natural food cycle DEV source grant absent")
+            report["d8_two_generation_optin"] = True
+            report["d8_second_generation_food_proven"] = False
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
@@ -699,7 +713,22 @@ async def run(
             # source/eat evidence remain unchanged and reusable by audit.
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
-            if d6_multigen_dev:
+            if d8_two_generation_food_dev:
+                if (
+                    not d4_eaten
+                    or owner._d7_last_verified_eat_receipt is None
+                    or not owner._d7_dev_stop_consumed
+                ):
+                    raise S49D3Rejected(
+                        "D8 cannot rearm after first natural cycle lacking S49 STOP/EAT"
+                    )
+                await post_respawn_dev(
+                    session, server, owner, report, log_path,
+                    physical_fence=nonmotion_fence,
+                    motion_fence=motion_fence,
+                    s50_sidecar=d7_native_controls_path,
+                )
+            elif d6_multigen_dev:
                 await post_respawn_dev(
                     session, server, owner, report, log_path,
                     physical_fence=nonmotion_fence,
@@ -714,9 +743,17 @@ async def run(
                     physical_fence=nonmotion_fence,
                 )
             report["classification"] = (
-                report.get("d6_multigen_classification", "D6_MULTIGEN_UNQUALIFIED")
-                if d6_multigen_dev
-                else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+                (
+                    "D8_TWO_REAL_NATURAL_S49_FOOD_CYCLES_PASS"
+                    if report.get("d8_second_generation_food_proven") is True
+                    else "D8_SECOND_TRUE_ZERO_DROP_NO_SECOND_EAT"
+                )
+                if d8_two_generation_food_dev
+                else (
+                    report.get("d6_multigen_classification", "D6_MULTIGEN_UNQUALIFIED")
+                    if d6_multigen_dev
+                    else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+                )
             )
         # DEV D7-C: bounded operator PASSIVE wait after genuine source-
         # qualified natural pickup. Only lets Paper/S50 publish further
@@ -733,6 +770,7 @@ async def run(
     except Exception as exc:
         report["status"] = "FAIL"
         report["classification"] = (
+            "D8_TWO_NATURAL_CYCLES_UNQUALIFIED" if d8_two_generation_food_dev else
             "D6_MULTIGEN_UNQUALIFIED" if d6_multigen_dev else
             ("D5_SECOND_INTENT_UNQUALIFIED"
              if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED")
