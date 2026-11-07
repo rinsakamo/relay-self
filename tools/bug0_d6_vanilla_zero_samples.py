@@ -199,7 +199,16 @@ def run_independent_world_samples(root: Path, *, max_worlds: int = 4) -> dict:
                 persisted = json.loads(attack.read_text(encoding="utf8"))
                 # Do not assume a new World yields new IDs solely from the
                 # folder path; original S49 action IDs must be disjoint.
-                for row in persisted.get("actions", []):
+                if (
+                    not isinstance(persisted.get("body"), dict)
+                    or not isinstance(persisted["body"].get("actions"), list)
+                    or len(persisted["body"]["actions"])
+                        != result["original_s49_attack_count"]
+                ):
+                    raise NaturalZeroSampleRejected(
+                        "original on-disk S49 ATTACK envelope not independently readable"
+                    )
+                for row in persisted["body"]["actions"]:
                     action_id = row["action_id"]
                     if action_id in unique_action_ids:
                         raise NaturalZeroSampleRejected(
