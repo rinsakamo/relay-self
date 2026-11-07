@@ -21,14 +21,17 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
 from relay_self.action import ActionState
-from relay_self.provenance import Provenance
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
+from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d4_oneworld import (
-    _native_probe, _target, qualified_native_precombat_hunger,
+    _target,
+    qualified_native_precombat_hunger,
+)
+from tools.bug0_d4_oneworld import (
     run as d4_world,
 )
-from tools.bug0_d6_multigen_world import wait_paper, _tick, _uuid, _rotten
+from tools.bug0_d6_multigen_world import _rotten, _tick, _uuid, wait_paper
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
 from tools.bug0_d7f_natural_eat import after_real_natural_pickup_eat
 from tools.bug0_pickup_d1_world import _inventory
