@@ -162,6 +162,7 @@ async def run(
     d6_multigen_dev: bool = False,
     d6_controlled_zero_dev: bool = False,
     d7_native_controls_path: Path | None = None,
+    d7f_natural_eat_dev=None,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -203,10 +204,10 @@ async def run(
         if d7_native_controls_path is not None:
             if (
                 os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
-                or not d6_multigen_dev
+                or (not d6_multigen_dev and d7f_natural_eat_dev is None)
                 or d6_controlled_zero_dev
                 or post_death_loot_move_dev is None
-                or post_respawn_dev is None
+                or (post_respawn_dev is None and d7f_natural_eat_dev is None)
                 or not isinstance(d7_native_controls_path, Path)
                 or d7_native_controls_path.exists()
                 or d7_native_controls_path.is_symlink()
@@ -220,6 +221,21 @@ async def run(
             report["d7_controls_source_file"] = d7_native_controls_path.name
             report["d7_paper_effective_stop_proven"] = False
             report["d7_eat_grant_issued"] = False
+        if d7f_natural_eat_dev is not None:
+            if (
+                os.environ.get("D7F_NATURAL_S49_S51_WORLD_ONLY") != "1"
+                or not callable(d7f_natural_eat_dev)
+                or post_death_loot_move_dev is None
+                or d7_native_controls_path is None
+                or nonmotion_fence_path is None or motion_fence_path is None
+                or d6_multigen_dev or d6_controlled_zero_dev
+                or post_respawn_dev is not None
+            ):
+                raise S49D3Rejected(
+                    "D7-F one-source natural STOP/EAT source grant absent"
+                )
+            report["d7f_live_eat_optin"] = True
+            report["d7f_natural_eat_issued"] = False
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
@@ -382,7 +398,9 @@ async def run(
             report["operator_zombie_health_pinned_for_dev"] = 0.8
             report["d6_operator_zombie_staged_behind_m"] = 2.2
             report["d6_native_orientation_optin"] = True
-            report["d6_no_hunger_intervention"] = True
+            report["d6_no_hunger_intervention"] = (
+                d7f_natural_eat_dev is None
+            )
         # Operator cleanup must never remove the Paper-owned zombie. For
         # D5 and D6, defer nonzombie cleanup until just before the first S49
         # admission: R2 observed two native nearby entities despite the
@@ -404,6 +422,12 @@ async def run(
         for cmd in before_hunger:
             _command(server, cmd)
         await server.stdin.drain()
+        if d7f_natural_eat_dev is not None:
+            # Genuine ordinary World Hunger effect only; no direct Food
+            # injection or tampering with original S49 food threshold.
+            _command(server, "effect give RelaySelf minecraft:hunger 70 20 true")
+            await server.stdin.drain()
+            report["d7f_operator_hunger_effect_dev"] = True
         await asyncio.sleep(0.8)
 
         # The earlier D4 original World showed food 20 -> 14 while L0
@@ -415,7 +439,7 @@ async def run(
         report["stage"] = "OPERATOR_DEV_PRECOMBAT_NATIVE_HUNGER_WINDOW"
         report["d4_precombat_hunger_probes"] = []
         report["d4_precombat_hunger_qualified"] = False
-        if post_death_loot_move_dev is None:
+        if post_death_loot_move_dev is None or d7f_natural_eat_dev is not None:
             for attempt in range(1, 81):
                 source = await _correlated_observe(
                     session, f"d4-precombat-native-hunger-{attempt:02d}",
@@ -597,8 +621,20 @@ async def run(
             natural_count=report["real_rotten_flesh_count"],
             physical_fence=nonmotion_fence,
             natural_loot_move_dev=(
-                partial(post_death_loot_move_dev, motion_fence=motion_fence)
+                partial(
+                    post_death_loot_move_dev, motion_fence=motion_fence,
+                    **({"d7f_live_eat_dev": True}
+                       if d7f_natural_eat_dev is not None else {}),
+                )
                 if post_death_loot_move_dev is not None else None
+            ),
+            d7f_natural_eat_dev=(
+                partial(
+                    d7f_natural_eat_dev,
+                    nonmotion_fence=nonmotion_fence,
+                    s50_sidecar=d7_native_controls_path,
+                )
+                if d7f_natural_eat_dev is not None else None
             ),
         )
         report["self_eat"] = d4_eaten
@@ -626,7 +662,7 @@ async def run(
         report["stage"] = "D4_WORLD_SOURCE_CLOSED"
         report["status"] = "PASS_DEV"
         if post_death_loot_move_dev is not None:
-            if d4_eaten or report["self_eat"]:
+            if (d4_eaten or report["self_eat"]) and d7f_natural_eat_dev is None:
                 raise S49D3Rejected("D6 post-MOVE EAT is forbidden")
             report["self_move_to_loot"] = bool(report.get("d6_original_s49_move_actions"))
             if report["real_rotten_flesh_count"] > 0:
@@ -637,10 +673,16 @@ async def run(
                 ):
                     raise S49D3Rejected("genuine natural loot not collected by Self MOVE")
                 report["classification"] = (
-                    "D6_NATURAL_DROP_ORIGINAL_S49_ATTACK_MOVE_PICKUP_PASS"
+                    "D7F_NATURAL_S49_ATTACK_MOVE_PICKUP_LIVE_STOP_S51_EAT_PASS"
+                    if d7f_natural_eat_dev is not None and d4_eaten
+                    else "D6_NATURAL_DROP_ORIGINAL_S49_ATTACK_MOVE_PICKUP_PASS"
                 )
             else:
-                report["classification"] = "D6_NATURAL_ZERO_LOOT_NO_MOVE"
+                report["classification"] = (
+                    "D7F_TRUE_ZERO_NATURAL_DROP_EAT_NOT_EXERCISED"
+                    if d7f_natural_eat_dev is not None
+                    else "D6_NATURAL_ZERO_LOOT_NO_MOVE"
+                )
         else:
             report["classification"] = (
                 "D4_REAL_NATURAL_LOOT_PICKUP_S49_EAT_AND_RESPAWN_PASS"
