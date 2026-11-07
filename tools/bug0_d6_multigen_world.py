@@ -29,7 +29,6 @@ from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d4_oneworld import S49D3Rejected, _target, run
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
-from tools.bug0_pickup_d1_world import _inventory
 from tools.bug0_zombie_respawn_r1_world import _native_probe
 
 
