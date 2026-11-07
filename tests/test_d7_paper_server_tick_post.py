@@ -72,6 +72,7 @@ def test_even_contiguous_true_server_idle_is_not_stop_certificate():
     assert result["gapfree_Paper_tick_rows"] == 15
     assert result["longest_sampled_quiet_Paper_tick_streak"] == 14
     assert result["post_pickup_8_quiet_server_ticks_observed"] is True
+    assert result["latest_8_post_pickup_Paper_ticks_quiet"] is True
     assert result["longest_post_pickup_sampled_quiet_Paper_tick_streak"] >= 8
     assert result["post_pickup_quiet_is_stop_authority"] is False
     assert result["original_natural_Paper_item_uuid"] == ITEM
@@ -180,3 +181,15 @@ def test_original_audit_must_supply_real_item_uuid_and_move_count():
         corrupted = {**prior, **invalid}
         with pytest.raises(D7PaperSourceRejected):
             audit_paper_ticks("\n".join(log_source()), report, corrupted, client)
+
+
+def test_historical_quiet_but_latest_Paper_tick_active_cannot_qualify_latest_idle():
+    report, prior, client = original()
+    rows = log_source()
+    # Last row before STOP is the final Paper server tick, not an old
+    # quiet-streak observation. It reactivates a motor control.
+    rows[-2] = rows[-2].replace("back=false", "back=true")
+    evidence = audit_paper_ticks("\n".join(rows), report, prior, client)
+    assert evidence["post_pickup_8_quiet_server_ticks_observed"] is True
+    assert evidence["latest_8_post_pickup_Paper_ticks_quiet"] is False
+    assert evidence["authenticated_S_owner_EAT_resume_grant"] is False
