@@ -22,7 +22,8 @@ async def source_qualified_natural_move(
     session, owner: NormalSessionActionExecutor,
     report: dict, original_paper_log: Path, *,
     motion_fence: OriginalS49PhysicalFence,
-) -> None:
+    d7f_live_eat_dev: bool = False,
+) -> tuple | None:
     """No new Intent, no second supervisor, no operator MOVE or teleport."""
     if (
         not isinstance(owner, NormalSessionActionExecutor)
@@ -44,12 +45,13 @@ async def source_qualified_natural_move(
     old_supervisor = owner.supervisor
     old_ids = frozenset(owner._dispatched)
     old_actions = owner._count
-    await move_from_real_item(
+    live_result = await move_from_real_item(
         session, report, original_paper_log,
         fence=motion_fence,
         owner=owner,
         item_origin="ACTUAL_PAPER_ZOMBIE_DEATH_EVENT",
         allow_experience_orbs=True,
+        d7_return_live_owner_dev=d7f_live_eat_dev,
     )
     if (
         old_supervisor is not owner.supervisor
@@ -65,6 +67,17 @@ async def source_qualified_natural_move(
     report["d6_d_same_attack_move_supervisor"] = True
     report["d6_d_world_natural_loot_moved"] = True
     report["d6_d_no_postmove_eat_grant"] = True
+    if d7f_live_eat_dev:
+        if (
+            live_result is None
+            or live_result[0] is not owner
+            or len(report["d6_original_s49_move_actions"]) != 1
+            or owner._count != owner._attack_count + 1
+        ):
+            raise D6LootApproachRejected("D7-F original natural live STOP source absent")
+        report["d7f_same_original_attack_move_owner"] = True
+        return live_result
+    return None
 
 
 def main() -> None:
