@@ -1,0 +1,42 @@
+name: Unified v0.5 D6-D2 independent World exact-source OFFLINE DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d6-natural-second-independent-world-20261107
+
+permissions:
+  contents: read
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: D6-D native natural Item plus XP and original S49 two-fence negative tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q adapters/mineflayer/d6_loot_approach.py adapters/mineflayer/normal_action.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_natural_move_world.py tools/bug0_d6_natural_move_post.py tests/test_d6_natural_drop_original_s49.py
+          ruff check adapters/mineflayer/d6_loot_approach.py adapters/mineflayer/normal_action.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_natural_move_world.py tools/bug0_d6_natural_move_post.py tools/bug0_d6_staged_move_world.py tests/test_d6_natural_drop_original_s49.py
+          python -m pytest -q -x tests/test_d6_natural_drop_original_s49.py tests/test_d6_original_s49_loot_move.py tests/test_d6_loot_approach.py tests/test_d6_staged_move_world.py tests/test_c1_physical_action_fence.py tests/test_s49_nonmotion_physical_fence.py tests/test_bug0_d4_precombat_native_hunger.py tests/test_bug0_d4_post.py tests/test_bug0_d5_world_post.py tests/test_bug0_d5_fence_world_join.py tests/test_bug0_d5_intent_epoch_rearm.py
+      - name: Build reused original Paper independent respawn and natural-drop witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+      - name: Offline only
+        run: |
+          echo 'D6_D2_SEPARATE_FIRST_WORLD_NOT_REISSUED / WORLD0 / ACTION0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
