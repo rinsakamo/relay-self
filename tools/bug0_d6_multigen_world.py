@@ -158,6 +158,11 @@ async def continue_after_first_respawn(
         report["d6_multigen_classification"] = (
             "D6_MULTIGEN_FIRST_REAL_NATURAL_MOVE_PICKUP_EAT_FENCED_PASS"
         )
+        report["d6_multigen_final_original_s49_action_count"] = owner._count
+        report["d6_multigen_final_original_attack_count"] = owner._attack_count
+        report["d6_multigen_final_original_move_count"] = owner._count - owner._attack_count
+        report["d6_multigen_same_supervisor"] = owner.supervisor is preserved_supervisor
+        report["d6_multigen_no_eat"] = True
         return
     if first_rotten != 0:
         raise MultiGenerationDevRejected("first positive natural drop was not picked")
