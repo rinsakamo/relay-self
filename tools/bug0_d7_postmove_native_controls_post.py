@@ -181,7 +181,7 @@ def audit_passive_controls(
             raise D7PassiveReadbackRejected("direct native controls still held at clear ACK")
     last = moves[-1]
     final_clear_index, final_clear, _ = native_effect_ack[
-        (last["action_id"] + "-clear", last["s15_clear_seq"])
+        (last["action_id"] + "-s15-clear", last["s15_clear_seq"])
     ]
     future = [(i, tick, off) for i, tick, off in ticks if i > final_clear_index]
     if len(future) < 8:
