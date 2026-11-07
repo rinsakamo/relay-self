@@ -156,3 +156,23 @@ def test_latest_of_two_original_move_clears_is_verified_before_natural_eat():
     assert out.original_clear_seq == 35
     assert out.client_postclear_physics_ticks == 20
     assert out.classification == "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+
+
+def test_true_vanilla_two_item_stack_has_same_killer_item_and_one_future_eat():
+    lines, client, death, spawn, pickup = natural()
+    death = death.replace("rotten_count=1", "rotten_count=2")
+    spawn = spawn.replace("rotten_count=1", "rotten_count=2")
+    pickup = pickup.replace("rotten_count=1", "rotten_count=2")
+    lines[1], lines[2], lines[3] = death, spawn, pickup
+    result = evaluate(lines, client, death, spawn, pickup)
+    assert result.classification == "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+    assert result.paper_item_uuid == ITEM
+    assert result.paper_quiet_tail_ticks >= 8
+
+
+def test_mixed_one_vs_two_natural_counts_never_qualify():
+    lines, client, death, spawn, pickup = natural()
+    altered = spawn.replace("rotten_count=1", "rotten_count=2")
+    lines[2] = altered
+    with pytest.raises(D7LiveStopRejected):
+        evaluate(lines, client, death, altered, pickup)
