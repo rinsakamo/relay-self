@@ -80,6 +80,42 @@ def audit(
             )
         ):
             raise MultigenAuditRejected("Paper World rule not pinned false across deaths")
+    else:
+        if (
+            report.get("d6_operator_forced_zero") is True
+            or report.get("d6_natural_drop_rng_unchanged") is False
+            or report.get("d6_controlled_zero_command")
+            or report.get("d6_controlled_zero_set_before_first_attack")
+        ):
+            raise MultigenAuditRejected(
+                "vanilla RNG trial must not inherit forced-zero World intervention"
+            )
+        lines = original_log.splitlines()
+        restored = [
+            i for i, line in enumerate(lines)
+            if "Gamerule doMobLoot is now set to: true" in line
+        ]
+        disabled = [
+            i for i, line in enumerate(lines)
+            if "Gamerule doMobLoot is now set to: false" in line
+        ]
+        first_death = next(
+            (i for i, line in enumerate(lines)
+             if "RSELF_RESPAWN_DEATH world=" in line), None,
+        )
+        if (
+            first_death is None
+            or not restored
+            or max(restored) >= first_death and any(
+                "Gamerule doMobLoot is now set to: false" in line
+                for line in lines[max(restored)+1:first_death+1]
+            )
+            or any(i > first_death for i in disabled)
+            or not any(i < first_death for i in restored)
+        ):
+            raise MultigenAuditRejected(
+                "original Paper did not show vanilla drops enabled at every death"
+            )
     epochs = report.get("d6_multigen_generations")
     rearm = report.get("d6_multigen_rearms", [])
     if (
