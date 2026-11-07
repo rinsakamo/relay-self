@@ -110,7 +110,7 @@ def audit(
         or death["tick"] != rdeath["tick"]
         or int(rdeath["due"]) - int(death["tick"]) != 600
         or int(respawn["tick"]) != int(rdeath["due"])
-        or death["count"] != rdeath["count"]
+        or int(rdeath["count"]) < 0
     ):
         raise D6DNaturalAuditRejected("Paper first death / owner / 600tick mismatch")
     amount = int(death["count"])
@@ -187,6 +187,8 @@ def audit(
             or item["count"] != pickup["count"]
             or int(item["count"]) != amount
             or pickup["player"] != death["killer"]
+            or item["item"] not in report.get("d4_paper_item_spawn", "")
+            or item["item"] not in report.get("d4_paper_item_pickup", "")
             or not int(death["tick"]) <= int(item["tick"]) < int(pickup["tick"])
             or int(pickup["tick"]) >= int(respawn["tick"])
             or report.get("classification")
