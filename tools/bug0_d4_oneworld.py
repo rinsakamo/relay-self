@@ -294,6 +294,11 @@ async def run(
                 for command in basic_commands
                 if not command.startswith("effect give RelaySelf minecraft:hunger")
             )
+            basic_commands = tuple(
+                command.replace("Health:1.6f", "Health:0.8f")
+                for command in basic_commands
+            )
+            report["operator_zombie_health_pinned_for_dev"] = 0.8
             report["d6_operator_zombie_staged_behind_m"] = 2.2
             report["d6_native_orientation_optin"] = True
             report["d6_no_hunger_intervention"] = True
