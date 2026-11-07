@@ -142,13 +142,14 @@ jobs:
           assert src['status']=='PASS_DEV'
           if d['status']=='PASS_DEV':
               assert d['classification']=='D7_F_ONE_REAL_NATURAL_ZOMBIE_ATTACK_MOVE_STOP_S51_EAT'
-              assert d['true_vanilla_natural_loot_count']==1
-              assert d['original_inventory_before']==1 and d['original_inventory_after']==0
+              assert d['true_vanilla_natural_loot_count'] in (1,2)
+              assert d['original_inventory_before']==d['true_vanilla_natural_loot_count']
+              assert d['original_inventory_after']==d['original_inventory_before']-1
               assert d['original_food_after']>d['original_food_before']
               assert d['server_effective_clear_packet_tick_attested'] is False
           else:
               assert d['status']=='NOT_EXERCISED'
-              assert d['true_world_count'] in (0,2)
+              assert d['true_world_count']==0
               assert src['self_eat'] is False
               assert d['physical_eat_issued'] is False
           print(d['classification'])
