@@ -204,6 +204,32 @@ async def continue_after_first_respawn(
             raise MultiGenerationDevRejected("next Paper generation not 600 ticks")
         if next_info["session_id"] != sid or next_info["zombie_entity_id"] == previous_id:
             raise MultiGenerationDevRejected("new native zombie identity not distinct")
+        # DEV World intervention, only AFTER a real vanilla ZERO drop:
+        # zombie death may leave XP orbs which are unrelated to the NEXT
+        # threat. Remove ONLY experience_orb, never meat/items, before the
+        # actual new native source and original Intent rearm. World loot
+        # RNG, true previous rotten=0 and Paper's 600tick clock unchanged.
+        if not operator_forced_zero:
+            if generations[-1]["real_rotten_count"] != 0:
+                raise MultiGenerationDevRejected(
+                    "native cleanup permitted only after authentic zero food"
+                )
+            xp_cleanup = (
+                "execute at RelaySelf run kill "
+                "@e[type=minecraft:experience_orb,distance=..8]"
+            )
+            _command(server, xp_cleanup)
+            await server.stdin.drain()
+            await asyncio.sleep(0.3)
+            report.setdefault("d6_multigen_operator_xp_only_cleanup", []).append({
+                "generation": gen,
+                "after_real_zero_generation": gen - 1,
+                "command": xp_cleanup,
+                "only_experience_orbs": True,
+                "all_item_entities_untouched": True,
+                "world_loot_rule_unchanged": True,
+                "operator_dev_intervention": True,
+            })
         report["stage"] = f"D6_MULTIGEN_{gen}_ORIGINAL_INTENT_REARM"
         fresh = await _correlated_observe(
             session, f"d6-multigen-{gen}-rearm-source",
