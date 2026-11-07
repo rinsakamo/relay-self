@@ -20,7 +20,8 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from relay_self.action import ActionState
 from relay_self.c1_physical_action_fence import (
-    OriginalS49PhysicalFence, UnresolvedPhysicalAction,
+    OriginalS49PhysicalFence,
+    UnresolvedPhysicalAction,
 )
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
