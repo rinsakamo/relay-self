@@ -88,7 +88,7 @@ def audit(
     sid = report.get("session_id")
     attack = report.get("s49_actions")
     moves = report.get("d6_original_s49_move_actions", [])
-    positive = count == 1
+    positive = count in (1, 2)
     if (
         not 0 <= count <= 2 or not isinstance(sid, str) or not sid
         or not isinstance(attack, list) or not 1 <= len(attack) <= 8
@@ -167,7 +167,7 @@ def audit(
         if moves or SPAWN.search(log) or PICKUP.search(log):
             raise D7FNaturalAuditRejected("true zero loot cannot have any MOVE or pickup")
 
-    if count != 1:
+    if count == 0:
         if (
             report.get("self_eat") is not False
             or report.get("d4_natural_food_pickup_eat_proven") is not False
@@ -224,8 +224,11 @@ def audit(
         or stop["client_postclear_physics_ticks"] < 8
         or eat.get("session_id") != sid or eat.get("action_id") != action
         or eat.get("consumed_item") != "rotten_flesh"
-        or eat.get("count_before") != 1 or eat.get("count_after") != 0
-        or report.get("d7f_native_after_eat", {}).get("rotten_flesh") != 0
+        or eat.get("count_before") != count
+        or eat.get("count_after") != count - 1
+        or report.get("d7f_native_after_eat", {}).get("rotten_flesh") != count - 1
+        or report.get("d7f_natural_inventory_before") != count
+        or report.get("d7f_natural_inventory_after") != count - 1
     ):
         raise D7FNaturalAuditRejected("original natural STOP / S51 EAT not source-qualified")
     before = native_integral_food(eat.get("food_before"))
@@ -240,7 +243,7 @@ def audit(
         or last.get("terminal") != "outcome"
         or last.get("result") != {
             "food_before": before, "food_after": after,
-            "item_count_before": 1, "item_count_after": 0,
+            "item_count_before": count, "item_count_after": count - 1,
         }
     ):
         raise D7FNaturalAuditRejected("original fsynced S49/S51 EAT ledger mismatch")
@@ -323,7 +326,7 @@ def audit(
     return {
         "status": "PASS_DEV",
         "classification": "D7_F_ONE_REAL_NATURAL_ZOMBIE_ATTACK_MOVE_STOP_S51_EAT",
-        "true_vanilla_natural_loot_count": 1,
+        "true_vanilla_natural_loot_count": count,
         "paper_world_uuid": initial["world"],
         "paper_zombie_uuid": initial["zombie"],
         "paper_item_uuid": picked["item"],
@@ -332,7 +335,8 @@ def audit(
         "original_s49_last_move_id": moves[-1]["action_id"],
         "original_s49_eat_id": action,
         "original_food_before": before, "original_food_after": after,
-        "original_inventory_before": 1, "original_inventory_after": 0,
+        "original_inventory_before": count,
+        "original_inventory_after": count - 1,
         "original_nonmotion_sha256": nonmotion.sha256,
         "original_motion_sha256": motion.sha256,
         "server_effective_clear_packet_tick_attested": False,
