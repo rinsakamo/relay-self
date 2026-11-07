@@ -111,7 +111,10 @@ def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotion
     """
     if not isinstance(path, Path) or not path.parent.is_dir():
         raise S49D3Rejected("preexisting persistent evidence directory required")
-    if path.exists() or path.is_symlink():
+    if (path.is_symlink() or path.parent.is_symlink()
+            or path.with_name(path.name + ".lock").is_symlink()):
+        raise S49D3Rejected("symlink physical ledger path/lock refused")
+    if path.exists():
         fence = OriginalS49NonMotionFence.restore(
             path, self_id="s49-original-self",
         )
