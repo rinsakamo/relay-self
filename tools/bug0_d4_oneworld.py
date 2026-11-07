@@ -647,6 +647,17 @@ async def run(
                 if d6_multigen_dev
                 else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
             )
+        # DEV D7-C: bounded operator PASSIVE wait after genuine source-
+        # qualified natural pickup. Only lets Paper/S50 publish further
+        # read-only ticks; issues no native Action, EAT, STOP or new grant.
+        if (
+            os.environ.get("D7C_PAPER_POSTPICKUP_WORLD_ONLY") == "1"
+            and d7_native_controls_path is not None
+            and report.get("d6_original_s49_move_actions")
+            and report.get("d4_paper_item_pickup")
+        ):
+            await asyncio.sleep(1.0)
+            report["d7c_post_pickup_passive_wait_seconds"] = 1.0
         rc = 0
     except Exception as exc:
         report["status"] = "FAIL"
