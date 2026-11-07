@@ -5,11 +5,11 @@ import json
 
 import pytest
 
+from tools.bug0_d7_postmove_native_controls_post import D7PassiveReadbackRejected
 from tools.bug0_d7_staged_stop_post import (
     D7StagedStopRejected,
     audit_staged_stop,
 )
-from tools.bug0_d7_postmove_native_controls_post import D7PassiveReadbackRejected
 
 SID = "s49-staged-one-bot-session"
 AID = "d6-s49-item-back-1-" + SID
