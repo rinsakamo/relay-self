@@ -35,6 +35,10 @@ from relay_self.action import ActionState
 from relay_self.eat_hunger import EatCursor
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+from relay_self.s49_nonmotion_physical_fence import (
+    NonMotionReplay,
+    OriginalS49NonMotionFence,
+)
 from tools.bug0_d4_natural_loot_eat import run_natural_loot_eat
 from tools.bug0_natural_drop_d2_world import CONFIG, RESPAWN_JAR, WITNESS_JAR
 from tools.bug0_pickup_d1_world import _artifact, _inventory, _original_marker
@@ -99,7 +103,34 @@ def qualified_native_precombat_hunger(
     return 0 < observation.snapshot.food < EatCursor(session_id).threshold
 
 
-async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> int:
+def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotionFence, bool]:
+    """Restore before ANY World; never reset previous physical history.
+
+    A sealed journal from an older World is NOT a transferable Action grant.
+    Only an empty, independently restored journal may start a new World.
+    """
+    if not isinstance(path, Path) or not path.parent.is_dir():
+        raise S49D3Rejected("preexisting persistent evidence directory required")
+    if (path.is_symlink() or path.parent.is_symlink()
+            or path.with_name(path.name + ".lock").is_symlink()):
+        raise S49D3Rejected("symlink physical ledger path/lock refused")
+    if path.exists():
+        fence = OriginalS49NonMotionFence.restore(
+            path, self_id="s49-original-self",
+        )
+        fence.require_clear()
+        if fence.actions:
+            raise NonMotionReplay("prior World physical history cannot be reseeded")
+        return fence, True
+    return OriginalS49NonMotionFence.create(
+        path, self_id="s49-original-self",
+    ), False
+
+
+async def run(
+    report_path: Path, log_path: Path, *, post_respawn_dev=None,
+    nonmotion_fence_path: Path | None = None,
+) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
         "classification": "D4_WORLD_NOT_RUN",
@@ -116,6 +147,7 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
         "real_model_calls": 0, "learning_updated": False,
     }
     server = collector = session = temp = None
+    nonmotion_fence = None
     rc = 2
     try:
         if (
@@ -124,6 +156,26 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
             or os.environ.get("NODE_OPTIONS")
         ):
             raise S49D3Rejected("exclusive source-bound S49 D3 World approval absent")
+        if nonmotion_fence_path is not None:
+            if (
+                os.environ.get("S49_D5_NONMOTION_FENCE_DEV_ONLY") != "1"
+                or not isinstance(nonmotion_fence_path, Path)
+                or nonmotion_fence_path.parent.resolve()
+                != report_path.parent.resolve()
+                or nonmotion_fence_path == report_path
+                or nonmotion_fence_path == log_path
+            ):
+                raise S49D3Rejected("explicit fenced D5 World gate and evidence path required")
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            nonmotion_fence, restored = preflight_original_nonmotion_fence(
+                nonmotion_fence_path,
+            )
+            report["nonmotion_fence_preflight"] = {
+                "checked_before_world": True,
+                "restored_existing_empty": restored,
+                "prior_actions": len(nonmotion_fence.actions),
+                "filename": nonmotion_fence_path.name,
+            }
         paper = _artifact(
             "BUG0_D4_PAPER_JAR", sha=PAPER_1218_SHA256, size=PAPER_1218_SIZE,
         )
@@ -331,6 +383,7 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
                 receipt = await owner.execute_attack(
                     session, previous, current, target_id, propose, issue,
                     allow_target_disappearance=True,
+                    physical_fence=nonmotion_fence,
                 )
             finally:
                 report["owner_action_count"] = owner._count
@@ -396,6 +449,7 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
             session, server, owner, report, log_path,
             baseline=d4_baseline,
             natural_count=report["real_rotten_flesh_count"],
+            physical_fence=nonmotion_fence,
         )
         report["self_eat"] = d4_eaten
         report["d4_natural_food_pickup_eat_proven"] = d4_eaten
@@ -428,7 +482,13 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
             # source/eat evidence remain unchanged and reusable by audit.
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
-            await post_respawn_dev(session, server, owner, report, log_path)
+            if nonmotion_fence is None:
+                await post_respawn_dev(session, server, owner, report, log_path)
+            else:
+                await post_respawn_dev(
+                    session, server, owner, report, log_path,
+                    physical_fence=nonmotion_fence,
+                )
             report["classification"] = "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
         rc = 0
     except Exception as exc:
@@ -469,6 +529,30 @@ async def run(report_path: Path, log_path: Path, *, post_respawn_dev=None) -> in
             report["status"] = "FAIL"
             rc = 2
         report["cleanup_done"] = True
+        if nonmotion_fence_path is not None:
+            try:
+                persisted = OriginalS49NonMotionFence.restore(
+                    nonmotion_fence_path, self_id="s49-original-self",
+                )
+                report["nonmotion_fence"] = {
+                    "sha256": persisted.sha256,
+                    "unresolved": persisted.unresolved,
+                    "action_ids": [x["action_id"] for x in persisted.actions],
+                    "kinds": [x["kind"] for x in persisted.actions],
+                    "statuses": [x["status"] for x in persisted.actions],
+                    "physical_exactly_once_attested": False,
+                }
+                if report["status"] == "PASS_DEV":
+                    persisted.require_clear()
+                    if not persisted.actions:
+                        raise S49D3Rejected("fenced physical run issued no Actions")
+            except Exception as exc:
+                report["nonmotion_fence_readback_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+                report["status"] = "FAIL"
+                report["classification"] = "D5_NONMOTION_FENCE_UNQUALIFIED"
+                rc = 2
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
             json.dumps(report, indent=2, sort_keys=True) + "\n",
