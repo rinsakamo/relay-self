@@ -1,0 +1,33 @@
+name: Unified D5 C1 original S49 ATTACK EAT preISSUE durability OFFLINE
+on:
+  push:
+    branches:
+      - dev/unified-v05-s49-attack-eat-preissue-fence-20261107
+permissions:
+  contents: read
+jobs:
+  nonmotion-physical-fence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Source contract syntax lint and bounded offline fail-close tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q src/relay_self/s49_nonmotion_physical_fence.py adapters/mineflayer/normal_action.py adapters/mineflayer/eat_execution.py tests/test_s49_nonmotion_physical_fence.py
+          ruff check src/relay_self/s49_nonmotion_physical_fence.py adapters/mineflayer/normal_action.py adapters/mineflayer/eat_execution.py tests/test_s49_nonmotion_physical_fence.py
+          python -m pytest -x -q tests/test_s49_nonmotion_physical_fence.py
+      - name: No World no real Action no authority changes
+        run: |
+          echo 'DEV_S49_NONMOTION_PHYSICAL_PREISSUE_OFFLINE_ONLY'
+          echo 'WORLD_NOT_RUN / PHYSICAL_ACTIONS_ZERO / GEMMA_ZERO'

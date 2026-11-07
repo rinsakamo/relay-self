@@ -143,14 +143,13 @@ def test_merged_s49_executor_keeps_d5_rearm_and_c1_preissue_move_boundary():
     assert callable(cls.advance_intent_epoch)
     move = inspect.signature(cls.execute).parameters
     assert move["pre_issue_reservation"].default is None
-    # This v0 physical fence applies to MOVE only; not to D5's ATTACK or
-    # S51 EAT. Never imply cross-Action-kind crash protection.
-    assert "pre_issue_reservation" not in inspect.signature(
-        cls.execute_attack,
-    ).parameters
-    assert "pre_issue_reservation" not in inspect.signature(
-        cls.execute_eat,
-    ).parameters
+    # C1's original MOVE fence remains MOVE-specific. The new *separate*
+    # nonmotion fence supplies paired callbacks for original ATTACK/EAT,
+    # which do not borrow MOVE's S15 clear/movement closure criteria.
+    for nonmotion in (cls.execute_attack, cls.execute_eat):
+        params = inspect.signature(nonmotion).parameters
+        assert params["pre_issue_reservation"].default is None
+        assert params["post_outcome_commit"].default is None
     original_source = inspect.getsource(cls.execute)
     assert original_source.index("pre_issue_reservation()") < (
         original_source.index("issued = self.supervisor.issue(")
