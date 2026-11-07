@@ -54,7 +54,8 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
         enabledForDev = true;
         Bukkit.getPluginManager().registerEvents(this, this);
         getLogger().info("RSELF_NATURAL_DROP_READY operator_only=true"
-                + " force_drops=false self_permissions=none");
+                + " force_drops=false self_permissions=none"
+                + " d7f_managed_world_witness=" + d7fManagedWorldWitness);
         if (getConfig().getBoolean("d7-paper-tick-observer", false)) {
             d7StopObserver = new D7PaperServerTicks(this, TARGET);
             d7StopObserver.start();
