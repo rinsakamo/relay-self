@@ -95,6 +95,7 @@ def _inventory(read) -> dict:
 async def qualify(
     report_path: Path, server_log: Path, *, post_staged_move_dev=None,
     d7_staged_s50_sidecar: Path | None = None,
+    d7_post_staged_eat_dev=None,
 ) -> int:
     report: dict[str, object] = {
         "status": "BLOCKED",
@@ -134,6 +135,13 @@ async def qualify(
             or d7_staged_s50_sidecar in (report_path, server_log)
         ):
             raise PickupD1Rejected("D7 staged source-only current World fence absent")
+        if d7_post_staged_eat_dev is not None and (
+            os.environ.get("D7E_STAGED_MOVE_EAT_WORLD_ONLY") != "1"
+            or not callable(d7_post_staged_eat_dev)
+            or d7_staged_s50_sidecar is None
+            or post_staged_move_dev is None
+        ):
+            raise PickupD1Rejected("D7-E same original post-MOVE EAT callback not granted")
         paper = _artifact(
             "BUG0_PICKUP_PAPER_JAR",
             sha=PAPER_1218_SHA256, size=PAPER_1218_SIZE,
@@ -196,6 +204,12 @@ async def qualify(
         report["session_id"] = session.started.session_id
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
+        if d7_post_staged_eat_dev is not None:
+            # Explicit World DEV operator hunger stimulus, not Self eating or
+            # a learned hunger law. Pin this separately from normal D6-C.
+            _command(server, "effect give RelaySelf minecraft:hunger 70 20 true")
+            await server.stdin.drain()
+            report["d7e_operator_hunger_stimulus_dev"] = True
         await asyncio.sleep(0.7)
         report["paper_ready"] = await _original_marker(
             server_log, "RSELF_LOOT_READY item=rotten_flesh", budget=8,
@@ -219,9 +233,12 @@ async def qualify(
         report["paper_staged"] = await _original_marker(
             server_log, "RSELF_LOOT_STAGED world=", budget=8,
         )
+        original_live_owner = None
         if post_staged_move_dev is not None:
             report["stage"] = "D6_ORIGINAL_S49_MOVE_TO_OPERATOR_ITEM"
-            await post_staged_move_dev(session, report, server_log)
+            original_live_owner = await post_staged_move_dev(
+                session, report, server_log,
+            )
         report["stage"] = "WAIT_REAL_PAPER_PICKUP"
         report["paper_pickup"] = await _original_marker(
             server_log, "RSELF_LOOT_PICKED world=", budget=15,
@@ -256,6 +273,16 @@ async def qualify(
             # Deliberately no native action/STOP auth/EAT, and no new probe.
             await asyncio.sleep(1.0)
             report["d7_staged_postpickup_passive_wait_seconds"] = 1.0
+        if d7_post_staged_eat_dev is not None:
+            if (
+                not isinstance(original_live_owner, tuple)
+                or len(original_live_owner) != 2
+            ):
+                raise PickupD1Rejected("original live MOVE owner/receipt absent after pickup")
+            report["stage"] = "D7E_LIVE_S49_STOP_THEN_S51_EAT"
+            await d7_post_staged_eat_dev(
+                session, report, server_log, server, original_live_owner,
+            )
 
         report["status"] = "PASS_DEV"
         report["stage"] = "PAPER_NATIVE_PICKUP_CLOSED"
