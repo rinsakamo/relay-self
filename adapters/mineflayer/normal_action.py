@@ -45,8 +45,8 @@ from relay_self.reactive_l0 import (
     ReactiveL0,
     ReactiveL0Rejected,
 )
-from relay_self.skill import SkillExecution
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
+from relay_self.skill import SkillExecution
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
