@@ -1,0 +1,46 @@
+name: Unified v0.5 D8 two successive natural zombie food cycles original S49/S51 OFFLINE DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d8-two-natural-food-cycles-20261108
+  pull_request:
+    branches:
+      - dev/unified-v05-d7f-natural-original-s49-eat-20261107
+
+permissions:
+  contents: read
+
+jobs:
+  preworld:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Offline D6-C physical source + D7 Paper/S50 false-STOP controls
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_d8_two_natural_food_world.py tests/test_d8_two_natural_live_stop.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_staged_move_world.py tools/bug0_d6_natural_move_world.py tools/bug0_d7f_natural_world.py tools/bug0_d7f_natural_eat.py tools/bug0_d7f_natural_eat_post.py adapters/mineflayer/d7_live_staged_stop.py adapters/mineflayer/normal_action.py tests/test_d7f_natural_live_stop.py tests/test_d7f_natural_eat_post.py
+          ruff check tools/bug0_d8_two_natural_food_world.py tests/test_d8_two_natural_live_stop.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_staged_move_world.py tools/bug0_d6_natural_move_world.py tools/bug0_d7f_natural_world.py tools/bug0_d7f_natural_eat.py tools/bug0_d7f_natural_eat_post.py adapters/mineflayer/d7_live_staged_stop.py adapters/mineflayer/normal_action.py tests/test_d7f_natural_live_stop.py tests/test_d7f_natural_eat_post.py
+          python -m pytest -q -x tests/test_d8_two_natural_live_stop.py tests/test_d7f_natural_live_stop.py tests/test_d7f_natural_eat_post.py tests/test_d7e_live_staged_stop.py tests/test_d7e_staged_move_eat_post.py tests/test_d6_natural_drop_original_s49.py tests/test_d6_multigen_loop.py tests/test_d6_vanilla_multigen_audit.py tests/test_d7_postmove_native_controls.py tests/test_d7_paper_server_tick_post.py tests/test_d6_original_s49_loot_move.py tests/test_d6_loot_approach.py tests/test_d6_staged_move_world.py tests/test_s49_nonmotion_physical_fence.py tests/test_c1_physical_action_fence.py tests/test_bug0_d4_post.py tests/test_bug0_d4_precombat_native_hunger.py
+
+      - name: Build reused original Paper staged-item and natural-drop witness plugins
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/loot_pickup_fixture_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+      - name: Verify no World or new Action
+        run: |
+          echo 'D8_TWO_GENERATION_NATURAL_S49_S51_SOURCE_PREWORLD / WORLD0 / ACTION0 / EAT0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
