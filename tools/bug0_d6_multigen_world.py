@@ -495,6 +495,7 @@ def main() -> None:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--nonmotion-fence", type=Path, required=True)
     parser.add_argument("--motion-fence", type=Path, required=True)
+    parser.add_argument("--d7-passive-controls", type=Path)
     args = parser.parse_args()
     if os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1":
         raise SystemExit("D6 multigen real World gate missing")
@@ -508,6 +509,7 @@ def main() -> None:
         d6_controlled_zero_dev=(
             os.environ.get("D6_CONTROLLED_ZERO_WORLD_ONLY") == "1"
         ),
+        d7_native_controls_path=args.d7_passive_controls,
     )))
 
 

@@ -137,6 +137,7 @@ async def run(
     motion_fence_path: Path | None = None,
     d6_multigen_dev: bool = False,
     d6_controlled_zero_dev: bool = False,
+    d7_native_controls_path: Path | None = None,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -175,6 +176,26 @@ async def run(
             report["d6_operator_forced_zero"] = True
             report["d6_natural_drop_rng_unchanged"] = False
             report["d6_controlled_zero_not_vanilla_sample"] = True
+        if d7_native_controls_path is not None:
+            if (
+                os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+                or not d6_multigen_dev
+                or d6_controlled_zero_dev
+                or post_death_loot_move_dev is None
+                or post_respawn_dev is None
+                or not isinstance(d7_native_controls_path, Path)
+                or d7_native_controls_path.exists()
+                or d7_native_controls_path.is_symlink()
+                or d7_native_controls_path.parent.resolve() != report_path.parent.resolve()
+                or d7_native_controls_path in (
+                    report_path, log_path, nonmotion_fence_path, motion_fence_path
+                )
+            ):
+                raise S49D3Rejected("S50 passive controls source not granted for exact D7 World")
+            report["d7_same_s49_passive_s50_readback"] = True
+            report["d7_controls_source_file"] = d7_native_controls_path.name
+            report["d7_paper_effective_stop_proven"] = False
+            report["d7_eat_grant_issued"] = False
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
@@ -261,6 +282,10 @@ async def run(
         report["stage"] = "AUTHENTIC_MINEFLAYER_SESSION"
         session = await _new_session(
             w4_native_orientation_dev=post_death_loot_move_dev is not None,
+            **(
+                {"s50_direct_controls_sidecar_dev": d7_native_controls_path.absolute()}
+                if d7_native_controls_path is not None else {}
+            ),
         )
         sid = session.started.session_id
         report["session_id"] = sid

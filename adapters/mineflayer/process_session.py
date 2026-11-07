@@ -71,6 +71,7 @@ class MineflayerProcessSession:
         startup_timeout_s: float = 10.0,
         raw_capture_root: Path | None = None,
         w4_native_orientation_dev: bool = False,
+        s50_direct_controls_sidecar_dev: Path | None = None,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
@@ -87,6 +88,30 @@ class MineflayerProcessSession:
 
         if type(w4_native_orientation_dev) is not bool:
             raise MineflayerProcessStartError("W4 orientation requires explicit boolean opt-in")
+        if s50_direct_controls_sidecar_dev is not None:
+            sidecar = s50_direct_controls_sidecar_dev
+            if (
+                not isinstance(sidecar, Path) or not sidecar.is_absolute()
+                or not sidecar.parent.is_dir() or sidecar.parent.is_symlink()
+                or sidecar.exists() or sidecar.is_symlink()
+                or not w4_native_orientation_dev
+                or config.version != "1.21.8"
+                or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+                or "RELAYSELF_S50_P1_READBACK_FILE" in os.environ
+                or "RELAYSELF_S50_PACKET_TRACE_FILE" in os.environ
+                or "RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV" in os.environ
+                or len(str(sidecar)) > 4096
+            ):
+                raise MineflayerProcessStartError(
+                    "S50 original direct native sidecar not explicitly scoped"
+                )
+            bridge = Path(__file__).parent / (
+                "m02_paper_dev/s50_p1_readback_bridge.mjs"
+            )
+            if not bridge.is_file() or bridge.is_symlink():
+                raise MineflayerProcessStartError(
+                    "original S50 direct Mineflayer readback bridge missing"
+                )
         # Suppress inherited environment opt-in in every default S49/R/V launch.
         child_env = os.environ.copy()
         child_env.pop("RELAYSELF_W4_NH1_ORIENTATION_V0", None)
@@ -94,6 +119,12 @@ class MineflayerProcessSession:
             if config.version != "1.21.8":
                 raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
             child_env["RELAYSELF_W4_NH1_ORIENTATION_V0"] = "1"
+        if s50_direct_controls_sidecar_dev is not None:
+            # Original S50 passively wraps the SAME bridge and single bot.
+            # Client-local physicsTick + controls != Paper-effective STOP.
+            child_env["RELAYSELF_S50_P1_READBACK_FILE"] = str(
+                s50_direct_controls_sidecar_dev
+            )
 
         # Custody remains with the spawn task across cancellation before
         # create_subprocess_exec() exposes its Process handle. Once returned,

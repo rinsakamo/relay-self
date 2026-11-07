@@ -862,6 +862,7 @@ async def _observe_native_threat(
 async def _new_session(
     *, raw_capture_root: Path | None = None,
     w4_native_orientation_dev: bool = False,
+    s50_direct_controls_sidecar_dev: Path | None = None,
 ) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
@@ -870,6 +871,8 @@ async def _new_session(
         ),
         startup_timeout_s=12,
         w4_native_orientation_dev=w4_native_orientation_dev,
+        **({"s50_direct_controls_sidecar_dev": s50_direct_controls_sidecar_dev}
+           if s50_direct_controls_sidecar_dev is not None else {}),
         **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
     )
     try:
