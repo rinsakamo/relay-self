@@ -831,12 +831,14 @@ class NormalSessionActionExecutor:
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
         )
-        command = build_mineflayer_command(issued, binding)
         self._dispatched.add(issued.action_id)
         self._last_issued_probe_seq = probe.seq
         self._post_move_settling_unqualified = True
         self._count += 1
         try:
+            # Any exception after original ISSUE must leave this Action UNKNOWN,
+            # including a failed command build before native IO.
+            command = build_mineflayer_command(issued, binding)
             consequence = await execute_mineflayer_command(
                 session, command, timeout_s=9, provenance=origin,
             )
