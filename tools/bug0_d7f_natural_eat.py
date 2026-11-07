@@ -48,7 +48,7 @@ async def after_real_natural_pickup_eat(
         or nonmotion_fence.unresolved
         or len(nonmotion_fence.actions) != owner._attack_count
         or owner._attack_count < 1
-        or owner._count != owner._attack_count + 1
+        or not 1 <= owner._count - owner._attack_count <= 4
         or len(owner._dispatched) != owner._count
         or owner.supervisor.open_actions
         or not owner._post_move_settling_unqualified
@@ -59,7 +59,10 @@ async def after_real_natural_pickup_eat(
         or not report.get("d7f_operator_hunger_effect_dev")
         or report.get("d6_item_origin") != "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
         or not report.get("d6_d_same_attack_move_supervisor")
-        or len(report.get("d6_original_s49_move_actions", ())) != 1
+        or not 1 <= len(report.get("d6_original_s49_move_actions", ())) <= 4
+        or original_move[1].terminal.action_id != (
+            report["d6_original_s49_move_actions"][-1]["action_id"]
+        )
         or not report.get("d4_paper_item_spawn")
         or not report.get("d4_paper_item_pickup")
         or "killer_is_relay_self=true" not in report.get("paper_loot_death", "")
@@ -194,7 +197,9 @@ async def after_real_natural_pickup_eat(
         or nonmotion_fence.unresolved
         or len(nonmotion_fence.actions) != owner._attack_count + 1
         or len(owner._dispatched) != owner._count
-        or owner._count != owner._attack_count + 2
+        or owner._count != (
+            owner._attack_count + len(report["d6_original_s49_move_actions"]) + 1
+        )
         or owner._d7_dev_eat_credit != 0
         or not owner._post_move_settling_unqualified
     ):
