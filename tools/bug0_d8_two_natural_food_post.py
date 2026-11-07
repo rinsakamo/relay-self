@@ -47,11 +47,120 @@ def _source(log: str, pattern) -> list[dict[str, str]]:
     ]
 
 
+def audit_first_true_zero_food(
+    report: dict, paper_log: str, *,
+    nonmotion_path: Path, motion_path: Path,
+) -> dict:
+    """Truthful first-generation zero: never issue second Action or claim food."""
+    sid = report.get("session_id")
+    attacks = report.get("s49_actions")
+    zero = _source(paper_log, NATURAL_DEATH_INCLUDING_ZERO)
+    if (
+        report.get("status") != "PASS_DEV"
+        or report.get("classification")
+            != "D8_FIRST_TRUE_ZERO_DROP_TWO_FOOD_CYCLES_NOT_EXERCISED"
+        or report.get("d8_two_generation_optin") is not True
+        or report.get("d8_first_true_zero_food_not_exercised") is not True
+        or report.get("d8_second_generation_food_proven") is not False
+        or report.get("self_eat") is not False
+        or report.get("d4_self_eat_issued") is not False
+        or report.get("d4_eat_terminal") != "NOT_ISSUED"
+        or report.get("d4_natural_food_pickup_eat_proven") is not False
+        or report.get("real_rotten_flesh_count") != 0
+        or report.get("d4_native_after_zero", {}).get("rotten_flesh") != 0
+        or report.get("d4_precombat_hunger_qualified") is not True
+        or report.get("original_action_issuer") != "S49"
+        or report.get("node_exit") != 0 or report.get("java_exit") != 0
+        or report.get("cleanup_done") is not True
+        or report.get("real_world_started") is not True
+        or report.get("real_model_calls") != 0
+        or report.get("learning_updated") is not False
+        or "d7f_managed_world_witness=true" not in paper_log
+        or "RSELF_LOOT_STAGED " in paper_log
+        or "RSELF_NATURAL_DROP_FAULT" in paper_log
+        or "RSELF_RESPAWN_FAULT" in paper_log
+        or len(zero) != 1 or zero[0]["count"] != "0"
+        or not isinstance(sid, str) or not sid
+        or not isinstance(attacks, list) or len(attacks) != 1
+        or report.get("attack_count") != 1
+        or report.get("d4_final_action_count") != 1
+        or report.get("d4_final_supervisor_open_count") != 0
+        or report.get("d8_intent_rearm") is not None
+        or report.get("d8_second_generation") is not None
+        or any(("RSELF_NATURAL_DROP_SPAWN " in paper_log,
+                "RSELF_NATURAL_DROP_PICKUP " in paper_log))
+    ):
+        raise D8TwoCycleAuditRejected(
+            "first true zero World/owner/native food evidence invalid"
+        )
+    first = report["initial_paper"]
+    death = report["paper_respawn_death"]
+    reappear = report["paper_respawn"]
+    if (
+        first not in paper_log or death not in paper_log
+        or reappear not in paper_log
+        or report["paper_loot_death"] not in paper_log
+        or zero[0]["world"] != _uuid(first, "world")
+        or zero[0]["zombie"] != _uuid(first, "entity")
+        or zero[0]["killer"] != _uuid(death, "killer")
+        or _tick(death) != int(zero[0]["tick"])
+        or _tick(reappear) - _tick(death) != 600
+        or _uuid(reappear, "world") != _uuid(first, "world")
+        or _uuid(reappear, "entity") == _uuid(first, "entity")
+    ):
+        raise D8TwoCycleAuditRejected(
+            "first zero is not a real Paper managed Self-killed zombie"
+        )
+    nonmotion = OriginalS49NonMotionFence.restore(
+        nonmotion_path, self_id="s49-original-self",
+    )
+    motion = OriginalS49PhysicalFence.restore(
+        motion_path, self_id="s49-original-self",
+    )
+    nonmotion.require_clear()
+    motion.require_clear()
+    row = nonmotion.actions[0] if len(nonmotion.actions) == 1 else None
+    if (
+        motion.actions
+        or row is None
+        or row.get("kind") != "ATTACK"
+        or row.get("status") != "S16_OUTCOME"
+        or row.get("terminal") != "outcome"
+        or row.get("session_id") != sid
+        or row.get("action_id") != attacks[0].get("action_id")
+        or attacks[0].get("ack") != "applied"
+        or attacks[0].get("terminal") != "outcome"
+        or report.get("nonmotion_fence", {}).get("sha256") != nonmotion.sha256
+        or report.get("motion_fence", {}).get("sha256") != motion.sha256
+    ):
+        raise D8TwoCycleAuditRejected("first zero original S49 durable ATTACK invalid")
+    return {
+        "status": "NOT_EXERCISED",
+        "classification": "D8_FIRST_TRUE_ZERO_NATURAL_DROP_NO_FOOD_CYCLE",
+        "World_first_vanilla_rotten_count": 0,
+        "first_attack_s49_terminal": "outcome",
+        "second_generation_world_respawn_600ticks": True,
+        "first_food_issued": False,
+        "second_food_issued": False,
+        "two_real_natural_food_cycles": False,
+        "qualification": "NO_GO",
+        "science": "NOT_RUN",
+    }
+
+
 def audit_two_natural_food_cycles(
     report: dict, paper_log: str, *,
     nonmotion_path: Path, motion_path: Path,
     s50_jsonl: str = "",
 ) -> dict:
+    if (
+        isinstance(report, dict)
+        and report.get("d8_first_true_zero_food_not_exercised") is True
+    ):
+        return audit_first_true_zero_food(
+            report, paper_log,
+            nonmotion_path=nonmotion_path, motion_path=motion_path,
+        )
     if (
         not isinstance(report, dict) or not isinstance(paper_log, str)
         or report.get("status") != "PASS_DEV"
