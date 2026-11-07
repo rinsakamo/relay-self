@@ -150,9 +150,9 @@ async def run_natural_loot_eat(
         if d7f_natural_eat_dev is not None:
             # D7-F new DEV opt-in only: no EAT until original live owner
             # qualifies source-bound Paper/S50 physical quiescence.
-            if natural_count != 1:
+            if natural_count not in (1, 2):
                 report["d7f_natural_eat_classification"] = (
-                    "NOT_EXERCISED_NATURAL_COUNT_NOT_ONE"
+                    "NOT_EXERCISED_NATURAL_COUNT_ZERO_OR_INVALID"
                 )
                 return False
             return await d7f_natural_eat_dev(
