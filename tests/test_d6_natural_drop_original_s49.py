@@ -22,9 +22,9 @@ from adapters.mineflayer.normal_action import (
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+from test_d6_loot_approach import pair
 from tools.bug0_d6_natural_move_post import D6DNaturalAuditRejected, audit
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
-from test_d6_loot_approach import pair
 
 
 def natural_with_orb():
