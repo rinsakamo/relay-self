@@ -34,6 +34,8 @@ async def after_real_natural_pickup_eat(
     native_pickup,
     nonmotion_fence: OriginalS49NonMotionFence,
     s50_sidecar: Path,
+    d8_second_generation_dev: bool = False,
+    d8_prior_rotten_count: int = 0,
 ) -> bool:
     """One positive first generation, one actual rotten item, no forged RNG.
 
@@ -46,9 +48,23 @@ async def after_real_natural_pickup_eat(
         or original_move[0] is not owner
         or not isinstance(nonmotion_fence, OriginalS49NonMotionFence)
         or nonmotion_fence.unresolved
-        or len(nonmotion_fence.actions) != owner._attack_count
-        or owner._attack_count < 1
-        or not 1 <= owner._count - owner._attack_count <= 4
+        or len(nonmotion_fence.actions) != (
+            owner._attack_count + int(d8_second_generation_dev)
+        )
+        or owner._epoch_attack_count < 1
+        or not 1 <= (
+            owner._count - owner._epoch_action_count_start
+            - owner._epoch_attack_count
+        ) <= 4
+        or (
+            d8_second_generation_dev
+            and (
+                owner._intent_epoch != 2
+                or type(d8_prior_rotten_count) is not int
+                or d8_prior_rotten_count < 0
+            )
+        )
+        or (not d8_second_generation_dev and d8_prior_rotten_count != 0)
         or len(owner._dispatched) != owner._count
         or owner.supervisor.open_actions
         or not owner._post_move_settling_unqualified
@@ -70,7 +86,7 @@ async def after_real_natural_pickup_eat(
         or sum(
             item.count for item in native_pickup.snapshot.inventory
             if item.name == "rotten_flesh"
-        ) != report["real_rotten_flesh_count"]
+        ) != report["real_rotten_flesh_count"] + d8_prior_rotten_count
         or not isinstance(s50_sidecar, Path)
         or not s50_sidecar.is_file()
         or s50_sidecar.is_symlink()
@@ -78,6 +94,8 @@ async def after_real_natural_pickup_eat(
         raise D7FNaturalEatRejected("genuine original S49 ATTACK/MOVE natural pickup absent")
     sid = owner.session_id
     natural_count = report["real_rotten_flesh_count"]
+    current_meat_total = natural_count + d8_prior_rotten_count
+    action_count_before_eat = owner._count
     report["d7f_stage"] = "FRESH_NATIVE_NATURAL_ITEM_FOOD_CHOICE"
     report["d7f_original_eat_issued"] = False
     report["d7f_eat_terminal"] = "NOT_ISSUED"
@@ -129,10 +147,15 @@ async def after_real_natural_pickup_eat(
         paper_pickup=report["d4_paper_item_pickup"],
         paper_natural_death=report["paper_loot_death"],
         natural_source_dev=True,
+        d8_next_generation_dev=d8_second_generation_dev,
         native_before=earlier, native_after=current,
     )
     if (
-        stop.classification != "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+        stop.classification != (
+            "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
+            if d8_second_generation_dev
+            else "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+        )
         or stop.paper_pickup_tick <= 0
     ):
         raise D7FNaturalEatRejected("natural STOP source was not original Paper")
@@ -140,7 +163,10 @@ async def after_real_natural_pickup_eat(
     report["d7f_stop_original_owner_admitted_dev"] = True
     report["d7f_server_effective_s15_clear_tick_attested"] = False
 
-    action_id = f"d7f-s49-real-natural-eat-{sid}"
+    action_id = (
+        f"d8-gen2-s49-real-natural-eat-{sid}"
+        if d8_second_generation_dev else f"d7f-s49-real-natural-eat-{sid}"
+    )
     choice = EatCursor(sid).choose(current)
     if (
         choice.status is not EatStatus.CANDIDATE
@@ -192,24 +218,32 @@ async def after_real_natural_pickup_eat(
         result.terminal.state is not ActionState.OUTCOME
         or result.terminal is not owner.supervisor.get(action_id)
         or outcome.consumed_item != "rotten_flesh"
-        or outcome.count_before != natural_count
-        or outcome.count_after != natural_count - 1
+        or outcome.count_before != current_meat_total
+        or outcome.count_after != current_meat_total - 1
         or outcome.food_after <= outcome.food_before
         or owner.supervisor.open_actions
         or nonmotion_fence.unresolved
-        or len(nonmotion_fence.actions) != owner._attack_count + 1
-        or len(owner._dispatched) != owner._count
-        or owner._count != (
-            owner._attack_count + len(report["d6_original_s49_move_actions"]) + 1
+        or len(nonmotion_fence.actions) != (
+            owner._attack_count + (2 if d8_second_generation_dev else 1)
         )
+        or len(owner._dispatched) != owner._count
+        or owner._count != action_count_before_eat + 1
+
         or owner._d7_dev_eat_credit != 0
         or not owner._post_move_settling_unqualified
     ):
         raise D7FNaturalEatRejected("same S49/S51 natural EAT food or ledger unqualified")
     food.acknowledge_verified_eat(result)
     report["d7f_eat_outcome"] = asdict(outcome)
-    report["d7f_natural_inventory_before"] = natural_count
-    report["d7f_natural_inventory_after"] = natural_count - 1
+    report["d7f_natural_inventory_before"] = current_meat_total
+    report["d7f_natural_inventory_after"] = current_meat_total - 1
+    report["d8_true_new_natural_meat"] = (
+        natural_count if d8_second_generation_dev else None
+    )
+    report["d8_inventory_before_new_pickup"] = (
+        d8_prior_rotten_count if d8_second_generation_dev else None
+    )
+
     report["d4_eat_action_id"] = action_id
     report["d4_self_eat_issued"] = True
     report["d4_eat_terminal"] = "outcome"
@@ -222,7 +256,7 @@ async def after_real_natural_pickup_eat(
         or sum(
             item.count for item in post.snapshot.inventory
             if item.name == "rotten_flesh"
-        ) != natural_count - 1
+        ) != current_meat_total - 1
     ):
         raise D7FNaturalEatRejected("new native source contradicts true S51 EAT")
     report["d7f_nonmotion_sha256"] = nonmotion_fence.sha256
