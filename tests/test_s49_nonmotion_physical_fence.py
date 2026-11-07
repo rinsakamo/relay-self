@@ -7,7 +7,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from dataclasses import replace
 
 import pytest
 
@@ -16,13 +15,13 @@ import test_bug0_s49_s51_eat_handoff as eat
 from adapters.mineflayer import attack_execution, normal_action
 from adapters.mineflayer.eat_execution import EatingActionReceipt
 from relay_self.action import ActionState
+from relay_self.c1_motion_journal import _canonical
 from relay_self.s49_nonmotion_physical_fence import (
     NonMotionFenceError,
     NonMotionReplay,
     NonMotionUnresolved,
     OriginalS49NonMotionFence,
 )
-from relay_self.c1_motion_journal import _canonical
 
 
 def _fence(path, *, self_id="s49-original-self"):
