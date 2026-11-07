@@ -23,6 +23,7 @@ jobs:
       D6_NATURAL_DROP_MOVE_WORLD_ONLY: '1'
       D6_NATURAL_MULTIGEN_WORLD_ONLY: '1'
       D7_PASSIVE_CONTROLS_WORLD_ONLY: '1'
+      D7C_PAPER_POSTPICKUP_WORLD_ONLY: '1'
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
       NODE_OPTIONS: ''
@@ -173,6 +174,10 @@ jobs:
           assert x['original_EAT_issued'] is False
           a=json.loads((p/'independent_source_audit.json').read_text())
           assert x['original_natural_Paper_item_uuid'] == a.get('natural_item_uuid')
+          assert isinstance(a.get('natural_item_uuid'), str) and a['natural_item_uuid']
+          assert a['original_move_count'] >= 1
+          assert x['post_pickup_Paper_tick_rows'] >= 8
+          assert x['original_Paper_pickup_tick'] != 'NOT_EXERCISED'
           assert x['post_pickup_quiet_is_stop_authority'] is False
           assert x['authenticated_S_owner_EAT_resume_grant'] is False
           print(x['classification'], x['post_pickup_Paper_tick_rows'])
