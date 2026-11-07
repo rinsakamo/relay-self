@@ -12,7 +12,6 @@ import asyncio
 import json
 import math
 import os
-from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.d6_loot_approach import (
