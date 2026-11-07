@@ -157,3 +157,26 @@ def test_nonzero_velocity_and_drift_reset_quiet_streak():
     actual = audit_paper_ticks("\n".join(rows), report, prior, client)
     assert actual["longest_sampled_quiet_Paper_tick_streak"] < 14
     assert actual["body_physically_stopped_proven"] is False
+
+
+def test_true_zero_drop_without_move_is_not_a_post_pickup_stop_sample():
+    report, prior, client = original()
+    report["d6_original_s49_move_actions"] = []
+    prior["original_move_count"] = 0
+    prior["natural_item_uuid"] = None
+    client["source_scope"] = "NO_PHYSICAL_S49_MOVE_OBSERVED"
+    rows = [x for x in log_source() if "RSELF_NATURAL_DROP_PICKUP " not in x]
+    result = audit_paper_ticks("\n".join(rows), report, prior, client)
+    assert result["original_Paper_pickup_tick"] == "NOT_EXERCISED"
+    assert result["post_pickup_Paper_tick_rows"] == 0
+    assert result["post_pickup_8_quiet_server_ticks_observed"] is False
+    assert result["authenticated_S_owner_EAT_resume_grant"] is False
+
+
+def test_original_audit_must_supply_real_item_uuid_and_move_count():
+    report, prior, client = original()
+    for invalid in ({"natural_item_uuid": None}, {"natural_item_uuid": 123},
+                    {"original_move_count": None}, {"original_move_count": True}):
+        corrupted = {**prior, **invalid}
+        with pytest.raises(D7PaperSourceRejected):
+            audit_paper_ticks("\n".join(log_source()), report, corrupted, client)
