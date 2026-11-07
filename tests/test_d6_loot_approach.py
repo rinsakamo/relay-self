@@ -105,13 +105,9 @@ def test_source_unqualified_never_mints_approach(mutation):
             snap.native_orientation, yaw_rad=math.pi / 2 + 0.7,
         ))
     elif mutation == "wrong_target_id":
-        b = replace(b, snapshot=replace(
-            snap, nearby_entities=(replace(item, entity_id=45),),
-        ))
+        snap = replace(snap, nearby_entities=(replace(item, entity_id=45),))
     elif mutation == "replaced_item":
-        b = replace(b, snapshot=replace(
-            snap, nearby_entities=(replace(item, entity_id=43),),
-        ))
+        snap = replace(snap, nearby_entities=(replace(item, entity_id=43),))
     elif mutation == "zombie":
         snap = replace(snap, nearby_entities=(replace(item, name="zombie"),))
     elif mutation == "extra_entity":
