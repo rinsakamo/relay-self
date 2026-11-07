@@ -64,6 +64,49 @@ def _meat(probe) -> int:
     )
 
 
+def item_source_readback(probe) -> dict:
+    """Only already-received original native source, NEVER a new probe/Action.
+
+    A rejection may reflect body residual motion, item drift, yaw, XP,
+    incomplete coverage or a moved/disappeared item. Preserve originals
+    before selecting a cause; never weaken the D6 source gate.
+    """
+    snap = probe.snapshot
+    pos = snap.position
+    oriented = getattr(snap, "native_orientation", None)
+    coverage = snap.nearby_entities_coverage
+    return {
+        "native_seq": probe.seq,
+        "request_id": probe.request_id,
+        "session_id": probe.session_id,
+        "source_ref": probe.provenance.reference,
+        "position": {"x": pos.x, "y": pos.y, "z": pos.z},
+        "yaw_rad": getattr(oriented, "yaw_rad", None),
+        "health": snap.health,
+        "oxygen": snap.oxygen_level,
+        "rotten_flesh_count": _meat(probe),
+        "candidate_count": coverage.candidate_count,
+        "truncated": coverage.truncated,
+        "nearby_entities": [
+            {
+                "id": ent.entity_id,
+                "name": ent.name,
+                "type": ent.entity_type,
+                "distance": ent.distance,
+                "position": {
+                    "x": ent.position.x,
+                    "y": ent.position.y,
+                    "z": ent.position.z,
+                },
+            }
+            for ent in snap.nearby_entities
+        ],
+        "read_only": True,
+        "additional_native_probe": False,
+        "physical_authority": False,
+    }
+
+
 async def move_from_real_item(
     session, report: dict, log_path: Path, *,
     fence: OriginalS49PhysicalFence,
@@ -136,6 +179,19 @@ async def move_from_real_item(
                 allow_experience_orbs=allow_experience_orbs,
             )
         except D6LootApproachRejected as exc:
+            report.setdefault("d6_original_item_gate_rejections", []).append({
+                "attempt": i,
+                "item_entity_id": item_id,
+                "native_before": item_source_readback(before),
+                "native_current": item_source_readback(current),
+                "reason": str(exc),
+                "reason_class": type(exc).__name__,
+                "issued_moves_before_rejection": len(
+                    report["d6_original_s49_move_actions"]
+                ),
+                "reissue_on_rejection": False,
+                "read_only": True,
+            })
             # If within pickup radius but not yet observed in inventory,
             # wait for genuine World physics rather than issue a blind MOVE.
             if (
