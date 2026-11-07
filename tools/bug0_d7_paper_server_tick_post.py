@@ -246,6 +246,10 @@ def audit_paper_ticks(
         "post_pickup_8_quiet_server_ticks_observed": (
             longest_post_pickup_streak >= 8
         ),
+        "latest_Paper_tick": last_tick,
+        "latest_8_post_pickup_Paper_ticks_quiet": (
+            after_pickup_streak >= 8
+        ),
         "post_pickup_quiet_is_stop_authority": False,
         "server_effective_original_S49_clear_tick": "NOT_CAUSALLY_ATTESTED",
         "body_physically_stopped_proven": False,
