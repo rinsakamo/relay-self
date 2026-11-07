@@ -217,6 +217,12 @@ def test_failed_preissue_fsync_emits_no_attack_or_eat(monkeypatch, tmp_path):
                     pre_issue_reservation=reserve, post_outcome_commit=close,
                 )
         else:
+            # The preceding ATTACK fixture replaced the S49 live-session
+            # type guard; restore the original class for the S51 fixture.
+            monkeypatch.setattr(
+                normal_action, "MineflayerProcessSession",
+                eating.MineflayerProcessSession,
+            )
             owner, native, before, choice, propose, issue, fence, reserve, close = (
                 _eat_run(folder / "fence.json")
             )
