@@ -22,6 +22,7 @@ from relay_self.action import ActionState
 from relay_self.c1_motion_journal import C1MotionJournal
 from relay_self.c1_physical_action_fence import (
     OriginalS49PhysicalFence,
+    PhysicalReplay,
     UnresolvedPhysicalAction,
 )
 from relay_self.learning import LearningPreferenceState
@@ -330,8 +331,7 @@ def test_d5_real_owner_2nd_epoch_motion_c1_persists_only_move_feedback(
     assert executor.supervisor.get(old_action) is old_terminal
     assert executor._dispatched == {old_action, action_id}
     assert executor._count == 2
-    with pytest.raises(UnresolvedPhysicalAction):
-        other = OriginalS49PhysicalFence.create(
+    with pytest.raises(PhysicalReplay):
+        OriginalS49PhysicalFence.create(
             physical.path, self_id=journal.self_id,
         )
-        other.require_clear()
