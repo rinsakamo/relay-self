@@ -48,7 +48,7 @@ def fixture():
     rows.append({"kind":"EFFECT_ACK","native_action_id":AID,
                  "native_seq":13,"client_physics_tick":0,
                  "controls":{**OFF,"back":True}})
-    rows.append({"kind":"EFFECT_ACK","native_action_id":AID+"-clear",
+    rows.append({"kind":"EFFECT_ACK","native_action_id":AID+"-s15-clear",
                  "native_seq":14,"client_physics_tick":0,"controls":dict(OFF)})
     for i in range(1,13):
         rows.append({"kind":"PHYSICS_TICK",
@@ -81,7 +81,7 @@ def test_valid_direct_native_control_source_remains_strictly_readonly():
 
 
 @pytest.mark.parametrize("mutation", [
-    "no_clear","wrong_clear_seq","clear_held","postclear_held",
+    "no_clear","legacy_wrong_suffix","wrong_clear_seq","clear_held","postclear_held",
     "postclear_gap","short_window","duplicate_source","wrong_session",
     "bad_source","duplicate_ordinal","missing_shutdown","late_reissue",
     "foreign_move","incomplete_controls","postmove_eat","false_stop_claim",
@@ -92,6 +92,8 @@ def test_native_source_and_owner_mismatch_fail_closed(mutation):
     rows=deepcopy(rows)
     if mutation=="no_clear":
         rows[2]["native_action_id"] = "other-clear"
+    elif mutation=="legacy_wrong_suffix":
+        rows[2]["native_action_id"] = AID+"-clear"
     elif mutation=="wrong_clear_seq":
         rows[2]["native_seq"] = 25
     elif mutation=="clear_held":

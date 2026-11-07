@@ -1,0 +1,105 @@
+name: Unified v0.5 D7-D R2 frozen Paper/S50 originals corrected read-only audit DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d7d-staged-stop-sensor-20261107
+  pull_request:
+    branches:
+      - dev/unified-v05-d7c2-multigen-pickup-observation-20261107
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Review exact current owner read-only S15/S50 source and negative tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check tools/bug0_d7_postmove_native_controls_post.py tools/bug0_d7_staged_stop_post.py tests/test_d7_postmove_native_controls.py tests/test_d7_staged_stop_post.py
+          python -m pytest -q -x tests/test_d7_postmove_native_controls.py tests/test_d7_staged_stop_post.py
+      - name: Download immutable real D7-D R2 original from failed source-reader CI
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 42376962697
+          github-token: ${{ github.token }}
+          name: unified-v05-d7d-original-s49-staged-item-s50-paper-source
+          path: d7d_r2_archive
+      - name: Independently verify each R2 original byte SHA before read-only reanalysis
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('d7d_r2_archive')
+          assert root.is_dir() and not root.is_symlink()
+          lines=(root/'SHA256SUMS.txt').read_text().splitlines()
+          assert len(lines)==6, (len(lines),lines)
+          checked=set()
+          for row in lines:
+              digest,filename=row.split(maxsplit=1)
+              filename=filename.removeprefix('./').removeprefix('*')
+              assert '/' not in filename and filename not in checked
+              checked.add(filename)
+              p=root/filename
+              assert p.is_file() and not p.is_symlink()
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==digest
+          assert {'paper_original.log','report.json','s50_same_original_client_controls.jsonl',
+                  'original_s49_move_fence.json','operator_post_audit.json'}<=checked
+          print('D7D_R2_IMMUTABLE_ORIGINAL_SHA_6_OF_6_MATCH')
+          PY
+      - name: Re-audit same frozen original staged S49 journal (no World)
+        run: |
+          mkdir -p d7d_r2_reattested
+          python -B tools/bug0_d6_staged_move_post.py \
+            --server-log d7d_r2_archive/paper_original.log \
+            --report d7d_r2_archive/report.json \
+            --move-fence d7d_r2_archive/original_s49_move_fence.json \
+            --out d7d_r2_reattested/staged_original_readonly_v2.json
+          python -B tools/bug0_d7_staged_stop_post.py \
+            --server-log d7d_r2_archive/paper_original.log \
+            --report d7d_r2_archive/report.json \
+            --staged-audit d7d_r2_reattested/staged_original_readonly_v2.json \
+            --native-sidecar d7d_r2_archive/s50_same_original_client_controls.jsonl \
+            --out d7d_r2_reattested/d7d_staged_stop_source_v2.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('d7d_r2_reattested/d7d_staged_stop_source_v2.json').read_text())
+          assert r['status']=='PASS_DEV' and r['classification']=='D7_D_STAGED_PAPER_PICKUP_POSTMOVE_SOURCE_ONLY'
+          assert r['client_postclear_physics_ticks'] >= 8 and r['paper_postpickup_tick_rows'] >= 8
+          assert r['original_s50_clear_seq']==15
+          assert r['item_origin']=='OPERATOR_FIXTURE_NOT_ZOMBIE_DROP'
+          assert r['natural_zombie_drop_proven'] is False
+          assert r['body_physically_stopped_proven'] is False
+          assert r['authenticated_S_owner_EAT_resume_grant'] is False
+          assert r['original_EAT_issued'] is False
+          print('D7D_R2_READONLY_POSTAUDIT_PASS_DEV_SOURCE_ONLY / EAT0 / QUALIFICATION_NO_GO')
+          PY
+      - name: Preserve archived audit derivative with new SHA
+        if: always()
+        run: |
+          if test -d d7d_r2_reattested; then
+            (cd d7d_r2_reattested && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Store versioned read-only reanalysis, NOT old World edit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-v05-d7d-r2-frozen-original-independent-stop-source-reaudit
+          path: d7d_r2_reattested/
+          if-no-files-found: warn
+          retention-days: 30

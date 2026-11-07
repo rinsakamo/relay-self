@@ -94,6 +94,7 @@ def _inventory(read) -> dict:
 
 async def qualify(
     report_path: Path, server_log: Path, *, post_staged_move_dev=None,
+    d7_staged_s50_sidecar: Path | None = None,
 ) -> int:
     report: dict[str, object] = {
         "status": "BLOCKED",
@@ -121,6 +122,18 @@ async def qualify(
             or not callable(post_staged_move_dev)
         ):
             raise PickupD1Rejected("explicit D6 staged MOVE one-world grant absent")
+        if d7_staged_s50_sidecar is not None and (
+            os.environ.get("D7_STAGED_STOP_SOURCE_WORLD_ONLY") != "1"
+            or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+            or post_staged_move_dev is None
+            or not isinstance(d7_staged_s50_sidecar, Path)
+            or not d7_staged_s50_sidecar.is_absolute()
+            or d7_staged_s50_sidecar.exists()
+            or d7_staged_s50_sidecar.is_symlink()
+            or d7_staged_s50_sidecar.parent.resolve() != report_path.parent.resolve()
+            or d7_staged_s50_sidecar in (report_path, server_log)
+        ):
+            raise PickupD1Rejected("D7 staged source-only current World fence absent")
         paper = _artifact(
             "BUG0_PICKUP_PAPER_JAR",
             sha=PAPER_1218_SHA256, size=PAPER_1218_SIZE,
@@ -143,6 +156,28 @@ async def qualify(
         cfg = plugins / "RelayPickupFixtureDev"
         cfg.mkdir()
         (cfg / "config.yml").write_text(PLUGIN_CONFIG, encoding="utf8")
+        if d7_staged_s50_sidecar is not None:
+            # Reuse D7-B's original Paper observer JAR; DO NOT create a
+            # duplicate native bot, Paper controller or independent Action issuer.
+            witness = _artifact(
+                "BUG0_D7_PAPER_WITNESS_JAR",
+                sha=os.environ.get("BUG0_D7_PAPER_WITNESS_SHA256", ""),
+            )
+            if (
+                witness.name != "relay-zombie-drop-witness-dev-0.1.0-dev.jar"
+                or witness in (paper, jar)
+            ):
+                raise PickupD1Rejected("noncanonical D7 Paper witness")
+            shutil.copyfile(witness, plugins / witness.name)
+            witness_cfg = plugins / "RelayZombieDropWitnessDev"
+            witness_cfg.mkdir()
+            (witness_cfg / "config.yml").write_text(
+                "dev-enabled: true\ntarget-player: RelaySelf\n"
+                "d7-paper-tick-observer: true\n", encoding="utf8",
+            )
+            report["d7_staged_paper_tick_source"] = True
+            report["d7_staged_s50_direct_source"] = True
+            report["d7_staged_original_eat_issued"] = False
 
         report["stage"] = "PAPER_START"
         server, collector, _ = await _ready_server(
@@ -155,6 +190,8 @@ async def qualify(
         report["stage"] = "ORIGINAL_NATIVE_SESSION"
         session = await _new_session(
             w4_native_orientation_dev=post_staged_move_dev is not None,
+            **({"s50_direct_controls_sidecar_dev": d7_staged_s50_sidecar}
+               if d7_staged_s50_sidecar is not None else {}),
         )
         report["session_id"] = session.started.session_id
         _command(server, "gamemode survival RelaySelf")
@@ -214,6 +251,11 @@ async def qualify(
         report["unqualified_native_after"] = failures
         if receipt is None:
             raise PickupD1Rejected("real pickup not reflected in native inventory")
+        if d7_staged_s50_sidecar is not None:
+            # Extra passive Paper/S50 ticks AFTER genuine UUID pickup.
+            # Deliberately no native action/STOP auth/EAT, and no new probe.
+            await asyncio.sleep(1.0)
+            report["d7_staged_postpickup_passive_wait_seconds"] = 1.0
 
         report["status"] = "PASS_DEV"
         report["stage"] = "PAPER_NATIVE_PICKUP_CLOSED"
