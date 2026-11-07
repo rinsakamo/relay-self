@@ -10,11 +10,16 @@ import json
 import math
 from pathlib import Path
 
-from tools.bug0_d7_postmove_native_controls_post import audit_passive_controls
 from tools.bug0_d7_paper_server_tick_post import (
-    EVENT_MARK, SOURCE, TICK_MARK,
-    _fields, _inputs_off, _integer, _number,
+    EVENT_MARK,
+    SOURCE,
+    TICK_MARK,
+    _fields,
+    _inputs_off,
+    _integer,
+    _number,
 )
+from tools.bug0_d7_postmove_native_controls_post import audit_passive_controls
 
 MAX_PAPER_TICKS = 8192
 
