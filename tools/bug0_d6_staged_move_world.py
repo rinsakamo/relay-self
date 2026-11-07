@@ -304,13 +304,23 @@ async def move_from_real_item(
             )
             or last_receipt is None
             or owner.supervisor.open_actions
-            or len(report["d6_original_s49_move_actions"]) != 1
+            or not 1 <= len(report["d6_original_s49_move_actions"]) <= (
+                4 if item_origin == "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT" else 1
+            )
+            or last_receipt.terminal.action_id != (
+                report["d6_original_s49_move_actions"][-1]["action_id"]
+            )
             or owner.supervisor.get(last_receipt.terminal.action_id)
             is not last_receipt.terminal
             or (
                 item_origin == "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
-                and (owner._attack_count < 1
-                     or owner._count != owner._attack_count + 1)
+                and (
+                    owner._attack_count < 1
+                    or owner._count != (
+                        owner._attack_count +
+                        len(report["d6_original_s49_move_actions"])
+                    )
+                )
             )
         ):
             raise D6StagedMoveRejected(
