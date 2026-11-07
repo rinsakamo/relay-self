@@ -17,7 +17,7 @@ from relay_self.s49_nonmotion_physical_fence import (
     NonMotionUnresolved,
     OriginalS49NonMotionFence,
 )
-from tools.bug0_d4_oneworld import preflight_original_nonmotion_fence, run
+from tools.bug0_d4_oneworld import S49D3Rejected, preflight_original_nonmotion_fence, run
 from tools.bug0_d5_fence_post import D5NonMotionAuditRejected, audit
 
 
@@ -72,7 +72,7 @@ def test_preflight_fails_closed_on_invalid_persistent_store(tmp_path, mode):
         path.symlink_to(other)
     else:
         path = tmp_path / "absent" / "original.json"
-    with pytest.raises((NonMotionFenceError, ValueError)):
+    with pytest.raises((NonMotionFenceError, S49D3Rejected)):
         preflight_original_nonmotion_fence(path)
 
 
