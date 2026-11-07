@@ -519,7 +519,11 @@ async def run(
             }
         rc = 0
     except Exception as exc:
-        report["status"] = "FAIL"
+        report["status"] = (
+            "BLOCKED"
+            if nonmotion_fence_dev and not report.get("real_world_started")
+            else "FAIL"
+        )
         report["classification"] = (
             "D5_NONMOTION_FENCE_BLOCKED_PREWORLD"
             if nonmotion_fence_dev and not report.get("real_world_started")
