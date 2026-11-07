@@ -127,6 +127,33 @@ def audit(
         or not report["session_id"]
     ):
         raise MultigenAuditRejected("continuous original S49 Intent epoch count invalid")
+    # XP-orb cleanup is an operator-only DEV fixture AFTER a genuine
+    # natural zero. It never removes actual rotten_flesh item entities.
+    # It does not attest autonomous mob selection or WorldBody learning.
+    xp_cleanups = report.get("d6_multigen_operator_xp_only_cleanup", [])
+    if not operator_forced_zero:
+        expected_cmd = (
+            "execute at RelaySelf run kill "
+            "@e[type=minecraft:experience_orb,distance=..8]"
+        )
+        if (
+            not isinstance(xp_cleanups, list)
+            or len(xp_cleanups) != len(epochs)-1
+            or any(
+                row.get("generation") != index
+                or row.get("after_real_zero_generation") != index - 1
+                or row.get("command") != expected_cmd
+                or row.get("only_experience_orbs") is not True
+                or row.get("all_item_entities_untouched") is not True
+                or row.get("world_loot_rule_unchanged") is not True
+                or row.get("operator_dev_intervention") is not True
+                or epochs[index-2].get("real_rotten_count") != 0
+                for index, row in enumerate(xp_cleanups, 2)
+            )
+        ):
+            raise MultigenAuditRejected(
+                "vanilla zero followup XP-only cleanup is not source-scoped"
+            )
     nonmotion = OriginalS49NonMotionFence.restore(
         nonmotion_path, self_id="s49-original-self",
     )
@@ -350,6 +377,10 @@ def audit(
         "classification": report["d6_multigen_classification"],
         "status": "PASS_DEV",
         "operator_forced_zero_not_vanilla_rng": operator_forced_zero,
+        "vanilla_zero_xp_only_operator_cleanups": (
+            len(xp_cleanups) if not operator_forced_zero else 0
+        ),
+        "vanilla_zero_world_loot_rng_unchanged": not operator_forced_zero,
         "paper_world_uuid": paper_world,
         "session_id": sid,
         "completed_original_s49_kill_generations": len(epochs),
