@@ -272,7 +272,15 @@ async def run(
             shutil.copyfile(jar, plugins / jar.name)
             cfg = plugins / name
             cfg.mkdir()
-            (cfg / "config.yml").write_text(CONFIG, encoding="utf8")
+            (cfg / "config.yml").write_text(
+                CONFIG + (
+                    "d7-paper-tick-observer: true\n"
+                    if name == "RelayZombieDropWitnessDev"
+                    and d7_native_controls_path is not None
+                    and os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") == "1"
+                    else ""
+                ), encoding="utf8",
+            )
 
         report["stage"] = "PAPER_WORLD_STARTED"
         server, collector, _ = await _ready_server(
