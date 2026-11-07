@@ -11,6 +11,7 @@ from tools.bug0_d7_paper_server_tick_post import (
 WORLD = "deafbeef-0060-4eaf-8d15-123456789abc"
 PLAYER = "faded00d-0001-4fce-9999-123456789abc"
 SESSION = "original-one-world"
+ITEM = "a9e1ce57-5e82-41e1-acc8-f5d7210f8470"
 OFF = dict.fromkeys(
     ("forward", "back", "left", "right", "jump", "sprint", "sneak"), "false"
 )
@@ -26,6 +27,7 @@ def original():
     prior = {
         "status": "PASS_DEV", "session_id": SESSION,
         "paper_world_uuid": WORLD, "no_eat_after_move": True,
+        "original_move_count": 1, "natural_item_uuid": ITEM,
     }
     client = {
         "source_session": SESSION, "body_physically_stopped_proven": False,
@@ -53,6 +55,10 @@ def log_source():
         }
         rows.append("RSELF_D7_PAPER_TICK "
                     + " ".join(f"{k}={v}" for k, v in tokens.items()))
+    rows.insert(2, "RSELF_NATURAL_DROP_PICKUP "
+                f"world={WORLD} zombie=source-zombie item={ITEM} "
+                f"player={PLAYER} tick=101 rotten_count=1 "
+                "source=ACTUAL_PAPER_ITEM_PICKUP")
     footer = ("RSELF_D7_PAPER_STOP total_ticks=15 input_events=0"
               " truncated=false eat_authority=none")
     return [header, *rows, footer]
@@ -65,6 +71,10 @@ def test_even_contiguous_true_server_idle_is_not_stop_certificate():
     )
     assert result["gapfree_Paper_tick_rows"] == 15
     assert result["longest_sampled_quiet_Paper_tick_streak"] == 14
+    assert result["post_pickup_8_quiet_server_ticks_observed"] is True
+    assert result["longest_post_pickup_sampled_quiet_Paper_tick_streak"] >= 8
+    assert result["post_pickup_quiet_is_stop_authority"] is False
+    assert result["original_natural_Paper_item_uuid"] == ITEM
     assert result["body_physically_stopped_proven"] is False
     assert result["authenticated_S_owner_EAT_resume_grant"] is False
     assert result["original_EAT_issued"] is False
@@ -78,19 +88,20 @@ def test_even_contiguous_true_server_idle_is_not_stop_certificate():
     "nonfinite", "bad_input", "truncated", "no_stop",
     "missing_ready", "false_count", "bad_source",
     "foreign_session", "paper_unqualified", "client_false_stop",
-    "eat_grant", "eat_issued",
+    "eat_grant", "eat_issued", "missing_pickup", "wrong_item",
+    "duplicate_pickup", "pickup_future",
 ])
 def test_invalid_source_or_authority_fails_closed(mutation):
     report, prior, client = original()
     rows = log_source()
     if mutation == "gap":
-        rows[4] = rows[4].replace("tick=103", "tick=105")
+        rows[5] = rows[5].replace("tick=103", "tick=105")
     elif mutation == "wrong_world":
         rows[3] = rows[3].replace(WORLD, "another-world")
     elif mutation == "wrong_player":
         rows[3] = rows[3].replace(PLAYER, "foreign-player")
     elif mutation == "duplicate_ordinal":
-        rows[4] = rows[4].replace("ordinal=4", "ordinal=3")
+        rows[5] = rows[5].replace("ordinal=4", "ordinal=3")
     elif mutation == "nonfinite":
         rows[4] = rows[4].replace("vx=0.0", "vx=NaN")
     elif mutation == "bad_input":
@@ -117,6 +128,14 @@ def test_invalid_source_or_authority_fails_closed(mutation):
         report["d7_eat_grant_issued"] = True
     elif mutation == "eat_issued":
         report["self_eat"] = True
+    elif mutation == "missing_pickup":
+        rows.pop(3)
+    elif mutation == "wrong_item":
+        rows[3] = rows[3].replace(ITEM, "foreign-item")
+    elif mutation == "duplicate_pickup":
+        rows.insert(4, rows[3])
+    elif mutation == "pickup_future":
+        rows[3] = rows[3].replace("tick=101", "tick=9999")
     with pytest.raises(D7PaperSourceRejected):
         audit_paper_ticks("\n".join(rows), report, prior, client)
 
