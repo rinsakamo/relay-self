@@ -33,6 +33,11 @@ async def source_qualified_natural_move(
         or not isinstance(motion_fence, OriginalS49PhysicalFence)
     ):
         raise D6LootApproachRejected("original physical ATTACK closure required")
+    if "RSELF_NATURAL_DROP_PICKUP world=" in original_paper_log.read_text(
+        encoding="utf8"
+    ):
+        raise D6LootApproachRejected("natural item was picked up before original MOVE")
+    report["d6_d_paper_pickup_absent_before_move"] = True
     old_supervisor = owner.supervisor
     old_ids = frozenset(owner._dispatched)
     old_actions = owner._count
