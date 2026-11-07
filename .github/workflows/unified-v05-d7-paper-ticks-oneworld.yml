@@ -49,7 +49,7 @@ jobs:
           p=Path('docs/unified-v05-d7-paper-ticks-trigger-20261107.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
-          assert 'scope: ONE VANILLA WORLD D7 PASSIVE S50 DIRECT CLIENT CONTROLS AFTER ORIGINAL S49 MOVE' in p
+          assert 'scope: ONE VANILLA WORLD D7 PAPER SERVER TICKS AFTER SAME ORIGINAL S49 S50 MOVE' in p
           PY
           python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
           python tools/check_repository.py
@@ -131,7 +131,7 @@ jobs:
             --out unified-v05-d7-paper-ticks-evidence/independent_source_audit.json
       - name: Audit original S50 7-control direct client physics ticks without unlocking post-MOVE EAT
         run: |
-          python -B tools/bug0_d7_postmove_native_controls_post.py tools/bug0_d7_paper_server_tick_post.py \
+          python -B tools/bug0_d7_postmove_native_controls_post.py \
             --sidecar unified-v05-d7-paper-ticks-evidence/s50_native_direct_controls_original.jsonl \
             --report unified-v05-d7-paper-ticks-evidence/report.json \
             --original-audit unified-v05-d7-paper-ticks-evidence/independent_source_audit.json \
