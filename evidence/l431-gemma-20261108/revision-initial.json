@@ -1,0 +1,62 @@
+{
+  "old_skill": {
+    "version": 1,
+    "skill_id": "move_away_on_normal_surface",
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4,
+    "on_failure": "ESCALATE",
+    "evidence_ids": [
+      "train-experience-001",
+      "train-experience-003",
+      "train-experience-005",
+      "train-experience-007",
+      "train-experience-009",
+      "train-experience-011",
+      "train-experience-013",
+      "train-experience-015"
+    ]
+  },
+  "shift_observations": [
+    {
+      "experience_id": "shift-experience-000",
+      "source_session": "revision-20261111-004",
+      "surface_cue": "normal",
+      "start_distance": 2.370744,
+      "observed_action": "MOVE_AWAY",
+      "observed_trace": [
+        2.370744,
+        2.563279,
+        2.786422,
+        2.990677,
+        3.206515
+      ],
+      "outcome_success": true,
+      "target_distance": 3.2
+    },
+    {
+      "experience_id": "shift-experience-001",
+      "source_session": "revision-20261111-006",
+      "surface_cue": "normal",
+      "start_distance": 2.436763,
+      "observed_action": "MOVE_AWAY",
+      "observed_trace": [
+        2.436763,
+        2.655874,
+        2.870703,
+        3.084189,
+        3.305602
+      ],
+      "outcome_success": true,
+      "target_distance": 3.2
+    }
+  ],
+  "suspended": false,
+  "rollback": "old skill remains suspended; fixed L0 fallback",
+  "provider_record": null,
+  "new_skill": null,
+  "validator_error": "TWO_CONSECUTIVE_FAILURES_NOT_OBSERVED",
+  "evaluation": null
+}
