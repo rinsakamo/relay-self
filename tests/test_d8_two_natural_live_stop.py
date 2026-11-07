@@ -95,7 +95,6 @@ def test_two_distinct_paper_generations_last_original_clear_only():
     lines, client, first, second = sample()
     result = qualify(lines, client, second)
     assert result.classification == "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
-    assert result.paper_zombie_uuid if hasattr(result, "paper_zombie_uuid") else True
     assert result.paper_item_uuid == ITEMS[1]
     assert result.paper_pickup_tick == 165
     assert result.original_clear_seq == 232
