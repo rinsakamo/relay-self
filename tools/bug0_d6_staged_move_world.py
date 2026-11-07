@@ -156,6 +156,7 @@ async def move_from_real_item(
         raise D6StagedMoveRejected("D6 natural loot requires original closed ATTACK owner")
     intent = owner.intent
     count_before = owner._count
+    fence_count_before = len(fence.actions)
     supervisor = owner.supervisor
     report["d6_original_s49_move_actions"] = []
     report["d6_item_origin"] = item_origin
@@ -312,7 +313,7 @@ async def move_from_real_item(
             owner.supervisor.get(action_id).state is not ActionState.OUTCOME
             for action_id in owner._dispatched
         )
-        or len(fence.actions) != owner._count - count_before
+        or len(fence.actions) != fence_count_before + owner._count - count_before
     ):
         raise D6StagedMoveRejected("original S49 bounded loot MOVEs did not close")
     report["d6_original_move_count"] = owner._count - count_before
