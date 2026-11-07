@@ -140,3 +140,19 @@ def test_staged_source_cannot_claim_natural_death():
             session_id=SID, action_id=AID, clear_seq=35,
             original_stage_line=spawn, original_pickup_line=pickup,
         )
+
+
+def test_latest_of_two_original_move_clears_is_verified_before_natural_eat():
+    lines, client, death, spawn, pickup = natural()
+    old = {
+        "kind": "EFFECT_ACK",
+        "client_physics_tick": 1,
+        "native_seq": 25,
+        "native_action_id": "d6-s49-item-back-1-prior-same-session-s15-clear",
+        "controls": dict(OFF),
+    }
+    client.insert(1, old)
+    out = evaluate(lines, client, death, spawn, pickup)
+    assert out.original_clear_seq == 35
+    assert out.client_postclear_physics_ticks == 20
+    assert out.classification == "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
