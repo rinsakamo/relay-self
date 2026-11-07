@@ -26,6 +26,7 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
     private static final String TARGET = "RelaySelf";
 
     private boolean enabledForDev;
+    private D7PaperServerTicks d7StopObserver;
     private UUID dead;
     private UUID worldId;
     private UUID witnessedItemId;
@@ -50,6 +51,10 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
         Bukkit.getPluginManager().registerEvents(this, this);
         getLogger().info("RSELF_NATURAL_DROP_READY operator_only=true"
                 + " force_drops=false self_permissions=none");
+        if (getConfig().getBoolean("d7-paper-tick-observer", false)) {
+            d7StopObserver = new D7PaperServerTicks(this, TARGET);
+            d7StopObserver.start();
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -134,6 +139,7 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
 
     @Override
     public void onDisable() {
+        if (d7StopObserver != null) d7StopObserver.stop();
         enabledForDev = false;
         getLogger().info("RSELF_NATURAL_DROP_STOP last_death=" + dead
                 + " last_pickup=" + picked + " ambiguous=" + ambiguousItem);

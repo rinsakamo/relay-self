@@ -1,3 +1,5 @@
 # Only operator may enable this on one disposable DEV World.
 dev-enabled: false
 target-player: RelaySelf
+# D7 per-Paper-tick source remains disabled for normal D4/D5/D6.
+d7-paper-tick-observer: false
