@@ -132,6 +132,7 @@ jobs:
             --server-log unified-v05-d8-two-real-natural-food-evidence/paper_original.log \
             --nonmotion-fence unified-v05-d8-two-real-natural-food-evidence/original_nonmotion_fence.json \
             --motion-fence unified-v05-d8-two-real-natural-food-evidence/original_motion_fence.json \
+            --s50-sidecar unified-v05-d8-two-real-natural-food-evidence/s50_native_direct_controls_original.jsonl \
             --out unified-v05-d8-two-real-natural-food-evidence/d8_independent_two_food_cycles_audit.json
           python - <<'PY'
           import json
