@@ -159,7 +159,11 @@ async def continue_after_first_respawn(
     report["d6_multigen_dev_world_trial_limit"] = 4
     report["d6_multigen_self_policy_epoch_limit_imposed"] = False
     report["d6_multigen_owner_session_id"] = sid
-    report["d6_multigen_source_natural_drop_rng_unchanged"] = True
+    operator_forced_zero = report.get("d6_operator_forced_zero") is True
+    report["d6_multigen_source_natural_drop_rng_unchanged"] = (
+        not operator_forced_zero
+    )
+    report["d6_multigen_operator_forced_zero"] = operator_forced_zero
     report["d6_multigen_no_physical_reissue"] = True
     report["d6_multigen_eat_after_move"] = False
     if (
@@ -177,6 +181,11 @@ async def continue_after_first_respawn(
         return
     if first_rotten != 0:
         raise MultiGenerationDevRejected("first positive natural drop was not picked")
+    if operator_forced_zero and (
+        report.get("d6_controlled_zero_set_before_first_attack") is not True
+        or report.get("d6_controlled_zero_world_rule") != "doMobLoot=false"
+    ):
+        raise MultiGenerationDevRejected("controlled-zero fixture not source-qualified")
 
     for gen in range(2, 5):
         if owner._post_move_settling_unqualified:
@@ -255,6 +264,17 @@ async def continue_after_first_respawn(
         # DEV-only positioning of the genuine NEW Paper zombie (not item).
         # Its genuine death is still exclusively from original S49 ATTACK.
         report["stage"] = f"D6_MULTIGEN_{gen}_OPERATOR_ZOMBIE_MELEE_STAGING"
+        if operator_forced_zero:
+            # Clear residual XP/orbs from the previous generation. This is an
+            # operator DEV intervention and is explicitly preserved in report.
+            cleanup_command = "kill @e[type=!minecraft:player,type=!minecraft:zombie]"
+            _command(server, cleanup_command)
+            await server.stdin.drain()
+            await asyncio.sleep(0.3)
+            report.setdefault("d6_multigen_operator_cleanup", []).append({
+                "generation": gen, "command": cleanup_command,
+                "operator_intervention": True,
+            })
         commands = (
             "execute as RelaySelf at @s run tp "
             "@e[type=minecraft:zombie,limit=1] ^ ^ ^-2.2",
@@ -342,6 +362,10 @@ async def continue_after_first_respawn(
         ):
             raise MultiGenerationDevRejected("genuine later kill principal unconfirmed")
         amount = _rotten(natural)
+        if operator_forced_zero and amount != 0:
+            raise MultiGenerationDevRejected(
+                "operator-forced zero World yielded an unexpected item"
+            )
         generation = {
             "generation": gen,
             "paper_zombie_uuid": paper_uuid,
@@ -425,7 +449,9 @@ async def continue_after_first_respawn(
             raise MultiGenerationDevRejected("zero natural drop contradicted native inventory")
         if gen == 4:
             report["d6_multigen_classification"] = (
-                "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                if operator_forced_zero
+                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
             )
             report["d6_multigen_ci_limit_reached_not_self_goal_completed"] = True
             break
@@ -479,6 +505,9 @@ def main() -> None:
         post_death_loot_move_dev=source_qualified_natural_move,
         post_respawn_dev=continue_after_first_respawn,
         d6_multigen_dev=True,
+        d6_controlled_zero_dev=(
+            os.environ.get("D6_CONTROLLED_ZERO_WORLD_ONLY") == "1"
+        ),
     )))
 
 
