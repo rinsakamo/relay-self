@@ -113,6 +113,7 @@ async def move_from_real_item(
     owner: NormalSessionActionExecutor | None = None,
     item_origin: str = "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP",
     allow_experience_orbs: bool = False,
+    d7_return_live_owner_dev: bool = False,
 ) -> None:
     sid = session.started.session_id
     if owner is None:
@@ -152,6 +153,7 @@ async def move_from_real_item(
     # probes; its mere presence never identifies its actual food type.
     await asyncio.sleep(0.9)
     last_item_id = None
+    last_receipt = None
     for i in range(1, 5):
         before = await _correlated_observe(session, f"d6-item-{i}-before")
         await asyncio.sleep(0.3)
@@ -231,6 +233,7 @@ async def move_from_real_item(
             physical_fence=fence,
             allow_experience_orbs=allow_experience_orbs,
         )
+        last_receipt = receipt
         c = receipt.consequence
         if (
             receipt.terminal.state is not ActionState.OUTCOME
@@ -293,11 +296,22 @@ async def move_from_real_item(
     report["d6_original_move_count"] = owner._count - count_before
     report["d6_item_native_id"] = last_item_id
     report["d6_same_supervisor"] = owner.supervisor is supervisor
+    if d7_return_live_owner_dev:
+        if (
+            item_origin != "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP"
+            or last_receipt is None
+            or owner.supervisor.open_actions
+            or len(report["d6_original_s49_move_actions"]) != 1
+        ):
+            raise D6StagedMoveRejected("D7 EAT requires one staged S49 MOVE owner")
+        return owner, last_receipt
+    return None
 
 
 async def run(
     report_path: Path, log_path: Path, fence_path: Path, *,
     d7_staged_s50_sidecar: Path | None = None,
+    d7_eat_nonmotion_fence: Path | None = None,
 ) -> int:
     if (
         os.environ.get("S49_REAL_SERVER_CI") != "1"
@@ -320,16 +334,51 @@ async def run(
         )
     ):
         return _blocked(report_path, "exclusive D6 original S49 World grant absent")
+    if d7_eat_nonmotion_fence is not None and (
+        d7_staged_s50_sidecar is None
+        or os.environ.get("D7E_STAGED_MOVE_EAT_WORLD_ONLY") != "1"
+        or not d7_eat_nonmotion_fence.is_absolute()
+        or d7_eat_nonmotion_fence.parent.resolve() != report_path.parent.resolve()
+        or d7_eat_nonmotion_fence.is_symlink()
+        or d7_eat_nonmotion_fence in (report_path, log_path, fence_path, d7_staged_s50_sidecar)
+    ):
+        return _blocked(report_path, "separate original S49/S51 EAT preworld grant absent")
     try:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         fence = preflight_move_fence(fence_path)
     except Exception as exc:
         return _blocked(report_path, f"{type(exc).__name__}: {exc}")
+    if d7_eat_nonmotion_fence is not None:
+        from tools.bug0_d4_oneworld import preflight_original_nonmotion_fence
+        from tools.bug0_d7e_staged_move_eat import after_real_staged_pickup_eat
+
+        try:
+            nonmotion_fence, _ = preflight_original_nonmotion_fence(
+                d7_eat_nonmotion_fence,
+            )
+        except Exception as exc:
+            return _blocked(report_path, f"original EAT physical preflight: {exc}")
+    else:
+        nonmotion_fence = None
+
     async def on_staged(session, report, source_log):
-        await move_from_real_item(session, report, source_log, fence=fence)
+        return await move_from_real_item(
+            session, report, source_log, fence=fence,
+            d7_return_live_owner_dev=nonmotion_fence is not None,
+        )
+
+    async def on_real_pickup(session, report, source_log, server, original):
+        if nonmotion_fence is None or d7_staged_s50_sidecar is None:
+            raise D6StagedMoveRejected("original S49 EAT source grant missing")
+        return await after_real_staged_pickup_eat(
+            session, report, source_log, server, original,
+            s50_sidecar=d7_staged_s50_sidecar, nonmotion_fence=nonmotion_fence,
+        )
+
     return await d1_world_qualify(
         report_path, log_path, post_staged_move_dev=on_staged,
         d7_staged_s50_sidecar=d7_staged_s50_sidecar,
+        d7_post_staged_eat_dev=(on_real_pickup if nonmotion_fence else None),
     )
 
 
@@ -349,10 +398,12 @@ def main() -> None:
     p.add_argument("--server-log", required=True, type=Path)
     p.add_argument("--move-fence", required=True, type=Path)
     p.add_argument("--d7-staged-controls", type=Path)
+    p.add_argument("--d7e-nonmotion-fence", type=Path)
     a = p.parse_args()
     raise SystemExit(asyncio.run(run(
         a.report, a.server_log, a.move_fence,
         d7_staged_s50_sidecar=a.d7_staged_controls,
+        d7_eat_nonmotion_fence=a.d7e_nonmotion_fence,
     )))
 
 

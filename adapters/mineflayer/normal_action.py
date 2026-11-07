@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.attack_execution import AttackActionReceipt, IssuedAttackingExecutor
@@ -648,6 +649,10 @@ class NormalSessionActionExecutor:
         # alone does not qualify post-clear settling. EAT stays fenced until
         # a distinct original-source settling owner is integrated.
         self._post_move_settling_unqualified = False
+        # DEV only: consume exactly one post-MOVE EAT opportunity after a
+        # *live* source-bound owner STOP readout. Never reuse after ISSUE.
+        self._d7_dev_eat_credit = 0
+        self._d7_dev_stop_consumed = False
 
     def advance_intent_epoch(
         self, next_native: MineflayerObservation,
@@ -838,6 +843,7 @@ class NormalSessionActionExecutor:
         self._dispatched.add(issued.action_id)
         self._last_issued_probe_seq = probe.seq
         self._post_move_settling_unqualified = True
+        self._d7_dev_eat_credit = 0
         self._count += 1
         try:
             # Any exception after original ISSUE must leave this Action UNKNOWN,
@@ -918,6 +924,93 @@ class NormalSessionActionExecutor:
             after_probe_seq=after.seq,
             readback_source=after.provenance,
         )
+
+
+    def admit_d7_live_staged_stop_dev(
+        self, session: MineflayerProcessSession,
+        receipt: NormalActionReceipt, *,
+        paper_log: Path, s50_sidecar: Path,
+        paper_staged: str, paper_pickup: str,
+        native_before: MineflayerObservation,
+        native_after: MineflayerObservation,
+    ):
+        """S49 live DEV-only one-use steady-body admission after original MOVE.
+
+        Reads original current-World Paper and S50 files directly. Does NOT
+        claim the server-effective S15 clear tick or qualify science.
+        R/QUAL can still reject this engineering admission later.
+        """
+        from adapters.mineflayer.d7_live_staged_stop import (
+            read_d7_live_staged_stop,
+        )
+
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+            or self.supervisor.open_actions
+            or not self._post_move_settling_unqualified
+            or self._d7_dev_stop_consumed
+            or self._d7_dev_eat_credit
+            or not isinstance(paper_log, Path)
+            or not isinstance(s50_sidecar, Path)
+            or paper_log.is_symlink() or s50_sidecar.is_symlink()
+            or not paper_log.is_file() or not s50_sidecar.is_file()
+            or paper_log.parent.resolve() != s50_sidecar.parent.resolve()
+            or not isinstance(native_before, MineflayerObservation)
+            or not isinstance(native_after, MineflayerObservation)
+        ):
+            raise NormalActionRejected("D7 live S49 owner/source STOP prerequisites absent")
+        original = self.read_only_post_move_eat_boundary(receipt)
+        if (
+            original.action_id != receipt.terminal.action_id
+            or original.action_id != next(iter(self._dispatched), None)
+            or len(self._dispatched) != 1
+            or self._count != 1
+            or native_before.session_id != self.session_id
+            or native_after.session_id != self.session_id
+            or native_before.kind != "probe" or native_after.kind != "probe"
+            or native_before.provenance.source != "mineflayer"
+            or native_after.provenance.source != "mineflayer"
+            or not native_before.request_id or not native_after.request_id
+            or native_before.seq <= original.after_probe_seq
+            or native_after.seq <= native_before.seq
+            or native_after.seq - native_before.seq > 32
+            or native_before.request_id == native_after.request_id
+            or assess_normal_eating_observation(native_before)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or assess_normal_eating_observation(native_after)
+            is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or any(
+                abs(getattr(native_before.snapshot.position, axis)
+                    - getattr(native_after.snapshot.position, axis)) > 0.05
+                for axis in ("x", "y", "z")
+            )
+            or native_after.snapshot.food >= 20
+            or not any(
+                item.name == "rotten_flesh" and item.count > 0
+                for item in native_after.snapshot.inventory
+            )
+        ):
+            raise NormalActionRejected("D7 owner live native body/food window not qualified")
+        # Current process/file sources: do not take a caller-forged dict as
+        # physical STOP permission. No action is issued by this readout.
+        try:
+            raw_paper = paper_log.read_text(encoding="utf8")
+            raw_s50 = s50_sidecar.read_text(encoding="utf8")
+        except (OSError, UnicodeError) as exc:
+            raise NormalActionRejected("D7 original current source unreadable") from exc
+        source = read_d7_live_staged_stop(
+            raw_paper, raw_s50,
+            session_id=self.session_id, action_id=original.action_id,
+            clear_seq=original.clear_ack_seq,
+            original_stage_line=paper_staged,
+            original_pickup_line=paper_pickup,
+        )
+        self._d7_dev_stop_consumed = True
+        self._d7_dev_eat_credit = 1
+        self._post_move_settling_unqualified = False
+        return source
 
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
@@ -1245,6 +1338,11 @@ class NormalSessionActionExecutor:
         self.require_eating_authorizations(
             choice, probe, propose, issue, previous_probe=previous_probe,
         )
+        if self._d7_dev_eat_credit:
+            # Consume the single current STOP opportunity BEFORE irreversible
+            # PREPARE/ISSUE. Any failure remains fail-closed, never a retry.
+            self._d7_dev_eat_credit = 0
+            self._post_move_settling_unqualified = True
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
         skill = SkillExecution.start(

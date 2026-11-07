@@ -1,0 +1,105 @@
+name: Unified v0.5 D7-E R2 immutable original MOVE STOP EAT read-only source audit DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d7e-live-stop-eat-20261107
+  pull_request:
+    branches:
+      - dev/unified-v05-d7d-staged-stop-sensor-20261107
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  readonly-original:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Validate corrected source parser and earlier negatives
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check tools/bug0_d7e_staged_move_eat_post.py tests/test_d7e_staged_move_eat_post.py
+          python -m pytest -q -x tests/test_d7e_staged_move_eat_post.py tests/test_d7e_live_staged_stop.py
+      - name: Download frozen R2 real World originals (NO new Minecraft)
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 42380753108
+          github-token: ${{ github.token }}
+          name: unified-v05-d7e-original-s49-move-live-stop-s51-eat-oneworld
+          path: d7e_r2_archive
+      - name: Independent exact source SHA256 manifest byte validation
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          p=Path('d7e_r2_archive')
+          assert p.is_dir() and not p.is_symlink()
+          rows=(p/'SHA256SUMS.txt').read_text().splitlines()
+          assert len(rows)==8, (len(rows),rows)
+          seen=set()
+          for row in rows:
+              digest,name=row.split(maxsplit=1)
+              name=name.removeprefix('./').removeprefix('*')
+              assert '/' not in name and name not in seen
+              seen.add(name)
+              f=p/name
+              assert f.is_file() and not f.is_symlink()
+              assert hashlib.sha256(f.read_bytes()).hexdigest()==digest
+          assert {'report.json','paper_original.log','operator_post_audit.json',
+                  'original_s49_move_fence.json','original_s49_eat_fence.json',
+                  's50_same_original_client_controls.jsonl'} <= seen
+          print('D7E_REAL_R2_SHA256_MATCH_8_OF_8')
+          PY
+      - name: Read-only re-audit original C1 physical MOVE and S51 true Food/inventory outcome
+        run: |
+          mkdir -p d7e_r2_reattested
+          python -B tools/bug0_d6_staged_move_post.py \
+            --server-log d7e_r2_archive/paper_original.log \
+            --report d7e_r2_archive/report.json \
+            --move-fence d7e_r2_archive/original_s49_move_fence.json \
+            --out d7e_r2_reattested/d6_original_s49_move_v2.json
+          python -B tools/bug0_d7e_staged_move_eat_post.py \
+            --report d7e_r2_archive/report.json \
+            --staged-audit d7e_r2_reattested/d6_original_s49_move_v2.json \
+            --eat-fence d7e_r2_archive/original_s49_eat_fence.json \
+            --out d7e_r2_reattested/d7e_original_s49_s51_food_v2.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('d7e_r2_reattested')
+          z=json.loads((p/'d7e_original_s49_s51_food_v2.json').read_text())
+          assert z['classification']=='D7_E_STAGED_S49_MOVE_PAPER_PICKUP_LIVE_STOP_S51_EAT_ONE_CYCLE'
+          assert z['status']=='PASS_DEV'
+          assert (z['s49_s51_native_food_before'],z['s49_s51_native_food_after'])==(13,17)
+          assert (z['s49_s51_native_inventory_before'],z['s49_s51_native_inventory_after'])==(1,0)
+          assert z['server_effective_clear_tick_attested'] is False
+          assert z['natural_zombie_loot_eaten'] is False
+          assert z['full_two_cycle_proven'] is False
+          print('D7E_R2_ONE_REAL_S49_STOP_S51_EAT_SOURCE_PASS_DEV')
+          PY
+      - name: Preserve derivative manifest
+        if: always()
+        run: |
+          if test -d d7e_r2_reattested; then
+            (cd d7e_r2_reattested && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Publish separate immutable derivative of original real World
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-v05-d7e-r2-original-real-world-readonly-eat-reaudit
+          path: d7e_r2_reattested/
+          if-no-files-found: warn
+          retention-days: 30
