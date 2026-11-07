@@ -123,7 +123,7 @@ jobs:
             --d7-passive-controls unified-v05-d7-passive-controls-evidence/s50_native_direct_controls_original.jsonl
       - name: Independently attest vanilla Paper loot rule and all real S49 Intent/physical journal evidence
         run: |
-          python -B tools/bug0_d6_multigen_post.py tools/bug0_d7_postmove_native_controls_post.py adapters/mineflayer/process_session.py adapters/mineflayer/s34_native_world_cognition_ci.py \
+          python -B tools/bug0_d6_multigen_post.py \
             --report unified-v05-d7-passive-controls-evidence/report.json \
             --server-log unified-v05-d7-passive-controls-evidence/paper_original.log \
             --nonmotion-fence unified-v05-d7-passive-controls-evidence/original_nonmotion_fence.json \
