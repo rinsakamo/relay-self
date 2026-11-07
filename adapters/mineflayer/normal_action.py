@@ -966,6 +966,8 @@ class NormalSessionActionExecutor:
         propose: NormalAttackingAuthorization,
         issue: NormalAttackingAuthorization,
         *, allow_target_disappearance: bool = False,
+        pre_issue_reservation: Callable[[], None] | None = None,
+        post_outcome_commit: Callable[[AttackActionReceipt], None] | None = None,
     ) -> AttackActionReceipt:
         """Issue one operator-approved attack from THIS original S49 supervisor."""
         if (
@@ -977,6 +979,14 @@ class NormalSessionActionExecutor:
         self.require_attack_authorizations(
             previous_probe, probe, target_entity_id, propose, issue,
         )
+        if (pre_issue_reservation is None) != (post_outcome_commit is None):
+            raise NormalActionRejected(
+                "ATTACK physical fence requires paired PREPARED and S16 closure callbacks"
+            )
+        if pre_issue_reservation is not None and (
+            not callable(pre_issue_reservation) or not callable(post_outcome_commit)
+        ):
+            raise NormalActionRejected("ATTACK physical fence callbacks must be callable")
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
         skill = SkillExecution.start(
@@ -992,6 +1002,10 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        # Optional durable reservation is synchronous and must finish before
+        # this ORIGINAL supervisor ISSUE and any irreversible ATTACK command.
+        if pre_issue_reservation is not None:
+            pre_issue_reservation()
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
@@ -1002,12 +1016,17 @@ class NormalSessionActionExecutor:
         self._attack_count += 1
         self._epoch_attack_count += 1
         try:
-            return await IssuedAttackingExecutor().execute(
+            receipt = await IssuedAttackingExecutor().execute(
                 session, self.supervisor, issued, probe,
                 target_entity_id=target_entity_id,
                 skill_execution=skill, intent_commitment=self.intent,
                 allow_target_disappearance=allow_target_disappearance,
             )
+            # Failure after physical S16 leaves PREPARED and blocks all future
+            # fence-authorized work. No native Action is replayed.
+            if post_outcome_commit is not None:
+                post_outcome_commit(receipt)
+            return receipt
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
@@ -1020,6 +1039,8 @@ class NormalSessionActionExecutor:
         probe: MineflayerObservation,
         propose: NormalEatingAuthorization, issue: NormalEatingAuthorization,
         *, previous_probe: MineflayerObservation,
+        pre_issue_reservation: Callable[[], None] | None = None,
+        post_outcome_commit: Callable[[EatingActionReceipt], None] | None = None,
     ) -> EatingActionReceipt:
         """Same original S49 supervisor issues, unchanged S51 performs EAT.
 
@@ -1035,6 +1056,14 @@ class NormalSessionActionExecutor:
         self.require_eating_authorizations(
             choice, probe, propose, issue, previous_probe=previous_probe,
         )
+        if (pre_issue_reservation is None) != (post_outcome_commit is None):
+            raise NormalActionRejected(
+                "EAT physical fence requires paired PREPARED and S16 closure callbacks"
+            )
+        if pre_issue_reservation is not None and (
+            not callable(pre_issue_reservation) or not callable(post_outcome_commit)
+        ):
+            raise NormalActionRejected("EAT physical fence callbacks must be callable")
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
         skill = SkillExecution.start(
@@ -1050,6 +1079,9 @@ class NormalSessionActionExecutor:
             at_ns=t + 1, provenance=propose.provenance,
             authority=propose.authority_id,
         )
+        # A failed fsync must stop before this original ISSUE/S51 native IO.
+        if pre_issue_reservation is not None:
+            pre_issue_reservation()
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
             provenance=issue.provenance,
@@ -1059,10 +1091,13 @@ class NormalSessionActionExecutor:
         self._last_issued_probe_seq = probe.seq
         self._count += 1
         try:
-            return await IssuedEatingExecutor().execute(
+            receipt = await IssuedEatingExecutor().execute(
                 session, self.supervisor, issued, choice, probe,
                 skill_execution=skill, intent_commitment=self.intent,
             )
+            if post_outcome_commit is not None:
+                post_outcome_commit(receipt)
+            return receipt
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
