@@ -298,12 +298,24 @@ async def move_from_real_item(
     report["d6_same_supervisor"] = owner.supervisor is supervisor
     if d7_return_live_owner_dev:
         if (
-            item_origin != "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP"
+            item_origin not in (
+                "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP",
+                "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT",
+            )
             or last_receipt is None
             or owner.supervisor.open_actions
             or len(report["d6_original_s49_move_actions"]) != 1
+            or owner.supervisor.get(last_receipt.terminal.action_id)
+            is not last_receipt.terminal
+            or (
+                item_origin == "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
+                and (owner._attack_count < 1
+                     or owner._count != owner._attack_count + 1)
+            )
         ):
-            raise D6StagedMoveRejected("D7 EAT requires one staged S49 MOVE owner")
+            raise D6StagedMoveRejected(
+                "D7 live EAT requires original one-MOVE owner with closed history"
+            )
         return owner, last_receipt
     return None
 
