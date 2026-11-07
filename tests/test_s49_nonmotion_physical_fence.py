@@ -399,3 +399,65 @@ def test_single_unpaired_callback_denied_before_any_world_io(monkeypatch, tmp_pa
             post_outcome_commit=close,
         ))
     assert owner._count == 0 and not native.commands and not fence.actions
+
+
+
+def test_d5_unresolved_nonmotion_action_blocks_before_paper_world(
+    monkeypatch, tmp_path,
+):
+    from tools.bug0_d4_oneworld import run
+
+    before, admitted = attack._pair()
+    physical = OriginalS49NonmotionFence.create(
+        tmp_path / "s49_nonmotion_physical_fence.json",
+        self_id="s49-original-self",
+    )
+    physical.prepare_attack(
+        session_id=admitted.session_id, intent_id="escape-threat",
+        action_id="interrupted-d5-real-attack", probe=admitted,
+        target_entity_id=admitted.snapshot.nearby_entities[0].entity_id,
+    )
+    assert physical.unresolved
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("BUG0_S49_D4_ONE_WORLD_ONLY", "1")
+    monkeypatch.setenv("BUG0_S49_NONMOTION_FENCE_DEV_ONLY", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report_file = tmp_path / "blocked-original-report.json"
+    server_log = tmp_path / "minecraft-never-created.log"
+    rc = asyncio.run(run(
+        report_file, server_log, nonmotion_fence_dev=True,
+    ))
+    report = json.loads(report_file.read_text(encoding="utf8"))
+    assert rc == 2
+    assert report["status"] == "BLOCKED"
+    assert report["classification"] == "D5_NONMOTION_FENCE_BLOCKED_PREWORLD"
+    assert "STOP/UNKNOWN" in report["failure"]
+    assert report.get("real_world_started") is not True
+    assert report["s49_actions"] == []
+    assert report["cleanup_done"] is True
+    assert not server_log.exists()
+    assert OriginalS49NonmotionFence.restore(
+        physical.path, self_id="s49-original-self",
+    ).unresolved
+
+
+def test_d5_nonmotion_gate_cannot_provision_world_without_distinct_DEV_grant(
+    monkeypatch, tmp_path,
+):
+    from tools.bug0_d4_oneworld import run
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("BUG0_S49_D4_ONE_WORLD_ONLY", "1")
+    monkeypatch.delenv("BUG0_S49_NONMOTION_FENCE_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report_file = tmp_path / "ungranted-report.json"
+    server_log = tmp_path / "server-never-created.log"
+    rc = asyncio.run(run(
+        report_file, server_log, nonmotion_fence_dev=True,
+    ))
+    report = json.loads(report_file.read_text(encoding="utf8"))
+    assert rc == 2 and report["status"] == "BLOCKED"
+    assert "separate ATTACK/EAT" in report["failure"]
+    assert report.get("real_world_started") is not True
+    assert not (tmp_path / "s49_nonmotion_physical_fence.json").exists()
+    assert not server_log.exists()
