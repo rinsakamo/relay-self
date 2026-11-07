@@ -5,7 +5,7 @@ on:
       - dev/unified-v05-d7f-natural-original-s49-eat-20261107
     types: [synchronize]
     paths:
-      - docs/unified-v05-d8-two-real-natural-food-r1-trigger-20261108.md
+      - docs/unified-v05-d8-two-real-natural-food-r2-trigger-20261108.md
 
 permissions:
   contents: read
@@ -45,12 +45,12 @@ jobs:
           python-version: '3.12'
       - name: Strict one-time trigger and independent preworld negatives
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d8-two-real-natural-food-r1-trigger-20261108.md"
-          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d8-two-real-natural-food-r1-once-20261108"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d8-two-real-natural-food-r2-trigger-20261108.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d8-two-real-natural-food-r2-once-20261108"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-v05-d8-two-real-natural-food-r1-trigger-20261108.md').read_text()
+          p=Path('docs/unified-v05-d8-two-real-natural-food-r2-trigger-20261108.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE WORLD TWO GENUINE PAPER ZOMBIES NATURAL S49 ATTACK MOVE STOP S51 EAT TWICE' in p
@@ -152,9 +152,15 @@ jobs:
               assert d['exact_server_effective_clear_tick_proven'] is False
           else:
               assert d['status']=='NOT_EXERCISED'
-              assert d['second_natural_count']==0
-              assert d['two_real_food_cycles'] is False
-              assert src['self_eat'] is True
+              if src.get('d8_first_true_zero_food_not_exercised') is True:
+                  assert d['classification']=='D8_FIRST_TRUE_ZERO_NATURAL_DROP_NO_FOOD_CYCLE'
+                  assert d['World_first_vanilla_rotten_count']==0
+                  assert d['first_food_issued'] is False
+                  assert src['self_eat'] is False
+              else:
+                  assert d['second_natural_count']==0
+                  assert d['two_real_food_cycles'] is False
+                  assert src['self_eat'] is True
           print(d['classification'])
           PY
       - name: Preserve originals and SHA256
