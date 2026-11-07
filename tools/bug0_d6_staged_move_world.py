@@ -295,13 +295,29 @@ async def move_from_real_item(
     report["d6_same_supervisor"] = owner.supervisor is supervisor
 
 
-async def run(report_path: Path, log_path: Path, fence_path: Path) -> int:
+async def run(
+    report_path: Path, log_path: Path, fence_path: Path, *,
+    d7_staged_s50_sidecar: Path | None = None,
+) -> int:
     if (
         os.environ.get("S49_REAL_SERVER_CI") != "1"
         or os.environ.get("BUG0_PICKUP_D1_DEV_ONLY") != "1"
         or os.environ.get("D6_STAGED_LOOT_MOVE_WORLD_ONLY") != "1"
         or report_path.parent.resolve() != fence_path.parent.resolve()
         or fence_path == report_path or fence_path == log_path
+        or (
+            d7_staged_s50_sidecar is not None
+            and (
+                os.environ.get("D7_STAGED_STOP_SOURCE_WORLD_ONLY") != "1"
+                or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+                or not d7_staged_s50_sidecar.is_absolute()
+                or d7_staged_s50_sidecar.parent.resolve()
+                != report_path.parent.resolve()
+                or d7_staged_s50_sidecar.exists()
+                or d7_staged_s50_sidecar.is_symlink()
+                or d7_staged_s50_sidecar in (report_path, log_path, fence_path)
+            )
+        )
     ):
         return _blocked(report_path, "exclusive D6 original S49 World grant absent")
     try:
@@ -313,6 +329,7 @@ async def run(report_path: Path, log_path: Path, fence_path: Path) -> int:
         await move_from_real_item(session, report, source_log, fence=fence)
     return await d1_world_qualify(
         report_path, log_path, post_staged_move_dev=on_staged,
+        d7_staged_s50_sidecar=d7_staged_s50_sidecar,
     )
 
 
@@ -331,8 +348,12 @@ def main() -> None:
     p.add_argument("--report", required=True, type=Path)
     p.add_argument("--server-log", required=True, type=Path)
     p.add_argument("--move-fence", required=True, type=Path)
+    p.add_argument("--d7-staged-controls", type=Path)
     a = p.parse_args()
-    raise SystemExit(asyncio.run(run(a.report, a.server_log, a.move_fence)))
+    raise SystemExit(asyncio.run(run(
+        a.report, a.server_log, a.move_fence,
+        d7_staged_s50_sidecar=a.d7_staged_controls,
+    )))
 
 
 if __name__ == "__main__":
