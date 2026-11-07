@@ -554,9 +554,16 @@ async def run(
         if temp is not None:
             temp.cleanup()
         if (
-            report.get("node_exit") != 0
-            or report.get("java_exit") != 0
-            or any(key.endswith("_error") for key in report)
+            not (
+                nonmotion_fence_dev
+                and report["status"] == "BLOCKED"
+                and not report.get("real_world_started")
+            )
+            and (
+                report.get("node_exit") != 0
+                or report.get("java_exit") != 0
+                or any(key.endswith("_error") for key in report)
+            )
         ):
             report["classification"] = "D4_CLEANUP_UNQUALIFIED"
             report["status"] = "FAIL"
