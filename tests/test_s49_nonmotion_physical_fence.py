@@ -509,8 +509,8 @@ def test_d5_2_original_intent_acks_share_one_nonmotion_fence_and_supervisor(
     monkeypatch, tmp_path,
 ):
     """D5 native-target next-generation rearm, not second physical World."""
-    from test_bug0_d5_intent_epoch_rearm import _completed, _new_native
     from adapters.mineflayer.normal_action import NormalSessionActionExecutor
+    from test_bug0_d5_intent_epoch_rearm import _completed, _new_native
 
     first, second = attack._pair()
     owner = NormalSessionActionExecutor(
