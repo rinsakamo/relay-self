@@ -1,0 +1,35 @@
+name: Unified v0.5 D5 original nonmotion World join OFFLINE DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d5-nonmotion-world-join-20261107
+
+permissions:
+  contents: read
+
+jobs:
+  preworld-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Original D5 same owner and nonmotion startup regression
+        run: |
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m compileall -q tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d5_oneworld.py tools/bug0_d5_fence_post.py tests/test_bug0_d5_fence_world_join.py
+          ruff check tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d5_oneworld.py tools/bug0_d5_fence_post.py tests/test_bug0_d5_fence_world_join.py
+          python -m pytest -q -x tests/test_bug0_d5_fence_world_join.py tests/test_s49_nonmotion_physical_fence.py tests/test_bug0_d5_world_post.py tests/test_bug0_d4_post.py tests/test_bug0_d4_precombat_native_hunger.py tests/test_bug0_d5_intent_epoch_rearm.py tests/test_unified_d5_c1_owner_integration.py tests/test_c1_physical_action_fence.py tests/test_bug0_s49_s51_eat_handoff.py
+      - name: No physical World on ordinary push
+        run: |
+          echo 'DEV_ONLY / D5_NONMOTION_WORLD_JOIN_PREWORLD_ONLY'
+          echo 'JOINT_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
