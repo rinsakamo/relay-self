@@ -201,6 +201,10 @@ async def after_real_natural_pickup_eat(
         raise D7FNaturalEatRejected("same S49/S51 natural EAT food or ledger unqualified")
     food.acknowledge_verified_eat(result)
     report["d7f_eat_outcome"] = asdict(outcome)
+    report["d4_eat_action_id"] = action_id
+    report["d4_self_eat_issued"] = True
+    report["d4_eat_terminal"] = "outcome"
+    report["d4_eat_outcome"] = asdict(outcome)
     post = await _correlated_observe(session, "d7f-natural-food-after-eat")
     report["d7f_native_after_eat"] = _inventory(post)
     if (
