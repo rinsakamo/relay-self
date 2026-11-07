@@ -14,7 +14,7 @@
 
 Paper自然モードは死亡・spawn・pickupのWorld/zombie/item/killer UUID、tick、腐肉数1を要求。S50同一クライアントの元S15 -s15-clear ACK後8+ physicsTicksの7入力OFF、Paperの真のPickup後で直近8+ serverTicksの7入力OFF/ほぼ静止、Native二つのfresh probeで生存/危険/food/在庫/位置安定を確認する。
 
-初回資格は自然腐肉ちょうど1個。0個は真の0個としてEAT NOT_EXERCISED、2個は初回1個EAT資格の対象外でNOT_EXERCISED。方向・Item UUID・owner・STOP不成立はFAIL/DEFER、旧Actionの再発行なし。自然RNGは変更しない。次ゾンビはWorldの600tickルールを独立検証する。
+R1の実World [#42384571096](https://github.com/rinsakamo/relay-self/actions/runs/42384571096) では、真のゾンビ自然腐肉1個を元S49の2 MOVE（各約0.627m）でPaper実拾得まで成功したが、DEV接続側の「MOVE1件」限定でEAT前に停止した。7原本のSHA256一致、EAT0。修正版は元S49の閉鎖済み最大4 MOVEを受け取り、最後のS15 clear/現在停止readbackだけをEAT前に照合する。過去のMOVEが静止していても最新MOVEが未決なら許可しない。\n\n初回資格は自然腐肉ちょうど1個。0個は真の0個としてEAT NOT_EXERCISED、2個は初回1個EAT資格の対象外でNOT_EXERCISED。方向・Item UUID・owner・STOP不成立はFAIL/DEFER、旧Actionの再発行なし。自然RNGは変更しない。次ゾンビはWorldの600tickルールを独立検証する。
 
 PaperのgetCurrentInput()は最終受信値であり、元S49のS15 clearがサーバーで有効になった厳密tickの因果ACKではない。DEV身体静止の工学判定のみ。QUALIFICATION_NO_GO / SCIENCE_NOT_RUNを維持する。
 
