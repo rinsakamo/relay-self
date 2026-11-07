@@ -573,7 +573,14 @@ async def run(
             # source/eat evidence remain unchanged and reusable by audit.
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
-            if nonmotion_fence is None:
+            if d6_multigen_dev:
+                await post_respawn_dev(
+                    session, server, owner, report, log_path,
+                    physical_fence=nonmotion_fence,
+                    motion_fence=motion_fence,
+                    baseline=d4_baseline,
+                )
+            elif nonmotion_fence is None:
                 await post_respawn_dev(session, server, owner, report, log_path)
             else:
                 await post_respawn_dev(
