@@ -171,9 +171,9 @@ def audit_passive_controls(
         raise D7PassiveReadbackRejected("direct tick/shutdown source incomplete")
 
     # The original S15 MOVE has exactly one clear receipt tied to its own
-    # native action_id + '-clear'. Same-client-local ordering only.
+    # native action_id + '-s15-clear'. Same-client-local ordering only.
     for m in moves:
-        clear_key = (m["action_id"] + "-clear", m.get("s15_clear_seq"))
+        clear_key = (m["action_id"] + "-s15-clear", m.get("s15_clear_seq"))
         if clear_key not in native_effect_ack:
             raise D7PassiveReadbackRejected("original MOVE clear has no direct control ACK")
         index, row, all_off = native_effect_ack[clear_key]
