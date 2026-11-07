@@ -20,7 +20,7 @@ from adapters.mineflayer.eat_execution import (
     verify_eating_subactions,
 )
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from relay_self.action import ActionState
+from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.c1_motion_journal import (
     C1JournalError,
@@ -67,7 +67,7 @@ def _valid(body: object) -> dict[str, Any]:
         session = _text(a["session_id"], "session")
         _text(a["intent_id"], "intent")
         action = _text(a["action_id"], "action")
-        if a["kind"] not in _KIND:
+        if type(a["kind"]) is not str or a["kind"] not in _KIND:
             raise NonMotionFenceError("only ATTACK/EAT are supported")
         probe_seq = _int(a["probe_seq"], "probe seq")
         _text(a["probe_request_id"], "probe request")
@@ -83,6 +83,8 @@ def _valid(body: object) -> dict[str, Any]:
             _int(subject, "native target entity ID")
         else:
             _text(subject, "consumed food item")
+        if type(a["status"]) is not str:
+            raise NonMotionFenceError("status must be a string")
         if a["status"] == "PREPARED_UNRESOLVED":
             if i != len(b["actions"]) - 1 or any(
                 a[k] is not None
@@ -235,7 +237,7 @@ class OriginalS49NonMotionFence:
             not self.unresolved
             or not isinstance(probe, MineflayerObservation)
             or not isinstance(supervisor, ActionSupervisor)
-            or not isinstance(terminal, object)
+            or not isinstance(terminal, ActionLifecycle)
         ):
             raise NonMotionFenceError("pending original physical Action required")
         a = self._body["actions"][-1]
