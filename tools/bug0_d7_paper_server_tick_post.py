@@ -152,6 +152,60 @@ def audit_paper_ticks(
         ):
             raise D7PaperSourceRejected("foreign Paper PlayerInputEvent")
         _inputs_off(ev)
+    # D6 originals independently attest a NATURAL item with a stable Paper
+    # UUID. Restrict a diagnostic 'quiet after pickup' window to this exact
+    # item and player rather than counting quiet ticks before any physical
+    # MOVE, when the client could already be stationary by construction.
+    original_item = original_audit.get("natural_item_uuid")
+    original_moves = original_audit.get("original_move_count")
+    if type(original_moves) is not int or original_moves < 0:
+        raise D7PaperSourceRejected("original S49 MOVE count not attested")
+    pickup_tick = None
+    if original_moves:
+        pickups = [
+            _fields(x, "RSELF_NATURAL_DROP_PICKUP ")
+            for x in lines if "RSELF_NATURAL_DROP_PICKUP " in x
+        ]
+        if (
+            not isinstance(original_item, str) or not original_item
+            or len(pickups) != 1
+            or pickups[0].get("item") != original_item
+            or pickups[0].get("world") != world
+            or pickups[0].get("player") != player
+        ):
+            raise D7PaperSourceRejected("genuine original Paper item pickup mismatch")
+        pickup_tick = _integer(pickups[0], "tick")
+        if not first_tick <= pickup_tick <= last_tick:
+            raise D7PaperSourceRejected("Paper item pickup outside server tick census")
+    elif original_item is not None:
+        raise D7PaperSourceRejected("Paper pickup attributed without original MOVE")
+    post_pickup_rows = []
+    after_pickup_streak = 0
+    longest_post_pickup_streak = 0
+    prior_pos = None
+    for row in ticks:
+        tick = _integer(row, "tick")
+        position = tuple(_number(row, k) for k in ("x", "y", "z"))
+        velocity = tuple(_number(row, k) for k in ("vx", "vy", "vz"))
+        if pickup_tick is not None and tick > pickup_tick:
+            post_pickup_rows.append(tick)
+            dxz_sq = (
+                (position[0] - prior_pos[0]) ** 2
+                + (position[2] - prior_pos[2]) ** 2
+                if prior_pos is not None else float("inf")
+            )
+            same_world_quiet = (
+                _inputs_off(row) and row["ground"] == "true"
+                and dxz_sq <= 0.0001
+                and velocity[0] ** 2 + velocity[2] ** 2 <= 0.0001
+            )
+            after_pickup_streak = (
+                after_pickup_streak + 1 if same_world_quiet else 0
+            )
+            longest_post_pickup_streak = max(
+                longest_post_pickup_streak, after_pickup_streak
+            )
+        prior_pos = position
     # Event ordinal sequence is exact even if the event has the same tick
     # as an independent scheduler tick row.
     if [_integer(e, "ordinal") for e in events] != list(range(1, len(events) + 1)):
@@ -181,6 +235,18 @@ def audit_paper_ticks(
         "server_input_active_ticks": input_active_ticks,
         "Paper_input_event_rows": len(events),
         "longest_sampled_quiet_Paper_tick_streak": longest_streak,
+        "original_natural_Paper_item_uuid": original_item,
+        "original_Paper_pickup_tick": (
+            pickup_tick if pickup_tick is not None else "NOT_EXERCISED"
+        ),
+        "post_pickup_Paper_tick_rows": len(post_pickup_rows),
+        "longest_post_pickup_sampled_quiet_Paper_tick_streak": (
+            longest_post_pickup_streak
+        ),
+        "post_pickup_8_quiet_server_ticks_observed": (
+            longest_post_pickup_streak >= 8
+        ),
+        "post_pickup_quiet_is_stop_authority": False,
         "server_effective_original_S49_clear_tick": "NOT_CAUSALLY_ATTESTED",
         "body_physically_stopped_proven": False,
         "authenticated_S_owner_EAT_resume_grant": False,
