@@ -714,20 +714,41 @@ async def run(
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
             if d8_two_generation_food_dev:
-                if (
-                    not d4_eaten
-                    or owner._d7_last_verified_eat_receipt is None
-                    or not owner._d7_dev_stop_consumed
-                ):
-                    raise S49D3Rejected(
-                        "D8 cannot rearm after first natural cycle lacking S49 STOP/EAT"
+                if not d4_eaten and report["real_rotten_flesh_count"] == 0:
+                    # A genuine vanilla zero drop is a World experience,
+                    # not a failed S49 EAT and not proof of two meals. Do
+                    # not rearm or issue any more Action just to chase RNG.
+                    if (
+                        owner.supervisor.open_actions
+                        or owner._d7_last_verified_eat_receipt is not None
+                        or owner._d7_dev_stop_consumed
+                        or report.get("d4_native_after_zero", {}).get(
+                            "rotten_flesh"
+                        ) != 0
+                        or motion_fence.unresolved or motion_fence.actions
+                        or nonmotion_fence.unresolved
+                        or len(nonmotion_fence.actions) != owner._attack_count
+                    ):
+                        raise S49D3Rejected(
+                            "D8 true first-zero source or terminal action invalid"
+                        )
+                    report["d8_first_true_zero_food_not_exercised"] = True
+                    report["d8_second_generation_food_proven"] = False
+                else:
+                    if (
+                        not d4_eaten
+                        or owner._d7_last_verified_eat_receipt is None
+                        or not owner._d7_dev_stop_consumed
+                    ):
+                        raise S49D3Rejected(
+                            "D8 cannot rearm without first verified S49 STOP/EAT"
+                        )
+                    await post_respawn_dev(
+                        session, server, owner, report, log_path,
+                        physical_fence=nonmotion_fence,
+                        motion_fence=motion_fence,
+                        s50_sidecar=d7_native_controls_path,
                     )
-                await post_respawn_dev(
-                    session, server, owner, report, log_path,
-                    physical_fence=nonmotion_fence,
-                    motion_fence=motion_fence,
-                    s50_sidecar=d7_native_controls_path,
-                )
             elif d6_multigen_dev:
                 await post_respawn_dev(
                     session, server, owner, report, log_path,
@@ -744,9 +765,13 @@ async def run(
                 )
             report["classification"] = (
                 (
-                    "D8_TWO_REAL_NATURAL_S49_FOOD_CYCLES_PASS"
-                    if report.get("d8_second_generation_food_proven") is True
-                    else "D8_SECOND_TRUE_ZERO_DROP_NO_SECOND_EAT"
+                    "D8_FIRST_TRUE_ZERO_DROP_TWO_FOOD_CYCLES_NOT_EXERCISED"
+                    if report.get("d8_first_true_zero_food_not_exercised") is True
+                    else (
+                        "D8_TWO_REAL_NATURAL_S49_FOOD_CYCLES_PASS"
+                        if report.get("d8_second_generation_food_proven") is True
+                        else "D8_SECOND_TRUE_ZERO_DROP_NO_SECOND_EAT"
+                    )
                 )
                 if d8_two_generation_food_dev
                 else (
