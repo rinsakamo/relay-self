@@ -1,8 +1,6 @@
 """D7-B: Paper main-thread per-tick evidence, NOT a server-effective S49 STOP grant."""
 from __future__ import annotations
 
-from copy import deepcopy
-
 import pytest
 
 from tools.bug0_d7_paper_server_tick_post import (
