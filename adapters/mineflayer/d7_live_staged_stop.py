@@ -26,19 +26,19 @@ STAGED = re.compile(
 NATURAL_SPAWN = re.compile(
     rf"RSELF_NATURAL_DROP_SPAWN world=(?P<world>{UUID}) "
     rf"zombie=(?P<zombie>{UUID}) item=(?P<item>{UUID}) "
-    r"tick=(?P<tick>\d+) rotten_count=1 "
+    r"tick=(?P<tick>\d+) rotten_count=(?P<count>[12]) "
     r"source=ACTUAL_PAPER_ITEM_SPAWN_NEAR_DEATH"
 )
 NATURAL_PICKUP = re.compile(
     rf"RSELF_NATURAL_DROP_PICKUP world=(?P<world>{UUID}) "
     rf"zombie=(?P<zombie>{UUID}) item=(?P<item>{UUID}) "
     rf"player=(?P<player>{UUID}) tick=(?P<tick>\d+) "
-    r"rotten_count=1 source=ACTUAL_PAPER_ITEM_PICKUP"
+    r"rotten_count=(?P<count>[12]) source=ACTUAL_PAPER_ITEM_PICKUP"
 )
 NATURAL_DEATH = re.compile(
     rf"RSELF_NATURAL_DROP_DEATH world=(?P<world>{UUID}) "
     rf"zombie=(?P<zombie>{UUID}) tick=(?P<tick>\d+) "
-    rf"rotten_count=1 killer=(?P<killer>{UUID}) "
+    rf"rotten_count=(?P<count>[12]) killer=(?P<killer>{UUID}) "
     r"source=ACTUAL_PAPER_ENTITY_DEATH_DROPS killer_is_relay_self=true"
 )
 PICKED = re.compile(
@@ -186,7 +186,8 @@ def read_d7_live_staged_stop(
                 for s in lines
             ) != 1
             or any(st[k] != pk[k] for k in ("world", "zombie", "item"))
-            or any(death[k] != st[k] for k in ("world", "zombie"))
+            or any(death[k] != st[k] for k in ("world", "zombie", "count"))
+            or pk["count"] != st["count"]
             or pk["player"] != death["killer"]
             or not int(death["tick"]) <= int(st["tick"]) < int(pk["tick"])
             or "RSELF_LOOT_STAGED " in paper_log
