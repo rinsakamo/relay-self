@@ -6,7 +6,8 @@ import json
 import pytest
 
 from adapters.mineflayer.d7_live_staged_stop import (
-    D7LiveStopRejected, read_d7_live_staged_stop,
+    D7LiveStopRejected,
+    read_d7_live_staged_stop,
 )
 
 SID = "1a23b456-6e89-4bcb-9af0-112233445566"
