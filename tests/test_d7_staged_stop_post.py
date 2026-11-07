@@ -63,7 +63,7 @@ def source():
         "controls": {**OFF, "back": True},
     }, {
         "kind": "EFFECT_ACK", "native_seq": 14,
-        "native_action_id": AID+"-clear", "client_physics_tick": 0,
+        "native_action_id": AID+"-s15-clear", "client_physics_tick": 0,
         "controls": dict(OFF),
     }]
     client.extend(
@@ -133,7 +133,7 @@ def test_exact_staged_s49_s50_paper_sources_never_grant_stop_or_eat():
     "missing_pickup", "duplicate_pickup", "paper_tick_gap",
     "paper_bad_input", "paper_nonfinite", "paper_truncated",
     "paper_too_short", "paper_bad_count", "late_client_move",
-    "client_clear_still_held", "client_wrong_clear", "fake_eat",
+    "client_clear_still_held", "client_wrong_clear", "client_legacy_clear_suffix", "fake_eat",
 ])
 def test_corrupt_source_or_fake_authority_fails_closed(mutation):
     report, original, native = source()
@@ -179,6 +179,8 @@ def test_corrupt_source_or_fake_authority_fails_closed(mutation):
         native[2]["controls"]["back"] = True
     elif mutation == "client_wrong_clear":
         native[2]["native_action_id"] = "foreign-clear"
+    elif mutation == "client_legacy_clear_suffix":
+        native[2]["native_action_id"] = AID+"-clear"
     elif mutation == "fake_eat":
         report["d7_staged_original_eat_issued"] = True
     with pytest.raises((D7StagedStopRejected, D7PassiveReadbackRejected, D7PaperSourceRejected)):
