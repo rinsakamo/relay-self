@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
@@ -10,6 +11,18 @@ from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 
 class D7EPostRejected(ValueError):
     pass
+
+
+def native_integral_food(value: object) -> int:
+    """Minecraft food is integral, while the original native report uses 13.0."""
+    if (
+        type(value) not in (int, float)
+        or not math.isfinite(value)
+        or value != int(value)
+        or not 0 <= value <= 20
+    ):
+        raise D7EPostRejected("original native Food was not finite integral 0..20")
+    return int(value)
 
 
 def audit_staged_eat(
@@ -57,9 +70,6 @@ def audit_staged_eat(
         or eat.get("action_id") != action
         or eat.get("consumed_item") != "rotten_flesh"
         or eat.get("count_before") != 1 or eat.get("count_after") != 0
-        or type(eat.get("food_before")) is not int
-        or type(eat.get("food_after")) is not int
-        or not 0 <= eat["food_before"] < eat["food_after"] <= 20
         or after.get("session_id") != sid
         or after.get("rotten_flesh") != 0
         or report.get("d7e_original_nonmotion_unresolved") is not False
@@ -67,6 +77,10 @@ def audit_staged_eat(
         or report.get("cleanup_done") is not True
     ):
         raise D7EPostRejected("original STOP owner and S51 EAT provenance/effects not qualified")
+    native_food_before = native_integral_food(eat.get("food_before"))
+    native_food_after = native_integral_food(eat.get("food_after"))
+    if native_food_after <= native_food_before:
+        raise D7EPostRejected("native S51 Food did not genuinely increase")
     fence = OriginalS49NonMotionFence.restore(
         nonmotion_path, self_id="s49-original-self",
     )
@@ -82,8 +96,8 @@ def audit_staged_eat(
         or rows[0].get("terminal") != "outcome"
         or rows[0].get("subject") != "rotten_flesh"
         or rows[0].get("result") != {
-            "food_before": eat["food_before"],
-            "food_after": eat["food_after"],
+            "food_before": native_food_before,
+            "food_after": native_food_after,
             "item_count_before": 1, "item_count_after": 0,
         }
     ):
@@ -97,8 +111,8 @@ def audit_staged_eat(
         "operator_fixture_item_uuid": stage["paper_item_uuid"],
         "s49_original_move": stage["original_move_action_ids"],
         "s49_original_eat_action_id": action,
-        "s49_s51_native_food_before": eat["food_before"],
-        "s49_s51_native_food_after": eat["food_after"],
+        "s49_s51_native_food_before": native_food_before,
+        "s49_s51_native_food_after": native_food_after,
         "s49_s51_native_inventory_before": 1,
         "s49_s51_native_inventory_after": 0,
         "original_eat_fence_sha256": fence.sha256,
