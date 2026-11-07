@@ -653,6 +653,7 @@ class NormalSessionActionExecutor:
         # *live* source-bound owner STOP readout. Never reuse after ISSUE.
         self._d7_dev_eat_credit = 0
         self._d7_dev_stop_consumed = False
+        self._d7_last_d6_loot_move_action_id = None
 
     def advance_intent_epoch(
         self, next_native: MineflayerObservation,
@@ -841,6 +842,7 @@ class NormalSessionActionExecutor:
             provenance=issue.provenance,
         )
         self._dispatched.add(issued.action_id)
+        self._d7_last_d6_loot_move_action_id = issued.action_id
         self._last_issued_probe_seq = probe.seq
         self._post_move_settling_unqualified = True
         self._d7_dev_eat_credit = 0
@@ -967,12 +969,13 @@ class NormalSessionActionExecutor:
         if (
             original.action_id != receipt.terminal.action_id
             or original.action_id not in self._dispatched
+            or original.action_id != self._d7_last_d6_loot_move_action_id
             or len(self._dispatched) != self._count
             or (
                 natural_source_dev
                 and (
                     self._attack_count < 1
-                    or self._count != self._attack_count + 1
+                    or not 1 <= self._count - self._attack_count <= 4
                     or not isinstance(paper_natural_death, str)
                     or "killer_is_relay_self=true" not in paper_natural_death
                 )
