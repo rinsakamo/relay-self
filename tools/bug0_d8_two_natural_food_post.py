@@ -20,7 +20,6 @@ from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d6_multigen_world import _tick, _uuid
 from tools.bug0_d7e_staged_move_eat_post import native_integral_food
 
-
 NATURAL_DEATH_INCLUDING_ZERO = re.compile(
     NATURAL_DEATH.pattern.replace("(?P<count>[12])", "(?P<count>[012])")
 )
