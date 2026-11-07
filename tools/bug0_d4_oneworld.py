@@ -48,6 +48,30 @@ from tools.bug0_pickup_d1_world import _artifact, _inventory, _original_marker
 from tools.bug0_zombie_respawn_r1_world import _native_probe
 
 
+def d7c_has_independent_paper_pickup(report: dict) -> bool:
+    """PASSIVE source-wait scope, never a physical STOP or EAT grant.
+
+    First positive D4 pickup is stored in d4_paper_item_pickup. When the
+    first kill had zero natural loot, D6 multi-generation stores the
+    *later* positive natural UUID/tick in d6_multigen_generations instead.
+    Only a completed real Paper UUID/tick pickup merits a bounded extra
+    read-only witness window.
+    """
+    if not isinstance(report, dict):
+        return False
+    if report.get("d4_paper_item_pickup"):
+        return True
+    rows = report.get("d6_multigen_generations")
+    return isinstance(rows, list) and any(
+        isinstance(row, dict)
+        and type(row.get("item_pickup_tick")) is int
+        and row["item_pickup_tick"] >= 0
+        and isinstance(row.get("item_uuid"), str)
+        and bool(row["item_uuid"])
+        for row in rows
+    )
+
+
 class S49D3Rejected(RuntimeError):
     """A physically issued or source-qualified combat fact is not established."""
 
@@ -654,7 +678,7 @@ async def run(
             os.environ.get("D7C_PAPER_POSTPICKUP_WORLD_ONLY") == "1"
             and d7_native_controls_path is not None
             and report.get("d6_original_s49_move_actions")
-            and report.get("d4_paper_item_pickup")
+            and d7c_has_independent_paper_pickup(report)
         ):
             await asyncio.sleep(1.0)
             report["d7c_post_pickup_passive_wait_seconds"] = 1.0
