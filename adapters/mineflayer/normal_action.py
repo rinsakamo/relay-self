@@ -654,10 +654,12 @@ class NormalSessionActionExecutor:
         self._d7_dev_eat_credit = 0
         self._d7_dev_stop_consumed = False
         self._d7_last_d6_loot_move_action_id = None
+        self._d7_last_verified_eat_receipt = None
 
     def advance_intent_epoch(
         self, next_native: MineflayerObservation,
         *, previous_zombie_entity_id: int,
+        verified_prior_d7_eat: EatingActionReceipt | None = None,
     ) -> NormalIntentEpochRearm:
         """Explicit DEV rearm after a COMPLETED Intent, not by elapsed time.
 
@@ -682,7 +684,29 @@ class NormalSessionActionExecutor:
             or next_native.snapshot.nearby_entities_coverage.truncated
             or type(previous_zombie_entity_id) is not int
             or previous_zombie_entity_id < 0
-            or self._post_move_settling_unqualified
+            or (
+                self._post_move_settling_unqualified
+                and (
+                    verified_prior_d7_eat is None
+                    or verified_prior_d7_eat is not self._d7_last_verified_eat_receipt
+                    or not self._d7_dev_stop_consumed
+                    or self._d7_dev_eat_credit != 0
+                    or verified_prior_d7_eat.terminal.state is not ActionState.OUTCOME
+                    or verified_prior_d7_eat.terminal.action_id not in self._dispatched
+                    or self.supervisor.get(
+                        verified_prior_d7_eat.terminal.action_id
+                    ) is not verified_prior_d7_eat.terminal
+                    or verified_prior_d7_eat.outcome.session_id != self.session_id
+                    or verified_prior_d7_eat.outcome.food_after
+                        <= verified_prior_d7_eat.outcome.food_before
+                    or verified_prior_d7_eat.outcome.count_before
+                        != verified_prior_d7_eat.outcome.count_after + 1
+                )
+            )
+            or (
+                not self._post_move_settling_unqualified
+                and verified_prior_d7_eat is not None
+            )
             or self.supervisor.open_actions
             or not self._dispatched
             or self._count <= self._epoch_action_count_start
@@ -729,6 +753,14 @@ class NormalSessionActionExecutor:
         self._epoch_intent_id = current.intent_id
         self._epoch_action_count_start = self._count
         self._epoch_attack_count = 0
+        # Only a fresh, source-attested new World zombie + a VERIFIED
+        # closed original D7 STOP/EAT receipt can rearm this DEV lane.
+        # Never reuse that STOP/EAT receipt in subsequent epochs.
+        if verified_prior_d7_eat is not None:
+            self._post_move_settling_unqualified = False
+            self._d7_dev_stop_consumed = False
+            self._d7_last_verified_eat_receipt = None
+            self._d7_last_d6_loot_move_action_id = None
         return record
 
     def require_d6_loot_move_authorizations(
@@ -937,6 +969,7 @@ class NormalSessionActionExecutor:
         native_after: MineflayerObservation,
         natural_source_dev: bool = False,
         paper_natural_death: str | None = None,
+        d8_next_generation_dev: bool = False,
     ):
         """S49 live DEV-only one-use steady-body admission after original MOVE.
 
@@ -954,6 +987,8 @@ class NormalSessionActionExecutor:
             or session.process_returncode is not None
             or self.supervisor.open_actions
             or not self._post_move_settling_unqualified
+            or (d8_next_generation_dev and self._intent_epoch != 2)
+            or (not natural_source_dev and d8_next_generation_dev)
             or self._d7_dev_stop_consumed
             or self._d7_dev_eat_credit
             or not isinstance(paper_log, Path)
@@ -974,8 +1009,11 @@ class NormalSessionActionExecutor:
             or (
                 natural_source_dev
                 and (
-                    self._attack_count < 1
-                    or not 1 <= self._count - self._attack_count <= 4
+                    self._epoch_attack_count < 1
+                    or not 1 <= (
+                        self._count - self._epoch_action_count_start
+                        - self._epoch_attack_count
+                    ) <= 4
                     or not isinstance(paper_natural_death, str)
                     or "killer_is_relay_self=true" not in paper_natural_death
                 )
@@ -1031,7 +1069,10 @@ class NormalSessionActionExecutor:
             clear_seq=original.clear_ack_seq,
             original_stage_line=paper_staged,
             original_pickup_line=paper_pickup,
-            source_kind=("natural" if natural_source_dev else "staged"),
+            source_kind=(
+                "natural_multi" if d8_next_generation_dev
+                else ("natural" if natural_source_dev else "staged")
+            ),
             original_death_line=paper_natural_death,
         )
         self._d7_dev_stop_consumed = True
@@ -1410,6 +1451,8 @@ class NormalSessionActionExecutor:
                     receipt=result, choice=choice, probe=probe,
                     supervisor=self.supervisor,
                 )
+            if self._d7_dev_stop_consumed and self._post_move_settling_unqualified:
+                self._d7_last_verified_eat_receipt = result
             return result
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
