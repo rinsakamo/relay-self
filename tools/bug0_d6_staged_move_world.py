@@ -67,19 +67,39 @@ def _meat(probe) -> int:
 async def move_from_real_item(
     session, report: dict, log_path: Path, *,
     fence: OriginalS49PhysicalFence,
+    owner: NormalSessionActionExecutor | None = None,
+    item_origin: str = "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP",
+    allow_experience_orbs: bool = False,
 ) -> None:
     sid = session.started.session_id
-    intent = IntentCommitment()
-    intent.commit(
-        "collect-operator-staged-loot",
-        objective="bounded native item approach with original S49 only",
-        at_ns=1,
-        provenance=Provenance("d6-dev-world", "first-intent"),
-    )
-    owner = NormalSessionActionExecutor(sid, intent)
+    if owner is None:
+        intent = IntentCommitment()
+        intent.commit(
+            "collect-operator-staged-loot",
+            objective="bounded native item approach with original S49 only",
+            at_ns=1,
+            provenance=Provenance("d6-dev-world", "first-intent"),
+        )
+        owner = NormalSessionActionExecutor(sid, intent)
+    elif (
+        not isinstance(owner, NormalSessionActionExecutor)
+        or owner.session_id != sid
+        or owner.intent.current_intent is None
+        or owner.supervisor.open_actions
+        or not owner._dispatched
+        or any(
+            owner.supervisor.get(a).state is not ActionState.OUTCOME
+            for a in owner._dispatched
+        )
+        or item_origin != "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
+        or not allow_experience_orbs
+    ):
+        raise D6StagedMoveRejected("D6 natural loot requires original closed ATTACK owner")
+    intent = owner.intent
+    count_before = owner._count
     supervisor = owner.supervisor
     report["d6_original_s49_move_actions"] = []
-    report["d6_item_origin"] = "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP"
+    report["d6_item_origin"] = item_origin
     report["d6_native_orientation_optin"] = True
     report["d6_s14_generic_loot_route_admitted"] = False
     report["d6_original_s49_supervisor_kept"] = True
@@ -113,6 +133,7 @@ async def move_from_real_item(
         try:
             choice = source_qualified_loot_approach(
                 before, current, item_entity_id=item_id,
+                allow_experience_orbs=allow_experience_orbs,
             )
         except D6LootApproachRejected as exc:
             # If within pickup radius but not yet observed in inventory,
@@ -152,6 +173,7 @@ async def move_from_real_item(
         receipt = await owner.execute_d6_loot_move(
             session, before, current, choice, propose, issue,
             physical_fence=fence,
+            allow_experience_orbs=allow_experience_orbs,
         )
         c = receipt.consequence
         if (
@@ -209,10 +231,10 @@ async def move_from_real_item(
             owner.supervisor.get(action_id).state is not ActionState.OUTCOME
             for action_id in owner._dispatched
         )
-        or len(fence.actions) != owner._count
+        or len(fence.actions) != owner._count - count_before
     ):
         raise D6StagedMoveRejected("original S49 bounded loot MOVEs did not close")
-    report["d6_original_move_count"] = owner._count
+    report["d6_original_move_count"] = owner._count - count_before
     report["d6_item_native_id"] = last_item_id
     report["d6_same_supervisor"] = owner.supervisor is supervisor
 
