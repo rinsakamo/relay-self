@@ -43,3 +43,25 @@ def test_operator_staged_item_never_qualifies_second_natural_food(tmp_path):
             nonmotion_path=tmp_path/"missing-eat-ledger",
             motion_path=tmp_path/"missing-move-ledger",
         )
+
+
+@pytest.mark.parametrize("spoof", [
+    {}, {"status": "PASS_DEV"},
+    {
+        "status": "PASS_DEV",
+        "d8_first_true_zero_food_not_exercised": True,
+        "d8_two_generation_optin": True,
+        "real_rotten_flesh_count": 0,
+    },
+])
+def test_fake_first_zero_requires_original_real_paper_and_attack_ledger(
+    spoof, tmp_path,
+):
+    bogus = {**spoof, "d8_first_true_zero_food_not_exercised": True}
+    with pytest.raises(D8TwoCycleAuditRejected):
+        audit_two_natural_food_cycles(
+            bogus,
+            "RSELF_NATURAL_DROP_DEATH source=fabricated rotten_count=0",
+            nonmotion_path=tmp_path/"no-S49-original-attack.json",
+            motion_path=tmp_path/"no-C1-original-move.json",
+        )
