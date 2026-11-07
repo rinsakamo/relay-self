@@ -7,16 +7,17 @@ from __future__ import annotations
 import asyncio
 import json
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 
 from adapters.mineflayer.process_session import (
-    MineflayerProcessSession, MineflayerProcessStartError,
+    MineflayerProcessSession,
+    MineflayerProcessStartError,
 )
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from tools.bug0_d7_postmove_native_controls_post import (
-    D7PassiveReadbackRejected, audit_passive_controls,
+    D7PassiveReadbackRejected,
+    audit_passive_controls,
 )
 
 SID="s49-original-native-session"
