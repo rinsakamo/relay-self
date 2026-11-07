@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 
@@ -49,7 +50,7 @@ def _source(log: str, pattern) -> list[dict[str, str]]:
 def audit_two_natural_food_cycles(
     report: dict, paper_log: str, *,
     nonmotion_path: Path, motion_path: Path,
-    s50_jsonl: str,
+    s50_jsonl: str = "",
 ) -> dict:
     if (
         not isinstance(report, dict) or not isinstance(paper_log, str)
@@ -294,6 +295,8 @@ def audit_two_natural_food_cycles(
     # Read the immutable direct S50/Paper originals independently of the
     # current owner's stored STOP summary. The exact server-effective
     # original-clear tick remains unproven; no causal claim is inferred.
+    if not isinstance(s50_jsonl, str) or not s50_jsonl:
+        raise D8TwoCycleAuditRejected("immutable original S50 sidecar missing")
     records = []
     for line in s50_jsonl.splitlines():
         try:
@@ -363,14 +366,13 @@ def audit_two_natural_food_cycles(
             raise D8TwoCycleAuditRejected("Paper current-world tick source drift")
         old_tick = t
         pos = (_number(row, "x"), _number(row, "z"))
-        from math import dist, hypot
         quiet = quiet + 1 if (
             t > int(pickups[1]["tick"])
             and _inputs_off(row)
             and row.get("ground") == "true"
             and old_xz is not None
-            and dist(pos, old_xz) <= 0.01
-            and hypot(_number(row, "vx"), _number(row, "vz")) <= 0.01
+            and math.dist(pos, old_xz) <= 0.01
+            and math.hypot(_number(row, "vx"), _number(row, "vz")) <= 0.01
         ) else 0
         old_xz = pos
         if t == stop.get("paper_last_tick"):
