@@ -12,9 +12,11 @@
 
 先行ATTACK（S49 nonmotion PREPARE）、MOVE（C1 PREPARE）、後続EAT（同じS49 nonmotion PREPARE）は同一session/Intent/元ActionSupervisorに結合される。元S49が受け取るMOVE receiptは同一Python参照であり、外部で作ったreport dictではSTOP/EAT再開不可。
 
-Paper自然モードは死亡・spawn・pickupのWorld/zombie/item/killer UUID、tick、腐肉数1を要求。S50同一クライアントの元S15 -s15-clear ACK後8+ physicsTicksの7入力OFF、Paperの真のPickup後で直近8+ serverTicksの7入力OFF/ほぼ静止、Native二つのfresh probeで生存/危険/food/在庫/位置安定を確認する。
+Paper自然モードは死亡・spawn・pickupのWorld/zombie/item/killer UUID、tick、腐肉数1または2の同一値を要求。S50同一クライアントの元S15 -s15-clear ACK後8+ physicsTicksの7入力OFF、Paperの真のPickup後で直近8+ serverTicksの7入力OFF/ほぼ静止、Native二つのfresh probeで生存/危険/food/在庫/位置安定を確認する。
 
-R1の実World [#42384571096](https://github.com/rinsakamo/relay-self/actions/runs/42384571096) では、真のゾンビ自然腐肉1個を元S49の2 MOVE（各約0.627m）でPaper実拾得まで成功したが、DEV接続側の「MOVE1件」限定でEAT前に停止した。7原本のSHA256一致、EAT0。修正版は元S49の閉鎖済み最大4 MOVEを受け取り、最後のS15 clear/現在停止readbackだけをEAT前に照合する。過去のMOVEが静止していても最新MOVEが未決なら許可しない。\n\n初回資格は自然腐肉ちょうど1個。0個は真の0個としてEAT NOT_EXERCISED、2個は初回1個EAT資格の対象外でNOT_EXERCISED。方向・Item UUID・owner・STOP不成立はFAIL/DEFER、旧Actionの再発行なし。自然RNGは変更しない。次ゾンビはWorldの600tickルールを独立検証する。
+R1の実World [#42384571096](https://github.com/rinsakamo/relay-self/actions/runs/42384571096) では、真のゾンビ自然腐肉1個を元S49の2 MOVE（各約0.627m）でPaper実拾得まで成功したが、DEV接続側の「MOVE1件」限定でEAT前に停止した。7原本のSHA256一致、EAT0。修正版は元S49の閉鎖済み最大4 MOVEを受け取り、最後のS15 clear/現在停止readbackだけをEAT前に照合する。過去のMOVEが静止していても最新MOVEが未決なら許可しない。\n\nR2 [#42385781843](https://github.com/rinsakamo/relay-self/actions/runs/42385781843) は、対象外World (5aa0efe3…) の別ゾンビ死亡tick499（killer UNKNOWN）が先にPaper自然ドロップ監査へ入ってしまい、管理対象World (d3cf9360…) の正しいゾンビ死亡tick525・自然腐肉2個が後続として監査FAULTに。元S49 ATTACK1はOUTCOME、MOVE0/EAT0、全7原本SHA一致・cleanup成功。D7-F専用でPaper監査が **オンラインSelfと同じWorld内の RelaySelfAttackTarget タグ付きゾンビだけ**を死亡採用するよう変更した。既存D4/D6向けにはこの設定をデフォルトOFFにした。READY logに監視範囲を明示して独立監査する。
+
+次は自然腐肉1個または2個を正規の食料と認め、**S51が1個だけ消費**する。元Paperの個数・native在庫・S51の永続EAT前後差は1→0または2→1で一致必須。0個は真の0個としてEAT NOT_EXERCISED。方向・Item UUID・owner・STOP不成立はFAIL/DEFER、旧Actionの再発行なし。自然RNGは変更しない。次ゾンビはWorldの600tickルールを独立検証する。
 
 PaperのgetCurrentInput()は最終受信値であり、元S49のS15 clearがサーバーで有効になった厳密tickの因果ACKではない。DEV身体静止の工学判定のみ。QUALIFICATION_NO_GO / SCIENCE_NOT_RUNを維持する。
 
