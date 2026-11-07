@@ -23,7 +23,13 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.c1_motion_journal import (
-    C1JournalError, _canonical, _exclusive, _int, _require_fields, _text, _write,
+    C1JournalError,
+    _canonical,
+    _exclusive,
+    _int,
+    _require_fields,
+    _text,
+    _write,
 )
 
 _SCHEMA = 1
