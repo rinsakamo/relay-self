@@ -22,13 +22,13 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from relay_self.action import ActionState
+from relay_self.c1_motion_journal import _canonical
 from relay_self.s49_nonmotion_physical_fence import (
     NonmotionActionReplay,
     NonmotionActionUnknown,
     NonmotionFenceError,
     OriginalS49NonmotionFence,
 )
-from relay_self.c1_motion_journal import _canonical
 
 
 def _attack_case(monkeypatch, path, *, broken=False):
@@ -304,7 +304,7 @@ def test_nonmotion_corruption_or_duplicate_rejected_on_restart(monkeypatch, tmp_
     owner, native, before, choice, target, propose, issue, fence, reserve, close = (
         _attack_run(monkeypatch, path)
     )
-    receipt = asyncio.run(owner.execute_attack(
+    asyncio.run(owner.execute_attack(
         native, before, choice, target, propose, issue,
         pre_issue_reservation=reserve, post_outcome_commit=close,
     ))
@@ -342,7 +342,7 @@ def test_concurrent_stale_writer_and_foreign_self_fail_closed(monkeypatch, tmp_p
         _attack_run(monkeypatch, path)
     )
     stale = OriginalS49NonmotionFence.restore(path, self_id="s49-original-self")
-    receipt = asyncio.run(owner.execute_attack(
+    asyncio.run(owner.execute_attack(
         native, before, choice, target, propose, issue,
         pre_issue_reservation=reserve, post_outcome_commit=close,
     ))
