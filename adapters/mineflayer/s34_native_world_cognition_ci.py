@@ -861,6 +861,7 @@ async def _observe_native_threat(
 
 async def _new_session(
     *, raw_capture_root: Path | None = None,
+    w4_native_orientation_dev: bool = False,
 ) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
@@ -868,6 +869,7 @@ async def _new_session(
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
+        w4_native_orientation_dev=w4_native_orientation_dev,
         **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
     )
     try:

@@ -3,6 +3,7 @@ package io.github.rinsakamo.loot;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,6 +18,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Vector;
 
 /**
  * Independent DEV-only World fixture for a single operator-supplied item.
@@ -58,13 +60,25 @@ public final class RelayPickupFixtureDev extends JavaPlugin
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!enabledForDev || !(sender instanceof ConsoleCommandSender)
                 || !command.getName().equalsIgnoreCase("rselfstagefood")
-                || args.length != 0 || stagedEntity != null) {
+                || args.length > 1 || stagedEntity != null) {
             return false;
         }
         Player p = Bukkit.getPlayerExact(TARGET);
         if (p == null || !p.isOnline() || p.isDead()) return false;
+        boolean backStaged = args.length == 1 && "back".equals(args[0]);
+        if (args.length == 1 && !backStaged) return false;
+        Location stage = p.getLocation().clone();
+        if (backStaged) {
+            // Operator-only spatial DEV fixture: position exactly behind
+            // the player's *server* yaw; Self still must read native yaw,
+            // select its own movement candidate and acquire S49 permission.
+            Vector facing = stage.getDirection().setY(0);
+            if (facing.lengthSquared() < 0.1) return false;
+            stage.subtract(facing.normalize().multiply(2.2));
+        }
         ItemStack meat = new ItemStack(Material.ROTTEN_FLESH, 1);
-        Item item = p.getWorld().dropItem(p.getLocation().clone(), meat);
+        Item item = p.getWorld().dropItem(stage, meat);
+        if (backStaged) item.setVelocity(new Vector(0, 0, 0));
         item.setPickupDelay(0);
         item.getPersistentDataContainer().set(itemKey, PersistentDataType.BYTE, (byte) 1);
         stagedEntity = item.getUniqueId();
@@ -73,7 +87,8 @@ public final class RelayPickupFixtureDev extends JavaPlugin
         getLogger().info("RSELF_LOOT_STAGED world=" + world
             + " owner=" + owner + " entity=" + stagedEntity
             + " item=rotten_flesh count=1 tick=" + Bukkit.getCurrentTick()
-            + " source=OPERATOR_FIXTURE_NOT_ZOMBIE_DROP");
+            + " source=OPERATOR_FIXTURE_NOT_ZOMBIE_DROP"
+            + " mode=" + (backStaged ? "BACK_2_2M" : "AT_PLAYER"));
         return true;
     }
 
