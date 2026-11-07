@@ -48,7 +48,7 @@ jobs:
           p=Path('docs/unified-v05-d6-vanilla-independent-trigger-20261107.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
-          assert 'scope: DISTINCT SECOND VANILLA WORLD GENUINE RANDOM DROPS SAME S49 BOUNDED FOUR GENERATIONS' in p
+          assert 'scope: DISTINCT THIRD VANILLA WORLD GENUINE RANDOM DROPS SAME S49 BOUNDED FOUR GENERATIONS' in p
           PY
           python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
           python tools/check_repository.py
@@ -137,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unified-v05-d6-vanilla-independent-oneworld-2
+          name: unified-v05-d6-vanilla-third-independent-oneworld
           path: unified-v05-d6-vanilla-independent-evidence/
           if-no-files-found: warn
           retention-days: 30
