@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import tempfile
+from functools import partial
 from pathlib import Path
 
 from adapters.mineflayer.normal_action import (
@@ -499,7 +500,10 @@ async def run(
             baseline=d4_baseline,
             natural_count=report["real_rotten_flesh_count"],
             physical_fence=nonmotion_fence,
-            natural_loot_move_dev=post_death_loot_move_dev,
+            natural_loot_move_dev=(
+                partial(post_death_loot_move_dev, motion_fence=motion_fence)
+                if post_death_loot_move_dev is not None else None
+            ),
         )
         report["self_eat"] = d4_eaten
         report["d4_natural_food_pickup_eat_proven"] = d4_eaten
