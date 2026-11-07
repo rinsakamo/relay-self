@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -262,3 +263,109 @@ def test_stale_writer_and_duplicate_restart_are_fail_closed(monkeypatch, tmp_pat
         restored.require_clear()
     with pytest.raises(NonMotionReplay):
         OriginalS49NonMotionFence.create(path, self_id="s49-original-self")
+
+
+
+@pytest.mark.parametrize("tamper", [
+    "copied_terminal", "foreign_target", "rejected_ack", "wrong_after",
+])
+def test_original_attack_closure_rejects_forged_native_receipt(
+    monkeypatch, tmp_path, tamper,
+):
+    first = tmp_path / "first.json"
+    owner, probe, receipt, _, _, grant = _attack(monkeypatch, first)
+    pending = _fence(tmp_path / "pending.json")
+    pending.prepare_attack(
+        probe=probe, intent_id=grant.intent_id, action_id=grant.action_id,
+        target_entity_id=receipt.target_entity_id,
+    )
+    candidate = receipt
+    if tamper == "copied_terminal":
+        candidate = replace(receipt, terminal=replace(receipt.terminal))
+    elif tamper == "foreign_target":
+        candidate = replace(receipt, target_entity_id=receipt.target_entity_id + 1)
+    elif tamper == "rejected_ack":
+        candidate = replace(
+            receipt, effect=replace(receipt.effect, result="rejected",
+                                    error="synthetic denial"),
+        )
+    elif tamper == "wrong_after":
+        candidate = replace(
+            receipt, after_probe=replace(receipt.after_probe, seq=probe.seq),
+        )
+    with pytest.raises(NonMotionFenceError):
+        pending.close_attack(
+            receipt=candidate, probe=probe, supervisor=owner.supervisor,
+        )
+    assert OriginalS49NonMotionFence.restore(
+        pending.path, self_id="s49-original-self",
+    ).unresolved
+
+
+@pytest.mark.parametrize("tamper", [
+    "missing_child", "foreign_consume", "false_inventory", "copied_terminal",
+])
+def test_original_eat_closure_rejects_unqualified_native_receipt(tmp_path, tamper):
+    before, choice, owner, _ = eat.fixture()
+    propose, issue = eat.grants(
+        before, choice, owner.intent.current_intent.intent_id,
+    )
+    session = eat.ScriptedNativeSession(before, propose.action_id)
+    genuine = asyncio.run(owner.execute_eat(
+        session, choice, before, propose, issue,
+        previous_probe=eat.prior_probe(before),
+    ))
+    pending = _fence(tmp_path / "pending-eat.json")
+    pending.prepare_eat(
+        probe=before, intent_id=propose.intent_id, action_id=propose.action_id,
+        food_item=choice.item_name,
+    )
+    candidate = genuine
+    if tamper == "missing_child":
+        candidate = replace(candidate, consume_receipt=None)
+    elif tamper == "foreign_consume":
+        candidate = replace(
+            candidate, consume_receipt=replace(
+                candidate.consume_receipt, action_id="foreign-consume",
+            ),
+        )
+    elif tamper == "false_inventory":
+        candidate = replace(
+            candidate, after_probe=replace(
+                candidate.after_probe, snapshot=replace(
+                    candidate.after_probe.snapshot,
+                    inventory=before.snapshot.inventory,
+                ),
+            ),
+        )
+    elif tamper == "copied_terminal":
+        candidate = replace(
+            candidate, terminal=replace(candidate.terminal),
+        )
+    with pytest.raises(NonMotionFenceError):
+        pending.close_eat(
+            receipt=candidate, choice=choice, probe=before,
+            supervisor=owner.supervisor,
+        )
+    assert OriginalS49NonMotionFence.restore(
+        pending.path, self_id="s49-original-self",
+    ).unresolved
+
+
+@pytest.mark.parametrize("kind", [[], {}, 0, None])
+def test_malformed_unhashable_kind_is_rejected_as_typed_error(tmp_path, kind):
+    path = tmp_path / "malformed.json"
+    owner = _fence(path)
+    _, selected = attack._pair()
+    owner.prepare_attack(
+        probe=selected, intent_id="escape-threat",
+        action_id="original-pending", target_entity_id=12,
+    )
+    value = json.loads(path.read_text(encoding="utf-8"))
+    value["body"]["actions"][0]["kind"] = kind
+    value["sha256"] = hashlib.sha256(_canonical(value["body"])).hexdigest()
+    path.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(NonMotionFenceError):
+        OriginalS49NonMotionFence.restore(
+            path, self_id="s49-original-self",
+        )
