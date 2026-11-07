@@ -13,7 +13,7 @@ permissions:
 jobs:
   one-world:
     # A separate one-use trigger commit, never on normal source pushes.
-    if: ${{ github.event.action == 'synchronize' }}
+    if: ${{ github.event.action == 'synchronize' && github.event.pull_request.head.sha == 'b00ba4df59387f5c76b18feea6944e9ed6093ff9' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
