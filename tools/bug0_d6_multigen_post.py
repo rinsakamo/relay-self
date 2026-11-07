@@ -5,7 +5,6 @@ import argparse
 import json
 from pathlib import Path
 
-from relay_self.action import ActionState
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d6_multigen_world import _rotten, _tick, _uuid, one_source_line
