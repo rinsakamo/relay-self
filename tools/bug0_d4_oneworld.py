@@ -136,6 +136,7 @@ async def run(
     post_death_loot_move_dev=None,
     motion_fence_path: Path | None = None,
     d6_multigen_dev: bool = False,
+    d6_controlled_zero_dev: bool = False,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -163,6 +164,17 @@ async def run(
             or os.environ.get("NODE_OPTIONS")
         ):
             raise S49D3Rejected("exclusive source-bound S49 D3 World approval absent")
+        if d6_controlled_zero_dev:
+            if (
+                not d6_multigen_dev
+                or os.environ.get("D6_CONTROLLED_ZERO_WORLD_ONLY") != "1"
+                or post_death_loot_move_dev is None
+                or post_respawn_dev is None
+            ):
+                raise S49D3Rejected("D6 controlled-zero World grant absent")
+            report["d6_operator_forced_zero"] = True
+            report["d6_natural_drop_rng_unchanged"] = False
+            report["d6_controlled_zero_not_vanilla_sample"] = True
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
@@ -384,6 +396,16 @@ async def run(
             await asyncio.sleep(0.3)
             report["d5_operator_late_cleanup_done"] = True
 
+        if d6_controlled_zero_dev:
+            # Operator-only DEV fixture to test repeated real S49 ATTACK
+            # after genuine zero loot. World rule is deliberately MODIFIED.
+            # Never count this as a vanilla RNG zero or a natural-food test.
+            _command(server, "gamerule doMobLoot false")
+            await server.stdin.drain()
+            await asyncio.sleep(0.15)
+            report["d6_controlled_zero_world_rule"] = "doMobLoot=false"
+            report["d6_controlled_zero_command"] = "gamerule doMobLoot false"
+            report["d6_controlled_zero_set_before_first_attack"] = True
         report["stage"] = "ORIGINAL_S49_BOUNDED_NATIVE_ATTACKS"
         target_id = None
         death_logged = False

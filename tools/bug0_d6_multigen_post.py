@@ -25,13 +25,17 @@ def audit(
     original_log: str, report: dict, *, nonmotion_path: Path,
     motion_path: Path,
 ) -> dict:
+    operator_forced_zero = report.get("d6_operator_forced_zero") is True
     if (
         not isinstance(report, dict) or report.get("status") != "PASS_DEV"
         or report.get("node_exit") != 0 or report.get("java_exit") != 0
         or report.get("cleanup_done") is not True
         or report.get("real_world_started") is not True
         or report.get("d6_multigen_self_policy_epoch_limit_imposed") is not False
-        or report.get("d6_multigen_source_natural_drop_rng_unchanged") is not True
+        or report.get("d6_multigen_source_natural_drop_rng_unchanged") is not (
+            not operator_forced_zero
+        )
+        or report.get("d6_multigen_operator_forced_zero") is not operator_forced_zero
         or report.get("d6_multigen_no_physical_reissue") is not True
         or report.get("d6_multigen_no_eat") is not True
         or report.get("d6_multigen_same_supervisor") is not True
@@ -48,6 +52,34 @@ def audit(
         or "effect give RelaySelf minecraft:hunger" in original_log
     ):
         raise MultigenAuditRejected("DEV/World original physical loop source not qualified")
+    if operator_forced_zero:
+        if (
+            report.get("d6_controlled_zero_world_rule") != "doMobLoot=false"
+            or report.get("d6_controlled_zero_command") != "gamerule doMobLoot false"
+            or report.get("d6_controlled_zero_set_before_first_attack") is not True
+            or report.get("d6_controlled_zero_not_vanilla_sample") is not True
+            or "RSELF_NATURAL_DROP_SPAWN world=" in original_log
+            or "RSELF_NATURAL_DROP_PICKUP world=" in original_log
+        ):
+            raise MultigenAuditRejected("controlled zero is not a vanilla loot sample")
+        lines = original_log.splitlines()
+        false_indices = [
+            i for i, line in enumerate(lines)
+            if "Gamerule doMobLoot is now set to: false" in line
+        ]
+        death_indices = [
+            i for i, line in enumerate(lines)
+            if "RSELF_RESPAWN_DEATH world=" in line
+        ]
+        if (
+            not false_indices or not death_indices
+            or max(false_indices) >= min(death_indices)
+            or any(
+                "Gamerule doMobLoot is now set to: true" in line
+                for line in lines[max(false_indices) + 1:]
+            )
+        ):
+            raise MultigenAuditRejected("Paper World rule not pinned false across deaths")
     epochs = report.get("d6_multigen_generations")
     rearm = report.get("d6_multigen_rearms", [])
     if (
@@ -143,7 +175,9 @@ def audit(
             or _uuid(natural, "world") != paper_world
             or "killer_is_relay_self=true" not in natural
             or _uuid(natural, "killer") != _uuid(paper_death, "killer")
-            or count != 0 and i != len(epochs)
+            or (count != 0 and i != len(epochs))
+            or (operator_forced_zero and count != 0)
+            or (operator_forced_zero and "paper_drops=0" not in paper_death)
         ):
             raise MultigenAuditRejected("natural vanilla source or Self killer invalid")
         if i > 1:
@@ -198,7 +232,11 @@ def audit(
         len(epochs) == 4 and not positive
         and (
             report.get("d6_multigen_classification")
-            != "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+            != (
+                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                if operator_forced_zero
+                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+            )
             or report.get("d6_multigen_ci_limit_reached_not_self_goal_completed")
             is not True
             or moves
@@ -264,12 +302,17 @@ def audit(
             or moves
             or motion.actions
             or report.get("d6_multigen_classification")
-            != "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+            != (
+                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                if operator_forced_zero
+                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+            )
         ):
             raise MultigenAuditRejected("all zero should continue until CI trial cap")
     return {
         "classification": report["d6_multigen_classification"],
         "status": "PASS_DEV",
+        "operator_forced_zero_not_vanilla_rng": operator_forced_zero,
         "paper_world_uuid": paper_world,
         "session_id": sid,
         "completed_original_s49_kill_generations": len(epochs),
