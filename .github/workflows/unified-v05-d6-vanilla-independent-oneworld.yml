@@ -1,0 +1,143 @@
+name: Unified v0.5 D6-D6 independent genuine vanilla drops original S49 World DEV
+on:
+  push:
+    branches:
+      - dev/unified-v05-d6-vanilla-independent-next-generation-20261107
+
+permissions:
+  contents: read
+
+jobs:
+  one-world:
+    # A separate one-use trigger commit, never on normal source pushes.
+    if: ${{ github.event.head_commit.message == 'run-unified-v05-d6-vanilla-independent-world-once-20261107' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      S49_REAL_SERVER_CI: '1'
+      BUG0_S49_D4_ONE_WORLD_ONLY: '1'
+      S49_D5_NONMOTION_FENCE_DEV_ONLY: '1'
+      D6_NATURAL_DROP_MOVE_WORLD_ONLY: '1'
+      D6_NATURAL_MULTIGEN_WORLD_ONLY: '1'
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      NODE_OPTIONS: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Strict one-time trigger and independent preworld negatives
+        run: |
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d6-vanilla-independent-trigger-20261107.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d6-vanilla-independent-world-once-20261107"
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('docs/unified-v05-d6-vanilla-independent-trigger-20261107.md').read_text()
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert 'parent_source_head: '+parent in p
+          assert 'scope: DISTINCT THIRD VANILLA WORLD GENUINE RANDOM DROPS SAME S49 BOUNDED FOUR GENERATIONS' in p
+          PY
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check adapters/mineflayer/d6_loot_approach.py adapters/mineflayer/normal_action.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_staged_move_world.py tools/bug0_d6_natural_move_world.py tools/bug0_d6_natural_move_post.py tools/bug0_d6_multigen_world.py tools/bug0_d6_multigen_post.py tests/test_d6_natural_drop_original_s49.py tests/test_d6_multigen_loop.py tests/test_d6_controlled_zero.py tests/test_d6_vanilla_multigen_audit.py tests/test_d6_item_source_rejection_readback.py
+          python -m pytest -q -x tests/test_d6_natural_drop_original_s49.py tests/test_d6_multigen_loop.py tests/test_d6_controlled_zero.py tests/test_d6_vanilla_multigen_audit.py tests/test_d6_item_source_rejection_readback.py tests/test_d6_original_s49_loot_move.py tests/test_d6_loot_approach.py tests/test_d6_staged_move_world.py tests/test_s49_nonmotion_physical_fence.py tests/test_c1_physical_action_fence.py tests/test_bug0_d4_post.py tests/test_bug0_d4_precombat_native_hunger.py tests/test_bug0_d5_world_post.py tests/test_bug0_d5_fence_world_join.py
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              assert sock.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Download pinned official Paper 1.21.8 stable #60
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse,urllib.request
+          url='https://fill.papermc.io/v3/projects/paper/versions/1.21.8/builds'
+          req=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-Bug0-R1/1.0 (https://github.com/rinsakamo/relay-self)'})
+          with urllib.request.urlopen(req,timeout=50) as stream:
+              builds=json.loads(stream.read(3000000))
+          rows=[b for b in builds if b.get('channel')=='STABLE' and b.get('id')==60]
+          assert len(rows)==1
+          p=rows[0]['downloads']['server:default']
+          assert p['name']=='paper-1.21.8-60.jar' and p['size']==52811717
+          assert p['checksums']['sha256']=='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          uri=urllib.parse.urlparse(p['url'])
+          assert uri.scheme=='https' and uri.hostname=='fill-data.papermc.io' and uri.path.startswith('/v1/objects/')
+          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'paper-1.21.8.jar'
+          digest=hashlib.sha256()
+          with urllib.request.urlopen(urllib.request.Request(p['url'],headers={'User-Agent':'RelaySelf-Bug0-R1/1.0'}),timeout=120) as s, target.open('xb') as out:
+              n=0
+              while chunk:=s.read(1024*1024):
+                  n+=len(chunk)
+                  assert n<=52811717
+                  digest.update(chunk)
+                  out.write(chunk)
+          assert n==52811717 and digest.hexdigest()==p['checksums']['sha256']
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              f.write('BUG0_D4_PAPER_JAR='+str(target)+'\n')
+          print('PINNED_PAPER_1_21_8_R1')
+          PY
+      - name: Build pinned Paper respawn and independent natural-drop witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib,os,pathlib
+          targets=(
+              ('BUG0_D4_RESPAWN','adapters/mineflayer/zombie_respawn_dev/target/relay-zombie-respawn-dev-0.1.0-dev.jar'),
+              ('BUG0_D4_WITNESS','adapters/mineflayer/zombie_drop_witness_dev/target/relay-zombie-drop-witness-dev-0.1.0-dev.jar'),
+          )
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              for var,rel in targets:
+                  jar=pathlib.Path(rel).resolve()
+                  assert jar.is_file() and not jar.is_symlink()
+                  digest=hashlib.sha256(jar.read_bytes()).hexdigest()
+                  f.write(var+'_JAR='+str(jar)+'\n')
+                  f.write(var+'_SHA256='+digest+'\n')
+                  print(var+'_SHA256='+digest)
+          PY
+      - name: Install pinned Mineflayer 4.39
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version!=='4.39.0') process.exit(2)"
+      - name: One vanilla World natural drops then SAME original S49 next generations or fenced loot approach
+        run: |
+          mkdir -p unified-v05-d6-vanilla-independent-evidence
+          python -B tools/bug0_d6_multigen_world.py \
+            --report unified-v05-d6-vanilla-independent-evidence/report.json \
+            --server-log unified-v05-d6-vanilla-independent-evidence/paper_original.log \
+            --nonmotion-fence unified-v05-d6-vanilla-independent-evidence/original_nonmotion_fence.json \
+            --motion-fence unified-v05-d6-vanilla-independent-evidence/original_motion_fence.json
+      - name: Independently attest vanilla Paper loot rule and all real S49 Intent/physical journal evidence
+        run: |
+          python -B tools/bug0_d6_multigen_post.py \
+            --report unified-v05-d6-vanilla-independent-evidence/report.json \
+            --server-log unified-v05-d6-vanilla-independent-evidence/paper_original.log \
+            --nonmotion-fence unified-v05-d6-vanilla-independent-evidence/original_nonmotion_fence.json \
+            --motion-fence unified-v05-d6-vanilla-independent-evidence/original_motion_fence.json \
+            --out unified-v05-d6-vanilla-independent-evidence/independent_source_audit.json
+      - name: Preserve originals and SHA256
+        if: always()
+        run: |
+          if test -d unified-v05-d6-vanilla-independent-evidence; then
+            (cd unified-v05-d6-vanilla-independent-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Store exact one-World DEV original evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-v05-d6-vanilla-third-independent-oneworld
+          path: unified-v05-d6-vanilla-independent-evidence/
+          if-no-files-found: warn
+          retention-days: 30
