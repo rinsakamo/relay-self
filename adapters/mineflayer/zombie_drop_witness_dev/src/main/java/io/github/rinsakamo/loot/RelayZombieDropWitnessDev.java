@@ -26,6 +26,8 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
     private static final String TARGET = "RelaySelf";
 
     private boolean enabledForDev;
+    // D7-F only. Keep historical D2/D4/D6 observer semantics unchanged.
+    private boolean d7fManagedWorldWitness;
     private D7PaperServerTicks d7StopObserver;
     private UUID dead;
     private UUID worldId;
@@ -47,10 +49,13 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
                 || !TARGET.equals(getConfig().getString("target-player"))) {
             throw new IllegalStateException("isolated D2 source only");
         }
+        d7fManagedWorldWitness = getConfig().getBoolean(
+                "d7f-managed-world-witness", false);
         enabledForDev = true;
         Bukkit.getPluginManager().registerEvents(this, this);
         getLogger().info("RSELF_NATURAL_DROP_READY operator_only=true"
-                + " force_drops=false self_permissions=none");
+                + " force_drops=false self_permissions=none"
+                + " d7f_managed_world_witness=" + d7fManagedWorldWitness);
         if (getConfig().getBoolean("d7-paper-tick-observer", false)) {
             d7StopObserver = new D7PaperServerTicks(this, TARGET);
             d7StopObserver.start();
@@ -60,6 +65,22 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {
         if (!enabledForDev || !(event.getEntity() instanceof Zombie zombie)) return;
+        // An unrelated zombie can die in another Paper World (e.g. a
+        // Nether/alternate dimension entity). The old observer globally
+        // seized its death and later treated the genuine S49 target as an
+        // ambiguous second death. D7-F observes only the tagged original
+        // target in the currently online Self's own World. No new target,
+        // loot, or kill principal is synthesized by filtering.
+        if (d7fManagedWorldWitness) {
+            Player self = Bukkit.getPlayerExact(TARGET);
+            if (self == null || !self.isOnline()
+                    || !zombie.getWorld().getUID().equals(
+                            self.getWorld().getUID())
+                    || !zombie.getScoreboardTags().contains(
+                            "RelaySelfAttackTarget")) {
+                return;
+            }
+        }
         if (dead != null && expectedCount > 0 && !picked) {
             getLogger().severe("RSELF_NATURAL_DROP_FAULT prior_uncollected_death="
                     + dead + " new_death=" + zombie.getUniqueId());

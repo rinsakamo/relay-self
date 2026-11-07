@@ -44,6 +44,7 @@ async def run_natural_loot_eat(
     natural_count: int,
     physical_fence: OriginalS49NonMotionFence | None = None,
     natural_loot_move_dev=None,
+    d7f_natural_eat_dev=None,
 ) -> bool:
     """Return whether genuine natural meat was EATen; never synthesize loot.
 
@@ -100,7 +101,16 @@ async def run_natural_loot_eat(
         # execute the SAME existing S49's bounded MOVE via C1 journal.
         # Unlike D4, pickup must occur AFTER at least one original MOVE.
         report["d4_stage"] = "D6_NATURAL_ITEM_NATIVE_S49_MOVE"
-        await natural_loot_move_dev(session, owner, report, log_path)
+        original_move = await natural_loot_move_dev(
+            session, owner, report, log_path,
+        )
+        if d7f_natural_eat_dev is not None and (
+            not callable(d7f_natural_eat_dev)
+            or not isinstance(original_move, tuple)
+            or len(original_move) != 2
+            or original_move[0] is not owner
+        ):
+            raise NaturalD4Rejected("D7-F live original natural MOVE receipt absent")
         if (
             not report.get("d6_original_s49_move_actions")
             or owner.supervisor.open_actions
@@ -137,6 +147,19 @@ async def run_natural_loot_eat(
         report["d4_self_move_for_item"] = True
         # A real pickup after MOVE does not establish tick-aligned physical
         # STOP or authorize EAT. Leave S49 post-move fence untouched.
+        if d7f_natural_eat_dev is not None:
+            # D7-F new DEV opt-in only: no EAT until original live owner
+            # qualifies source-bound Paper/S50 physical quiescence.
+            if natural_count not in (1, 2):
+                report["d7f_natural_eat_classification"] = (
+                    "NOT_EXERCISED_NATURAL_COUNT_ZERO_OR_INVALID"
+                )
+                return False
+            return await d7f_natural_eat_dev(
+                session, server, owner, report, log_path,
+                original_move=original_move,
+                native_pickup=native_after,
+            )
         report["d4_stage"] = "D6_NATURAL_MEAT_SELF_MOVED_PICKED_EAT_BLOCKED"
         report["d4_eat_terminal"] = "NOT_ISSUED_AFTER_MOVE"
         report["d4_self_eat_issued"] = False

@@ -23,6 +23,24 @@ STAGED = re.compile(
     r"tick=(?P<tick>\d+) source=OPERATOR_FIXTURE_NOT_ZOMBIE_DROP "
     r"mode=BACK_2_2M"
 )
+NATURAL_SPAWN = re.compile(
+    rf"RSELF_NATURAL_DROP_SPAWN world=(?P<world>{UUID}) "
+    rf"zombie=(?P<zombie>{UUID}) item=(?P<item>{UUID}) "
+    r"tick=(?P<tick>\d+) rotten_count=(?P<count>[12]) "
+    r"source=ACTUAL_PAPER_ITEM_SPAWN_NEAR_DEATH"
+)
+NATURAL_PICKUP = re.compile(
+    rf"RSELF_NATURAL_DROP_PICKUP world=(?P<world>{UUID}) "
+    rf"zombie=(?P<zombie>{UUID}) item=(?P<item>{UUID}) "
+    rf"player=(?P<player>{UUID}) tick=(?P<tick>\d+) "
+    r"rotten_count=(?P<count>[12]) source=ACTUAL_PAPER_ITEM_PICKUP"
+)
+NATURAL_DEATH = re.compile(
+    rf"RSELF_NATURAL_DROP_DEATH world=(?P<world>{UUID}) "
+    rf"zombie=(?P<zombie>{UUID}) tick=(?P<tick>\d+) "
+    rf"rotten_count=(?P<count>[12]) killer=(?P<killer>{UUID}) "
+    r"source=ACTUAL_PAPER_ENTITY_DEATH_DROPS killer_is_relay_self=true"
+)
 PICKED = re.compile(
     rf"RSELF_LOOT_PICKED world=(?P<world>{UUID}) owner=(?P<player>{UUID}) "
     rf"entity=(?P<item>{UUID}) item=rotten_flesh count=1 "
@@ -104,6 +122,8 @@ def read_d7_live_staged_stop(
     paper_log: str, client_jsonl: str, *,
     session_id: str, action_id: str, clear_seq: int,
     original_stage_line: str, original_pickup_line: str,
+    source_kind: str = "staged",
+    original_death_line: str | None = None,
 ) -> D7LiveStopSource:
     """Fail closed on missing/cross-session/source/clock/last-tick evidence.
 
@@ -118,6 +138,7 @@ def read_d7_live_staged_stop(
         or not isinstance(paper_log, str) or not isinstance(client_jsonl, str)
         or not isinstance(original_stage_line, str)
         or not isinstance(original_pickup_line, str)
+        or source_kind not in ("staged", "natural")
     ):
         raise D7LiveStopRejected("source-scoped current S49 action required")
     lines = paper_log.splitlines()
@@ -127,20 +148,53 @@ def read_d7_live_staged_stop(
         or any("RSELF_D7_PAPER_STOP " in s for s in lines)
     ):
         raise D7LiveStopRejected("Paper observer is not active/nontruncated")
-    stages = [m for s in lines if (m := STAGED.search(s))]
-    picks = [m for s in lines if (m := PICKED.search(s))]
-    if len(stages) != 1 or len(picks) != 1:
-        raise D7LiveStopRejected("exact one real staged+picked Paper UUID required")
-    st, pk = stages[0].groupdict(), picks[0].groupdict()
-    if (
-        STAGED.search(original_stage_line) is None
-        or PICKED.search(original_pickup_line) is None
-        or STAGED.search(original_stage_line).groupdict() != st
-        or PICKED.search(original_pickup_line).groupdict() != pk
-        or any(st[k] != pk[k] for k in ("world", "player", "item"))
-        or int(st["tick"]) >= int(pk["tick"])
-    ):
-        raise D7LiveStopRejected("original staged Paper pickup UUID provenance mismatch")
+    if source_kind == "staged":
+        stages = [m for s in lines if (m := STAGED.search(s))]
+        picks = [m for s in lines if (m := PICKED.search(s))]
+        if len(stages) != 1 or len(picks) != 1:
+            raise D7LiveStopRejected("exact one real staged+picked Paper UUID required")
+        st, pk = stages[0].groupdict(), picks[0].groupdict()
+        if (
+            STAGED.search(original_stage_line) is None
+            or PICKED.search(original_pickup_line) is None
+            or STAGED.search(original_stage_line).groupdict() != st
+            or PICKED.search(original_pickup_line).groupdict() != pk
+            or any(st[k] != pk[k] for k in ("world", "player", "item"))
+            or int(st["tick"]) >= int(pk["tick"])
+        ):
+            raise D7LiveStopRejected("original staged Paper pickup UUID provenance mismatch")
+        classification = "D7_E_DEV_LIVE_STAGED_BODY_STEADY_SOURCE"
+    else:
+        spawns = [m for s in lines if (m := NATURAL_SPAWN.search(s))]
+        picks = [m for s in lines if (m := NATURAL_PICKUP.search(s))]
+        if (
+            len(spawns) != 1 or len(picks) != 1
+            or not isinstance(original_death_line, str)
+            or NATURAL_SPAWN.search(original_stage_line) is None
+            or NATURAL_PICKUP.search(original_pickup_line) is None
+            or NATURAL_DEATH.search(original_death_line) is None
+        ):
+            raise D7LiveStopRejected("true natural Paper spawn/pickup/death missing")
+        st, pk = spawns[0].groupdict(), picks[0].groupdict()
+        death = NATURAL_DEATH.search(original_death_line).groupdict()
+        if (
+            st != NATURAL_SPAWN.search(original_stage_line).groupdict()
+            or pk != NATURAL_PICKUP.search(original_pickup_line).groupdict()
+            or sum(
+                NATURAL_DEATH.search(s) is not None
+                and NATURAL_DEATH.search(s).groupdict() == death
+                for s in lines
+            ) != 1
+            or any(st[k] != pk[k] for k in ("world", "zombie", "item"))
+            or any(death[k] != st[k] for k in ("world", "zombie", "count"))
+            or pk["count"] != st["count"]
+            or pk["player"] != death["killer"]
+            or not int(death["tick"]) <= int(st["tick"]) < int(pk["tick"])
+            or "RSELF_LOOT_STAGED " in paper_log
+        ):
+            raise D7LiveStopRejected("Paper natural zombie killer/item lineage invalid")
+        st["player"] = pk["player"]
+        classification = "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
     pickup_tick = int(pk["tick"])
     stream = [_kv(s, "RSELF_D7_PAPER_TICK ")
               for s in lines if "RSELF_D7_PAPER_TICK " in s]
@@ -230,4 +284,5 @@ def read_d7_live_staged_stop(
         paper_item_uuid=st["item"], paper_pickup_tick=pickup_tick,
         paper_last_tick=last_tick, paper_quiet_tail_ticks=tail,
         client_postclear_physics_ticks=ticks_after,
+        classification=classification,
     )
