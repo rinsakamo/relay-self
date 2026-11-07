@@ -189,6 +189,9 @@ def audit(
         or report.get("d4_natural_food_pickup_eat_proven") is not True
         or report.get("d7f_original_eat_issued") is not True
         or report.get("d7f_eat_terminal") != "outcome"
+        or report.get("d4_self_eat_issued") is not True
+        or report.get("d4_eat_terminal") != "outcome"
+        or report.get("d4_eat_action_id") != report.get("d7f_eat_action_id")
         or report.get("d7f_stop_original_owner_admitted_dev") is not True
         or report.get("d7f_stage") != "S49_NATURAL_ATTACK_MOVE_STOP_S51_EAT_ONE_CYCLE_DEV"
         or report.get("d7f_server_effective_s15_clear_tick_attested") is not False
