@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
+from adapters.mineflayer.attack_execution import AttackActionReceipt, IssuedAttackingExecutor
 from adapters.mineflayer.d6_loot_approach import (
     D6LootApproach,
     source_qualified_loot_approach,
 )
-from adapters.mineflayer.attack_execution import AttackActionReceipt, IssuedAttackingExecutor
 from adapters.mineflayer.eat_execution import EatingActionReceipt, IssuedEatingExecutor
 from adapters.mineflayer.execution import (
     WorldConsequence,
