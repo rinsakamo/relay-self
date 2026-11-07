@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from adapters.mineflayer.d7_live_staged_stop import (
@@ -18,6 +19,11 @@ from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d6_multigen_world import _tick, _uuid
 from tools.bug0_d7e_staged_move_eat_post import native_integral_food
+
+
+NATURAL_DEATH_INCLUDING_ZERO = re.compile(
+    NATURAL_DEATH.pattern.replace("(?P<count>[12])", "(?P<count>[012])")
+)
 
 
 class D8TwoCycleAuditRejected(ValueError):
@@ -93,7 +99,7 @@ def audit_two_natural_food_cycles(
     if first_after <= first_before:
         raise D8TwoCycleAuditRejected("first real S51 Food did not increase")
 
-    deaths = _source(paper_log, NATURAL_DEATH)
+    deaths = _source(paper_log, NATURAL_DEATH_INCLUDING_ZERO)
     spawns = _source(paper_log, NATURAL_SPAWN)
     pickups = _source(paper_log, NATURAL_PICKUP)
     if len(deaths) != 2 or len(deaths) != len(spawns) + (second_count == 0):
@@ -114,6 +120,7 @@ def audit_two_natural_food_cycles(
         or int(deaths[0]["tick"]) != _tick(report["paper_respawn_death"])
         or int(deaths[1]["tick"]) != g2["death_tick"]
         or g2["paper_natural_death"] not in paper_log
+        or report.get("paper_loot_death", "") not in paper_log
     ):
         raise D8TwoCycleAuditRejected("two true distinct managed zombie killers invalid")
     for i, (spawn, pickup) in enumerate(zip(spawns, pickups)):
@@ -161,9 +168,8 @@ def audit_two_natural_food_cycles(
     )
     nonmotion.require_clear()
     motion.require_clear()
-    if (
-        len(nonmotion.actions) != len(original_attacks) + 3
-            if second_count > 0 else len(nonmotion.actions) != len(original_attacks) + 2
+    if len(nonmotion.actions) != (
+        len(original_attacks) + 2 + int(second_count > 0)
     ):
         raise D8TwoCycleAuditRejected("two-generation original physical nonmotion ledger mismatch")
     if len(motion.actions) != len(first_moves) + len(second_moves):
