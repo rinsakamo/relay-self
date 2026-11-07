@@ -1,8 +1,11 @@
 name: Unified v0.5 D7-D S49 MOVE staged item + S50 + Paper tick same World DEV
 on:
-  push:
+  pull_request:
     branches:
-      - dev/unified-v05-d7d-staged-stop-sensor-20261107
+      - dev/unified-v05-d7c2-multigen-pickup-observation-20261107
+    types: [synchronize]
+    paths:
+      - docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md
 
 permissions:
   contents: read
@@ -10,7 +13,7 @@ permissions:
 jobs:
   one-world:
     # A separate one-use trigger commit, never on normal source pushes.
-    if: ${{ github.event.head_commit.message == 'run-unified-v05-d7d-staged-stop-oneworld-once-20261107' }}
+    if: ${{ github.event.action == 'synchronize' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -25,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           fetch-depth: 2
       - uses: actions/setup-java@v4
@@ -40,12 +43,12 @@ jobs:
           python-version: '3.12'
       - name: Strict one-time trigger and independent preworld negatives
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7d-staged-stop-trigger-20261107.md"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md"
           test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d6-staged-item-oneworld-once-20261107"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-v05-d7d-staged-stop-trigger-20261107.md').read_text()
+          p=Path('docs/unified-v05-d7d-staged-stop-pr-trigger-20261107.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE WORLD D7D STAGED REAL ITEM S49 MOVE PICKUP S50 PAPER STOP SENSOR NO EAT' in p
