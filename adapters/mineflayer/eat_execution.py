@@ -32,6 +32,12 @@ class EatingExecutionRejected(ValueError):
 class EatingActionReceipt:
     terminal: ActionLifecycle
     outcome: EatingOutcome
+    # Genuine S51 native child-effect evidence retained only for an opt-in
+    # durable physical fence. Legacy two-field readers stay compatible.
+    before_probe: MineflayerObservation | None = None
+    equip_receipt: MineflayerEffectResult | None = None
+    consume_receipt: MineflayerEffectResult | None = None
+    after_probe: MineflayerObservation | None = None
 
 
 async def _expect(session, action_id: str, effect: str) -> MineflayerEffectResult:
@@ -258,7 +264,9 @@ class IssuedEatingExecutor:
             closed = supervisor.record_outcome(
                 issued.action_id, at_ns=at_ns, provenance=after.provenance,
             )
-            return EatingActionReceipt(closed, outcome)
+            return EatingActionReceipt(
+                closed, outcome, before, equip, consume, after,
+            )
         except BaseException:
             if supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 supervisor.mark_unknown(
