@@ -131,7 +131,7 @@ def audit_passive_controls(
     native_effect_ack = {}
     shutdown_count = 0
     for i, row in enumerate(rows, 1):
-        kind = row.get("kind")
+        kind = row.get("kind") if isinstance(row, dict) else None
         if (
             not isinstance(row, dict)
             or row.get("source") != SOURCE
