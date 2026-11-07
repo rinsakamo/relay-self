@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from tools.bug0_d7e_staged_move_eat_post import D7EPostRejected, audit_staged_eat
+from tools.bug0_d7e_staged_move_eat_post import (
+    D7EPostRejected,
+    audit_staged_eat,
+    native_integral_food,
+)
 
 
 def source():
@@ -98,3 +102,14 @@ def test_no_persistent_original_eat_ledger_is_never_a_pass(tmp_path: Path):
     report, stage = source()
     with pytest.raises(Exception):
         audit_staged_eat(report, stage, nonmotion_path=tmp_path/"missing")
+
+
+@pytest.mark.parametrize(("food", "expected"), [(13, 13), (13.0, 13), (17.0, 17), (20, 20)])
+def test_real_native_integral_float_accepted_without_rounding(food, expected):
+    assert native_integral_food(food) == expected
+
+
+@pytest.mark.parametrize("food", [13.25, -1, 21, True, None, "13", float("nan"), float("inf")])
+def test_nonintegral_or_forged_food_rejected(food):
+    with pytest.raises(D7EPostRejected):
+        native_integral_food(food)
