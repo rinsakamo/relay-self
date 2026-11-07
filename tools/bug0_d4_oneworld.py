@@ -135,6 +135,7 @@ async def run(
     nonmotion_fence_path: Path | None = None,
     post_death_loot_move_dev=None,
     motion_fence_path: Path | None = None,
+    d6_multigen_dev: bool = False,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -162,6 +163,15 @@ async def run(
             or os.environ.get("NODE_OPTIONS")
         ):
             raise S49D3Rejected("exclusive source-bound S49 D3 World approval absent")
+        if d6_multigen_dev:
+            if (
+                os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
+                or post_death_loot_move_dev is None
+                or post_respawn_dev is None
+                or motion_fence_path is None
+                or nonmotion_fence_path is None
+            ):
+                raise S49D3Rejected("multi-generation original S49 DEV grant absent")
         if post_death_loot_move_dev is not None:
             if (
                 os.environ.get("D6_NATURAL_DROP_MOVE_WORLD_ONLY") != "1"
@@ -260,7 +270,9 @@ async def run(
         )
         owner = NormalSessionActionExecutor(
             sid, intent, max_sequential_attacks=8,
-            max_intent_epochs=2 if post_respawn_dev is not None else 1,
+            max_intent_epochs=(
+                4 if d6_multigen_dev else (2 if post_respawn_dev is not None else 1)
+            ),
         )
         policy = S49BasicPriorityL0(sid, max_decisions=30)
 
@@ -561,20 +573,32 @@ async def run(
             # source/eat evidence remain unchanged and reusable by audit.
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
-            if nonmotion_fence is None:
+            if d6_multigen_dev:
+                await post_respawn_dev(
+                    session, server, owner, report, log_path,
+                    physical_fence=nonmotion_fence,
+                    motion_fence=motion_fence,
+                    baseline=d4_baseline,
+                )
+            elif nonmotion_fence is None:
                 await post_respawn_dev(session, server, owner, report, log_path)
             else:
                 await post_respawn_dev(
                     session, server, owner, report, log_path,
                     physical_fence=nonmotion_fence,
                 )
-            report["classification"] = "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+            report["classification"] = (
+                report.get("d6_multigen_classification", "D6_MULTIGEN_UNQUALIFIED")
+                if d6_multigen_dev
+                else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+            )
         rc = 0
     except Exception as exc:
         report["status"] = "FAIL"
         report["classification"] = (
-            "D5_SECOND_INTENT_UNQUALIFIED"
-            if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED"
+            "D6_MULTIGEN_UNQUALIFIED" if d6_multigen_dev else
+            ("D5_SECOND_INTENT_UNQUALIFIED"
+             if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED")
         )
         report["failure"] = f"{type(exc).__name__}: {exc}"
     finally:

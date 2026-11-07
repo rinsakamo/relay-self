@@ -29,7 +29,10 @@ async def source_qualified_natural_move(
         or owner.session_id != session.started.session_id
         or owner.supervisor.open_actions
         or not owner._dispatched
-        or report.get("d4_natural_count", 0) <= 0
+        or report.get(
+            "d6_multigen_active_natural_count",
+            report.get("d4_natural_count", 0),
+        ) <= 0
         or not isinstance(motion_fence, OriginalS49PhysicalFence)
     ):
         raise D6LootApproachRejected("original physical ATTACK closure required")
