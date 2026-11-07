@@ -16,7 +16,11 @@ from tools.bug0_d6_staged_move_post import (
     D6StagedSourceAuditRejected,
     audit,
 )
-from tools.bug0_d6_staged_move_world import preflight_move_fence, run
+from tools.bug0_d6_staged_move_world import (
+    D6StagedMoveRejected,
+    preflight_move_fence,
+    run,
+)
 
 
 def test_first_preflight_only_allows_empty_original_c1_fence(tmp_path):
@@ -68,7 +72,7 @@ def test_nonregular_or_missing_preflight_store_is_rejected(tmp_path, mode):
         path = tmp_path / "absent" / "original.json"
     else:
         path.write_text('{"bad":"checksum"}', encoding="utf8")
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, D6StagedMoveRejected)):
         preflight_move_fence(path)
 
 
