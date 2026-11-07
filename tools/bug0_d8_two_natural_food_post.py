@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 from adapters.mineflayer.d7_live_staged_stop import (
+    CONTROL_KEYS,
     NATURAL_DEATH,
     NATURAL_PICKUP,
     NATURAL_SPAWN,
@@ -18,6 +19,14 @@ from adapters.mineflayer.d7_live_staged_stop import (
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d6_multigen_world import _tick, _uuid
+from tools.bug0_d7_paper_server_tick_post import (
+    SOURCE,
+    TICK_MARK,
+    _fields,
+    _inputs_off,
+    _integer,
+    _number,
+)
 from tools.bug0_d7e_staged_move_eat_post import native_integral_food
 
 NATURAL_DEATH_INCLUDING_ZERO = re.compile(
@@ -40,6 +49,7 @@ def _source(log: str, pattern) -> list[dict[str, str]]:
 def audit_two_natural_food_cycles(
     report: dict, paper_log: str, *,
     nonmotion_path: Path, motion_path: Path,
+    s50_jsonl: str,
 ) -> dict:
     if (
         not isinstance(report, dict) or not isinstance(paper_log, str)
@@ -280,6 +290,95 @@ def audit_two_natural_food_cycles(
     second_after = native_integral_food(r2.get("food_after"))
     if second_after <= second_before:
         raise D8TwoCycleAuditRejected("second original S51 did not actually raise Food")
+
+    # Read the immutable direct S50/Paper originals independently of the
+    # current owner's stored STOP summary. The exact server-effective
+    # original-clear tick remains unproven; no causal claim is inferred.
+    records = []
+    for line in s50_jsonl.splitlines():
+        try:
+            rec = json.loads(line)
+        except (ValueError, TypeError) as exc:
+            raise D8TwoCycleAuditRejected("native S50 original source malformed") from exc
+        records.append(rec)
+    if not records or records[0].get("kind") != "SESSION_START":
+        raise D8TwoCycleAuditRejected("original native S50 session start missing")
+    matched_clear = None
+    verified_off_ticks = 0
+    previous_client_tick = -1
+    for ordinal, rec in enumerate(records, 1):
+        if (
+            not isinstance(rec, dict)
+            or rec.get("source") != "S50_DEV_NATIVE_READBACK_V1"
+            or rec.get("session_id") != sid
+            or rec.get("ordinal") != ordinal
+            or type(rec.get("client_physics_tick")) is not int
+            or rec["client_physics_tick"] < previous_client_tick
+        ):
+            raise D8TwoCycleAuditRejected("S50 source session/ordinal drift")
+        previous_client_tick = rec["client_physics_tick"]
+        if (
+            rec.get("kind") == "EFFECT_ACK"
+            and rec.get("native_action_id")
+                == second_moves[-1]["action_id"] + "-s15-clear"
+            and rec.get("native_seq") == second_moves[-1]["s15_clear_seq"]
+        ):
+            if matched_clear is not None:
+                raise D8TwoCycleAuditRejected("duplicate second original S15 clear")
+            matched_clear = ordinal
+        if matched_clear is not None and ordinal >= matched_clear:
+            if rec.get("kind") == "PHYSICS_TICK":
+                controls = rec.get("controls")
+                if (
+                    not isinstance(controls, dict)
+                    or set(controls) != set(CONTROL_KEYS)
+                    or any(type(v) is not bool or v for v in controls.values())
+                ):
+                    raise D8TwoCycleAuditRejected("original S50 motor active after last clear")
+                verified_off_ticks += 1
+    if (
+        matched_clear is None or verified_off_ticks < 8
+        or verified_off_ticks < stop["client_postclear_physics_ticks"]
+    ):
+        raise D8TwoCycleAuditRejected("S50 independent last original MOVE clear not attested")
+    ticks = [
+        _fields(line, TICK_MARK)
+        for line in paper_log.splitlines() if TICK_MARK in line
+    ]
+    if not ticks:
+        raise D8TwoCycleAuditRejected("Paper tick source absent")
+    old_tick = None
+    old_xz = None
+    quiet = 0
+    current_stop = False
+    for ordinal, row in enumerate(ticks, 1):
+        t = _integer(row, "tick")
+        if (
+            row.get("source") != SOURCE
+            or row.get("world") != expected_world
+            or row.get("player") != deaths[1]["killer"]
+            or _integer(row, "ordinal") != ordinal
+            or (old_tick is not None and t != old_tick + 1)
+        ):
+            raise D8TwoCycleAuditRejected("Paper current-world tick source drift")
+        old_tick = t
+        pos = (_number(row, "x"), _number(row, "z"))
+        from math import dist, hypot
+        quiet = quiet + 1 if (
+            t > int(pickups[1]["tick"])
+            and _inputs_off(row)
+            and row.get("ground") == "true"
+            and old_xz is not None
+            and dist(pos, old_xz) <= 0.01
+            and hypot(_number(row, "vx"), _number(row, "vz")) <= 0.01
+        ) else 0
+        old_xz = pos
+        if t == stop.get("paper_last_tick"):
+            current_stop = True
+            if quiet < 8 or quiet != stop["paper_quiet_tail_ticks"]:
+                raise D8TwoCycleAuditRejected("second Paper live STOP claim not true")
+    if not current_stop:
+        raise D8TwoCycleAuditRejected("second Paper live source tick not in actual log")
     return {
         "status": "PASS_DEV",
         "classification": "D8_TWO_GENUINE_PAPER_ZOMBIE_FOOD_CYCLES_S49_S51",
@@ -313,6 +412,7 @@ def main() -> None:
     p.add_argument("--server-log", type=Path, required=True)
     p.add_argument("--nonmotion-fence", type=Path, required=True)
     p.add_argument("--motion-fence", type=Path, required=True)
+    p.add_argument("--s50-sidecar", type=Path, required=True)
     p.add_argument("--out", type=Path, required=True)
     a = p.parse_args()
     result = audit_two_natural_food_cycles(
@@ -320,6 +420,7 @@ def main() -> None:
         a.server_log.read_text(encoding="utf8"),
         nonmotion_path=a.nonmotion_fence,
         motion_path=a.motion_fence,
+        s50_jsonl=a.s50_sidecar.read_text(encoding="utf8"),
     )
     a.out.write_text(json.dumps(result, indent=2, sort_keys=True)+"\n",
                      encoding="utf8")
