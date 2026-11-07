@@ -9,6 +9,7 @@ import asyncio
 
 import pytest
 
+from tools.bug0_d4_oneworld import run
 from tools.bug0_d6_multigen_post import MultigenAuditRejected, audit
 from tools.bug0_d6_multigen_world import (
     MultiGenerationDevRejected,
@@ -17,7 +18,6 @@ from tools.bug0_d6_multigen_world import (
     _uuid,
     one_source_line,
 )
-from tools.bug0_d4_oneworld import run
 
 
 def test_paper_generation_scoped_marker_is_unique():
