@@ -185,9 +185,13 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
         "classification": "DEV_ONLY_MATCHED_SOUL_RAW_CHOICE_AUDIT",
         "conditions": rows,
         "matched_model_requests_except_identity": True,
-        "raw_status_divergence": len(set(results)) > 1,
+        "raw_status_divergence": (
+            len({json.dumps(v, sort_keys=True) for v in results}) > 1
+        ),
         "raw_decision_signature_divergence": len(set(signatures)) > 1,
-        "reason_text_divergence": len(set(r["reason"] for r in rows.values())) > 1,
+        "reason_text_divergence": (
+            len({json.dumps(r["reason"], sort_keys=True) for r in rows.values()}) > 1
+        ),
         "admitted_choices": admitted,
         "admitted_status_divergence": len(set(s for _, s in admitted)) > 1,
         "admitted_decision_signature_divergence": (
