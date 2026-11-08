@@ -10,6 +10,7 @@ import pytest
 
 from experiments.skill_crystallization_dev import skill_json_schema
 from experiments.skill_crystallization_k3g_ten_action_choice_dev import (
+    K3G_SYSTEM_INSTRUCTION,
     choice_schema,
     verified_context,
 )
@@ -137,7 +138,7 @@ def test_no_soul_request_is_original_k3g_system_text(originals, monkeypatch, tmp
     baseline = calls[0][1]
     assert baseline["max_actions_allowed"] == 10
     original_system = baseline["system_instruction"]
-    assert original_system.startswith("You are L2. Return only JSON")
+    assert original_system == K3G_SYSTEM_INSTRUCTION
     assert "Stable identity value prior" not in original_system
     for i, name in enumerate(SOUL_DIRECTIVES):
         evidence, kwargs = calls[i]
