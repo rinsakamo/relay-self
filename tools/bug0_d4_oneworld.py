@@ -229,6 +229,7 @@ async def run(
     post_death_loot_move_dev=None,
     motion_fence_path: Path | None = None,
     d6_multigen_dev: bool = False,
+    d10_hunt_until_drop_dev: bool = False,
     d6_controlled_zero_dev: bool = False,
     d7_native_controls_path: Path | None = None,
     d7f_natural_eat_dev=None,
@@ -260,6 +261,17 @@ async def run(
             or os.environ.get("NODE_OPTIONS")
         ):
             raise S49D3Rejected("exclusive source-bound S49 D3 World approval absent")
+        if d10_hunt_until_drop_dev:
+            if (
+                not d6_multigen_dev or d6_controlled_zero_dev
+                or d8_two_generation_food_dev
+                or d7f_natural_eat_dev is not None
+                or os.environ.get("D10_HUNT_UNTIL_DROP_WORLD_ONLY") != "1"
+                or os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
+            ):
+                raise S49D3Rejected("D10 real until-drop DEV grant absent")
+            report["d10_until_drop_dev"] = True
+            report["d10_operator_world_generation_safety_limit"] = 12
         if d6_controlled_zero_dev:
             if (
                 not d6_multigen_dev
@@ -444,8 +456,13 @@ async def run(
         owner = NormalSessionActionExecutor(
             sid, intent, max_sequential_attacks=8,
             max_intent_epochs=(
-                4 if d6_multigen_dev else (2 if post_respawn_dev is not None else 1)
+                12 if d10_hunt_until_drop_dev else (
+                    4 if d6_multigen_dev else (
+                        2 if post_respawn_dev is not None else 1
+                    )
+                )
             ),
+            dev_hunt_extended_epochs=d10_hunt_until_drop_dev,
         )
         policy = S49BasicPriorityL0(sid, max_decisions=30)
 

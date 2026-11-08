@@ -102,6 +102,7 @@ async def continue_after_first_respawn(
     session, server, owner: NormalSessionActionExecutor, report: dict,
     log_path: Path, *, physical_fence: OriginalS49NonMotionFence,
     motion_fence: OriginalS49PhysicalFence, baseline,
+    d10_until_drop_dev: bool = False,
 ) -> None:
     """DEV budget only. Every zero drop completes an Intent and waits World."""
     sid = owner.session_id
@@ -156,7 +157,18 @@ async def continue_after_first_respawn(
         "respawn_tick": _tick(report["paper_respawn"]),
     }]
     report["d6_multigen_generations"] = generations
-    report["d6_multigen_dev_world_trial_limit"] = 4
+    generation_limit = 12 if d10_until_drop_dev else 4
+    if d10_until_drop_dev and (
+        os.environ.get("D10_HUNT_UNTIL_DROP_WORLD_ONLY") != "1"
+        or getattr(owner, "_max_intent_epochs", None) != generation_limit
+        or report.get("d10_until_drop_dev") is not True
+        or report.get("d6_operator_forced_zero") is True
+    ):
+        raise MultiGenerationDevRejected("extended natural hunt DEV authority absent")
+    report["d6_multigen_dev_world_trial_limit"] = generation_limit
+    report["d10_hunt_trial_safety_limit_not_self_goal"] = (
+        generation_limit if d10_until_drop_dev else None
+    )
     report["d6_multigen_self_policy_epoch_limit_imposed"] = False
     report["d6_multigen_owner_session_id"] = sid
     operator_forced_zero = report.get("d6_operator_forced_zero") is True
@@ -178,6 +190,13 @@ async def continue_after_first_respawn(
         report["d6_multigen_final_original_move_count"] = owner._count - owner._attack_count
         report["d6_multigen_same_supervisor"] = owner.supervisor is preserved_supervisor
         report["d6_multigen_no_eat"] = True
+        if d10_until_drop_dev:
+            report["d10_first_natural_positive_generation"] = 1
+            report["d10_hunt_stop_reason"] = "TRUE_NATURAL_DROP_AND_PICKUP"
+            report["d10_hunt_goal_reached"] = True
+            report["d10_natural_counts"] = [first_rotten]
+            report["d10_original_kills"] = 1
+            report["d10_all_prior_true_zero"] = True
         return
     if first_rotten != 0:
         raise MultiGenerationDevRejected("first positive natural drop was not picked")
@@ -187,7 +206,7 @@ async def continue_after_first_respawn(
     ):
         raise MultiGenerationDevRejected("controlled-zero fixture not source-qualified")
 
-    for gen in range(2, 5):
+    for gen in range(2, generation_limit + 1):
         if owner._post_move_settling_unqualified:
             raise MultiGenerationDevRejected("physical MOVE without STOP cannot rearm")
         report["stage"] = f"D6_MULTIGEN_{gen}_FRESH_WORLD_RESPAWN"
@@ -276,6 +295,11 @@ async def continue_after_first_respawn(
                 "operator_intervention": True,
             })
         commands = (
+            "data merge entity @e[type=minecraft:zombie,limit=1] "
+            "{NoAI:1b,Silent:1b,Health:0.8f}",
+            "execute as RelaySelf at @s run tp "
+            "@e[type=minecraft:zombie,limit=1] ^ ^ ^-2.2",
+        ) if d10_until_drop_dev else (
             "execute as RelaySelf at @s run tp "
             "@e[type=minecraft:zombie,limit=1] ^ ^ ^-2.2",
             "data merge entity @e[type=minecraft:zombie,limit=1] "
@@ -437,6 +461,10 @@ async def continue_after_first_respawn(
                 "D6_MULTIGEN_ZERO_DROP_CONTINUE_THEN_REAL_MOVE_PICKUP_PASS"
             )
             report["d6_multigen_postmove_eat_issued"] = False
+            if d10_until_drop_dev:
+                report["d10_first_natural_positive_generation"] = gen
+                report["d10_hunt_stop_reason"] = "TRUE_NATURAL_DROP_AND_PICKUP"
+                report["d10_hunt_goal_reached"] = True
             break
 
         # No item: that Intent is an experience outcome, not a loop terminal.
@@ -447,13 +475,19 @@ async def continue_after_first_respawn(
         )
         if no_item.session_id != sid or _meat(no_item) != 0:
             raise MultiGenerationDevRejected("zero natural drop contradicted native inventory")
-        if gen == 4:
+        if gen == generation_limit:
             report["d6_multigen_classification"] = (
-                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
-                if operator_forced_zero
-                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                "D10_SAFETY_BUDGET_EXHAUSTED_NO_DROP"
+                if d10_until_drop_dev else (
+                    "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                    if operator_forced_zero
+                    else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                )
             )
             report["d6_multigen_ci_limit_reached_not_self_goal_completed"] = True
+            if d10_until_drop_dev:
+                report["d10_hunt_stop_reason"] = "DEV_WORLD_GENERATION_SAFETY_LIMIT"
+                report["d10_hunt_goal_reached"] = False
             break
         report["stage"] = f"D6_MULTIGEN_{gen}_WORLD_600TICK_RESPAWN"
         later = await wait_paper(
@@ -487,6 +521,14 @@ async def continue_after_first_respawn(
     )
     report["d6_multigen_same_supervisor"] = True
     report["d6_multigen_no_eat"] = True
+    if d10_until_drop_dev:
+        report["d10_natural_counts"] = [
+            row["real_rotten_count"] for row in generations
+        ]
+        report["d10_original_kills"] = len(generations)
+        report["d10_all_prior_true_zero"] = all(
+            row["real_rotten_count"] == 0 for row in generations[:-1]
+        )
 
 
 def main() -> None:

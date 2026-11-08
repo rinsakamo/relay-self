@@ -621,6 +621,7 @@ class NormalSessionActionExecutor:
         self, session_id: str, intent: IntentCommitment,
         *, max_sequential_attacks: int = 1,
         max_intent_epochs: int = 1,
+        dev_hunt_extended_epochs: bool = False,
     ) -> None:
         if (
             not isinstance(session_id, str) or not session_id
@@ -628,8 +629,12 @@ class NormalSessionActionExecutor:
             or intent.current_intent is None
             or type(max_sequential_attacks) is not int
             or not 1 <= max_sequential_attacks <= 32
+            or type(dev_hunt_extended_epochs) is not bool
             or type(max_intent_epochs) is not int
-            or not 1 <= max_intent_epochs <= 4
+            or not 1 <= max_intent_epochs <= (
+                12 if dev_hunt_extended_epochs else 4
+            )
+            or (dev_hunt_extended_epochs and max_intent_epochs != 12)
         ):
             raise NormalActionRejected("active named session and bounded Intent/ATTACK grant required")
         self.session_id = session_id
