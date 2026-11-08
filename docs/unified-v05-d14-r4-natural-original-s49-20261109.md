@@ -112,3 +112,45 @@ placement** rule; it does not make the World unmodified vanilla. The
 A second World attempt, if triggered, is a **separate DEV run** with
 a separate execution HEAD and evidence ZIP; it does not replace or
 convert the failed first report.
+
+
+## Second World, R4 trial B — authentic Paper progress, runner failure
+
+- One-use HEAD: `51216432e780680b643536834f64316078013644`
+- Run: https://github.com/rinsakamo/relay-self/actions/runs/42531562726
+- Artifact: https://github.com/rinsakamo/relay-self/actions/runs/42531562726/artifacts/13637109952
+- Original Paper log SHA256:
+  `c96bae737e11353d3ff2252bd28e33afd632ae1f0b5791054243b84c1cbe86ea`
+- Original report SHA256:
+  `0b045a66388c7d8702f13d9746d0c09025d178a8e1ab9a457b4db06eaa82cb3c`
+- Original derivative SHA256:
+  `5fa9875e04d3e8fa83fc14c7cd80e5d9986e15e032c17da14ab948f5394be254`
+- In genuine Paper source: natural anchor was selected on unmodified land
+  (Self Block -136,74,-204; managed zombie Block -130,79,-204),
+  START tick 19, genuine managed death ticks 422 / 1364 / 2343,
+  600-tick respawns ticks 1022 / 1964, checkpoints through 2,800.
+- 64 L0 source-bound decisions:
+  WAIT 41 / DEFER 22 / REST intent 1. Original S49 Action 0;
+  S16 OUTCOME 0; learning / C1 committed 0; L2 model calls 0.
+- The two next R3 native readbacks failed with absent exact correlation;
+  original runner reported `NATIVE_READBACK_REPEATEDLY_UNAVAILABLE`,
+  then *runner-induced* Self disconnect was logged at tick 2824,
+  elapsed 2,805. This is NOT natural Self death and NOT an autonomous
+  10,000-tick survival success. Original run status **FAIL**.
+- No operator combat or weakened zombie: 3 deaths are Paper-reported
+  `killer=UNKNOWN`; their drops include 1, 1, 0, not Self food.
+  All actions remained absent; no fake skills or learning.
+
+## Next correction: keep native loss and Paper clock distinct
+
+R4 now rotates only a bounded read-only L0 decision cursor every 64
+decisions, up to a total of 1,024 native decisions per one-use World.
+Same original Self/session/Intent and original S49 physical supervisor.
+A cursor rotation never changes physical authority, Action or learning.
+
+After two truly failed exact native readbacks, R4 conservatively stops
+all further Self Action grants, records an auditable `NATIVE_SAFE_STOP`,
+and continues listening to Paper original World ticks until real death or
+the 10,000 tick Paper horizon. This is **not** native recovery:
+no Action after source loss and no success claim for passive World ticks.
+Prior R3 behavior and strict native probe policy remain unchanged.
