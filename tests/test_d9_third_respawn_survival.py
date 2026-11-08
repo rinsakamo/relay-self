@@ -249,10 +249,7 @@ def test_d9_no_first_two_meals_cannot_claim_survival(monkeypatch, tmp_path):
         auditor, "audit_two_natural_food_cycles",
         lambda *a, **kw: {"status": "NOT_EXERCISED"},
     )
-    report = {
-        "d9_status": "NOT_EXERCISED",
-        "d9_classification": "D9_TWO_EATS_NOT_YET_PROVEN",
-    }
+    report = {"d8_first_true_zero_food_not_exercised": True}
     out = auditor.audit_d9(
         report, "", nonmotion_path=tmp_path/"a",
         motion_path=tmp_path/"b", s50_jsonl="",
