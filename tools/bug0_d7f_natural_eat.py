@@ -94,6 +94,10 @@ async def after_real_natural_pickup_eat(
         raise D7FNaturalEatRejected("genuine original S49 ATTACK/MOVE natural pickup absent")
     sid = owner.session_id
     natural_count = report["real_rotten_flesh_count"]
+    probe_prefix = (
+        "d8-gen2-natural-food"
+        if d8_second_generation_dev else "d7f-natural-food"
+    )
     current_meat_total = natural_count + d8_prior_rotten_count
     action_count_before_eat = owner._count
     report["d7f_stage"] = "FRESH_NATIVE_NATURAL_ITEM_FOOD_CHOICE"
@@ -105,7 +109,7 @@ async def after_real_natural_pickup_eat(
     earlier = None
     for index in range(32):
         probe = await _correlated_observe(
-            session, f"d7f-natural-food-before-{index:02d}",
+            session, f"{probe_prefix}-before-{index:02d}",
         )
         decision = food.decide(probe)
         report.setdefault("d7f_food_decisions", []).append({
@@ -130,7 +134,7 @@ async def after_real_natural_pickup_eat(
     _command(server, "effect clear RelaySelf minecraft:hunger")
     await server.stdin.drain()
     await asyncio.sleep(0.15)
-    current = await _correlated_observe(session, "d7f-natural-food-preissue-fresh")
+    current = await _correlated_observe(session, f"{probe_prefix}-preissue-fresh")
     decision = food.decide(current)
     if (
         decision.selected != "EAT"
@@ -248,7 +252,7 @@ async def after_real_natural_pickup_eat(
     report["d4_self_eat_issued"] = True
     report["d4_eat_terminal"] = "outcome"
     report["d4_eat_outcome"] = asdict(outcome)
-    post = await _correlated_observe(session, "d7f-natural-food-after-eat")
+    post = await _correlated_observe(session, f"{probe_prefix}-after-eat")
     report["d7f_native_after_eat"] = _inventory(post)
     if (
         post.seq <= outcome.after_probe_seq
