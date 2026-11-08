@@ -237,7 +237,10 @@ async def continue_d9_until_third_respawn(
     report["d9_original_action_ids"] = sorted(action_ids)
     report["d9_nonmotion_sha256"] = nonmotion_sha
     report["d9_motion_sha256"] = motion_sha
-    report["d9_physical_action_issued_after_second_eat"] = False
+    report["d9_physical_action_issued_after_second_generation"] = False
+    report["d9_physical_action_issued_after_second_eat"] = (
+        False if two_meals else None
+    )
     report["d9_autonomous_rest_selected"] = False
     report["d9_passive_wait_input_off_not_rest_authorized"] = True
     report["d9_status"] = "PASS_DEV"
