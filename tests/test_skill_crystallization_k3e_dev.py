@@ -153,7 +153,7 @@ def test_reject_probe_without_mock_grant():
         execute_mock_probe(chosen_probe(), seed=FIXTURE_PROBE_SEED, mock_grant=False)
 
 
-def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
+def test_one_model_call_and_no_probe_outcome_leak(monkeypatch, tmp_path):
     import experiments.skill_crystallization_k3e_dev as mod
 
     first, k3b, k3d = parent_data()
@@ -173,7 +173,7 @@ def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
     monkeypatch.setattr(mod, "execute_mock_probe", do_not_open_real_seed)
     r = run_proposal(first, k3b, k3d, mode="gemma",
                      endpoint="http://127.0.0.1:8080/v1/chat/completions",
-                     model="verified")
+                     model="verified", record_dir=tmp_path / "propose")
     assert len(calls) == 1
     ctx = calls[0][1]["revision_context"]
     assert "20261205" not in json.dumps(ctx)
@@ -236,7 +236,7 @@ def test_update_rejects_invented_source_and_bad_skill():
         validate_update(bad, ids)
 
 
-def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeypatch):
+def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeypatch, tmp_path):
     import experiments.skill_crystallization_k3e_dev as mod
 
     first, k3b, k3d = parent_data()
@@ -255,7 +255,7 @@ def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeyp
 
     monkeypatch.setattr(mod, "gemma_l2", stub)
     z = run_reassessment(first, k3b, k3d, r, mode="gemma",
-                         endpoint="http://127.0.0.1:8080/v1/chat/completions", model="test")
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions", model="test", record_dir=tmp_path / "reassess")
     assert z["status"] == "ABSTAIN"
     assert z["hypothesis_assessment"] == "HYPOTHESIS_WITHHELD"
     assert len(got) == 1
@@ -371,3 +371,23 @@ def test_forged_gemma_request_hash_is_rejected_before_probe_replay(monkeypatch):
         run_reassessment(first, k3b, k3d, source, mode="gemma",
                          endpoint="http://127.0.0.1:8080/v1/chat/completions",
                          model="test")
+
+
+def test_real_gemma_mode_requires_raw_record_dir_before_http(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    monkeypatch.setattr(mod, "_invoke", lambda *_a, **_k: pytest.fail(
+        "No model call without a raw recording directory"))
+    with pytest.raises(ValueError, match="GEMMA_RAW_RECORD_DIR_REQUIRED"):
+        run_proposal(first, k3b, k3d, mode="gemma",
+                     endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                     model="verified")
+    report = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe())
+    report["mode"] = "gemma"
+    monkeypatch.setattr(mod, "_verify_proposal_report", lambda *_: report["probe"])
+    with pytest.raises(ValueError, match="GEMMA_RAW_RECORD_DIR_REQUIRED"):
+        run_reassessment(first, k3b, k3d, report, mode="gemma",
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                         model="verified")
