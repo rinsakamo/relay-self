@@ -9,9 +9,9 @@ from copy import deepcopy
 
 import pytest
 
-from tools.bug0_d11_hunt_then_eat_post import audit_d11
-from tools.bug0_d6_multigen_post import MultigenAuditRejected
 from tools.bug0_d4_oneworld import run
+from tools.bug0_d6_multigen_post import MultigenAuditRejected
+from tools.bug0_d11_hunt_then_eat_post import audit_d11
 
 
 def sample(*, first_positive=False):
