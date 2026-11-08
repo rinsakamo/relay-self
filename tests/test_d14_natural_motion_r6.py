@@ -19,7 +19,10 @@ from adapters.mineflayer.python_protocol import (
 )
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from tools.bug0_d14_natural_life import (
-    R4_GRANT, R6_GRANT, NaturalLifeLoop, NaturalLifeRejected,
+    R4_GRANT,
+    R6_GRANT,
+    NaturalLifeLoop,
+    NaturalLifeRejected,
 )
 from tools.bug0_d14_natural_motion import NaturalMotionRejected
 
