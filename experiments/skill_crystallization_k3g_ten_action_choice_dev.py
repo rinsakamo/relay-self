@@ -7,6 +7,7 @@ Memory/Habit or prior evidence. Model has no access to future mock outcomes.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -52,6 +53,49 @@ REGIMES = {
     "normal_reference": ("normal", 0.59, 0.67),
     "ice_changed": ("ice", 0.18, 0.23),
 }
+
+
+def verify_input_manifests(files: list[Path]) -> dict[str, Any]:
+    """Verify all files listed in each historical source directory SHA256SUMS.
+
+    File integrity only: the manifest itself is not an external signature.
+    """
+    summaries: dict[str, Any] = {}
+    for item in files:
+        directory = item.parent.resolve()
+        manifest = directory / "SHA256SUMS"
+        if not manifest.is_file() or not item.is_file():
+            raise ValueError("ORIGINAL_SHA_MANIFEST_OR_INPUT_MISSING")
+        rows = manifest.read_text(encoding="utf-8").splitlines()
+        checked: set[str] = set()
+        for line in rows:
+            if not line.strip():
+                continue
+            fields = line.split(maxsplit=1)
+            if len(fields) != 2:
+                raise ValueError("ORIGINAL_SHA_MANIFEST_FORMAT_INVALID")
+            digest, filename = fields
+            filename = filename.lstrip("*").strip()
+            relative = Path(filename)
+            target = (directory / relative).resolve()
+            if (len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest)
+                    or not target.is_relative_to(directory)
+                    or not target.is_file() or str(relative) in checked):
+                raise ValueError("ORIGINAL_SHA_MANIFEST_ENTRY_INVALID")
+            if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+                raise ValueError("ORIGINAL_SHA_MANIFEST_MISMATCH")
+            checked.add(str(relative))
+        if not checked or not item.resolve().is_relative_to(directory):
+            raise ValueError("ORIGINAL_INPUT_NOT_MANIFESTED")
+        target_name = str(item.resolve().relative_to(directory))
+        manifested_names = {
+            str((directory / name).resolve().relative_to(directory))
+            for name in checked
+        }
+        if target_name not in manifested_names:
+            raise ValueError("ORIGINAL_INPUT_NOT_MANIFESTED")
+        summaries[str(directory)] = {"checked_entries": len(checked), "status": "PASS"}
+    return summaries
 
 
 def choice_schema() -> dict[str, Any]:
@@ -372,14 +416,19 @@ def main() -> None:
     p.add_argument("--evaluation-seed", type=int)
     p.add_argument("--out", type=Path, required=True)
     a = p.parse_args()
-    src = [json.loads(path.read_text(encoding="utf-8")) for path in
-           (a.first, a.k3b_report, a.k3d_report, a.k3e_report)]
+    source_paths = [a.first, a.k3b_report, a.k3d_report, a.k3e_report]
+    original_manifest_audit = (
+        verify_input_manifests(source_paths) if a.mode == "gemma" else None
+    )
+    src = [json.loads(path.read_text(encoding="utf-8")) for path in source_paths]
     fixture = json.loads(a.fixture.read_text(encoding="utf-8")) if a.fixture else None
     result = run_choice(
         *src, mode=a.mode, fixture=fixture, endpoint=a.endpoint,
         model=a.model, timeout=a.timeout, record_dir=a.record_dir,
         evaluation_seed=a.evaluation_seed,
     )
+    if original_manifest_audit is not None:
+        result["original_manifest_audit"] = original_manifest_audit
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with a.out.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, ensure_ascii=False, allow_nan=False, indent=2)
