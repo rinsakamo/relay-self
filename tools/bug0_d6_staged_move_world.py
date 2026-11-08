@@ -184,7 +184,27 @@ async def move_from_real_item(
             raise D6StagedMoveRejected("native Self no longer viable")
         if _meat(current) > d8_baseline_rotten_count:
             if not report["d6_original_s49_move_actions"]:
-                raise D6StagedMoveRejected("passive pickup before any original S49 MOVE")
+                # D8 genuine Paper pickup may complete without movement.
+                # No S15/MOVE effect is claimed; the caller must later
+                # independently verify Paper UUID and the body STOP source.
+                if (
+                    d8_move_action_prefix is None
+                    or owner._intent_epoch != 2
+                    or owner._epoch_attack_count != 1
+                    or owner._post_move_settling_unqualified
+                    or fence.unresolved
+                    or len(fence.actions) != fence_count_before
+                    or owner._count != count_before
+                ):
+                    raise D6StagedMoveRejected(
+                        "passive pickup before any original S49 MOVE"
+                    )
+                report["d8_passive_native_pickup_source"] = item_source_readback(current)
+                report["d8_natural_pickup_mode"] = "PASSIVE_NO_MOVE"
+                report["d6_original_move_count"] = 0
+                report["d6_item_native_id"] = None
+                report["d6_same_supervisor"] = owner.supervisor is supervisor
+                return (owner, None) if d7_return_live_owner_dev else None
             break
         items = [e for e in current.snapshot.nearby_entities if e.name == "item"]
         if len(items) != 1:
