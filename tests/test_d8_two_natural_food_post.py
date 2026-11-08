@@ -135,3 +135,67 @@ def test_d8_final_c1_two_epoch_negative_controls(mutant):
         actual = {"forged": "physical journal"}
     with pytest.raises(S49D3Rejected):
         require_d8_original_motion_history(actual, expected)
+
+
+def test_d8_first_genuine_zero_natural_drop_needs_no_move_history():
+    from tools.bug0_d4_oneworld import (
+        d8_reported_original_move_records,
+        require_d8_original_motion_history,
+    )
+    first_zero = {
+        "d8_first_true_zero_food_not_exercised": True,
+        "real_rotten_flesh_count": 0,
+        "d8_second_generation_food_proven": False,
+        "self_eat": False,
+    }
+    # Actual R14 report omits both generation MOVE lists because no
+    # item existed. The physically empty C1 file is the correct evidence.
+    assert d8_reported_original_move_records(first_zero) == []
+    require_d8_original_motion_history((), [])
+    assert d8_reported_original_move_records({
+        **first_zero, "d6_original_s49_move_actions": [],
+    }) == []
+
+
+@pytest.mark.parametrize("mutant", [
+    {"real_rotten_flesh_count": 1},
+    {"d8_second_generation_food_proven": True},
+    {"self_eat": True},
+    {"d6_original_s49_move_actions": [{"action_id": "forged"}]},
+    {"d6_original_s49_move_actions": ()},
+    {"d8_second_generation": {"d6_original_s49_move_actions": []}},
+])
+def test_d8_first_zero_rejects_spoofed_action_or_second_generation(mutant):
+    from tools.bug0_d4_oneworld import (
+        S49D3Rejected,
+        d8_reported_original_move_records,
+    )
+    report = {
+        "d8_first_true_zero_food_not_exercised": True,
+        "real_rotten_flesh_count": 0,
+        "d8_second_generation_food_proven": False,
+        "self_eat": False,
+        **mutant,
+    }
+    with pytest.raises(S49D3Rejected):
+        d8_reported_original_move_records(report)
+
+
+def test_d8_positive_drop_requires_both_explicit_generation_sources():
+    from tools.bug0_d4_oneworld import (
+        S49D3Rejected, d8_reported_original_move_records,
+    )
+    first = [{"action_id": "gen1", "terminal": "outcome"}]
+    second = [{"action_id": "gen2", "terminal": "outcome"}]
+    report = {
+        "real_rotten_flesh_count": 1,
+        "d8_first_true_zero_food_not_exercised": False,
+        "d8_second_generation": {"d6_original_s49_move_actions": second},
+    }
+    with pytest.raises(S49D3Rejected):
+        d8_reported_original_move_records(report)
+    report["d6_original_s49_move_actions"] = first
+    assert d8_reported_original_move_records(report) == first + second
+    report["d8_second_generation"]["d6_original_s49_move_actions"] = ()
+    with pytest.raises(S49D3Rejected):
+        d8_reported_original_move_records(report)
