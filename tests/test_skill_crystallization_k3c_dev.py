@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from experiments.skill_crystallization_dev import Cue, WorldTrial, cue_for, make_trials, observed_training
+from experiments.skill_crystallization_dev import (
+    Cue,
+    WorldTrial,
+    cue_for,
+    make_trials,
+    observed_training,
+)
 from experiments.skill_crystallization_k3c_dev import (
     NEW_HOLDOUT_SEED,
     continue_as_new_intent,
