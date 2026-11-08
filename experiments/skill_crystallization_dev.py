@@ -228,9 +228,14 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
              timeout: float, revision_context: dict[str, Any] | None = None,
              response_schema: dict[str, Any] | None = None,
              system_append: str = "",
+             system_instruction: str | None = None,
              record_dir: Path | None = None,
              ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exactly one explicitly requested HTTP call; no retries or World actions."""
+    if system_instruction is not None and (
+        not isinstance(system_instruction, str) or not system_instruction.strip()
+    ):
+        raise ValueError("INVALID_SYSTEM_INSTRUCTION")
     parsed = urllib.parse.urlsplit(endpoint)
     if (parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost")
             or parsed.path != "/v1/chat/completions" or parsed.username is not None
@@ -246,7 +251,7 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
                                          else skill_json_schema()),
         }},
         "messages": [
-            {"role": "system", "content": (
+            {"role": "system", "content": system_instruction if system_instruction is not None else (
                 (
                     "You are proposing ONE tentative low-cost, bounded MOVE_AWAY skill from "
                     "observed world experiences. Return only JSON matching the schema. "
@@ -283,14 +288,16 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             response_bytes = resp.read()
             if record_dir is not None:
-                (record_dir / "response.raw.json").write_bytes(response_bytes)
+                with (record_dir / "response.raw.json").open("xb") as stream:
+                    stream.write(response_bytes)
             raw_response = response_bytes.decode("utf-8", errors="replace")
             status = resp.status
     except urllib.error.HTTPError as exc:
         status = exc.code
         response_bytes = exc.read()
         if record_dir is not None:
-            (record_dir / "response.raw.json").write_bytes(response_bytes)
+            with (record_dir / "response.raw.json").open("xb") as stream:
+                stream.write(response_bytes)
         raw_response = response_bytes.decode("utf-8", errors="replace")
         record.update({"http_status": status, "response_raw": raw_response,
                        "elapsed_seconds": time.perf_counter() - start})

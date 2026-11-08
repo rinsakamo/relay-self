@@ -1,0 +1,53 @@
+{
+  "classification": "DEV_ONLY_K3E_FIXTURE_WITH_LOCAL_PARENT_API_SHIMS",
+  "parent_pr": 793,
+  "parent_head": "ab1eaf5b7d9d2bde499df0558478e51f6e28b3f3",
+  "model_calls": 0,
+  "real_minecraft_worlds": 0,
+  "real_s49_actions": 0,
+  "owner_writes": 0,
+  "tests": {
+    "k3e_focused": 18,
+    "failed": 0,
+    "python_compile": "PASS",
+    "ruff": "NOT_RUN",
+    "repository_ci": "NOT_RUN",
+    "parent_modules": "K1 copied from prior artifact; K3-B/C/D lightweight test-only API shims; not actual integrated repo"
+  },
+  "fixture_seed": 20261124,
+  "probe_fixtures": [
+    {
+      "probe": "START_MARGIN_PAIR",
+      "predicted": "A_FAILS_B_SUCCEEDS",
+      "observed": "A_FAILS_B_SUCCEEDS",
+      "prediction_matches": true,
+      "mock_actions": 8
+    },
+    {
+      "probe": "MOTION_REGIME_PAIR",
+      "predicted": "A_SUCCEEDS_B_FAILS",
+      "observed": "BOTH_SUCCEED",
+      "prediction_matches": false,
+      "mock_actions": 6
+    }
+  ],
+  "reassessment_fixture": {
+    "status": "UPDATE",
+    "skill_candidate": null,
+    "skill_execution": "NOT_RUN",
+    "model_calls": 0
+  },
+  "seed_provenance": {
+    "holdout_20261126": "UNOPENED",
+    "fixture_20261124": "OPENED",
+    "retired_20261128": "OPENED_IN_EARLY_TEST_MUST_NOT_REUSE",
+    "reserved_real_probe_20261205": "UNOPENED_AS_OF_TEST_FIXTURE"
+  },
+  "non_claims": [
+    "No real Gemma call",
+    "No real Minecraft World",
+    "No real S49 or L0 installer",
+    "No causal identification",
+    "No real model belief revision"
+  ]
+}
