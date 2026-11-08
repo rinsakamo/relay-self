@@ -152,7 +152,7 @@ def fake_report():
         "d8_second_generation": {"paper_respawn_death": death},
         "native_initial": {"zombie_entity_id": 30},
         "native_respawn": {"zombie_entity_id": 46},
-        "d8_original_total_actions": 6,
+        "d8_original_total_actions": 2,
         "d9_status": "PASS_DEV",
         "d9_classification":
             "D9_TWO_REAL_EATS_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS",
@@ -174,7 +174,7 @@ def fake_report():
             "selected": "DEFER", "reason": "ZOMBIE",
             "provenance": "session:220", "actually_dispatched": False,
         },
-        "d9_original_action_count": 6,
+        "d9_original_action_count": 2,
         "d9_original_action_ids": ["a", "b"],
         "d9_nonmotion_sha256": "sha-a",
         "d9_motion_sha256": "sha-b",
