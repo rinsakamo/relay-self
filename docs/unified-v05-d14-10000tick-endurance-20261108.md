@@ -28,6 +28,14 @@ Pure Java horizon test and Python negative controls cover malformed tick/source,
 
 20 TPS gives an approximate 8m20s for 10000 ticks but the true runtime can differ with server TPS. The World, not wall-clock, determines completion.
 
+## R1 actual outcome and structural correction
+
+R1 original Actions #42476188647 produced immutable artifact #13615936528 with SHA256SUMS 7/7. One original S49 ATTACK killed the managed Paper zombie at tick524; genuine vanilla rotten flesh count=2. One original MOVE then closed as S16_OUTCOME, but the existing D6 follow-on native item approach was rejected (D6StagedMoveRejected). This stopped the old D8 driver at Paper tick around 580. R1 did NOT reach 10000 ticks; it remains an early source-qualified failure rather than a food or horizon success.
+
+The earlier D14 wrapper still depended on D8's success path, which contradicted unattended tick-based World observation. R2 preserves the failed Action route in the report but, only when the original S49 supervisor and BOTH physical journals are fully closed with no outstanding Action, may observe the existing World until its real tick limit. The previously rejected Action is never automatically retried. Separate independent auditors will verify each issued original S49 Action and the tick horizon, and will distinguish action-path FAIL from clock-horizon PASS. Unresolved physical Action must still stop the run.
+
+A separate R2 one-use trigger and fresh evidence namespace are used. R1 records remain unchanged.
+
 ## Next stage for full user request
 
 Connect an original S49 event-driven epoch loop beyond the fixed D8/D12 callbacks, without an arbitrary goal of three meals or a forced failure. For each natural kill / respawn / pickup / food action, preserve exact fresh Paper/native/S16 source and original owner. Zero rotten counts are experiences, not reasons to stop. Maintain a tick horizon, current body resources, real STOP safety and bounded host cost. Do not tune the World to produce Skill success. Only once this live owner loop is operational and independently checked should full 10000-tick autonomous survival/adaptation be claimed.
