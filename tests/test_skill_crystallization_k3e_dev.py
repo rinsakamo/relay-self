@@ -6,16 +6,6 @@ import json
 
 import pytest
 
-
-@pytest.fixture(autouse=True)
-def _optional_jsonschema_gate(request):
-    if request.node.name not in {
-        "test_wire_schema_closed_and_fixed_protocols",
-        "test_context_preserves_prior_abstention_as_unproven",
-        "test_real_http_client_accepts_custom_investigation_system_prompt",
-    }:
-        pytest.importorskip("jsonschema")
-
 from experiments.skill_crystallization_dev import make_trials, observed_training
 from experiments.skill_crystallization_k3b_dev import prepare_revision
 from experiments.skill_crystallization_k3e_dev import (
@@ -31,6 +21,16 @@ from experiments.skill_crystallization_k3e_dev import (
     validate_probe,
     validate_update,
 )
+
+
+@pytest.fixture(autouse=True)
+def _optional_jsonschema_gate(request):
+    if request.node.name not in {
+        "test_wire_schema_closed_and_fixed_protocols",
+        "test_context_preserves_prior_abstention_as_unproven",
+        "test_real_http_client_accepts_custom_investigation_system_prompt",
+    }:
+        pytest.importorskip("jsonschema")
 
 
 def parent_data():
