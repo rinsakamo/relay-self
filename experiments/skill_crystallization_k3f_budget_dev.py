@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import copy
 import json
-import math
 import random
 from pathlib import Path
 from typing import Any
