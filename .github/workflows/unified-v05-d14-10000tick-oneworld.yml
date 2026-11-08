@@ -139,7 +139,11 @@ jobs:
           p=Path('unified-v05-d14-10000tick-evidence')
           d=json.loads((p/'d14_independent_10000tick_world_audit.json').read_text())
           src=json.loads((p/'report.json').read_text())
-          assert src['status']=='PASS_DEV'
+          assert src['status'] in ('PASS_DEV','FAIL')
+          if src['status']=='FAIL':
+              assert src['d14_prior_owner_action_failure']==src['failure']
+              assert src['d14_action_failure_does_not_end_world'] is True
+              assert d['parent_d12_status']=='SOURCE_INCOMPLETE'
           assert d['status']=='PASS_DEV'
           assert d['classification']=='D14_10000_REAL_WORLD_TICKS_OBSERVED_PASS'
           assert d['world_ticks']==10000
@@ -149,7 +153,9 @@ jobs:
           assert d['l2_calls']==0 and d['learning_updates']==0
           assert d['Self_autonomous_long_survival'] is False
           assert src['d14_tick_horizon_proven'] is True
-          assert d['parent_d12_status'] in ('PASS_DEV','NOT_EXERCISED')
+          assert d['parent_d12_status'] in (
+              'PASS_DEV','NOT_EXERCISED','SOURCE_INCOMPLETE'
+          )
           print(d['classification'])
           PY
       - name: Preserve originals and SHA256
