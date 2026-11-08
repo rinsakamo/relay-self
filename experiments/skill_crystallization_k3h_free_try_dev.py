@@ -53,6 +53,15 @@ def _canonical_sha(value: object) -> str:
     ).hexdigest()
 
 
+def _source_fingerprint(source: dict[str, Any]) -> str:
+    """Bind both observed experiences and the suspended Skill/prior decision context."""
+    return _canonical_sha({
+        "old_skill": source["old_skill"],
+        "evidence": source["evidence"],
+        "prior_decisions": source["prior_decisions"],
+    })
+
+
 def proposal_schema() -> dict[str, Any]:
     """Predicting an outcome is OPTIONAL. Only an executable bounded envelope is required."""
     return {
@@ -206,7 +215,7 @@ def run_proposal(
         raise ValueError("UNKNOWN_MODE")
     report = {
         "classification": "DEV_ONLY_K3H_FREE_CHOICE_PROPOSAL",
-        "mode": mode, "source_fingerprint": _canonical_sha(source["evidence"]),
+        "mode": mode, "source_fingerprint": _source_fingerprint(source),
         "proposal": None, "schema_validation": "NOT_RUN",
         "semantic_validation": "NOT_RUN", "validator_error": None,
         "provider_record": None, "stages": [], "new_experiences": [],
@@ -297,7 +306,7 @@ def execute_mock(
 ) -> dict[str, Any]:
     if mock_grant is not True:
         raise ValueError("EXPLICIT_DEV_MOCK_GRANT_REQUIRED")
-    if proposal_report.get("source_fingerprint") != _canonical_sha(source["evidence"]):
+    if proposal_report.get("source_fingerprint") != _source_fingerprint(source):
         raise ValueError("PROPOSAL_SOURCE_MISMATCH")
     proposal = validate_proposal(proposal_report.get("proposal"), source["ids"])
     if ("VALID_BOUNDED_CHOICE" not in proposal_report.get("stages", [])
@@ -366,8 +375,8 @@ def run_reflection(
     if mode not in ("fixture", "gemma"):
         raise ValueError("UNKNOWN_MODE")
     if (outcome_report.get("proposal_fingerprint") != _canonical_sha(proposal_report)
-            or outcome_report.get("source_fingerprint") != _canonical_sha(
-                source["evidence"]
+            or outcome_report.get("source_fingerprint") != _source_fingerprint(
+                source
             ) or outcome_report.get("mode") != mode
             or outcome_report.get("native_s49_actions") != 0):
         raise ValueError("OUTCOME_CHAIN_SOURCE_MISMATCH")
