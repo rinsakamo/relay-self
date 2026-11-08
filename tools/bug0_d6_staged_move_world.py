@@ -114,8 +114,23 @@ async def move_from_real_item(
     item_origin: str = "OPERATOR_FIXTURE_NOT_ZOMBIE_DROP",
     allow_experience_orbs: bool = False,
     d7_return_live_owner_dev: bool = False,
+    d8_baseline_rotten_count: int = 0,
+    d8_move_action_prefix: str | None = None,
 ) -> None:
     sid = session.started.session_id
+    if (
+        type(d8_baseline_rotten_count) is not int
+        or d8_baseline_rotten_count < 0
+        or (
+            d8_move_action_prefix is not None
+            and (
+                not isinstance(d8_move_action_prefix, str)
+                or not d8_move_action_prefix.startswith("d8-gen2-s49-item-back")
+            )
+        )
+        or (d8_baseline_rotten_count > 0 and d8_move_action_prefix is None)
+    ):
+        raise D6StagedMoveRejected("second World generation MOVE source invalid")
     if owner is None:
         intent = IntentCommitment()
         intent.commit(
@@ -141,6 +156,10 @@ async def move_from_real_item(
         raise D6StagedMoveRejected("D6 natural loot requires original closed ATTACK owner")
     intent = owner.intent
     count_before = owner._count
+    fence_count_before = len(fence.actions)
+    probe_prefix = (
+        "d8-gen2-item" if d8_move_action_prefix is not None else "d6-item"
+    )
     supervisor = owner.supervisor
     report["d6_original_s49_move_actions"] = []
     report["d6_item_origin"] = item_origin
@@ -155,17 +174,37 @@ async def move_from_real_item(
     last_item_id = None
     last_receipt = None
     for i in range(1, 5):
-        before = await _correlated_observe(session, f"d6-item-{i}-before")
+        before = await _correlated_observe(session, f"{probe_prefix}-{i}-before")
         await asyncio.sleep(0.3)
-        current = await _correlated_observe(session, f"d6-item-{i}-current")
+        current = await _correlated_observe(session, f"{probe_prefix}-{i}-current")
         if (
             before.session_id != sid or current.session_id != sid
             or before.snapshot.health <= 0 or current.snapshot.health <= 0
         ):
             raise D6StagedMoveRejected("native Self no longer viable")
-        if _meat(current) > 0:
+        if _meat(current) > d8_baseline_rotten_count:
             if not report["d6_original_s49_move_actions"]:
-                raise D6StagedMoveRejected("passive pickup before any original S49 MOVE")
+                # D8 genuine Paper pickup may complete without movement.
+                # No S15/MOVE effect is claimed; the caller must later
+                # independently verify Paper UUID and the body STOP source.
+                if (
+                    d8_move_action_prefix is None
+                    or owner._intent_epoch != 2
+                    or owner._epoch_attack_count != 1
+                    or owner._post_move_settling_unqualified
+                    or fence.unresolved
+                    or len(fence.actions) != fence_count_before
+                    or owner._count != count_before
+                ):
+                    raise D6StagedMoveRejected(
+                        "passive pickup before any original S49 MOVE"
+                    )
+                report["d8_passive_native_pickup_source"] = item_source_readback(current)
+                report["d8_natural_pickup_mode"] = "PASSIVE_NO_MOVE"
+                report["d6_original_move_count"] = 0
+                report["d6_item_native_id"] = None
+                report["d6_same_supervisor"] = owner.supervisor is supervisor
+                return (owner, None) if d7_return_live_owner_dev else None
             break
         items = [e for e in current.snapshot.nearby_entities if e.name == "item"]
         if len(items) != 1:
@@ -202,14 +241,18 @@ async def move_from_real_item(
             ):
                 await asyncio.sleep(1.0)
                 maybe = await _correlated_observe(
-                    session, f"d6-item-{i}-pickup-recheck",
+                    session, f"{probe_prefix}-{i}-pickup-recheck",
                 )
-                if _meat(maybe) > 0:
+                if _meat(maybe) > d8_baseline_rotten_count:
                     break
             raise D6StagedMoveRejected(
                 "original D6 native item approach declined"
             ) from exc
-        action_id = f"d6-s49-item-back-{i}-{sid}"
+        action_id = (
+            f"{d8_move_action_prefix}-{i}-{sid}"
+            if d8_move_action_prefix is not None
+            else f"d6-s49-item-back-{i}-{sid}"
+        )
         fields = dict(
             intent_id=intent.current_intent.intent_id,
             session_id=sid, action_id=action_id,
@@ -272,6 +315,9 @@ async def move_from_real_item(
             "s15_after_seq": c.after_observation.seq,
             "food_identity_verified_by_entity": False,
             "pickup_verified_by_move_alone": False,
+            "baseline_rotten_flesh_before_this_generation": (
+                d8_baseline_rotten_count
+            ),
         })
         report["original_s49_actions"] = owner._count
         report["self_action_issued"] = True
@@ -290,7 +336,7 @@ async def move_from_real_item(
             owner.supervisor.get(action_id).state is not ActionState.OUTCOME
             for action_id in owner._dispatched
         )
-        or len(fence.actions) != owner._count - count_before
+        or len(fence.actions) != fence_count_before + owner._count - count_before
     ):
         raise D6StagedMoveRejected("original S49 bounded loot MOVEs did not close")
     report["d6_original_move_count"] = owner._count - count_before
@@ -315,10 +361,9 @@ async def move_from_real_item(
             or (
                 item_origin == "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
                 and (
-                    owner._attack_count < 1
+                    owner._epoch_attack_count < 1
                     or owner._count != (
-                        owner._attack_count +
-                        len(report["d6_original_s49_move_actions"])
+                        count_before + len(report["d6_original_s49_move_actions"])
                     )
                 )
             )

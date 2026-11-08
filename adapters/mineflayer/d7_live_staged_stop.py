@@ -66,6 +66,7 @@ class D7LiveStopSource:
     client_postclear_physics_ticks: int
     classification: str = "D7_E_DEV_LIVE_STAGED_BODY_STEADY_SOURCE"
     server_effective_original_clear_tick: str = "NOT_CAUSALLY_ATTESTED"
+    original_attack_effect_seq: int | None = None
 
 
 def _kv(line: str, marker: str) -> dict[str, str]:
@@ -138,7 +139,7 @@ def read_d7_live_staged_stop(
         or not isinstance(paper_log, str) or not isinstance(client_jsonl, str)
         or not isinstance(original_stage_line, str)
         or not isinstance(original_pickup_line, str)
-        or source_kind not in ("staged", "natural")
+        or source_kind not in ("staged", "natural", "natural_multi", "natural_multi_passive")
     ):
         raise D7LiveStopRejected("source-scoped current S49 action required")
     lines = paper_log.splitlines()
@@ -167,16 +168,57 @@ def read_d7_live_staged_stop(
     else:
         spawns = [m for s in lines if (m := NATURAL_SPAWN.search(s))]
         picks = [m for s in lines if (m := NATURAL_PICKUP.search(s))]
+        deaths = [m for s in lines if (m := NATURAL_DEATH.search(s))]
+        required = 2 if source_kind in ("natural_multi", "natural_multi_passive") else 1
         if (
-            len(spawns) != 1 or len(picks) != 1
+            len(spawns) != required or len(picks) != required
+            or len(deaths) != required
             or not isinstance(original_death_line, str)
             or NATURAL_SPAWN.search(original_stage_line) is None
             or NATURAL_PICKUP.search(original_pickup_line) is None
             or NATURAL_DEATH.search(original_death_line) is None
         ):
             raise D7LiveStopRejected("true natural Paper spawn/pickup/death missing")
-        st, pk = spawns[0].groupdict(), picks[0].groupdict()
-        death = NATURAL_DEATH.search(original_death_line).groupdict()
+        # The exact *current* generation must be explicitly selected from
+        # original Paper lines, not the first zombie from historical log.
+        st, pk, death = (
+            NATURAL_SPAWN.search(original_stage_line).groupdict(),
+            NATURAL_PICKUP.search(original_pickup_line).groupdict(),
+            NATURAL_DEATH.search(original_death_line).groupdict(),
+        )
+        if (
+            sum(m.groupdict() == st for m in spawns) != 1
+            or sum(m.groupdict() == pk for m in picks) != 1
+            or sum(m.groupdict() == death for m in deaths) != 1
+        ):
+            raise D7LiveStopRejected("chosen Paper generation absent/duplicated")
+        if source_kind in ("natural_multi", "natural_multi_passive"):
+            earlier_death, earlier_spawn, earlier_pickup = (
+                deaths[0].groupdict(), spawns[0].groupdict(), picks[0].groupdict(),
+            )
+            if (
+                death != deaths[-1].groupdict()
+                or st != spawns[-1].groupdict()
+                or pk != picks[-1].groupdict()
+                or any(
+                    earlier_death[key] != earlier_spawn[key]
+                    for key in ("world", "zombie", "count")
+                )
+                or any(
+                    earlier_spawn[key] != earlier_pickup[key]
+                    for key in ("world", "zombie", "item", "count")
+                )
+                or earlier_death["killer"] != earlier_pickup["player"]
+                or earlier_death["world"] != death["world"]
+                or earlier_death["zombie"] == death["zombie"]
+                or earlier_spawn["item"] == st["item"]
+                or not (
+                    int(earlier_death["tick"]) <= int(earlier_spawn["tick"])
+                    < int(earlier_pickup["tick"]) < int(death["tick"])
+                )
+            ):
+                raise D7LiveStopRejected("prior Paper generation source not closed")
+
         if (
             st != NATURAL_SPAWN.search(original_stage_line).groupdict()
             or pk != NATURAL_PICKUP.search(original_pickup_line).groupdict()
@@ -194,7 +236,15 @@ def read_d7_live_staged_stop(
         ):
             raise D7LiveStopRejected("Paper natural zombie killer/item lineage invalid")
         st["player"] = pk["player"]
-        classification = "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+        classification = (
+            "D8_DEV_LIVE_SECOND_NATURAL_PASSIVE_PICKUP_STEADY_SOURCE"
+            if source_kind == "natural_multi_passive"
+            else (
+                "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
+                if source_kind == "natural_multi"
+                else "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+            )
+        )
     pickup_tick = int(pk["tick"])
     stream = [_kv(s, "RSELF_D7_PAPER_TICK ")
               for s in lines if "RSELF_D7_PAPER_TICK " in s]
@@ -261,8 +311,12 @@ def read_d7_live_staged_stop(
         kind = row.get("kind")
         if kind == "SHUTDOWN_ACK":
             raise D7LiveStopRejected("S50 session closed before owner STOP")
+        anchor_id = (
+            action_id if source_kind == "natural_multi_passive"
+            else action_id + "-s15-clear"
+        )
         if kind == "EFFECT_ACK" and (
-            row.get("native_action_id") == action_id + "-s15-clear"
+            row.get("native_action_id") == anchor_id
             and row.get("native_seq") == clear_seq
         ):
             if clear_index is not None or not _client_off(row):
@@ -279,7 +333,17 @@ def read_d7_live_staged_stop(
         raise D7LiveStopRejected("same S49 clear not confirmed by 8 client ticks")
     return D7LiveStopSource(
         session_id=session_id, action_id=action_id,
-        original_clear_seq=clear_seq,
+        original_clear_seq=(
+            -1 if source_kind == "natural_multi_passive" else clear_seq
+        ),
+        original_attack_effect_seq=(
+            clear_seq if source_kind == "natural_multi_passive" else None
+        ),
+        server_effective_original_clear_tick=(
+            "NOT_APPLICABLE_NO_MOVE"
+            if source_kind == "natural_multi_passive"
+            else "NOT_CAUSALLY_ATTESTED"
+        ),
         paper_world_uuid=st["world"], paper_player_uuid=st["player"],
         paper_item_uuid=st["item"], paper_pickup_tick=pickup_tick,
         paper_last_tick=last_tick, paper_quiet_tail_ticks=tail,

@@ -154,6 +154,75 @@ def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotion
     ), False
 
 
+def d8_reported_original_move_records(report: dict) -> list[dict]:
+    """D8 source MOVE history, including a genuine first-zero without MOVE.
+
+    Missing MOVE rows are allowed ONLY after the first vanilla zero-death
+    was verified; a positive-food first generation must supply its explicit
+    MOVE list and the second generation's own source records.
+    """
+    if not isinstance(report, dict):
+        raise S49D3Rejected("D8 source report not a dict")
+    first = report.get("d6_original_s49_move_actions")
+    second = report.get("d8_second_generation")
+    if report.get("d8_first_true_zero_food_not_exercised") is True:
+        if (
+            report.get("real_rotten_flesh_count") != 0
+            or report.get("d8_second_generation_food_proven") is not False
+            or report.get("self_eat") is not False
+            or (first is not None and (not isinstance(first, list) or bool(first)))
+            or (second is not None and second != {})
+        ):
+            raise S49D3Rejected("D8 first true-zero must have no MOVE or EAT")
+        return []
+    if not isinstance(first, list) or not isinstance(second, dict):
+        raise S49D3Rejected("D8 first/second generation MOVE source absent")
+    newer = second.get("d6_original_s49_move_actions", [])
+    if not isinstance(newer, list):
+        raise S49D3Rejected("D8 second generation MOVE source invalid")
+    return [*first, *newer]
+
+
+def require_d8_original_motion_history(
+    actual_actions: object, expected_moves: object,
+) -> None:
+    """Two-epoch C1 MOVE action IDs and S16 outcomes; no Action issuance.
+
+    Same-world second Intent retains the original persistent MOVE ledger.
+    This gate fails closed on stale or missing second-generation records.
+    """
+    # OriginalS49PhysicalFence.actions exposes an immutable tuple, whereas
+    # source JSON MOVE records are lists. Reject all other container types:
+    # a dict/string or forged scalar must not pass via iteration/zip.
+    if not isinstance(actual_actions, (tuple, list)) or not isinstance(
+        expected_moves, list
+    ):
+        raise S49D3Rejected("D8 original C1 history requires tuple/list and list")
+    ids = [
+        row.get("action_id") if isinstance(row, dict) else None
+        for row in expected_moves
+    ]
+    if (
+        len(actual_actions) != len(expected_moves)
+        or not all(isinstance(i, str) and i for i in ids)
+        or len(set(ids)) != len(ids)
+        or any(
+            not isinstance(actual, dict)
+            or not isinstance(source, dict)
+            or actual.get("action_id") != source.get("action_id")
+            or actual.get("status") != "S16_OUTCOME"
+            or actual.get("action_ref") != "MOVE_BACKWARD"
+            or source.get("terminal") != "outcome"
+            or actual.get("intent_id") != source.get("intent_id")
+            or actual.get("cleanup_seq") != source.get("s15_clear_seq")
+            for actual, source in zip(actual_actions, expected_moves)
+        )
+    ):
+        raise S49D3Rejected(
+            "D8 original C1 full generation identity/S16 disagrees"
+        )
+
+
 async def run(
     report_path: Path, log_path: Path, *, post_respawn_dev=None,
     nonmotion_fence_path: Path | None = None,
@@ -163,6 +232,7 @@ async def run(
     d6_controlled_zero_dev: bool = False,
     d7_native_controls_path: Path | None = None,
     d7f_natural_eat_dev=None,
+    d8_two_generation_food_dev: bool = False,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -229,13 +299,26 @@ async def run(
                 or d7_native_controls_path is None
                 or nonmotion_fence_path is None or motion_fence_path is None
                 or d6_multigen_dev or d6_controlled_zero_dev
-                or post_respawn_dev is not None
+                or (post_respawn_dev is not None and not d8_two_generation_food_dev)
             ):
                 raise S49D3Rejected(
                     "D7-F one-source natural STOP/EAT source grant absent"
                 )
             report["d7f_live_eat_optin"] = True
             report["d7f_natural_eat_issued"] = False
+        if d8_two_generation_food_dev:
+            if (
+                os.environ.get("D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY") != "1"
+                or not callable(post_respawn_dev)
+                or d7f_natural_eat_dev is None
+                or post_death_loot_move_dev is None
+                or d7_native_controls_path is None
+                or nonmotion_fence_path is None or motion_fence_path is None
+                or d6_multigen_dev or d6_controlled_zero_dev
+            ):
+                raise S49D3Rejected("D8 two natural food cycle DEV source grant absent")
+            report["d8_two_generation_optin"] = True
+            report["d8_second_generation_food_proven"] = False
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
@@ -406,6 +489,13 @@ async def run(
             report["d6_no_hunger_intervention"] = (
                 d7f_natural_eat_dev is None
             )
+        if d8_two_generation_food_dev:
+            # D8 observes ordinary Minecraft loot rules as existing World
+            # truth. The DEV operator never changes doMobLoot even briefly.
+            basic_commands = tuple(
+                cmd for cmd in basic_commands
+                if cmd != "gamerule doMobLoot true"
+            )
         # Operator cleanup must never remove the Paper-owned zombie. For
         # D5 and D6, defer nonzombie cleanup until just before the first S49
         # admission: R2 observed two native nearby entities despite the
@@ -419,9 +509,11 @@ async def run(
         else:
             before_hunger = basic_commands
             after_hunger = (
-                "gamerule doMobLoot false",
-                nonzombie_clear,
-                "gamerule doMobLoot true",
+                (nonzombie_clear,) if d8_two_generation_food_dev else (
+                    "gamerule doMobLoot false",
+                    nonzombie_clear,
+                    "gamerule doMobLoot true",
+                )
             )
         report["operator_world_staging"] = list(before_hunger + after_hunger)
         for cmd in before_hunger:
@@ -699,7 +791,43 @@ async def run(
             # source/eat evidence remain unchanged and reusable by audit.
             # A genuine zero-loot death is a valid World outcome. Do not
             # require or fabricate EAT before the next independent Intent.
-            if d6_multigen_dev:
+            if d8_two_generation_food_dev:
+                if not d4_eaten and report["real_rotten_flesh_count"] == 0:
+                    # A genuine vanilla zero drop is a World experience,
+                    # not a failed S49 EAT and not proof of two meals. Do
+                    # not rearm or issue any more Action just to chase RNG.
+                    if (
+                        owner.supervisor.open_actions
+                        or owner._d7_last_verified_eat_receipt is not None
+                        or owner._d7_dev_stop_consumed
+                        or report.get("d4_native_after_zero", {}).get(
+                            "rotten_flesh"
+                        ) != 0
+                        or motion_fence.unresolved or motion_fence.actions
+                        or nonmotion_fence.unresolved
+                        or len(nonmotion_fence.actions) != owner._attack_count
+                    ):
+                        raise S49D3Rejected(
+                            "D8 true first-zero source or terminal action invalid"
+                        )
+                    report["d8_first_true_zero_food_not_exercised"] = True
+                    report["d8_second_generation_food_proven"] = False
+                else:
+                    if (
+                        not d4_eaten
+                        or owner._d7_last_verified_eat_receipt is None
+                        or not owner._d7_dev_stop_consumed
+                    ):
+                        raise S49D3Rejected(
+                            "D8 cannot rearm without first verified S49 STOP/EAT"
+                        )
+                    await post_respawn_dev(
+                        session, server, owner, report, log_path,
+                        physical_fence=nonmotion_fence,
+                        motion_fence=motion_fence,
+                        s50_sidecar=d7_native_controls_path,
+                    )
+            elif d6_multigen_dev:
                 await post_respawn_dev(
                     session, server, owner, report, log_path,
                     physical_fence=nonmotion_fence,
@@ -714,9 +842,21 @@ async def run(
                     physical_fence=nonmotion_fence,
                 )
             report["classification"] = (
-                report.get("d6_multigen_classification", "D6_MULTIGEN_UNQUALIFIED")
-                if d6_multigen_dev
-                else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+                (
+                    "D8_FIRST_TRUE_ZERO_DROP_TWO_FOOD_CYCLES_NOT_EXERCISED"
+                    if report.get("d8_first_true_zero_food_not_exercised") is True
+                    else (
+                        "D8_TWO_REAL_NATURAL_S49_FOOD_CYCLES_PASS"
+                        if report.get("d8_second_generation_food_proven") is True
+                        else "D8_SECOND_TRUE_ZERO_DROP_NO_SECOND_EAT"
+                    )
+                )
+                if d8_two_generation_food_dev
+                else (
+                    report.get("d6_multigen_classification", "D6_MULTIGEN_UNQUALIFIED")
+                    if d6_multigen_dev
+                    else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
+                )
             )
         # DEV D7-C: bounded operator PASSIVE wait after genuine source-
         # qualified natural pickup. Only lets Paper/S50 publish further
@@ -733,6 +873,7 @@ async def run(
     except Exception as exc:
         report["status"] = "FAIL"
         report["classification"] = (
+            "D8_TWO_NATURAL_CYCLES_UNQUALIFIED" if d8_two_generation_food_dev else
             "D6_MULTIGEN_UNQUALIFIED" if d6_multigen_dev else
             ("D5_SECOND_INTENT_UNQUALIFIED"
              if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED")
@@ -807,10 +948,21 @@ async def run(
                 }
                 if report["status"] == "PASS_DEV":
                     original_motion.require_clear()
-                    if len(original_motion.actions) != len(
-                        report.get("d6_original_s49_move_actions", ())
-                    ):
+                    # An honest first-generation zero drop produces no MOVE
+                    # source field, no MOVE, and no EAT. Do not misclassify
+                    # that as an invalid two-generation C1 history.
+                    # All positive-drop paths still require explicit records.
+                    expected_moves = (
+                        d8_reported_original_move_records(report)
+                        if d8_two_generation_food_dev
+                        else report.get("d6_original_s49_move_actions", ())
+                    )
+                    if len(original_motion.actions) != len(expected_moves):
                         raise S49D3Rejected("original C1 physical MOVE count disagrees")
+                    if d8_two_generation_food_dev:
+                        require_d8_original_motion_history(
+                            original_motion.actions, expected_moves,
+                        )
             except Exception as exc:
                 report["motion_fence_readback_error"] = (
                     f"{type(exc).__name__}: {exc}"

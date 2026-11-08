@@ -60,6 +60,9 @@ class MineflayerProcessSession:
             if raw_capture_root is not None else None
         )
         self._raw_receipt: dict[str, object] | None = None
+        # D8-only same-session request audit: no ID may be reused, even if
+        # a prior read timed out. This has no physical Action authority.
+        self._d8_sent_probe_request_ids: set[str] = set()
 
     @classmethod
     async def launch(
@@ -301,7 +304,18 @@ class MineflayerProcessSession:
 
     async def send_observe(self, request_id: str | None = None) -> None:
         """Legacy probe when absent; correlated observe on explicit request ID."""
-        await self._send(encode_observe(request_id))
+        line = encode_observe(request_id)
+        if (
+            os.environ.get("D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY") == "1"
+            and request_id is not None
+        ):
+            if request_id in self._d8_sent_probe_request_ids:
+                raise MineflayerProcessIOError(
+                    f"D8 same-session duplicate probe send prevented: {request_id}"
+                )
+            # Reserve before IO; on unknown result never retry the same ID.
+            self._d8_sent_probe_request_ids.add(request_id)
+        await self._send(line)
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
