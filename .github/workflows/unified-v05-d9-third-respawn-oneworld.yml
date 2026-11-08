@@ -139,7 +139,7 @@ jobs:
           import json
           from pathlib import Path
           p=Path('unified-v05-d9-third-respawn-evidence')
-          d=json.loads((p/'d8_independent_two_food_cycles_audit.json').read_text())
+          d=json.loads((p/'d9_independent_survival_audit.json').read_text())
           src=json.loads((p/'report.json').read_text())
           assert src['status']=='PASS_DEV'
           if d['status']=='PASS_DEV':
