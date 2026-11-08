@@ -192,36 +192,98 @@ def audit_active(
 
     fence.require_clear()
     rows = fence.actions
+    moves = ()
+    if r6:
+        assert motion_fence is not None
+        motion_fence.require_clear()
+        moves = motion_fence.actions
+        if (
+            motion_fence.self_id != "s49-original-self"
+            or motion_fence.sha256 != report.get("original_s49_move_fence_sha256")
+            or report.get("original_s49_move_fence_unresolved") is not False
+            or report.get("original_s49_move_fence_action_ids")
+                != [item["action_id"] for item in moves]
+            or report.get("original_s49_post_move_settling_unqualified")
+                is not bool(moves)
+            or type(report.get("r6_native_entities_event_count")) is not int
+            or report["r6_native_entities_event_count"] < len(moves)
+        ):
+            raise D14NaturalActiveAuditRejected("ORIGINAL_MOVE_FENCE_LINEAGE_NOT_ATTESTED")
     if (
         fence._body.get("self_id") != "s49-original-self"
         or fence.sha256 != report.get("original_s49_fence_sha256")
-        or len(rows) != report.get("new_s49_actions")
-        or len(rows) != len(life_actions)
+        or len(rows) + len(moves) != report.get("new_s49_actions")
+        or len(rows) + len(moves) != len(life_actions)
         or report.get("original_s49_supervisor_open") != 0
         or report.get("original_s49_fence_unresolved") is not False
         or report.get("original_s49_fence_action_ids")
             != [row["action_id"] for row in rows]
     ):
         raise D14NaturalActiveAuditRejected("ORIGINAL_S49_FENCE_OR_OUTCOME_MISMATCH")
+    nonmotion_by_id = {row["action_id"]: row for row in rows}
+    motion_by_id = {row["action_id"]: row for row in moves}
+    if set(nonmotion_by_id) & set(motion_by_id):
+        raise D14NaturalActiveAuditRejected("CROSS_FENCE_ACTION_ID_REPLAY")
     seen = set()
-    for event, row in zip(life_actions, rows):
+    for event in life_actions:
+        action_id = event.get("action_id")
+        kind = event.get("kind")
         if (
-            row["status"] != "S16_OUTCOME"
-            or row["terminal"] != "outcome"
-            or row["session_id"] != session
-            or row["intent_id"] != intent_id
-            or row["action_id"] in seen
-            or event.get("action_id") != row["action_id"]
-            or event.get("kind") != row["kind"]
+            not isinstance(action_id, str) or action_id in seen
             or event.get("terminal") != "outcome"
             or event.get("session_id") != session
-            or event.get("original_fence_sha256") is None
         ):
-            raise D14NaturalActiveAuditRejected("ORIGINAL_ACTION_NOT_SOURCE_VERIFIED")
-        seen.add(row["action_id"])
+            raise D14NaturalActiveAuditRejected("ORIGINAL_ACTION_ID_OR_TERMINAL_REPLAY")
+        if kind in ("ATTACK", "EAT"):
+            row = nonmotion_by_id.get(action_id)
+            if (
+                row is None
+                or row["status"] != "S16_OUTCOME"
+                or row["terminal"] != "outcome"
+                or row["session_id"] != session
+                or row["intent_id"] != intent_id
+                or row["kind"] != kind
+                or event.get("original_fence_sha256") is None
+                or event.get("native_admitted_seq") != row["probe_seq"]
+            ):
+                raise D14NaturalActiveAuditRejected(
+                    "ORIGINAL_NONMOTION_ACTION_NOT_SOURCE_VERIFIED"
+                )
+        elif r6 and kind == "MOVE_AWAY":
+            row = motion_by_id.get(action_id)
+            if (
+                row is None
+                or row["status"] != "S16_OUTCOME"
+                or row["terminal_state"] != "outcome"
+                or row["action_ref"] != "MOVE_BACKWARD"
+                or row["session_id"] != session
+                or row["intent_id"] != intent_id
+                or event.get("native_admitted_seq") != row["decision_seq"]
+                or event.get("native_event_seq") is None
+                or type(event["native_event_seq"]) is not int
+                or not 0 <= event["native_event_seq"] < row["decision_seq"]
+                or event.get("movement_m") != row["movement_m"]
+                or event.get("original_move_fence_sha256") is None
+                or event.get("s15_clear_ack") != "ORIGINAL"
+                or event.get("effective_physical_stop") != "UNATTESTED"
+                or event.get("post_move_eat_granted") is not False
+                or report.get("stop_settling")
+                    != "R6_S15_CLEAR_ACK_ONLY_PHYSICAL_STOP_UNATTESTED"
+            ):
+                raise D14NaturalActiveAuditRejected(
+                    "ORIGINAL_MOTION_ACTION_OR_STOP_SOURCE_NOT_VERIFIED"
+                )
+        else:
+            raise D14NaturalActiveAuditRejected("UNSUPPORTED_ORIGINAL_ACTION_KIND")
+        seen.add(action_id)
+    if seen != set(nonmotion_by_id) | set(motion_by_id):
+        raise D14NaturalActiveAuditRejected("ORIGINAL_ACTION_JOURNAL_LINEAGE_MISSING")
     return {
         "status": "PASS_DEV",
-        "classification": "D14_R4_NATURAL_WORLD_ORIGINAL_S49_SOURCE_AUDITED",
+        "classification": (
+            "D14_R6_NATURAL_WORLD_S49_SOURCE_CONSISTENCY_AUDITED"
+            if r6 else "D14_R4_NATURAL_WORLD_ORIGINAL_S49_SOURCE_AUDITED"
+        ),
         "world_uuid": timeline.source_summary()["world_uuid"],
         "observed_world_ticks": result["elapsed_ticks"],
         "eventual_reason": result["terminal_reason"],
@@ -230,10 +292,16 @@ def audit_active(
         "life_decisions": len(life_decisions),
         "native_safe_stops": len(native_safe_stops),
         "active_l0_stopped_after_native_loss": bool(native_safe_stops),
-        "original_s49_actions": len(rows),
-        "original_s49_s16_outcomes": len(rows),
-        "original_s49_action_kinds": [row["kind"] for row in rows],
+        "original_s49_actions": len(rows) + len(moves),
+        "original_s49_s16_outcomes": len(rows) + len(moves),
+        "original_s49_motion_actions": len(moves),
+        "original_s49_action_kinds": [e["kind"] for e in life_actions],
         "original_s49_fence_sha256": fence.sha256,
+        "original_s49_motion_fence_sha256": (
+            motion_fence.sha256 if motion_fence is not None else None
+        ),
+        "native_entity_event_independently_attested": False,
+        "effective_physical_stop_attested": False,
         "c1_intent_experiences_committed": 0,
         "learning_updates": 0,
         "long_run_autonomous_self_proven": False,
