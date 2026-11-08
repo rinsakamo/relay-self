@@ -162,10 +162,13 @@ def require_d8_original_motion_history(
     Same-world second Intent retains the original persistent MOVE ledger.
     This gate fails closed on stale or missing second-generation records.
     """
-    if not isinstance(actual_actions, list) or not isinstance(
+    # OriginalS49PhysicalFence.actions exposes an immutable tuple, whereas
+    # source JSON MOVE records are lists. Reject all other container types:
+    # a dict/string or forged scalar must not pass via iteration/zip.
+    if not isinstance(actual_actions, (tuple, list)) or not isinstance(
         expected_moves, list
     ):
-        raise S49D3Rejected("D8 original C1 history must be lists")
+        raise S49D3Rejected("D8 original C1 history requires tuple/list and list")
     ids = [
         row.get("action_id") if isinstance(row, dict) else None
         for row in expected_moves
