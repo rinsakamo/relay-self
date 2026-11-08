@@ -284,7 +284,7 @@ def test_real_model_proposal_one_call_no_future_physics_leak(
     assert "SOUL" not in as_text
 
 
-def test_real_model_reflection_no_hidden_future_leak(
+def test_fake_real_model_reflection_source_is_rejected(
     originals, source, monkeypatch, tmp_path,
 ):
     import experiments.skill_crystallization_k3h_free_try_dev as mod
@@ -296,28 +296,42 @@ def test_real_model_reflection_no_hidden_future_leak(
     mock = execute_mock(
         proposal, source, mock_grant=True, result_mode="fixture",
     )
-    # Retag a saved mock report to emulate a verified real report for the
-    # request argument test; do not open the real-model reserved seed.
+    # No future holdout/real-seed opening. Changing a fixture label must not
+    # turn a synthetic mock observation into an attested real-model sequence.
     proposal["mode"] = "gemma"
     mock["mode"] = "gemma"
     mock["proposal_fingerprint"] = mod._canonical_sha(proposal)
-    calls = []
+    monkeypatch.setattr(mod, "gemma_l2", lambda *_a, **_k: pytest.fail(
+        "unsourced outcome must not be sent to the model"
+    ))
+    with pytest.raises(ValueError, match="REAL_MODEL_SOURCE_UNATTESTED"):
+        run_reflection(
+            *originals, proposal_report=proposal, outcome_report=mock,
+            mode="gemma", endpoint="http://127.0.0.1:8080/v1/chat/completions",
+            model="verified-local", record_dir=tmp_path / "reflect",
+        )
 
-    def stub(evidence, **kwargs):
-        calls.append((evidence, kwargs))
-        return reflect(), {"http_status": 200, "finish_reason": "stop"}
 
-    monkeypatch.setattr(mod, "gemma_l2", stub)
-    r = run_reflection(
+def test_outcome_value_tampering_is_caught_before_reflection(originals, source):
+    proposal = run_proposal(*originals, mode="fixture", fixture=trial(n=5))
+    mock = execute_mock(proposal, source, mock_grant=True,
+                        result_mode="fixture")
+    mock["new_experiences"][0]["final_distance"] = 1234
+    with pytest.raises(ValueError, match="NEW_MOCK_OUTCOME_NOT_REPRODUCIBLE"):
+        run_reflection(
+            *originals, proposal_report=proposal, outcome_report=mock,
+            mode="fixture", fixture=reflect(),
+        )
+
+
+def test_extra_cli_sha_fields_do_not_break_mock_readback(originals, source):
+    proposal = run_proposal(*originals, mode="fixture", fixture=trial(n=5))
+    mock = execute_mock(proposal, source, mock_grant=True,
+                        result_mode="fixture")
+    mock["original_source_sha256"] = {"first": "example"}
+    mock["original_manifest_audit"] = {"example": "PASS"}
+    result = run_reflection(
         *originals, proposal_report=proposal, outcome_report=mock,
-        mode="gemma", endpoint="http://127.0.0.1:8080/v1/chat/completions",
-        model="verified-local", record_dir=tmp_path / "reflect",
+        mode="fixture", fixture=reflect(),
     )
-    assert r["schema_validation"] == "PASS"
-    assert len(calls) == 1
-    assert len(calls[0][0]) == 29
-    assert calls[0][1]["response_schema"] == reflection_schema()
-    assert calls[0][1]["revision_context"]["new_observations"] == (
-        mock["new_experiences"]
-    )
-    assert r["skill_installed"] is False
+    assert result["schema_validation"] == "PASS"
