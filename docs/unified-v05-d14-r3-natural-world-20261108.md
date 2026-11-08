@@ -47,3 +47,21 @@ Independent post, only after the original final report exists:
 Preserve all original R1/R2 SHA256 manifests unchanged, do not fabricate a missing report on cancellation, do not silently respawn the Self, and do not retry an unfavorable natural outcome. User's objective: observe natural life rather than force success or a counterexample.
 
 Classification: DEV_ONLY / NATURAL_WORLD_SOURCE_IMPLEMENTED / REAL_R3_NOT_RUN / ORIGINAL_S49_CONTINUOUS_ACTION_NOT_CONNECTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
+
+
+## First real R3: unforced natural Self death (2026-11-08)
+
+One-use real World R3 original [Actions #42489075857](https://github.com/rinsakamo/relay-self/actions/runs/42489075857) used source HEAD 5100e2ccade797c9f27b20e3e45f5fc6d5514de9 and single-use trigger HEAD 9b3d7858f8ebdc8669c6009db2e49b8c68ceb610. This is not a retry of R1/R2 and does not overwrite any older protected World. Original artifact [#13620782218](https://github.com/rinsakamo/relay-self/actions/runs/42489075857/artifacts/13620782218) contained Paper log, derivative JSONL journal, report and SHA256SUMS; **3/3 digests match**.
+
+- Real World UUID 38fdd0fe-3766-4d0c-a9f7-3464ec55bd8b, real native session 62bdc4b3-6a92-4dba-b80e-4d3856c05366.
+- Paper start tick 18 and terminal tick 327, elapsed 309 Paper ticks. The original says reason=SELF_DIED and the Paper server log independently says "RelaySelf was slain by Zombie".
+- One Paper-owned 200tick sample. One managed AI-enabled normal-health daylight-burning zombie. No zombie killed by Self, no new managed respawn, no S49 physical Action, no L2/Skill or Learning update.
+- The experiment did **not** attain 10000 ticks. It did not use D4/D8 Hunger/NoAI/lowHealth; it was a read-only Self subject to a real zombie threat. An early death is an accepted observational outcome, not autonomous survival success.
+- R3 original runner report stays **FAIL / DEV_D14_R3_TEARDOWN_UNQUALIFIED** because its native shutdown request raised MineflayerProcessEnded after the bridge had exited. The fallback owned-process termination returned node_exit=0; Paper exited 0. The runner's original failure/cleanup text is NOT retroactively amended.
+- A later independent source-only job [Actions #42489569533](https://github.com/rinsakamo/relay-self/actions/runs/42489569533) re-downloaded protected R3 originals, rechecked SHA256 3/3, replayed the Paper timeline, and matched every derivative Paper source line. It reports **SOURCE_ONLY_DEV / genuine Self death at 309 ticks / teardown not qualified**, separate derivative artifact [#13620842810](https://github.com/rinsakamo/relay-self/actions/runs/42489569533/artifacts/13620842810).
+- Source remediation: if the raw Paper terminal proves genuine death/disconnect and the original native process was reaped with exit code 0, the next runner's cleanup will not label an already-ended bridge as an unqualified teardown. This narrow fix does not apply to a missing Paper source or a 10000tick LIMIT and does not cause another World run.
+- Focused Python regressions/Ruff, repository contracts and Paper plugin Java build tested in branch-only offline CI. See PR #807 for exact final HEAD.
+
+**Next research question is not how to weaken the zombie or reroll until success.** It is how to connect the already-existing original S49 / SelfBody / Intent owner to naturally make decisions (MOVE/ATTACK/EAT/REST) over a continuously advancing World, while preserving real health/resource limits, S16 fencing and source-qualified outcomes. The R3 passive baseline shows exactly why an active embodied control loop matters.
+
+DEV_ONLY / NATURAL_R3_SELF_DEATH_SOURCE_ONLY / HORIZON_NOT_REACHED / CONTINUOUS_S49_NOT_CONNECTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
