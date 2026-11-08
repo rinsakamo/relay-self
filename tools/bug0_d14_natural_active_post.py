@@ -82,6 +82,8 @@ def audit_active(
     native_count = 0
     life_decisions = []
     life_actions = []
+    native_safe_stops = []
+    preceding_native_errors = 0
     for line in derivative.splitlines():
         try:
             e = json.loads(line)
@@ -101,9 +103,32 @@ def audit_active(
             elif kind == "LIFE_ACTION":
                 life_actions.append(observed)
             continue
-        if kind in ("NATIVE_OBSERVATION", "NATIVE_OBSERVATION_FAILED"):
+        if kind in ("NATIVE_OBSERVATION", "NATIVE_OBSERVATION_FAILED",
+                    "NATIVE_SAFE_STOP"):
             if kind == "NATIVE_OBSERVATION":
                 native_count += 1
+                preceding_native_errors = 0
+            elif kind == "NATIVE_OBSERVATION_FAILED":
+                preceding_native_errors += 1
+            else:
+                record = e.get("native_observation")
+                if (
+                    len(native_safe_stops) != 0
+                    or preceding_native_errors < 2
+                    or not isinstance(record, dict)
+                    or record.get("consecutive_failures") < 2
+                    or record.get("reason")
+                        != "NATIVE_READBACK_UNAVAILABLE_ACTION_STOP"
+                    or record.get("after_sample") != e.get("original_paper_line")
+                    or marker_kind(e.get("original_paper_line", "")) != "SAMPLE"
+                    or e.get("original_paper_line") not in [
+                        row for kind0, row in original_rows if kind0 == "SAMPLE"
+                    ]
+                ):
+                    raise D14NaturalActiveAuditRejected(
+                        "NATIVE_SAFE_STOP_WITHOUT_TWO_PAPER_BOUND_FAILURES"
+                    )
+                native_safe_stops.append(record)
             continue
         if marker_kind(e.get("original_paper_line", "")) != kind:
             raise D14NaturalActiveAuditRejected("DERIVATIVE_PAPER_KIND_CHANGED")
@@ -113,6 +138,10 @@ def audit_active(
         or native_count != len(report.get("native_snapshots", []))
         or len(life_decisions) != report.get("life_decision_count")
         or len(life_actions) != report.get("life_outcome_count")
+        or native_safe_stops != (
+            [report["native_observation_safe_stop"]]
+            if "native_observation_safe_stop" in report else []
+        )
     ):
         raise D14NaturalActiveAuditRejected("DERIVATIVE_PAPER_OR_LIFE_COUNT_MISMATCH")
 
@@ -125,7 +154,7 @@ def audit_active(
     for event in life_decisions:
         if (
             type(event.get("cycle")) is not int
-            or not last_cycle < event["cycle"] <= 64
+            or not last_cycle < event["cycle"] <= 1024
             or event.get("session_id") != session
             or event.get("intent_id") != intent_id
             or type(event.get("native_seq")) is not int
@@ -176,6 +205,8 @@ def audit_active(
         "reached_10000_ticks": result["outcome"] == "WORLD_TICK_LIMIT_REACHED",
         "self_died_before_limit": result["self_died_before_limit"],
         "life_decisions": len(life_decisions),
+        "native_safe_stops": len(native_safe_stops),
+        "active_l0_stopped_after_native_loss": bool(native_safe_stops),
         "original_s49_actions": len(rows),
         "original_s49_s16_outcomes": len(rows),
         "original_s49_action_kinds": [row["kind"] for row in rows],
