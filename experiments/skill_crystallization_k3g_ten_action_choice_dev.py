@@ -242,8 +242,20 @@ def _model_context(source: dict[str, Any]) -> dict[str, Any]:
                              "MOVE_AWAY actions instead of 1..4 per attempted Skill. "
                              "This is a budget allowance, NOT observed new movement. "
                              "Goal must stop execution early.",
+        "public_probe_options": {
+            "START_MARGIN_PAIR": {
+                "A_start": 2.32, "B_start": 2.44,
+                "contrast": "same unknown movement regime, different initial margin",
+                "max_actions_per_condition": 10,
+            },
+            "MOTION_REGIME_PAIR": {
+                "A_start": 2.4, "B_start": 2.4,
+                "contrast": "same initial margin, different unknown movement regime",
+                "max_actions_per_condition": 10,
+            },
+        },
         "decision": "Choose a bounded new Skill, a falsifiable PROBE, or ABSTAIN. "
-                    "Nothing is assumed optimal. No Skill is automatically installed.",
+                    "Nothing is assumed optimal. No Skill or PROBE is automatically executed.",
     }
 
 
