@@ -50,6 +50,10 @@ def admissible_natural_attack(previous: Any, current: Any) -> int | None:
         or len(previous.snapshot.nearby_entities) != 1
         or len(current.snapshot.nearby_entities) != 1
         or previous.snapshot.health <= 0 or current.snapshot.health <= 0
+        or previous.snapshot.oxygen_level == 0
+        or current.snapshot.oxygen_level == 0
+        or previous.snapshot.nearby_entities_coverage.candidate_count != 1
+        or current.snapshot.nearby_entities_coverage.candidate_count != 1
     ):
         return None
     a = previous.snapshot.nearby_entities[0]
@@ -59,6 +63,12 @@ def admissible_natural_attack(previous: Any, current: Any) -> int | None:
         or a.entity_id != b.entity_id
         or not 0.1 <= a.distance <= 2.8
         or not 0.1 <= b.distance <= 2.8
+        or any(
+            abs(getattr(a.position, k) - getattr(b.position, k)) > 0.25
+            or abs(getattr(previous.snapshot.position, k)
+                   - getattr(current.snapshot.position, k)) > 0.05
+            for k in ("x", "y", "z")
+        )
     ):
         return None
     return b.entity_id
