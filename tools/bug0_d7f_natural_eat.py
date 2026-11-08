@@ -36,12 +36,14 @@ async def after_real_natural_pickup_eat(
     s50_sidecar: Path,
     d8_second_generation_dev: bool = False,
     d8_prior_rotten_count: int = 0,
+    d11_hunt_generation: int | None = None,
 ) -> bool:
     """One positive first generation, one actual rotten item, no forged RNG.
 
     Zero genuine natural meat is a separate legitimate no-EAT World outcome.
     With two true items, issue only one native EAT and retain one in inventory.
     """
+    d11 = d11_hunt_generation is not None
     passive_gen2 = (
         d8_second_generation_dev
         and isinstance(original_move, tuple) and len(original_move) == 2
@@ -49,6 +51,13 @@ async def after_real_natural_pickup_eat(
     )
     if (
         not isinstance(owner, NormalSessionActionExecutor)
+        or (d11 and (
+            type(d11_hunt_generation) is not int
+            or not 2 <= d11_hunt_generation <= 12
+            or owner._intent_epoch != d11_hunt_generation
+            or d8_second_generation_dev
+            or d8_prior_rotten_count != 0
+        ))
         or not isinstance(original_move, tuple) or len(original_move) != 2
         or original_move[0] is not owner
         or not isinstance(nonmotion_fence, OriginalS49NonMotionFence)
@@ -126,8 +135,10 @@ async def after_real_natural_pickup_eat(
     sid = owner.session_id
     natural_count = report["real_rotten_flesh_count"]
     probe_prefix = (
-        "d8-gen2-natural-food"
-        if d8_second_generation_dev else "d7f-natural-food"
+        f"d11-gen{d11_hunt_generation}-real-food" if d11 else (
+            "d8-gen2-natural-food"
+            if d8_second_generation_dev else "d7f-natural-food"
+        )
     )
     current_meat_total = natural_count + d8_prior_rotten_count
     action_count_before_eat = owner._count
@@ -220,7 +231,10 @@ async def after_real_natural_pickup_eat(
 
     action_id = (
         f"d8-gen2-s49-real-natural-eat-{sid}"
-        if d8_second_generation_dev else f"d7f-s49-real-natural-eat-{sid}"
+        if d8_second_generation_dev else (
+            f"d11-gen{d11_hunt_generation}-s49-real-eat-{sid}"
+            if d11 else f"d7f-s49-real-natural-eat-{sid}"
+        )
     )
     choice = EatCursor(sid).choose(current)
     if (
@@ -318,6 +332,9 @@ async def after_real_natural_pickup_eat(
     report["d7f_nonmotion_unresolved"] = nonmotion_fence.unresolved
     report["d7f_original_total_actions"] = owner._count
     report["d7f_original_attack_count"] = owner._attack_count
+    if d11:
+        report["d11_eat_generation"] = d11_hunt_generation
+        report["d11_hunt_positive_source_only"] = True
     report["d7f_stage"] = (
         "S49_NATURAL_ATTACK_PASSIVE_PICKUP_STOP_S51_EAT_ONE_CYCLE_DEV"
         if passive_gen2
