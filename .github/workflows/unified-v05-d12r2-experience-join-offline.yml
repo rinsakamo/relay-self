@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   offline-experience-source:
@@ -47,3 +48,85 @@ jobs:
             tests/test_d12_experience_bridge.py \
             tools/bug0_d12_third_intent_rearm_post.py \
             tools/bug0_d12_third_intent_rearm_world.py
+
+  original-r2-projection:
+    name: Independently re-audit real D12 R2 original artifact
+    needs: offline-experience-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact immutable integration source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify code HEAD
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Download R2 original one-World evidence (read-only)
+        uses: actions/download-artifact@v4
+        with:
+          name: unified-v05-d12-two-meals-third-original-intent-rearm
+          run-id: 42471117373
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: r2-originals
+      - name: Verify ORIGINAL SHA256SUMS manifest unchanged
+        run: |
+          cd r2-originals
+          test -f SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Independently replay D8+D12 original audits and project history
+        run: |
+          mkdir -p r2-derivatives
+          python -B -m tools.bug0_d12_experience_bridge \
+            --report r2-originals/report.json \
+            --server-log r2-originals/paper_original.log \
+            --nonmotion-fence r2-originals/original_nonmotion_fence.json \
+            --motion-fence r2-originals/original_motion_fence.json \
+            --s50-sidecar r2-originals/s50_native_direct_controls_original.jsonl \
+            --out r2-derivatives/d12_experience_view_read_only.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("r2-derivatives/d12_experience_view_read_only.json")
+          view=json.loads(p.read_text())
+          assert view["source_status"]=="PASS_DEV"
+          assert view["source_audit"]=="D12_TWO_TRUE_MEALS_THIRD_REAL_WORLD_INTENT_REARM_PASS"
+          assert view["world_uuid"]=="d9176e84-afd4-412b-ae65-514d64803393"
+          assert view["native_session_id"]=="16baeebb-9260-4b2f-9f75-6946bb6331ff"
+          events=view["events"]
+          assert len(events)==3
+          assert [x["event_kind"] for x in events]==[
+              "OBSERVED_FOOD_CYCLE","OBSERVED_FOOD_CYCLE",
+              "OBSERVED_WORLD_RESPAWN_AND_INTENT_REARM",
+          ]
+          assert [x["intent_epoch"] for x in events]==[1,2,3]
+          assert [x["observation"]["vanilla_rotten_dropped"] for x in events[:2]]==[2,1]
+          assert [x["observation"]["food_before"] for x in events[:2]]==[11,11]
+          assert [x["observation"]["food_after"] for x in events[:2]]==[15,15]
+          assert events[2]["paper_spawn_tick"]-events[2]["preceding_paper_death_tick"]==600
+          assert events[2]["observation"]["new_original_s49_actions"]==0
+          assert events[2]["observation"]["third_eat"]=="NOT_ISSUED"
+          assert view["retained_action_count"]==7
+          assert view["new_physical_actions"]==0
+          assert view["learning_updates"]==view["memory_writes"]==view["l2_calls"]==0
+          assert not view["third_food_cycle_observed"]
+          print("R2_GENUINE_ORIGINAL_TO_THREE_SOURCE_EVENTS_PASS_DEV")
+          PY
+          (cd r2-derivatives && sha256sum d12_experience_view_read_only.json \
+            > SHA256SUMS.txt)
+      - name: Upload derivative ONLY, never rewrite protected R2 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: d12-r2-read-only-learning-experience-projection
+          path: r2-derivatives/
+          retention-days: 30
+          if-no-files-found: error
