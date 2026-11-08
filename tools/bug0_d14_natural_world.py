@@ -380,7 +380,7 @@ async def observe_natural_world(
 
 async def run(
     report_path: Path, paper_log: Path, journal_path: Path,
-    *, life_factory=None,
+    *, life_factory=None, max_wall_seconds: int | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "classification": "DEV_D14_R3_NATURAL_WORLD_NOT_RUN",
@@ -412,6 +412,12 @@ async def run(
             or os.environ.get("NODE_OPTIONS") is not None
         ):
             raise D14NaturalWorldRejected("EXCLUSIVE_DEV_NATURAL_WORLD_GRANT_MISSING")
+        if max_wall_seconds is not None and (
+            os.environ.get("D14_R5_LOCAL_ONEWORLD_ONLY") != "1"
+            or type(max_wall_seconds) is not int
+            or not 600 <= max_wall_seconds <= 7200
+        ):
+            raise D14NaturalWorldRejected("BOUNDED_R5_LOCAL_WATCHDOG_GRANT_REQUIRED")
         if any(path.exists() or path.is_symlink()
                for path in (report_path, paper_log, journal_path)):
             raise D14NaturalWorldRejected("PROTECTED_OUTPUT_ALREADY_EXISTS")
@@ -454,6 +460,10 @@ async def run(
             life = life_factory(session, report_path.parent, report)
         await observe_natural_world(
             session, server, paper_log, journal_path, report,
+            max_wall_seconds=(
+                max_wall_seconds if max_wall_seconds is not None
+                else MAX_WALL_SECONDS
+            ),
             on_life_step=life.step if life is not None else None,
             on_life_native_stop=(
                 life.stop_due_to_native_loss if life is not None else None
