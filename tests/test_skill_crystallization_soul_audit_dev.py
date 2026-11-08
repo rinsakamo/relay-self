@@ -109,7 +109,10 @@ def test_matched_soul_equal_choices_are_null(tmp_path):
     result = audit_matched_reports(write_protocol(tmp_path))
     assert result["matched_model_requests_except_identity"]
     assert result["raw_status_divergence"] is False
+    assert result["raw_decision_signature_divergence"] is False
+    assert result["reason_text_divergence"] is False
     assert result["admitted_status_divergence"] is False
+    assert result["admitted_decision_signature_divergence"] is False
     assert result["new_worlds"] == result["new_model_calls_in_audit"] == 0
     assert result["soul_effect_or_personality_proven"] is False
 
@@ -119,7 +122,9 @@ def test_raw_probe_divergence_not_confused_with_valid_choice(tmp_path):
         write_protocol(tmp_path, altered="bold")
     )
     assert result["raw_status_divergence"] is True
+    assert result["raw_decision_signature_divergence"] is True
     assert result["admitted_status_divergence"] is False
+    assert result["admitted_decision_signature_divergence"] is False
     assert result["conditions"]["bold"]["semantic_rejection"] == (
         "PROBE_MUST_BE_FALSIFIABLE"
     )
@@ -227,3 +232,57 @@ def test_semantic_validator_recomputed_not_just_raw_divergence(tmp_path):
         ValueError, match="REPORTED_VALIDATION_NOT_INDEPENDENTLY_REPRODUCED"
     ):
         audit_matched_reports(paths)
+
+
+
+def _mutate_response_and_record(path, mutate):
+    response_path = path.parent / "raw" / "response.raw.json"
+    raw = json.loads(response_path.read_text())
+    proposal = json.loads(raw["choices"][0]["message"]["content"])
+    mutate(proposal)
+    raw["choices"][0]["message"]["content"] = json.dumps(proposal)
+    encoded = json.dumps(raw)
+    response_path.write_text(encoded)
+    report = json.loads(path.read_text())
+    report["model_record"]["response_raw"] = encoded
+    report["proposal"] = proposal
+    report["raw_model_choice"] = proposal["status"]
+    path.write_text(json.dumps(report))
+
+
+def test_text_style_change_does_not_count_as_behavioral_choice(tmp_path):
+    paths = write_protocol(tmp_path)
+    _mutate_response_and_record(
+        paths["curious"],
+        lambda proposal: proposal.update(reason="Another explanation entirely"),
+    )
+    result = audit_matched_reports(paths)
+    assert result["reason_text_divergence"] is True
+    assert result["raw_status_divergence"] is False
+    assert result["raw_decision_signature_divergence"] is False
+    assert result["admitted_decision_signature_divergence"] is False
+
+
+def test_valid_probe_is_admitted_choice_divergence(tmp_path):
+    paths = write_protocol(tmp_path)
+
+    def change_to_valid_probe(proposal):
+        proposal.update({
+            "status": "PROBE", "hypothesis": "MOTION_EFFECT_CHANGED",
+            "probe_id": "MOTION_REGIME_PAIR",
+            "prediction": "A_SUCCEEDS_B_FAILS",
+            "evidence_ids": ["shift-experience-010"],
+        })
+
+    _mutate_response_and_record(paths["bold"], change_to_valid_probe)
+    report = json.loads(paths["bold"].read_text())
+    report["choice_semantically_valid"] = True
+    report["status"] = "PROBE"
+    report["validator_error"] = None
+    report["stages"] = ["PROPOSAL_VALIDATED"]
+    paths["bold"].write_text(json.dumps(report))
+    result = audit_matched_reports(paths)
+    assert result["raw_status_divergence"] is True
+    assert result["raw_decision_signature_divergence"] is True
+    assert result["admitted_status_divergence"] is True
+    assert result["admitted_decision_signature_divergence"] is True
