@@ -489,3 +489,13 @@ def test_provider_response_content_mismatch_rejected_before_second_stage(monkeyp
         run_reassessment(first, k3b, k3d, report, mode="gemma",
                          endpoint="http://127.0.0.1:8080/v1/chat/completions",
                          model="stub")
+
+
+def test_deferred_proposal_does_not_open_probe(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    monkeypatch.setattr(mod, "execute_mock_probe", lambda *_a, **_k: pytest.fail("probe opened"))
+    result = run_proposal(*parent_data(), mode="fixture", fixture=chosen_probe(), defer_probe=True)
+    assert result["status"] == "PROBE"
+    assert result["probe"] is None
+    assert "PROPOSAL_VALIDATED" in result["stages"]

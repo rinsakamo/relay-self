@@ -288,14 +288,16 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             response_bytes = resp.read()
             if record_dir is not None:
-                (record_dir / "response.raw.json").write_bytes(response_bytes)
+                with (record_dir / "response.raw.json").open("xb") as stream:
+                    stream.write(response_bytes)
             raw_response = response_bytes.decode("utf-8", errors="replace")
             status = resp.status
     except urllib.error.HTTPError as exc:
         status = exc.code
         response_bytes = exc.read()
         if record_dir is not None:
-            (record_dir / "response.raw.json").write_bytes(response_bytes)
+            with (record_dir / "response.raw.json").open("xb") as stream:
+                stream.write(response_bytes)
         raw_response = response_bytes.decode("utf-8", errors="replace")
         record.update({"http_status": status, "response_raw": raw_response,
                        "elapsed_seconds": time.perf_counter() - start})

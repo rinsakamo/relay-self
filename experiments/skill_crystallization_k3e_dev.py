@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_dev import (
+    TARGET,
     MockIssuer,
     ModelCallFailure,
-    TARGET,
     WorldTrial,
     gemma_l2,
     skill_json_schema,
@@ -228,7 +228,7 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
                  *, mode: str, fixture: dict[str, Any] | None = None,
                  endpoint: str | None = None, model: str | None = None,
                  record_dir: Path | None = None, timeout: float = 300,
-                 mock_grant: bool = True) -> dict[str, Any]:
+                 mock_grant: bool = True, defer_probe: bool = False) -> dict[str, Any]:
     source = _verified_context(first, k3b, k3d)
     if mode not in ("fixture", "gemma"):
         raise ValueError("INVALID_MODE")
@@ -283,6 +283,8 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
     report["stages"].append("PROPOSAL_VALIDATED")
     if valid["status"] == "ABSTAIN":
         report["stages"].append("PROBE_ABSTENTION_ACCEPTED")
+        return report
+    if defer_probe:
         return report
     seed = FIXTURE_PROBE_SEED if mode == "fixture" else REAL_PROBE_SEED
     report["probe"] = execute_mock_probe(valid, seed=seed, mock_grant=mock_grant)
@@ -440,7 +442,7 @@ def run_reassessment(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--phase", choices=("propose", "reassess"), required=True)
+    p.add_argument("--phase", choices=("propose", "probe", "reassess"), required=True)
     p.add_argument("--mode", choices=("fixture", "gemma"), required=True)
     p.add_argument("--first", type=Path, required=True)
     p.add_argument("--k3b-report", type=Path, required=True)
@@ -460,7 +462,20 @@ def main() -> None:
     if a.phase == "propose":
         result = run_proposal(first, k3b, k3d, mode=a.mode, fixture=fixture,
                               endpoint=a.endpoint, model=a.model, timeout=a.timeout,
-                              record_dir=a.record_dir)
+                              record_dir=a.record_dir, defer_probe=True)
+    elif a.phase == "probe":
+        if a.proposal_report is None or a.mode != "gemma":
+            raise ValueError("GEMMA_PROPOSAL_REPORT_REQUIRED")
+        result = json.loads(a.proposal_report.read_text(encoding="utf-8"))
+        source = _verified_context(first, k3b, k3d)
+        if result.get("status") != "PROBE" or result.get("probe") is not None:
+            raise ValueError("UNEXECUTED_VALID_PROBE_REQUIRED")
+        valid = validate_probe(result.get("proposal"), source["ids"])
+        _verify_model_proposal_record(result, source)
+        result["probe"] = execute_mock_probe(valid, seed=REAL_PROBE_SEED, mock_grant=True)
+        result["prediction_assessment"] = ("PREDICTION_MATCHED" if result["probe"]["prediction_matches"]
+                                           else "PREDICTION_FALSIFIED")
+        result["stages"].extend(["MOCK_PROBE_OBSERVED", result["prediction_assessment"]])
     else:
         if a.proposal_report is None:
             raise ValueError("PROPOSAL_REPORT_REQUIRED")
