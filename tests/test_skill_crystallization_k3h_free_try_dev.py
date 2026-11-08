@@ -188,6 +188,7 @@ def test_reflect_after_real_observed_mock_not_auto_install(originals, source):
                             fixture=reflect())
     assert originals == prior
     assert result["schema_validation"] == "PASS"
+    assert result["semantic_validation"] == "PASS"
     assert result["reflection"]["next_decision"] == "TRY_MOVE"
     assert result["skill_installed"] is False
     assert result["skill_evaluated"] is False
@@ -212,6 +213,7 @@ def test_reflect_may_return_valid_source_grounded_tentative_skill(
         mode="fixture", fixture=reflect(skill=skill),
     )
     assert result["schema_validation"] == "PASS"
+    assert result["semantic_validation"] == "PASS"
     assert "TENTATIVE_SKILL_NOT_EVALUATED_OR_INSTALLED" in result["stages"]
     assert not result["skill_installed"]
 
@@ -224,7 +226,8 @@ def test_hallucinated_reflection_evidence_rejected(originals, source):
         *originals, proposal_report=proposal, outcome_report=mock,
         mode="fixture", fixture=reflect(ids=["fabricated-action"]),
     )
-    assert rejected["schema_validation"] == "REJECTED"
+    assert rejected["schema_validation"] == "PASS"
+    assert rejected["semantic_validation"] == "REJECTED"
     assert rejected["reflection"]["evidence_ids"] == ["fabricated-action"]
 
 
@@ -335,3 +338,42 @@ def test_extra_cli_sha_fields_do_not_break_mock_readback(originals, source):
         mode="fixture", fixture=reflect(),
     )
     assert result["schema_validation"] == "PASS"
+
+
+
+def test_invalid_prediction_rejected_after_schema_pass(originals):
+    proposal = run_proposal(
+        *originals, mode="fixture", fixture=trial(
+            choice="TRY_MOVE", arm="A", prediction="BOTH_FAIL"
+        ),
+    )
+    assert proposal["schema_validation"] == "PASS"
+    assert proposal["semantic_validation"] == "REJECTED"
+    assert "VALID_BOUNDED_CHOICE" not in proposal["stages"]
+
+
+def test_no_outcome_from_rejected_semantic_proposal(originals, source):
+    proposal = run_proposal(
+        *originals, mode="fixture", fixture=trial(n=0),
+    )
+    assert proposal["semantic_validation"] == "REJECTED"
+    with pytest.raises(ValueError, match="UNADMITTED_PROPOSAL"):
+        execute_mock(proposal, source, mock_grant=True, result_mode="fixture")
+
+
+def test_prediction_can_be_wrong_without_blocking_experience(originals, source):
+    proposal = run_proposal(
+        *originals, mode="fixture",
+        fixture=trial(choice="TRY_MOVE", arm="A", n=1,
+                      prediction="GOAL_NOT_REACHED"),
+    )
+    assert proposal["semantic_validation"] == "PASS"
+    observed = execute_mock(
+        proposal, source, mock_grant=True, result_mode="fixture",
+    )
+    assert observed["predicted_pattern"] == "GOAL_NOT_REACHED"
+    assert observed["mock_actions"] == 1
+    # Correctness of a prediction is a separate retrospective check.
+    assert "PREDICTION_RECORDED_BUT_NOT_AUTOMATICALLY_SCIENCE_VALIDATED" == (
+        observed["prediction_assessment"]
+    )
