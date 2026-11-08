@@ -154,8 +154,13 @@ jobs:
               assert d['autonomous_rest_or_long_run_proven'] is False
           else:
               assert d['status']=='NOT_EXERCISED'
-              assert src['d9_status']=='NOT_EXERCISED'
               assert d['d8_prior_two_meals_proven'] is False
+              if src.get('d8_first_true_zero_food_not_exercised') is True:
+                  assert src.get('d9_status') is None
+                  assert src['self_eat'] is False
+              else:
+                  assert src['d9_status']=='NOT_EXERCISED'
+                  assert src['self_eat'] is True
           print(d['classification'])
           PY
       - name: Preserve originals and SHA256
