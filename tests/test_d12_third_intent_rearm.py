@@ -7,7 +7,6 @@ import pytest
 
 from tools.bug0_d12_third_intent_rearm_post import D12ThirdAuditRejected, require_third_rearm
 
-
 WORLD = "11111111-1111-4111-8111-111111111111"
 Z1 = "22222222-2222-4222-8222-222222222222"
 Z2 = "33333333-3333-4333-8333-333333333333"
