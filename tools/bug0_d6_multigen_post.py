@@ -50,8 +50,17 @@ def require_vanilla_paper_loot(raw: str) -> None:
 def audit(
     original_log: str, report: dict, *, nonmotion_path: Path,
     motion_path: Path,
+    d10_hunt_until_drop_dev: bool = False,
 ) -> dict:
     operator_forced_zero = report.get("d6_operator_forced_zero") is True
+    limit = 12 if d10_hunt_until_drop_dev else 4
+    if d10_hunt_until_drop_dev and (
+        report.get("d10_until_drop_dev") is not True
+        or report.get("d10_operator_world_generation_safety_limit") != limit
+        or report.get("d10_hunt_trial_safety_limit_not_self_goal") != limit
+        or operator_forced_zero
+    ):
+        raise MultigenAuditRejected("D10 bounded real natural hunt source absent")
     if (
         not isinstance(report, dict) or report.get("status") != "PASS_DEV"
         or report.get("node_exit") != 0 or report.get("java_exit") != 0
@@ -70,7 +79,7 @@ def audit(
         or report.get("self_goal_selected_autonomously") is not False
         or report.get("real_model_calls") != 0
         or report.get("learning_updated") is not False
-        or report.get("d6_multigen_dev_world_trial_limit") != 4
+        or report.get("d6_multigen_dev_world_trial_limit") != limit
         or "RSELF_RESPAWN_FAULT" in original_log
         or "RSELF_NATURAL_DROP_FAULT" in original_log
         or "RSELF_LOOT_STAGED" in original_log
@@ -121,7 +130,7 @@ def audit(
     rearm = report.get("d6_multigen_rearms", [])
     if (
         not isinstance(epochs, list)
-        or not 1 <= len(epochs) <= 4
+        or not 1 <= len(epochs) <= limit
         or len(rearm) != len(epochs)-1
         or not isinstance(report.get("session_id"), str)
         or not report["session_id"]
@@ -266,13 +275,16 @@ def audit(
         seen_actions.add(a["action_id"])
         last_attack_seq = a["after_seq"]
     if (
-        len(epochs) == 4 and not positive
+        len(epochs) == limit and not positive
         and (
             report.get("d6_multigen_classification")
             != (
-                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
-                if operator_forced_zero
-                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                "D10_SAFETY_BUDGET_EXHAUSTED_NO_DROP"
+                if d10_hunt_until_drop_dev else (
+                    "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                    if operator_forced_zero
+                    else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                )
             )
             or report.get("d6_multigen_ci_limit_reached_not_self_goal_completed")
             is not True
@@ -335,22 +347,53 @@ def audit(
             first_move_seq = m["s15_after_seq"]
     else:
         if (
-            len(epochs) != 4
+            len(epochs) != limit
             or moves
             or motion.actions
             or report.get("d6_multigen_classification")
             != (
-                "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
-                if operator_forced_zero
-                else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                "D10_SAFETY_BUDGET_EXHAUSTED_NO_DROP"
+                if d10_hunt_until_drop_dev else (
+                    "D6_MULTIGEN_FOUR_OPERATOR_FORCED_ZERO_KILLS_PASS"
+                    if operator_forced_zero
+                    else "D6_MULTIGEN_BOUNDED_FOUR_TRUE_ZERO_DROPS_PASS"
+                )
             )
         ):
             raise MultigenAuditRejected("all zero should continue until CI trial cap")
+    if d10_hunt_until_drop_dev and (
+        report.get("d10_original_kills") != len(epochs)
+        or report.get("d10_natural_counts")
+            != [row["real_rotten_count"] for row in epochs]
+        or report.get("d10_all_prior_true_zero") is not True
+        or report.get("d10_hunt_goal_reached") is not bool(positive)
+        or report.get("d10_first_natural_positive_generation")
+            != (epochs[-1]["generation"] if positive else None)
+        or report.get("d10_hunt_stop_reason")
+            != (
+                "TRUE_NATURAL_DROP_AND_PICKUP"
+                if positive else "DEV_WORLD_GENERATION_SAFETY_LIMIT"
+            )
+    ):
+        raise MultigenAuditRejected("D10 stop-on-first-real-drop semantics unproven")
     return {
-        "classification": report["d6_multigen_classification"],
-        "status": "PASS_DEV",
+        "classification": (
+            "D10_TRUE_NATURAL_DROP_AND_ORIGINAL_S49_PICKUP_PASS"
+            if d10_hunt_until_drop_dev and positive
+            else "D10_DEV_SAFETY_LIMIT_REACHED_NO_DROP_NOT_EXERCISED"
+            if d10_hunt_until_drop_dev
+            else report["d6_multigen_classification"]
+        ),
+        "status": (
+            "NOT_EXERCISED"
+            if d10_hunt_until_drop_dev and not positive else "PASS_DEV"
+        ),
         "operator_forced_zero_not_vanilla_rng": operator_forced_zero,
-        "paper_world_uuid": paper_world,
+        "first_positive_generation": epochs[-1]["generation"] if positive else None,
+        "hunt_goal_first_true_natural_drop_picked": bool(positive),
+        "d10_dev_safety_limit_not_product_policy": (
+            limit if d10_hunt_until_drop_dev else None
+        ),        "paper_world_uuid": paper_world,
         "session_id": sid,
         "completed_original_s49_kill_generations": len(epochs),
         "natural_counts": [e["real_rotten_count"] for e in epochs],
