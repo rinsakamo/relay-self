@@ -417,3 +417,52 @@ def test_manifest_preflight_refuses_unlisted_input(tmp_path):
     )
     with pytest.raises(ValueError, match="ORIGINAL_INPUT_NOT_MANIFESTED"):
         verify_input_manifests([a])
+
+
+@pytest.mark.parametrize("invalid", [0, 11, True, 2.5])
+def test_model_client_rejects_out_of_range_budget_before_post(invalid, monkeypatch):
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *_a, **_kw: pytest.fail(
+        "Invalid budget must fail before HTTP"))
+    with pytest.raises(ValueError, match="INVALID_L2_ACTION_BUDGET"):
+        gemma_l2(
+            [], endpoint="http://127.0.0.1:8080/v1/chat/completions",
+            model="verified", timeout=2, max_actions_allowed=invalid,
+        )
+
+
+def test_default_model_wire_remains_four_action_budget(monkeypatch):
+    seen = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": json.dumps({"status": "ABSTAIN"}),
+                                "reasoning_content": None},
+                }],
+                "usage": {},
+            }).encode()
+
+    def fake_http(request, *, timeout):
+        del timeout
+        seen.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_http)
+    response, _record = gemma_l2(
+        [], endpoint="http://127.0.0.1:8080/v1/chat/completions",
+        model="verified", timeout=2,
+    )
+    assert response == {"status": "ABSTAIN"}
+    assert len(seen) == 1
+    assert json.loads(seen[0]["messages"][1]["content"])["maximum_actions"] == 4
+    assert seen[0]["response_format"]["json_schema"]["schema"] == skill_json_schema()
