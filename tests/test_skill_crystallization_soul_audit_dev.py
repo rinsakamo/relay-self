@@ -8,7 +8,10 @@ import json
 
 import pytest
 
-from experiments.skill_crystallization_k3g_ten_action_choice_dev import choice_schema
+from experiments.skill_crystallization_k3g_ten_action_choice_dev import (
+    K3G_SYSTEM_INSTRUCTION,
+    choice_schema,
+)
 from experiments.skill_crystallization_soul_audit_dev import audit_matched_reports
 from experiments.skill_crystallization_soul_matched_dev import SOUL_DIRECTIVES
 
@@ -23,7 +26,7 @@ def write_protocol(tmp_path, *, altered=None):
         folder = tmp_path / name
         raw = folder / "raw"
         raw.mkdir(parents=True)
-        system = "You are L2. Return only JSON with ALL required fields."
+        system = K3G_SYSTEM_INSTRUCTION
         if directive is not None:
             system = (
                 "Stable identity value prior (not World evidence or "
