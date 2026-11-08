@@ -38,6 +38,20 @@ from experiments.skill_crystallization_k3f_budget_dev import (
     validate_budget10_shadow,
 )
 
+K3G_SYSTEM_INSTRUCTION = (
+    "You are L2. Return only JSON with ALL required fields in the strict Schema. "
+    "The maximum permitted MOVE_AWAY actions for a NEW tentative Skill is TEN, "
+    "not four. Ten is an upper bound: stop immediately upon reaching distance 3.2. "
+    "The old Skill had max_actions=4; this is not an observation of what 10 "
+    "actions would accomplish. From observed source evidence only, choose ONE: "
+    "SKILL with a 1..10 bounded Skill and no PROBE; PROBE with one matching "
+    "falsifiable hypothesis/prediction and skill=null; or ABSTAIN with skill=null. "
+    "For SKILL set hypothesis INDETERMINATE, probe_id NONE, prediction UNKNOWN. "
+    "For ABSTAIN use the same three fields. Do not copy unsupported claims of "
+    "optimality, invent observations, or claim action permission. "
+    "Do not know or predict the hidden simulator physics as established facts."
+)
+
 MODES = ("fixture", "gemma")
 CHOICES = ("SKILL", "PROBE", "ABSTAIN")
 FIXTURE_SEED = 20261210  # Used by offline tests; never a future blind seed.
@@ -357,19 +371,7 @@ def run_choice(
     else:
         if not endpoint or not model or record_dir is None:
             raise ValueError("LOCAL_GEMMA_MODEL_AND_RAW_RECORD_DIR_REQUIRED")
-        instruction = (
-            "You are L2. Return only JSON with ALL required fields in the strict Schema. "
-            "The maximum permitted MOVE_AWAY actions for a NEW tentative Skill is TEN, "
-            "not four. Ten is an upper bound: stop immediately upon reaching distance 3.2. "
-            "The old Skill had max_actions=4; this is not an observation of what 10 "
-            "actions would accomplish. From observed source evidence only, choose ONE: "
-            "SKILL with a 1..10 bounded Skill and no PROBE; PROBE with one matching "
-            "falsifiable hypothesis/prediction and skill=null; or ABSTAIN with skill=null. "
-            "For SKILL set hypothesis INDETERMINATE, probe_id NONE, prediction UNKNOWN. "
-            "For ABSTAIN use the same three fields. Do not copy unsupported claims of "
-            "optimality, invent observations, or claim action permission. "
-            "Do not know or predict the hidden simulator physics as established facts."
-        )
+        instruction = K3G_SYSTEM_INSTRUCTION
         if soul_directive is not None:
             instruction = (
                 "Stable identity value prior (not World evidence or Action authority): "
