@@ -1,0 +1,236 @@
+"""K3-E: deterministic mock probe and one-shot L2 request contracts."""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from experiments.skill_crystallization_dev import make_trials, observed_training
+from experiments.skill_crystallization_k3b_dev import prepare_revision
+from experiments.skill_crystallization_k3e_dev import (
+    FIXTURE_PROBE_SEED,
+    REAL_PROBE_SEED,
+    _verified_context,
+    execute_mock_probe,
+    probe_protocols,
+    proposal_schema,
+    run_proposal,
+    run_reassessment,
+    update_schema,
+    validate_probe,
+    validate_update,
+)
+
+
+def parent_data():
+    training = observed_training(make_trials(20261108, 16, phase="train"))
+    old = {
+        "version": 1, "skill_id": "move_away_on_normal_surface", "surface": "normal",
+        "min_distance": 2.314917, "max_distance": 2.457525,
+        "target_distance": 3.2, "max_actions": 4, "on_failure": "ESCALATE",
+        "evidence_ids": [x["experience_id"] for x in training
+                         if x["surface_cue"] == "normal"],
+    }
+    first = {"candidate_raw": old, "training": training}
+    state = prepare_revision(first, {"shift_observations": []})
+    assert state["suspended"]
+    prior_skill = {**old, "skill_id": "renamed_with_new_evidence",
+                   "evidence_ids": [state["shift_observations"][0]["experience_id"]]}
+    k3b = {
+        "shift_observations": state["shift_observations"],
+        "schema_validation": "PASS", "proposal_status": "SKILL",
+        "proposal": {"status": "SKILL", "reason": "renamed", "skill": prior_skill},
+    }
+    k3d = {
+        "mode": "gemma", "schema_validation": "PASS", "proposal_status": "ABSTAIN",
+        "proposal": {"status": "ABSTAIN", "skill": None,
+                     "reason": "Already optimized is an unverified claim."},
+    }
+    return first, k3b, k3d
+
+
+def chosen_probe(probe_id="START_MARGIN_PAIR"):
+    return {
+        "status": "PROBE",
+        "hypothesis": ("START_MARGIN_SENSITIVE" if probe_id == "START_MARGIN_PAIR"
+                       else "MOTION_EFFECT_CHANGED"),
+        "probe_id": probe_id,
+        "prediction": "A_FAILS_B_SUCCEEDS" if probe_id == "START_MARGIN_PAIR"
+        else "A_SUCCEEDS_B_FAILS",
+        "reason": "Distinguish hypotheses with paired conditions, not a Skill proposal.",
+        "evidence_ids": ["shift-experience-010", "shift-experience-011"],
+    }
+
+
+def test_wire_schema_closed_and_fixed_protocols():
+    assert proposal_schema()["additionalProperties"] is False
+    assert update_schema()["additionalProperties"] is False
+    assert set(proposal_schema()["properties"]) == set(proposal_schema()["required"])
+    assert probe_protocols()["common"]["max_actions_per_trial"] == 4
+    assert "hidden_effects" not in json.dumps(probe_protocols())
+
+
+def test_context_preserves_prior_abstention_as_unproven():
+    src = _verified_context(*parent_data())
+    assert "unverified" in src["k3d_abstain_reason"]
+    assert len(src["evidence"]) == 28
+
+
+def test_valid_margin_probe_observation_and_no_fallback():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture=chosen_probe())
+    assert r["status"] == "PROBE"
+    assert r["probe"]["seed"] == FIXTURE_PROBE_SEED
+    assert r["probe"]["observed_pattern"] == "A_FAILS_B_SUCCEEDS"
+    assert r["probe"]["prediction_matches"] is True
+    assert len(r["probe"]["observations"]) == 2
+    assert r["probe"]["mock_actions"] <= 8
+    assert all(o["action_count"] <= 4 for o in r["probe"]["observations"])
+    assert r["holdout_20261126"] == "UNOPENED"
+    assert r["model_calls_in_mock_probe"] == 0
+
+
+def test_regime_probe_prediction_can_be_falsified():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture",
+                     fixture=chosen_probe("MOTION_REGIME_PAIR"))
+    assert r["probe"]["observed_pattern"] == "BOTH_SUCCEED"
+    assert r["probe"]["prediction_matches"] is False
+    assert r["probe"]["observations"][0]["start_distance"] == 2.4
+    assert r["probe"]["observations"][1]["start_distance"] == 2.4
+
+
+def test_abstain_does_not_probe_or_expose_seed():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture={
+        "status": "ABSTAIN", "hypothesis": "INDETERMINATE", "probe_id": "NONE",
+        "prediction": "UNKNOWN", "reason": "More evidence not warranted",
+        "evidence_ids": [],
+    })
+    assert r["status"] == "ABSTAIN"
+    assert r["probe"] is None
+    assert r["holdout_20261126"] == "UNOPENED"
+
+
+@pytest.mark.parametrize("change,code", [
+    ({"hypothesis": "MOTION_EFFECT_CHANGED"}, "NON_DISCRIMINATING"),
+    ({"prediction": "UNKNOWN"}, "NON_DISCRIMINATING"),
+    ({"evidence_ids": ["future-unknown"]}, "UNSOURCED"),
+    ({"evidence_ids": []}, "UNSOURCED"),
+])
+def test_reject_unsourced_or_non_discriminating_proposal(change, code):
+    first, k3b, k3d = parent_data()
+    value = {**chosen_probe(), **change}
+    with pytest.raises(ValueError, match=code):
+        validate_probe(value, _verified_context(first, k3b, k3d)["ids"])
+
+
+def test_bad_abstain_selection_rejected():
+    first, k3b, k3d = parent_data()
+    with pytest.raises(ValueError, match="ABSTAIN_MUST_NOT_SELECT_PROBE"):
+        validate_probe({**chosen_probe(), "status": "ABSTAIN"},
+                       _verified_context(first, k3b, k3d)["ids"])
+
+
+def test_reject_probe_without_mock_grant():
+    with pytest.raises(ValueError, match="PROBE_MOCK_GRANT_REQUIRED"):
+        execute_mock_probe(chosen_probe(), seed=FIXTURE_PROBE_SEED, mock_grant=False)
+
+
+def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    calls = []
+
+    def stub(evidence, **kwargs):
+        calls.append((evidence, kwargs))
+        return chosen_probe(), {"finish_reason": "stop"}
+
+    monkeypatch.setattr(mod, "gemma_l2", stub)
+    r = run_proposal(first, k3b, k3d, mode="gemma",
+                     endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                     model="verified")
+    assert len(calls) == 1
+    ctx = calls[0][1]["revision_context"]
+    assert "20261128" not in json.dumps(ctx)
+    assert "20261126" not in json.dumps(ctx)
+    assert "observed_pattern" not in json.dumps(ctx)
+    assert "hidden_effects" not in json.dumps(ctx)
+    assert calls[0][1]["response_schema"] == proposal_schema()
+    assert "not creating a Skill" in calls[0][1]["system_instruction"]
+    assert r["probe"]["seed"] == REAL_PROBE_SEED
+    assert r["provider"]["finish_reason"] == "stop"
+
+
+def test_explicit_reassess_after_observed_probe_without_skill_execution():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture=chosen_probe())
+    result = run_reassessment(first, k3b, k3d, r, mode="fixture", fixture={
+        "status": "UPDATE", "hypothesis": "START_MARGIN_SENSITIVE",
+        "reason": "Paired outcomes differ; this is not yet a universal rule.",
+        "evidence_ids": ["k3e-probe-A", "k3e-probe-B"], "skill_candidate": None,
+    })
+    assert result["status"] == "UPDATE"
+    assert result["skill_execution"] == "NOT_RUN"
+    assert result["new_skill_installed"] is False
+    assert result["holdout_20261126"] == "UNOPENED"
+
+
+def test_reassess_rejects_mutated_probe_trace():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture=chosen_probe())
+    r["probe"]["observations"][0]["observed_trace"][1] = 999.0
+    with pytest.raises(ValueError, match="PROBE_OBSERVATION_SOURCE_MISMATCH"):
+        run_reassessment(first, k3b, k3d, r, mode="fixture", fixture={})
+
+
+def test_no_reassessment_of_abstention():
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture={
+        "status": "ABSTAIN", "hypothesis": "INDETERMINATE", "probe_id": "NONE",
+        "prediction": "UNKNOWN", "reason": "No probe", "evidence_ids": [],
+    })
+    with pytest.raises(ValueError, match="VALID_PROBE_REPORT_REQUIRED"):
+        run_reassessment(first, k3b, k3d, r, mode="fixture", fixture={})
+
+
+def test_update_rejects_invented_source_and_bad_skill():
+    first, k3b, k3d = parent_data()
+    ids = _verified_context(first, k3b, k3d)["ids"] | {"k3e-probe-A", "k3e-probe-B"}
+    bad = {"status": "UPDATE", "hypothesis": "START_MARGIN_SENSITIVE",
+           "reason": "revised", "evidence_ids": ["unobserved"], "skill_candidate": None}
+    with pytest.raises(ValueError, match="UNSOURCED"):
+        validate_update(bad, ids)
+    bad["evidence_ids"] = ["k3e-probe-A"]
+    bad["skill_candidate"] = {"foo": "bar"}
+    with pytest.raises(ValueError, match="SCHEMA_INVALID"):
+        validate_update(bad, ids)
+
+
+def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    r = run_proposal(first, k3b, k3d, mode="fixture", fixture=chosen_probe())
+    r["mode"] = "gemma"
+    r["probe"] = execute_mock_probe(r["proposal"], seed=REAL_PROBE_SEED, mock_grant=True)
+    got = []
+
+    def stub(evidence, **kwargs):
+        got.append((evidence, kwargs))
+        return {"status": "ABSTAIN", "hypothesis": "INDETERMINATE",
+                "reason": "Inconclusive pair", "evidence_ids": [],
+                "skill_candidate": None}, {}
+
+    monkeypatch.setattr(mod, "gemma_l2", stub)
+    z = run_reassessment(first, k3b, k3d, r, mode="gemma",
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions", model="test")
+    assert z["status"] == "ABSTAIN"
+    assert len(got) == 1
+    assert len(got[0][0]) == 30
+    assert "k3e-probe-A" in json.dumps(got[0][0])
+    assert "k3e-probe-B" in json.dumps(got[0][0])
+    assert got[0][1]["response_schema"] == update_schema()
+    assert "20261126" not in json.dumps(got[0][1]["revision_context"])
