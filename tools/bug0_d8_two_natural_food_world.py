@@ -148,11 +148,14 @@ async def continue_second_natural_food_cycle(
         "execute as RelaySelf at @s run tag "
         "@e[type=minecraft:zombie,sort=nearest,limit=1,distance=..16] "
         "add RelaySelfAttackTarget",
-        "execute as RelaySelf at @s run tp "
-        "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ^ ^ ^-2.2",
+        # Disable AI while the fresh target is still at a safer distance.
+        # Teleporting an AI-active zombie within striking range first can
+        # reduce native Self health before the unchanged S49 viable-body gate.
         "execute as RelaySelf at @s run data merge entity "
         "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] "
         "{NoAI:1b,Silent:1b,Health:0.8f}",
+        "execute as RelaySelf at @s run tp "
+        "@e[type=minecraft:zombie,tag=RelaySelfAttackTarget,limit=1] ^ ^ ^-2.2",
         "execute as RelaySelf at @s run kill "
         "@e[type=minecraft:experience_orb,distance=..12]",
         "effect give RelaySelf minecraft:hunger 70 20 true",
