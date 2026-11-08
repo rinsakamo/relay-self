@@ -68,3 +68,11 @@ Fixture mode uses `--mode fixture --proposal-file PATH`; this is not real Gemma 
 - **No new real Gemma response is claimed** until a LocalCodex run actually performs the one-shot POST and preserves evidence.
 
 DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
+
+## One-shot owner-host result (2026-11-08)
+
+At inference HEAD `5d5401eaf730f604c647a13ebe8b21547d0a2553`, one real Gemma completion POST returned `ABSTAIN`, `skill=null`, with no retry. Independent raw response readback passed JSON Schema and proposal validation; Skill validation and Skill execution were inapplicable. The reserved seed 20261126 was not opened. The old Skill remains suspended. No fixed/CHEAP/Goal comparison is claimed for this result.
+
+The reason correctly identifies the four-action budget, target and the two failed observations. Its assertion that the configuration is already optimized is unsupported; the cited 3.13 truncates the actual 3.138027. This outcome demonstrates accepted abstention, not a changed policy or conditional recrystallization. Request `strict=true` and the checked source's schema-to-grammar path were verified, but independent runtime enforcement instrumentation was not available; do not equate the passing response alone with proof of enforcement. Detailed evidence is in `evidence/l431-k3d-gemma-20261108/`.
+
+Focused tests use the actual K1/K3-B/K3-C/K3-D parent modules. Existing fixture checks do not qualify as the reserved real-model holdout. This section supersedes the earlier NOT_RUN status and example command above.
