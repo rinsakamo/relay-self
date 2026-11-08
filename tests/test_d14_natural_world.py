@@ -217,22 +217,18 @@ def test_off_by_one_respawn_world_clock_rejected(tmp_path):
 
 
 def test_noncontiguous_paper_checkpoints_rejected():
-    lines = raw_lines()
-    t = NaturalPaperTimeline()
-    for i, row in enumerate(lines):
-        if i == 4:  # Skip one 200tick original sample.
+    timeline = NaturalPaperTimeline()
+    for row in raw_lines():
+        if "elapsed_ticks=400 " in row:
             continue
-        with pytest.raises(D14NaturalWorldRejected) if i == 5 else _optional_context():
-            t.admit(marker_kind(row), row)
-        if i == 5:
-            break
-
-
-class _optional_context:
-    def __enter__(self):
-        return None
-    def __exit__(self, _t, _e, _tb):
-        return False
+        if "elapsed_ticks=600 " in row:
+            with pytest.raises(
+                D14NaturalWorldRejected, match="NONCONTIGUOUS_PAPER_TICK_SAMPLES"
+            ):
+                timeline.admit(marker_kind(row), row)
+            return
+        timeline.admit(marker_kind(row), row)
+    pytest.fail("expected 600tick sample not observed")
 
 
 def test_no_duplicate_terminal_and_no_fabricated_prediction():
