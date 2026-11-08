@@ -42,6 +42,11 @@ async def after_real_natural_pickup_eat(
     Zero genuine natural meat is a separate legitimate no-EAT World outcome.
     With two true items, issue only one native EAT and retain one in inventory.
     """
+    passive_gen2 = (
+        d8_second_generation_dev
+        and isinstance(original_move, tuple) and len(original_move) == 2
+        and original_move[0] is owner and original_move[1] is None
+    )
     if (
         not isinstance(owner, NormalSessionActionExecutor)
         or not isinstance(original_move, tuple) or len(original_move) != 2
@@ -52,10 +57,18 @@ async def after_real_natural_pickup_eat(
             owner._attack_count + int(d8_second_generation_dev)
         )
         or owner._epoch_attack_count < 1
-        or not 1 <= (
-            owner._count - owner._epoch_action_count_start
-            - owner._epoch_attack_count
-        ) <= 4
+        or (
+            passive_gen2
+            and owner._count - owner._epoch_action_count_start
+                != owner._epoch_attack_count
+        )
+        or (
+            not passive_gen2
+            and not 1 <= (
+                owner._count - owner._epoch_action_count_start
+                - owner._epoch_attack_count
+            ) <= 4
+        )
         or (
             d8_second_generation_dev
             and (
@@ -67,17 +80,35 @@ async def after_real_natural_pickup_eat(
         or (not d8_second_generation_dev and d8_prior_rotten_count != 0)
         or len(owner._dispatched) != owner._count
         or owner.supervisor.open_actions
-        or not owner._post_move_settling_unqualified
+        or (
+            passive_gen2 and owner._post_move_settling_unqualified
+        )
+        or (
+            not passive_gen2 and not owner._post_move_settling_unqualified
+        )
         or not report.get("self_attack_principal_attested")
         or report.get("real_rotten_flesh_count") not in (1, 2)
         or report.get("d4_natural_count") != report["real_rotten_flesh_count"]
         or not report.get("d4_precombat_hunger_qualified")
         or not report.get("d7f_operator_hunger_effect_dev")
         or report.get("d6_item_origin") != "ACTUAL_PAPER_ZOMBIE_DEATH_EVENT"
-        or not report.get("d6_d_same_attack_move_supervisor")
-        or not 1 <= len(report.get("d6_original_s49_move_actions", ())) <= 4
-        or original_move[1].terminal.action_id != (
-            report["d6_original_s49_move_actions"][-1]["action_id"]
+        or (
+            not passive_gen2
+            and (
+                not report.get("d6_d_same_attack_move_supervisor")
+                or not 1 <= len(report.get("d6_original_s49_move_actions", ())) <= 4
+                or original_move[1].terminal.action_id != (
+                    report["d6_original_s49_move_actions"][-1]["action_id"]
+                )
+            )
+        )
+        or (
+            passive_gen2
+            and (
+                report.get("d6_original_s49_move_actions") != []
+                or not report.get("d8_original_second_attack_action_id")
+                or type(report.get("d8_original_second_attack_effect_seq")) is not int
+            )
         )
         or not report.get("d4_paper_item_spawn")
         or not report.get("d4_paper_item_pickup")
@@ -144,26 +175,46 @@ async def after_real_natural_pickup_eat(
     ):
         raise D7FNaturalEatRejected("fresh original S49 L0 food choice changed")
 
-    stop = owner.admit_d7_live_staged_stop_dev(
-        session, original_move[1],
-        paper_log=log_path, s50_sidecar=s50_sidecar,
-        paper_staged=report["d4_paper_item_spawn"],
-        paper_pickup=report["d4_paper_item_pickup"],
-        paper_natural_death=report["paper_loot_death"],
-        natural_source_dev=True,
-        d8_next_generation_dev=d8_second_generation_dev,
-        native_before=earlier, native_after=current,
-    )
+    if passive_gen2:
+        stop = owner.admit_d8_passive_natural_stop_dev(
+            session, paper_log=log_path, s50_sidecar=s50_sidecar,
+            paper_staged=report["d4_paper_item_spawn"],
+            paper_pickup=report["d4_paper_item_pickup"],
+            paper_natural_death=report["paper_loot_death"],
+            attack_action_id=report["d8_original_second_attack_action_id"],
+            attack_effect_seq=report["d8_original_second_attack_effect_seq"],
+            native_before=earlier, native_after=current,
+            prior_rotten_count=d8_prior_rotten_count,
+            new_natural_count=natural_count,
+        )
+    else:
+        stop = owner.admit_d7_live_staged_stop_dev(
+            session, original_move[1],
+            paper_log=log_path, s50_sidecar=s50_sidecar,
+            paper_staged=report["d4_paper_item_spawn"],
+            paper_pickup=report["d4_paper_item_pickup"],
+            paper_natural_death=report["paper_loot_death"],
+            natural_source_dev=True,
+            d8_next_generation_dev=d8_second_generation_dev,
+            native_before=earlier, native_after=current,
+        )
     if (
         stop.classification != (
-            "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
-            if d8_second_generation_dev
-            else "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+            "D8_DEV_LIVE_SECOND_NATURAL_PASSIVE_PICKUP_STEADY_SOURCE"
+            if passive_gen2 else (
+                "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
+                if d8_second_generation_dev
+                else "D7_F_DEV_LIVE_NATURAL_BODY_STEADY_SOURCE"
+            )
         )
         or stop.paper_pickup_tick <= 0
     ):
         raise D7FNaturalEatRejected("natural STOP source was not original Paper")
     report["d7f_live_natural_stop"] = asdict(stop)
+    if d8_second_generation_dev:
+        report["d8_natural_pickup_mode"] = (
+            "PASSIVE_NO_MOVE" if passive_gen2 else "ORIGINAL_S49_MOVE"
+        )
     report["d7f_stop_original_owner_admitted_dev"] = True
     report["d7f_server_effective_s15_clear_tick_attested"] = False
 
@@ -267,5 +318,9 @@ async def after_real_natural_pickup_eat(
     report["d7f_nonmotion_unresolved"] = nonmotion_fence.unresolved
     report["d7f_original_total_actions"] = owner._count
     report["d7f_original_attack_count"] = owner._attack_count
-    report["d7f_stage"] = "S49_NATURAL_ATTACK_MOVE_STOP_S51_EAT_ONE_CYCLE_DEV"
+    report["d7f_stage"] = (
+        "S49_NATURAL_ATTACK_PASSIVE_PICKUP_STOP_S51_EAT_ONE_CYCLE_DEV"
+        if passive_gen2
+        else "S49_NATURAL_ATTACK_MOVE_STOP_S51_EAT_ONE_CYCLE_DEV"
+    )
     return True
