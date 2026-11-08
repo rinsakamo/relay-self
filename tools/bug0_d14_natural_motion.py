@@ -19,6 +19,7 @@ from adapters.mineflayer.normal_action import (
     NormalWorldL0,
 )
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.s31a_real_server_ci import S31AQualificationError
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     S34EvidenceFailure,
     _native_epoch_two,
@@ -114,7 +115,11 @@ class NaturalOriginalS49Motion:
                 continue
             try:
                 choice = self.host._check(event, probe)
-            except (ReactiveL0Rejected, S34EvidenceFailure, WorldChoiceRejected):
+            except (
+                ReactiveL0Rejected, S31AQualificationError,
+                S34EvidenceFailure, WorldChoiceRejected,
+            ):
+                # An incomplete native view is not a new Action grant.
                 continue
             if choice.selection is WorldChoiceKind.MOVE_AWAY:
                 return event
