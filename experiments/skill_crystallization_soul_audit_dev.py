@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_k3g_ten_action_choice_dev import (
+    K3G_SYSTEM_INSTRUCTION,
     _independent_schema_check,
     choice_schema,
     validate_choice,
@@ -88,7 +89,7 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
         sys = request["messages"][0]["content"]
         normalized = copy.deepcopy(request)
         if condition == "neutral":
-            if not sys.startswith("You are L2. Return only JSON"):
+            if sys != K3G_SYSTEM_INSTRUCTION:
                 raise ValueError("NEUTRAL_ORIGINAL_SYSTEM_CHANGED")
             baseline_system = sys
             baseline_request = normalized
