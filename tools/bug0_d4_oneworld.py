@@ -454,6 +454,8 @@ async def run(
                     else ""
                 ) + (
                     "d7-paper-tick-observer: true\n"
+                    + ("d7-paper-tick-max-rows: 12000\n"
+                       if d14_tick_endurance_dev else "")
                     if name == "RelayZombieDropWitnessDev"
                     and d7_native_controls_path is not None
                     and os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") == "1"
