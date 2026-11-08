@@ -40,6 +40,7 @@ def audit_d10(raw: str, report: dict, *, nonmotion_path: Path,
             raise MultigenAuditRejected("positive natural drop not genuinely collected")
     elif (
         len(result["natural_counts"]) != 12
+        or any(count != 0 for count in result["natural_counts"])
         or result["first_positive_generation"] is not None
         or result["natural_item_uuid"] is not None
         or result["original_move_count"] != 0
