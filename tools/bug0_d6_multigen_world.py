@@ -206,7 +206,9 @@ async def continue_after_first_respawn(
         )
         report["d6_multigen_final_original_s49_action_count"] = owner._count
         report["d6_multigen_final_original_attack_count"] = owner._attack_count
-        report["d6_multigen_final_original_move_count"] = owner._count - owner._attack_count
+        report["d6_multigen_final_original_move_count"] = (
+            owner._count - owner._attack_count - int(d11_hunt_then_eat_dev)
+        )
         report["d6_multigen_same_supervisor"] = owner.supervisor is preserved_supervisor
         report["d6_multigen_no_eat"] = not d11_hunt_then_eat_dev
         if d11_hunt_then_eat_dev:
