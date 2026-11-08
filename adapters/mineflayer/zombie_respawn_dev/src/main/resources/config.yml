@@ -3,3 +3,10 @@
 # This file does not expose any Self-side timer/rate/API.
 dev-enabled: false
 target-player: RelaySelf
+
+# D14 opt-in only: observe a single World for exactly 10000 server ticks
+# after initial managed-zombie spawn. Not a zombie-generation limit.
+# Keeps vanilla loot RNG and the existing death + 600-tick respawn rule.
+dev-tick-endurance-enabled: false
+dev-tick-endurance-ticks: 0
+dev-tick-sample-interval: 200
