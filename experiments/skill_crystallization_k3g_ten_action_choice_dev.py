@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_dev import (
+    TARGET,
     MockIssuer,
     ModelCallFailure,
-    TARGET,
     WorldTrial,
     applicable,
     cue_for,
@@ -245,9 +245,13 @@ def paired_evaluation(old: dict[str, Any], revised: dict[str, Any], *,
             "changed_selection": 0, "changed_trace": 0,
             "new_selected_failure_escalations": 0,
             "automatic_postfailure_actions": 0,
+            "fixed_max_actions": 0, "cheap_max_actions": 0,
+            "old_max_actions": 0, "new_max_actions": 0,
+            "old_fallbacks": 0, "new_fallbacks": 0,
         }
         for key in REGIMES
     }
+    rows = []
     for regime, trial in fresh_trials(seed, n=n):
         base = run_baseline(trial)
         cheap = _cheap(trial)
@@ -264,12 +268,19 @@ def paired_evaluation(old: dict[str, Any], revised: dict[str, Any], *,
         for prefix, result in (("fixed", base), ("cheap", cheap),
                                ("old", a["result"]), ("new", b["result"])):
             row[f"{prefix}_actions"] += result["action_count"]
+            row[f"{prefix}_max_actions"] = max(
+                row[f"{prefix}_max_actions"], result["action_count"]
+            )
         row["changed_selection"] += int(a["selected"] != b["selected"])
         row["changed_trace"] += int(a["result"]["trace"] != b["result"]["trace"])
         row["new_selected_failure_escalations"] += int(b["escalated"])
+        row["old_fallbacks"] += int(not a["selected"])
+        row["new_fallbacks"] += int(not b["selected"])
+        rows.append({"regime": regime, "session": trial.session,
+                     "fixed": base, "cheap": cheap, "old": a, "new": b})
     return {
         "classification": "DEV_ONLY_NEW_INDEPENDENT_SYNTHETIC_HOLDOUT",
-        "seed": seed, "count": n, "by_regime": summary,
+        "seed": seed, "count": n, "by_regime": summary, "trials": rows,
         "physical_actions": 0, "model_calls_in_mock": 0,
         "note": "All Action counts are mock costs, not physical energy. "
                 "No fallback after a selected Skill failed.",

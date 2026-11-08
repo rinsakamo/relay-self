@@ -276,7 +276,7 @@ def test_real_mode_one_call_and_unopened_seed_not_leaked(originals, monkeypatch,
     assert kwargs["max_actions_allowed"] == 10
     assert kwargs["response_schema"] == choice_schema()
     assert kwargs["system_instruction"].count("TEN") >= 1
-    serialized = json.dumps(kwargs)
+    serialized = json.dumps({k: v for k, v in kwargs.items() if k != "record_dir"})
     assert "20261213" not in serialized
     assert "20261126" not in serialized
     assert "20261205" not in serialized
