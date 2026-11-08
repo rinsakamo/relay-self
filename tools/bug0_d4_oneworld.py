@@ -254,7 +254,7 @@ async def run(
         "d4_operator_removed_only_nonzombie_entities": True,
         "real_model_calls": 0, "learning_updated": False,
     }
-    server = collector = session = temp = None
+    server = collector = session = temp = owner = None
     nonmotion_fence = None
     motion_fence = None
     rc = 2
@@ -946,6 +946,46 @@ async def run(
              if post_respawn_dev is not None else "D4_NATURAL_EAT_UNQUALIFIED")
         )
         report["failure"] = f"{type(exc).__name__}: {exc}"
+        # The D14 World clock is not a reward for completing a D8 food
+        # cycle. Preserve the FAILED original S49 choice but keep observing
+        # the same Paper World if all physical Action envelopes are closed.
+        # Never reissue, reinterpret, or automatically retry a declined
+        # MOVE / ATTACK / EAT.
+        if (
+            d14_tick_endurance_dev and callable(post_tick_horizon_dev)
+            and owner is not None and session is not None
+            and server is not None
+            and nonmotion_fence is not None and motion_fence is not None
+        ):
+            try:
+                if (
+                    owner.supervisor.open_actions
+                    or nonmotion_fence.unresolved
+                    or motion_fence.unresolved
+                    or owner._count != (
+                        len(nonmotion_fence.actions) + len(motion_fence.actions)
+                    )
+                    or owner.supervisor is None
+                    or not report.get("real_world_started")
+                ):
+                    raise S49D3Rejected(
+                        "cannot continue World watch with unresolved native Action"
+                    )
+                nonmotion_fence.require_clear()
+                motion_fence.require_clear()
+                report["d14_prior_owner_action_failure"] = report["failure"]
+                report["d14_action_failure_does_not_end_world"] = True
+                await post_tick_horizon_dev(
+                    session, server, owner, report, log_path,
+                )
+                if report.get("d14_tick_horizon_proven") is True:
+                    # Exit 0 concerns the World-clock pilot only: the report
+                    # still states FAIL for the original D8 action route.
+                    rc = 0
+            except Exception as d14_exc:
+                report["d14_horizon_after_action_failure"] = (
+                    f"{type(d14_exc).__name__}: {d14_exc}"
+                )
     finally:
         if session is not None:
             try:
