@@ -293,6 +293,7 @@ def fake_second_zero():
     eat1 = {"action_id": "c", "session_id": sid}
     attack2 = "d"
     report.update(
+        session_id=sid,
         d8_second_generation_food_proven=False,
         d8_second_generation={
             **report["d8_second_generation"],
