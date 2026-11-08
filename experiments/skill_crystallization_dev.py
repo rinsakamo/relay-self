@@ -149,7 +149,7 @@ def skill_json_schema() -> dict[str, Any]:
             "target_distance": {"type": "number"},
             "max_actions": {"type": "integer", "enum": [1, 2, 3, 4]},
             "on_failure": {"type": "string", "enum": ["ESCALATE"]},
-            "evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": True, "items": {"type": "string"}},
+            "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
         },
         "required": list(FIELDS),
     }
