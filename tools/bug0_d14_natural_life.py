@@ -27,7 +27,8 @@ from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 
 R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
-MAX_DECISIONS = 64
+MAX_DECISIONS = 1024
+POLICY_EPOCH_DECISIONS = 64
 MAX_ACTIONS = 32
 READ_TIMEOUT_S = 7
 
@@ -99,7 +100,7 @@ class NaturalLifeLoop:
         self.owner = NormalSessionActionExecutor(
             sid, self.intent, max_sequential_attacks=MAX_ACTIONS,
         )
-        self.policy = S49BasicPriorityL0(sid, max_decisions=MAX_DECISIONS)
+        self.policy = S49BasicPriorityL0(sid, max_decisions=POLICY_EPOCH_DECISIONS)
         self.nonmotion = OriginalS49NonMotionFence.create(
             evidence_dir / "original_s49_nonmotion_fence.json",
             self_id="s49-original-self",
@@ -112,6 +113,7 @@ class NaturalLifeLoop:
             "original_s49_intent_id": self.intent.current_intent.intent_id,
             "life_decisions": [],
             "life_action_outcomes": [],
+            "life_policy_epochs": 1,
             "new_s49_actions": 0,
             "life_stop_reason": None,
             "nonmotion_fence_path": str(self.nonmotion.path),
@@ -163,8 +165,30 @@ class NaturalLifeLoop:
                 raise NaturalLifeRejected("UNSUPPORTED_ORIGINAL_ACTION")
         return tuple(result)
 
+    def stop_due_to_native_loss(self, reason: str) -> None:
+        """Fail closed for L0/Action, while Paper may finish autonomously."""
+        if (
+            self.owner.supervisor.open_actions or self.nonmotion.unresolved
+            or not isinstance(reason, str) or not reason
+        ):
+            raise NaturalLifeRejected("UNRESOLVED_ACTION_OR_BAD_NATIVE_LOSS")
+        self.stopped = True
+        self.report["life_stop_reason"] = reason
+
+    def _rotate_native_cursor(self) -> None:
+        """Rotate read-only bounded L0 policy, never S49 Action or Intent."""
+        if self.cycles > 0 and self.cycles % POLICY_EPOCH_DECISIONS == 0:
+            self.policy = S49BasicPriorityL0(
+                self.sid, max_decisions=POLICY_EPOCH_DECISIONS,
+            )
+            self.report["life_policy_epochs"] += 1
+
     async def step(self, save: Callable[..., None]) -> None:
-        if self.stopped or self.cycles >= MAX_DECISIONS:
+        if self.stopped:
+            return
+        if self.cycles >= MAX_DECISIONS:
+            self.stopped = True
+            self.report["life_stop_reason"] = "L0_TOTAL_DECISION_RESOURCE_LIMIT"
             return
         if (
             self.owner.supervisor.open_actions or self.nonmotion.unresolved
@@ -177,6 +201,7 @@ class NaturalLifeLoop:
             self.stopped = True
             self.report["life_stop_reason"] = "NATIVE_PROCESS_ENDED"
             return
+        self._rotate_native_cursor()
         self.cycles += 1
         try:
             previous = await self._read("pre")
