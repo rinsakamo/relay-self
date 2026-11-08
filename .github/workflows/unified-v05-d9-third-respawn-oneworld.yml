@@ -143,24 +143,31 @@ jobs:
           src=json.loads((p/'report.json').read_text())
           assert src['status']=='PASS_DEV'
           if d['status']=='PASS_DEV':
-              assert src['d8_second_generation_food_proven'] is True
               assert src['d9_status']=='PASS_DEV'
-              assert d['classification']=='D9_TWO_TRUE_MEALS_THIRD_WORLD_RESPAWN_SURVIVAL_READONLY_PASS'
-              assert d['two_real_natural_food_cycles'] is True
               assert d['third_spawn_exact_server_ticks']==600
               assert d['third_zombie_real_killed'] is False
               assert d['third_real_natural_food_cycle'] is False
               assert d['same_original_s49_actions_before_after_third'] is True
               assert d['autonomous_rest_or_long_run_proven'] is False
+              if src['d8_second_generation_food_proven'] is True:
+                  assert d['classification']=='D9_TWO_TRUE_MEALS_THIRD_WORLD_RESPAWN_SURVIVAL_READONLY_PASS'
+                  assert d['two_real_natural_food_cycles'] is True
+                  assert d['second_natural_zero_drop'] is False
+              else:
+                  assert d['classification']=='D9_SECOND_ZERO_THIRD_WORLD_RESPAWN_SURVIVAL_READONLY_PASS'
+                  assert d['two_real_natural_food_cycles'] is False
+                  assert d['first_real_natural_food_cycle'] is True
+                  assert d['second_natural_zero_drop'] is True
+                  assert src['self_eat'] is True
+                  assert src['d8_second_generation']['real_rotten_flesh_count']==0
+                  assert src['d8_second_generation']['original_eat_issued'] is False
+                  assert src['d9_second_vanilla_zero_continued'] is True
           else:
               assert d['status']=='NOT_EXERCISED'
               assert d['d8_prior_two_meals_proven'] is False
-              if src.get('d8_first_true_zero_food_not_exercised') is True:
-                  assert src.get('d9_status') is None
-                  assert src['self_eat'] is False
-              else:
-                  assert src['d9_status']=='NOT_EXERCISED'
-                  assert src['self_eat'] is True
+              assert src['d8_first_true_zero_food_not_exercised'] is True
+              assert src.get('d9_status') is None
+              assert src['self_eat'] is False
           print(d['classification'])
           PY
       - name: Preserve originals and SHA256
