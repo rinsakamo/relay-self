@@ -35,12 +35,15 @@ Run focused tests against actual parent modules, including:
 
 ```bash
 python -m pytest -q tests/test_skill_crystallization_soul_matched_dev.py \
+  tests/test_skill_crystallization_soul_audit_dev.py \
   tests/test_skill_crystallization_k3g_ten_action_choice_dev.py \
   tests/test_skill_crystallization_k3f_budget_dev.py
 python -m ruff check \
   experiments/skill_crystallization_k3g_ten_action_choice_dev.py \
   experiments/skill_crystallization_soul_matched_dev.py \
-  tests/test_skill_crystallization_soul_matched_dev.py
+  experiments/skill_crystallization_soul_audit_dev.py \
+  tests/test_skill_crystallization_soul_matched_dev.py \
+  tests/test_skill_crystallization_soul_audit_dev.py
 ```
 
 Audit all historical SHA256SUMS with the existing K3-G `verify_input_manifests` gate. Confirm pinned GGUF sha256 `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`, llama.cpp build10874, one dedicated server process, GPU mapping, no other lanes stopped. Freeze exact HEAD before any model POST.
@@ -67,6 +70,21 @@ done
 ```
 
 **Important:** The shell loop is a convenience example; a stricter protocol is to run one condition explicitly, audit its saved request/response, then invoke the next. If an essential model/process/source invariant changes between calls, stop the matched series and report the interrupted set rather than substituting other settings. Commands are not authorized to fabricate a live provider result in this ChatGPT environment.
+
+## 4-condition independent read-only audit
+
+After all four real model runs are saved, invoke the separate auditor (no HTTP, no mock trials or Action):
+
+```bash
+python -m experiments.skill_crystallization_soul_audit_dev \
+  --neutral-report evidence/l800-soul-gemma-20261108/neutral/report.json \
+  --curious-report evidence/l800-soul-gemma-20261108/curious/report.json \
+  --cautious-report evidence/l800-soul-gemma-20261108/cautious/report.json \
+  --bold-report evidence/l800-soul-gemma-20261108/bold/report.json \
+  --out evidence/l800-soul-gemma-20261108/matched-audit.json
+```
+
+The audit compares request/response raw SHA and content against their saved provider records, requires identical request JSON except for exactly the predeclared identity system prefix, requires original neutral system text, rejects outcome/holdout usage, and separates raw-choice divergence from semantically admitted-choice divergence. Run `tests/test_skill_crystallization_soul_audit_dev.py` with focused pytest before model calls. Incomplete/raw-missing runs are a blocked comparison, not an invented null.
 
 ## Acceptance & comparison
 
