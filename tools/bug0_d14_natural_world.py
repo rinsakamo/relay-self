@@ -51,6 +51,29 @@ class D14NaturalWorldRejected(RuntimeError):
     """Original source, natural-only configuration or World ownership invalid."""
 
 
+def accept_ended_native_after_paper_death(
+    report: dict[str, Any], *, native_exit: int,
+) -> bool:
+    """A source-qualified death and reaped exit zero are not a cleanup failure.
+
+    Never use this for LIMIT, watchdog, missing Paper source or killed process.
+    """
+    result = report.get("result")
+    source = report.get("paper_source")
+    return (
+        type(native_exit) is int and native_exit == 0
+        and isinstance(result, dict)
+        and result.get("outcome") == "SELF_EARLY_TERMINAL"
+        and result.get("terminal_reason") in ("SELF_DIED", "SELF_DISCONNECTED")
+        and isinstance(source, dict)
+        and "RSELF_ENDURANCE_TERMINAL world=" in (
+            source.get("original_early_terminal") or ""
+        )
+        and report.get("status") == "PASS_DEV"
+        and report.get("cleanup_done") is not True
+    )
+
+
 def natural_properties(original: str) -> str:
     """Override disposable S31 flat/creative baseline before launching Paper.
 
@@ -410,10 +433,21 @@ async def run(report_path: Path, paper_log: Path, journal_path: Path) -> int:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)
             except Exception as exc:
-                report["node_cleanup_error"] = f"{type(exc).__name__}: {exc}"
                 try:
                     report["node_exit"] = await session.terminate()
+                    if (
+                        type(exc).__name__ == "MineflayerProcessEnded"
+                        and accept_ended_native_after_paper_death(
+                            report, native_exit=report["node_exit"],
+                        )
+                    ):
+                        report["node_shutdown_already_ended_after_paper_death"] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                    else:
+                        report["node_cleanup_error"] = f"{type(exc).__name__}: {exc}"
                 except Exception as second:
+                    report["node_cleanup_error"] = f"{type(exc).__name__}: {exc}"
                     report["node_terminate_error"] = repr(second)
         if server is not None:
             try:
