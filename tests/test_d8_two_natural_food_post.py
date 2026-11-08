@@ -84,6 +84,9 @@ def test_original_c1_fence_readback_counts_both_s49_intent_epochs():
          "cleanup_seq": row["s15_clear_seq"]}
         for row in expected
     ]
+    # OriginalS49PhysicalFence.actions is an immutable tuple, not a list.
+    # Exercise the real API shape rather than merely a mutable test list.
+    require_d8_original_motion_history(tuple(actual), expected)
     require_d8_original_motion_history(actual, expected)
     # R9 original regression: the old D6-only final count would compare
     # len(actual)==3 to len(gen1)==2 and reject a true second EAT.
@@ -94,6 +97,7 @@ def test_original_c1_fence_readback_counts_both_s49_intent_epochs():
 @pytest.mark.parametrize("mutant", [
     "missing_gen2", "reordered", "duplicate_id", "wrong_s16",
     "wrong_second_intent", "forged_s15_clear", "invalid_source_type",
+    "invalid_journal_container",
 ])
 def test_d8_final_c1_two_epoch_negative_controls(mutant):
     from tools.bug0_d4_oneworld import (
@@ -127,5 +131,7 @@ def test_d8_final_c1_two_epoch_negative_controls(mutant):
         actual[-1]["cleanup_seq"] = 999
     elif mutant == "invalid_source_type":
         expected = {"not": "two-epoch-list"}
+    elif mutant == "invalid_journal_container":
+        actual = {"forged": "physical journal"}
     with pytest.raises(S49D3Rejected):
         require_d8_original_motion_history(actual, expected)
