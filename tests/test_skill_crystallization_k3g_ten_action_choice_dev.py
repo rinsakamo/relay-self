@@ -466,3 +466,23 @@ def test_default_model_wire_remains_four_action_budget(monkeypatch):
     assert len(seen) == 1
     assert json.loads(seen[0]["messages"][1]["content"])["maximum_actions"] == 4
     assert seen[0]["response_format"]["json_schema"]["schema"] == skill_json_schema()
+
+
+def test_json_schema_rejection_and_semantic_rejection_are_distinct(originals, source):
+    requires_schema()
+    invalid_wire = response("SKILL", skill={
+        **revised(source["old_skill"]), "max_actions": 11,
+    })
+    schema_rejected = run_choice(*originals, mode="fixture", fixture=invalid_wire)
+    assert schema_rejected["schema_validation"] == "REJECTED"
+    assert schema_rejected["skill_holdout"] is None
+    assert schema_rejected["validator_error"].startswith("SCHEMA_INVALID")
+
+    invalid_meaning = response("PROBE", evidence_ids=["shift-experience-010"])
+    invalid_meaning["hypothesis"] = "START_MARGIN_SENSITIVE"
+    invalid_meaning["probe_id"] = "MOTION_REGIME_PAIR"
+    invalid_meaning["prediction"] = "A_FAILS_B_SUCCEEDS"
+    semantic_rejected = run_choice(*originals, mode="fixture", fixture=invalid_meaning)
+    assert semantic_rejected["schema_validation"] == "PASS"
+    assert semantic_rejected["validator_error"] == "PROBE_MUST_BE_FALSIFIABLE"
+    assert semantic_rejected["skill_holdout"] is None
