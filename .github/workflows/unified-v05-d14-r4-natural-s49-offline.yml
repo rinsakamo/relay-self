@@ -64,5 +64,5 @@ jobs:
             io.github.rinsakamo.respawn.RespawnCycleTest
           java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
             io.github.rinsakamo.respawn.TickObservationHorizonTest
-          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \\
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
             io.github.rinsakamo.respawn.NaturalAnchorCandidatesTest
