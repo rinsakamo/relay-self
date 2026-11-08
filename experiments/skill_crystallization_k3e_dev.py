@@ -7,6 +7,7 @@ No simulation future is given to the model at proposal time. Stages call L2 sepa
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -292,11 +293,46 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
     return report
 
 
+def _verify_model_proposal_record(report: dict[str, Any],
+                                  source: dict[str, Any]) -> None:
+    """Self-consistency audit only; no independent provider attestation."""
+    raw = report.get("provider")
+    if not isinstance(raw, dict) or raw.get("http_status") != 200 or (
+        raw.get("finish_reason") != "stop"
+    ) or raw.get("reasoning_content"):
+        raise ValueError("GEMMA_PROPOSAL_SOURCE_UNVERIFIED")
+    request = raw.get("request")
+    response = raw.get("response_raw")
+    if not isinstance(request, dict) or not isinstance(response, str):
+        raise ValueError("GEMMA_PROPOSAL_SOURCE_UNVERIFIED")
+    digest = hashlib.sha256(json.dumps(
+        request, separators=(",", ":"), ensure_ascii=False,
+    ).encode()).hexdigest()
+    if digest != raw.get("request_sha256"):
+        raise ValueError("GEMMA_REQUEST_HASH_MISMATCH")
+    try:
+        assert request["reasoning_effort"] == "none"
+        wire = request["response_format"]["json_schema"]
+        assert wire["strict"] is True and wire["schema"] == proposal_schema()
+        user_content = json.loads(request["messages"][1]["content"])
+        assert user_content["train_experiences"] == source["evidence"]
+        body = json.loads(response)
+        choice = body["choices"][0]
+        assert choice["finish_reason"] == "stop"
+        assert not choice["message"].get("reasoning_content")
+        response_value = json.loads(choice["message"]["content"])
+        assert response_value == report["proposal"]
+    except (AssertionError, KeyError, IndexError, TypeError, ValueError) as exc:
+        raise ValueError("GEMMA_PROPOSAL_SOURCE_MISMATCH") from exc
+
+
 def _verify_proposal_report(report: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]:
     mode = report.get("mode")
     if mode not in ("fixture", "gemma") or report.get("status") != "PROBE":
         raise ValueError("VALID_PROBE_REPORT_REQUIRED")
     valid = validate_probe(report.get("proposal"), source["ids"])
+    if mode == "gemma":
+        _verify_model_proposal_record(report, source)
     seed = FIXTURE_PROBE_SEED if mode == "fixture" else REAL_PROBE_SEED
     expected = execute_mock_probe(valid, seed=seed, mock_grant=True)
     if report.get("probe") != expected:
