@@ -1,0 +1,54 @@
+{
+  "classification": "DEV_ONLY_LOCAL_API_SHIM_FIXTURE_NOT_REAL_GEMMA",
+  "parent_pr": 792,
+  "parent_commit": "39ed05e49e433e554ab6ec2c10c3f261968024c2",
+  "mode": "fixture",
+  "local_test_runner": "Python 3.13; actual K3-D source plus minimal substituted local K3-B/K3-C APIs; not the full upstream worktree",
+  "tests": {
+    "k3d_focused": 15,
+    "failed": 0,
+    "syntax": "PASS",
+    "ruff": "NOT_RUN",
+    "github_ci": "NOT_RUN"
+  },
+  "candidate": {
+    "source": "HUMAN_CONSTRUCTED_FIXTURE_ONLY",
+    "old": {
+      "surface": "normal",
+      "min_distance": 2.314917,
+      "max_distance": 2.457525,
+      "max_actions": 4,
+      "target_distance": 3.2
+    },
+    "narrowed": {
+      "surface": "normal",
+      "min_distance": 2.39,
+      "max_distance": 2.457525,
+      "max_actions": 4,
+      "target_distance": 3.2
+    }
+  },
+  "seed": 20261122,
+  "observed_shift_scope": {
+    "selected": 6,
+    "selected_success": 6,
+    "selected_failure": 0,
+    "excluded_failure": 3,
+    "excluded_success": 3
+  },
+  "holdout": {
+    "n": 32,
+    "old_success": 8,
+    "narrowed_success": 7,
+    "old_selected": 11,
+    "narrowed_selected": 8,
+    "selection_differences": 3,
+    "automatic_postfailure_actions": 0
+  },
+  "conclusion": "Guard change affects selected traces but does not demonstrate improved total Goal success; no real L2 inference or physical Action.",
+  "model_calls": 0,
+  "real_world": 0,
+  "native_s49_actions": 0,
+  "reserved_real_gemma_seed": 20261126,
+  "reserved_seed_unopened": true
+}
