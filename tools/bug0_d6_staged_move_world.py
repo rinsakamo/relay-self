@@ -157,6 +157,9 @@ async def move_from_real_item(
     intent = owner.intent
     count_before = owner._count
     fence_count_before = len(fence.actions)
+    probe_prefix = (
+        "d8-gen2-item" if d8_move_action_prefix is not None else "d6-item"
+    )
     supervisor = owner.supervisor
     report["d6_original_s49_move_actions"] = []
     report["d6_item_origin"] = item_origin
@@ -171,9 +174,9 @@ async def move_from_real_item(
     last_item_id = None
     last_receipt = None
     for i in range(1, 5):
-        before = await _correlated_observe(session, f"d6-item-{i}-before")
+        before = await _correlated_observe(session, f"{probe_prefix}-{i}-before")
         await asyncio.sleep(0.3)
-        current = await _correlated_observe(session, f"d6-item-{i}-current")
+        current = await _correlated_observe(session, f"{probe_prefix}-{i}-current")
         if (
             before.session_id != sid or current.session_id != sid
             or before.snapshot.health <= 0 or current.snapshot.health <= 0
@@ -218,7 +221,7 @@ async def move_from_real_item(
             ):
                 await asyncio.sleep(1.0)
                 maybe = await _correlated_observe(
-                    session, f"d6-item-{i}-pickup-recheck",
+                    session, f"{probe_prefix}-{i}-pickup-recheck",
                 )
                 if _meat(maybe) > d8_baseline_rotten_count:
                     break
