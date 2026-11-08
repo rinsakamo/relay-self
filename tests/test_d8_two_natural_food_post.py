@@ -183,7 +183,8 @@ def test_d8_first_zero_rejects_spoofed_action_or_second_generation(mutant):
 
 def test_d8_positive_drop_requires_both_explicit_generation_sources():
     from tools.bug0_d4_oneworld import (
-        S49D3Rejected, d8_reported_original_move_records,
+        S49D3Rejected,
+        d8_reported_original_move_records,
     )
     first = [{"action_id": "gen1", "terminal": "outcome"}]
     second = [{"action_id": "gen2", "terminal": "outcome"}]
