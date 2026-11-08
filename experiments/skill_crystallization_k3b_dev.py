@@ -71,6 +71,32 @@ def verify_suspension(rows: list[dict[str, Any]]) -> bool:
     return all(row.get("outcome_success") is False for row in rows[-2:])
 
 
+def verify_prior_rows(
+    old: dict[str, Any], rows: list[dict[str, Any]], *, seed: int = REVISION_SEED
+) -> None:
+    """Reconstruct only existing synthetic attempts; reject forged/stale prior files."""
+    trials = [t for t in shifted(seed, old["surface"])
+              if applicable(old, cue_for(t), t)]
+    if len(rows) > len(trials):
+        raise ValueError("PRIOR_SOURCE_MISMATCH")
+    for index, row in enumerate(rows):
+        trial = trials[index]
+        observed = run_skill(old, trial, cue_for(trial))
+        expected = {
+            "experience_id": f"shift-experience-{index:03}",
+            "source_session": trial.session,
+            "surface_cue": trial.surface,
+            "start_distance": round(trial.start, 6),
+            "observed_action": "MOVE_AWAY",
+            "observed_trace": observed["trace"],
+            "outcome_success": observed["success"],
+            "target_distance": old["target_distance"],
+        }
+        if row != expected or (index < len(rows) - 1
+                               and verify_suspension(rows[:index + 1])):
+            raise ValueError("PRIOR_SOURCE_MISMATCH")
+
+
 def prepare_revision(
     first: dict[str, Any], prior: dict[str, Any], *, seed: int = REVISION_SEED
 ) -> dict[str, Any]:
@@ -86,6 +112,7 @@ def prepare_revision(
     if not all(isinstance(row, dict) and "source_session" in row
                and type(row.get("outcome_success")) is bool for row in prior_rows):
         raise ValueError("PRIOR_OBSERVATIONS_INVALID")
+    verify_prior_rows(old, prior_rows, seed=seed)
     # Never append post-suspension trials to previously recorded evidence.
     observations = (list(prior_rows) if verify_suspension(prior_rows)
                     else failures(old, shifted(seed, old["surface"]), prior_rows))
