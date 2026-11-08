@@ -28,10 +28,12 @@ from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d4_oneworld import (
-    _target, qualified_native_precombat_hunger, run,
+    _target,
+    qualified_native_precombat_hunger,
+    run,
 )
-from tools.bug0_d7f_natural_eat import after_real_natural_pickup_eat
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
+from tools.bug0_d7f_natural_eat import after_real_natural_pickup_eat
 from tools.bug0_zombie_respawn_r1_world import _native_probe
 
 
