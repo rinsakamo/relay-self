@@ -360,6 +360,38 @@ def audit_two_natural_food_cycles(
             "qualification": "NO_GO", "science": "NOT_RUN",
         }
     stop = g2.get("d7f_live_natural_stop")
+    pickup_mode = g2.get("d8_natural_pickup_mode")
+    passive_no_move = pickup_mode == "PASSIVE_NO_MOVE"
+    if (
+        pickup_mode not in ("PASSIVE_NO_MOVE", "ORIGINAL_S49_MOVE")
+        or (
+            passive_no_move
+            and (
+                second_moves != []
+                or g2.get("d6_d_world_natural_loot_moved") is not False
+            )
+        )
+        or (
+            not passive_no_move
+            and (
+                not 1 <= len(second_moves) <= 4
+                or g2.get("d6_d_world_natural_loot_moved") is not True
+            )
+        )
+    ):
+        raise D8TwoCycleAuditRejected("second generation MOVE provenance is forged")
+    expected_stop_class = (
+        "D8_DEV_LIVE_SECOND_NATURAL_PASSIVE_PICKUP_STEADY_SOURCE"
+        if passive_no_move else "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
+    )
+    anchor_action = (
+        report["d8_original_second_attack_action_id"]
+        if passive_no_move else second_moves[-1]["action_id"] + "-s15-clear"
+    )
+    anchor_seq = (
+        report["d8_original_second_attack_effect_seq"]
+        if passive_no_move else second_moves[-1]["s15_clear_seq"]
+    )
     if (
         report.get("classification") != "D8_TWO_REAL_NATURAL_S49_FOOD_CYCLES_PASS"
         or report.get("d8_second_generation_food_proven") is not True
@@ -382,17 +414,27 @@ def audit_two_natural_food_cycles(
         or report.get("d8_original_total_attacks") != len(original_attacks) + 1
         or report.get("d8_original_total_moves") != len(first_moves) + len(second_moves)
         or report.get("d8_original_total_actions") != len(all_original_ids)
-        or stop.get("classification")
-            != "D8_DEV_LIVE_SECOND_NATURAL_BODY_STEADY_SOURCE"
+        or stop.get("classification") != expected_stop_class
         or stop.get("session_id") != sid
-        or stop.get("action_id") != second_moves[-1]["action_id"]
-        or stop.get("original_clear_seq") != second_moves[-1]["s15_clear_seq"]
+        or stop.get("action_id") != (
+            report["d8_original_second_attack_action_id"]
+            if passive_no_move else second_moves[-1]["action_id"]
+        )
+        or stop.get("original_clear_seq") != (
+            -1 if passive_no_move else second_moves[-1]["s15_clear_seq"]
+        )
+        or stop.get("original_attack_effect_seq") != (
+            anchor_seq if passive_no_move else None
+        )
         or stop.get("paper_world_uuid") != expected_world
         or stop.get("paper_item_uuid") != spawns[1]["item"]
         or stop.get("paper_pickup_tick") != int(pickups[1]["tick"])
         or stop.get("client_postclear_physics_ticks", 0) < 8
         or stop.get("paper_quiet_tail_ticks", 0) < 8
-        or stop.get("server_effective_original_clear_tick") != "NOT_CAUSALLY_ATTESTED"
+        or stop.get("server_effective_original_clear_tick") != (
+            "NOT_APPLICABLE_NO_MOVE"
+            if passive_no_move else "NOT_CAUSALLY_ATTESTED"
+        )
         or g2.get("d7f_nonmotion_sha256") != nonmotion.sha256
     ):
         raise D8TwoCycleAuditRejected("second genuine original S51 Food/STOP not source-qualified")
@@ -432,8 +474,8 @@ def audit_two_natural_food_cycles(
         if (
             rec.get("kind") == "EFFECT_ACK"
             and rec.get("native_action_id")
-                == second_moves[-1]["action_id"] + "-s15-clear"
-            and rec.get("native_seq") == second_moves[-1]["s15_clear_seq"]
+                == anchor_action
+            and rec.get("native_seq") == anchor_seq
         ):
             if matched_clear is not None:
                 raise D8TwoCycleAuditRejected("duplicate second original S15 clear")
@@ -510,6 +552,8 @@ def audit_two_natural_food_cycles(
         "original_move_ledger_sha256": motion.sha256,
         "World_second_spawn_after_death_ticks": 600,
         "two_real_natural_food_cycles": True,
+        "second_pickup_mode": pickup_mode,
+        "second_real_MOVE_count": len(second_moves),
         "exact_server_effective_clear_tick_proven": False,
         "autonomous_long_run_proven": False,
         "learning_success_proven": False,
