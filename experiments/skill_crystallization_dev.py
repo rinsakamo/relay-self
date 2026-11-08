@@ -147,9 +147,9 @@ def skill_json_schema() -> dict[str, Any]:
             "min_distance": {"type": "number"},
             "max_distance": {"type": "number"},
             "target_distance": {"type": "number"},
-            "max_actions": {"type": "integer"},
+            "max_actions": {"type": "integer", "enum": [1, 2, 3, 4]},
             "on_failure": {"type": "string", "enum": ["ESCALATE"]},
-            "evidence_ids": {"type": "array", "items": {"type": "string"}},
+            "evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": True, "items": {"type": "string"}},
         },
         "required": list(FIELDS),
     }
@@ -226,6 +226,8 @@ def proxy_l2(training: list[dict[str, Any]]) -> dict[str, Any]:
 
 def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
              timeout: float, revision_context: dict[str, Any] | None = None,
+             response_schema: dict[str, Any] | None = None,
+             system_append: str = "",
              ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exactly one explicitly requested HTTP call; no retries or World actions."""
     parsed = urllib.parse.urlsplit(endpoint)
@@ -237,7 +239,10 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
         "model": model, "temperature": 0, "max_tokens": 768,
         "reasoning_effort": "none", "cache_prompt": False,
         "response_format": {"type": "json_schema", "json_schema": {
-            "name": "relay_self_skill_v1", "strict": True, "schema": skill_json_schema(),
+            "name": ("relay_self_k3b_proposal" if response_schema is not None
+                     else "relay_self_skill_v1"),
+            "strict": True, "schema": (response_schema if response_schema is not None
+                                         else skill_json_schema()),
         }},
         "messages": [
             {"role": "system", "content": (
@@ -245,7 +250,8 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
                 "world experiences. Return only JSON matching the schema. Input outcomes are "
                 "observations, not the simulator physics. Choose an applicability scope, 1..4 "
                 "moves and evidence_ids from the input. A successful proposal need not be "
-                "general. No code, no new actions, no guesses of future measurements."
+                "general. No code, no new actions, no guesses of future measurements. "
+                + system_append
             )},
             {"role": "user", "content": json.dumps({
                 "allowed_action": "MOVE_AWAY", "maximum_actions": 4, "target_distance": TARGET,
