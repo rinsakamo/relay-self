@@ -46,7 +46,7 @@ To run without a model, use `--mode fixture --proposal-file PATH`. Report fixtur
 ## Protocol and evaluation
 
 1. Read and validate the old skill only against its original training experience IDs.
-2. Preserve existing `shift_observations` from #790. If the last two genuinely observed attempts are failures, **do not append new simulated post-suspension trials**. Otherwise continue with revision seed 20261111, checking fresh applicable cues.
+2. Replay and compare the existing synthetic trials against the exact saved `shift_observations` from #790 (session, cue, trace, outcome, evidence ID); reject tampered or post-stop rows. This is deterministic fixture integrity, **not independent real-World source attestation**. If the last two genuinely observed attempts are failures, **do not append new simulated post-suspension trials**. Otherwise continue with revision seed 20261111, checking fresh applicable cues.
 3. Only after two consecutive observed failures, mark the old mock skill `SUSPENDED` and set the fixed-L0 rollback **marker**. Before suspension, rollback must be `null` and no Gemma request may occur.
 4. Send the fixed observed training + failure traces and current constraints to Gemma. Never send the hidden world motion generator, CHEAP rule, future effects, validation or holdout results.
 5. Classify `SKILL`, explicit `ABSTAIN`, explicit `UNSATISFIABLE_WITHIN_BUDGET`, rejected Validator, or HTTP/protocol failure separately. Always preserve response records on HTTP/protocol failures.
