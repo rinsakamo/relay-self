@@ -74,9 +74,24 @@ def audit_d9(
         motion_path=motion_path, s50_jsonl=s50_jsonl,
     )
     if base.get("status") == "NOT_EXERCISED":
+        # A first-generation genuine zero never invokes the post-respawn
+        # callback: no D9 fields exist. A second-generation zero invokes
+        # it and explicitly records NOT_EXERCISED. Neither is a third pass.
+        first_zero = report.get("d8_first_true_zero_food_not_exercised") is True
         if (
-            report.get("d9_status") != "NOT_EXERCISED"
-            or report.get("d9_classification") != "D9_TWO_EATS_NOT_YET_PROVEN"
+            (
+                first_zero and (
+                    report.get("d9_status") is not None
+                    or report.get("d9_classification") is not None
+                )
+            )
+            or (
+                not first_zero and (
+                    report.get("d9_status") != "NOT_EXERCISED"
+                    or report.get("d9_classification")
+                        != "D9_TWO_EATS_NOT_YET_PROVEN"
+                )
+            )
             or report.get("d9_third_paper_lineage") is not None
         ):
             raise D9SurvivalAuditRejected("zero natural drop cannot imply D9 survival")
