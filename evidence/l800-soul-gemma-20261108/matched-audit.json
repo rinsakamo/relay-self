@@ -1,0 +1,97 @@
+{
+  "classification": "DEV_ONLY_MATCHED_SOUL_RAW_CHOICE_AUDIT",
+  "conditions": {
+    "neutral": {
+      "raw_status": "PROBE",
+      "decision_signature": {
+        "status": "PROBE",
+        "hypothesis": "MOTION_EFFECT_CHANGED",
+        "probe_id": "MOTION_REGIME_PAIR",
+        "prediction": "UNKNOWN"
+      },
+      "reason": "The data shows a clear distinction between 'ice' and 'normal' surfaces in the training set, but the 'shift' data (all 'normal') shows a failure at a lower starting distance (2.316) and a higher starting distance (2.349) compared to the successful 'normal' trials. This suggests that the 'normal' surface behavior might be sensitive to the initial distance or that the 'normal' surface behavior is not as consistent as the 'ice' failures suggest. A MOTION_REGIME_PAIR probe will isolate whether the variance in success on 'normal' surfaces is due to the movement regime or the starting distance.",
+      "schema_validation": "PASS",
+      "choice_semantically_valid": false,
+      "semantic_rejection": "PROBE_MUST_BE_FALSIFIABLE",
+      "request_sha256": "79203a4384aaab6f3e93a31aa3ce9fb0f6f8a0965d2c5a09541623d527204011",
+      "response_sha256": "cf525645cfab249fe681aa294486977adb55679981322e7aa7f357e52b2229b4",
+      "prompt_tokens": 3568,
+      "completion_tokens": 335,
+      "elapsed_seconds": 12.71426254499238
+    },
+    "curious": {
+      "raw_status": "PROBE",
+      "decision_signature": {
+        "status": "PROBE",
+        "hypothesis": "MOTION_EFFECT_CHANGED",
+        "probe_id": "MOTION_REGIME_PAIR",
+        "prediction": "A_FAILS_B_SUCCEEDS"
+      },
+      "reason": "The 'shift' experiences reveal a critical threshold: success occurs when the final movement step reaches or exceeds 3.2, but failures occur when the final step is < 3.2. Specifically, 'shift-experience-010' and '011' failed because the final distance was ~3.13 and ~3.18 respectively. The 'MOTION_REGIME_PAIR' probe is selected to determine if the failure is due to a specific movement regime or simply a lack of sufficient steps/distance. By keeping the starting distance identical (2.4) but varying the movement regime, we can isolate whether the system's behavior is consistent across different internal dynamics.",
+      "schema_validation": "PASS",
+      "choice_semantically_valid": true,
+      "semantic_rejection": null,
+      "request_sha256": "ac075e6a3df93d776353ca44217bb018c07673bc7eabcab4c2b3aaf389160d00",
+      "response_sha256": "505097c3d59103301f9c70570d68209250d7748c5de757648f23c0959d79da8d",
+      "prompt_tokens": 3610,
+      "completion_tokens": 275,
+      "elapsed_seconds": 11.774735611048527
+    },
+    "cautious": {
+      "raw_status": "PROBE",
+      "decision_signature": {
+        "status": "PROBE",
+        "hypothesis": "MOTION_EFFECT_CHANGED",
+        "probe_id": "MOTION_REGIME_PAIR",
+        "prediction": "A_FAILS_B_SUCCEEDS"
+      },
+      "reason": "The data shows a clear distinction between 'ice' and 'normal' surfaces, but the 'normal' surface behavior is inconsistent. Specifically, 'shift-experience-004' and 'shift-experience-011' failed on 'normal' surfaces despite being in the same range as successful trials. The MOTION_REGIME_PAIR probe will help determine if the failure is due to the specific starting distance or the underlying movement dynamics of the 'normal' surface.",
+      "schema_validation": "PASS",
+      "choice_semantically_valid": true,
+      "semantic_rejection": null,
+      "request_sha256": "7dce5a61b55137926788ac792ada19a6dca54a4e17bc95e7d2d9ac858a263af0",
+      "response_sha256": "b045a9fd75ae8b3cb1aa7d06005d4de6f4a06cd0218f8fcfda7d16ce1d75ba16",
+      "prompt_tokens": 3609,
+      "completion_tokens": 295,
+      "elapsed_seconds": 12.319038165034726
+    },
+    "bold": {
+      "raw_status": "PROBE",
+      "decision_signature": {
+        "status": "PROBE",
+        "hypothesis": "MOTION_EFFECT_CHANGED",
+        "probe_id": "MOTION_REGIME_PAIR",
+        "prediction": "UNKNOWN"
+      },
+      "reason": "The 'shift' experiences suggest that the 'normal' surface might have a variable movement regime or a lower effective step size than the 'train' experiences, as evidenced by the failure of shift-experience-010 and 011 despite being on 'normal' surface. A MOTION_REGIME_PAIR probe will determine if the variance in success is due to the surface type or the initial distance relative to a hidden threshold.",
+      "schema_validation": "PASS",
+      "choice_semantically_valid": false,
+      "semantic_rejection": "PROBE_MUST_BE_FALSIFIABLE",
+      "request_sha256": "0db680adc65d4219613b5811ac8868a81b01d4fd6c7c6ea28f7b4715c30bd7b9",
+      "response_sha256": "77e2707fa2a075562d8acc5ed980e483adea8b7d07fdca04e45d87b7ea3c2727",
+      "prompt_tokens": 3609,
+      "completion_tokens": 223,
+      "elapsed_seconds": 10.293817490921356
+    }
+  },
+  "matched_model_requests_except_identity": true,
+  "raw_status_divergence": false,
+  "raw_decision_signature_divergence": true,
+  "reason_text_divergence": true,
+  "admitted_choices": [
+    [
+      "curious",
+      "PROBE"
+    ],
+    [
+      "cautious",
+      "PROBE"
+    ]
+  ],
+  "admitted_status_divergence": false,
+  "admitted_decision_signature_divergence": false,
+  "soul_effect_or_personality_proven": false,
+  "new_worlds": 0,
+  "new_model_calls_in_audit": 0,
+  "science": "NOT_RUN"
+}

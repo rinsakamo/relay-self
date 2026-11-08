@@ -1,0 +1,28 @@
+2026-11-08T17:26:38+09:00
+    PID    PPID COMMAND
+ 458820  458814 /home/rinsa/src/llama.cpp/build/bin/llama-server -m /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf --host 127.0.0.1 --port 18197 --alias gemma-4-12b-it-q4-k-m -c 8192 -np 1 -ngl 99 --reasoning off
+797668f1b000-79769a29c000 r--s 00f1b000 08:30 541962                     /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+79781ff6f000-79781ff70000 r--s 1b7f6f000 08:30 541962                    /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+{"models":[{"name":"gemma-4-12b-it-q4-k-m","model":"gemma-4-12b-it-q4-k-m","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"gemma-4-12b-it-q4-k-m","aliases":["gemma-4-12b-it-q4-k-m"],"tags":[],"object":"model","created":1794126398,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":8192,"n_ctx_train":131072,"n_embd":3840,"n_params":11907350576,"size":7365558464,"ftype":"Q4_K - Medium"}}]}[{"id":0,"n_ctx":8192,"speculative":false,"is_processing":false,"id_task":344,"n_prompt_tokens":3884,"n_prompt_tokens_processed":0,"n_prompt_tokens_cache":0,"params":{"seed":4294967295,"temperature":0.0,"dynatemp_range":0.0,"dynatemp_exponent":1.0,"top_k":64,"top_p":0.949999988079071,"min_p":0.05000000074505806,"top_n_sigma":-1.0,"xtc_probability":0.0,"xtc_threshold":0.10000000149011612,"typical_p":1.0,"repeat_last_n":64,"repeat_penalty":1.0,"presence_penalty":0.0,"frequency_penalty":0.0,"dry_multiplier":0.0,"dry_base":1.75,"dry_allowed_length":2,"dry_penalty_last_n":64,"mirostat":0,"mirostat_tau":5.0,"mirostat_eta":0.10000000149011612,"adaptive_target":-1.0,"adaptive_decay":0.8999999761581421,"max_tokens":768,"n_predict":768,"n_keep":0,"n_discard":0,"ignore_eos":false,"stream":false,"n_probs":0,"min_keep":0,"chat_format":"peg-gemma4","reasoning_format":"deepseek","reasoning_in_content":false,"generation_prompt":"<|turn>model\n<|channel>thought\n<channel|>","samplers":["penalties","dry","top_n_sigma","top_k","typ_p","top_p","min_p","xtc","temperature"],"speculative.types":"none","timings_per_token":false,"post_sampling_probs":false,"backend_sampling":false,"lora":[]},"next_token":[{"has_next_token":false,"has_new_line":false,"n_remain":-1,"n_decoded":0}]}]Sun Nov  8 17:26:38 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 590.44.01              Driver Version: 591.44         CUDA Version: 13.1     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 3060        On  |   00000000:01:00.0 Off |                  N/A |
+| 35%   51C    P8              9W /  170W |    8713MiB /  12288MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          458820      C   /llama-server                         N/A      |
++-----------------------------------------------------------------------------------------+
+ac075e6a3df93d776353ca44217bb018c07673bc7eabcab4c2b3aaf389160d00  evidence/l800-soul-gemma-20261108/curious/raw/request.raw.json
+505097c3d59103301f9c70570d68209250d7748c5de757648f23c0959d79da8d  evidence/l800-soul-gemma-20261108/curious/raw/response.raw.json
+d9e20128ebc1421b0a8e52ac05eba68952fae696bdaedd2e2f3b6236dd02b337  evidence/l800-soul-gemma-20261108/curious/report.json
