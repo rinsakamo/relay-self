@@ -457,6 +457,26 @@ def audit_two_natural_food_cycles(
         records.append(rec)
     if not records or records[0].get("kind") != "SESSION_START":
         raise D8TwoCycleAuditRejected("original native S50 session start missing")
+    # Independent original S50 accepted-probe audit: the same native session
+    # must not ever accept an explicit request ID twice. This excludes
+    # uncorrelated passive event observations with a null request ID.
+    seen_request_ids: set[str] = set()
+    for rec in records:
+        if rec.get("kind") != "PROBE":
+            continue
+        request_id = rec.get("native_action_id")
+        if request_id is None:
+            continue
+        if (
+            not isinstance(request_id, str) or not request_id
+            or request_id in seen_request_ids
+        ):
+            raise D8TwoCycleAuditRejected(
+                "replayed/invalid same-session original S50 probe request ID"
+            )
+        seen_request_ids.add(request_id)
+    if not any(x.startswith("d8-gen2-") for x in seen_request_ids):
+        raise D8TwoCycleAuditRejected("original S50 second-generation probes absent")
     matched_clear = None
     verified_off_ticks = 0
     previous_client_tick = -1
