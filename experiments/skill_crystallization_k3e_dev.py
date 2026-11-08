@@ -234,7 +234,8 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
     report = {
         "classification": "DEV_ONLY_K3E_SYNTHETIC_NO_REAL_S49", "mode": mode,
         "status": "NOT_RUN", "proposal": None, "provider": None, "error": None,
-        "probe": None, "stages": [], "holdout_20261126": "UNOPENED",
+        "probe": None, "prediction_assessment": "NOT_RUN",
+        "stages": [], "holdout_20261126": "UNOPENED",
         "model_calls_in_mock_probe": 0,
     }
     if mode == "fixture":
@@ -283,6 +284,11 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
     seed = FIXTURE_PROBE_SEED if mode == "fixture" else REAL_PROBE_SEED
     report["probe"] = execute_mock_probe(valid, seed=seed, mock_grant=mock_grant)
     report["stages"].append("MOCK_PROBE_OBSERVED")
+    report["prediction_assessment"] = (
+        "PREDICTION_MATCHED" if report["probe"]["prediction_matches"]
+        else "PREDICTION_FALSIFIED"
+    )
+    report["stages"].append(report["prediction_assessment"])
     return report
 
 
@@ -315,7 +321,15 @@ def run_reassessment(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, 
     report = {
         "classification": "DEV_ONLY_K3E_REASSESSMENT_NO_REAL_S49", "mode": mode,
         "status": "NOT_RUN", "update": None, "provider": None, "error": None,
-        "semantic_delta": None, "stages": [], "holdout_20261126": "UNOPENED",
+        "semantic_delta": None, "hypothesis_assessment": "NOT_RUN",
+        "reason_truth": "NOT_INDEPENDENTLY_VERIFIED",
+        "prior_prediction": probe["predicted_pattern"],
+        "observed_pattern": probe["observed_pattern"],
+        "prediction_assessment": (
+            "PREDICTION_MATCHED" if probe["prediction_matches"]
+            else "PREDICTION_FALSIFIED"
+        ),
+        "stages": [], "holdout_20261126": "UNOPENED",
         "skill_execution": "NOT_RUN", "new_skill_installed": False,
     }
     if mode == "fixture":
@@ -360,6 +374,16 @@ def run_reassessment(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, 
         return report
     report["status"] = valid["status"]
     report["stages"].append("REASSESSMENT_VALIDATED")
+    if valid["status"] == "UPDATE":
+        report["hypothesis_assessment"] = (
+            "HYPOTHESIS_CHANGED"
+            if valid["hypothesis"] != proposal_report["proposal"]["hypothesis"]
+            else "HYPOTHESIS_RETAINED"
+        )
+        report["stages"].append(report["hypothesis_assessment"])
+    else:
+        report["hypothesis_assessment"] = "HYPOTHESIS_WITHHELD"
+        report["stages"].append("REASSESSMENT_ABSTAIN")
     if valid["skill_candidate"] is not None:
         report["semantic_delta"] = semantic_delta(source["old_skill"],
                                                    valid["skill_candidate"])
