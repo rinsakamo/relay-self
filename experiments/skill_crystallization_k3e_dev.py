@@ -246,6 +246,8 @@ def run_proposal(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, Any]
     else:
         if not endpoint or not model:
             raise ValueError("LOCAL_GEMMA_ENDPOINT_AND_MODEL_REQUIRED")
+        if record_dir is None:
+            raise ValueError("GEMMA_RAW_RECORD_DIR_REQUIRED")
         context = {"prior_skill": source["old_skill"],
                    "k3d_abstain_reason": source["k3d_abstain_reason"],
                    "probe_protocols": probe_protocols(),
@@ -382,6 +384,8 @@ def run_reassessment(first: dict[str, Any], k3b: dict[str, Any], k3d: dict[str, 
     else:
         if not endpoint or not model:
             raise ValueError("LOCAL_GEMMA_ENDPOINT_AND_MODEL_REQUIRED")
+        if record_dir is None:
+            raise ValueError("GEMMA_RAW_RECORD_DIR_REQUIRED")
         context = {
             "prior_skill": source["old_skill"],
             "prior_hypothesis": proposal_report["proposal"],
