@@ -259,3 +259,24 @@ def test_d9_no_first_two_meals_cannot_claim_survival(monkeypatch, tmp_path):
             report, "", nonmotion_path=tmp_path/"a",
             motion_path=tmp_path/"b", s50_jsonl="",
         )
+
+
+def test_d9_first_true_zero_no_callback_fields_is_genuine_not_exercised(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setattr(
+        auditor, "audit_two_natural_food_cycles",
+        lambda *a, **kw: {"status": "NOT_EXERCISED"},
+    )
+    report = {"d8_first_true_zero_food_not_exercised": True}
+    out = auditor.audit_d9(
+        report, "", nonmotion_path=tmp_path/"a",
+        motion_path=tmp_path/"b", s50_jsonl="",
+    )
+    assert out["status"] == "NOT_EXERCISED"
+    report["d9_status"] = "PASS_DEV"
+    with pytest.raises(auditor.D9SurvivalAuditRejected):
+        auditor.audit_d9(
+            report, "", nonmotion_path=tmp_path/"a",
+            motion_path=tmp_path/"b", s50_jsonl="",
+        )
