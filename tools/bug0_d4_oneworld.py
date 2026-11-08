@@ -235,6 +235,7 @@ async def run(
     d7_native_controls_path: Path | None = None,
     d7f_natural_eat_dev=None,
     d8_two_generation_food_dev: bool = False,
+    d12_third_intent_rearm_dev: bool = False,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -330,6 +331,15 @@ async def run(
                 )
             report["d7f_live_eat_optin"] = True
             report["d7f_natural_eat_issued"] = False
+        if d12_third_intent_rearm_dev:
+            if (
+                not d8_two_generation_food_dev
+                or d10_hunt_until_drop_dev
+                or d11_hunt_then_eat_dev
+                or os.environ.get("D12_THIRD_INTENT_REARM_WORLD_ONLY") != "1"
+            ):
+                raise S49D3Rejected("D12 third Intent DEV authority absent")
+            report["d12_third_intent_rearm_optin"] = True
         if d8_two_generation_food_dev:
             if (
                 os.environ.get("D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY") != "1"
@@ -470,11 +480,12 @@ async def run(
         owner = NormalSessionActionExecutor(
             sid, intent, max_sequential_attacks=8,
             max_intent_epochs=(
+                3 if d12_third_intent_rearm_dev else (
                 12 if d10_hunt_until_drop_dev else (
                     4 if d6_multigen_dev else (
                         2 if post_respawn_dev is not None else 1
                     )
-                )
+                ))
             ),
             dev_hunt_extended_epochs=d10_hunt_until_drop_dev,
         )
