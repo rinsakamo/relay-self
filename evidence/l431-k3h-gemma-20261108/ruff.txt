@@ -1,0 +1,60 @@
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_skill_crystallization_k3h_free_try_dev.py:3:1
+   |
+ 1 |   """K3-H DEV stage gates: optional prediction, bounded mock effect, L2 readback."""
+ 2 |
+ 3 | / from __future__ import annotations
+ 4 | |
+ 5 | | import copy
+ 6 | | import json
+ 7 | | from pathlib import Path
+ 8 | |
+ 9 | | import pytest
+10 | |
+11 | | from experiments.skill_crystallization_dev import skill_json_schema
+12 | | from experiments.skill_crystallization_k3h_free_try_dev import (
+13 | |     FIXTURE_SEED,
+14 | |     NEW_MODEL_TRIAL_SEED,
+15 | |     execute_mock,
+16 | |     proposal_schema,
+17 | |     reflection_schema,
+18 | |     run_proposal,
+19 | |     run_reflection,
+20 | |     validate_proposal,
+21 | |     validate_reflection,
+22 | | )
+23 | | from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
+   | |________________________________________________________________________________________^
+24 |
+25 |   ROOT = Path(__file__).resolve().parents[1]
+   |
+help: Organize imports
+   |
+11 | from experiments.skill_crystallization_dev import skill_json_schema
+12 + from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
+13 | from experiments.skill_crystallization_k3h_free_try_dev import (
+--------------------------------------------------------------------------------
+23 | )
+   - from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
+24 |
+   |
+
+F401 [*] `experiments.skill_crystallization_k3h_free_try_dev.validate_reflection` imported but unused
+  --> tests/test_skill_crystallization_k3h_free_try_dev.py:21:5
+   |
+19 |     run_reflection,
+20 |     validate_proposal,
+21 |     validate_reflection,
+   |     ^^^^^^^^^^^^^^^^^^^
+22 | )
+23 | from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
+   |
+help: Remove unused import: `experiments.skill_crystallization_k3h_free_try_dev.validate_reflection`
+   |
+20 |     validate_proposal,
+   -     validate_reflection,
+21 | )
+   |
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.
