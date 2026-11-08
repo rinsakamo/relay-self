@@ -1,0 +1,80 @@
+{
+  "classification": "DEV_ONLY_K3H_NEW_MOCK_EXPERIENCE",
+  "proposal_fingerprint": "3e1c9e2596714e5d8a0dfc82d5ded634c635d8081e2f5624a4d78f668436846c",
+  "source_fingerprint": "7b840cecad5b9e68061e02b4491fce8bc10ffae51324ecde9cd7e3b664d82280",
+  "proposal": {
+    "decision": "TRY_MOVE",
+    "arm": "A",
+    "max_actions_per_arm": 10,
+    "prediction": "UNKNOWN",
+    "reason": "Arm A represents the standard movement regime. Given the increased action budget of 10, I can reliably reach the target distance of 3.2m on a normal surface.",
+    "evidence_ids": [
+      "train-experience-001",
+      "train-experience-003",
+      "train-experience-005",
+      "train-experience-007",
+      "train-experience-009",
+      "train-experience-011",
+      "train-experience-013",
+      "train-experience-015"
+    ]
+  },
+  "mode": "gemma",
+  "mock_seed": 20261219,
+  "new_experiences": [
+    {
+      "experience_id": "k3h-experience-A",
+      "source_session": "k3h-20261219-A",
+      "surface_cue": "normal",
+      "start_distance": 2.4,
+      "observed_action": "MOVE_AWAY",
+      "goal_distance": 3.2,
+      "action_count": 2,
+      "observed_trace": [
+        2.4,
+        3.037183,
+        3.696063
+      ],
+      "final_distance": 3.696063,
+      "outcome_success": true,
+      "observation_kind": "FRESH_MOCK_ACTION_OUTCOME"
+    }
+  ],
+  "mock_actions": 2,
+  "native_s49_actions": 0,
+  "skill_installed": false,
+  "stages": [
+    "FRESH_BOUNDED_MOCK_OUTCOME_OBSERVED"
+  ],
+  "protected_seeds": {
+    "20261126": "UNOPENED",
+    "20261205": "UNOPENED",
+    "20261213": "UNOPENED"
+  },
+  "predicted_pattern": "UNKNOWN",
+  "prediction_assessment": "NOT_PREDECLARED",
+  "original_manifest_audit": {
+    "/tmp/relay-k3h-802/evidence/l431-gemma-20261108": {
+      "checked_entries": 12,
+      "status": "PASS"
+    },
+    "/tmp/relay-k3h-802/evidence/l431-k3b-gemma-20261108": {
+      "checked_entries": 8,
+      "status": "PASS"
+    },
+    "/tmp/relay-k3h-802/evidence/l431-k3d-gemma-20261108": {
+      "checked_entries": 8,
+      "status": "PASS"
+    },
+    "/tmp/relay-k3h-802/evidence/l431-k3e-gemma-20261108": {
+      "checked_entries": 10,
+      "status": "PASS"
+    }
+  },
+  "original_source_sha256": {
+    "first": "0478d5ead9c1a09a51932e822678321eebed1bf3b28ff3d10c67b11e001b8429",
+    "k3b": "a8c916c9c005965a98d8c247439a533bc6302bd5b1a1526829baa3816118d7c7",
+    "k3d": "a87e53c97998c1b136c63cc04fc35ac3a3def47fd50ee4c88ee74fcbcf0ac16e",
+    "k3e": "9ebc48f7f2e23d203716e73cd6045cf768e499000dbfa842418d7ea44ee69e26"
+  }
+}

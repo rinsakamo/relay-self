@@ -1,0 +1,22 @@
+........................................................................ [ 36%]
+........................................................................ [ 72%]
+.....................................................F.                  [100%]
+=================================== FAILURES ===================================
+_______________ test_no_outcome_from_rejected_semantic_proposal ________________
+
+originals = [{'classification': 'DEV_ONLY_SIMULATED_WORLD_NO_REAL_S49', 'source': 'independent 1D synthetic World; no real Minecra...roposal': {'status': 'ABSTAIN', 'hypothesis': 'INDETERMINATE', 'probe_id': 'NONE', 'prediction': 'UNKNOWN', ...}, ...}]
+source = {'old_skill': {'version': 1, 'skill_id': 'move_away_on_normal_surface', 'surface': 'normal', 'min_distance': 2.314917,...perience-003', 'shift-experience-004', 'shift-experience-005', ...}, 'prior_decisions': ['K3D_ABSTAIN', 'K3E_ABSTAIN']}
+
+    def test_no_outcome_from_rejected_semantic_proposal(originals, source):
+        proposal = run_proposal(
+            *originals, mode="fixture", fixture=trial(n=0),
+        )
+        assert proposal["semantic_validation"] == "REJECTED"
+>       with pytest.raises(ValueError, match="UNADMITTED_PROPOSAL"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'UNADMITTED_PROPOSAL'
+E         Actual message: 'COMPARE_ARMS_ENVELOPE_INVALID'
+
+tests/test_skill_crystallization_k3h_free_try_dev.py:360: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_skill_crystallization_k3h_free_try_dev.py::test_no_outcome_from_rejected_semantic_proposal
