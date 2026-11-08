@@ -10,7 +10,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from tools.bug0_d14_natural_life import NaturalLifeLoop, R4_GRANT
+from tools.bug0_d14_natural_life import R4_GRANT, NaturalLifeLoop
 from tools.bug0_d14_natural_world import R3_ENV, run
 
 
