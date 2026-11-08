@@ -365,13 +365,14 @@ def test_prediction_can_be_wrong_without_blocking_experience(originals, source):
     proposal = run_proposal(
         *originals, mode="fixture",
         fixture=trial(choice="TRY_MOVE", arm="A", n=1,
-                      prediction="GOAL_NOT_REACHED"),
+                      prediction="GOAL_REACHED"),
     )
     assert proposal["semantic_validation"] == "PASS"
     observed = execute_mock(
         proposal, source, mock_grant=True, result_mode="fixture",
     )
-    assert observed["predicted_pattern"] == "GOAL_NOT_REACHED"
+    assert observed["predicted_pattern"] == "GOAL_REACHED"
+    assert observed["new_experiences"][0]["outcome_success"] is False
     assert observed["mock_actions"] == 1
     # Correctness of a prediction is a separate retrospective check.
     assert "PREDICTION_RECORDED_BUT_NOT_AUTOMATICALLY_SCIENCE_VALIDATED" == (
