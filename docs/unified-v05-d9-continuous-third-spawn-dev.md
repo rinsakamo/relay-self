@@ -8,9 +8,9 @@
 - 第2死亡の正規tickからWorldが**600 server tick後に第3個体を生むまで、同じWorld、同じMineflayer native session、同じ元S49 owner / ActionSupervisorを閉じずに**保つ。
 - その間に元のnative SelfBody（food/health/腐肉在庫）、native SelfWorld（nearby entities）を**read-only**で連続採取。World-owned死亡・spawnのUUID/tick、元のATTACK/MOVE/EAT台帳と同じsession証拠で照合する。
 - 第3世代のnative zombie entity ID が先行2世代と異なることを観測し、読取中の身体Health/Foodがともに正、S49物理Action追加ゼロ・元Action ID集合不変・原本二台帳SHA不変を確認する。
-- 第3世代に **ATTACK / EAT / MOVE の新規発行はしない**。第3世代を認識するだけのD9-Aであり、3周期成功とは名乗らない。
+- 第3世代に **ATTACK / EAT / MOVE の新規発行はしない**。第3世代を認識するだけのD9-Aであり、3周期成功とは名乗らない。第2世代の腐肉0個を2回目のEATと数えない。
 - 既存Paper server tickの入力OFF観測は **passive WAIT / 身体の静止期間**。Selfが明示的RESTを選んだ証拠ではない。真のWorldBody疲労係数・回復率は未知。
-- 1回目/2回目の自然ドロップ0個、世界観測欠落、Health/Food 0、World失効、重複/旧UUIDやAction未解決は **NOT_EXERCISED / FAIL** のまま、繰り返して成功と扱わない。
+- 初回の自然ドロップ0個：初回EATがないのでD9経路は `NOT_EXERCISED`。第2世代ドロップ0個：**D8の食事2周期は不成立**、しかし元S49の第2実死亡/S16 OUTCOMEと在庫不変を検証後、同一Worldの第3リスポーンを読取専用で確認する試験は継続できる。この場合D9の「3世代目までの生存観測」だけを `PASS_DEV` とし、`two_real_natural_food_cycles=false` を維持する。
 
 ## 次の接続 (D9-B/C)
 
