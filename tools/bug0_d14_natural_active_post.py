@@ -141,7 +141,7 @@ def audit_active(
     fence.require_clear()
     rows = fence.actions
     if (
-        fence.self_id != "s49-original-self"
+        fence._body.get("self_id") != "s49-original-self"
         or fence.sha256 != report.get("original_s49_fence_sha256")
         or len(rows) != report.get("new_s49_actions")
         or len(rows) != len(life_actions)
