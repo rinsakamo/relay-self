@@ -139,3 +139,80 @@ def test_second_gen_never_qualifies_with_replayed_or_foreign_source(case):
         lines.insert(7, second[0])
     with pytest.raises(D7LiveStopRejected):
         qualify(lines, client, second)
+
+
+def qualify_passive(lines, client, second):
+    """No S15 clear exists for gen2; use genuine current S49 ATTACK ACK."""
+    attack_id = f"d8-gen2-s49-attack-1-{SID}"
+    client[2]["native_action_id"] = attack_id
+    return read_d7_live_staged_stop(
+        "\n".join(lines),
+        "\n".join(json.dumps({
+            "source": "S50_DEV_NATIVE_READBACK_V1",
+            "ordinal": i, "session_id": SID, **row,
+        }) for i, row in enumerate(client, 1)),
+        session_id=SID, action_id=attack_id, clear_seq=232,
+        original_stage_line=second[1], original_pickup_line=second[2],
+        original_death_line=second[0], source_kind="natural_multi_passive",
+    )
+
+
+def test_gen2_genuine_paper_passive_no_move_qualifies_only_after_attack():
+    lines, client, _, second = sample()
+    source = qualify_passive(lines, client, second)
+    assert source.classification == (
+        "D8_DEV_LIVE_SECOND_NATURAL_PASSIVE_PICKUP_STEADY_SOURCE"
+    )
+    assert source.original_clear_seq == -1
+    assert source.original_attack_effect_seq == 232
+    assert source.server_effective_original_clear_tick == "NOT_APPLICABLE_NO_MOVE"
+    assert source.paper_item_uuid == ITEMS[1]
+    assert source.client_postclear_physics_ticks == 22
+
+
+@pytest.mark.parametrize("case", [
+    "missing_attack_ack", "foreign_attack_ack", "active_client",
+    "reused_zombie", "reused_item", "missing_pickup", "wrong_killer",
+])
+def test_passive_no_move_cannot_reuse_stale_or_fake_source(case):
+    lines, client, _, second = sample()
+    if case == "missing_attack_ack":
+        client.pop(2)
+    elif case == "foreign_attack_ack":
+        client[2]["native_seq"] = 999
+    elif case == "active_client":
+        client[-1]["controls"]["back"] = True
+    elif case == "reused_zombie":
+        lines[4] = lines[4].replace(ZOMBIES[1], ZOMBIES[0])
+        second = (lines[4], second[1], second[2])
+    elif case == "reused_item":
+        lines[5] = lines[5].replace(ITEMS[1], ITEMS[0])
+        second = (second[0], lines[5], second[2])
+    elif case == "missing_pickup":
+        lines.pop(6)
+    elif case == "wrong_killer":
+        lines[4] = lines[4].replace(PLAYER, ZOMBIES[1])
+        second = (lines[4], second[1], second[2])
+    with pytest.raises(D7LiveStopRejected):
+        qualify_passive(lines, client, second)
+
+
+def test_two_generations_probe_prefixes_are_disjoint():
+    """The D6 and D8 observation/action namespaces cannot alias."""
+    first = {
+        f"d6-item-{i}-{tag}"
+        for i in range(1, 5)
+        for tag in ("before", "current", "pickup-recheck")
+    }
+    second = {
+        f"d8-gen2-item-{i}-{tag}"
+        for i in range(1, 5)
+        for tag in ("before", "current", "pickup-recheck")
+    }
+    second.update({
+        "d8-gen2-paper-precollected-native-check",
+        "d8-gen2-native-after-real-pickup",
+        "d8-gen2-fresh-rearm-source",
+    })
+    assert first.isdisjoint(second)
+    assert len(first | second) == len(first) + len(second)
