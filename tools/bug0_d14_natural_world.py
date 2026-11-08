@@ -247,6 +247,7 @@ async def observe_natural_world(
     report: dict[str, Any],
     *, max_wall_seconds: int = MAX_WALL_SECONDS,
     on_life_step=None,
+    on_life_native_stop=None,
 ) -> None:
     if journal_path.exists() or journal_path.is_symlink():
         raise D14NaturalWorldRejected("DERIVATIVE_JOURNAL_ALREADY_EXISTS")
@@ -255,6 +256,7 @@ async def observe_natural_world(
     unconsumed = b""
     readback_errors = 0
     readback_counter = 0
+    native_safe_stopped = False
     start_wall = time.monotonic()
 
     with journal_path.open("x", encoding="utf8") as journal:
@@ -297,7 +299,7 @@ async def observe_natural_world(
                 if timeline.stop is not None or timeline.terminal is not None:
                     break
 
-            if fresh_samples:
+            if fresh_samples and not native_safe_stopped:
                 readback_counter += 1
                 line = fresh_samples[-1]
                 request_id = f"d14-r3-native-read-{readback_counter:03d}"
@@ -335,11 +337,30 @@ async def observe_natural_world(
                         "request_id": request_id,
                     })
                     if readback_errors >= 2:
-                        # Do not hang on a missing native session. Paper
-                        # original may still contain a death marker.
-                        raise D14NaturalWorldRejected("NATIVE_READBACK_REPEATEDLY_UNAVAILABLE") from exc
+                        # R3 remains strict; an active R4 with no outstanding
+                        # physical Action can explicitly STOP its native owner
+                        # and keep observing genuine Paper ticks. This is NOT
+                        # a native recovery, Action authorization, or death.
+                        if on_life_native_stop is None:
+                            raise D14NaturalWorldRejected(
+                                "NATIVE_READBACK_REPEATEDLY_UNAVAILABLE"
+                            ) from exc
+                        on_life_native_stop("NATIVE_READBACK_UNAVAILABLE_ACTION_STOP")
+                        report["native_observation_safe_stop"] = {
+                            "reason": "NATIVE_READBACK_UNAVAILABLE_ACTION_STOP",
+                            "after_sample": line,
+                            "last_failed_request_id": request_id,
+                            "consecutive_failures": readback_errors,
+                            "paper_only_after": True,
+                        }
+                        save(
+                            "NATIVE_SAFE_STOP", line,
+                            native=report["native_observation_safe_stop"],
+                        )
+                        native_safe_stopped = True
             if (
-                on_life_step is not None and timeline.start is not None
+                on_life_step is not None and not native_safe_stopped
+                and timeline.start is not None
                 and timeline.stop is None and timeline.terminal is None
             ):
                 await on_life_step(save)
@@ -434,6 +455,9 @@ async def run(
         await observe_natural_world(
             session, server, paper_log, journal_path, report,
             on_life_step=life.step if life is not None else None,
+            on_life_native_stop=(
+                life.stop_due_to_native_loss if life is not None else None
+            ),
         )
         report["status"] = "PASS_DEV"
         report["classification"] = (
