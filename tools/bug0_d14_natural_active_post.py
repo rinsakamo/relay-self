@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_world import (
     NATURAL_PLUGIN_CONFIG,
@@ -32,11 +33,19 @@ def audit_active(
     report: dict[str, Any], paper_original: str, derivative: str,
     fence: OriginalS49NonMotionFence,
     *, original_sha: str, derivative_sha: str,
+    motion_fence: OriginalS49PhysicalFence | None = None,
 ) -> dict[str, Any]:
+    r6 = report.get("classification") == (
+        "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED"
+    )
+    if (r6 and motion_fence is None) or (not r6 and motion_fence is not None):
+        raise D14NaturalActiveAuditRejected("R6_MOTION_FENCE_SCOPE_MISMATCH")
     if (
         report.get("status") != "PASS_DEV"
-        or report.get("classification")
-            != "DEV_D14_R4_NATURAL_ACTIVE_S49_SOURCE_OBSERVED"
+        or report.get("classification") not in (
+            "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED",
+            "DEV_D14_R4_NATURAL_ACTIVE_S49_SOURCE_OBSERVED",
+        )
         or report.get("cleanup_done") is not True
         or report.get("node_exit") != 0 or report.get("java_exit") != 0
         or report.get("paper_original_sha256") != original_sha
@@ -59,7 +68,12 @@ def audit_active(
             "model_posts", "learning_updates", "skill_installs",
             "c1_intent_experiences",
         ))
-        or report.get("move_admission") != "NOT_CONNECTED_IN_R4"
+        or report.get("move_admission") != (
+            "R6_ORIGINAL_S49_NATIVE_ENTITIES_S14_DURABLE_FENCE"
+            if r6 else "NOT_CONNECTED_IN_R4"
+        )
+        or (r6 and report.get("stop_settling")
+            != "R6_S15_CLEAR_ACK_ONLY_PHYSICAL_STOP_UNATTESTED")
         or report.get("intent_rearm") != "NOT_CONNECTED_IN_R4"
     ):
         raise D14NaturalActiveAuditRejected("WORLD_OR_OWNER_SOURCE_NOT_QUALIFIED")
