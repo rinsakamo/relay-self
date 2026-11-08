@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_dev import (
-    TARGET,
     Cue,
     MockIssuer,
+    TARGET,
     WorldTrial,
     applicable,
     cue_for,
@@ -198,6 +198,7 @@ def evaluate_comparison(old: dict[str, Any], new: dict[str, Any], *,
         "new_selected_guard_differ": 0,
         "cue_negative_checks": 0, "cue_negative_rejections": 0,
     }
+    used_handoffs: set[tuple[str, str]] = set()
     for i, trial in enumerate(trials):
         old_receipt = execute_attempt(old, trial, intent_id=f"old-{i}")
         new_receipt = execute_attempt(new, trial, intent_id=f"new-{i}")
@@ -239,7 +240,7 @@ def evaluate_comparison(old: dict[str, Any], new: dict[str, Any], *,
                 recovered = continue_as_new_intent(
                     trial, new_receipt, new_intent_id=f"recover-{i}",
                     fresh_cue=fresh, admitted=True, cleared=True,
-                    budget=recovery_budget,
+                    budget=recovery_budget, consumed_receipts=used_handoffs,
                 )
                 summary["new_recovery_attempted"] += 1
                 summary["new_recovery_actions"] += recovered["actions"]
