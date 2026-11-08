@@ -110,3 +110,18 @@ The localhost endpoint is illustrative; use only the server/process independentl
 - ABSTAIN: valid restraint, neither optimality nor physical infeasibility proof.
 
 Unchanged: old real-model responses, immutable evidence, and unopened seed 20261126.
+
+## H1: source handoff, prediction/understanding markers (2026-11-08)
+
+Follow-up code on this same Draft PR, without a new model POST or new physical actions:
+
+- Report `PREDICTION_MATCHED` / `PREDICTION_FALSIFIED` independently from whether a hypothesis is later kept, changed, or withheld.
+- The reassessment stage records `HYPOTHESIS_CHANGED`, `HYPOTHESIS_RETAINED` or `HYPOTHESIS_WITHHELD`. None of these labels proves that the reason is correct; `reason_truth=NOT_INDEPENDENTLY_VERIFIED` is explicit.
+- A report labeled `mode=gemma` is not sufficient authorization to reach stage 2. The saved one-shot provider record must contain HTTP 200, finish stop, no reasoning content, a matching request SHA256, the exact input observations, strict probe Schema and the returned proposal matching the original response message. It must then also pass the unchanged deterministic mock-observation replay.
+- These checks only establish **local data self-consistency**. They do not independently authenticate the original provider, native S49 observation, model memory mapping or user CPU/GPU. Actual run evidence and the original request/response bytes must still be independently audited.
+- Both real-model phases require an explicit raw-record directory (`--record-dir`), and the client exclusively creates raw request evidence; no raw-less Gemma call is admitted by K3-E.
+- Negative controls reject forged report mode, request hash, response text and omitted raw-record directory *before* accessing the reserved real probe seed.
+
+The H1 changes were checked in a local Python 3.13 worktree using test-only shims for K3-B/C/D: **23 focused tests PASS**, syntax compilation PASS. This is **not** integrated repository CI, Ruff or a real Gemma run. Github CI remains unconfirmed for the child Draft branch; do not replace this with a blanket PASS claim.
+
+Additional gates for the eventual LocalCodex run: use the exact K3-E GitHub HEAD; run focused pytest against the real parent modules and Ruff; audit #790/#791/#793 evidence manifests; verify pinned GGUF hash, build10874, context8192, slot1, model ID, reasoning OFF and owned GPU/server. Run phase 1 only once and allow phase 2 only if phase 1's PROBE was accepted and observations verified. Do not open seed 20261205 in a dry-run or before the actual accepted real L2 PROBE. Reserve K3-D Skill holdout seed 20261126.
