@@ -168,7 +168,7 @@ def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
 
     def do_not_open_real_seed(proposal, *, seed, mock_grant):
         observed_seeds.append(seed)
-        return {"mock_seed_not_opened": True}
+        return {"mock_seed_not_opened": True, "prediction_matches": True}
 
     monkeypatch.setattr(mod, "execute_mock_probe", do_not_open_real_seed)
     r = run_proposal(first, k3b, k3d, mode="gemma",
@@ -182,7 +182,8 @@ def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
     assert "hidden_effects" not in json.dumps(ctx)
     assert calls[0][1]["response_schema"] == proposal_schema()
     assert "not creating a Skill" in calls[0][1]["system_instruction"]
-    assert r["probe"] == {"mock_seed_not_opened": True}
+    assert r["probe"] == {"mock_seed_not_opened": True, "prediction_matches": True}
+    assert r["prediction_assessment"] == "PREDICTION_MATCHED"
     assert observed_seeds == [REAL_PROBE_SEED]
     assert r["provider"]["finish_reason"] == "stop"
 
