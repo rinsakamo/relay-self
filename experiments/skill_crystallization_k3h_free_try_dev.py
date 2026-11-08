@@ -207,7 +207,8 @@ def run_proposal(
     report = {
         "classification": "DEV_ONLY_K3H_FREE_CHOICE_PROPOSAL",
         "mode": mode, "source_fingerprint": _canonical_sha(source["evidence"]),
-        "proposal": None, "schema_validation": "NOT_RUN", "validator_error": None,
+        "proposal": None, "schema_validation": "NOT_RUN",
+        "semantic_validation": "NOT_RUN", "validator_error": None,
         "provider_record": None, "stages": [], "new_experiences": [],
         "mock_actions": 0, "native_s49_actions": 0, "skill_installed": False,
         "protected_seeds": {str(seed): "UNOPENED" for seed in
@@ -237,7 +238,7 @@ def run_proposal(
         report["stages"].append("MODEL_PROPOSAL_ATTEMPTED")
     report["proposal"] = proposal
     try:
-        valid = validate_proposal(proposal, source["ids"])
+        _schema_check(proposal, proposal_schema())
     except ValueError as exc:
         report["schema_validation"] = (
             "UNAVAILABLE" if "JSONSCHEMA_UNAVAILABLE" in str(exc)
@@ -246,6 +247,13 @@ def run_proposal(
         report["validator_error"] = str(exc)
         return report
     report["schema_validation"] = "PASS"
+    try:
+        valid = validate_proposal(proposal, source["ids"])
+    except ValueError as exc:
+        report["semantic_validation"] = "REJECTED"
+        report["validator_error"] = str(exc)
+        return report
+    report["semantic_validation"] = "PASS"
     report["stages"].append("VALID_BOUNDED_CHOICE")
     report["chosen_decision"] = valid["decision"]
     return report
@@ -293,7 +301,8 @@ def execute_mock(
         raise ValueError("PROPOSAL_SOURCE_MISMATCH")
     proposal = validate_proposal(proposal_report.get("proposal"), source["ids"])
     if ("VALID_BOUNDED_CHOICE" not in proposal_report.get("stages", [])
-            or proposal_report.get("schema_validation") != "PASS"):
+            or proposal_report.get("schema_validation") != "PASS"
+        or proposal_report.get("semantic_validation") != "PASS"):
         raise ValueError("UNADMITTED_PROPOSAL")
     if result_mode not in ("fixture", "gemma") or result_mode != proposal_report["mode"]:
         raise ValueError("PROPOSAL_MODE_MISMATCH")
@@ -390,7 +399,8 @@ def run_reflection(
         "mode": mode, "proposal_fingerprint": _canonical_sha(proposal_report),
         "outcome_fingerprint": _canonical_sha(outcome_report),
         "provider_record": None, "reflection": None, "schema_validation": "NOT_RUN",
-        "validator_error": None, "stages": [], "skill_installed": False,
+        "semantic_validation": "NOT_RUN", "validator_error": None,
+        "stages": [], "skill_installed": False,
         "skill_evaluated": False, "native_s49_actions": 0, "mock_actions": 0,
     }
     evidence = source["evidence"] + observations
@@ -432,14 +442,22 @@ def run_reflection(
         report["stages"].append("MODEL_REFLECTION_ATTEMPTED")
     report["reflection"] = reflection
     try:
-        validate_reflection(reflection, available)
+        _schema_check(reflection, reflection_schema())
     except ValueError as exc:
         report["schema_validation"] = (
-            "UNAVAILABLE" if "JSONSCHEMA_UNAVAILABLE" in str(exc) else "REJECTED"
+            "UNAVAILABLE" if "JSONSCHEMA_UNAVAILABLE" in str(exc)
+            else "REJECTED"
         )
         report["validator_error"] = str(exc)
         return report
     report["schema_validation"] = "PASS"
+    try:
+        validate_reflection(reflection, available)
+    except ValueError as exc:
+        report["semantic_validation"] = "REJECTED"
+        report["validator_error"] = str(exc)
+        return report
+    report["semantic_validation"] = "PASS"
     report["stages"].append("VALID_REFLECTION_CANDIDATE_ONLY")
     if reflection["skill"] is not None:
         report["stages"].append("TENTATIVE_SKILL_NOT_EVALUATED_OR_INSTALLED")
