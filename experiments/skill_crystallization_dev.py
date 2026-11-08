@@ -229,6 +229,7 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
              response_schema: dict[str, Any] | None = None,
              system_append: str = "",
              system_instruction: str | None = None,
+             max_actions_allowed: int = 4,
              record_dir: Path | None = None,
              ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exactly one explicitly requested HTTP call; no retries or World actions."""
@@ -236,6 +237,12 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
         not isinstance(system_instruction, str) or not system_instruction.strip()
     ):
         raise ValueError("INVALID_SYSTEM_INSTRUCTION")
+    if type(max_actions_allowed) is not int or not 1 <= max_actions_allowed <= 10:
+        raise ValueError("INVALID_L2_ACTION_BUDGET")
+    if max_actions_allowed != 4 and (
+        system_instruction is None or response_schema is None or record_dir is None
+    ):
+        raise ValueError("EXTENDED_BUDGET_REQUIRES_EXPLICIT_SCHEMA_PROMPT_AND_RECORD")
     parsed = urllib.parse.urlsplit(endpoint)
     if (parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost")
             or parsed.path != "/v1/chat/completions" or parsed.username is not None
@@ -265,7 +272,8 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
                 ) + system_append
             )},
             {"role": "user", "content": json.dumps({
-                "allowed_action": "MOVE_AWAY", "maximum_actions": 4, "target_distance": TARGET,
+                "allowed_action": "MOVE_AWAY", "maximum_actions": max_actions_allowed,
+                "target_distance": TARGET,
                 "train_experiences": training,
                 **({"revision_context": revision_context} if revision_context else {}),
             }, sort_keys=True, separators=(",", ":"))},

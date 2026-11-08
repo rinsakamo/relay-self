@@ -1,0 +1,69 @@
+{
+  "classification": "DEV_ONLY_K3G_LOCAL_K1_CORE_PREVIEW_NOT_INTEGRATED",
+  "source": "Local retained K1 MockIssuer/run_skill/run_baseline plus independently reimplemented K3-G seed20261210 trial generation; NOT execution of the new GitHub K3-G module",
+  "seed": 20261210,
+  "seed_status": "OPENED_FIXTURE_NOT_REAL_HOLDOUT",
+  "old_executable_policy": {
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4
+  },
+  "only_change": {
+    "max_actions": 10,
+    "guard": "unchanged"
+  },
+  "summary": {
+    "normal_changed": {
+      "n": 16,
+      "old_selected": 1,
+      "new_selected": 1,
+      "old_goal_success": 1,
+      "new_goal_success": 1,
+      "old_mock_actions": 34,
+      "new_mock_actions": 34
+    },
+    "normal_slower_stress": {
+      "n": 16,
+      "old_selected": 2,
+      "new_selected": 2,
+      "old_goal_success": 0,
+      "new_goal_success": 2,
+      "old_mock_actions": 36,
+      "new_mock_actions": 42
+    },
+    "normal_reference": {
+      "n": 16,
+      "old_selected": 7,
+      "new_selected": 7,
+      "old_goal_success": 16,
+      "new_goal_success": 16,
+      "old_mock_actions": 32,
+      "new_mock_actions": 32
+    },
+    "ice_changed": {
+      "n": 16,
+      "old_selected": 0,
+      "new_selected": 0,
+      "old_goal_success": 0,
+      "new_goal_success": 0,
+      "old_mock_actions": 32,
+      "new_mock_actions": 32
+    }
+  },
+  "totals": {
+    "n": 64,
+    "goal_old": 17,
+    "goal_new": 19,
+    "actions_old": 134,
+    "actions_new": 140
+  },
+  "additional_real_gemma_calls": 0,
+  "native_s49_actions": 0,
+  "original_worlds": 0,
+  "k3d_seed_20261126": "UNOPENED",
+  "k3e_seed_20261205": "UNOPENED",
+  "k3g_real_skill_holdout_20261213": "UNOPENED",
+  "limitations": "Preliminary local replay of registered test mechanics only. No original GH repository integrated tests, no Ruff/CI, no real model or physical effects. Synthetic outcomes are not physical energy."
+}

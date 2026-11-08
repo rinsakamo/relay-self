@@ -1,0 +1,31 @@
+5ef1f4f9e90add6f3bd0c883da71f43e569652c4
+?? evidence/l431-k3g-gemma-20261108/
+?? experiments/__pycache__/
+?? tests/__pycache__/
+c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed  /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536  /home/rinsa/src/llama.cpp/build/bin/llama-server
+    PID    PPID COMMAND
+ 450296  450290 /home/rinsa/src/llama.cpp/build/bin/llama-server -m /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf --host 127.0.0.1 --port 18197 --alias gemma-4-12b-it-q4-k-m -c 8192 -np 1 -ngl 99 --reasoning off
+732030f1b000-73206229c000 r--s 00f1b000 08:30 541962                     /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+7321e7f6f000-7321e7f70000 r--s 1b7f6f000 08:30 541962                    /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+Sun Nov  8 13:38:50 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 590.44.01              Driver Version: 591.44         CUDA Version: 13.1     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 3060        On  |   00000000:01:00.0 Off |                  N/A |
+|  0%   43C    P8              8W /  170W |    8701MiB /  12288MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          450296      C   /llama-server                         N/A      |
++-----------------------------------------------------------------------------------------+
+{"models":[{"name":"gemma-4-12b-it-q4-k-m","model":"gemma-4-12b-it-q4-k-m","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"gemma-4-12b-it-q4-k-m","aliases":["gemma-4-12b-it-q4-k-m"],"tags":[],"object":"model","created":1794112730,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":8192,"n_ctx_train":131072,"n_embd":3840,"n_params":11907350576,"size":7365558464,"ftype":"Q4_K - Medium"}}]}[{"id":0,"n_ctx":8192,"speculative":false,"is_processing":false}]
