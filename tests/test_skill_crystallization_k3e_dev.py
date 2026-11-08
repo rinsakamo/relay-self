@@ -12,6 +12,7 @@ def _optional_jsonschema_gate(request):
     if request.node.name not in {
         "test_wire_schema_closed_and_fixed_protocols",
         "test_context_preserves_prior_abstention_as_unproven",
+        "test_real_http_client_accepts_custom_investigation_system_prompt",
     }:
         pytest.importorskip("jsonschema")
 
@@ -253,3 +254,53 @@ def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeyp
     assert "k3e-probe-B" in json.dumps(got[0][0])
     assert got[0][1]["response_schema"] == update_schema()
     assert "20261126" not in json.dumps(got[0][1]["revision_context"])
+
+
+def test_real_http_client_accepts_custom_investigation_system_prompt(monkeypatch):
+    import urllib.request
+
+    from experiments.skill_crystallization_dev import gemma_l2
+
+    captured = []
+    answer = chosen_probe()
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": json.dumps(answer),
+                                "reasoning_content": None},
+                }],
+                "usage": {"completion_tokens": 50},
+            }).encode("utf-8")
+
+    def mock_urlopen(request, *, timeout):
+        del timeout
+        captured.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    spec, record = gemma_l2(
+        [], endpoint="http://127.0.0.1:8080/v1/chat/completions",
+        model="stub", timeout=2,
+        response_schema=proposal_schema(),
+        system_instruction="K3-E hypothesis investigation, not Skill generation",
+    )
+    assert spec == answer
+    assert record["finish_reason"] == "stop"
+    assert len(captured) == 1
+    request = captured[0]
+    assert request["messages"][0]["content"].startswith("K3-E hypothesis")
+    assert "You may propose one low-cost" not in request["messages"][0]["content"]
+    assert request["reasoning_effort"] == "none"
+    assert request["response_format"]["json_schema"]["strict"] is True
+    assert request["response_format"]["json_schema"]["schema"] == proposal_schema()
