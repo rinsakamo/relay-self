@@ -154,6 +154,35 @@ def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotion
     ), False
 
 
+def d8_reported_original_move_records(report: dict) -> list[dict]:
+    """D8 source MOVE history, including a genuine first-zero without MOVE.
+
+    Missing MOVE rows are allowed ONLY after the first vanilla zero-death
+    was verified; a positive-food first generation must supply its explicit
+    MOVE list and the second generation's own source records.
+    """
+    if not isinstance(report, dict):
+        raise S49D3Rejected("D8 source report not a dict")
+    first = report.get("d6_original_s49_move_actions")
+    second = report.get("d8_second_generation")
+    if report.get("d8_first_true_zero_food_not_exercised") is True:
+        if (
+            report.get("real_rotten_flesh_count") != 0
+            or report.get("d8_second_generation_food_proven") is not False
+            or report.get("self_eat") is not False
+            or (first is not None and (not isinstance(first, list) or bool(first)))
+            or (second is not None and second != {})
+        ):
+            raise S49D3Rejected("D8 first true-zero must have no MOVE or EAT")
+        return []
+    if not isinstance(first, list) or not isinstance(second, dict):
+        raise S49D3Rejected("D8 first/second generation MOVE source absent")
+    newer = second.get("d6_original_s49_move_actions", [])
+    if not isinstance(newer, list):
+        raise S49D3Rejected("D8 second generation MOVE source invalid")
+    return [*first, *newer]
+
+
 def require_d8_original_motion_history(
     actual_actions: object, expected_moves: object,
 ) -> None:
@@ -919,25 +948,15 @@ async def run(
                 }
                 if report["status"] == "PASS_DEV":
                     original_motion.require_clear()
-                    expected_moves = report.get("d6_original_s49_move_actions", ())
-                    if d8_two_generation_food_dev:
-                        # D8 retains the SAME durable C1 file across both
-                        # original S49 Intent epochs. The historical D6-only
-                        # readback count excluded the new zombie's genuine
-                        # S49 MOVE and falsely failed a completed second EAT.
-                        g2 = report.get("d8_second_generation", {})
-                        if not isinstance(g2, dict):
-                            raise S49D3Rejected(
-                                "D8 second generation source invalid"
-                            )
-                        newer = g2.get("d6_original_s49_move_actions", [])
-                        if not isinstance(expected_moves, list) or not isinstance(
-                            newer, list
-                        ):
-                            raise S49D3Rejected(
-                                "D8 original two-generation MOVE records invalid"
-                            )
-                        expected_moves = [*expected_moves, *newer]
+                    # An honest first-generation zero drop produces no MOVE
+                    # source field, no MOVE, and no EAT. Do not misclassify
+                    # that as an invalid two-generation C1 history.
+                    # All positive-drop paths still require explicit records.
+                    expected_moves = (
+                        d8_reported_original_move_records(report)
+                        if d8_two_generation_food_dev
+                        else report.get("d6_original_s49_move_actions", ())
+                    )
                     if len(original_motion.actions) != len(expected_moves):
                         raise S49D3Rejected("original C1 physical MOVE count disagrees")
                     if d8_two_generation_food_dev:
