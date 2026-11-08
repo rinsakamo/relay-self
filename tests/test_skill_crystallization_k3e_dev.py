@@ -391,3 +391,101 @@ def test_real_gemma_mode_requires_raw_record_dir_before_http(monkeypatch):
         run_reassessment(first, k3b, k3d, report, mode="gemma",
                          endpoint="http://127.0.0.1:8080/v1/chat/completions",
                          model="verified")
+
+def test_self_consistent_gemma_provider_record_allows_second_stage_mock(monkeypatch, tmp_path):
+    import hashlib
+
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    report = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe())
+    report["mode"] = "gemma"
+    original_mock_probe = report["probe"]
+    # Do not materialize reserved real-seed physics in this contract test.
+    monkeypatch.setattr(mod, "execute_mock_probe",
+                        lambda *_args, **_kwargs: original_mock_probe)
+    source = _verified_context(first, k3b, k3d)
+    request = {
+        "reasoning_effort": "none",
+        "response_format": {"json_schema": {
+            "strict": True, "schema": proposal_schema(),
+        }},
+        "messages": [{}, {"content": json.dumps({
+            "train_experiences": source["evidence"],
+        })}],
+    }
+    serialized = json.dumps(
+        request, separators=(",", ":"), ensure_ascii=False,
+    ).encode()
+    response = json.dumps({"choices": [{
+        "finish_reason": "stop", "message": {
+            "content": json.dumps(report["proposal"]),
+            "reasoning_content": None,
+        },
+    }]})
+    report["provider"] = {
+        "http_status": 200, "finish_reason": "stop", "reasoning_content": None,
+        "request": request,
+        "request_sha256": hashlib.sha256(serialized).hexdigest(),
+        "response_raw": response,
+    }
+
+    def fake_gemma(_evidence, **_kwargs):
+        return {
+            "status": "UPDATE", "hypothesis": "START_MARGIN_SENSITIVE",
+            "reason": "The two observed outcomes differ.", "evidence_ids": [
+                "k3e-probe-A", "k3e-probe-B",
+            ], "skill_candidate": None,
+        }, {"finish_reason": "stop"}
+
+    monkeypatch.setattr(mod, "gemma_l2", fake_gemma)
+    result = run_reassessment(
+        first, k3b, k3d, report, mode="gemma",
+        endpoint="http://127.0.0.1:8080/v1/chat/completions", model="stub",
+        record_dir=tmp_path / "stage2",
+    )
+    assert result["status"] == "UPDATE"
+    assert result["hypothesis_assessment"] == "HYPOTHESIS_RETAINED"
+    assert result["new_skill_installed"] is False
+    assert result["holdout_20261126"] == "UNOPENED"
+
+
+def test_provider_response_content_mismatch_rejected_before_second_stage(monkeypatch):
+    import hashlib
+
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    report = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe())
+    report["mode"] = "gemma"
+    source = _verified_context(first, k3b, k3d)
+    request = {
+        "reasoning_effort": "none",
+        "response_format": {"json_schema": {
+            "strict": True, "schema": proposal_schema(),
+        }},
+        "messages": [{}, {"content": json.dumps({
+            "train_experiences": source["evidence"],
+        })}],
+    }
+    serialized = json.dumps(request, separators=(",", ":"),
+                            ensure_ascii=False).encode()
+    report["provider"] = {
+        "http_status": 200, "finish_reason": "stop",
+        "reasoning_content": None, "request": request,
+        "request_sha256": hashlib.sha256(serialized).hexdigest(),
+        "response_raw": json.dumps({"choices": [{
+            "finish_reason": "stop", "message": {
+                "content": json.dumps({"status": "ABSTAIN"}),
+            },
+        }]}),
+    }
+    monkeypatch.setattr(mod, "execute_mock_probe",
+                        lambda *_args, **_kwargs: pytest.fail(
+                            "Mismatched model response must not open real probe seed"))
+    with pytest.raises(ValueError, match="GEMMA_PROPOSAL_SOURCE_MISMATCH"):
+        run_reassessment(first, k3b, k3d, report, mode="gemma",
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                         model="stub")
