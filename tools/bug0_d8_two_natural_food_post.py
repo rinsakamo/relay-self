@@ -462,6 +462,8 @@ def audit_two_natural_food_cycles(
     # uncorrelated passive event observations with a null request ID.
     seen_request_ids: set[str] = set()
     for rec in records:
+        if not isinstance(rec, dict):
+            raise D8TwoCycleAuditRejected("original S50 record must be object")
         if rec.get("kind") != "PROBE":
             continue
         request_id = rec.get("native_action_id")
