@@ -367,11 +367,19 @@ def run_choice(
         report["stages"].append("L2_TEN_ACTION_CHOICE_ATTEMPTED")
     report["proposal"] = proposal
     try:
+        _independent_schema_check(proposal)
+    except ValueError as exc:
+        report["schema_validation"] = (
+            "UNAVAILABLE" if str(exc) == "JSONSCHEMA_UNAVAILABLE" else "REJECTED"
+        )
+        report["validator_error"] = str(exc)
+        return report
+    report["schema_validation"] = "PASS"
+    try:
         valid = validate_choice(proposal, evidence_ids=source["ids"])
     except ValueError as exc:
         report["validator_error"] = str(exc)
         return report
-    report["schema_validation"] = "PASS"
     report["stages"].append("PROPOSAL_VALIDATED")
     report["status"] = valid["status"]
     if valid["status"] == "ABSTAIN":
