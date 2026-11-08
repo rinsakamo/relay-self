@@ -12,14 +12,14 @@ An explicitly enabled R6 retains the **same natural-survival World,
 original S49 Intent, ActionSupervisor, S49 executor, and Paper 10,000-tick
 horizon** as R5. It records *actual unsolicited* Mineflayer entity events
 encountered during genuine correlated native observations. It will consider
-one MOVE only when the original S49 \`NormalWorldL0._check\` sees an
+one MOVE only when the original S49 `NormalWorldL0._check` sees an
 identical close zombie in an older entities event and current real probe.
 
 A MOVE request then passes the existing frozen S49 S14
-\`_native_epoch_two\`, source-typed independent operator PROPOSE and
+`_native_epoch_two`, source-typed independent operator PROPOSE and
 ISSUE authorizations, execution binding, the original
-\`NormalSessionActionExecutor.execute\`, and the original
-\`OriginalS49PhysicalFence\` persisted **before native ISSUE**.
+`NormalSessionActionExecutor.execute`, and the original
+`OriginalS49PhysicalFence` persisted **before native ISSUE**.
 Only its own original supervisor's matching S16 OUTCOME can close the
 fence. Missing/unresolved effects are STOP/UNKNOWN, not retry candidates.
 
@@ -28,7 +28,7 @@ staged zombie, teleport, altered drops, automatic retry, new permission
 or learning update is allowed.
 
 **Physical STOP has NOT been implemented or attested.**
-An original S15 \`clear_controls\` ACK does not prove a stopped body
+An original S15 `clear_controls` ACK does not prove a stopped body
 over later World ticks. S49's existing post-MOVE EAT fence is retained.
 After MOVE, EAT may be denied, and the Self may die in an authentic World.
 Do not interpret nonmotion EAT/ATTACK, paper-only continuation, or a
@@ -37,7 +37,7 @@ The nearby-zombie source gate may also reject a natural event. Zero MOVE
 is a valid observed outcome, not evidence of a working MOVE capability.
 
 This is one-shot DEV:
-\`DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN\`.
+`DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
 
 ## LocalCodex execution (WSL2, ONLY after exact successful R6 CI)
 
@@ -45,13 +45,13 @@ Use a **new detached worktree**. Do not update or replace any previous R4/R5
 evidence, existing worktrees, or active grants. If an earlier local branch has
 uncommitted modifications, leave it untouched.
 
-Replace \`CI_VERIFIED_R6_HEAD\` below with the **full 40-character SHA**
+Replace `CI_VERIFIED_R6_HEAD` below with the **full 40-character SHA**
 of the latest successful
 [R6 offline CI](https://github.com/rinsakamo/relay-self/actions/workflows/unified-v05-d14-r6-original-motion-offline.yml).
 Read the source first, compare that SHA to the PR and the exact workflow
 result, and do not run on an unchecked-out or modified HEAD.
 
-\`\`\`bash
+```bash
 set -euo pipefail
 cd ~/work/relay-self
 git fetch origin dev/d14-r6-original-s49-native-motion-20261109
@@ -78,15 +78,15 @@ npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
 mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml clean package
 python tools/check_repository.py
 test -z "$(git status --porcelain)"
-\`\`\`
+```
 
 The Paper JAR must match the **pinned Paper 1.21.8 size and SHA** defined
-in \`adapters/mineflayer/s49_p1_paper_server.py\`.
+in `adapters/mineflayer/s49_p1_paper_server.py`.
 The respawn plugin must be built from this exact checkout and its SHA
 attested. Any unexplained change in the World, source, plugin or original
 physical ledger is a preflight failure.
 
-\`\`\`bash
+```bash
 export D14_R3_PAPER_JAR="$HOME/work/paper/paper-1.21.8-60.jar"
 export D14_R3_RESPAWN_JAR="$PWD/adapters/mineflayer/zombie_respawn_dev/target/relay-zombie-respawn-dev-0.1.0-dev.jar"
 export D14_R3_RESPAWN_SHA256="$(sha256sum "$D14_R3_RESPAWN_JAR" | cut -d' ' -f1)"
@@ -110,18 +110,18 @@ python -B -m tools.bug0_d14_local_oneworld \
 
 # Even on nonzero exit, do not restart/replay; inspect only original artifacts.
 (cd "$EVIDENCE" && sha256sum -c SHA256SUMS.txt)
-\`\`\`
+```
 
-The output retains original \`paper_original.log\`,
-\`d14_natural_events.jsonl\`, \`report.json\`, the original S49
+The output retains original `paper_original.log`,
+`d14_natural_events.jsonl`, `report.json`, the original S49
 ATTACK/EAT and MOVE fences, and the R5 LocalCodex source manifest and
 independent audit if available. The report fields
-\`original_s49_move_fence_unresolved\` and
-\`original_s49_post_move_settling_unqualified\` are especially important.
+`original_s49_move_fence_unresolved` and
+`original_s49_post_move_settling_unqualified` are especially important.
 
-Check all original native \`entities\` seqs, exact request IDs, S49 L0
+Check all original native `entities` seqs, exact request IDs, S49 L0
 selection, S14 admitted plan, original supervisor Action ID, pre-ISSUE
-fence, \`set_control\`, \`clear_controls\`, S16 terminal and World
+fence, `set_control`, `clear_controls`, S16 terminal and World
 position. The simulation may stop early due to real death. One World
 and no automatic restart regardless of the outcome.
 
