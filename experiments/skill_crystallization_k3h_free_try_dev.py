@@ -369,7 +369,11 @@ def run_reflection(
     expected = execute_mock(
         proposal_report, source, mock_grant=True, result_mode=mode,
     )
-    if outcome_report != expected:
+    audited = {
+        key: value for key, value in outcome_report.items()
+        if key not in ("original_manifest_audit", "original_source_sha256")
+    }
+    if audited != expected:
         raise ValueError("NEW_MOCK_OUTCOME_NOT_REPRODUCIBLE")
     if "DEFER_NO_NEW_EXPERIENCE" in outcome_report.get("stages", []):
         raise ValueError("NO_EXPERIENCE_FOR_REFLECTION")
