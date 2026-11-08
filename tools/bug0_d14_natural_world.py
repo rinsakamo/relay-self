@@ -478,6 +478,8 @@ async def run(
         )
         report["status"] = "PASS_DEV"
         report["classification"] = (
+            "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED"
+            if life is not None and life.motion is not None else
             "DEV_D14_R4_NATURAL_ACTIVE_S49_SOURCE_OBSERVED"
             if life is not None else (
             "DEV_D14_R3_NATURAL_10000_PAPER_TICKS_OBSERVED"
