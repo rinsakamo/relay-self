@@ -1,0 +1,50 @@
+{
+  "classification": "DEV_ONLY_SYNTHETIC_K3C_RECONSTRUCTED_POLICY_FIXTURE",
+  "source": "Old/new executable fields reproduced from #790/#791 observations; actual saved evidence files not byte-read by chat runtime",
+  "base_head": "a9a406fa84fbd9b221ac69070fef497b1b5ce9ae",
+  "model_calls": 0,
+  "real_world_runs": 0,
+  "real_s49_actions": 0,
+  "holdout_seed": 20261120,
+  "old_policy": {
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4,
+    "on_failure": "ESCALATE"
+  },
+  "new_policy": {
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4,
+    "on_failure": "ESCALATE"
+  },
+  "semantic_delta": "EXECUTION_EQUIVALENT",
+  "holdout": {
+    "n": 32,
+    "old_success": 6,
+    "new_success": 6,
+    "fixed_success": 0,
+    "old_actions": 86,
+    "new_actions": 86,
+    "fixed_actions": 64,
+    "old_selected": 11,
+    "new_selected": 11,
+    "new_escalated": 5,
+    "new_failure_after_selected": 5,
+    "new_automatic_postfailure_actions": 0,
+    "new_recovery_attempted": 5,
+    "new_recovery_success": 5,
+    "new_recovery_actions": 5,
+    "new_selected_traces_differ": 0,
+    "new_selected_guard_differ": 0,
+    "invalid_source_checks": 128,
+    "invalid_source_deferred": 128
+  },
+  "recovery_status": "SEPARATE_MOCK_INTENT_WITH_FRESH_SYNTHETIC_CUE_AND_NEW_BUDGET_NOT_REAL_S49",
+  "new_model_revision": "NOT_RUN",
+  "notes": "The new holdout is already inspected; future Gemma revision tests must use a different unopened seed. Source-byte audit must be rerun locally on immutable repo evidence."
+}
