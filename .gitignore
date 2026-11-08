@@ -1,0 +1,7 @@
+# LocalCodex / offline generated outputs (never commit as source evidence)
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+*.py[cod]
+adapters/mineflayer/zombie_respawn_dev/target/
+adapters/mineflayer/zombie_drop_witness_dev/target/
