@@ -51,8 +51,19 @@ def audit(
     original_log: str, report: dict, *, nonmotion_path: Path,
     motion_path: Path,
     d10_hunt_until_drop_dev: bool = False,
+    d11_hunt_then_eat_dev: bool = False,
 ) -> dict:
     operator_forced_zero = report.get("d6_operator_forced_zero") is True
+    d11_eat_claimed = (
+        d11_hunt_then_eat_dev
+        and report.get("d11_source_eat_proven") is True
+    )
+    if d11_hunt_then_eat_dev and (
+        not d10_hunt_until_drop_dev
+        or report.get("d11_hunt_then_eat_dev") is not True
+        or report.get("d7f_live_eat_optin") is not True
+    ):
+        raise MultigenAuditRejected("D11 S49/S51 original natural opt-in absent")
     limit = 12 if d10_hunt_until_drop_dev else 4
     if d10_hunt_until_drop_dev and (
         report.get("d10_until_drop_dev") is not True
@@ -72,10 +83,10 @@ def audit(
         )
         or report.get("d6_multigen_operator_forced_zero") is not operator_forced_zero
         or report.get("d6_multigen_no_physical_reissue") is not True
-        or report.get("d6_multigen_no_eat") is not True
+        or report.get("d6_multigen_no_eat") is not (not d11_eat_claimed)
         or report.get("d6_multigen_same_supervisor") is not True
-        or report.get("d6_multigen_eat_after_move") is not False
-        or report.get("self_eat") is not False
+        or report.get("d6_multigen_eat_after_move") is not d11_eat_claimed
+        or report.get("self_eat") is not d11_eat_claimed
         or report.get("self_goal_selected_autonomously") is not False
         or report.get("real_model_calls") != 0
         or report.get("learning_updated") is not False
@@ -84,7 +95,8 @@ def audit(
         or "RSELF_NATURAL_DROP_FAULT" in original_log
         or "RSELF_LOOT_STAGED" in original_log
         or "rselfstagefood" in original_log
-        or "effect give RelaySelf minecraft:hunger" in original_log
+        or (not d11_hunt_then_eat_dev
+            and "effect give RelaySelf minecraft:hunger" in original_log)
     ):
         raise MultigenAuditRejected("DEV/World original physical loop source not qualified")
     if operator_forced_zero:
@@ -154,12 +166,13 @@ def audit(
         or len(nonmotion.actions) != (
             len(original_attacks)
             + sum(len(e["action_ids"]) for e in epochs[1:])
+            + int(d11_eat_claimed)
         )
         or len(motion.actions) != len(moves)
         or report.get("d6_multigen_final_original_s49_action_count")
            != len(nonmotion.actions)+len(motion.actions)
         or report.get("d6_multigen_final_original_attack_count")
-           != len(nonmotion.actions)
+           != len(nonmotion.actions) - int(d11_eat_claimed)
         or report.get("d6_multigen_final_original_move_count")
            != len(motion.actions)
         or report.get("nonmotion_fence", {}).get("sha256") != nonmotion.sha256
@@ -256,13 +269,16 @@ def audit(
                 raise MultigenAuditRejected("zero-loot native inventory fabricated")
     if len(positive) > 1:
         raise MultigenAuditRejected("natural food should stop physical trial")
+    attack_journal = (
+        nonmotion.actions[:-1] if d11_eat_claimed else nonmotion.actions
+    )
     if (
         expected_attack_ids
-        != [a["action_id"] for a in nonmotion.actions]
+        != [a["action_id"] for a in attack_journal]
         or len(seen_zombies) != len(epochs)
     ):
         raise MultigenAuditRejected("ATTACK ledger not ordered by true generations")
-    for a in nonmotion.actions:
+    for a in attack_journal:
         if (
             a.get("kind") != "ATTACK"
             or a.get("session_id") != sid
@@ -361,6 +377,38 @@ def audit(
             )
         ):
             raise MultigenAuditRejected("all zero should continue until CI trial cap")
+    if d11_hunt_then_eat_dev:
+        if d11_eat_claimed is not bool(positive):
+            raise MultigenAuditRejected("D11 EAT cannot precede genuine positive pickup")
+        if d11_eat_claimed:
+            last = nonmotion.actions[-1]
+            result = report.get("d11_eat_outcome")
+            eat_id = report.get("d11_eat_action_id")
+            actual_gen = report.get("d11_first_real_eat_generation")
+            native_after = (
+                report.get("d7f_native_after_eat")
+                if actual_gen == 1 else report.get("d11_native_after_eat")
+            )
+            if (
+                not isinstance(result, dict)
+                or not isinstance(native_after, dict)
+                or actual_gen != epochs[-1]["generation"]
+                or not isinstance(eat_id, str) or not eat_id
+                or last.get("kind") != "EAT"
+                or last.get("action_id") != eat_id
+                or last.get("session_id") != sid
+                or last.get("status") != "S16_OUTCOME"
+                or last.get("terminal") != "outcome"
+                or result.get("consumed_item") != "rotten_flesh"
+                or result.get("session_id") != sid
+                or result.get("count_before") != positive[0][0]["real_rotten_count"]
+                or result.get("count_after") != result.get("count_before") - 1
+                or not isinstance(result.get("food_before"), int | float)
+                or not isinstance(result.get("food_after"), int | float)
+                or result["food_after"] <= result["food_before"]
+                or native_after.get("rotten_flesh") != result["count_after"]
+            ):
+                raise MultigenAuditRejected("D11 genuine original S51 EAT ledger/food invalid")
     if d10_hunt_until_drop_dev and (
         report.get("d10_original_kills") != len(epochs)
         or report.get("d10_natural_counts")
@@ -384,8 +432,15 @@ def audit(
             if d10_hunt_until_drop_dev
             else report["d6_multigen_classification"]
         ),
+        "d11_first_real_eat_verified": d11_eat_claimed if d11_hunt_then_eat_dev else None,
+        "d11_eat_generation": (
+            report.get("d11_first_real_eat_generation")
+            if d11_eat_claimed else None
+        ),
+        "d11_eat_action_id": (
+            report.get("d11_eat_action_id") if d11_eat_claimed else None
+        ),
         "status": (
-            "NOT_EXERCISED"
             if d10_hunt_until_drop_dev and not positive else "PASS_DEV"
         ),
         "operator_forced_zero_not_vanilla_rng": operator_forced_zero,
@@ -404,7 +459,7 @@ def audit(
         "natural_item_uuid": original_item,
         "same_supervisor_retained": True,
         "all_real_respawns_world_600_ticks": True,
-        "no_eat_after_move": True,
+        "no_eat_after_move": not d11_eat_claimed,
         "physical_exactly_once_proven": False,
         "dev_trial_limit_not_product_policy": True,
         "unresolved_nonmotion": nonmotion.unresolved,
