@@ -29,9 +29,27 @@ def sha256(path: Path) -> str:
 def audit_natural(
     report: dict[str, Any], original: str, derivative: str,
     *, original_sha: str, derivative_sha: str,
+    source_only_failed_cleanup: bool = False,
 ) -> dict[str, Any]:
+    source_only = (
+        source_only_failed_cleanup is True
+        and report.get("status") == "FAIL"
+        and report.get("classification") == "DEV_D14_R3_TEARDOWN_UNQUALIFIED"
+        and (report.get("node_cleanup_error") or "").startswith(
+            "MineflayerProcessEnded:"
+        )
+        and not any(
+            key.endswith("_error") and key != "node_cleanup_error"
+            for key in report
+        )
+        and isinstance(report.get("result"), dict)
+        and report["result"].get("outcome") == "SELF_EARLY_TERMINAL"
+        and report["result"].get("terminal_reason") in (
+            "SELF_DIED", "SELF_DISCONNECTED",
+        )
+    )
     if (
-        report.get("status") != "PASS_DEV"
+        (report.get("status") != "PASS_DEV" and not source_only)
         or report.get("cleanup_done") is not True
         or report.get("java_exit") != 0
         or report.get("node_exit") != 0
@@ -82,10 +100,12 @@ def audit_natural(
     if (
         report.get("result") != observed
         or report.get("paper_source") != timeline.source_summary()
-        or report.get("classification") != (
-            "DEV_D14_R3_NATURAL_10000_PAPER_TICKS_OBSERVED"
-            if observed["outcome"] == "WORLD_TICK_LIMIT_REACHED"
-            else "DEV_D14_R3_NATURAL_EARLY_SELF_TERMINAL_OBSERVED"
+        or (
+            not source_only and report.get("classification") != (
+                "DEV_D14_R3_NATURAL_10000_PAPER_TICKS_OBSERVED"
+                if observed["outcome"] == "WORLD_TICK_LIMIT_REACHED"
+                else "DEV_D14_R3_NATURAL_EARLY_SELF_TERMINAL_OBSERVED"
+            )
         )
     ):
         raise D14NaturalAuditRejected("REPORT_RETROSPECTIVE_OUTCOME_NOT_SOURCE")
@@ -125,8 +145,13 @@ def audit_natural(
     if native_events != len(report.get("native_snapshots", [])):
         raise D14NaturalAuditRejected("NATIVE_SNAPSHOT_COUNT_NOT_CONSISTENT")
     return {
-        "status": "PASS_DEV",
-        "classification": "D14_R3_NATURAL_WORLD_SOURCE_AUDIT_PASS",
+        "status": "SOURCE_ONLY_DEV" if source_only else "PASS_DEV",
+        "classification": (
+            "D14_R3_REAL_EARLY_SELF_TERMINAL_SOURCE_ONLY_CLEANUP_UNQUALIFIED"
+            if source_only else "D14_R3_NATURAL_WORLD_SOURCE_AUDIT_PASS"
+        ),
+        "original_runner_status": report["status"],
+        "teardown_qualified": not source_only,
         "world_uuid": timeline.source_summary()["world_uuid"],
         "observed_world_ticks": observed["elapsed_ticks"],
         "eventual_reason": observed["terminal_reason"],
@@ -146,6 +171,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     for name in ("report", "server-log", "event-journal", "out"):
         ap.add_argument("--" + name, type=Path, required=True)
+    ap.add_argument("--source-only-failed-cleanup", action="store_true")
     args = ap.parse_args()
     result = audit_natural(
         json.loads(args.report.read_text(encoding="utf8")),
@@ -153,6 +179,7 @@ def main() -> None:
         args.event_journal.read_text(encoding="utf8"),
         original_sha=sha256(args.server_log),
         derivative_sha=sha256(args.event_journal),
+        source_only_failed_cleanup=args.source_only_failed_cleanup,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("x", encoding="utf8") as stream:
