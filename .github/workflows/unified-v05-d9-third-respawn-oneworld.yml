@@ -1,0 +1,186 @@
+name: Unified v0.5 D9-A two meals and third native World survival same S49 DEV
+on:
+  pull_request:
+    branches:
+      - dev/unified-v05-d8-two-natural-food-cycles-20261108
+    types: [synchronize]
+    paths:
+      - docs/unified-v05-d9-third-respawn-r3-trigger-20261108.md
+
+permissions:
+  contents: read
+
+jobs:
+  one-world:
+    # A separate one-use trigger commit, never on normal source pushes.
+    if: ${{ github.event.action == 'synchronize' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      S49_REAL_SERVER_CI: '1'
+      BUG0_S49_D4_ONE_WORLD_ONLY: '1'
+      S49_D5_NONMOTION_FENCE_DEV_ONLY: '1'
+      D6_NATURAL_DROP_MOVE_WORLD_ONLY: '1'
+      D7_PASSIVE_CONTROLS_WORLD_ONLY: '1'
+      D7F_NATURAL_S49_S51_WORLD_ONLY: '1'
+      D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY: '1'
+      D9_THIRD_RESPAWN_OBSERVATION_WORLD_ONLY: '1'
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      NODE_OPTIONS: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Strict one-time trigger and independent preworld negatives
+        run: |
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d9-third-respawn-r3-trigger-20261108.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d9-third-respawn-r3-once-20261108"
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('docs/unified-v05-d9-third-respawn-r3-trigger-20261108.md').read_text()
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert 'parent_source_head: '+parent in p
+          assert 'scope: ONE WORLD TWO TRUE EATS PLUS THIRD WORLD-OWNED 600TICK ZOMBIE READONLY SURVIVAL' in p
+          PY
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          ruff check tools/bug0_d9_third_respawn_world.py tools/bug0_d9_third_respawn_post.py tests/test_d9_third_respawn_survival.py tools/bug0_d8_two_natural_food_post.py tools/bug0_d8_two_natural_food_world.py tests/test_d8_two_natural_live_stop.py tests/test_d8_two_natural_food_post.py adapters/mineflayer/d6_loot_approach.py adapters/mineflayer/normal_action.py adapters/mineflayer/d7_live_staged_stop.py tools/bug0_d4_oneworld.py tools/bug0_d4_natural_loot_eat.py tools/bug0_d6_staged_move_world.py tools/bug0_d6_natural_move_world.py tools/bug0_d7f_natural_world.py tools/bug0_d7f_natural_eat.py tools/bug0_d7f_natural_eat_post.py tests/test_d7f_natural_live_stop.py tests/test_d7f_natural_eat_post.py
+          python -m pytest -q -x tests/test_d9_third_respawn_survival.py tests/test_d8_two_natural_live_stop.py tests/test_d8_two_natural_food_post.py tests/test_d7f_natural_live_stop.py tests/test_d7f_natural_eat_post.py tests/test_d7e_live_staged_stop.py tests/test_d7e_staged_move_eat_post.py tests/test_d6_natural_drop_original_s49.py tests/test_d6_multigen_loop.py tests/test_d6_vanilla_multigen_audit.py tests/test_d7_postmove_native_controls.py tests/test_d7_paper_server_tick_post.py tests/test_d6_original_s49_loot_move.py tests/test_d6_loot_approach.py tests/test_d6_staged_move_world.py tests/test_s49_nonmotion_physical_fence.py tests/test_c1_physical_action_fence.py tests/test_bug0_d4_post.py tests/test_bug0_d4_precombat_native_hunger.py
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              assert sock.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Download pinned official Paper 1.21.8 stable #60
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse,urllib.request
+          url='https://fill.papermc.io/v3/projects/paper/versions/1.21.8/builds'
+          req=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-Bug0-R1/1.0 (https://github.com/rinsakamo/relay-self)'})
+          with urllib.request.urlopen(req,timeout=50) as stream:
+              builds=json.loads(stream.read(3000000))
+          rows=[b for b in builds if b.get('channel')=='STABLE' and b.get('id')==60]
+          assert len(rows)==1
+          p=rows[0]['downloads']['server:default']
+          assert p['name']=='paper-1.21.8-60.jar' and p['size']==52811717
+          assert p['checksums']['sha256']=='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          uri=urllib.parse.urlparse(p['url'])
+          assert uri.scheme=='https' and uri.hostname=='fill-data.papermc.io' and uri.path.startswith('/v1/objects/')
+          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'paper-1.21.8.jar'
+          digest=hashlib.sha256()
+          with urllib.request.urlopen(urllib.request.Request(p['url'],headers={'User-Agent':'RelaySelf-Bug0-R1/1.0'}),timeout=120) as s, target.open('xb') as out:
+              n=0
+              while chunk:=s.read(1024*1024):
+                  n+=len(chunk)
+                  assert n<=52811717
+                  digest.update(chunk)
+                  out.write(chunk)
+          assert n==52811717 and digest.hexdigest()==p['checksums']['sha256']
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              f.write('BUG0_D4_PAPER_JAR='+str(target)+'\n')
+          print('PINNED_PAPER_1_21_8_R1')
+          PY
+      - name: Build pinned Paper respawn and independent natural-drop witness
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib,os,pathlib
+          targets=(
+              ('BUG0_D4_RESPAWN','adapters/mineflayer/zombie_respawn_dev/target/relay-zombie-respawn-dev-0.1.0-dev.jar'),
+              ('BUG0_D4_WITNESS','adapters/mineflayer/zombie_drop_witness_dev/target/relay-zombie-drop-witness-dev-0.1.0-dev.jar'),
+          )
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              for var,rel in targets:
+                  jar=pathlib.Path(rel).resolve()
+                  assert jar.is_file() and not jar.is_symlink()
+                  digest=hashlib.sha256(jar.read_bytes()).hexdigest()
+                  f.write(var+'_JAR='+str(jar)+'\n')
+                  f.write(var+'_SHA256='+digest+'\n')
+                  print(var+'_SHA256='+digest)
+          PY
+      - name: Install pinned Mineflayer 4.39
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version!=='4.39.0') process.exit(2)"
+      - name: New DEV World two original S49 natural EAT then passive third 600tick spawn observation
+        run: |
+          mkdir -p unified-v05-d9-third-respawn-evidence
+          python -B tools/bug0_d9_third_respawn_world.py \
+            --report unified-v05-d9-third-respawn-evidence/report.json \
+            --server-log unified-v05-d9-third-respawn-evidence/paper_original.log \
+            --nonmotion-fence unified-v05-d9-third-respawn-evidence/original_nonmotion_fence.json \
+            --motion-fence unified-v05-d9-third-respawn-evidence/original_motion_fence.json \
+            --d7-passive-controls unified-v05-d9-third-respawn-evidence/s50_native_direct_controls_original.jsonl
+      - name: Independent first two genuine meals plus third passive World survival original audit
+        run: |
+          python -B tools/bug0_d9_third_respawn_post.py \
+            --report unified-v05-d9-third-respawn-evidence/report.json \
+            --server-log unified-v05-d9-third-respawn-evidence/paper_original.log \
+            --nonmotion-fence unified-v05-d9-third-respawn-evidence/original_nonmotion_fence.json \
+            --motion-fence unified-v05-d9-third-respawn-evidence/original_motion_fence.json \
+            --s50-sidecar unified-v05-d9-third-respawn-evidence/s50_native_direct_controls_original.jsonl \
+            --out unified-v05-d9-third-respawn-evidence/d9_independent_survival_audit.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('unified-v05-d9-third-respawn-evidence')
+          d=json.loads((p/'d9_independent_survival_audit.json').read_text())
+          src=json.loads((p/'report.json').read_text())
+          assert src['status']=='PASS_DEV'
+          if d['status']=='PASS_DEV':
+              assert src['d9_status']=='PASS_DEV'
+              assert d['third_spawn_exact_server_ticks']==600
+              assert d['third_zombie_real_killed'] is False
+              assert d['third_real_natural_food_cycle'] is False
+              assert d['same_original_s49_actions_before_after_third'] is True
+              assert d['autonomous_rest_or_long_run_proven'] is False
+              if src['d8_second_generation_food_proven'] is True:
+                  assert d['classification']=='D9_TWO_TRUE_MEALS_THIRD_WORLD_RESPAWN_SURVIVAL_READONLY_PASS'
+                  assert d['two_real_natural_food_cycles'] is True
+                  assert d['second_natural_zero_drop'] is False
+              else:
+                  assert d['classification']=='D9_SECOND_ZERO_THIRD_WORLD_RESPAWN_SURVIVAL_READONLY_PASS'
+                  assert d['two_real_natural_food_cycles'] is False
+                  assert d['first_real_natural_food_cycle'] is True
+                  assert d['second_natural_zero_drop'] is True
+                  assert src['self_eat'] is True
+                  assert src['d8_second_generation']['real_rotten_flesh_count']==0
+                  assert src['d8_second_generation']['original_eat_issued'] is False
+                  assert src['d9_second_vanilla_zero_continued'] is True
+          else:
+              assert d['status']=='NOT_EXERCISED'
+              assert d['d8_prior_two_meals_proven'] is False
+              assert src['d8_first_true_zero_food_not_exercised'] is True
+              assert src.get('d9_status') is None
+              assert src['self_eat'] is False
+          print(d['classification'])
+          PY
+      - name: Preserve originals and SHA256
+        if: always()
+        run: |
+          if test -d unified-v05-d9-third-respawn-evidence; then
+            (cd unified-v05-d9-third-respawn-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Store exact one-World DEV original evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-v05-d9-two-eats-third-respawn-observation
+          path: unified-v05-d9-third-respawn-evidence/
+          if-no-files-found: warn
+          retention-days: 30
