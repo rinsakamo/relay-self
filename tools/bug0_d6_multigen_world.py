@@ -27,7 +27,10 @@ from relay_self.action import ActionState
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
-from tools.bug0_d4_oneworld import _target, run
+from tools.bug0_d4_oneworld import (
+    _target, qualified_native_precombat_hunger, run,
+)
+from tools.bug0_d7f_natural_eat import after_real_natural_pickup_eat
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
 from tools.bug0_zombie_respawn_r1_world import _native_probe
 
@@ -103,6 +106,8 @@ async def continue_after_first_respawn(
     log_path: Path, *, physical_fence: OriginalS49NonMotionFence,
     motion_fence: OriginalS49PhysicalFence, baseline,
     d10_until_drop_dev: bool = False,
+    d11_hunt_then_eat_dev: bool = False,
+    s50_sidecar: Path | None = None,
 ) -> None:
     """DEV budget only. Every zero drop completes an Intent and waits World."""
     sid = owner.session_id
@@ -120,7 +125,9 @@ async def continue_after_first_respawn(
         or report.get("real_world_started") is not True
         or owner.supervisor.open_actions
         or not owner._dispatched
-        or len(physical_fence.actions) != owner._attack_count
+        or len(physical_fence.actions) != owner._attack_count + (
+            int(bool(report.get("self_eat"))) if d11_hunt_then_eat_dev else 0
+        )
         or len(motion_fence.actions) != len(
             report.get("d6_original_s49_move_actions", ())
         )
@@ -158,6 +165,16 @@ async def continue_after_first_respawn(
     }]
     report["d6_multigen_generations"] = generations
     generation_limit = 12 if d10_until_drop_dev else 4
+    if d11_hunt_then_eat_dev and (
+        not d10_until_drop_dev
+        or report.get("d11_hunt_then_eat_dev") is not True
+        or os.environ.get("D11_HUNT_THEN_S51_EAT_WORLD_ONLY") != "1"
+        or not isinstance(s50_sidecar, Path)
+        or not s50_sidecar.is_file()
+        or s50_sidecar.is_symlink()
+        or s50_sidecar.parent.resolve() != log_path.parent.resolve()
+    ):
+        raise MultiGenerationDevRejected("D11 original S50 natural EAT source absent")
     if d10_until_drop_dev and (
         os.environ.get("D10_HUNT_UNTIL_DROP_WORLD_ONLY") != "1"
         or getattr(owner, "_max_intent_epochs", None) != generation_limit
@@ -178,6 +195,8 @@ async def continue_after_first_respawn(
     report["d6_multigen_operator_forced_zero"] = operator_forced_zero
     report["d6_multigen_no_physical_reissue"] = True
     report["d6_multigen_eat_after_move"] = False
+    if d11_hunt_then_eat_dev:
+        report["d11_source_eat_proven"] = False
     if (
         first_rotten > 0 and report.get("d4_self_move_for_item")
         and report.get("d4_native_after_pickup", {}).get("rotten_flesh") == first_rotten
@@ -189,7 +208,21 @@ async def continue_after_first_respawn(
         report["d6_multigen_final_original_attack_count"] = owner._attack_count
         report["d6_multigen_final_original_move_count"] = owner._count - owner._attack_count
         report["d6_multigen_same_supervisor"] = owner.supervisor is preserved_supervisor
-        report["d6_multigen_no_eat"] = True
+        report["d6_multigen_no_eat"] = not d11_hunt_then_eat_dev
+        if d11_hunt_then_eat_dev:
+            if (
+                report.get("d7f_eat_terminal") != "outcome"
+                or report.get("self_eat") is not True
+                or report.get("d7f_original_eat_issued") is not True
+                or len(physical_fence.actions) != owner._attack_count + 1
+                or len(motion_fence.actions) != owner._count - owner._attack_count - 1
+            ):
+                raise MultiGenerationDevRejected("D11 first genuine drop EAT invalid")
+            report["d6_multigen_eat_after_move"] = True
+            report["d11_source_eat_proven"] = True
+            report["d11_first_real_eat_generation"] = 1
+            report["d11_eat_action_id"] = report["d7f_eat_action_id"]
+            report["d11_eat_outcome"] = report["d7f_eat_outcome"]
         if d10_until_drop_dev:
             report["d10_first_natural_positive_generation"] = 1
             report["d10_hunt_stop_reason"] = "TRUE_NATURAL_DROP_AND_PICKUP"
@@ -314,6 +347,23 @@ async def continue_after_first_respawn(
             "unchanged_world_natural_loot": True,
         })
         await asyncio.sleep(0.85)
+        if d11_hunt_then_eat_dev:
+            # DEV World hunger is an environmental condition, never a
+            # direct write to Food/Inventory. S49 still decides EAT later.
+            _command(server, "effect give RelaySelf minecraft:hunger 70 20 true")
+            await server.stdin.drain()
+            qualified_hunger = False
+            for attempt in range(80):
+                body = await _correlated_observe(
+                    session, f"d11-gen{gen}-precombat-hunger-{attempt:02d}",
+                )
+                if qualified_native_precombat_hunger(body, sid):
+                    qualified_hunger = True
+                    break
+                await asyncio.sleep(0.55)
+            if not qualified_hunger:
+                raise MultiGenerationDevRejected("D11 real precombat Hunger not eligible")
+            report.setdefault("d11_precombat_qualified_generations", []).append(gen)
         prev = await _correlated_observe(
             session, f"d6-multigen-{gen}-attack-prev",
         )
@@ -426,8 +476,9 @@ async def continue_after_first_respawn(
                 token=f"zombie={paper_uuid} ",
             ):
                 raise MultiGenerationDevRejected("positive natural item passively picked")
-            await source_qualified_natural_move(
+            original_move = await source_qualified_natural_move(
                 session, owner, report, log_path, motion_fence=motion_fence,
+                d7f_live_eat_dev=d11_hunt_then_eat_dev,
             )
             pickup = await wait_paper(
                 log_path, "RSELF_NATURAL_DROP_PICKUP world=",
@@ -461,6 +512,51 @@ async def continue_after_first_respawn(
                 "D6_MULTIGEN_ZERO_DROP_CONTINUE_THEN_REAL_MOVE_PICKUP_PASS"
             )
             report["d6_multigen_postmove_eat_issued"] = False
+            if d11_hunt_then_eat_dev:
+                eat_source = {
+                    "self_attack_principal_attested": True,
+                    "real_rotten_flesh_count": amount,
+                    "d4_natural_count": amount,
+                    "d4_precombat_hunger_qualified": qualified_hunger,
+                    "d7f_operator_hunger_effect_dev": True,
+                    "d6_item_origin": report.get("d6_item_origin"),
+                    "d6_d_same_attack_move_supervisor": report.get(
+                        "d6_d_same_attack_move_supervisor"
+                    ),
+                    "d6_original_s49_move_actions": report[
+                        "d6_original_s49_move_actions"
+                    ],
+                    "d4_paper_item_spawn": spawn_item,
+                    "d4_paper_item_pickup": pickup,
+                    "paper_loot_death": natural,
+                }
+                eaten = await after_real_natural_pickup_eat(
+                    session, server, owner, eat_source, log_path,
+                    original_move=original_move, native_pickup=after,
+                    nonmotion_fence=physical_fence, s50_sidecar=s50_sidecar,
+                    d11_hunt_generation=gen,
+                )
+                if (
+                    eaten is not True
+                    or eat_source.get("d7f_eat_terminal") != "outcome"
+                    or eat_source.get("d7f_original_eat_issued") is not True
+                    or owner.supervisor.open_actions
+                    or len(physical_fence.actions) != owner._attack_count + 1
+                    or len(motion_fence.actions)
+                        != owner._count - owner._attack_count - 1
+                ):
+                    raise MultiGenerationDevRejected("D11 real original S51 EAT not closed")
+                report["self_eat"] = True
+                report["d6_multigen_eat_after_move"] = True
+                report["d6_multigen_postmove_eat_issued"] = True
+                report["d11_source_eat_proven"] = True
+                report["d11_first_real_eat_generation"] = gen
+                report["d11_eat_action_id"] = eat_source["d7f_eat_action_id"]
+                report["d11_eat_outcome"] = eat_source["d7f_eat_outcome"]
+                report["d11_native_after_eat"] = eat_source["d7f_native_after_eat"]
+                report["d11_live_natural_stop"] = eat_source[
+                    "d7f_live_natural_stop"
+                ]
             if d10_until_drop_dev:
                 report["d10_first_natural_positive_generation"] = gen
                 report["d10_hunt_stop_reason"] = "TRUE_NATURAL_DROP_AND_PICKUP"
@@ -506,9 +602,13 @@ async def continue_after_first_respawn(
         or owner.supervisor.open_actions
         or any(owner.supervisor.get(a).state is not ActionState.OUTCOME
                for a in owner._dispatched)
-        or len(physical_fence.actions) != owner._attack_count
+        or len(physical_fence.actions) != owner._attack_count + int(
+            d11_hunt_then_eat_dev and report.get("self_eat") is True
+        )
         or len(motion_fence.actions) != (
-            owner._count - owner._attack_count
+            owner._count - owner._attack_count - int(
+                d11_hunt_then_eat_dev and report.get("self_eat") is True
+            )
         )
         or physical_fence.unresolved or motion_fence.unresolved
         or report.get("d6_multigen_classification") is None
@@ -517,10 +617,14 @@ async def continue_after_first_respawn(
     report["d6_multigen_final_original_s49_action_count"] = owner._count
     report["d6_multigen_final_original_attack_count"] = owner._attack_count
     report["d6_multigen_final_original_move_count"] = (
-        owner._count - owner._attack_count
+        owner._count - owner._attack_count - int(
+            d11_hunt_then_eat_dev and report.get("self_eat") is True
+        )
     )
     report["d6_multigen_same_supervisor"] = True
-    report["d6_multigen_no_eat"] = True
+    report["d6_multigen_no_eat"] = not (
+        d11_hunt_then_eat_dev and report.get("self_eat") is True
+    )
     if d10_until_drop_dev:
         report["d10_natural_counts"] = [
             row["real_rotten_count"] for row in generations
