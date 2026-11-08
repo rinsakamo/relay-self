@@ -203,3 +203,15 @@ def test_http_request_is_one_call_and_excludes_future_holdout(monkeypatch):
     assert "20261112" not in json.dumps(request)
     assert "hidden_physics" not in json.dumps(request)
     assert "holdout" not in request["messages"][1]["content"]
+
+
+def test_tampered_prior_evidence_rejected_before_model():
+    state = prepare_revision(_first(), {"shift_observations": []})
+    rows = [dict(x) for x in state["shift_observations"]]
+    rows[0]["outcome_success"] = False
+    with pytest.raises(ValueError, match="PRIOR_SOURCE_MISMATCH"):
+        prepare_revision(_first(), {"shift_observations": rows})
+    rows = [dict(x) for x in state["shift_observations"]]
+    rows[0]["observed_trace"] = [100.0]
+    with pytest.raises(ValueError, match="PRIOR_SOURCE_MISMATCH"):
+        prepare_revision(_first(), {"shift_observations": rows})
