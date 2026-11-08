@@ -286,11 +286,25 @@ async def continue_second_natural_food_cycle(
         d8_next_generation_dev=True,
         d8_prior_rotten_count=prior_rotten,
     )
+    passive_no_move = (
+        isinstance(original_move, tuple)
+        and len(original_move) == 2
+        and original_move[0] is owner
+        and original_move[1] is None
+        and g2.get("d8_natural_pickup_mode") == "PASSIVE_NO_MOVE"
+        and g2.get("d6_original_s49_move_actions") == []
+    )
     if (
         original_move is None or original_move[0] is not owner
-        or not 1 <= len(g2.get("d6_original_s49_move_actions", ())) <= 4
+        or (
+            not passive_no_move
+            and not 1 <= len(g2.get("d6_original_s49_move_actions", ())) <= 4
+        )
     ):
-        raise D8TwoCycleRejected("second native original S49 MOVE receipt absent")
+        raise D8TwoCycleRejected("second natural S49 pickup/MOVE route absent")
+    g2["d8_natural_pickup_mode"] = (
+        "PASSIVE_NO_MOVE" if passive_no_move else "ORIGINAL_S49_MOVE"
+    )
     paper_pickup = await wait_paper(
         paper_log, "RSELF_NATURAL_DROP_PICKUP world=",
         token=f"zombie={second_paper_zombie} ", seconds=12,
@@ -311,13 +325,22 @@ async def continue_second_natural_food_cycle(
         pickup.session_id != sid
         or actual_meat != prior_rotten + second_count
         or owner.supervisor.open_actions
-        or not owner._post_move_settling_unqualified
+        or (
+            passive_no_move and owner._post_move_settling_unqualified
+        )
+        or (
+            not passive_no_move and not owner._post_move_settling_unqualified
+        )
     ):
         raise D8TwoCycleRejected("second genuine Paper pickup did not raise native meat")
     g2["d4_native_after_pickup"] = _inventory(pickup)
     g2["d8_inventory_before_new_pickup"] = prior_rotten
     g2["d8_inventory_after_new_pickup"] = actual_meat
-    report["d8_stage"] = "GEN2_CURRENT_WORLD_STOP_AND_ORIGINAL_S51_EAT"
+    report["d8_stage"] = (
+        "GEN2_PASSIVE_PICKUP_STEADY_STOP_AND_ORIGINAL_S51_EAT"
+        if passive_no_move
+        else "GEN2_CURRENT_WORLD_STOP_AND_ORIGINAL_S51_EAT"
+    )
 
     eaten = await after_real_natural_pickup_eat(
         session, server, owner, g2, paper_log,
