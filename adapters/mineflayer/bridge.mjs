@@ -345,6 +345,14 @@ async function handleLine (line) {
     }
     if (command.request_id !== undefined) {
       if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+        // DEV-only diagnostics on stderr: preserve the frozen wire error
+        // envelope and never leak a request ID into an Action outcome.
+        if (process.env.D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY === '1') {
+          process.stderr.write(
+            'D8_DUPLICATE_PROBE_REQUEST_ID rejected=' + command.request_id +
+            ' admitted_count=' + String(seenProbeRequestIds.size) + '\\n'
+          )
+        }
         emit('command_error', { message: 'duplicate_probe_request_id' })
         return
       }
