@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import urllib.request
 from pathlib import Path
@@ -25,6 +26,7 @@ from experiments.skill_crystallization_k3g_ten_action_choice_dev import (
     run_choice,
     validate_choice,
     verified_context,
+    verify_input_manifests,
 )
 
 EVIDENCE_DIR = Path(__file__).resolve().parents[1] / "evidence"
@@ -367,3 +369,51 @@ def test_legacy_client_blocks_unrecorded_ten_budget():
             [], endpoint="http://127.0.0.1:8080/v1/chat/completions",
             model="verified", timeout=2, max_actions_allowed=10,
         )
+
+
+def test_manifest_preflight_accepts_unmodified_multiple_original_files(tmp_path):
+    base = tmp_path / "source"
+    base.mkdir()
+    a = base / "report.json"
+    a.write_bytes(b'{"status":"ABSTAIN"}')
+    b = base / "audit.txt"
+    b.write_bytes(b"unrelated original")
+    lines = [
+        f"{hashlib.sha256(a.read_bytes()).hexdigest()}  ./report.json",
+        f"{hashlib.sha256(b.read_bytes()).hexdigest()}  ./audit.txt",
+    ]
+    (base / "SHA256SUMS").write_text("\n".join(lines) + "\n")
+    audit = verify_input_manifests([a])
+    assert audit[str(base.resolve())]["checked_entries"] == 2
+    assert audit[str(base.resolve())]["status"] == "PASS"
+
+
+def test_manifest_preflight_rejects_tampered_noninput_file(tmp_path):
+    base = tmp_path / "source"
+    base.mkdir()
+    a = base / "report.json"
+    b = base / "runtime.txt"
+    a.write_bytes(b"valid input")
+    b.write_bytes(b"valid runtime")
+    original = [
+        f"{hashlib.sha256(a.read_bytes()).hexdigest()}  report.json",
+        f"{hashlib.sha256(b.read_bytes()).hexdigest()}  runtime.txt",
+    ]
+    (base / "SHA256SUMS").write_text("\n".join(original) + "\n")
+    b.write_bytes(b"altered runtime")
+    with pytest.raises(ValueError, match="ORIGINAL_SHA_MANIFEST_MISMATCH"):
+        verify_input_manifests([a])
+
+
+def test_manifest_preflight_refuses_unlisted_input(tmp_path):
+    base = tmp_path / "source"
+    base.mkdir()
+    a = base / "report.json"
+    b = base / "other.txt"
+    a.write_bytes(b"not included")
+    b.write_bytes(b"manifested")
+    (base / "SHA256SUMS").write_text(
+        f"{hashlib.sha256(b.read_bytes()).hexdigest()}  other.txt\n"
+    )
+    with pytest.raises(ValueError, match="ORIGINAL_INPUT_NOT_MANIFESTED"):
+        verify_input_manifests([a])
