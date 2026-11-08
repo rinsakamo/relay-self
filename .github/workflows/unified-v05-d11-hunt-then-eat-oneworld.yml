@@ -10,7 +10,7 @@ permissions:
 jobs:
   one-world:
     # A separate one-use trigger commit, never on normal source pushes.
-    if: ${{ github.event.head_commit.message == 'run-unified-v05-d11-hunt-eat-r2-once-20261108' }}
+    if: ${{ github.event.head_commit.message == 'run-unified-v05-d11-hunt-eat-r3-once-20261108' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -44,12 +44,12 @@ jobs:
           python-version: '3.12'
       - name: Strict one-time trigger and independent preworld negatives
         run: |
-          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d11-hunt-eat-r2-trigger-20261108.md"
-          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d11-hunt-eat-r2-once-20261108"
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d11-hunt-eat-r3-trigger-20261108.md"
+          test "$(git show --format=%s -s HEAD)" = "run-unified-v05-d11-hunt-eat-r3-once-20261108"
           python - <<'PY'
           from pathlib import Path
           import subprocess
-          p=Path('docs/unified-v05-d11-hunt-eat-r2-trigger-20261108.md').read_text()
+          p=Path('docs/unified-v05-d11-hunt-eat-r3-trigger-20261108.md').read_text()
           parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
           assert 'parent_source_head: '+parent in p
           assert 'scope: ONE WORLD ORIGINAL S49 HUNT ZERO TO REAL PICKUP STOP S51 EAT' in p
