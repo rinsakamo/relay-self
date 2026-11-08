@@ -10,18 +10,18 @@ from unittest.mock import AsyncMock
 import pytest
 
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
+from test_d14_natural_world import make_report
 from tools.bug0_d14_natural_active_post import (
     D14NaturalActiveAuditRejected,
     audit_active,
 )
 from tools.bug0_d14_natural_life import (
     MAX_ACTIONS,
+    R4_GRANT,
     NaturalLifeLoop,
     NaturalLifeRejected,
-    R4_GRANT,
     admissible_natural_attack,
 )
-from test_d14_natural_world import make_report
 
 
 def native_pair(*, target_delta=0.0, body_delta=0.0, other=False):
