@@ -252,7 +252,33 @@ async def run_local(
             output_dir / "d14_natural_events.jsonl",
             life_factory=NaturalLifeLoop, max_wall_seconds=watchdog,
         )
-        return rc
+        if rc == 0:
+            # Completely separate from the live run. A failed audit cannot
+            # rewrite original S49/Paper records or become a PASS.
+            try:
+                report = json.loads((output_dir / "report.json").read_text(encoding="utf8"))
+                fence = OriginalS49NonMotionFence.restore(
+                    output_dir / "original_s49_nonmotion_fence.json",
+                    self_id="s49-original-self",
+                )
+                paper_log = output_dir / "paper_original.log"
+                derivative = output_dir / "d14_natural_events.jsonl"
+                independent = audit_active(
+                    report,
+                    paper_log.read_text(encoding="utf8"),
+                    derivative.read_text(encoding="utf8"),
+                    fence,
+                    original_sha=_sha256(paper_log),
+                    derivative_sha=_sha256(derivative),
+                )
+                _write_json_once(output_dir / "independent_audit.json", independent)
+            except Exception as exc:
+                rc = 2
+                _write_json_once(output_dir / "independent_audit_error.json", {
+                    "status": "FAIL",
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "original_report_mutated": False,
+                })
     finally:
         # This read-only fallback has no qualification or outcome-changing
         # authority. It records original failure/partial evidence as observed.
@@ -261,6 +287,7 @@ async def run_local(
             _write_json_once(output_dir / "local_partial_source_only.json", partial)
         finally:
             write_manifest_once(output_dir)
+    return rc
 
 
 def main() -> None:
