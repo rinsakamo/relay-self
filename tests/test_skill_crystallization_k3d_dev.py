@@ -61,6 +61,7 @@ def test_gemma_holdout_seed_is_unopened_in_fixture_mode():
 
 
 def test_execution_equivalent_metadata_is_not_new_skill(monkeypatch):
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     monkeypatch.setattr(k3d, "evaluate_comparison", lambda *_a, **_kw: pytest.fail(
         "equivalent proposal must never open the reserved holdout"))
@@ -74,6 +75,7 @@ def test_execution_equivalent_metadata_is_not_new_skill(monkeypatch):
 
 @pytest.mark.parametrize("status", ["ABSTAIN", "UNSATISFIABLE_WITHIN_BUDGET"])
 def test_valid_abstention_performs_no_evaluation(monkeypatch, status):
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     monkeypatch.setattr(k3d, "evaluate_comparison", lambda *_a, **_kw: pytest.fail(
         "abstention must not run the simulated Skill"))
@@ -86,6 +88,7 @@ def test_valid_abstention_performs_no_evaluation(monkeypatch, status):
 
 
 def test_bounded_narrow_skill_uses_new_fixture_holdout():
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     result = k3d.run_k3d(first, prior, mode="fixture",
                          fixture_proposal=proposal(first, prior))
@@ -115,6 +118,7 @@ def test_parent_must_be_equivalent():
 
 
 def test_wire_rejects_invalid_budget_before_new_holdout(monkeypatch):
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     monkeypatch.setattr(k3d, "evaluate_comparison", lambda *_a, **_kw: pytest.fail(
         "validator rejection must not open the holdout"))
@@ -126,6 +130,7 @@ def test_wire_rejects_invalid_budget_before_new_holdout(monkeypatch):
 
 
 def test_unobserved_evidence_is_refused():
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     raw = proposal(first, prior)
     raw["skill"]["evidence_ids"] = ["future-holdout-001"]
@@ -135,6 +140,7 @@ def test_unobserved_evidence_is_refused():
 
 
 def test_gemma_request_one_call_and_no_holdout_leak(monkeypatch):
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     captured = []
 
@@ -172,6 +178,7 @@ def test_real_mode_rejects_recycled_seed():
 
 
 def test_invalid_status_and_abstain_with_skill_rejected():
+    pytest.importorskip("jsonschema")
     first, prior = inputs()
     invalid = {"status": "ABSTAIN", "reason": "inconclusive", "skill": proposal(first, prior)["skill"]}
     r = k3d.run_k3d(first, prior, mode="fixture", fixture_proposal=invalid)
