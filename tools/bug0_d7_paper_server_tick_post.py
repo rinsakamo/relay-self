@@ -91,7 +91,8 @@ def audit_paper_ticks(
         raise D7PaperSourceRejected("Paper source lifetime/truncation missing")
     ticks = [_fields(x, TICK_MARK) for x in lines if TICK_MARK in x]
     events = [_fields(x, EVENT_MARK) for x in lines if EVENT_MARK in x]
-    if not 8 <= len(ticks) <= MAX_TICKS or len(events) > 512:
+    max_ticks = 12000 if report.get("d14_tick_horizon_optin") is True else MAX_TICKS
+    if not 8 <= len(ticks) <= max_ticks or len(events) > 512:
         raise D7PaperSourceRejected("Paper source insufficient or above cap")
     world = original_audit["paper_world_uuid"]
     player = ticks[0].get("player")

@@ -57,7 +57,8 @@ public final class RelayZombieDropWitnessDev extends JavaPlugin implements Liste
                 + " force_drops=false self_permissions=none"
                 + " d7f_managed_world_witness=" + d7fManagedWorldWitness);
         if (getConfig().getBoolean("d7-paper-tick-observer", false)) {
-            d7StopObserver = new D7PaperServerTicks(this, TARGET);
+            d7StopObserver = new D7PaperServerTicks(
+                this, TARGET, getConfig().getInt("d7-paper-tick-max-rows", 8192));
             d7StopObserver.start();
         }
     }

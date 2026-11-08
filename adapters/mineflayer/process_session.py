@@ -118,6 +118,7 @@ class MineflayerProcessSession:
         # Suppress inherited environment opt-in in every default S49/R/V launch.
         child_env = os.environ.copy()
         child_env.pop("RELAYSELF_W4_NH1_ORIENTATION_V0", None)
+        child_env.pop("RELAYSELF_S50_D14_MAX_ROWS", None)
         if w4_native_orientation_dev:
             if config.version != "1.21.8":
                 raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
@@ -128,6 +129,10 @@ class MineflayerProcessSession:
             child_env["RELAYSELF_S50_P1_READBACK_FILE"] = str(
                 s50_direct_controls_sidecar_dev
             )
+            if os.environ.get("D14_10000_TICK_WORLD_ONLY") == "1":
+                # Bounded original native readbacks across the full 10k-tick
+                # DEV World; default S50 8192 source contract is unchanged.
+                child_env["RELAYSELF_S50_D14_MAX_ROWS"] = "12000"
 
         # Custody remains with the spawn task across cancellation before
         # create_subprocess_exec() exposes its Process handle. Once returned,

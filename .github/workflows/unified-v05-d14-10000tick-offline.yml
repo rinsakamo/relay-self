@@ -1,0 +1,64 @@
+name: D14 10000-tick World endurance DEV offline
+on:
+  push:
+    branches:
+      - dev/d14-10000tick-world-endurance-20261108
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Offline test dependencies
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository contracts
+        run: python tools/check_repository.py
+      - name: 10000 tick source and D12 regression tests
+        run: |
+          python -m pytest -q -x \
+            tests/test_d14_tick_horizon.py \
+            tests/test_d7_paper_server_tick_post.py \
+            tests/test_mineflayer_process_session.py \
+            tests/test_d12_experience_bridge.py \
+            tests/test_d12_third_intent_rearm.py \
+            tests/test_d8_two_natural_food_post.py \
+            tests/test_d8_two_natural_live_stop.py
+      - name: Ruff of modified Python World and audit sources
+        run: |
+          ruff check \
+            tools/bug0_d4_oneworld.py \
+            tools/bug0_d14_tick_horizon_world.py \
+            tools/bug0_d14_tick_horizon_post.py \
+            tools/bug0_d7_paper_server_tick_post.py \
+            adapters/mineflayer/process_session.py \
+            tests/test_d14_tick_horizon.py
+      - name: Verify native S50 wrapper syntax
+        run: node --check adapters/mineflayer/m02_paper_dev/s50_p1_readback_bridge.mjs
+      - name: Build Paper-managed respawn and witness plugins
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
+      - name: Pure Java World tick and respawn 600tick logic tests
+        run: |
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
+            io.github.rinsakamo.respawn.RespawnCycleTest
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
+            io.github.rinsakamo.respawn.TickObservationHorizonTest
