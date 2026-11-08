@@ -244,6 +244,8 @@ def test_no_duplicate_terminal_and_no_fabricated_prediction():
 
 def test_reaped_native_zero_after_paper_death_is_not_fake_teardown_failure(tmp_path):
     report, _, _ = make_report(tmp_path, early=True)
+    # This helper executes inside run() finally, BEFORE cleanup_done is set.
+    report["cleanup_done"] = False
     assert accept_ended_native_after_paper_death(report, native_exit=0)
     assert not accept_ended_native_after_paper_death(report, native_exit=-15)
     assert not accept_ended_native_after_paper_death(report, native_exit=1)
