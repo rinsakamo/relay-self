@@ -1,6 +1,7 @@
 """Two genuinely distinct Paper death/spawn/pickup generations in one live STOP."""
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -216,3 +217,33 @@ def test_two_generations_probe_prefixes_are_disjoint():
     })
     assert first.isdisjoint(second)
     assert len(first | second) == len(first) + len(second)
+
+
+def test_d8_actual_process_session_rejects_reused_probe_before_dispatch(
+    monkeypatch,
+):
+    """R4 safeguard is applied by the real process-session send path."""
+    from adapters.mineflayer.process_session import (
+        MineflayerProcessIOError,
+        MineflayerProcessSession,
+    )
+
+    monkeypatch.setenv("D8_TWO_NATURAL_FOOD_CYCLES_WORLD_ONLY", "1")
+    session = MineflayerProcessSession.__new__(MineflayerProcessSession)
+    session._d8_sent_probe_request_ids = set()
+    transmitted = []
+
+    async def capture(line):
+        transmitted.append(line)
+
+    monkeypatch.setattr(session, "_send", capture)
+    before = "d6-item-1-before"
+    after = "d8-gen2-item-1-before"
+    asyncio.run(session.send_observe(before))
+    asyncio.run(session.send_observe(after))
+    assert len(transmitted) == 2
+    assert before != after
+    with pytest.raises(MineflayerProcessIOError, match="duplicate probe send"):
+        asyncio.run(session.send_observe(after))
+    assert len(transmitted) == 2
+    assert session._d8_sent_probe_request_ids == {before, after}
