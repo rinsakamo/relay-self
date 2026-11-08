@@ -121,3 +121,7 @@ raw request は既存one-shot clientが排他的に作成し、raw response、us
 `L2_TEN_ACTION_CHOICE_ATTEMPTED` / `PROPOSAL_VALIDATED` / `EXECUTION_SPEC_CHANGED` / `NO_BEHAVIORAL_CHANGE` / `PROBE_SELECTED_NOT_EXECUTED` / `EXPLICIT_ABSTENTION_ACCEPTED` / `PAIRED_MOCK_HOLDOUT_EVALUATED` を厳密に区別する。
 
 valid SKILLとGoal改善・学習・自律実装は別。今回変更されるのはあくまで新たな**DEV研究用Skill予算**だけで、原S49権限は不変。
+
+## 2026-11-08 実行結果
+
+推論HEAD `5ef1f4f9e90add6f3bd0c883da71f43e569652c4` で実Gemma POST 1回、再試行0回。モデルは `PROBE`、`MOTION_EFFECT_CHANGED`、`MOTION_REGIME_PAIR` を返したが、`prediction=UNKNOWN` のため独立Validatorは `PROBE_MUST_BE_FALSIFIABLE` で拒否。HTTP 200、finish `stop`、独立JSON SchemaはPASS。モデルの選択肢は過去2回のABSTAINと異なるが、有効なPROBEとは認めず、予算変更を原因と断定しない。Skill・PROBE実行およびholdoutはゼロ、予約seedは未開封。[原文と監査](../../evidence/l431-k3g-gemma-20261108/audit.md)を参照。旧文中の「実Gemma推論未実施」は実行前の状態を示す。
