@@ -280,6 +280,13 @@ def test_real_mode_one_call_and_unopened_seed_not_leaked(originals, monkeypatch,
     assert "20261205" not in serialized
     assert "20261207" not in serialized
     assert "normal_slower_stress" not in serialized
+    assert kwargs["revision_context"]["public_probe_options"][
+        "START_MARGIN_PAIR"]["max_actions_per_condition"] == 10
+    assert kwargs["revision_context"]["public_probe_options"][
+        "MOTION_REGIME_PAIR"]["A_start"] == 2.4
+    assert "effect" not in json.dumps(
+        kwargs["revision_context"]["public_probe_options"]
+    ).lower()
     assert "K3F_SYNTHETIC" not in serialized
 
 
