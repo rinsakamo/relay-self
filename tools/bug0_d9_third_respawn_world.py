@@ -100,30 +100,59 @@ async def continue_d9_until_third_respawn(
         physical_fence=physical_fence, motion_fence=motion_fence,
         s50_sidecar=s50_sidecar,
     )
-    if report.get("d8_second_generation_food_proven") is not True:
+    second = report.get("d8_second_generation")
+    two_meals = report.get("d8_second_generation_food_proven") is True
+    second_vanilla_zero = (
+        not two_meals
+        and isinstance(second, dict)
+        and second.get("real_rotten_flesh_count") == 0
+        and second.get("original_eat_issued") is False
+        and report.get("self_eat") is True
+        and report.get("d8_original_second_attack_action_id") in owner._dispatched
+    )
+    if not two_meals and not second_vanilla_zero:
         report["d9_status"] = "NOT_EXERCISED"
-        report["d9_classification"] = "D9_TWO_EATS_NOT_YET_PROVEN"
+        report["d9_classification"] = "D9_FIRST_TWO_REAL_KILLS_NOT_CLOSED"
         return
+    receipt = owner._d7_last_verified_eat_receipt
     if (
         owner._intent_epoch != 2
         or owner.supervisor.open_actions
         or physical_fence.unresolved or motion_fence.unresolved
-        or owner._d7_last_verified_eat_receipt is None
-        or owner._d7_last_verified_eat_receipt.terminal.state
-            is not ActionState.OUTCOME
-        or not owner._d7_dev_stop_consumed
-        or not report.get("d8_original_same_supervisor")
+        or (
+            two_meals and (
+                receipt is None or receipt.terminal.state
+                    is not ActionState.OUTCOME
+                or not owner._d7_dev_stop_consumed
+                or not report.get("d8_original_same_supervisor")
+            )
+        )
+        or (
+            second_vanilla_zero and (
+                receipt is not None or owner._d7_dev_stop_consumed
+                or owner._post_move_settling_unqualified
+                or owner._epoch_attack_count != 1
+                or len(physical_fence.actions) != owner._attack_count + 1
+                or len(motion_fence.actions)
+                    != owner._count - owner._attack_count - 1
+            )
+        )
     ):
-        raise D9SurvivalRejected("D8 real second S49 STOP/EAT not retained")
+        raise D9SurvivalRejected("second real S49 Action/STOP/zero source not closed")
     sid = session.started.session_id
     action_ids = frozenset(owner._dispatched)
     action_count = owner._count
     nonmotion_sha = physical_fence.sha256
     motion_sha = motion_fence.sha256
     original_supervisor = owner.supervisor
-    existing_inventory = report["d8_final_rotten_inventory"]
-    if existing_inventory < 0:
-        raise D9SurvivalRejected("negative original remaining natural inventory")
+    existing_inventory = (
+        report["d8_final_rotten_inventory"] if two_meals
+        else report["d8_prior_rotten_after_gen1_eat"]
+    )
+    if type(existing_inventory) is not int or existing_inventory < 0:
+        raise D9SurvivalRejected("negative or unknown original natural inventory")
+    report["d9_second_vanilla_zero_continued"] = second_vanilla_zero
+    report["d9_two_real_meals_proven"] = two_meals
 
     report["d9_stage"] = "POST_D8_SAME_WORLD_PASSIVE_BODY_MONITOR"
     records = []
@@ -212,7 +241,11 @@ async def continue_d9_until_third_respawn(
     report["d9_autonomous_rest_selected"] = False
     report["d9_passive_wait_input_off_not_rest_authorized"] = True
     report["d9_status"] = "PASS_DEV"
-    report["d9_classification"] = "D9_TWO_REAL_EATS_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS"
+    report["d9_classification"] = (
+        "D9_TWO_REAL_EATS_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS"
+        if two_meals
+        else "D9_SECOND_ZERO_DROP_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS"
+    )
 
 
 def main() -> None:
