@@ -13,6 +13,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from experiments.skill_crystallization_k3g_ten_action_choice_dev import (
+    _independent_schema_check,
+    choice_schema,
+    validate_choice,
+)
 from experiments.skill_crystallization_soul_matched_dev import SOUL_DIRECTIVES
 
 
@@ -56,11 +61,23 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
                 or report.get("native_s49_actions") != 0
                 or report.get("holdout_or_probe_executed") is not False):
             raise ValueError("SOUL_COMPARISON_ACTION_BOUNDARY_VIOLATED")
+        wire_schema = request["response_format"]["json_schema"]
+        user_context = json.loads(request["messages"][1]["content"])
+        experiences = user_context.get("train_experiences")
         if (request["response_format"]["type"] != "json_schema"
-                or request["response_format"]["json_schema"]["strict"] is not True
+                or wire_schema["strict"] is not True
+                or wire_schema["schema"] != choice_schema()
                 or request["reasoning_effort"] != "none"
-                or json.loads(request["messages"][1]["content"])["maximum_actions"] != 10):
+                or request["temperature"] != 0 or request["cache_prompt"] is not False
+                or user_context["maximum_actions"] != 10
+                or not isinstance(experiences, list)
+                or any(not isinstance(row, dict)
+                       or type(row.get("experience_id")) is not str
+                       for row in experiences)):
             raise ValueError("MODEL_PROTOCOL_DIFFERENT")
+        source_ids = [row["experience_id"] for row in experiences]
+        if len(source_ids) != len(set(source_ids)) or len(source_ids) != 28:
+            raise ValueError("MALFORMED_EXPERIENCE_SCOPE")
         choices = response["choices"]
         if (not choices or choices[0]["finish_reason"] != "stop"
                 or choices[0]["message"].get("reasoning_content")):
@@ -88,6 +105,30 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
         status = report.get("raw_model_choice")
         if status != response_value.get("status"):
             raise ValueError("MODEL_CHOICE_MISMATCH")
+        try:
+            _independent_schema_check(response_value)
+        except ValueError as exc:
+            independent_schema = (
+                "UNAVAILABLE" if str(exc) == "JSONSCHEMA_UNAVAILABLE"
+                else "REJECTED"
+            )
+            independent_error = str(exc)
+            valid_choice = False
+        else:
+            independent_schema = "PASS"
+            try:
+                validate_choice(response_value, evidence_ids=set(source_ids))
+            except ValueError as exc:
+                independent_error = str(exc)
+                valid_choice = False
+            else:
+                independent_error = None
+                valid_choice = True
+        if (report.get("schema_validation") != independent_schema
+                or report.get("choice_semantically_valid") is not valid_choice
+                or report.get("validator_error") != independent_error
+                or ("PROPOSAL_VALIDATED" in report.get("stages", [])) != valid_choice):
+            raise ValueError("REPORTED_VALIDATION_NOT_INDEPENDENTLY_REPRODUCED")
         rows[condition] = {
             "raw_status": status,
             "schema_validation": report.get("schema_validation"),
