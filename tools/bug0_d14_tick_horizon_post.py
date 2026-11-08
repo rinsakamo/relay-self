@@ -9,9 +9,9 @@ import argparse
 import json
 from pathlib import Path
 
+from tools.bug0_d6_multigen_world import _uuid
 from tools.bug0_d12_third_intent_rearm_post import audit_d12
 from tools.bug0_d14_tick_horizon_world import _field
-from tools.bug0_d6_multigen_world import _uuid
 
 
 class D14TickHorizonAuditRejected(ValueError):
