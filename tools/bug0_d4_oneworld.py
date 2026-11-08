@@ -236,6 +236,8 @@ async def run(
     d7f_natural_eat_dev=None,
     d8_two_generation_food_dev: bool = False,
     d12_third_intent_rearm_dev: bool = False,
+    d14_tick_endurance_dev: bool = False,
+    post_tick_horizon_dev=None,
 ) -> int:
     report = {
         "stage": "NOT_STARTED", "status": "BLOCKED",
@@ -331,6 +333,17 @@ async def run(
                 )
             report["d7f_live_eat_optin"] = True
             report["d7f_natural_eat_issued"] = False
+        if d14_tick_endurance_dev:
+            if (
+                os.environ.get("D14_10000_TICK_WORLD_ONLY") != "1"
+                or not d12_third_intent_rearm_dev
+                or not d8_two_generation_food_dev
+                or not callable(post_tick_horizon_dev)
+            ):
+                raise S49D3Rejected("D14 bounded 10000 World-tick opt-in missing")
+            report["d14_tick_horizon_optin"] = True
+            report["d14_tick_horizon_requested"] = 10000
+            report["d14_new_native_action_authority"] = False
         if d12_third_intent_rearm_dev:
             if (
                 not d8_two_generation_food_dev
@@ -433,6 +446,13 @@ async def run(
             cfg.mkdir()
             (cfg / "config.yml").write_text(
                 CONFIG + (
+                    "dev-tick-endurance-enabled: true\n"
+                    "dev-tick-endurance-ticks: 10000\n"
+                    "dev-tick-sample-interval: 200\n"
+                    if name == "RelayZombieRespawnDev"
+                    and d14_tick_endurance_dev
+                    else ""
+                ) + (
                     "d7-paper-tick-observer: true\n"
                     if name == "RelayZombieDropWitnessDev"
                     and d7_native_controls_path is not None
@@ -900,6 +920,11 @@ async def run(
                     else "D5_REAL_S49_SECOND_INTENT_ATTACK_PASS"
                 )
             )
+        if d14_tick_endurance_dev:
+            # D14 has no generation-number stopping condition. Observe the
+            # existing World's tick limit even when an actual natural zero
+            # drop made D8 food cycles NOT_EXERCISED. No added native Action.
+            await post_tick_horizon_dev(session, server, owner, report, log_path)
         # DEV D7-C: bounded operator PASSIVE wait after genuine source-
         # qualified natural pickup. Only lets Paper/S50 publish further
         # read-only ticks; issues no native Action, EAT, STOP or new grant.
