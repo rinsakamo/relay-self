@@ -38,7 +38,7 @@ PROBEを選択肢として正当に比較できるよう、公開された比較
 - **SKILL**: `skill`は既存DSLの検証済みフィールドと出典IDを保持し、`max_actions`は1..10。その他のPROBEフィールドはNONE/UNKNOWN/INDETERMINATE。名前・引用だけの変更は`NO_BEHAVIORAL_CHANGE`で終了。
 - **PROBE**: Skillはnull。経験ID、検証可能な仮説と予測が必要。今回のPROBEは**提案のみ**で、模擬試行も実Worldも発行しない。
 - **ABSTAIN**: Skillはnull、PROBEはNONE、予測UNKNOWN。評価seedは未開封のまま終了。
-- Schema不成立・未観測ID・不正予算・矛盾したbranch回答はSkill/PROBE実行なしで停止。モデル回答を手直ししない。
+- 独立JSON Schema検査を先に実施し、`PASS / REJECTED / UNAVAILABLE` を記録。通過後に別のSkill/PROBE/ABSTAIN意味Validatorを行う。Schema不成立・未観測ID・不正予算・矛盾したbranch回答はSkill/PROBE実行なしで停止。**Schema PASSだけを提案受理とみなさない。**モデル回答を手直ししない。
 
 ## 独立評価（実Gemmaがvalidで実行意味の変わるSKILLを選んだ場合のみ）
 
