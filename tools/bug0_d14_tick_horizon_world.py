@@ -13,11 +13,11 @@ from pathlib import Path
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
-from tools.bug0_d12_third_intent_rearm_world import second_food_then_third_rearm
 from tools.bug0_d4_oneworld import run
-from tools.bug0_d6_multigen_world import _tick, _uuid
+from tools.bug0_d6_multigen_world import _uuid
 from tools.bug0_d6_natural_move_world import source_qualified_natural_move
 from tools.bug0_d7f_natural_eat import after_real_natural_pickup_eat
+from tools.bug0_d12_third_intent_rearm_world import second_food_then_third_rearm
 
 
 class D14HorizonRejected(RuntimeError):
