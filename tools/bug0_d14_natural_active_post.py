@@ -84,6 +84,8 @@ def audit_active(
     life_actions = []
     native_safe_stops = []
     preceding_native_errors = 0
+    last_original_sample = None
+    paper_terminal_seen = False
     for line in derivative.splitlines():
         try:
             e = json.loads(line)
@@ -114,12 +116,15 @@ def audit_active(
                 record = e.get("native_observation")
                 if (
                     len(native_safe_stops) != 0
+                    or paper_terminal_seen
                     or preceding_native_errors < 2
                     or not isinstance(record, dict)
-                    or record.get("consecutive_failures") < 2
+                    or type(record.get("consecutive_failures")) is not int
+                    or record["consecutive_failures"] < 2
                     or record.get("reason")
                         != "NATIVE_READBACK_UNAVAILABLE_ACTION_STOP"
                     or record.get("after_sample") != e.get("original_paper_line")
+                    or e.get("original_paper_line") != last_original_sample
                     or marker_kind(e.get("original_paper_line", "")) != "SAMPLE"
                     or e.get("original_paper_line") not in [
                         row for kind0, row in original_rows if kind0 == "SAMPLE"
@@ -133,6 +138,10 @@ def audit_active(
         if marker_kind(e.get("original_paper_line", "")) != kind:
             raise D14NaturalActiveAuditRejected("DERIVATIVE_PAPER_KIND_CHANGED")
         derived_paper.append((kind, e["original_paper_line"]))
+        if kind == "SAMPLE":
+            last_original_sample = e["original_paper_line"]
+        elif kind in ("LIMIT", "TERMINAL"):
+            paper_terminal_seen = True
     if (
         derived_paper != original_rows
         or native_count != len(report.get("native_snapshots", []))
