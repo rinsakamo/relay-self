@@ -26,6 +26,32 @@ def _sha(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _decision_signature(value: dict[str, Any]) -> dict[str, Any]:
+    """Only prospective choice-relevant fields: not style or uncited rhetoric."""
+    status = value.get("status")
+    if status == "SKILL":
+        skill = value.get("skill")
+        if not isinstance(skill, dict):
+            return {"status": status, "skill": None}
+        return {
+            "status": status,
+            "skill_execution": {
+                key: skill.get(key) for key in (
+                    "version", "surface", "min_distance", "max_distance",
+                    "target_distance", "max_actions", "on_failure",
+                )
+            },
+        }
+    if status == "PROBE":
+        return {
+            "status": status,
+            "hypothesis": value.get("hypothesis"),
+            "probe_id": value.get("probe_id"),
+            "prediction": value.get("prediction"),
+        }
+    return {"status": status}
+
+
 def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
     if set(paths) != set(SOUL_DIRECTIVES):
         raise ValueError("MATCHED_FOUR_CONDITIONS_REQUIRED")
@@ -132,6 +158,8 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
             raise ValueError("REPORTED_VALIDATION_NOT_INDEPENDENTLY_REPRODUCED")
         rows[condition] = {
             "raw_status": status,
+            "decision_signature": _decision_signature(response_value),
+            "reason": response_value.get("reason"),
             "schema_validation": report.get("schema_validation"),
             "choice_semantically_valid": report.get("choice_semantically_valid"),
             "semantic_rejection": report.get("validator_error"),
@@ -142,8 +170,15 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
             "elapsed_seconds": provider.get("elapsed_seconds"),
         }
     results = [r["raw_status"] for r in rows.values()]
+    signatures = [
+        json.dumps(r["decision_signature"], sort_keys=True) for r in rows.values()
+    ]
     admitted = [
         (name, r["raw_status"]) for name, r in rows.items()
+        if r["choice_semantically_valid"]
+    ]
+    admitted_signatures = [
+        json.dumps(r["decision_signature"], sort_keys=True) for r in rows.values()
         if r["choice_semantically_valid"]
     ]
     return {
@@ -151,8 +186,13 @@ def audit_matched_reports(paths: dict[str, Path]) -> dict[str, Any]:
         "conditions": rows,
         "matched_model_requests_except_identity": True,
         "raw_status_divergence": len(set(results)) > 1,
+        "raw_decision_signature_divergence": len(set(signatures)) > 1,
+        "reason_text_divergence": len(set(r["reason"] for r in rows.values())) > 1,
         "admitted_choices": admitted,
         "admitted_status_divergence": len(set(s for _, s in admitted)) > 1,
+        "admitted_decision_signature_divergence": (
+            len(set(admitted_signatures)) > 1
+        ),
         "soul_effect_or_personality_proven": False,
         "new_worlds": 0, "new_model_calls_in_audit": 0,
         "science": "NOT_RUN",
