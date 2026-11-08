@@ -21,26 +21,32 @@ import org.bukkit.util.Vector;
  * nor its logs ever grant EAT, issue an Action or change world physics.
  */
 final class D7PaperServerTicks implements Listener {
-    private static final int MAX_TICK_ROWS = 8192;
+    private static final int LEGACY_MAX_TICK_ROWS = 8192;
+    private static final int D14_MAX_TICK_ROWS = 12000;
     private static final int MAX_EVENTS = 512;
 
     private final JavaPlugin plugin;
     private final String target;
+    private final int maxTickRows;
     private int rows = 0;
     private int events = 0;
     private boolean capped = false;
     private boolean active = true;
 
-    D7PaperServerTicks(JavaPlugin plugin, String target) {
+    D7PaperServerTicks(JavaPlugin plugin, String target, int maxTickRows) {
+        if (maxTickRows != LEGACY_MAX_TICK_ROWS && maxTickRows != D14_MAX_TICK_ROWS) {
+            throw new IllegalArgumentException("D7 original source cap must be 8192 or D14 12000");
+        }
         this.plugin = plugin;
         this.target = target;
+        this.maxTickRows = maxTickRows;
     }
 
     void start() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
         Bukkit.getScheduler().runTaskTimer(plugin, this::sample, 1L, 1L);
         plugin.getLogger().info("RSELF_D7_PAPER_READY source=PAPER_SERVER_MAIN_THREAD_V1"
-                + " interval_ticks=1 max_rows=" + MAX_TICK_ROWS
+                + " interval_ticks=1 max_rows=" + maxTickRows
                 + " mode=read_only eat_authority=none");
     }
 
@@ -66,11 +72,11 @@ final class D7PaperServerTicks implements Listener {
         if (!active) return;
         Player player = Bukkit.getPlayerExact(target);
         if (player == null || !player.isOnline() || player.isDead()) return;
-        if (rows >= MAX_TICK_ROWS) {
+        if (rows >= maxTickRows) {
             if (!capped) {
                 capped = true;
                 plugin.getLogger().severe("RSELF_D7_PAPER_TRUNCATED"
-                        + " limit=" + MAX_TICK_ROWS
+                        + " limit=" + maxTickRows
                         + " source=PAPER_SERVER_MAIN_THREAD_V1");
             }
             return;
