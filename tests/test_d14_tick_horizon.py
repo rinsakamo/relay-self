@@ -8,6 +8,7 @@ import pytest
 
 from tools.bug0_d14_tick_horizon_post import (
     D14TickHorizonAuditRejected,
+    audit_closed_original_action_failure,
     audit_horizon,
 )
 from tools.bug0_d14_tick_horizon_world import (
@@ -151,3 +152,49 @@ def test_duplicate_single_marker_and_missing_fields():
         parse_endurance_marker(log + "\n" + start, "RSELF_ENDURANCE_START world=")
     with pytest.raises(D14HorizonRejected, match="MISSING_PAPER_FIELD"):
         _field("RSELF_ENDURANCE_SAMPLE world=" + WORLD, "elapsed_ticks")
+
+
+
+def test_closed_prior_action_failure_does_not_forge_food_success():
+    report, paper, _ = make_sources()
+    report["status"] = "FAIL"
+    report["failure"] = "D6StagedMoveRejected: original D6 native item approach declined"
+    report["d14_prior_owner_action_failure"] = report["failure"]
+    report["d14_action_failure_does_not_end_world"] = True
+    independent = {
+        "status": "SOURCE_INCOMPLETE",
+        "classification": "D14_D8_FOOD_ROUTE_REJECTED_ALL_ORIGINAL_ACTIONS_S16_CLOSED",
+    }
+    result = audit_horizon(report, paper, independent)
+    assert result["status"] == "PASS_DEV"
+    assert result["parent_d12_status"] == "SOURCE_INCOMPLETE"
+    assert result["legacy_original_action_path_complete"] is False
+    assert result["Self_autonomous_long_survival"] is False
+
+
+def test_reject_claim_that_failed_owner_source_is_complete():
+    report, paper, independent = make_sources()
+    report["status"] = "FAIL"
+    with pytest.raises(D14TickHorizonAuditRejected):
+        audit_horizon(report, paper, independent)
+    report["status"] = "PASS_DEV"
+    independent["status"] = "SOURCE_INCOMPLETE"
+    with pytest.raises(D14TickHorizonAuditRejected):
+        audit_horizon(report, paper, independent)
+
+
+def test_partial_owner_independent_audit_never_accepts_without_closed_fences(tmp_path):
+    report, _paper, _ = make_sources()
+    report["status"] = "FAIL"
+    report["failure"] = "Original native Action declined"
+    report["d14_prior_owner_action_failure"] = report["failure"]
+    report["d14_action_failure_does_not_end_world"] = True
+    report["real_world_started"] = True
+    report["original_action_issuer"] = "S49"
+    report["s49_actions"] = [{"action_id": "attack-real"}]
+    with pytest.raises((D14TickHorizonAuditRejected, ValueError, OSError)):
+        audit_closed_original_action_failure(
+            report,
+            nonmotion_path=tmp_path / "missing-nonmotion.json",
+            motion_path=tmp_path / "missing-motion.json",
+        )
