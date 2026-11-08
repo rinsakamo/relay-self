@@ -248,6 +248,7 @@ async def observe_natural_world(
     *, max_wall_seconds: int = MAX_WALL_SECONDS,
     on_life_step=None,
     on_life_native_stop=None,
+    on_life_native_event=None,
 ) -> None:
     if journal_path.exists() or journal_path.is_symlink():
         raise D14NaturalWorldRejected("DERIVATIVE_JOURNAL_ALREADY_EXISTS")
@@ -305,7 +306,10 @@ async def observe_natural_world(
                 request_id = f"d14-r3-native-read-{readback_counter:03d}"
                 try:
                     view = await asyncio.wait_for(
-                        _correlated_observe(session, request_id),
+                        _correlated_observe(
+                            session, request_id,
+                            on_entity_event=on_life_native_event,
+                        ),
                         timeout=NATIVE_TIMEOUT_SECONDS,
                     )
                     if (
@@ -468,9 +472,14 @@ async def run(
             on_life_native_stop=(
                 life.stop_due_to_native_loss if life is not None else None
             ),
+            on_life_native_event=(
+                life.capture_native_event if life is not None else None
+            ),
         )
         report["status"] = "PASS_DEV"
         report["classification"] = (
+            "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED"
+            if life is not None and life.motion is not None else
             "DEV_D14_R4_NATURAL_ACTIVE_S49_SOURCE_OBSERVED"
             if life is not None else (
             "DEV_D14_R3_NATURAL_10000_PAPER_TICKS_OBSERVED"

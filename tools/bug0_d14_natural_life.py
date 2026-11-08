@@ -25,8 +25,10 @@ from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
+from tools.bug0_d14_natural_motion import NaturalOriginalS49Motion
 
 R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
+R6_GRANT = "D14_R6_NATURAL_MOTION_ONEWORLD_ONLY"
 MAX_DECISIONS = 1024
 POLICY_EPOCH_DECISIONS = 64
 MAX_ACTIONS = 32
@@ -105,6 +107,15 @@ class NaturalLifeLoop:
             evidence_dir / "original_s49_nonmotion_fence.json",
             self_id="s49-original-self",
         )
+        # R4/R5 are unchanged without a SEPARATE R6 local-only grant.
+        if os.environ.get(R6_GRANT) == "1":
+            if os.environ.get("D14_R5_LOCAL_ONEWORLD_ONLY") != "1":
+                raise NaturalLifeRejected("R6_MOTION_REQUIRES_EXPLICIT_LOCAL_R5_GRANT")
+            self.motion = NaturalOriginalS49Motion(
+                sid, self.intent, self.owner, evidence_dir,
+            )
+        else:
+            self.motion = None
         self.cycles = 0
         self._last_policy_rotation_cycle = 0
         self.stopped = False
@@ -118,8 +129,14 @@ class NaturalLifeLoop:
             "new_s49_actions": 0,
             "life_stop_reason": None,
             "nonmotion_fence_path": str(self.nonmotion.path),
-            "move_admission": "NOT_CONNECTED_IN_R4",
-            "stop_settling": "NOT_CONNECTED_IN_R4",
+            "move_admission": (
+                "R6_ORIGINAL_S49_NATIVE_ENTITIES_S14_DURABLE_FENCE"
+                if self.motion is not None else "NOT_CONNECTED_IN_R4"
+            ),
+            "stop_settling": (
+                "R6_S15_CLEAR_ACK_ONLY_PHYSICAL_STOP_UNATTESTED"
+                if self.motion is not None else "NOT_CONNECTED_IN_R4"
+            ),
             "intent_rearm": "NOT_CONNECTED_IN_R4",
             "rest_mode": "PASSIVE_INTENT_ONLY",
             "c1_intent_experiences": 0,
@@ -128,9 +145,18 @@ class NaturalLifeLoop:
             "skill_installs": 0,
         })
 
+    def capture_native_event(self, frame: Any) -> None:
+        if self.motion is not None:
+            self.motion.capture_event(frame)
+
     async def _read(self, suffix: str):
         return await asyncio.wait_for(
-            _correlated_observe(self.session, f"d14-r4-{self.cycles:03d}-{suffix}"),
+            _correlated_observe(
+                self.session, f"d14-r4-{self.cycles:03d}-{suffix}",
+                on_entity_event=(
+                    self.capture_native_event if self.motion is not None else None
+                ),
+            ),
             timeout=READ_TIMEOUT_S,
         )
 
@@ -170,6 +196,7 @@ class NaturalLifeLoop:
         """Fail closed for L0/Action, while Paper may finish autonomously."""
         if (
             self.owner.supervisor.open_actions or self.nonmotion.unresolved
+            or (self.motion is not None and self.motion.fence.unresolved)
             or not isinstance(reason, str) or not reason
         ):
             raise NaturalLifeRejected("UNRESOLVED_ACTION_OR_BAD_NATIVE_LOSS")
@@ -198,6 +225,7 @@ class NaturalLifeLoop:
             return
         if (
             self.owner.supervisor.open_actions or self.nonmotion.unresolved
+            or (self.motion is not None and self.motion.fence.unresolved)
             or self.owner._count >= MAX_ACTIONS
         ):
             self.stopped = True
@@ -269,6 +297,26 @@ class NaturalLifeLoop:
             and decision.preferred == "MOVE_AWAY"
             and decision.fallback == "ATTACK"
         ):
+            # MOVE needs a genuine unsolicited entities event and original
+            # frozen S49/S14 admission. Two correlated probes alone cannot
+            # stand in for that event or authorize a physical MOVE.
+            if self.motion is not None:
+                native_event = self.motion.current_candidate(current)
+                if native_event is not None:
+                    event["admission"] = "R6_ORIGINAL_S49_MOVE_SELECTED"
+                    event["action_id"] = (
+                        f"d14-r6-s49-move-{self.cycles}-{self.sid}"
+                    )
+                    try:
+                        outcome = await self.motion.issue_original_move(
+                            self.session, native_event, current, cycle=self.cycles,
+                        )
+                    finally:
+                        self.report["new_s49_actions"] = self.owner._count
+                    event["terminal"] = outcome["terminal"]
+                    self.report["life_action_outcomes"].append(outcome)
+                    save("LIFE_ACTION", "", native=outcome)
+                    return
             target = admissible_natural_attack(previous, current)
             if target is not None:
                 kind = "ATTACK"
@@ -337,5 +385,19 @@ class NaturalLifeLoop:
         self.report["original_s49_fence_action_ids"] = [
             a["action_id"] for a in self.nonmotion.actions
         ]
+        if self.motion is not None:
+            self.report["original_s49_move_fence_sha256"] = self.motion.fence.sha256
+            self.report["original_s49_move_fence_unresolved"] = (
+                self.motion.fence.unresolved
+            )
+            self.report["original_s49_move_fence_action_ids"] = [
+                a["action_id"] for a in self.motion.fence.actions
+            ]
+            self.report["r6_native_entities_event_count"] = (
+                self.motion.seen_event_frames
+            )
+            self.report["original_s49_post_move_settling_unqualified"] = (
+                self.owner._post_move_settling_unqualified
+            )
         self.report["life_decision_count"] = len(self.report["life_decisions"])
         self.report["life_outcome_count"] = len(self.report["life_action_outcomes"])

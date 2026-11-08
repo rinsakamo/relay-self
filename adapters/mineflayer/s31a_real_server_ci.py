@@ -317,6 +317,7 @@ async def _await_spawn(session: MineflayerProcessSession) -> MineflayerObservati
 
 async def _correlated_observe(
     session: MineflayerProcessSession, request_id: str,
+    *, on_entity_event=None,
 ) -> MineflayerObservation:
     await session.send_observe(request_id)
     deadline = time.monotonic() + 30
@@ -325,6 +326,14 @@ async def _correlated_observe(
             session, timeout=max(0.1, deadline - time.monotonic())
         )
         _terminal_check(message)
+        if (
+            on_entity_event is not None
+            and isinstance(message, MineflayerObservation)
+            and message.kind == "entities"
+        ):
+            # Only a caller-supplied DEV observer sees the authentic frame.
+            # The original S31 probe correlation and default remain intact.
+            on_entity_event(message)
         if isinstance(message, MineflayerObservation) and message.kind == "probe":
             if message.request_id != request_id:
                 raise S31AQualificationError(

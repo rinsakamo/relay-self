@@ -19,9 +19,10 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
+from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
-from tools.bug0_d14_natural_life import R4_GRANT, NaturalLifeLoop
+from tools.bug0_d14_natural_life import R4_GRANT, R6_GRANT, NaturalLifeLoop
 from tools.bug0_d14_natural_world import (
     PLUGIN_NAME,
     R3_ENV,
@@ -136,6 +137,7 @@ def validate_local_sources(
         "world_rules": "NATURAL_SURVIVAL_MANAGED_ZOMBIE_600_TICKS",
         "physical_issuer": "ORIGINAL_S49_ONLY",
         "classification": "DEV_ONLY_QUALIFICATION_NO_GO_SCIENCE_NOT_RUN",
+        "r6_original_s49_motion_opt_in": environment.get(R6_GRANT) == "1",
     }
 
 
@@ -196,6 +198,18 @@ def source_only_partial(evidence: Path) -> dict[str, Any]:
             source["original_nonmotion_fence_sha256"] = fence.sha256
         except (OSError, ValueError) as exc:
             source["original_nonmotion_fence_read_failure"] = type(exc).__name__
+    motion_path = evidence / "original_s49_motion_fence.json"
+    source["original_motion_fence_present"] = motion_path.is_file()
+    if motion_path.is_file():
+        try:
+            motion = OriginalS49PhysicalFence.restore(
+                motion_path, self_id="s49-original-self",
+            )
+            source["original_motion_records"] = len(motion.actions)
+            source["original_motion_unresolved"] = motion.unresolved
+            source["original_motion_fence_sha256"] = motion.sha256
+        except (OSError, ValueError) as exc:
+            source["original_motion_fence_read_failure"] = type(exc).__name__
     return source
 
 
@@ -263,6 +277,13 @@ async def run_local(
                 )
                 paper_log = output_dir / "paper_original.log"
                 derivative = output_dir / "d14_natural_events.jsonl"
+                motion_fence = (
+                    OriginalS49PhysicalFence.restore(
+                        output_dir / "original_s49_motion_fence.json",
+                        self_id="s49-original-self",
+                    )
+                    if os.environ.get(R6_GRANT) == "1" else None
+                )
                 independent = audit_active(
                     report,
                     paper_log.read_text(encoding="utf8"),
@@ -270,6 +291,7 @@ async def run_local(
                     fence,
                     original_sha=_sha256(paper_log),
                     derivative_sha=_sha256(derivative),
+                    motion_fence=motion_fence,
                 )
                 _write_json_once(output_dir / "independent_audit.json", independent)
             except Exception as exc:
