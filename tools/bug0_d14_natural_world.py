@@ -26,11 +26,11 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
+from tools.bug0_d6_multigen_world import _uuid
 from tools.bug0_d14_tick_horizon_world import (
     _field,
     qualified_early_terminal,
 )
-from tools.bug0_d6_multigen_world import _uuid
 from tools.bug0_zombie_respawn_r1_world import _qualified_file
 
 PLUGIN_NAME = "relay-zombie-respawn-dev-0.1.0-dev.jar"
