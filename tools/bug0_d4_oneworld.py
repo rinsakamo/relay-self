@@ -879,10 +879,37 @@ async def run(
                 }
                 if report["status"] == "PASS_DEV":
                     original_motion.require_clear()
-                    if len(original_motion.actions) != len(
-                        report.get("d6_original_s49_move_actions", ())
-                    ):
+                    expected_moves = report.get("d6_original_s49_move_actions", ())
+                    if d8_two_generation_food_dev:
+                        # D8 retains the SAME durable C1 file across both
+                        # original S49 Intent epochs. The historical D6-only
+                        # readback count excluded the new zombie's genuine
+                        # S49 MOVE and falsely failed a completed second EAT.
+                        g2 = report.get("d8_second_generation", {})
+                        if not isinstance(g2, dict):
+                            raise S49D3Rejected(
+                                "D8 second generation source invalid"
+                            )
+                        newer = g2.get("d6_original_s49_move_actions", [])
+                        if not isinstance(expected_moves, list) or not isinstance(
+                            newer, list
+                        ):
+                            raise S49D3Rejected(
+                                "D8 original two-generation MOVE records invalid"
+                            )
+                        expected_moves = [*expected_moves, *newer]
+                    if len(original_motion.actions) != len(expected_moves):
                         raise S49D3Rejected("original C1 physical MOVE count disagrees")
+                    if d8_two_generation_food_dev and any(
+                        persisted_move.get("action_id") != source_move.get("action_id")
+                        or persisted_move.get("status") != "S16_OUTCOME"
+                        for persisted_move, source_move in zip(
+                            original_motion.actions, expected_moves
+                        )
+                    ):
+                        raise S49D3Rejected(
+                            "D8 original C1 full generation identity/S16 disagrees"
+                        )
             except Exception as exc:
                 report["motion_fence_readback_error"] = (
                     f"{type(exc).__name__}: {exc}"
