@@ -154,6 +154,43 @@ def preflight_original_nonmotion_fence(path: Path) -> tuple[OriginalS49NonMotion
     ), False
 
 
+def require_d8_original_motion_history(
+    actual_actions: object, expected_moves: object,
+) -> None:
+    """Two-epoch C1 MOVE action IDs and S16 outcomes; no Action issuance.
+
+    Same-world second Intent retains the original persistent MOVE ledger.
+    This gate fails closed on stale or missing second-generation records.
+    """
+    if not isinstance(actual_actions, list) or not isinstance(
+        expected_moves, list
+    ):
+        raise S49D3Rejected("D8 original C1 history must be lists")
+    ids = [
+        row.get("action_id") if isinstance(row, dict) else None
+        for row in expected_moves
+    ]
+    if (
+        len(actual_actions) != len(expected_moves)
+        or not all(isinstance(i, str) and i for i in ids)
+        or len(set(ids)) != len(ids)
+        or any(
+            not isinstance(actual, dict)
+            or not isinstance(source, dict)
+            or actual.get("action_id") != source.get("action_id")
+            or actual.get("status") != "S16_OUTCOME"
+            or actual.get("action_ref") != "MOVE_BACKWARD"
+            or source.get("terminal") != "outcome"
+            or actual.get("intent_id") != source.get("intent_id")
+            or actual.get("cleanup_seq") != source.get("s15_clear_seq")
+            for actual, source in zip(actual_actions, expected_moves)
+        )
+    ):
+        raise S49D3Rejected(
+            "D8 original C1 full generation identity/S16 disagrees"
+        )
+
+
 async def run(
     report_path: Path, log_path: Path, *, post_respawn_dev=None,
     nonmotion_fence_path: Path | None = None,
@@ -900,15 +937,9 @@ async def run(
                         expected_moves = [*expected_moves, *newer]
                     if len(original_motion.actions) != len(expected_moves):
                         raise S49D3Rejected("original C1 physical MOVE count disagrees")
-                    if d8_two_generation_food_dev and any(
-                        persisted_move.get("action_id") != source_move.get("action_id")
-                        or persisted_move.get("status") != "S16_OUTCOME"
-                        for persisted_move, source_move in zip(
-                            original_motion.actions, expected_moves
-                        )
-                    ):
-                        raise S49D3Rejected(
-                            "D8 original C1 full generation identity/S16 disagrees"
+                    if d8_two_generation_food_dev:
+                        require_d8_original_motion_history(
+                            original_motion.actions, expected_moves,
                         )
             except Exception as exc:
                 report["motion_fence_readback_error"] = (
