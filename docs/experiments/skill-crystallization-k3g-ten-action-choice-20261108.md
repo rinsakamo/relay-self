@@ -76,7 +76,7 @@ PROBEを選択肢として正当に比較できるよう、公開された比較
 
 ## 検証と実行コマンド
 
-実WorktreeのGitHub HEADを固定、旧原本のSHA256SUMSを監査し、同じローカルvenvで実親コード込みの試験を実行する。
+実WorktreeのGitHub HEADを固定、旧原本のSHA256SUMSを監査し、同じローカルvenvで実親コード込みの試験を実行する。CLI実Gemmaモードは`first-report.json`、K3-B/D`report.json`、K3-E`proposal.json`を読み込む前に、各証拠ディレクトリの`SHA256SUMS`記載ファイル**全件**を再計算する。入力ファイル・副次原本のいずれかが不一致、未記載、欠落ならHTTP POST前に停止する。これはローカル原本自己整合性の検査であり、外部署名や元providerの独立認証ではない。
 
 ```bash
 python -m pytest -q \
