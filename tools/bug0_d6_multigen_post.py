@@ -441,6 +441,7 @@ def audit(
             report.get("d11_eat_action_id") if d11_eat_claimed else None
         ),
         "status": (
+            "NOT_EXERCISED"
             if d10_hunt_until_drop_dev and not positive else "PASS_DEV"
         ),
         "operator_forced_zero_not_vanilla_rng": operator_forced_zero,
@@ -454,7 +455,7 @@ def audit(
         "natural_counts": [e["real_rotten_count"] for e in epochs],
         "unique_zombies": len(seen_zombies),
         "death_ticks": death_ticks,
-        "original_attack_count": len(nonmotion.actions),
+        "original_attack_count": len(attack_journal),
         "original_move_count": len(motion.actions),
         "natural_item_uuid": original_item,
         "same_supervisor_retained": True,
