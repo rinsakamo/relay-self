@@ -35,6 +35,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
     private Location anchor;
     private Zombie living;
     private boolean devEnabled;
+    private boolean naturalWorldMode;
     private boolean halted;
     private long deathWallNanos;
     private TickObservationHorizon horizon;
@@ -49,6 +50,10 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         if (!"1.21.8".equals(Bukkit.getMinecraftVersion())
                 || !TARGET_PLAYER.equals(getConfig().getString("target-player"))) {
             throw new IllegalStateException("respawn DEV requires pinned Paper 1.21.8/RelaySelf");
+        }
+        naturalWorldMode = getConfig().getBoolean("dev-natural-world-mode", false);
+        if (naturalWorldMode && !getConfig().getBoolean("dev-tick-endurance-enabled", false)) {
+            throw new IllegalStateException("natural World requires 10000 tick horizon");
         }
         if (getConfig().getBoolean("dev-tick-endurance-enabled", false)) {
             horizon = new TickObservationHorizon(
@@ -174,7 +179,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             fresh.setBaby(false);
             fresh.setAI(true);
             fresh.setInvulnerable(false);
-            fresh.setShouldBurnInDay(false); // explicit fixed arena rule
+            fresh.setShouldBurnInDay(naturalWorldMode); // vanilla daytime burning only in natural D14
             fresh.setRemoveWhenFarAway(false);
             fresh.setPersistent(true);
         } catch (RuntimeException exception) {
@@ -196,7 +201,8 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             + " world=" + cycle.world() + " entity=" + fresh.getUniqueId()
             + " generation=" + cycle.generation() + " tick=" + tick
             + " death_to_spawn_wall_ms=" + elapsedMillis
-            + " ai=true invulnerable=false day_burn=false");
+            + " ai=true invulnerable=false day_burn=" + naturalWorldMode
+            + " natural_world=" + naturalWorldMode);
     }
 
     private boolean hasManagedTag(Zombie zombie) {

@@ -10,3 +10,7 @@ target-player: RelaySelf
 dev-tick-endurance-enabled: false
 dev-tick-endurance-ticks: 0
 dev-tick-sample-interval: 200
+
+# D14 R3 only: use vanilla daytime burning instead of D8 arena sun immunity.
+# NoAI / Health / Hunger or teleporting are NOT modified by the plugin.
+dev-natural-world-mode: false
