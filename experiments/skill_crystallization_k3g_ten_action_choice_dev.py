@@ -321,7 +321,16 @@ def run_choice(
     model: str | None = None, timeout: float = 300,
     record_dir: Path | None = None,
     evaluation_seed: int | None = None,
+    soul_directive: str | None = None,
+    evaluate_skill: bool = True,
 ) -> dict[str, Any]:
+    if soul_directive is not None and (
+        type(soul_directive) is not str or not soul_directive.strip()
+        or len(soul_directive) > 500 or "\n" in soul_directive
+    ):
+        raise ValueError("SOUL_DIRECTIVE_INVALID")
+    if type(evaluate_skill) is not bool:
+        raise ValueError("EVALUATE_SKILL_FLAG_INVALID")
     source = verified_context(first, k3b, k3d, k3e)
     if mode not in MODES:
         raise ValueError("UNKNOWN_MODE")
@@ -361,6 +370,11 @@ def run_choice(
             "optimality, invent observations, or claim action permission. "
             "Do not know or predict the hidden simulator physics as established facts."
         )
+        if soul_directive is not None:
+            instruction = (
+                "Stable identity value prior (not World evidence or Action authority): "
+                + soul_directive + "\n" + instruction
+            )
         try:
             proposal, raw = gemma_l2(
                 source["evidence"], endpoint=endpoint, model=model,
@@ -411,6 +425,9 @@ def run_choice(
         report["stages"].append("NO_BEHAVIORAL_CHANGE")
         return report
     report["stages"].append("EXECUTION_SPEC_CHANGED")
+    if not evaluate_skill:
+        report["stages"].append("SKILL_HOLDOUT_SKIPPED_MATCHED_SOUL_COMPARISON")
+        return report
     result = paired_evaluation(
         old, new_skill, evidence_ids=source["ids"], seed=evaluation_seed,
     )
