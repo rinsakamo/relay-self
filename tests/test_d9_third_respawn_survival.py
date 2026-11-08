@@ -157,6 +157,9 @@ def fake_report():
         "d9_classification":
             "D9_TWO_REAL_EATS_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS",
         "d9_physical_action_issued_after_second_eat": False,
+        "d9_physical_action_issued_after_second_generation": False,
+        "d9_two_real_meals_proven": True,
+        "d9_second_vanilla_zero_continued": False,
         "d9_autonomous_rest_selected": False,
         "d9_passive_wait_input_off_not_rest_authorized": True,
         "d9_third_paper_spawn": third,
@@ -203,6 +206,9 @@ def test_d9_full_read_only_path_with_d8_audit_dependency(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("mutant", [
+    lambda r: r.update(d9_physical_action_issued_after_second_generation=True),
+    lambda r: r.update(d9_two_real_meals_proven=False),
+    lambda r: r.update(d9_second_vanilla_zero_continued=True),
     lambda r: r.update(d9_physical_action_issued_after_second_eat=True),
     lambda r: r.update(d9_autonomous_rest_selected=True),
     lambda r: r["d9_third_native"].update(zombie_entity_id=46),
@@ -279,4 +285,140 @@ def test_d9_first_true_zero_no_callback_fields_is_genuine_not_exercised(
         auditor.audit_d9(
             report, "", nonmotion_path=tmp_path/"a",
             motion_path=tmp_path/"b", s50_jsonl="",
+        )
+
+
+def fake_second_zero():
+    report = fake_report()
+    sid = "session"
+    attack1 = {"action_id": "a"}
+    move1 = {"action_id": "b"}
+    eat1 = {"action_id": "c", "session_id": sid}
+    attack2 = "d"
+    report.update(
+        d8_second_generation_food_proven=False,
+        d8_second_generation={
+            **report["d8_second_generation"],
+            "real_rotten_flesh_count": 0,
+            "original_eat_issued": False,
+        },
+        self_eat=True,
+        s49_actions=[attack1],
+        d6_original_s49_move_actions=[move1],
+        d7f_eat_outcome=eat1,
+        d7f_native_after_eat={"rotten_flesh": 0},
+        d8_original_second_attack_action_id=attack2,
+        d8_prior_rotten_after_gen1_eat=0,
+        nonmotion_fence={
+            "sha256": "sha-a", "unresolved": False,
+            "action_ids": ["a", "c", "d"],
+        },
+        motion_fence={
+            "sha256": "sha-b", "unresolved": False,
+            "action_ids": ["b"],
+        },
+        d9_status="PASS_DEV",
+        d9_classification=(
+            "D9_SECOND_ZERO_DROP_THIRD_RESPAWN_READ_ONLY_SURVIVAL_PASS"
+        ),
+        d9_physical_action_issued_after_second_eat=None,
+        d9_two_real_meals_proven=False,
+        d9_second_vanilla_zero_continued=True,
+        d9_original_action_count=4,
+        d9_original_action_ids=["a", "b", "c", "d"],
+    )
+    # A true zero adds no second item and leaves the original first EAT
+    # inventory balance untouched through the same-World third respawn.
+    for row in [*report["d9_body_monitor_samples"],
+                report["d9_final_native_body"]]:
+        row["rotten_flesh"] = 0
+    return report
+
+
+def zero_d8_verdict():
+    return {
+        "status": "NOT_EXERCISED",
+        "classification": "D8_TWO_GENERATION_SECOND_TRUE_ZERO_DROP_NO_EAT",
+        "two_real_zombie_kills": True,
+        "two_real_food_cycles": False,
+        "second_natural_count": 0,
+    }
+
+
+def test_d9_second_genuine_zero_still_survives_to_third_world(
+    monkeypatch, tmp_path,
+):
+    report = fake_second_zero()
+    monkeypatch.setattr(
+        auditor, "audit_two_natural_food_cycles",
+        lambda *a, **kw: zero_d8_verdict(),
+    )
+    result = auditor.audit_d9(
+        report, "\n".join([
+            report["d9_third_paper_spawn"], idle_paper_lines(),
+        ]),
+        nonmotion_path=tmp_path/"a", motion_path=tmp_path/"b",
+        s50_jsonl="",
+    )
+    assert result["status"] == "PASS_DEV"
+    assert result["second_natural_zero_drop"] is True
+    assert result["two_real_natural_food_cycles"] is False
+    assert result["first_real_natural_food_cycle"] is True
+    assert result["third_real_natural_food_cycle"] is False
+    assert result["same_original_s49_actions_before_after_third"] is True
+
+
+@pytest.mark.parametrize("mutant", [
+    lambda r: r.update(d9_two_real_meals_proven=True),
+    lambda r: r.update(d9_second_vanilla_zero_continued=False),
+    lambda r: r["d8_second_generation"].update(
+        original_eat_issued=True
+    ),
+    lambda r: r["d8_second_generation"].update(
+        real_rotten_flesh_count=1
+    ),
+    lambda r: r["d8_second_generation"].update(
+        d7f_eat_outcome={"forged": True}
+    ),
+    lambda r: r.update(d9_original_action_ids=["a", "b", "c"]),
+    lambda r: r["d9_final_native_body"].update(rotten_flesh=1),
+    lambda r: r["nonmotion_fence"].update(action_ids=["a", "c"]),
+    lambda r: r.update(d9_physical_action_issued_after_second_eat=False),
+    lambda r: r.update(d9_physical_action_issued_after_second_generation=True),
+])
+def test_d9_second_zero_never_fakes_second_eat_or_third_actions(
+    monkeypatch, tmp_path, mutant,
+):
+    report = fake_second_zero()
+    mutant(report)
+    monkeypatch.setattr(
+        auditor, "audit_two_natural_food_cycles",
+        lambda *a, **kw: zero_d8_verdict(),
+    )
+    with pytest.raises(auditor.D9SurvivalAuditRejected):
+        auditor.audit_d9(
+            report, "\n".join([
+                report["d9_third_paper_spawn"], idle_paper_lines(),
+            ]),
+            nonmotion_path=tmp_path/"a", motion_path=tmp_path/"b",
+            s50_jsonl="",
+        )
+
+
+def test_d9_zero_cannot_be_promoted_from_forged_d8_verdict(
+    monkeypatch, tmp_path,
+):
+    report = fake_second_zero()
+    verdict = zero_d8_verdict()
+    verdict["two_real_zombie_kills"] = False
+    monkeypatch.setattr(
+        auditor, "audit_two_natural_food_cycles", lambda *a, **kw: verdict,
+    )
+    with pytest.raises(auditor.D9SurvivalAuditRejected):
+        auditor.audit_d9(
+            report, "\n".join([
+                report["d9_third_paper_spawn"], idle_paper_lines(),
+            ]),
+            nonmotion_path=tmp_path/"a", motion_path=tmp_path/"b",
+            s50_jsonl="",
         )
