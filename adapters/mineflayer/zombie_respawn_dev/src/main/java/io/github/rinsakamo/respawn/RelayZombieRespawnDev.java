@@ -121,6 +121,9 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         Player player = Bukkit.getPlayer(playerId);
         if (player == null || !player.isOnline() || player.isDead()
                 || !player.getWorld().getUID().equals(cycle.world())) {
+            recordEarlyTerminal(player == null || !player.isOnline()
+                ? "SELF_DISCONNECTED"
+                : player.isDead() ? "SELF_DIED" : "WORLD_SCOPE_LOST");
             cleanup();
             return;
         }
@@ -226,12 +229,31 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        if (playerId != null && playerId.equals(event.getPlayer().getUniqueId())) cleanup();
+        if (playerId != null && playerId.equals(event.getPlayer().getUniqueId())) {
+            recordEarlyTerminal("SELF_DISCONNECTED");
+            cleanup();
+        }
     }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        if (playerId != null && playerId.equals(event.getEntity().getUniqueId())) cleanup();
+        if (playerId != null && playerId.equals(event.getEntity().getUniqueId())) {
+            recordEarlyTerminal("SELF_DIED");
+            cleanup();
+        }
+    }
+
+    private void recordEarlyTerminal(String reason) {
+        if (horizon == null || halted || cycle.world() == null) return;
+        long tick = Bukkit.getCurrentTick();
+        getLogger().info("RSELF_ENDURANCE_TERMINAL world=" + cycle.world()
+            + " start_tick=" + horizon.startTick()
+            + " scheduled_stop_tick=" + horizon.endTick()
+            + " observed_tick=" + tick
+            + " elapsed_ticks=" + horizon.elapsed(tick)
+            + " reason=" + reason
+            + " horizon_reached=false"
+            + " native_actions_inferred=none");
     }
 
     private void cleanup() {
