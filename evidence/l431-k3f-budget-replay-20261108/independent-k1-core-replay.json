@@ -1,0 +1,103 @@
+{
+  "classification": "DEV_ONLY_K3F_INDEPENDENT_K1_CORE_PHYSICS_REPLAY",
+  "source_protocol": "K3-F registered paired_trials logic; K1 MockIssuer/run_skill/run_baseline from retained local K1 artifact; K3-F new module full integration and pytest NOT_EXECUTED",
+  "seed": 20261207,
+  "source_seed_status": "EXPOSED_EXPLORATORY_NOT_BLIND_FUTURE_HOLDOUT",
+  "source_skill_execution_fields": {
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4,
+    "on_failure": "ESCALATE"
+  },
+  "new_trial_count": 64,
+  "regimes": {
+    "changed": {
+      "n": 32,
+      "per_action_delta_bounds_m": [
+        0.18,
+        0.23
+      ],
+      "fixed2": {
+        "success": 0,
+        "actions": 64
+      },
+      "budget_frontier": {
+        "4": {
+          "success": 23,
+          "actions": 128
+        },
+        "5": {
+          "success": 32,
+          "actions": 137
+        },
+        "6": {
+          "success": 32,
+          "actions": 137
+        },
+        "8": {
+          "success": 32,
+          "actions": 137
+        },
+        "10": {
+          "success": 32,
+          "actions": 137
+        }
+      },
+      "rescued_from_four_at_ten": 9,
+      "max_actions_used_by_cap10": 5
+    },
+    "slow": {
+      "n": 32,
+      "per_action_delta_bounds_m": [
+        0.09,
+        0.14
+      ],
+      "fixed2": {
+        "success": 0,
+        "actions": 64
+      },
+      "budget_frontier": {
+        "4": {
+          "success": 0,
+          "actions": 128
+        },
+        "5": {
+          "success": 0,
+          "actions": 160
+        },
+        "6": {
+          "success": 0,
+          "actions": 192
+        },
+        "8": {
+          "success": 32,
+          "actions": 242
+        },
+        "10": {
+          "success": 32,
+          "actions": 242
+        }
+      },
+      "rescued_from_four_at_ten": 32,
+      "max_actions_used_by_cap10": 8
+    }
+  },
+  "checks": {
+    "same_start_and_motion_per_pair": true,
+    "common_observed_trace_prefix": true,
+    "stop_on_goal": true,
+    "automatic_postfailure_actions": 0,
+    "synthetic_effects_available_per_trial": 10
+  },
+  "model_posts": 0,
+  "actual_s49_actions": 0,
+  "actual_worlds": 0,
+  "parent_evidence_edited": false,
+  "heldout_seed_20261126": "NOT_USED",
+  "k3e_probe_seed_20261205": "NOT_USED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "note": "Synthetic energy/Action count only, not measured body cost. Slow regime is a novel stress simulation, not original observed Minecraft movement. The new K3-F module and current full repo have not been integrated-tested in this runtime."
+}
