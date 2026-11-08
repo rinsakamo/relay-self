@@ -246,12 +246,17 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
         }},
         "messages": [
             {"role": "system", "content": (
-                "You are proposing ONE tentative low-cost, bounded MOVE_AWAY skill from observed "
-                "world experiences. Return only JSON matching the schema. Input outcomes are "
-                "observations, not the simulator physics. Choose an applicability scope, 1..4 "
-                "moves and evidence_ids from the input. A successful proposal need not be "
-                "general. No code, no new actions, no guesses of future measurements. "
-                + system_append
+                (
+                    "You are proposing ONE tentative low-cost, bounded MOVE_AWAY skill from "
+                    "observed world experiences. Return only JSON matching the schema. "
+                    "Input outcomes are observations, not the simulator physics. "
+                    "Choose a valid scope, 1..4 moves and observed evidence IDs. "
+                    if response_schema is None else
+                    "You may propose one low-cost, bounded MOVE_AWAY skill OR abstain. "
+                    "Return only JSON matching the supplied schema. Use observed outcomes, "
+                    "not hidden physics. Respect 1..4 moves; absence of a viable skill "
+                    "is a legitimate result. Do not invent new actions or observations. "
+                ) + system_append
             )},
             {"role": "user", "content": json.dumps({
                 "allowed_action": "MOVE_AWAY", "maximum_actions": 4, "target_distance": TARGET,
