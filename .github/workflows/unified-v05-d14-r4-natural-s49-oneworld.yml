@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   one-world:
-    if: ${{ github.event.head_commit.message == 'run-d14-r4-natural-s49-oneworld-b-once-20261109' }}
+    if: ${{ github.event.head_commit.message == 'run-d14-r4-natural-s49-oneworld-c-once-20261109' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -39,7 +39,7 @@ jobs:
       - name: Verify exact one-use trigger, source HEAD and non-natural effects absent
         run: |
           test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d14-r4-natural-s49-trigger-20261109.md"
-          test "$(git show --format=%s -s HEAD)" = "run-d14-r4-natural-s49-oneworld-b-once-20261109"
+          test "$(git show --format=%s -s HEAD)" = "run-d14-r4-natural-s49-oneworld-c-once-20261109"
           python - <<'PY'
           from pathlib import Path
           import subprocess
