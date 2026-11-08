@@ -117,6 +117,57 @@ def validate_reflection(value: object, ids: set[str]) -> dict[str, Any]:
     return value
 
 
+K3H_PROPOSAL_INSTRUCTION = (
+    "You are L2. Return only JSON matching the supplied strict Schema. "
+    "Choose freely whether to TRY_MOVE, COMPARE_ARMS, OBSERVE_ONLY, or DEFER. "
+    "Do not choose a mode because it is expected by the experimenter. "
+    "The maximum is 10 MOVE_AWAY Actions per arm; Goal means immediate stop. "
+    "Prediction UNKNOWN is VALID and does not mean your proposed trial is bad. "
+    "If you have a specific prediction, record it prospectively. "
+    "Do not invent past experience, unobserved physics, new Action authority, "
+    "or a prediction after reading the trial result."
+)
+
+
+def verify_model_proposal_record(report: dict[str, Any],
+                                 source: dict[str, Any]) -> None:
+    """Source self-consistency only, not independent provider authentication."""
+    raw = report.get("provider_record")
+    if (not isinstance(raw, dict) or raw.get("http_status") != 200
+            or raw.get("finish_reason") != "stop"
+            or raw.get("reasoning_content")):
+        raise ValueError("REAL_MODEL_SOURCE_UNATTESTED")
+    req, resp = raw.get("request"), raw.get("response_raw")
+    if not isinstance(req, dict) or not isinstance(resp, str):
+        raise ValueError("REAL_MODEL_SOURCE_UNATTESTED")
+    try:
+        request_sha = hashlib.sha256(
+            json.dumps(req, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+        if request_sha != raw.get("request_sha256"):
+            raise ValueError("REQUEST_RAW_SHA_MISMATCH")
+        if (req["reasoning_effort"] != "none"
+                or req["cache_prompt"] is not False
+                or req["temperature"] != 0
+                or req["response_format"]["json_schema"]["strict"] is not True
+                or req["response_format"]["json_schema"]["schema"]
+                != proposal_schema()
+                or req["messages"][0]["content"] != K3H_PROPOSAL_INSTRUCTION):
+            raise ValueError("PROPOSAL_WIRE_CONTRACT_MISMATCH")
+        user = json.loads(req["messages"][1]["content"])
+        if (user["train_experiences"] != source["evidence"]
+                or user["maximum_actions"] != 10
+                or user["revision_context"] != _public_context(source)):
+            raise ValueError("MODEL_PROPOSAL_INPUT_NOT_ORIGINAL")
+        response = json.loads(resp)["choices"][0]
+        if (response["finish_reason"] != "stop"
+                or response["message"].get("reasoning_content")
+                or json.loads(response["message"]["content"]) != report["proposal"]):
+            raise ValueError("MODEL_PROPOSAL_NOT_RAW_RESPONSE")
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise ValueError("REAL_MODEL_PROPOSAL_SOURCE_MISMATCH") from exc
+
+
 def _public_context(source: dict[str, Any]) -> dict[str, Any]:
     return {
         "old_skill": source["old_skill"],
@@ -169,16 +220,7 @@ def run_proposal(
     else:
         if not endpoint or not model or record_dir is None:
             raise ValueError("LOCAL_MODEL_AND_RAW_RECORD_DIR_REQUIRED")
-        instruction = (
-            "You are L2. Return only JSON matching the supplied strict Schema. "
-            "Choose freely whether to TRY_MOVE, COMPARE_ARMS, OBSERVE_ONLY, or DEFER. "
-            "Do not choose a mode because it is expected by the experimenter. "
-            "The maximum is 10 MOVE_AWAY Actions per arm; Goal means immediate stop. "
-            "Prediction UNKNOWN is VALID and does not mean your proposed trial is bad. "
-            "If you have a specific prediction, record it prospectively. "
-            "Do not invent past experience, unobserved physics, new Action authority, "
-            "or a prediction after reading the trial result."
-        )
+        instruction = K3H_PROPOSAL_INSTRUCTION
         try:
             proposal, record = gemma_l2(
                 source["evidence"], endpoint=endpoint, model=model,
@@ -259,11 +301,7 @@ def execute_mock(
     if seed in PREVIOUS_RESERVED_SEEDS:
         raise ValueError("PROTECTED_SEED")
     if result_mode == "gemma":
-        record = proposal_report.get("provider_record")
-        if (not isinstance(record, dict)
-                or record.get("http_status") != 200
-                or record.get("finish_reason") != "stop"):
-            raise ValueError("REAL_MODEL_SOURCE_UNATTESTED")
+        verify_model_proposal_record(proposal_report, source)
     report = {
         "classification": "DEV_ONLY_K3H_NEW_MOCK_EXPERIENCE",
         "proposal_fingerprint": _canonical_sha(proposal_report),
@@ -326,6 +364,13 @@ def run_reflection(
         raise ValueError("OUTCOME_CHAIN_SOURCE_MISMATCH")
     if not isinstance(outcome_report.get("new_experiences"), list):
         raise ValueError("NEW_EXPERIENCES_NOT_RECORDED")
+    # Independently rebuild the deterministic DEV mock outcome from the
+    # original source-qualified proposal. Never accept a fabricated experience.
+    expected = execute_mock(
+        proposal_report, source, mock_grant=True, result_mode=mode,
+    )
+    if outcome_report != expected:
+        raise ValueError("NEW_MOCK_OUTCOME_NOT_REPRODUCIBLE")
     if "DEFER_NO_NEW_EXPERIENCE" in outcome_report.get("stages", []):
         raise ValueError("NO_EXPERIENCE_FOR_REFLECTION")
     observations = outcome_report["new_experiences"]
