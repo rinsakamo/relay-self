@@ -282,8 +282,8 @@ def test_real_model_proposal_one_call_no_future_physics_leak(
     assert kw["response_schema"] == proposal_schema()
     as_text = json.dumps(kw, default=str)
     assert "20261219" not in as_text
-    assert "0.59" not in as_text
-    assert "0.18" not in as_text
+    assert "future_effects" not in as_text
+    assert "MOTION_REGIMES" not in as_text
     assert "SOUL" not in as_text
 
 
