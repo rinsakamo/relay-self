@@ -37,6 +37,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
     private boolean devEnabled;
     private boolean halted;
     private long deathWallNanos;
+    private TickObservationHorizon horizon;
 
     @Override
     public void onEnable() {
@@ -48,6 +49,13 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         if (!"1.21.8".equals(Bukkit.getMinecraftVersion())
                 || !TARGET_PLAYER.equals(getConfig().getString("target-player"))) {
             throw new IllegalStateException("respawn DEV requires pinned Paper 1.21.8/RelaySelf");
+        }
+        if (getConfig().getBoolean("dev-tick-endurance-enabled", false)) {
+            horizon = new TickObservationHorizon(
+                getConfig().getInt("dev-tick-endurance-ticks", 0),
+                getConfig().getInt("dev-tick-sample-interval", 200));
+        } else if (getConfig().getInt("dev-tick-endurance-ticks", 0) != 0) {
+            throw new IllegalStateException("D14 horizon ticks require explicit DEV opt-in");
         }
         managedKey = new NamespacedKey(this, "managed_zombie");
         devEnabled = true;
@@ -78,6 +86,13 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             return;
         }
         spawn(false, Bukkit.getCurrentTick());
+        if (!halted && horizon != null) {
+            horizon.begin(Bukkit.getCurrentTick());
+            getLogger().info("RSELF_ENDURANCE_START world=" + cycle.world()
+                + " start_tick=" + horizon.startTick()
+                + " stop_tick=" + horizon.endTick()
+                + " horizon_ticks=10000 natural_600tick_respawns_unchanged=true");
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -110,6 +125,27 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             return;
         }
         long now = Bukkit.getCurrentTick();
+        if (horizon != null) {
+            if (horizon.reached(now)) {
+                horizon.finish(now);
+                halted = true; // stop new spawns, do not alter vanilla drops or Self
+                getLogger().info("RSELF_ENDURANCE_LIMIT world=" + cycle.world()
+                    + " start_tick=" + horizon.startTick()
+                    + " end_tick=" + horizon.endTick() + " observed_tick=" + now
+                    + " elapsed_ticks=" + horizon.elapsed(now)
+                    + " generation=" + cycle.generation()
+                    + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
+                    + " stop_new_spawns=true no_forced_death=true");
+                return;
+            }
+            if (horizon.sample(now)) {
+                getLogger().info("RSELF_ENDURANCE_SAMPLE world=" + cycle.world()
+                    + " tick=" + now + " elapsed_ticks=" + horizon.elapsed(now)
+                    + " generation=" + cycle.generation()
+                    + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
+                    + " pending_due_tick=" + cycle.dueTick());
+            }
+        }
         if (cycle.due(player.getWorld().getUID(), now)) {
             if (!safeAnchor(anchor) || managedCount(player.getWorld()) != 0) {
                 fail("DUE_ANCHOR_OR_LIVE_MANAGED_ENTITY");
@@ -204,6 +240,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         anchor = null;
         playerId = null;
         cycle.clear();
+        horizon = null;
         getLogger().info("RSELF_RESPAWN_RESET pending_discarded=true");
     }
 
