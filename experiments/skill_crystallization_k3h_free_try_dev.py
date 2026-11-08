@@ -311,7 +311,7 @@ def execute_mock(
     proposal = validate_proposal(proposal_report.get("proposal"), source["ids"])
     if ("VALID_BOUNDED_CHOICE" not in proposal_report.get("stages", [])
             or proposal_report.get("schema_validation") != "PASS"
-        or proposal_report.get("semantic_validation") != "PASS"):
+            or proposal_report.get("semantic_validation") != "PASS"):
         raise ValueError("UNADMITTED_PROPOSAL")
     if result_mode not in ("fixture", "gemma") or result_mode != proposal_report["mode"]:
         raise ValueError("PROPOSAL_MODE_MISMATCH")
