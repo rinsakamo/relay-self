@@ -6,6 +6,15 @@ import json
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _optional_jsonschema_gate(request):
+    if request.node.name not in {
+        "test_wire_schema_closed_and_fixed_protocols",
+        "test_context_preserves_prior_abstention_as_unproven",
+    }:
+        pytest.importorskip("jsonschema")
+
 from experiments.skill_crystallization_dev import make_trials, observed_training
 from experiments.skill_crystallization_k3b_dev import prepare_revision
 from experiments.skill_crystallization_k3e_dev import (
@@ -149,18 +158,26 @@ def test_one_model_call_and_no_probe_outcome_leak(monkeypatch):
         return chosen_probe(), {"finish_reason": "stop"}
 
     monkeypatch.setattr(mod, "gemma_l2", stub)
+    observed_seeds = []
+
+    def do_not_open_real_seed(proposal, *, seed, mock_grant):
+        observed_seeds.append(seed)
+        return {"mock_seed_not_opened": True}
+
+    monkeypatch.setattr(mod, "execute_mock_probe", do_not_open_real_seed)
     r = run_proposal(first, k3b, k3d, mode="gemma",
                      endpoint="http://127.0.0.1:8080/v1/chat/completions",
                      model="verified")
     assert len(calls) == 1
     ctx = calls[0][1]["revision_context"]
-    assert "20261128" not in json.dumps(ctx)
+    assert "20261205" not in json.dumps(ctx)
     assert "20261126" not in json.dumps(ctx)
     assert "observed_pattern" not in json.dumps(ctx)
     assert "hidden_effects" not in json.dumps(ctx)
     assert calls[0][1]["response_schema"] == proposal_schema()
     assert "not creating a Skill" in calls[0][1]["system_instruction"]
-    assert r["probe"]["seed"] == REAL_PROBE_SEED
+    assert r["probe"] == {"mock_seed_not_opened": True}
+    assert observed_seeds == [REAL_PROBE_SEED]
     assert r["provider"]["finish_reason"] == "stop"
 
 
@@ -215,7 +232,9 @@ def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeyp
     first, k3b, k3d = parent_data()
     r = run_proposal(first, k3b, k3d, mode="fixture", fixture=chosen_probe())
     r["mode"] = "gemma"
-    r["probe"] = execute_mock_probe(r["proposal"], seed=REAL_PROBE_SEED, mock_grant=True)
+    # Never open the real seed in an HTTP contract test.
+    fixture_probe = r["probe"]
+    monkeypatch.setattr(mod, "_verify_proposal_report", lambda *_: fixture_probe)
     got = []
 
     def stub(evidence, **kwargs):
