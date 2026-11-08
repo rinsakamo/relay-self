@@ -106,6 +106,7 @@ class NaturalLifeLoop:
             self_id="s49-original-self",
         )
         self.cycles = 0
+        self._last_policy_rotation_cycle = 0
         self.stopped = False
         self.report.update({
             "s49_physical_issuer": "ORIGINAL_NORMAL_SESSION_ACTION_EXECUTOR",
@@ -177,7 +178,12 @@ class NaturalLifeLoop:
 
     def _rotate_native_cursor(self) -> None:
         """Rotate read-only bounded L0 policy, never S49 Action or Intent."""
-        if self.cycles > 0 and self.cycles % POLICY_EPOCH_DECISIONS == 0:
+        if (
+            self.cycles > 0
+            and self.cycles % POLICY_EPOCH_DECISIONS == 0
+            and self._last_policy_rotation_cycle != self.cycles
+        ):
+            self._last_policy_rotation_cycle = self.cycles
             self.policy = S49BasicPriorityL0(
                 self.sid, max_decisions=POLICY_EPOCH_DECISIONS,
             )
