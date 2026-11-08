@@ -85,10 +85,26 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             return;
         }
         playerId = player.getUniqueId();
-        anchor = player.getLocation().clone().add(SPAWN_OFFSET_X, 0, 0);
+        // R3's fixed same-Y +6 anchor can land inside hillside air/stone
+        // on ordinary generated terrain. In natural mode, inspect nearby
+        // *unchanged* terrain and pick the first valid site; never flatten,
+        // teleport Self, weaken the zombie or silently reroll this World.
+        anchor = naturalWorldMode
+            ? naturalAnchor(player)
+            : player.getLocation().clone().add(SPAWN_OFFSET_X, 0, 0);
         if (!safeAnchor(anchor) || managedCount(anchor.getWorld()) != 0) {
             fail("INITIAL_ANCHOR_OR_MANAGED_ENTITY");
             return;
+        }
+        if (naturalWorldMode) {
+            getLogger().info("RSELF_NATURAL_ANCHOR source=PAPER_WORLD_GEOMETRY"
+                + " self_x=" + player.getLocation().getBlockX()
+                + " self_y=" + player.getLocation().getBlockY()
+                + " self_z=" + player.getLocation().getBlockZ()
+                + " zombie_x=" + anchor.getBlockX()
+                + " zombie_y=" + anchor.getBlockY()
+                + " zombie_z=" + anchor.getBlockZ()
+                + " blocks_changed=false player_moved=false");
         }
         spawn(false, Bukkit.getCurrentTick());
         if (!halted && horizon != null) {
@@ -216,6 +232,24 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             if (hasManagedTag(zombie) && zombie.isValid() && !zombie.isDead()) count++;
         }
         return count;
+    }
+
+    private static Location naturalAnchor(Player player) {
+        Location original = player.getLocation();
+        World world = original.getWorld();
+        if (world == null) return null;
+        int sx = original.getBlockX();
+        int sy = original.getBlockY();
+        int sz = original.getBlockZ();
+        for (int[] offset : NaturalAnchorCandidates.offsets()) {
+            // Bounded spatial search in the same World and loaded spawn area.
+            // Use actual block passability and natural supporting ground.
+            Location candidate = new Location(
+                world, sx + offset[0] + 0.5, sy + offset[1],
+                sz + offset[2] + 0.5);
+            if (safeAnchor(candidate)) return candidate;
+        }
+        return null;
     }
 
     private static boolean safeAnchor(Location location) {

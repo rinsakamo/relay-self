@@ -246,6 +246,8 @@ async def observe_natural_world(
     session, server, paper_log: Path, journal_path: Path,
     report: dict[str, Any],
     *, max_wall_seconds: int = MAX_WALL_SECONDS,
+    on_life_step=None,
+    on_life_native_stop=None,
 ) -> None:
     if journal_path.exists() or journal_path.is_symlink():
         raise D14NaturalWorldRejected("DERIVATIVE_JOURNAL_ALREADY_EXISTS")
@@ -254,6 +256,7 @@ async def observe_natural_world(
     unconsumed = b""
     readback_errors = 0
     readback_counter = 0
+    native_safe_stopped = False
     start_wall = time.monotonic()
 
     with journal_path.open("x", encoding="utf8") as journal:
@@ -296,7 +299,7 @@ async def observe_natural_world(
                 if timeline.stop is not None or timeline.terminal is not None:
                     break
 
-            if fresh_samples:
+            if fresh_samples and not native_safe_stopped:
                 readback_counter += 1
                 line = fresh_samples[-1]
                 request_id = f"d14-r3-native-read-{readback_counter:03d}"
@@ -334,9 +337,33 @@ async def observe_natural_world(
                         "request_id": request_id,
                     })
                     if readback_errors >= 2:
-                        # Do not hang on a missing native session. Paper
-                        # original may still contain a death marker.
-                        raise D14NaturalWorldRejected("NATIVE_READBACK_REPEATEDLY_UNAVAILABLE") from exc
+                        # R3 remains strict; an active R4 with no outstanding
+                        # physical Action can explicitly STOP its native owner
+                        # and keep observing genuine Paper ticks. This is NOT
+                        # a native recovery, Action authorization, or death.
+                        if on_life_native_stop is None:
+                            raise D14NaturalWorldRejected(
+                                "NATIVE_READBACK_REPEATEDLY_UNAVAILABLE"
+                            ) from exc
+                        on_life_native_stop("NATIVE_READBACK_UNAVAILABLE_ACTION_STOP")
+                        report["native_observation_safe_stop"] = {
+                            "reason": "NATIVE_READBACK_UNAVAILABLE_ACTION_STOP",
+                            "after_sample": line,
+                            "last_failed_request_id": request_id,
+                            "consecutive_failures": readback_errors,
+                            "paper_only_after": True,
+                        }
+                        save(
+                            "NATIVE_SAFE_STOP", line,
+                            native=report["native_observation_safe_stop"],
+                        )
+                        native_safe_stopped = True
+            if (
+                on_life_step is not None and not native_safe_stopped
+                and timeline.start is not None
+                and timeline.stop is None and timeline.terminal is None
+            ):
+                await on_life_step(save)
             await asyncio.sleep(0.5)
         else:
             raise D14NaturalWorldRejected("HOST_WATCHDOG_BEFORE_WORLD_TICK_OR_DEATH")
@@ -344,13 +371,17 @@ async def observe_natural_world(
     report["result"] = result
     report["paper_source"] = timeline.source_summary()
     report["native_readback_count"] = readback_counter
-    report["new_s49_actions"] = 0
+    if on_life_step is None:
+        report["new_s49_actions"] = 0
     report["model_posts"] = 0
     report["learning_updates"] = 0
     report["skill_installs"] = 0
 
 
-async def run(report_path: Path, paper_log: Path, journal_path: Path) -> int:
+async def run(
+    report_path: Path, paper_log: Path, journal_path: Path,
+    *, life_factory=None,
+) -> int:
     report: dict[str, Any] = {
         "classification": "DEV_D14_R3_NATURAL_WORLD_NOT_RUN",
         "status": "BLOCKED",
@@ -373,7 +404,7 @@ async def run(report_path: Path, paper_log: Path, journal_path: Path) -> int:
         "original_log_path": str(paper_log),
         "derivative_journal_path": str(journal_path),
     }
-    server = collector = session = temporary = None
+    server = collector = session = temporary = life = None
     code = 2
     try:
         if (
@@ -414,14 +445,28 @@ async def run(report_path: Path, paper_log: Path, journal_path: Path) -> int:
         report["phase"] = "NATIVE_JOIN"
         session = await _new_session()
         report["native_session_id"] = session.started.session_id
-        report["phase"] = "NATURAL_WORLD_OBSERVATION"
+        report["phase"] = (
+            "NATURAL_WORLD_S49_ACTIVE_DEV" if life_factory is not None
+            else "NATURAL_WORLD_OBSERVATION"
+        )
         journal_path.parent.mkdir(parents=True, exist_ok=True)
-        await observe_natural_world(session, server, paper_log, journal_path, report)
+        if life_factory is not None:
+            life = life_factory(session, report_path.parent, report)
+        await observe_natural_world(
+            session, server, paper_log, journal_path, report,
+            on_life_step=life.step if life is not None else None,
+            on_life_native_stop=(
+                life.stop_due_to_native_loss if life is not None else None
+            ),
+        )
         report["status"] = "PASS_DEV"
         report["classification"] = (
+            "DEV_D14_R4_NATURAL_ACTIVE_S49_SOURCE_OBSERVED"
+            if life is not None else (
             "DEV_D14_R3_NATURAL_10000_PAPER_TICKS_OBSERVED"
             if report["result"]["outcome"] == "WORLD_TICK_LIMIT_REACHED"
             else "DEV_D14_R3_NATURAL_EARLY_SELF_TERMINAL_OBSERVED"
+            )
         )
         code = 0
     except Exception as exc:
@@ -429,6 +474,8 @@ async def run(report_path: Path, paper_log: Path, journal_path: Path) -> int:
         report["classification"] = "DEV_D14_R3_WORLD_OR_SOURCE_UNQUALIFIED"
         report["failure"] = f"{type(exc).__name__}: {exc}"
     finally:
+        if life is not None:
+            life.final_audit_fields()
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)

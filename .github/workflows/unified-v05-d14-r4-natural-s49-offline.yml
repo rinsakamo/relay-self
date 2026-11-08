@@ -1,0 +1,68 @@
+name: D14 R4 natural original S49 DEV offline
+on:
+  push:
+    branches:
+      - dev/d14-r4-natural-original-s49-loop-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  natural-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact branch HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify checkout SHA
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install explicit test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Repository contracts
+        run: python tools/check_repository.py
+      - name: R3 natural World source and existing D14/D12 regressions
+        run: |
+          python -m pytest -q -x \
+            tests/test_d14_natural_world.py \
+            tests/test_d14_natural_active_s49.py \
+            tests/test_d14_tick_horizon.py \
+            tests/test_d12_experience_bridge.py \
+            tests/test_d12_third_intent_rearm.py
+      - name: Ruff natural runner and original post
+        run: |
+          ruff check \
+            tools/bug0_d14_natural_world.py \
+            tools/bug0_d14_natural_life.py \
+            tools/bug0_d14_natural_active_world.py \
+            tools/bug0_d14_natural_active_post.py \
+            tools/bug0_d14_natural_post.py \
+            tests/test_d14_natural_world.py \
+            tests/test_d14_natural_active_s49.py
+      - name: Paper natural zombie respawn build
+        run: mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+      - name: Existing respawn and tick horizon tests
+        run: |
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
+            io.github.rinsakamo.respawn.RespawnCycleTest
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
+            io.github.rinsakamo.respawn.TickObservationHorizonTest
+          java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
+            io.github.rinsakamo.respawn.NaturalAnchorCandidatesTest
