@@ -43,3 +43,17 @@ Connect an original S49 event-driven epoch loop beyond the fixed D8/D12 callback
 Parent source is D12 R2 #803 and read-only historical Experience PR #804. Those earlier real World outcomes and new D14 logs are distinct evidence. Learning/L2 and SOUL are not connected automatically.
 
 DEV_ONLY / TICK_HORIZON_PILOT / ACTIVE_CONTINUOUS_S49_NOT_IMPLEMENTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
+
+
+## R2 facts → R3 log/termination remediation (2026-11-08)
+
+R2 [Actions #42477201083](https://github.com/rinsakamo/relay-self/actions/runs/42477201083) was CANCELLED by the 35-minute job timeout. Artifact [#13617071861](https://github.com/rinsakamo/relay-self/actions/runs/42477201083/artifacts/13617071861) retained 6/6 SHA256-verified originals. Paper start tick15 / planned end tick10015, genuine first kill tick526 / natural rotten count0, generation2 spawn tick1126 (+600 tick), and actual RelaySelf death near tick1337. The managed horizon RESET at death, so no 10000-tick terminal marker was produced. D7 and S50 original source rows each reached their legacy 8192-row cap. The later Paper tick8206 is not evidence of Self survival or horizon completion.
+
+Changes after R2 in this branch:
+- Paper now writes RSELF_ENDURANCE_TERMINAL with actual World/tick/reason before death, disconnect or scope-loss cleanup. This is explicitly an early termination, never a horizon PASS.
+- Python D14 watcher reads incremental appended Paper bytes, detects early terminal before requesting stale native probes and bounds any correlated readback to 9 seconds.
+- The fresh exclusive fsync'd derivative d14_paper_world_events.jsonl captures START, each 200-tick SAMPLE, TERMINAL/LIMIT and asynchronous native observations; this source-referencing derivative can survive a cancelled runner.
+- With explicit D14 World opt-in only, original full-rate Paper D7 and native S50 source row caps are 12000 rather than the normal 8192. Other v0.5 tests retain 8192. These original sources remain distinct from the derivative 200-tick event journal.
+- Offline negative tests include forged Paper death/disconnect ticks and reason, and both Paper plugin builds.
+
+**R3 is not yet run.** Use a fresh exact-head documentation-only one-use trigger after independent LocalCodex preflight, never reuse R1/R2 evidence or an already consumed trigger. Treat a natural early Self death as a real observation and finite end of the Self. Never silently respawn the old owner or count it as 10000-tick success. Preserve original physical Action fences. Full third-and-later original S49 combat/food continuation is still not integrated in this watcher: a successful World clock is not autonomous survival or Skill learning.
