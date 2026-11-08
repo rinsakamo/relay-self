@@ -9,13 +9,14 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import time
 from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_dev import (
+    TARGET,
     Cue,
     MockIssuer,
-    TARGET,
     WorldTrial,
     applicable,
     cue_for,
@@ -183,10 +184,14 @@ def evaluate_comparison(old: dict[str, Any], new: dict[str, Any], *,
         raise ValueError("EVALUATION_COUNT_INVALID")
     if type(recovery_budget) is not int or recovery_budget != 1:
         raise ValueError("RECOVERY_BUDGET_INVALID")
+    from experiments.skill_crystallization_k3b_dev import _cheap
+
     trials = shifted(seed, "normal")[:count]
     summary = {
         "n": count, "seed": seed,
-        "old_success": 0, "new_success": 0, "fixed_success": 0,
+        "old_success": 0, "new_success": 0, "fixed_success": 0, "cheap_success": 0,
+        "cheap_actions": 0, "new_no_match": 0, "new_misapplication": 0,
+        "new_cpu_ns": 0, "llm_calls_in_holdout": 0,
         "old_actions": 0, "new_actions": 0, "fixed_actions": 0,
         "old_selected": 0, "new_selected": 0,
         "new_escalated": 0, "new_failure_after_selected": 0,
@@ -201,8 +206,15 @@ def evaluate_comparison(old: dict[str, Any], new: dict[str, Any], *,
     used_handoffs: set[tuple[str, str]] = set()
     for i, trial in enumerate(trials):
         old_receipt = execute_attempt(old, trial, intent_id=f"old-{i}")
+        started = time.process_time_ns()
         new_receipt = execute_attempt(new, trial, intent_id=f"new-{i}")
+        summary["new_cpu_ns"] += time.process_time_ns() - started
         fixed = run_baseline(trial)
+        cheap = _cheap(trial)
+        summary["cheap_success"] += int(cheap["success"])
+        summary["cheap_actions"] += cheap["action_count"]
+        summary["new_no_match"] += int(not new_receipt["selected"])
+        summary["new_misapplication"] += int(new_receipt["selected"] and trial.surface != new["surface"])
         summary["old_success"] += int(old_receipt["success"])
         summary["new_success"] += int(new_receipt["success"])
         summary["fixed_success"] += int(fixed["success"])

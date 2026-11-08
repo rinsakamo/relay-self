@@ -228,6 +228,7 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
              timeout: float, revision_context: dict[str, Any] | None = None,
              response_schema: dict[str, Any] | None = None,
              system_append: str = "",
+             record_dir: Path | None = None,
              ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exactly one explicitly requested HTTP call; no retries or World actions."""
     parsed = urllib.parse.urlsplit(endpoint)
@@ -267,6 +268,11 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
     }
     serialized = json.dumps(req_body, separators=(",", ":"), ensure_ascii=False).encode()
     request_sha = hashlib.sha256(serialized).hexdigest()
+    if record_dir is not None:
+        record_dir.mkdir(parents=True, exist_ok=True)
+        # Exclusive creation is an independent one-shot replay barrier.
+        with (record_dir / "request.raw.json").open("xb") as stream:
+            stream.write(serialized)
     request = urllib.request.Request(endpoint, data=serialized,
                                      headers={"Content-Type": "application/json"}, method="POST")
     start = time.perf_counter()
@@ -275,11 +281,17 @@ def gemma_l2(training: list[dict[str, Any]], *, endpoint: str, model: str,
     record: dict[str, Any] = {"request_sha256": request_sha, "request": req_body}
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
-            raw_response = resp.read().decode("utf-8", errors="replace")
+            response_bytes = resp.read()
+            if record_dir is not None:
+                (record_dir / "response.raw.json").write_bytes(response_bytes)
+            raw_response = response_bytes.decode("utf-8", errors="replace")
             status = resp.status
     except urllib.error.HTTPError as exc:
         status = exc.code
-        raw_response = exc.read().decode("utf-8", errors="replace")
+        response_bytes = exc.read()
+        if record_dir is not None:
+            (record_dir / "response.raw.json").write_bytes(response_bytes)
+        raw_response = response_bytes.decode("utf-8", errors="replace")
         record.update({"http_status": status, "response_raw": raw_response,
                        "elapsed_seconds": time.perf_counter() - start})
         raise ModelCallFailure(f"GEMMA_HTTP_{status}", record) from exc

@@ -29,6 +29,13 @@ EXPOSED_SEEDS = frozenset({20261108, 20261109, 20261110, 20261111, 20261112, 202
 
 def _grounded_prior(first: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
     """Check old source, original suspension and the previously equivalent L2 proposal."""
+    from experiments.skill_crystallization_k3b_dev import verify_suspension
+
+    # Never generate missing observations while authenticating the original.
+    if not isinstance(previous.get("shift_observations"), list) or not verify_suspension(
+        previous["shift_observations"]
+    ):
+        raise ValueError("ORIGINAL_SUSPENSION_REQUIRED")
     state = prepare_revision(first, previous)
     if not state["suspended"]:
         raise ValueError("SUSPENSION_REQUIRED")
@@ -69,7 +76,7 @@ def run_k3d(
     first: dict[str, Any], previous: dict[str, Any], *, mode: str,
     fixture_proposal: dict[str, Any] | None = None,
     endpoint: str | None = None, model: str | None = None, timeout: float = 300,
-    evaluation_seed: int | None = None,
+    evaluation_seed: int | None = None, record_dir: Path | None = None,
 ) -> dict[str, Any]:
     """One optional L2 call. No holdout access until a validated novel Skill exists."""
     state = _grounded_prior(first, previous)
@@ -123,7 +130,7 @@ def run_k3d(
             proposal, raw = gemma_l2(
                 evidence, endpoint=endpoint, model=model, timeout=timeout,
                 revision_context=context,
-                response_schema=proposal_json_schema(),
+                response_schema=proposal_json_schema(), record_dir=record_dir,
                 system_append=(
                     "The previous Skill already allowed FOUR MOVE_AWAY actions, "
                     "so do not repeat the inaccurate one-action claim. "
@@ -194,13 +201,14 @@ def main() -> None:
     p.add_argument("--model")
     p.add_argument("--timeout", type=float, default=300)
     p.add_argument("--evaluation-seed", type=int)
+    p.add_argument("--record-dir", type=Path, required=False)
     a = p.parse_args()
     first = json.loads(a.first.read_text(encoding="utf-8"))
     previous = json.loads(a.k3b_report.read_text(encoding="utf-8"))
     fixture = json.loads(a.proposal_file.read_text(encoding="utf-8")) if a.proposal_file else None
     result = run_k3d(first, previous, mode=a.mode, fixture_proposal=fixture,
                      endpoint=a.endpoint, model=a.model, timeout=a.timeout,
-                     evaluation_seed=a.evaluation_seed)
+                     evaluation_seed=a.evaluation_seed, record_dir=a.record_dir)
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
                      encoding="utf-8")

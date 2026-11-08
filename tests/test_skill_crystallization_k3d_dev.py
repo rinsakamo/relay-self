@@ -195,3 +195,10 @@ def test_evidence_scope_uses_observed_prefix_not_future_physics():
     assert counts["observed_selected_success"] == 0
     assert sum(counts[k] for k in ["observed_selected", "observed_excluded_failure",
                                   "observed_excluded_success"]) == 12
+
+
+def test_original_non_suspended_rows_are_not_synthesized():
+    first, prior = inputs()
+    prior["shift_observations"] = prior["shift_observations"][:-2]
+    with pytest.raises(ValueError, match="ORIGINAL_SUSPENSION_REQUIRED"):
+        k3d._grounded_prior(first, prior)
