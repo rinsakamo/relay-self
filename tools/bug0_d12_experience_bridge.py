@@ -11,9 +11,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tools.bug0_d12_third_intent_rearm_post import audit_d12
 from tools.bug0_d6_multigen_world import _tick, _uuid
 from tools.bug0_d7e_staged_move_eat_post import native_integral_food
+from tools.bug0_d12_third_intent_rearm_post import audit_d12
 
 
 class D12ExperienceBridgeRejected(ValueError):
