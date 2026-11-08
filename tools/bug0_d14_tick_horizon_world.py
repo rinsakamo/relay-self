@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from functools import partial
 import json
 import os
 import re
 import time
+from functools import partial
 from pathlib import Path
 
 from adapters.mineflayer.normal_action import NormalSessionActionExecutor
