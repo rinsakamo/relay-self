@@ -35,6 +35,8 @@ jobs:
         run: |
           python -m pytest -q -x \
             tests/test_d14_tick_horizon.py \
+            tests/test_d7_paper_server_tick_post.py \
+            tests/test_mineflayer_process_session.py \
             tests/test_d12_experience_bridge.py \
             tests/test_d12_third_intent_rearm.py \
             tests/test_d8_two_natural_food_post.py \
@@ -45,9 +47,15 @@ jobs:
             tools/bug0_d4_oneworld.py \
             tools/bug0_d14_tick_horizon_world.py \
             tools/bug0_d14_tick_horizon_post.py \
+            tools/bug0_d7_paper_server_tick_post.py \
+            adapters/mineflayer/process_session.py \
             tests/test_d14_tick_horizon.py
-      - name: Build Paper-managed respawn plugin without changing RNG
-        run: mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+      - name: Verify native S50 wrapper syntax
+        run: node --check adapters/mineflayer/m02_paper_dev/s50_p1_readback_bridge.mjs
+      - name: Build Paper-managed respawn and witness plugins
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/zombie_drop_witness_dev/pom.xml -DskipTests package
       - name: Pure Java World tick and respawn 600tick logic tests
         run: |
           java -ea -cp adapters/mineflayer/zombie_respawn_dev/target/classes:adapters/mineflayer/zombie_respawn_dev/target/test-classes \
