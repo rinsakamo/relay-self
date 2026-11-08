@@ -13,6 +13,7 @@ from tools.bug0_d14_natural_world import (
     NATURAL_PLUGIN_CONFIG,
     D14NaturalWorldRejected,
     NaturalPaperTimeline,
+    accept_ended_native_after_paper_death,
     marker_kind,
     natural_properties,
 )
@@ -238,3 +239,56 @@ def test_no_duplicate_terminal_and_no_fabricated_prediction():
     with pytest.raises(D14NaturalWorldRejected):
         t.admit("TERMINAL", TERMINAL)
     assert not hasattr(t, "prediction")
+
+
+
+def test_reaped_native_zero_after_paper_death_is_not_fake_teardown_failure(tmp_path):
+    report, _, _ = make_report(tmp_path, early=True)
+    assert accept_ended_native_after_paper_death(report, native_exit=0)
+    assert not accept_ended_native_after_paper_death(report, native_exit=-15)
+    assert not accept_ended_native_after_paper_death(report, native_exit=1)
+    report["result"]["outcome"] = "WORLD_TICK_LIMIT_REACHED"
+    assert not accept_ended_native_after_paper_death(report, native_exit=0)
+    report["result"]["outcome"] = "SELF_EARLY_TERMINAL"
+    report["paper_source"]["original_early_terminal"] = None
+    assert not accept_ended_native_after_paper_death(report, native_exit=0)
+
+
+def test_archived_natural_death_with_bad_shutdown_stays_source_only(tmp_path):
+    report, original, derivative = make_report(tmp_path, early=True)
+    report["status"] = "FAIL"
+    report["classification"] = "DEV_D14_R3_TEARDOWN_UNQUALIFIED"
+    report["node_cleanup_error"] = (
+        "MineflayerProcessEnded: Mineflayer bridge did not exit after shutdown request"
+    )
+    with pytest.raises(D14NaturalAuditRejected):
+        do_audit(report, original, derivative)
+    examined = audit_natural(
+        report, original, derivative,
+        original_sha=hashlib.sha256(original.encode()).hexdigest(),
+        derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+        source_only_failed_cleanup=True,
+    )
+    assert examined["status"] == "SOURCE_ONLY_DEV"
+    assert examined["teardown_qualified"] is False
+    assert examined["reached_10000_ticks"] is False
+    assert examined["self_died_before_limit"] is True
+    assert report["status"] == "FAIL"
+
+
+@pytest.mark.parametrize("invalid_cleanup", [
+    "MineflayerProcessIOError: no link",
+    "", "SomethingElse: transient",
+])
+def test_source_only_denies_unqualified_shutdown_error(tmp_path, invalid_cleanup):
+    report, original, derivative = make_report(tmp_path, early=True)
+    report["status"] = "FAIL"
+    report["classification"] = "DEV_D14_R3_TEARDOWN_UNQUALIFIED"
+    report["node_cleanup_error"] = invalid_cleanup
+    with pytest.raises(D14NaturalAuditRejected):
+        audit_natural(
+            report, original, derivative,
+            original_sha=hashlib.sha256(original.encode()).hexdigest(),
+            derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+            source_only_failed_cleanup=True,
+        )
