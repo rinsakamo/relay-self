@@ -230,6 +230,7 @@ async def run(
     motion_fence_path: Path | None = None,
     d6_multigen_dev: bool = False,
     d10_hunt_until_drop_dev: bool = False,
+    d11_hunt_then_eat_dev: bool = False,
     d6_controlled_zero_dev: bool = False,
     d7_native_controls_path: Path | None = None,
     d7f_natural_eat_dev=None,
@@ -265,12 +266,21 @@ async def run(
             if (
                 not d6_multigen_dev or d6_controlled_zero_dev
                 or d8_two_generation_food_dev
-                or d7f_natural_eat_dev is not None
+                or (d7f_natural_eat_dev is not None and not d11_hunt_then_eat_dev)
                 or os.environ.get("D10_HUNT_UNTIL_DROP_WORLD_ONLY") != "1"
                 or os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
             ):
                 raise S49D3Rejected("D10 real until-drop DEV grant absent")
             report["d10_until_drop_dev"] = True
+            if d11_hunt_then_eat_dev:
+                if (
+                    os.environ.get("D11_HUNT_THEN_S51_EAT_WORLD_ONLY") != "1"
+                    or not callable(d7f_natural_eat_dev)
+                    or d7_native_controls_path is None
+                    or d6_controlled_zero_dev
+                ):
+                    raise S49D3Rejected("D11 original natural EAT grant absent")
+                report["d11_hunt_then_eat_dev"] = True
             report["d10_operator_world_generation_safety_limit"] = 12
         if d6_controlled_zero_dev:
             if (
@@ -310,8 +320,10 @@ async def run(
                 or post_death_loot_move_dev is None
                 or d7_native_controls_path is None
                 or nonmotion_fence_path is None or motion_fence_path is None
-                or d6_multigen_dev or d6_controlled_zero_dev
-                or (post_respawn_dev is not None and not d8_two_generation_food_dev)
+                or (d6_multigen_dev and not d11_hunt_then_eat_dev)
+                or d6_controlled_zero_dev
+                or (post_respawn_dev is not None
+                    and not (d8_two_generation_food_dev or d11_hunt_then_eat_dev))
             ):
                 raise S49D3Rejected(
                     "D7-F one-source natural STOP/EAT source grant absent"
@@ -331,6 +343,8 @@ async def run(
                 raise S49D3Rejected("D8 two natural food cycle DEV source grant absent")
             report["d8_two_generation_optin"] = True
             report["d8_second_generation_food_proven"] = False
+        if d11_hunt_then_eat_dev and not d10_hunt_until_drop_dev:
+            raise S49D3Rejected("D11 EAT may only extend D10 real hunt")
         if d6_multigen_dev:
             if (
                 os.environ.get("D6_NATURAL_MULTIGEN_WORLD_ONLY") != "1"
