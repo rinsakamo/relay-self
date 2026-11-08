@@ -27,6 +27,7 @@ from experiments.skill_crystallization_dev import (
 )
 
 BUDGETS = (4, 10)
+BUDGET_FRONTIER = (4, 5, 6, 8, 10)
 EXPLORATORY_SEED = 20261207  # Already exposed when this comparison is run.
 PROTECTED_SEEDS = frozenset({20261126, 20261205, 20261128})
 MOTION_REGIMES = {"changed": (0.18, 0.23), "slow": (0.09, 0.14)}
@@ -113,11 +114,24 @@ def compare_action_budgets(
         }
         for regime in MOTION_REGIMES
     }
+    frontier = {
+        regime: {
+            cap: {"goal_success": 0, "actions": 0}
+            for cap in BUDGET_FRONTIER
+        }
+        for regime in MOTION_REGIMES
+    }
     rows = []
     for regime, trial in trial_set:
         fixed = run_baseline(trial)
         old_result = run_skill(old, trial, cue_for(trial))
         new_result = run_budget10_shadow(widened, trial, evidence_ids=ids)
+        for cap in BUDGET_FRONTIER:
+            sample = old_result if cap == 4 else run_budget10_shadow(
+                {**widened, "max_actions": cap}, trial, evidence_ids=ids
+            )
+            frontier[regime][cap]["goal_success"] += int(sample["success"])
+            frontier[regime][cap]["actions"] += sample["action_count"]
         if (new_result["trace"][:len(old_result["trace"])] != old_result["trace"]
                 or new_result["action_count"] < old_result["action_count"]):
             raise ValueError("PAIRED_PHYSICAL_PREFIX_MISMATCH")
@@ -154,7 +168,7 @@ def compare_action_budgets(
         "parent_skill_id": old["skill_id"],
         "seed": seed, "trials": n, "policy_change": "MAX_ACTIONS_4_TO_10_ONLY",
         "action_mode": "GOAL_EARLY_STOP",
-        "summary": summaries, "paired_trials": rows,
+        "summary": summaries, "budget_frontier": frontier, "paired_trials": rows,
         "gemma_posts": 0, "native_s49_actions": 0, "real_worlds": 0,
         "old_skill_modified": False, "previous_holdout_20261126": "UNOPENED",
         "k3e_probe_20261205": "UNOPENED",
