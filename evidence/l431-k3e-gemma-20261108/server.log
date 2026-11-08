@@ -1,0 +1,23 @@
+0.00.050.115 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.050.526 W srv  llama_server: -----------------
+0.00.050.540 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.050.540 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.050.540 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.050.540 W srv  llama_server: -----------------
+0.00.051.842 I srv    load_model: loading model '/home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf'
+0.01.453.656 W load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.454.366 W load: control-looking token:     50 '<|tool_response>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.485.658 W load: special_eog_ids contains '<|tool_response>', removing '</s>' token from EOG list
+0.02.716.874 I cmn          init: llama threadpool init, n_threads = 6
+0.02.835.784 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.02.843.927 I srv  llama_server: model loaded
+0.02.843.950 I srv  llama_server: listening on http://127.0.0.1:18194
+0.20.460.425 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.20.460.934 I slot launch_slot_: id  0 | task 1 | processing task, is_child = 0
+0.26.617.814 I slot print_timing: id  0 | task 1 | n_gen =    109, tg =  35.76 t/s, tg_3s =  36.09 t/s
+0.28.674.861 I slot print_timing: id  0 | task 1 | prompt eval time =    3136.78 ms /  3569 tokens (    0.88 ms per token,  1137.79 tokens per second)
+0.28.674.868 I slot print_timing: id  0 | task 1 |        eval time =    5077.10 ms /   184 tokens (   27.74 ms per token,    36.04 tokens per second)
+0.28.674.868 I slot print_timing: id  0 | task 1 |       total time =    8213.87 ms /  3753 tokens
+0.28.674.873 I slot print_timing: id  0 | task 1 |    graphs reused =        182
+0.28.675.018 I slot      release: id  0 | task 1 | stop processing: n_tokens = 3752, truncated = 0
+0.49.912.110 I srv    operator(): operator(): cleaning up before exit...
