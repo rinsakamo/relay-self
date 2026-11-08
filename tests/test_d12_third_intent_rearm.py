@@ -5,10 +5,7 @@ from copy import deepcopy
 
 import pytest
 
-from tools.bug0_d12_third_intent_rearm_post import (
-    D12ThirdAuditRejected,
-    require_third_rearm,
-)
+from tools.bug0_d12_third_intent_rearm_post import D12ThirdAuditRejected, require_third_rearm
 
 
 WORLD = "11111111-1111-4111-8111-111111111111"
