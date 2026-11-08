@@ -30,7 +30,11 @@ let sessionId = null
 let ordinal = 0
 let physicsTick = 0
 let capped = false
-const MAX_ROWS = 8192
+const d14Cap = process.env.RELAYSELF_S50_D14_MAX_ROWS
+if (d14Cap !== undefined && d14Cap !== '12000') {
+  throw new Error('D14 S50 extended original row cap invalid')
+}
+const MAX_ROWS = d14Cap === '12000' ? 12000 : 8192
 // Capture native bot.entity orientation only for the opt-in FLAT/P1 child.
 // This is a client-local radian snapshot at source emission, never Paper yaw.
 const captureFlatPose = process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
