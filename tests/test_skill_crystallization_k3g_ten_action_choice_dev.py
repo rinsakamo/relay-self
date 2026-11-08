@@ -91,7 +91,9 @@ def test_mutated_parent_abstention_refused(originals):
 
 def test_mutated_shift_outcome_refused(originals):
     fake = copy.deepcopy(originals)
-    fake[1]["shift_observations"][-1]["outcome_success"] = True
+    fake[1]["shift_observations"][0]["outcome_success"] = (
+        not fake[1]["shift_observations"][0]["outcome_success"]
+    )
     with pytest.raises(ValueError, match="PRIOR_SOURCE_MISMATCH"):
         verified_context(*fake)
 
@@ -277,7 +279,7 @@ def test_real_mode_one_call_and_unopened_seed_not_leaked(originals, monkeypatch,
     assert "20261126" not in serialized
     assert "20261205" not in serialized
     assert "20261207" not in serialized
-    assert "0.18" not in serialized
+    assert "normal_slower_stress" not in serialized
     assert "K3F_SYNTHETIC" not in serialized
 
 
