@@ -152,6 +152,15 @@ def test_compare_is_paired_and_never_overrides_old_skill(first):
         assert stats["rescued_by_extra_actions"] == (
             stats["budget10_success"] - stats["budget4_success"]
         )
+        frontier = report["budget_frontier"][regime]
+        assert sorted(frontier) == [4, 5, 6, 8, 10]
+        assert frontier[4]["goal_success"] == stats["budget4_success"]
+        assert frontier[10]["goal_success"] == stats["budget10_success"]
+        assert frontier[4]["actions"] == stats["budget4_actions"]
+        assert frontier[10]["actions"] == stats["budget10_actions"]
+        assert list(x["goal_success"] for x in frontier.values()) == sorted(
+            x["goal_success"] for x in frontier.values()
+        )
 
 
 def test_budget10_is_shadow_only_and_no_implicit_postfailure_fallback(source):
