@@ -8,15 +8,15 @@ import asyncio
 
 import pytest
 
-from relay_self.intent import IntentCommitment
-from relay_self.provenance import Provenance
 from adapters.mineflayer.normal_action import (
     NormalActionRejected,
     NormalSessionActionExecutor,
 )
-from tools.bug0_d10_hunt_until_drop_post import audit_d10
-from tools.bug0_d6_multigen_post import MultigenAuditRejected
+from relay_self.intent import IntentCommitment
+from relay_self.provenance import Provenance
 from tools.bug0_d4_oneworld import run
+from tools.bug0_d6_multigen_post import MultigenAuditRejected
+from tools.bug0_d10_hunt_until_drop_post import audit_d10
 
 
 def owner(*, extended=False, count=4):
