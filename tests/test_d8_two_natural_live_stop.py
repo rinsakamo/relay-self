@@ -247,3 +247,37 @@ def test_d8_actual_process_session_rejects_reused_probe_before_dispatch(
         asyncio.run(session.send_observe(after))
     assert len(transmitted) == 2
     assert session._d8_sent_probe_request_ids == {before, after}
+
+
+def test_gen2_operator_disables_zombie_ai_before_near_player_teleport():
+    """R13: operator prepares a zombie only; not Self health or S49 policy."""
+    import ast
+    import inspect
+    import textwrap
+
+    from tools.bug0_d8_two_natural_food_world import (
+        continue_second_natural_food_cycle,
+    )
+
+    code = ast.parse(textwrap.dedent(
+        inspect.getsource(continue_second_natural_food_cycle)
+    ))
+    assignments = [
+        node for node in ast.walk(code)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "commands"
+                for t in node.targets)
+    ]
+    assert len(assignments) == 1
+    commands = ast.literal_eval(assignments[0].value)
+    no_ai = [i for i, command in enumerate(commands)
+             if "NoAI:1b" in command]
+    teleport = [i for i, command in enumerate(commands)
+                if " run tp " in command]
+    assert no_ai == [1]
+    assert teleport == [2]
+    assert all("doMobLoot" not in command for command in commands)
+    assert all("give RelaySelf minecraft:rotten_flesh" not in command
+               for command in commands)
+    assert all("data merge entity RelaySelf" not in command
+               for command in commands)
