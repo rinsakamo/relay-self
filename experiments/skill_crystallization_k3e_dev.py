@@ -305,24 +305,31 @@ def _verify_model_proposal_record(report: dict[str, Any],
     response = raw.get("response_raw")
     if not isinstance(request, dict) or not isinstance(response, str):
         raise ValueError("GEMMA_PROPOSAL_SOURCE_UNVERIFIED")
-    digest = hashlib.sha256(json.dumps(
-        request, separators=(",", ":"), ensure_ascii=False,
-    ).encode()).hexdigest()
+    try:
+        digest = hashlib.sha256(json.dumps(
+            request, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("GEMMA_PROPOSAL_SOURCE_UNVERIFIED") from exc
     if digest != raw.get("request_sha256"):
         raise ValueError("GEMMA_REQUEST_HASH_MISMATCH")
     try:
-        assert request["reasoning_effort"] == "none"
+        if request["reasoning_effort"] != "none":
+            raise ValueError("REASONING_ENABLED")
         wire = request["response_format"]["json_schema"]
-        assert wire["strict"] is True and wire["schema"] == proposal_schema()
+        if wire["strict"] is not True or wire["schema"] != proposal_schema():
+            raise ValueError("SCHEMA_DIFFERENT")
         user_content = json.loads(request["messages"][1]["content"])
-        assert user_content["train_experiences"] == source["evidence"]
+        if user_content["train_experiences"] != source["evidence"]:
+            raise ValueError("EVIDENCE_DIFFERENT")
         body = json.loads(response)
         choice = body["choices"][0]
-        assert choice["finish_reason"] == "stop"
-        assert not choice["message"].get("reasoning_content")
+        if choice["finish_reason"] != "stop" or choice["message"].get("reasoning_content"):
+            raise ValueError("NON_STOP_OR_REASONING")
         response_value = json.loads(choice["message"]["content"])
-        assert response_value == report["proposal"]
-    except (AssertionError, KeyError, IndexError, TypeError, ValueError) as exc:
+        if response_value != report["proposal"]:
+            raise ValueError("PROPOSAL_CONTENT_DIFFERENT")
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise ValueError("GEMMA_PROPOSAL_SOURCE_MISMATCH") from exc
 
 
