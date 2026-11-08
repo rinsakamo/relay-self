@@ -84,7 +84,7 @@ python -m experiments.skill_crystallization_soul_audit_dev \
   --out evidence/l800-soul-gemma-20261108/matched-audit.json
 ```
 
-The audit compares request/response raw SHA and content against their saved provider records, requires identical request JSON except for exactly the predeclared identity system prefix, requires original neutral system text, rejects outcome/holdout usage, and separates raw-choice divergence from semantically admitted-choice divergence. Run `tests/test_skill_crystallization_soul_audit_dev.py` with focused pytest before model calls. Incomplete/raw-missing runs are a blocked comparison, not an invented null.
+The audit compares request/response raw SHA and content against their saved provider records, requires identical request JSON except for exactly the predeclared identity system prefix, requires the neutral system text **byte-exact** against the preserved K3-G 804-character instruction, validates the shared JSON Schema, **independently replays the JSON Schema and branch meaning Validator using the 28 source evidence IDs from the original request**, and rejects forged PASS / altered provider payloads. It rejects outcome/holdout usage, and separates raw-status divergence, action-relevant decision-signature divergence, semantically admitted decisions, and explanation-only wording divergence. Run `tests/test_skill_crystallization_soul_audit_dev.py` with focused pytest before model calls. Incomplete/raw-missing runs are a blocked comparison, not an invented null.
 
 ## Acceptance & comparison
 
@@ -94,7 +94,7 @@ Before comparing, independently decode the 4 saved raw requests and verify:
 3. Four different raw directories, exclusive request and response, no auto retries, explicit condition hash and head.
 4. Raw status, schema validity, semantic validator validity, source ID usage, selected Skill and branch if valid; also prompt/completion tokens and latency.
 
-A difference in one or four outputs is a **pilot observation, not proof of stable personality**. One-shot random variability, order/time and unequal prompt length can confound. Temperature0 improves reproducibility but does not guarantee identical results. Follow with predeclared matched fresh scenarios or counterbalanced repetitions (with no retroactive prompt edits) only if the pilot warrants.
+A difference in one or four outputs is a **pilot observation, not proof of stable personality**. Distinct explanation text or divergent invalid choices cannot be promoted as new effective Skill/Action control. A valid Skill choice is still just a proposal because the matched pilot never runs any Skill or opens a new holdout. One-shot random variability, order/time and unequal prompt length can confound. Temperature0 improves reproducibility but does not guarantee identical results. Follow with predeclared matched fresh scenarios or counterbalanced repetitions (with no retroactive prompt edits) only if the pilot warrants.
 
 ### Scope
 
