@@ -194,6 +194,9 @@ async def continue_after_first_respawn(
             report["d10_first_natural_positive_generation"] = 1
             report["d10_hunt_stop_reason"] = "TRUE_NATURAL_DROP_AND_PICKUP"
             report["d10_hunt_goal_reached"] = True
+            report["d10_natural_counts"] = [first_rotten]
+            report["d10_original_kills"] = 1
+            report["d10_all_prior_true_zero"] = True
         return
     if first_rotten != 0:
         raise MultiGenerationDevRejected("first positive natural drop was not picked")
