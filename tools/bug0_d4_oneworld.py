@@ -420,6 +420,13 @@ async def run(
             report["d6_no_hunger_intervention"] = (
                 d7f_natural_eat_dev is None
             )
+        if d8_two_generation_food_dev:
+            # D8 observes ordinary Minecraft loot rules as existing World
+            # truth. The DEV operator never changes doMobLoot even briefly.
+            basic_commands = tuple(
+                cmd for cmd in basic_commands
+                if cmd != "gamerule doMobLoot true"
+            )
         # Operator cleanup must never remove the Paper-owned zombie. For
         # D5 and D6, defer nonzombie cleanup until just before the first S49
         # admission: R2 observed two native nearby entities despite the
@@ -433,9 +440,11 @@ async def run(
         else:
             before_hunger = basic_commands
             after_hunger = (
-                "gamerule doMobLoot false",
-                nonzombie_clear,
-                "gamerule doMobLoot true",
+                (nonzombie_clear,) if d8_two_generation_food_dev else (
+                    "gamerule doMobLoot false",
+                    nonzombie_clear,
+                    "gamerule doMobLoot true",
+                )
             )
         report["operator_world_staging"] = list(before_hunger + after_hunger)
         for cmd in before_hunger:
