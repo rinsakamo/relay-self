@@ -15,6 +15,7 @@ from tools.bug0_d14_tick_horizon_world import (
     D14HorizonRejected,
     _field,
     parse_endurance_marker,
+    qualified_early_terminal,
 )
 
 WORLD = "11111111-1111-4111-8111-111111111111"
@@ -198,3 +199,44 @@ def test_partial_owner_independent_audit_never_accepts_without_closed_fences(tmp
             nonmotion_path=tmp_path / "missing-nonmotion.json",
             motion_path=tmp_path / "missing-motion.json",
         )
+
+
+
+def test_paper_self_death_terminates_without_horizon_pass():
+    r, log, _ = make_sources()
+    start = log.splitlines()[0]
+    terminal = (
+        f"RSELF_ENDURANCE_TERMINAL world={WORLD} start_tick=500 "
+        "scheduled_stop_tick=10500 observed_tick=1822 elapsed_ticks=1322 "
+        "reason=SELF_DIED horizon_reached=false native_actions_inferred=none"
+    )
+    result = qualified_early_terminal(start, terminal)
+    assert result["reason"] == "SELF_DIED"
+    assert result["elapsed_ticks"] == 1322
+    assert not result["world_horizon_reached"]
+    assert not result["self_survived_to_horizon"]
+    assert result["terminal_tick"] < 10500
+
+
+@pytest.mark.parametrize("altered", [
+    "scheduled_stop_tick=10501",
+    "observed_tick=1823",
+    "elapsed_ticks=1323",
+    "reason=FAKE_SUCCESS",
+    "horizon_reached=true",
+])
+def test_false_early_terminal_rejected(altered):
+    _, log, _ = make_sources()
+    first = log.splitlines()[0]
+    original = (
+        f"RSELF_ENDURANCE_TERMINAL world={WORLD} start_tick=500 "
+        "scheduled_stop_tick=10500 observed_tick=1822 elapsed_ticks=1322 "
+        "reason=SELF_DIED horizon_reached=false native_actions_inferred=none"
+    )
+    replacement = altered.split("=", 1)[0] + "="
+    new = original.replace(
+        next(token for token in original.split() if token.startswith(replacement)),
+        altered,
+    )
+    with pytest.raises(D14HorizonRejected, match="INVALID_PAPER_EARLY_TERMINAL"):
+        qualified_early_terminal(first, new)
