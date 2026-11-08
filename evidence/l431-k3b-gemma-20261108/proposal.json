@@ -1,0 +1,25 @@
+{
+  "status": "SKILL",
+  "reason": "The previous skill failed because it allowed for a single MOVE_AWAY action to reach the target distance, which is insufficient for the observed movement delta. The shift experiences show that 4-5 moves are required to reach 3.2m from a ~2.4m start. By bounding the action to 4 moves and using the successful multi-step traces as evidence, we can ensure the agent continues moving until the target is reached.",
+  "skill": {
+    "version": 1,
+    "skill_id": "move_away_on_normal_surface_multi_step",
+    "surface": "normal",
+    "min_distance": 2.314917,
+    "max_distance": 2.457525,
+    "target_distance": 3.2,
+    "max_actions": 4,
+    "on_failure": "ESCALATE",
+    "evidence_ids": [
+      "shift-experience-000",
+      "shift-experience-001",
+      "shift-experience-002",
+      "shift-experience-003",
+      "shift-experience-005",
+      "shift-experience-006",
+      "shift-experience-007",
+      "shift-experience-008",
+      "shift-experience-009"
+    ]
+  }
+}
