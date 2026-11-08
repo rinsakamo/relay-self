@@ -1080,6 +1080,107 @@ class NormalSessionActionExecutor:
         self._post_move_settling_unqualified = False
         return source
 
+    def admit_d8_passive_natural_stop_dev(
+        self, session: MineflayerProcessSession, *,
+        paper_log: Path, s50_sidecar: Path,
+        paper_staged: str, paper_pickup: str, paper_natural_death: str,
+        attack_action_id: str, attack_effect_seq: int,
+        native_before: MineflayerObservation,
+        native_after: MineflayerObservation,
+        prior_rotten_count: int, new_natural_count: int,
+    ):
+        """D8-only one-use source-qualified stillness, with *no second MOVE*.
+
+        This does not treat an old S15 clear or Paper pickup as new Action.
+        Only the current original S49 ATTACK ACK anchors S50 physics ticks.
+        """
+        from adapters.mineflayer.d7_live_staged_stop import (
+            read_d7_live_staged_stop,
+        )
+
+        if (
+            not isinstance(session, MineflayerProcessSession)
+            or session.started.session_id != self.session_id
+            or session.process_returncode is not None
+            or self._intent_epoch != 2
+            or self._epoch_attack_count != 1
+            or self._count - self._epoch_action_count_start != 1
+            or self._post_move_settling_unqualified
+            or self._d7_dev_stop_consumed or self._d7_dev_eat_credit
+            or self.supervisor.open_actions
+            or len(self._dispatched) != self._count
+            or any(self.supervisor.get(a).state is not ActionState.OUTCOME
+                   for a in self._dispatched)
+            or not isinstance(attack_action_id, str)
+            or attack_action_id not in self._dispatched
+            or not attack_action_id.startswith("d8-gen2-s49-attack-")
+            or type(attack_effect_seq) is not int or attack_effect_seq < 0
+            or self.supervisor.get(attack_action_id).state is not ActionState.OUTCOME
+            or type(prior_rotten_count) is not int or prior_rotten_count < 0
+            or type(new_natural_count) is not int
+            or new_natural_count not in (1, 2)
+            or not isinstance(paper_natural_death, str)
+            or "killer_is_relay_self=true" not in paper_natural_death
+            or not isinstance(paper_log, Path)
+            or not isinstance(s50_sidecar, Path)
+            or paper_log.is_symlink() or s50_sidecar.is_symlink()
+            or not paper_log.is_file() or not s50_sidecar.is_file()
+            or paper_log.parent.resolve() != s50_sidecar.parent.resolve()
+            or not isinstance(native_before, MineflayerObservation)
+            or not isinstance(native_after, MineflayerObservation)
+            or native_before.session_id != self.session_id
+            or native_after.session_id != self.session_id
+            or native_before.kind != "probe" or native_after.kind != "probe"
+            or not native_before.request_id or not native_after.request_id
+            or native_before.request_id == native_after.request_id
+            or native_before.provenance.source != "mineflayer"
+            or native_after.provenance.source != "mineflayer"
+            or not attack_effect_seq < native_before.seq < native_after.seq
+            or native_after.seq - native_before.seq > 32
+            or assess_normal_eating_observation(native_before)
+                is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or assess_normal_eating_observation(native_after)
+                is not NormalEatingObservationStatus.NO_NEARBY_ENTITY_OBSERVED
+            or native_after.snapshot.food >= 20
+            or sum(i.count for i in native_before.snapshot.inventory
+                   if i.name == "rotten_flesh")
+                != prior_rotten_count + new_natural_count
+            or sum(i.count for i in native_after.snapshot.inventory
+                   if i.name == "rotten_flesh")
+                != prior_rotten_count + new_natural_count
+            or any(
+                abs(getattr(native_before.snapshot.position, axis)
+                    - getattr(native_after.snapshot.position, axis)) > 0.05
+                for axis in ("x", "y", "z")
+            )
+        ):
+            raise NormalActionRejected("D8 no-MOVE original S49 native STOP refused")
+        try:
+            raw_paper = paper_log.read_text(encoding="utf8")
+            raw_s50 = s50_sidecar.read_text(encoding="utf8")
+        except (OSError, UnicodeError) as exc:
+            raise NormalActionRejected("D8 no-MOVE original source unreadable") from exc
+        source = read_d7_live_staged_stop(
+            raw_paper, raw_s50,
+            session_id=self.session_id,
+            action_id=attack_action_id, clear_seq=attack_effect_seq,
+            original_stage_line=paper_staged,
+            original_pickup_line=paper_pickup,
+            source_kind="natural_multi_passive",
+            original_death_line=paper_natural_death,
+        )
+        if (
+            source.classification !=
+                "D8_DEV_LIVE_SECOND_NATURAL_PASSIVE_PICKUP_STEADY_SOURCE"
+            or source.original_clear_seq != -1
+            or source.original_attack_effect_seq != attack_effect_seq
+        ):
+            raise NormalActionRejected("D8 no-MOVE source attribution failed")
+        self._d7_dev_stop_consumed = True
+        self._d7_dev_eat_credit = 1
+        self._post_move_settling_unqualified = False
+        return source
+
     def require_authorizations(
         self, step: L0Step, bound: BoundExecutionCandidate,
         probe: MineflayerObservation,
