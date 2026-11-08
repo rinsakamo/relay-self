@@ -313,6 +313,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ("report", "server-log", "event-journal", "nonmotion-fence", "out"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--motion-fence", type=Path)
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf8"))
     fence = OriginalS49NonMotionFence.restore(
@@ -324,6 +325,12 @@ def main() -> None:
         args.event_journal.read_text(encoding="utf8"),
         fence, original_sha=_sha(args.server_log),
         derivative_sha=_sha(args.event_journal),
+        motion_fence=(
+            OriginalS49PhysicalFence.restore(
+                args.motion_fence, self_id="s49-original-self",
+            )
+            if args.motion_fence is not None else None
+        ),
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("x", encoding="utf8") as out:
