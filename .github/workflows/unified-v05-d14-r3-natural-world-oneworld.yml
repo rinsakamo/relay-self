@@ -1,0 +1,151 @@
+name: D14 R3 natural survival World one-shot DEV
+on:
+  push:
+    branches:
+      - dev/d14-r3-natural-world-entry-20261108
+
+permissions:
+  contents: read
+
+jobs:
+  one-world:
+    if: ${{ github.event.head_commit.message == 'run-d14-r3-natural-oneworld-once-20261108' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      D14_10000_TICK_WORLD_ONLY: '1'
+      D14_R3_NATURAL_WORLD_ONCE: '1'
+    steps:
+      - name: Checkout single-use commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Verify exact one-use trigger, source HEAD and non-natural effects absent
+        run: |
+          test "$(git show --format= --name-only HEAD | sed '/^$/d')" = "docs/unified-v05-d14-r3-natural-trigger-20261108.md"
+          test "$(git show --format=%s -s HEAD)" = "run-d14-r3-natural-oneworld-once-20261108"
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          text=Path('docs/unified-v05-d14-r3-natural-trigger-20261108.md').read_text()
+          parent=subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()
+          assert 'parent_source_head: '+parent in text
+          assert 'scope: ONE NATURAL SURVIVAL WORLD 10000 PAPER TICKS OR SELF EARLY DEATH' in text
+          assert 'staged_hunger: false' in text
+          assert 'staged_no_ai: false' in text
+          assert 'new_original_s49_actions: 0' in text
+          PY
+          python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+          python tools/check_repository.py
+          python -m pytest -q -x tests/test_d14_natural_world.py tests/test_d14_tick_horizon.py
+          ruff check tools/bug0_d14_natural_world.py tools/bug0_d14_natural_post.py tests/test_d14_natural_world.py
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              assert sock.connect_ex(('127.0.0.1',25565)) != 0
+          PY
+      - name: Download pinned Paper 1.21.8 stable build 60
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,urllib.parse,urllib.request
+          url='https://fill.papermc.io/v3/projects/paper/versions/1.21.8/builds'
+          req=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-D14-Natural-R3/1.0'})
+          with urllib.request.urlopen(req,timeout=50) as stream:
+              builds=json.loads(stream.read(3000000))
+          matches=[b for b in builds if b.get('channel')=='STABLE' and b.get('id')==60]
+          assert len(matches)==1
+          p=matches[0]['downloads']['server:default']
+          assert p['name']=='paper-1.21.8-60.jar' and p['size']==52811717
+          assert p['checksums']['sha256']=='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          uri=urllib.parse.urlparse(p['url'])
+          assert uri.scheme=='https' and uri.hostname=='fill-data.papermc.io' and uri.path.startswith('/v1/objects/')
+          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'paper-1.21.8.jar'
+          digest=hashlib.sha256()
+          with urllib.request.urlopen(urllib.request.Request(p['url'],headers={'User-Agent':'RelaySelf-D14-Natural-R3/1.0'}),timeout=120) as stream, target.open('xb') as out:
+              n=0
+              while data:=stream.read(1024*1024):
+                  n+=len(data)
+                  assert n<=52811717
+                  digest.update(data)
+                  out.write(data)
+          assert n==52811717 and digest.hexdigest()==p['checksums']['sha256']
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as env:
+              env.write('D14_R3_PAPER_JAR='+str(target)+'\n')
+          print('R3_PINNED_PAPER_SHA256', digest.hexdigest())
+          PY
+      - name: Build pinned natural respawn Paper plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/zombie_respawn_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib,os,pathlib
+          jar=pathlib.Path('adapters/mineflayer/zombie_respawn_dev/target/relay-zombie-respawn-dev-0.1.0-dev.jar').resolve()
+          assert jar.is_file() and not jar.is_symlink()
+          digest=hashlib.sha256(jar.read_bytes()).hexdigest()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as env:
+              env.write('D14_R3_RESPAWN_JAR='+str(jar)+'\n')
+              env.write('D14_R3_RESPAWN_SHA256='+digest+'\n')
+          print('R3_RESPAWN_PLUGIN_SHA256',digest)
+          PY
+      - name: Install pinned Mineflayer 4.39.0
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if (require('./adapters/mineflayer/node_modules/mineflayer/package.json').version!=='4.39.0') process.exit(2)"
+      - name: Run ONE natural World to real Paper limit or true Self early terminal
+        run: |
+          mkdir -p d14-r3-natural-evidence
+          python -B -m tools.bug0_d14_natural_world \
+            --report d14-r3-natural-evidence/report.json \
+            --server-log d14-r3-natural-evidence/paper_original.log \
+            --event-journal d14-r3-natural-evidence/d14_natural_events.jsonl
+      - name: Independent original-to-journal audit (only after clean report)
+        run: |
+          python -B -m tools.bug0_d14_natural_post \
+            --report d14-r3-natural-evidence/report.json \
+            --server-log d14-r3-natural-evidence/paper_original.log \
+            --event-journal d14-r3-natural-evidence/d14_natural_events.jsonl \
+            --out d14-r3-natural-evidence/independent_audit.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('d14-r3-natural-evidence')
+          r=json.loads((root/'report.json').read_text())
+          a=json.loads((root/'independent_audit.json').read_text())
+          assert r['status']=='PASS_DEV' and a['status']=='PASS_DEV'
+          assert r['world_config']=='NATURAL_SURVIVAL'
+          assert a['new_original_s49_actions']==0 and a['learning_updates']==0
+          assert a['eventual_reason'] in ('PAPER_WORLD_LIMIT','SELF_DIED','SELF_DISCONNECTED','WORLD_SCOPE_LOST')
+          if a['reached_10000_ticks']:
+              assert a['observed_world_ticks']==10000
+          else:
+              assert a['observed_world_ticks']<10000
+          print('R3_NATURAL_WORLD_SOURCE_ONLY',a['eventual_reason'],a['observed_world_ticks'])
+          PY
+      - name: Preserve complete or partial original SHA manifest
+        if: always()
+        run: |
+          if test -d d14-r3-natural-evidence; then
+            (cd d14-r3-natural-evidence && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          fi
+      - name: Upload new R3 source / derivative / partial evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d14-r3-natural-survival-oneworld-originals
+          path: d14-r3-natural-evidence/
+          retention-days: 30
+          if-no-files-found: warn
