@@ -332,3 +332,42 @@ def test_reassessment_changed_hypothesis_is_not_claimed_correct():
     assert result["prediction_assessment"] == "PREDICTION_FALSIFIED"
     assert result["reason_truth"] == "NOT_INDEPENDENTLY_VERIFIED"
     assert result["skill_execution"] == "NOT_RUN"
+
+
+def test_forged_gemma_mode_is_rejected_before_hidden_probe_replay(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    source = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe())
+    source["mode"] = "gemma"
+    monkeypatch.setattr(mod, "execute_mock_probe",
+                        lambda *_args, **_kwargs: pytest.fail(
+                            "Unverified mode must not access reserved real seed"))
+    with pytest.raises(ValueError, match="GEMMA_PROPOSAL_SOURCE_UNVERIFIED"):
+        run_reassessment(first, k3b, k3d, source, mode="gemma",
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                         model="test")
+
+
+def test_forged_gemma_request_hash_is_rejected_before_probe_replay(monkeypatch):
+    import experiments.skill_crystallization_k3e_dev as mod
+
+    first, k3b, k3d = parent_data()
+    source = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe())
+    source["mode"] = "gemma"
+    source["provider"] = {
+        "http_status": 200, "finish_reason": "stop",
+        "reasoning_content": None,
+        "request": {"model": "fake"},
+        "request_sha256": "invalid",
+        "response_raw": "{}",
+    }
+    monkeypatch.setattr(mod, "execute_mock_probe",
+                        lambda *_args, **_kwargs: pytest.fail(
+                            "Bad hash must not access reserved real seed"))
+    with pytest.raises(ValueError, match="GEMMA_REQUEST_HASH_MISMATCH"):
+        run_reassessment(first, k3b, k3d, source, mode="gemma",
+                         endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                         model="test")
