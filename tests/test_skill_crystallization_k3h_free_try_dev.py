@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from experiments.skill_crystallization_dev import skill_json_schema
+from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
 from experiments.skill_crystallization_k3h_free_try_dev import (
     FIXTURE_SEED,
     NEW_MODEL_TRIAL_SEED,
@@ -18,9 +19,7 @@ from experiments.skill_crystallization_k3h_free_try_dev import (
     run_proposal,
     run_reflection,
     validate_proposal,
-    validate_reflection,
 )
-from experiments.skill_crystallization_k3g_ten_action_choice_dev import verified_context
 
 ROOT = Path(__file__).resolve().parents[1]
 

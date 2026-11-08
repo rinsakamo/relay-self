@@ -308,11 +308,11 @@ def execute_mock(
         raise ValueError("EXPLICIT_DEV_MOCK_GRANT_REQUIRED")
     if proposal_report.get("source_fingerprint") != _source_fingerprint(source):
         raise ValueError("PROPOSAL_SOURCE_MISMATCH")
-    proposal = validate_proposal(proposal_report.get("proposal"), source["ids"])
     if ("VALID_BOUNDED_CHOICE" not in proposal_report.get("stages", [])
             or proposal_report.get("schema_validation") != "PASS"
             or proposal_report.get("semantic_validation") != "PASS"):
         raise ValueError("UNADMITTED_PROPOSAL")
+    proposal = validate_proposal(proposal_report.get("proposal"), source["ids"])
     if result_mode not in ("fixture", "gemma") or result_mode != proposal_report["mode"]:
         raise ValueError("PROPOSAL_MODE_MISMATCH")
     seed = FIXTURE_SEED if result_mode == "fixture" else NEW_MODEL_TRIAL_SEED
