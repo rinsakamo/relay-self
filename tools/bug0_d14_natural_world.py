@@ -119,7 +119,7 @@ class NaturalPaperTimeline:
             self.start = original
             return
         if kind == "ZOMBIE_INITIAL":
-            if self.initial:
+            if self.initial or self.start is not None:
                 raise D14NaturalWorldRejected("DUPLICATE_INITIAL_MANAGED_ZOMBIE")
             self.initial.append(original)
             return
@@ -304,7 +304,7 @@ async def observe_natural_world(
                     save("NATIVE_OBSERVATION", line, native=sample)
                     report["native_snapshots"].append(sample)
                     readback_errors = 0
-                except (TimeoutError, Exception) as exc:
+                except Exception as exc:
                     readback_errors += 1
                     save("NATIVE_OBSERVATION_FAILED", line, native={
                         "error": f"{type(exc).__name__}: {exc}",
