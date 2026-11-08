@@ -217,6 +217,7 @@ def run_k3b(
         "proposal": None,
         "proposal_status": None,
         "validator_error": None,
+        "schema_validation": "NOT_RUN",
         "model_record": None,
         "holdout": None,
         "stages": [],
@@ -255,6 +256,18 @@ def run_k3b(
     else:
         raise ValueError("UNKNOWN_MODE")
     report["proposal"] = proposal
+    try:
+        import jsonschema
+    except ImportError:
+        report["validator_error"] = "JSONSCHEMA_UNAVAILABLE"
+        return report
+    try:
+        jsonschema.validate(proposal, proposal_json_schema())
+    except jsonschema.ValidationError as exc:
+        report["schema_validation"] = "REJECTED"
+        report["validator_error"] = f"SCHEMA_INVALID: {exc.message}"
+        return report
+    report["schema_validation"] = "PASS"
     try:
         result = validate_proposal(proposal, ids)
     except ValueError as exc:

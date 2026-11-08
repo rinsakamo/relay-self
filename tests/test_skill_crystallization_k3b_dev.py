@@ -71,6 +71,7 @@ def test_json_schema_independent_if_installed():
 
 @pytest.mark.parametrize("status", ["ABSTAIN", "UNSATISFIABLE_WITHIN_BUDGET"])
 def test_explicit_abstain_keeps_no_executable_skill(status):
+    pytest.importorskip("jsonschema")
     first = _first()
     report = run_k3b(first, {"shift_observations": []}, mode="fixture",
                      fixture_proposal={"status": status, "reason": "uncertain",
@@ -141,6 +142,7 @@ def test_preserves_prior_terminated_shift_without_extra_trials():
 
 
 def test_fixture_skill_holdout_no_llm_and_bounded_actions(monkeypatch):
+    pytest.importorskip("jsonschema")
     import experiments.skill_crystallization_k3b_dev as mod
 
     def forbidden(*_args, **_kwargs):
@@ -163,6 +165,7 @@ def test_fixture_skill_holdout_no_llm_and_bounded_actions(monkeypatch):
 
 
 def test_http_request_is_one_call_and_excludes_future_holdout(monkeypatch):
+    pytest.importorskip("jsonschema")
     first = _first()
     captured = []
     output = {"status": "UNSATISFIABLE_WITHIN_BUDGET",
@@ -203,6 +206,17 @@ def test_http_request_is_one_call_and_excludes_future_holdout(monkeypatch):
     assert "20261112" not in json.dumps(request)
     assert "hidden_physics" not in json.dumps(request)
     assert "holdout" not in request["messages"][1]["content"]
+
+
+def test_wire_rejection_prevents_execution():
+    pytest.importorskip("jsonschema")
+    first = _first()
+    proposal = _skill(first)
+    proposal["skill"]["max_actions"] = 5
+    report = run_k3b(first, {"shift_observations": []}, mode="fixture",
+                     fixture_proposal=proposal)
+    assert report["schema_validation"] == "REJECTED"
+    assert report["holdout"] is None
 
 
 def test_tampered_prior_evidence_rejected_before_model():
