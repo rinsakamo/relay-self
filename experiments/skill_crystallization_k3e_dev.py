@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 from pathlib import Path
 from typing import Any
 
 from experiments.skill_crystallization_dev import (
-    TARGET,
     MockIssuer,
     ModelCallFailure,
+    TARGET,
     WorldTrial,
     gemma_l2,
     skill_json_schema,
