@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -18,6 +20,12 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
 )
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
+from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
+from test_d14_natural_active_s49 import _active_fixture
+from tools.bug0_d14_natural_active_post import (
+    D14NaturalActiveAuditRejected,
+    audit_active,
+)
 from tools.bug0_d14_natural_life import (
     R4_GRANT,
     R6_GRANT,
@@ -183,3 +191,92 @@ def test_motion_fence_unresolved_blocks_native_safe_stop(tmp_path, monkeypatch):
     with pytest.raises(NaturalLifeRejected, match="UNRESOLVED"):
         loop.stop_due_to_native_loss("NATIVE_READBACK_LOST")
     assert loop.motion.fence.unresolved
+
+
+def audit_r6_fixture(tmp_path):
+    report, original, derivative, nonmotion = _active_fixture(tmp_path)
+    motion = OriginalS49PhysicalFence.create(
+        tmp_path / "original_s49_motion_fence.json",
+        self_id="s49-original-self",
+    )
+    report.update({
+        "classification": "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED",
+        "move_admission": "R6_ORIGINAL_S49_NATIVE_ENTITIES_S14_DURABLE_FENCE",
+        "stop_settling": "R6_S15_CLEAR_ACK_ONLY_PHYSICAL_STOP_UNATTESTED",
+        "original_s49_move_fence_sha256": motion.sha256,
+        "original_s49_move_fence_unresolved": False,
+        "original_s49_move_fence_action_ids": [],
+        "r6_native_entities_event_count": 0,
+        "original_s49_post_move_settling_unqualified": False,
+    })
+    return report, original, derivative, nonmotion, motion
+
+
+def test_r6_zero_move_audit_is_source_only_not_autonomous(tmp_path):
+    report, original, derivative, nonmotion, motion = audit_r6_fixture(tmp_path)
+    result = audit_active(
+        report, original, derivative, nonmotion,
+        original_sha=hashlib.sha256(original.encode()).hexdigest(),
+        derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+        motion_fence=motion,
+    )
+    assert result["status"] == "PASS_DEV"
+    assert result["original_s49_motion_actions"] == 0
+    assert result["native_entity_event_independently_attested"] is False
+    assert result["effective_physical_stop_attested"] is False
+    assert result["long_run_autonomous_self_proven"] is False
+
+
+def test_r6_audit_requires_separate_original_motion_fence(tmp_path):
+    report, original, derivative, nonmotion, _motion = audit_r6_fixture(tmp_path)
+    with pytest.raises(D14NaturalActiveAuditRejected, match="SCOPE_MISMATCH"):
+        audit_active(
+            report, original, derivative, nonmotion,
+            original_sha=hashlib.sha256(original.encode()).hexdigest(),
+            derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+        )
+
+
+@pytest.mark.parametrize(("field", "forged"), [
+    ("new_s49_actions", 1),
+    ("original_s49_move_fence_sha256", "forged"),
+    ("original_s49_post_move_settling_unqualified", True),
+    ("stop_settling", "STOP_VERIFIED"),
+    ("r6_native_entities_event_count", -1),
+])
+def test_r6_audit_rejects_forged_source(tmp_path, field, forged):
+    report, original, derivative, nonmotion, motion = audit_r6_fixture(tmp_path)
+    report[field] = forged
+    with pytest.raises(D14NaturalActiveAuditRejected):
+        audit_active(
+            report, original, derivative, nonmotion,
+            original_sha=hashlib.sha256(original.encode()).hexdigest(),
+            derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+            motion_fence=motion,
+        )
+
+
+def test_r6_injected_move_without_original_ledger_not_an_action(tmp_path):
+    report, original, derivative, nonmotion, motion = audit_r6_fixture(tmp_path)
+    derivative += json.dumps({
+        "record_type": "D14_R3_DERIVATIVE_SOURCE_REFERENCE",
+        "kind": "LIFE_ACTION",
+        "original_paper_line": "",
+        "native_observation": {
+            "kind": "MOVE_AWAY", "action_id": "forged", "terminal": "outcome",
+            "native_event_seq": 4, "native_admitted_seq": 5,
+            "effective_physical_stop": "UNATTESTED",
+        },
+    }) + "\n"
+    report["derivative_journal_sha256"] = hashlib.sha256(
+        derivative.encode()
+    ).hexdigest()
+    report["life_outcome_count"] = 1
+    report["new_s49_actions"] = 1
+    with pytest.raises(D14NaturalActiveAuditRejected):
+        audit_active(
+            report, original, derivative, nonmotion,
+            original_sha=hashlib.sha256(original.encode()).hexdigest(),
+            derivative_sha=hashlib.sha256(derivative.encode()).hexdigest(),
+            motion_fence=motion,
+        )
