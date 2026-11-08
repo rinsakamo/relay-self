@@ -94,6 +94,8 @@ def test_valid_margin_probe_observation_and_no_fallback():
     assert r["probe"]["seed"] == FIXTURE_PROBE_SEED
     assert r["probe"]["observed_pattern"] == "A_FAILS_B_SUCCEEDS"
     assert r["probe"]["prediction_matches"] is True
+    assert r["prediction_assessment"] == "PREDICTION_MATCHED"
+    assert "PREDICTION_MATCHED" in r["stages"]
     assert len(r["probe"]["observations"]) == 2
     assert r["probe"]["mock_actions"] <= 8
     assert all(o["action_count"] <= 4 for o in r["probe"]["observations"])
@@ -107,6 +109,8 @@ def test_regime_probe_prediction_can_be_falsified():
                      fixture=chosen_probe("MOTION_REGIME_PAIR"))
     assert r["probe"]["observed_pattern"] == "BOTH_SUCCEED"
     assert r["probe"]["prediction_matches"] is False
+    assert r["prediction_assessment"] == "PREDICTION_FALSIFIED"
+    assert "PREDICTION_FALSIFIED" in r["stages"]
     assert r["probe"]["observations"][0]["start_distance"] == 2.4
     assert r["probe"]["observations"][1]["start_distance"] == 2.4
 
@@ -120,6 +124,7 @@ def test_abstain_does_not_probe_or_expose_seed():
     })
     assert r["status"] == "ABSTAIN"
     assert r["probe"] is None
+    assert r["prediction_assessment"] == "NOT_RUN"
     assert r["holdout_20261126"] == "UNOPENED"
 
 
@@ -191,6 +196,9 @@ def test_explicit_reassess_after_observed_probe_without_skill_execution():
         "evidence_ids": ["k3e-probe-A", "k3e-probe-B"], "skill_candidate": None,
     })
     assert result["status"] == "UPDATE"
+    assert result["hypothesis_assessment"] == "HYPOTHESIS_RETAINED"
+    assert result["prediction_assessment"] == "PREDICTION_MATCHED"
+    assert result["reason_truth"] == "NOT_INDEPENDENTLY_VERIFIED"
     assert result["skill_execution"] == "NOT_RUN"
     assert result["new_skill_installed"] is False
     assert result["holdout_20261126"] == "UNOPENED"
@@ -248,6 +256,7 @@ def test_reassess_gemma_receives_probe_observations_only_after_execution(monkeyp
     z = run_reassessment(first, k3b, k3d, r, mode="gemma",
                          endpoint="http://127.0.0.1:8080/v1/chat/completions", model="test")
     assert z["status"] == "ABSTAIN"
+    assert z["hypothesis_assessment"] == "HYPOTHESIS_WITHHELD"
     assert len(got) == 1
     assert len(got[0][0]) == 30
     assert "k3e-probe-A" in json.dumps(got[0][0])
@@ -304,3 +313,21 @@ def test_real_http_client_accepts_custom_investigation_system_prompt(monkeypatch
     assert request["reasoning_effort"] == "none"
     assert request["response_format"]["json_schema"]["strict"] is True
     assert request["response_format"]["json_schema"]["schema"] == proposal_schema()
+
+
+def test_reassessment_changed_hypothesis_is_not_claimed_correct():
+    first, k3b, k3d = parent_data()
+    report = run_proposal(first, k3b, k3d, mode="fixture",
+                          fixture=chosen_probe("MOTION_REGIME_PAIR"))
+    assert report["prediction_assessment"] == "PREDICTION_FALSIFIED"
+    result = run_reassessment(first, k3b, k3d, report, mode="fixture", fixture={
+        "status": "UPDATE", "hypothesis": "START_MARGIN_SENSITIVE",
+        "reason": "The expected A/B success separation was not observed.",
+        "evidence_ids": ["k3e-probe-A", "k3e-probe-B"],
+        "skill_candidate": None,
+    })
+    assert result["hypothesis_assessment"] == "HYPOTHESIS_CHANGED"
+    assert "HYPOTHESIS_CHANGED" in result["stages"]
+    assert result["prediction_assessment"] == "PREDICTION_FALSIFIED"
+    assert result["reason_truth"] == "NOT_INDEPENDENTLY_VERIFIED"
+    assert result["skill_execution"] == "NOT_RUN"
