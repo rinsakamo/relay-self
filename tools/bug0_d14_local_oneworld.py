@@ -22,7 +22,12 @@ from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_121
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
-from tools.bug0_d14_natural_life import R4_GRANT, R6_GRANT, NaturalLifeLoop
+from tools.bug0_d14_natural_life import (
+    R4_GRANT,
+    R6_GRANT,
+    R9_COMBAT_GRANT,
+    NaturalLifeLoop,
+)
 from tools.bug0_d14_natural_world import (
     PLUGIN_NAME,
     R3_ENV,
@@ -100,6 +105,12 @@ def validate_local_sources(
         or environment.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
     ):
         raise D14LocalRejected("R7_SOURCE_CAPTURE_REQUIRES_R6_AND_S50_DEV_GRANTS")
+    if environment.get(R9_COMBAT_GRANT) == "1" and any(
+        environment.get(k) != "1" for k in (
+            R6_GRANT, R7_EVIDENCE_GRANT, "D7_PASSIVE_CONTROLS_WORLD_ONLY",
+        )
+    ):
+        raise D14LocalRejected("R9_COMBAT_REQUIRES_R6_R7_S50_EVIDENCE")
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -146,6 +157,7 @@ def validate_local_sources(
         "classification": "DEV_ONLY_QUALIFICATION_NO_GO_SCIENCE_NOT_RUN",
         "r6_original_s49_motion_opt_in": environment.get(R6_GRANT) == "1",
         "r7_source_capture_opt_in": environment.get(R7_EVIDENCE_GRANT) == "1",
+        "r9_combat_first_opt_in": environment.get(R9_COMBAT_GRANT) == "1",
     }
 
 
