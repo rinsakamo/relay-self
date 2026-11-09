@@ -241,6 +241,16 @@ class NaturalLifeLoop:
             )
             self.report["life_policy_epochs"] += 1
 
+    def _skill_trial_choice(self, previous: Any, current: Any,
+                            decision: Any) -> str | None:
+        """DEV extension point: a hint, NEVER an S49 Action grant.
+
+        The default (all R11 and earlier runs) is completely unchanged.
+        An opted-in subclass may request an already-supported branch;
+        the original owner still performs admission, PREPARE and S16.
+        """
+        return None
+
     async def step(self, save: Callable[..., None]) -> None:
         if self.stopped:
             return
@@ -292,6 +302,10 @@ class NaturalLifeLoop:
                 and current.snapshot.food > 14
             ),
         )
+        trial_choice = self._skill_trial_choice(previous, current, decision)
+        if trial_choice not in (None, "WAIT", "REST", "MOVE_AWAY",
+                                "ATTACK", "EAT"):
+            raise NaturalLifeRejected("UNSUPPORTED_R15_SKILL_TRIAL_HINT")
         event = {
             "cycle": self.cycles, "intent_id": self.intent.current_intent.intent_id,
             "session_id": self.sid,
@@ -334,9 +348,16 @@ class NaturalLifeLoop:
                 current_rotten - prior_rotten if prior_rotten is not None else None
             )
             self._r11_last_rotten_inventory_count = current_rotten
+        if trial_choice is not None:
+            event["r15_skill_trial_hint"] = trial_choice
+            event["r15_hint_is_not_authority"] = True
         self.report["life_decisions"].append(event)
         save("LIFE_DECISION", "", native=event)
 
+        # REST / WAIT changes scheduling only. It is not a physical S49
+        # Action and must not mint a STEP or a safety/energy recovery proof.
+        if trial_choice in ("WAIT", "REST"):
+            return
         kind = None
         target = None
         choice = None
@@ -354,6 +375,7 @@ class NaturalLifeLoop:
                 self.combat_first
                 and attack_target is not None
                 and not self.owner._post_move_settling_unqualified
+                and trial_choice != "MOVE_AWAY"
             ):
                 kind = "ATTACK"
                 target = attack_target
@@ -361,6 +383,7 @@ class NaturalLifeLoop:
             elif (
                 self.combat_first
                 and not self.owner._post_move_settling_unqualified
+                and trial_choice != "MOVE_AWAY"
             ):
                 # A zombie at 2.8–4m can approach naturally. Issuing MOVE
                 # here would make the later close-range ATTACK ineligible

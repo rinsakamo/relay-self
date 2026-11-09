@@ -129,6 +129,19 @@ def validate_local_sources(
         )
     ):
         raise D14LocalRejected("R11_DAY_REQUIRES_R10_R9_R6_R7_S50_GRANTS")
+    r15_prior = None
+    if environment.get("D14_R15_SKILL_TRIAL_ONEWORLD_ONLY") == "1":
+        if environment.get(R11_DAY_GRANT) != "1":
+            raise D14LocalRejected("R15_REQUIRES_R11_NATURAL_DAY_GRANTS")
+        from tools.bug0_d14_r15_skill_s49_trial import (
+            R15Rejected, verified_prior_skill,
+        )
+        try:
+            r15_prior = verified_prior_skill(environment)
+        except R15Rejected as exc:
+            raise D14LocalRejected(
+                "R15_PREWORLD_PRIOR_SKILL_SOURCE_UNQUALIFIED"
+            ) from exc
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -180,6 +193,10 @@ def validate_local_sources(
         "r11_natural_day_opt_in": environment.get(R11_DAY_GRANT) == "1",
         "requested_paper_horizon_ticks": (
             24000 if environment.get(R11_DAY_GRANT) == "1" else 10000
+        ),
+        "r15_skill_trial_opt_in": r15_prior is not None,
+        "r15_prior_program_sha256": (
+            r15_prior["program_sha256"] if r15_prior is not None else None
         ),
     }
 
@@ -309,11 +326,15 @@ async def run_local(
     _write_json_once(output_dir / "local_run_source.json", metadata)
     rc = 2
     try:
+        life_factory = NaturalLifeLoop
+        if metadata["r15_skill_trial_opt_in"]:
+            from tools.bug0_d14_r15_skill_s49_trial import R15NaturalLifeLoop
+            life_factory = R15NaturalLifeLoop
         rc = await run(
             output_dir / "report.json",
             output_dir / "paper_original.log",
             output_dir / "d14_natural_events.jsonl",
-            life_factory=NaturalLifeLoop, max_wall_seconds=watchdog,
+            life_factory=life_factory, max_wall_seconds=watchdog,
         )
         if rc == 0:
             # Completely separate from the live run. A failed audit cannot
@@ -362,6 +383,41 @@ async def run_local(
                                 ),
                                 "original_report_mutated": False,
                                 "paper_daylight_and_pickup_attested": False,
+                            },
+                        )
+                if metadata["r15_skill_trial_opt_in"]:
+                    try:
+                        from tools.bug0_d14_r15_skill_s49_trial import (
+                            verified_prior_skill,
+                        )
+                        from tools.bug0_d14_r15_skill_trial_post import (
+                            inspect_r15_trial,
+                        )
+                        prior = verified_prior_skill(dict(os.environ))
+                        if (prior["program_sha256"]
+                                != metadata["r15_prior_program_sha256"]):
+                            raise D14LocalRejected("R15_PRIOR_SKILL_CHANGED_DURING_WORLD")
+                        trial = inspect_r15_trial(
+                            report, independent,
+                            (output_dir / "r15_skill_s49_trial.jsonl").read_text(
+                                encoding="utf8"
+                            ),
+                            prior,
+                        )
+                        _write_json_once(
+                            output_dir / "r15_skill_original_s49_readout.json",
+                            trial,
+                        )
+                    except Exception as r15_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "r15_skill_original_s49_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(r15_error).__name__}: {r15_error}"
+                                ),
+                                "skill_success_claimed": False,
+                                "original_s49_result_rewritten": False,
                             },
                         )
                 if metadata["r10_stone_sword_initial_opt_in"]:
