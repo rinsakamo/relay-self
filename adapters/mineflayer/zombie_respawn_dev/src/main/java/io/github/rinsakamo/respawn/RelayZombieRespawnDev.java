@@ -39,6 +39,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
     private boolean halted;
     private long deathWallNanos;
     private TickObservationHorizon horizon;
+    private R10StoneSwordSource r10StoneSwordSource;
 
     @Override
     public void onEnable() {
@@ -52,6 +53,15 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             throw new IllegalStateException("respawn DEV requires pinned Paper 1.21.8/RelaySelf");
         }
         naturalWorldMode = getConfig().getBoolean("dev-natural-world-mode", false);
+        boolean r10InitialSword = getConfig().getBoolean(
+                "dev-r10-initial-stone-sword", false);
+        if (r10InitialSword && (
+                !naturalWorldMode
+                || !getConfig().getBoolean("dev-tick-endurance-enabled", false)
+                || getConfig().getInt("dev-tick-endurance-ticks", 0) != 10000)) {
+            throw new IllegalStateException(
+                    "R10 initial sword requires natural 10000-tick DEV World");
+        }
         if (naturalWorldMode && !getConfig().getBoolean("dev-tick-endurance-enabled", false)) {
             throw new IllegalStateException("natural World requires 10000 tick horizon");
         }
@@ -65,6 +75,10 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         managedKey = new NamespacedKey(this, "managed_zombie");
         devEnabled = true;
         Bukkit.getPluginManager().registerEvents(this, this);
+        if (r10InitialSword) {
+            r10StoneSwordSource = new R10StoneSwordSource(this, TARGET_PLAYER);
+            r10StoneSwordSource.start();
+        }
         Bukkit.getScheduler().runTaskTimer(this, this::worldTick, 1L, 1L);
         Player existing = Bukkit.getPlayerExact(TARGET_PLAYER);
         if (existing != null) Bukkit.getScheduler().runTask(this, () -> attach(existing));
@@ -95,6 +109,16 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         if (!safeAnchor(anchor) || managedCount(anchor.getWorld()) != 0) {
             fail("INITIAL_ANCHOR_OR_MANAGED_ENTITY");
             return;
+        }
+        if (r10StoneSwordSource != null) {
+            try {
+                // One actual vanilla ItemStack, before any zombie/Action;
+                // does not equip via S49 or change AI, health, drops or combat.
+                r10StoneSwordSource.equipFirstJoin(player);
+            } catch (IllegalStateException exception) {
+                fail("R10_INITIAL_EQUIPMENT_" + exception.getMessage());
+                return;
+            }
         }
         if (naturalWorldMode) {
             getLogger().info("RSELF_NATURAL_ANCHOR source=PAPER_WORLD_GEOMETRY"
