@@ -302,7 +302,16 @@ class NaturalLifeLoop:
                 and current.snapshot.food > 14
             ),
         )
-        trial_choice = self._skill_trial_choice(previous, current, decision)
+        # #819 source fix: oxygen=-1 becomes UNKNOWN (None); no L2
+        # consideration or physical Action can be derived from that source.
+        oxygen_unknown = self.r11_day and (
+            previous.snapshot.oxygen_level is None
+            or current.snapshot.oxygen_level is None
+        )
+        trial_choice = (
+            None if oxygen_unknown else
+            self._skill_trial_choice(previous, current, decision)
+        )
         if trial_choice not in (None, "WAIT", "REST", "MOVE_AWAY",
                                 "ATTACK", "EAT"):
             raise NaturalLifeRejected("UNSUPPORTED_R15_SKILL_TRIAL_HINT")
@@ -348,6 +357,16 @@ class NaturalLifeLoop:
                 current_rotten - prior_rotten if prior_rotten is not None else None
             )
             self._r11_last_rotten_inventory_count = current_rotten
+        if oxygen_unknown:
+            # Mirrored source/Action safety fix from PR #819. Native
+            # observation continues but the original issuer stays idle.
+            event["r12_oxygen_observed"] = False
+            event["r12_action_admission"] = (
+                "DEFER_UNKNOWN_OXYGEN_NO_PHYSICAL_ISSUE"
+            )
+            self.report["life_decisions"].append(event)
+            save("LIFE_DECISION", "", native=event)
+            return
         if trial_choice is not None:
             event["r15_skill_trial_hint"] = trial_choice
             event["r15_hint_is_not_authority"] = True
