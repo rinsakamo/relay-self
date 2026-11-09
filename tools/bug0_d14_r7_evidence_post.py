@@ -11,6 +11,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.self_world_stage_w3_capture import (
+    W3CaptureRejected,
+    audit_w3_sealed_stdout,
+)
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 
 W3_LIMIT = 32 * 1024 * 1024
@@ -67,11 +71,13 @@ def _w3(evidence: Path) -> tuple[list[dict[str, Any]], str]:
         or any(row.get("session_id") != rec.get("session_id") for row in rows)
     ):
         return [], "RECEIPT_OR_SEQUENCE_MISMATCH"
-    return rows, (
-        "COMPLETE_SAME_PROCESS_NODE_STDOUT_ONLY"
-        if rec.get("status") == "COMPLETE_NODE_STDOUT"
-        else "INCOMPLETE_SAME_PROCESS_NODE_STDOUT_ONLY"
-    )
+    if rec.get("status") == "COMPLETE_NODE_STDOUT":
+        try:
+            audit_w3_sealed_stdout(evidence)
+        except (W3CaptureRejected, ValueError):
+            return [], "INVALID_COMPLETE_NODE_STDOUT_SEAL"
+        return rows, "COMPLETE_SAME_PROCESS_NODE_STDOUT_ONLY"
+    return rows, "INCOMPLETE_SAME_PROCESS_NODE_STDOUT_ONLY"
 
 
 def _s50(evidence: Path) -> tuple[list[dict[str, Any]], str]:
@@ -84,6 +90,8 @@ def _s50(evidence: Path) -> tuple[list[dict[str, Any]], str]:
         return [], "CORRUPT_OR_INCOMPLETE_CAPTURE"
     if (
         not rows or rows[0].get("kind") != "SESSION_START"
+        or not isinstance(rows[0].get("session_id"), str)
+        or not rows[0]["session_id"]
         or any(
             row.get("source") != "S50_DEV_NATIVE_READBACK_V1"
             or type(row.get("ordinal")) is not int or row["ordinal"] != i
@@ -95,7 +103,8 @@ def _s50(evidence: Path) -> tuple[list[dict[str, Any]], str]:
             rows[i]["client_physics_tick"] < rows[i - 1]["client_physics_tick"]
             for i in range(1, len(rows))
         )
-        or any(row.get("kind") in ("TRUNCATED", "READBACK_ERROR", "NATIVE_FRAME_PARSE_ERROR")
+        or any(row.get("kind") in ("TRUNCATED", "READBACK_ERROR", "READBACK_UNAVAILABLE",
+                                     "NATIVE_FRAME_PARSE_ERROR")
                for row in rows)
     ):
         return [], "UNQUALIFIED_CLIENT_SOURCE"
@@ -135,6 +144,13 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
     )
     w3, w3_scope = _w3(evidence)
     s50, s50_scope = _s50(evidence)
+    # A source with a different client session can never attach to this
+    # original S49 persistent owner, even for a diagnostic readout.
+    sessions = {row["session_id"] for row in fence.actions}
+    if w3 and ({row["session_id"] for row in w3} != sessions):
+        w3, w3_scope = [], "FOREIGN_ORIGINAL_S49_SESSION"
+    if s50 and ({row["session_id"] for row in s50} != sessions):
+        s50, s50_scope = [], "FOREIGN_ORIGINAL_S49_SESSION"
     actions = []
     for row in fence.actions:
         action_id = row["action_id"]
@@ -153,6 +169,15 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
             _client_tail(s50, action_id + "-s15-clear") if s50
             else {"clear_ack_seen": False, "postclear_quiet_physics_ticks": 0}
         )
+        stdout_clear = [
+            ack["seq"] for ack in native_acks
+            if ack["action_id"] == action_id + "-s15-clear"
+        ]
+        client_clear = [
+            item["native_seq"] for item in s50
+            if item.get("kind") == "EFFECT_ACK"
+            and item.get("native_action_id") == action_id + "-s15-clear"
+        ]
         actions.append({
             "action_id": action_id,
             "fence_status": row["status"],
@@ -162,6 +187,10 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
             "node_stdout_effect_results": native_acks,
             "s50_same_client_clear_ack_seen": tail["clear_ack_seen"],
             "s50_postclear_quiet_client_ticks": tail["postclear_quiet_physics_ticks"],
+            "stdout_s50_clear_seq_match": (
+                len(stdout_clear) == len(client_clear) == 1
+                and stdout_clear[0] == client_clear[0]
+            ),
             "physical_dispatch_attested": False,
             "paper_effective_stop_attested": False,
             "physical_result_of_unresolved_action": (
