@@ -33,6 +33,8 @@ R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
 R6_GRANT = "D14_R6_NATURAL_MOTION_ONEWORLD_ONLY"
 R9_COMBAT_GRANT = "D14_R9_COMBAT_FIRST_ONEWORLD_ONLY"
 MAX_DECISIONS = 1024
+R11_MAX_DECISIONS = 4096  # Read-only observation capacity; S49 Action budget unchanged.
+R11_DAY_GRANT = "D14_R11_NATURAL_DAY_ONEWORLD_ONLY"
 POLICY_EPOCH_DECISIONS = 64
 MAX_ACTIONS = 32
 READ_TIMEOUT_S = 7
@@ -92,12 +94,20 @@ class NaturalLifeLoop:
         if os.environ.get(R4_GRANT) != "1":
             raise NaturalLifeRejected("NO_ONEWORLD_R4_PHYSICAL_GRANT")
         self.combat_first = os.environ.get(R9_COMBAT_GRANT) == "1"
+        self.r11_day = os.environ.get(R11_DAY_GRANT) == "1"
+        self.decision_limit = R11_MAX_DECISIONS if self.r11_day else MAX_DECISIONS
+        self._r11_last_rotten_inventory_count: int | None = None
         if self.combat_first and any(os.environ.get(key) != "1" for key in (
             "D14_R5_LOCAL_ONEWORLD_ONLY", R6_GRANT,
             "D14_R7_NATIVE_EVIDENCE_ONEWORLD_ONLY",
             "D7_PASSIVE_CONTROLS_WORLD_ONLY",
         )):
             raise NaturalLifeRejected("R9_COMBAT_REQUIRES_R5_R6_R7_S50_GRANTS")
+        if self.r11_day and (
+            not self.combat_first
+            or os.environ.get("D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY") != "1"
+        ):
+            raise NaturalLifeRejected("R11_DAY_REQUIRES_R10_R9_NATIVE_OWNER")
         sid = session.started.session_id
         self.session = session
         self.sid = sid
@@ -132,6 +142,9 @@ class NaturalLifeLoop:
         self.report.update({
             "s49_physical_issuer": "ORIGINAL_NORMAL_SESSION_ACTION_EXECUTOR",
             "r9_combat_first_opt_in": self.combat_first,
+            "r11_natural_day_opt_in": self.r11_day,
+            "r11_l0_decision_resource_limit": self.decision_limit,
+            "r11_item_seek_action_authorized": False,
             "original_s49_session_id": sid,
             "original_s49_intent_id": self.intent.current_intent.intent_id,
             "life_decisions": [],
@@ -231,7 +244,7 @@ class NaturalLifeLoop:
     async def step(self, save: Callable[..., None]) -> None:
         if self.stopped:
             return
-        if self.cycles >= MAX_DECISIONS:
+        if self.cycles >= self.decision_limit:
             self.stopped = True
             self.report["life_stop_reason"] = "L0_TOTAL_DECISION_RESOURCE_LIMIT"
             return
@@ -302,6 +315,25 @@ class NaturalLifeLoop:
             "source": "NATIVE_BODY_WORLD_CURRENT_NOT_GLOBAL_TRUTH",
             "action_id": None, "terminal": None,
         }
+        if self.r11_day:
+            # Only native observations enter the Self-side readout. Paper
+            # global loot source must NEVER be projected as a Self Goal or
+            # used to mint a new S49 item-directed MOVE.
+            nearby_untyped_items = [
+                {"entity_id": ent.entity_id, "distance": ent.distance}
+                for ent in current.snapshot.nearby_entities
+                if ent.name in ("item", "dropped_item")
+                or ent.entity_type == "item"
+            ]
+            event["r11_native_dropped_item_candidates"] = nearby_untyped_items
+            event["r11_item_type_from_native"] = "UNKNOWN"
+            event["r11_item_approach_authorization"] = "NOT_CONNECTED"
+            current_rotten = event["rotten_count"]
+            prior_rotten = self._r11_last_rotten_inventory_count
+            event["r11_native_rotten_inventory_delta_since_last_decision"] = (
+                current_rotten - prior_rotten if prior_rotten is not None else None
+            )
+            self._r11_last_rotten_inventory_count = current_rotten
         self.report["life_decisions"].append(event)
         save("LIFE_DECISION", "", native=event)
 
