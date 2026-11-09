@@ -23,7 +23,17 @@ def _context() -> dict:
 def _skill() -> dict:
     return {
         "name": "guarded retreat", "cue": "zombie nearby, retreat viable",
-        "steps": ["MOVE_AWAY", "WAIT"], "max_actions": 3,
+        "steps": [
+            {
+                "action": "MOVE_AWAY", "guard": "S49_NATIVE_MOVE_CANDIDATE",
+                "binding": "NATIVE_S49_MOVE_SOURCE", "repeat": 1,
+                "if_unavailable": "STOP",
+            },
+            {
+                "action": "WAIT", "guard": "ALWAYS", "binding": "NONE",
+                "repeat": 1, "if_unavailable": "SKIP",
+            },
+        ], "max_actions": 3,
         "stop_condition": "GOAL_OR_SOURCE_CHANGE",
         "on_failure": "ESCALATE",
     }
