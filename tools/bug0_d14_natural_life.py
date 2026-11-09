@@ -23,6 +23,7 @@ from adapters.mineflayer.normal_action import (
 )
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from adapters.mineflayer.s49_basic_priority_l0 import S49BasicPriorityL0
+from adapters.mineflayer.s49_reactive_defense import evaluate_native_damage_defense
 from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
@@ -32,6 +33,7 @@ from tools.bug0_d14_natural_motion import NaturalOriginalS49Motion
 R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
 R6_GRANT = "D14_R6_NATURAL_MOTION_ONEWORLD_ONLY"
 R9_COMBAT_GRANT = "D14_R9_COMBAT_FIRST_ONEWORLD_ONLY"
+F1_DEFENSE_GRANT = "D14_F1_REACTIVE_DEFENSE_ONEWORLD_ONLY"
 MAX_DECISIONS = 1024
 R11_MAX_DECISIONS = 4096  # Read-only observation capacity; S49 Action budget unchanged.
 R11_DAY_GRANT = "D14_R11_NATURAL_DAY_ONEWORLD_ONLY"
@@ -95,6 +97,8 @@ class NaturalLifeLoop:
             raise NaturalLifeRejected("NO_ONEWORLD_R4_PHYSICAL_GRANT")
         self.combat_first = os.environ.get(R9_COMBAT_GRANT) == "1"
         self.r11_day = os.environ.get(R11_DAY_GRANT) == "1"
+        self.defense_f1 = os.environ.get(F1_DEFENSE_GRANT) == "1"
+        self._defense_last_native = None
         self.decision_limit = R11_MAX_DECISIONS if self.r11_day else MAX_DECISIONS
         self._r11_last_rotten_inventory_count: int | None = None
         if self.combat_first and any(os.environ.get(key) != "1" for key in (
@@ -108,6 +112,11 @@ class NaturalLifeLoop:
             or os.environ.get("D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY") != "1"
         ):
             raise NaturalLifeRejected("R11_DAY_REQUIRES_R10_R9_NATIVE_OWNER")
+        if self.defense_f1 and (
+            not self.r11_day or not self.combat_first
+            or os.environ.get("D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY") != "1"
+        ):
+            raise NaturalLifeRejected("F1_DEFENSE_REQUIRES_R11_R10_R9_OWNER_GRANTS")
         sid = session.started.session_id
         self.session = session
         self.sid = sid
@@ -121,6 +130,7 @@ class NaturalLifeLoop:
         )
         self.owner = NormalSessionActionExecutor(
             sid, self.intent, max_sequential_attacks=MAX_ACTIONS,
+            dev_reactive_defense_source=self.defense_f1,
         )
         self.policy = S49BasicPriorityL0(sid, max_decisions=POLICY_EPOCH_DECISIONS)
         self.nonmotion = OriginalS49NonMotionFence.create(
@@ -142,6 +152,8 @@ class NaturalLifeLoop:
         self.report.update({
             "s49_physical_issuer": "ORIGINAL_NORMAL_SESSION_ACTION_EXECUTOR",
             "r9_combat_first_opt_in": self.combat_first,
+            "f1_reactive_defense_opt_in": self.defense_f1,
+            "f1_reactive_defense_actions": 0,
             "r11_natural_day_opt_in": self.r11_day,
             "r11_l0_decision_resource_limit": self.decision_limit,
             "r11_item_seek_action_authorized": False,
@@ -285,6 +297,26 @@ class NaturalLifeLoop:
             self.report["life_stop_reason"] = "STALE_OR_OTHER_SESSION_NATIVE"
             return
 
+        # Maintain exactly one prior fresh native probe across cycles.
+        # Never preserve a damage candidate beyond this single decision:
+        # there is no replay or persistent new Action grant.
+        reactive = None
+        f1_reason = "F1_NOT_ENABLED"
+        if self.defense_f1:
+            sources = (previous, self._defense_last_native)
+            refusals = []
+            for witness in sources:
+                candidate, reason = evaluate_native_damage_defense(
+                    previous, current, witness,
+                )
+                if candidate is not None:
+                    reactive, f1_reason = candidate, reason
+                    break
+                refusals.append(reason)
+            if reactive is None:
+                f1_reason = "/".join(refusals)
+        self._defense_last_native = current
+
         decision = self.policy.decide(
             current,
             rest_requested=(
@@ -315,6 +347,15 @@ class NaturalLifeLoop:
             "source": "NATIVE_BODY_WORLD_CURRENT_NOT_GLOBAL_TRUTH",
             "action_id": None, "terminal": None,
         }
+        if self.defense_f1:
+            event["f1_source_candidate_reason"] = f1_reason
+            event["f1_native_health_loss"] = (
+                reactive.health_loss if reactive is not None else None
+            )
+            event["f1_native_witness_seq"] = (
+                reactive.witness.seq if reactive is not None else None
+            )
+            event["f1_causal_zombie_damage_attested"] = False
         if self.r11_day:
             # Only native observations enter the Self-side readout. Paper
             # global loot source must NEVER be projected as a Self Goal or
@@ -354,6 +395,7 @@ class NaturalLifeLoop:
         kind = None
         target = None
         choice = None
+        reactive_source = None
         if (
             decision.selected == "DEFER"
             and decision.preferred == "MOVE_AWAY"
@@ -372,6 +414,18 @@ class NaturalLifeLoop:
                 kind = "ATTACK"
                 target = attack_target
                 event["r9_priority"] = "ATTACK_BEFORE_MOVE_NATIVE_PAIR"
+            elif (
+                self.combat_first and self.defense_f1
+                and reactive is not None
+                and not self.owner._post_move_settling_unqualified
+            ):
+                kind = "ATTACK"
+                target = reactive.target_entity_id
+                reactive_source = reactive
+                event["f1_admission"] = (
+                    "REACTIVE_HEALTH_LOSS_NATIVE_PAIR_ORIGINAL_S49"
+                )
+                event["r9_priority"] = "F1_REACTIVE_ATTACK_BEFORE_MOVE"
             elif (
                 self.combat_first
                 and not self.owner._post_move_settling_unqualified
@@ -449,9 +503,15 @@ class NaturalLifeLoop:
         grants = self._grant(kind, current, action_id, target=target, choice=choice)
         try:
             if kind == "ATTACK":
-                self.owner.require_attack_authorizations(
-                    previous, current, target, *grants,
-                )
+                if reactive_source is not None:
+                    self.owner.require_attack_authorizations(
+                        previous, current, target, *grants,
+                        reactive_damage_source=reactive_source,
+                    )
+                else:
+                    self.owner.require_attack_authorizations(
+                        previous, current, target, *grants,
+                    )
             else:
                 self.owner.require_eating_authorizations(
                     choice, current, *grants, previous_probe=previous,
@@ -471,6 +531,8 @@ class NaturalLifeLoop:
                     self.session, previous, current, target, *grants,
                     allow_target_disappearance=True,
                     physical_fence=self.nonmotion,
+                    **({"reactive_damage_source": reactive_source}
+                       if reactive_source is not None else {}),
                 )
             else:
                 receipt = await self.owner.execute_eat(
@@ -515,6 +577,13 @@ class NaturalLifeLoop:
                 "original_s51_after_probe_seq": receipt.outcome.after_probe_seq,
             })
         event["terminal"] = outcome["terminal"]
+        if reactive_source is not None:
+            outcome["f1_reactive_damage_source"] = (
+                "NATIVE_HEALTH_DROP_NEAR_ZOMBIE_NOT_CAUSAL_PROOF"
+            )
+            outcome["f1_reactive_witness_seq"] = reactive_source.witness.seq
+            outcome["f1_native_health_loss"] = reactive_source.health_loss
+            self.report["f1_reactive_defense_actions"] += 1
         self.report["life_action_outcomes"].append(outcome)
         save("LIFE_ACTION", "", native=outcome)
 

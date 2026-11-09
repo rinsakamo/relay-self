@@ -21,8 +21,10 @@ from typing import Any
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
+from tools.bug0_d14_defense_f1_replay import replay_w3_f1
 from tools.bug0_d14_natural_active_post import audit_active
 from tools.bug0_d14_natural_life import (
+    F1_DEFENSE_GRANT,
     R4_GRANT,
     R6_GRANT,
     R9_COMBAT_GRANT,
@@ -129,6 +131,16 @@ def validate_local_sources(
         )
     ):
         raise D14LocalRejected("R11_DAY_REQUIRES_R10_R9_R6_R7_S50_GRANTS")
+    if environment.get(F1_DEFENSE_GRANT) == "1" and any(
+        environment.get(k) != "1" for k in (
+            R11_DAY_GRANT, R10_SWORD_GRANT, R9_COMBAT_GRANT,
+            R7_EVIDENCE_GRANT, R6_GRANT,
+            "D7_PASSIVE_CONTROLS_WORLD_ONLY",
+        )
+    ):
+        raise D14LocalRejected(
+            "F1_DEFENSE_REQUIRES_R11_R10_R9_R7_R6_S50_GRANTS"
+        )
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -176,6 +188,9 @@ def validate_local_sources(
         "r6_original_s49_motion_opt_in": environment.get(R6_GRANT) == "1",
         "r7_source_capture_opt_in": environment.get(R7_EVIDENCE_GRANT) == "1",
         "r9_combat_first_opt_in": environment.get(R9_COMBAT_GRANT) == "1",
+        "f1_reactive_defense_opt_in": (
+            environment.get(F1_DEFENSE_GRANT) == "1"
+        ),
         "r10_stone_sword_initial_opt_in": environment.get(R10_SWORD_GRANT) == "1",
         "r11_natural_day_opt_in": environment.get(R11_DAY_GRANT) == "1",
         "requested_paper_horizon_ticks": (
@@ -343,6 +358,56 @@ async def run_local(
                     motion_fence=motion_fence,
                 )
                 _write_json_once(output_dir / "independent_audit.json", independent)
+                if metadata["f1_reactive_defense_opt_in"]:
+                    try:
+                        source = replay_w3_f1(
+                            output_dir,
+                            expected_session=report["native_session_id"],
+                            expected_w3_sha256=_sha256(
+                                output_dir / "w3-node-stdout.raw.jsonl"
+                            ),
+                        )
+                        # Replay independently validates native sequences
+                        # against immutable W3. It is not Paper attacker
+                        # attribution or a new Action/outcome certificate.
+                        candidates = {
+                            (row["fresh_seq"], row["f1_witness_seq"])
+                            for row in source["decision_rows"]
+                            if row.get("f1_reactive_target_candidate") is not None
+                        }
+                        f1_actions = [
+                            action for action in report["life_action_outcomes"]
+                            if action.get("f1_reactive_damage_source")
+                            == "NATIVE_HEALTH_DROP_NEAR_ZOMBIE_NOT_CAUSAL_PROOF"
+                        ]
+                        if (
+                            len(f1_actions) != report.get("f1_reactive_defense_actions")
+                            or any(
+                                (a.get("native_admitted_seq"),
+                                 a.get("f1_reactive_witness_seq")) not in candidates
+                                for a in f1_actions
+                            )
+                        ):
+                            raise D14LocalRejected(
+                                "F1_REACTIVE_ISSUED_ACTION_NOT_MATCHED_TO_ORIGINAL_W3"
+                            )
+                        source["f1_action_count_cross_checked"] = len(f1_actions)
+                        _write_json_once(
+                            output_dir / "f1_native_reactive_source_only.json",
+                            source,
+                        )
+                    except Exception as f1_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "f1_native_reactive_source_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(f1_error).__name__}: {f1_error}"
+                                ),
+                                "original_report_mutated": False,
+                                "world_action_or_learning_authorized": False,
+                            },
+                        )
                 if metadata["r11_natural_day_opt_in"]:
                     try:
                         r11 = inspect_r11_natural_day(
