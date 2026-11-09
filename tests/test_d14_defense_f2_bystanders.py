@@ -84,21 +84,29 @@ def test_f2_never_ignores_unknown_hostile_or_second_zombie(name, entity_type):
 
 def test_f2_rejects_ambiguous_or_truncated_native_coverage():
     witness, before, current = pair()
-    # Real protocol disallows candidate_count < observed entities, so
-    # represent a valid incomplete registry without forging its structure.
-    bad_coverage = replace(
-        current.snapshot.nearby_entities_coverage,
-        candidate_count=3,
+    # An inconsistent "not truncated" snapshot is already rejected
+    # by the common protocol; do not invent a frame the decoder can't emit.
+    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
+
+    with pytest.raises(MineflayerAdapterProtocolError):
+        replace(current.snapshot, nearby_entities_coverage=replace(
+            current.snapshot.nearby_entities_coverage,
+            candidate_count=3,
+        ))
+    # A genuine truncated native frame contains max_entities entries
+    # but reports more candidates than can be represented.
+    more_sheep = tuple(
+        MineflayerEntityFact(
+            entity_id=20 + i, name="sheep", entity_type="mob",
+            distance=2.0, position=MineflayerPosition(2.0, 64.0, 0.0),
+        ) for i in range(14)
     )
-    bad = replace(current, snapshot=replace(
-        current.snapshot, nearby_entities_coverage=bad_coverage,
-    ))
-    assert evaluate_native_damage_defense(
-        before, bad, witness, allow_known_bystanders=True,
-    )[0] is None
     truncated = replace(current, snapshot=replace(
-        current.snapshot, nearby_entities_coverage=replace(
-            current.snapshot.nearby_entities_coverage, truncated=True,
+        current.snapshot,
+        nearby_entities=current.snapshot.nearby_entities + more_sheep,
+        nearby_entities_coverage=replace(
+            current.snapshot.nearby_entities_coverage,
+            candidate_count=17, truncated=True,
         ),
     ))
     assert evaluate_native_damage_defense(
