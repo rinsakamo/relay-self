@@ -109,7 +109,14 @@ class S49SkillTrialCursor:
     def _guard(self, action: str, previous: Any, current: Any,
                decision: Any, owner: NaturalLifeLoop) -> str:
         coverage = current.snapshot.nearby_entities_coverage
-        if coverage.truncated or current.snapshot.health <= 0:
+        if (
+            coverage.truncated
+            or current.snapshot.health <= 0
+            or previous.snapshot.oxygen_level is None
+            or current.snapshot.oxygen_level is None
+            or previous.snapshot.oxygen_level <= 0
+            or current.snapshot.oxygen_level <= 0
+        ):
             return "UNKNOWN"
         zombies = [
             entity for entity in current.snapshot.nearby_entities
