@@ -461,7 +461,10 @@ async def run(
         )
         journal_path.parent.mkdir(parents=True, exist_ok=True)
         if life_factory is not None:
-            life = life_factory(session, report_path.parent, report)
+            # R6's frozen S49 bootstrap uses a synchronous fixture that owns
+            # its own asyncio.run(). Construct it off this running loop; no
+            # native session operations or physical Actions occur there.
+            life = await asyncio.to_thread(life_factory, session, report_path.parent, report)
         await observe_natural_world(
             session, server, paper_log, journal_path, report,
             max_wall_seconds=(

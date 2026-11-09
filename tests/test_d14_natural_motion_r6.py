@@ -81,6 +81,21 @@ def test_r6_requires_separate_local_grant(tmp_path, monkeypatch):
         NaturalLifeLoop(session, tmp_path, {})
 
 
+def test_r6_life_factory_bootstraps_from_running_event_loop(tmp_path, monkeypatch):
+    monkeypatch.setenv(R4_GRANT, "1")
+    monkeypatch.setenv("D14_R5_LOCAL_ONEWORLD_ONLY", "1")
+    monkeypatch.setenv(R6_GRANT, "1")
+    session = SimpleNamespace(started=SimpleNamespace(session_id="native-session"))
+
+    async def construct():
+        return await asyncio.to_thread(NaturalLifeLoop, session, tmp_path, {})
+
+    life = asyncio.run(construct())
+    assert life.motion is not None
+    assert life.owner._count == 0
+    assert life.motion.fence.actions == ()
+
+
 def test_r5_without_r6_does_not_instantiate_motion(tmp_path, monkeypatch):
     monkeypatch.setenv(R4_GRANT, "1")
     monkeypatch.setenv("D14_R5_LOCAL_ONEWORLD_ONLY", "1")
