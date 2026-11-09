@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - dev/d14-defense-f1-source-reactive-20261109
+      - dev/d14-defense-f1-r12-audit-20261109
   workflow_dispatch:
 
 permissions:

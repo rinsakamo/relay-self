@@ -76,6 +76,7 @@ def replay_w3_f1(
     last_native = None
     records = []
     reasons: Counter[str] = Counter()
+    diagnostic_counts: Counter[str] = Counter()
     complete = 0
     reactive_candidates = 0
     stationary_r9_candidates = 0
@@ -103,6 +104,42 @@ def replay_w3_f1(
                 candidate = proposal
                 break
             rejected.append(reason)
+        views = (before.snapshot, after.snapshot)
+        zombies = [[e for e in view.nearby_entities if e.name == "zombie"] for view in views]
+        failures = []
+        if any(view.oxygen_level is None for view in views):
+            failures.append("OXYGEN_UNKNOWN")
+        if any(view.oxygen_level is not None and view.oxygen_level <= 0 for view in views):
+            failures.append("OXYGEN_ZERO")
+        if any(view.health <= 0 for view in views):
+            failures.append("SELF_NOT_ALIVE")
+        if any(view.nearby_entities_coverage.truncated for view in views):
+            failures.append("COVERAGE_TRUNCATED")
+        if any(view.nearby_entities_coverage.candidate_count != 1 or
+               len(view.nearby_entities) != 1 for view in views):
+            failures.append("NOT_EXACTLY_ONE_TOTAL_ENTITY")
+        if any(len(group) != 1 for group in zombies):
+            failures.append("NOT_EXACTLY_ONE_VISIBLE_ZOMBIE")
+        if all(len(group) == 1 for group in zombies):
+            old, new = zombies[0][0], zombies[1][0]
+            if old.entity_id != new.entity_id:
+                failures.append("ZOMBIE_ID_CHANGED")
+            if not 0.1 <= old.distance <= 4.0 or not 0.1 <= new.distance <= 2.8:
+                failures.append("ZOMBIE_OUT_OF_RANGE")
+            if any(abs(getattr(old.position, axis) - getattr(new.position, axis)) > 2.0
+                   for axis in ("x", "y", "z")):
+                failures.append("ZOMBIE_DISPLACEMENT")
+        if any(abs(getattr(views[0].position, axis) -
+                   getattr(views[1].position, axis)) > 0.9 for axis in ("x", "y", "z")):
+            failures.append("SELF_DISPLACEMENT")
+        if not any(w is not None and w.session_id == after.session_id and
+                   w.seq <= before.seq < after.seq <= before.seq + 32 and
+                   after.seq - w.seq <= 64 and w.snapshot.health > after.snapshot.health
+                   for w in (before, last_native)):
+            failures.append("NO_RECENT_HEALTH_LOSS_WITNESS")
+        diagnostic_counts.update(failures)
+        def position(value):
+            return {axis: getattr(value, axis) for axis in ("x", "y", "z")}
         stationary = admissible_natural_attack(before, after)
         if stationary is not None:
             stationary_r9_candidates += 1
@@ -115,6 +152,15 @@ def replay_w3_f1(
         reasons[reason] += 1
         records.append({
             "cycle": cycle, "paired": True,
+            "previous_request_id": before.request_id,
+            "fresh_request_id": after.request_id,
+            "all_diagnostic_failures": failures,
+            "native_self_positions": [position(view.position) for view in views],
+            "native_zombies": [[{
+                "id": entity.entity_id, "distance": entity.distance,
+                "position": position(entity.position),
+            } for entity in group] for group in zombies],
+            "nearby_entity_counts": [view.nearby_entities_coverage.candidate_count for view in views],
             "previous_seq": before.seq, "fresh_seq": after.seq,
             "native_health_previous": before.snapshot.health,
             "native_health_current": after.snapshot.health,
@@ -144,6 +190,7 @@ def replay_w3_f1(
         "r9_stationary_pair_candidates": stationary_r9_candidates,
         "f1_health_loss_reactive_candidates": reactive_candidates,
         "decision_refusal_reasons": dict(sorted(reasons.items())),
+        "overlapping_diagnostic_counts": dict(sorted(diagnostic_counts.items())),
         "decision_rows": records,
         "original_action_issued_or_outcome_proven_by_replay": False,
         "original_world_24000_survival_proven_by_replay": False,

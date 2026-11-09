@@ -69,6 +69,8 @@ def test_f1_old_w3_source_only_replay_finds_dynamic_reaction_without_action(tmp_
     assert result["r12_complete_native_decision_pairs"] == 2
     assert result["r9_stationary_pair_candidates"] == 0
     assert result["f1_health_loss_reactive_candidates"] == 1
+    assert result["decision_rows"][1]["all_diagnostic_failures"] == []
+    assert result["decision_rows"][1]["native_zombies"][1][0]["id"] == 7
     assert result["decision_rows"][1]["f1_witness_seq"] == 2
     assert result["decision_rows"][1]["f1_candidate_health_loss"] == 3
     assert result["zombie_causality_attested"] is False
