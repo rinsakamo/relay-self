@@ -43,6 +43,7 @@ NATURAL_PLUGIN_CONFIG = (
     "dev-natural-world-mode: true\n"
 )
 R3_ENV = ("S49_REAL_SERVER_CI", "D14_10000_TICK_WORLD_ONLY", "D14_R3_NATURAL_WORLD_ONCE")
+R7_EVIDENCE_GRANT = "D14_R7_NATIVE_EVIDENCE_ONEWORLD_ONLY"
 MAX_WALL_SECONDS = 1200  # Guard only. Paper-owned elapsed ticks decide qualification.
 NATIVE_TIMEOUT_SECONDS = 9
 
@@ -409,6 +410,9 @@ async def run(
         "derivative_journal_path": str(journal_path),
     }
     server = collector = session = temporary = life = None
+    r7_evidence = os.environ.get(R7_EVIDENCE_GRANT) == "1"
+    report["r7_native_evidence_opt_in"] = r7_evidence
+    report["r7_stop_qualification"] = "UNATTESTED"
     code = 2
     try:
         if (
@@ -422,6 +426,13 @@ async def run(
             or not 600 <= max_wall_seconds <= 7200
         ):
             raise D14NaturalWorldRejected("BOUNDED_R5_LOCAL_WATCHDOG_GRANT_REQUIRED")
+        if r7_evidence and (
+            life_factory is None
+            or os.environ.get("D14_R5_LOCAL_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D14_R6_NATURAL_MOTION_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+        ):
+            raise D14NaturalWorldRejected("R7_EVIDENCE_REQUIRES_R6_LOCAL_AND_S50_GRANTS")
         if any(path.exists() or path.is_symlink()
                for path in (report_path, paper_log, journal_path)):
             raise D14NaturalWorldRejected("PROTECTED_OUTPUT_ALREADY_EXISTS")
@@ -453,7 +464,15 @@ async def run(
         server, collector, _ = await _ready_server(root, root / "minecraft.jar",
                                                    paper_log)
         report["phase"] = "NATIVE_JOIN"
-        session = await _new_session()
+        session = await _new_session(**(
+            {
+                "raw_capture_root": report_path.parent.resolve(),
+                "w4_native_orientation_dev": True,
+                "s50_direct_controls_sidecar_dev": (
+                    report_path.parent.resolve() / "r7-s50-client-readback.jsonl"
+                ),
+            } if r7_evidence else {}
+        ))
         report["native_session_id"] = session.started.session_id
         report["phase"] = (
             "NATURAL_WORLD_S49_ACTIVE_DEV" if life_factory is not None
@@ -518,6 +537,22 @@ async def run(
                 except Exception as second:
                     report["node_cleanup_error"] = f"{type(exc).__name__}: {exc}"
                     report["node_terminate_error"] = repr(second)
+        if r7_evidence:
+            # Evidence is source-only, including when the same native Session
+            # ends unexpectedly. W3 is Node stdout, NOT Minecraft TCP.
+            report["r7_node_stdout_receipt"] = (
+                session.raw_capture_receipt if session is not None else None
+            )
+            sidecar = report_path.parent / "r7-s50-client-readback.jsonl"
+            report["r7_s50_sidecar_present"] = sidecar.is_file()
+            if sidecar.is_file():
+                report["r7_s50_sidecar_sha256"] = hashlib.sha256(
+                    sidecar.read_bytes()
+                ).hexdigest()
+            report["r7_stop_qualification"] = "UNATTESTED"
+            report["r7_native_wire_scope"] = (
+                "NODE_STDOUT_AND_S50_SAME_CLIENT_NOT_MINECRAFT_TCP"
+            )
         if server is not None:
             try:
                 await _shutdown_server(server, collector)
