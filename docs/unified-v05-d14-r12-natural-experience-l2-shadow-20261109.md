@@ -111,6 +111,25 @@ If the model returns a valid Skill, **do not execute it**. It has not been
 tested on another live World. No implicit fallback, rearm or Action token
 may be obtained from the candidate sidecar.
 
+A subsequent **read-only replay** re-audits the same original physical
+sources, checks the local saved request/response bytes and source fingerprint,
+and can recover the same shadow candidate without a new model POST:
+
+```bash
+python -m tools.bug0_d14_r12_l2_shadow \
+  --phase replay \
+  --report "$SRC/report.json" \
+  --server-log "$SRC/paper_original.log" \
+  --event-journal "$SRC/d14_natural_events.jsonl" \
+  --nonmotion-fence "$SRC/original_s49_nonmotion_fence.json" \
+  --motion-fence "$SRC/original_s49_motion_fence.json" \
+  --record-dir "$OUT/r12-l2-raw" \
+  --out "$OUT/r12-replay.json"
+```
+
+It is **not** a subsequent live epoch or retained owner Memory integration.
+The sidecar cannot execute an Action.
+
 ## Required acceptance and next stage
 
 1. R12 source projection works only after the R11 native/Paper/fence audit
