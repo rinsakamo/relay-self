@@ -252,3 +252,93 @@ def test_non_local_native_tokenizer_rejected() -> None:
         r16.native_llamacpp_token_counter(
             "http://not-local.example:1234/v1/chat/completions",
         )
+
+
+def test_real_native_counter_uses_read_only_template_and_tokenizer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    class FakeHTTP:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, *args):
+            return self.body
+
+    def fake_urlopen(request, *, timeout):
+        url = request.full_url
+        body = json.loads(request.data)
+        calls.append(url)
+        if url.endswith("/apply-template"):
+            assert len(body["messages"]) == 2
+            return FakeHTTP(json.dumps({
+                "prompt": "<start>Gemma local test<end>",
+            }).encode())
+        if url.endswith("/tokenize"):
+            assert body["parse_special"] is True
+            assert body["add_special"] is True
+            assert body["content"] == "<start>Gemma local test<end>"
+            return FakeHTTP(b'{"tokens":[1,2,3,4]}')
+        raise AssertionError("No inference endpoint permitted")
+
+    monkeypatch.setattr(r16, "urlopen", fake_urlopen)
+    count, receipt = r16.native_llamacpp_token_counter(
+        "http://127.0.0.1:1234/v1/chat/completions"
+    )(request_for(projection()["l2_context"]))
+    assert count == 4
+    assert receipt["tokens"] == 4
+    assert receipt["chat_format_verified_against_real_completion"] is False
+    assert calls == [
+        "http://127.0.0.1:1234/apply-template",
+        "http://127.0.0.1:1234/tokenize",
+    ]
+
+
+def test_invalid_local_token_response_stops_before_model_inference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, *args):
+            return b'{"prompt":""}'
+
+    monkeypatch.setattr(r16, "urlopen", lambda *args, **kwargs: Response())
+    counter = r16.native_llamacpp_token_counter(
+        "http://127.0.0.1:1234/v1/chat/completions",
+    )
+    with pytest.raises(r16.R16Rejected, match="CHAT_TEMPLATE_UNAVAILABLE"):
+        counter(request_for(projection()["l2_context"]))
+
+
+def test_within_budget_receipt_tamper_is_detected_from_candidate_hash(
+    tmp_path: Path,
+) -> None:
+    source = projection()
+    raw = tmp_path / "one-post"
+    def reply(data):
+        m = json.loads(json.loads(data)["messages"][1]["content"])
+        return raw_response(m["experience_events"][0]["experience_id"])
+    r12.propose_shadow(
+        source, endpoint="http://127.0.0.1:1234/v1/chat/completions",
+        model="gemma-test", record_dir=raw,
+        transport=reply, token_counter=fake_count,
+    )
+    preflight = raw / "token_preflight.json"
+    saved = json.loads(preflight.read_bytes())
+    saved["measured_prompt_tokens"] -= 1
+    assert saved["measured_prompt_tokens"] <= 6912
+    preflight.write_text(json.dumps(saved) + "\n")
+    with pytest.raises(r12.R12Rejected, match="REPLAY_REJECTED"):
+        r12.replay_retained_shadow(source, raw)
