@@ -9,9 +9,9 @@ public final class TickObservationHorizon {
     private boolean complete;
 
     public TickObservationHorizon(int ticks, int sampleInterval) {
-        if (ticks != 10000 || sampleInterval < 20 || sampleInterval > 1000
+        if ((ticks != 10000 && ticks != 24000) || sampleInterval < 20 || sampleInterval > 1000
                 || ticks % sampleInterval != 0) {
-            throw new IllegalArgumentException("DEV tick horizon must be 10000, sampling 20..1000");
+            throw new IllegalArgumentException("DEV tick horizon must be 10000 or 24000, sampling 20..1000");
         }
         this.ticks = ticks;
         this.sampleInterval = sampleInterval;
@@ -39,11 +39,12 @@ public final class TickObservationHorizon {
 
     public void finish(long currentTick) {
         if (!reached(currentTick) || complete) {
-            throw new IllegalStateException("cannot stop before 10000 ticks or twice");
+            throw new IllegalStateException("cannot stop before configured Paper horizon or twice");
         }
         complete = true;
     }
 
+    public int ticks() { return ticks; }
     public long startTick() { return startTick; }
     public long endTick() { return endTick; }
     public long elapsed(long tick) {
