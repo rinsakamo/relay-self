@@ -114,6 +114,22 @@ def inspect_r11_natural_day(
     # In a natural early terminal, the ordinary Paper timeline validates
     # terminal tick and 200-tick samples; no full-day claim is promoted.
     death = _rows(lines, "RSELF_R11_MANAGED_DEATH source=")
+    source_death = _rows(lines, "RSELF_RESPAWN_DEATH world=")
+    equip = _rows(lines, "RSELF_R10_INITIAL_STONE_SWORD world=")
+    if len(equip) != 1:
+        raise R11SourceRejected("R11_INITIAL_EQUIPMENT_PAPER_MISSING")
+    self_uuid = equip[0].get("player")
+    if not self_uuid:
+        raise R11SourceRejected("R11_INITIAL_PLAYER_SOURCE_MISSING")
+    if len(death) != len(source_death):
+        raise R11SourceRejected("R11_UNPAIRED_PAPER_MANAGED_DEATH")
+    paired_deaths = {
+        (row.get("entity"), _int(row, "tick"))
+        for row in source_death
+        if row.get("world") == world
+    }
+    if len(paired_deaths) != len(source_death):
+        raise R11SourceRejected("R11_DUPLICATE_PAPER_MANAGED_DEATH")
     spawn = _rows(lines, "RSELF_R11_ROTTEN_ITEM_SPAWN source=")
     pickup = _rows(lines, "RSELF_R11_ROTTEN_PICKUP_EVENT source=")
     drop_counts = {}
@@ -125,6 +141,7 @@ def inspect_r11_natural_day(
             or not row.get("last_damage_cause")
             or not row.get("zombie")
             or not row.get("killer")
+            or (row.get("zombie"), _int(row, "tick")) not in paired_deaths
         ):
             raise R11SourceRejected("R11_MANAGED_DEATH_SOURCE_INVALID")
         zombie = row["zombie"]
@@ -149,6 +166,12 @@ def inspect_r11_natural_day(
             "count": _int(row, "count"),
             "tick": _int(row, "tick"),
         }
+    # Paper item events have only temporal/spatial proximity, never a
+    # causal parent pointer. Do not promote matching IDs to an Action success.
+    for zombie, count in drop_counts.items():
+        if sum(v["count"] for v in spawned.values()
+               if v["zombie"] == zombie) > count:
+            raise R11SourceRejected("R11_PROXIMITY_ITEM_COUNT_EXCEEDS_DEATH_DROPS")
     picked = set()
     for row in pickup:
         item = row.get("item")
@@ -159,7 +182,8 @@ def inspect_r11_natural_day(
             or row.get("self_action") != "NOT_ISSUED_BY_WITNESS"
             or item not in spawned or item in picked
             or row.get("zombie") != spawned[item]["zombie"]
-            or not row.get("player")
+            or row.get("player") != self_uuid
+            or _int(row, "tick") < spawned[item]["tick"]
         ):
             raise R11SourceRejected("R11_PICKUP_OR_ITEM_UUID_UNQUALIFIED")
         picked.add(item)
