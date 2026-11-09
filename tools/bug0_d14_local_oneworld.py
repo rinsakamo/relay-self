@@ -37,6 +37,7 @@ from tools.bug0_d14_natural_world import (
     run,
 )
 from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
+from tools.bug0_d14_r10_combat_post import inspect_r10_paper_combat
 
 R5_GRANT = "D14_R5_LOCAL_ONEWORLD_ONLY"
 MIN_WATCHDOG = 600
@@ -329,6 +330,27 @@ async def run_local(
                     motion_fence=motion_fence,
                 )
                 _write_json_once(output_dir / "independent_audit.json", independent)
+                if metadata["r10_stone_sword_initial_opt_in"]:
+                    try:
+                        r10 = inspect_r10_paper_combat(
+                            paper_log.read_bytes().decode("utf8"),
+                            report, independent,
+                        )
+                        _write_json_once(
+                            output_dir / "r10_paper_combat_readout.json", r10,
+                        )
+                    except Exception as r10_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "r10_paper_combat_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(r10_error).__name__}: {r10_error}"
+                                ),
+                                "original_report_mutated": False,
+                                "s49_action_attribution_attested": False,
+                            },
+                        )
             except Exception as exc:
                 rc = 2
                 _write_json_once(output_dir / "independent_audit_error.json", {
