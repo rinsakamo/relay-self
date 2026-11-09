@@ -1339,6 +1339,7 @@ class NormalSessionActionExecutor:
         probe: MineflayerObservation, target_entity_id: int,
         propose: NormalAttackingAuthorization,
         issue: NormalAttackingAuthorization,
+        *, reactive_damage_source=None,
     ) -> None:
         """One fresh original S49 native zombie, one explicit ATTACK fallback."""
         if (
@@ -1380,33 +1381,48 @@ class NormalSessionActionExecutor:
             or propose.provenance == issue.provenance
         ):
             raise NormalActionRejected("original S49 ATTACK source/owner not eligible")
-        for observation in (previous_probe, probe):
-            snapshot = observation.snapshot
-            coverage = snapshot.nearby_entities_coverage
-            if (
-                coverage.truncated or coverage.candidate_count != 1
-                or len(snapshot.nearby_entities) != 1
-                or snapshot.health <= 0
+        if reactive_damage_source is not None:
+            # Opted-in Defense-F1 still uses THIS original S49 owner,
+            # PROPOSE/ISSUE identity, pre-ISSUE fence, and S16. It may
+            # admit bounded reactive motion only with a fresh typed
+            # native Health-loss witness and a single same-ID zombie.
+            from adapters.mineflayer.s49_reactive_defense import (
+                require_native_damage_defense,
+            )
+            require_native_damage_defense(
+                previous_probe, probe, target_entity_id,
+                reactive_damage_source,
+            )
+        else:
+            # Frozen R9 stationary-pair route is byte-for-byte unchanged
+            # when no Defense-F1 witness is given.
+            for observation in (previous_probe, probe):
+                snapshot = observation.snapshot
+                coverage = snapshot.nearby_entities_coverage
+                if (
+                    coverage.truncated or coverage.candidate_count != 1
+                    or len(snapshot.nearby_entities) != 1
+                    or snapshot.health <= 0
+                ):
+                    raise NormalActionRejected("native ATTACK target coverage/health not safe")
+                entity = snapshot.nearby_entities[0]
+                if (
+                    entity.name != "zombie"
+                    or entity.entity_id != target_entity_id
+                    or entity.distance > 2.8
+                    or entity.distance < 0.1
+                ):
+                    raise NormalActionRejected("ATTACK target not same near zombie")
+            earlier = previous_probe.snapshot.nearby_entities[0]
+            current = probe.snapshot.nearby_entities[0]
+            if any(
+                abs(getattr(earlier.position, k)
+                    - getattr(current.position, k)) > 0.25
+                or abs(getattr(previous_probe.snapshot.position, k)
+                    - getattr(probe.snapshot.position, k)) > 0.05
+                for k in ("x", "y", "z")
             ):
-                raise NormalActionRejected("native ATTACK target coverage/health not safe")
-            entity = snapshot.nearby_entities[0]
-            if (
-                entity.name != "zombie"
-                or entity.entity_id != target_entity_id
-                or entity.distance > 2.8
-                or entity.distance < 0.1
-            ):
-                raise NormalActionRejected("ATTACK target not same near zombie")
-        earlier = previous_probe.snapshot.nearby_entities[0]
-        current = probe.snapshot.nearby_entities[0]
-        if any(
-            abs(getattr(earlier.position, k)
-                - getattr(current.position, k)) > 0.25
-            or abs(getattr(previous_probe.snapshot.position, k)
-                - getattr(probe.snapshot.position, k)) > 0.05
-            for k in ("x", "y", "z")
-        ):
-            raise NormalActionRejected("ATTACK target/body moved during admission window")
+                raise NormalActionRejected("ATTACK target/body moved during admission window")
         for grant in (propose, issue):
             if (
                 grant.intent_id != self.intent.current_intent.intent_id
@@ -1426,6 +1442,7 @@ class NormalSessionActionExecutor:
         issue: NormalAttackingAuthorization,
         *, allow_target_disappearance: bool = False,
         physical_fence: OriginalS49NonMotionFence | None = None,
+        reactive_damage_source=None,
     ) -> AttackActionReceipt:
         """Issue one operator-approved attack from THIS original S49 supervisor."""
         if (
@@ -1436,6 +1453,7 @@ class NormalSessionActionExecutor:
             raise NormalActionRejected("original S49 native attack session required")
         self.require_attack_authorizations(
             previous_probe, probe, target_entity_id, propose, issue,
+            reactive_damage_source=reactive_damage_source,
         )
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
