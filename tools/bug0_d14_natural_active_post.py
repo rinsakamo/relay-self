@@ -227,7 +227,7 @@ def audit_active(
     for event in life_decisions:
         if (
             type(event.get("cycle")) is not int
-            or not last_cycle < event["cycle"] <= 1024
+            or not last_cycle < event["cycle"] <= (4096 if r11 else 1024)
             or event.get("session_id") != session
             or event.get("intent_id") != intent_id
             or type(event.get("native_seq")) is not int
@@ -238,6 +238,31 @@ def audit_active(
             or event.get("source") != "NATIVE_BODY_WORLD_CURRENT_NOT_GLOBAL_TRUTH"
         ):
             raise D14NaturalActiveAuditRejected("LIFE_NATIVE_SEQUENCE_OR_INTENT_REPLAY")
+        if r11 and (
+            event.get("r11_item_type_from_native") != "UNKNOWN"
+            or event.get("r11_item_approach_authorization") != "NOT_CONNECTED"
+            or not isinstance(event.get("r11_native_dropped_item_candidates"), list)
+            or any(
+                type(item.get("entity_id")) is not int
+                or type(item.get("distance")) not in (int, float)
+                or item["distance"] < 0
+                for item in event["r11_native_dropped_item_candidates"]
+                if isinstance(item, dict)
+            )
+            or any(
+                not isinstance(item, dict)
+                for item in event["r11_native_dropped_item_candidates"]
+            )
+            or (
+                event.get("r11_native_rotten_inventory_delta_since_last_decision")
+                is not None
+                and type(event["r11_native_rotten_inventory_delta_since_last_decision"])
+                is not int
+            )
+        ):
+            raise D14NaturalActiveAuditRejected(
+                "R11_NATIVE_ITEM_READ_ONLY_PROJECTION_UNQUALIFIED"
+            )
         last_cycle, last_seq = event["cycle"], event["native_seq"]
 
     fence.require_clear()
@@ -346,6 +371,17 @@ def audit_active(
             r11 and result["outcome"] == "WORLD_TICK_LIMIT_REACHED"
             and result["elapsed_ticks"] == R11_WORLD_TICKS
         ),
+        "r11_native_item_candidate_decisions": sum(
+            bool(e.get("r11_native_dropped_item_candidates"))
+            for e in life_decisions
+        ) if r11 else 0,
+        "r11_native_positive_rotten_inventory_deltas": [
+            e["r11_native_rotten_inventory_delta_since_last_decision"]
+            for e in life_decisions
+            if r11 and type(e.get("r11_native_rotten_inventory_delta_since_last_decision")) is int
+            and e["r11_native_rotten_inventory_delta_since_last_decision"] > 0
+        ],
+        "r11_item_approach_action_granted": False,
         "self_died_before_limit": result["self_died_before_limit"],
         "life_decisions": len(life_decisions),
         "native_safe_stops": len(native_safe_stops),
