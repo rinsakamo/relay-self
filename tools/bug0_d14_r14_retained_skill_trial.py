@@ -20,6 +20,7 @@ from tools.bug0_d14_r12_l2_shadow import (
 )
 from tools.bug0_d14_r13_action_catalog import (
     action_catalog,
+    shadow_compile,
     validate_skill_program,
 )
 
@@ -131,6 +132,7 @@ def evaluate_shadow_reuse(
         validate_skill_program(program, action_catalog())
         compiled = replay.get("shadow_compilation")
         if (not isinstance(compiled, dict)
+                or compiled != shadow_compile(program, action_catalog())
                 or compiled.get("authority") != "NONE"
                 or compiled.get("physical_actions_issued") != 0
                 or compiled.get("skill_installs") != 0
