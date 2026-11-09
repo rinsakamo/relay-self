@@ -125,6 +125,8 @@ def test_f2_only_explicit_original_s49_owner_accepts_scope(tmp_path, monkeypatch
         before, current, witness, allow_known_bystanders=True,
     )
     assert candidate is not None
+    (tmp_path / "default").mkdir()
+    (tmp_path / "allowed").mkdir()
     default, _ = controller(tmp_path / "default", monkeypatch)
     grants = default._grant("ATTACK", current, "f2-gate", target=7)
     with pytest.raises(NormalActionRejected, match="separate original S49 grant"):
