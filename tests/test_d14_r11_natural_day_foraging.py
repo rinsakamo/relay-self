@@ -8,12 +8,12 @@ import pytest
 
 from test_d14_local_oneworld import _fixture_paths, _validate
 from test_d14_natural_active_s49 import _active_fixture, _audit
-from test_d14_natural_world import WORLD, Z1, INITIAL
+from test_d14_natural_world import INITIAL, WORLD, Z1
 from tools import bug0_d14_local_oneworld as local
 from tools.bug0_d14_natural_world import (
+    R10_PLUGIN_CONFIG,
     R11_DAY_GRANT,
     R11_PLUGIN_CONFIG,
-    R10_PLUGIN_CONFIG,
     NaturalPaperTimeline,
     marker_kind,
 )
