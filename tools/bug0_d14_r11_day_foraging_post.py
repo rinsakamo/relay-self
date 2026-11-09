@@ -21,7 +21,16 @@ def _fields(original: str, tag: str) -> dict[str, str]:
         raise R11SourceRejected("R11_MISSING_PAPER_TAG")
     text = original.split(tag, 1)[1]
     values: dict[str, str] = {}
-    for field in text.split():
+    # The first key ("world=" or "source=") belongs to the marker itself.
+    # Do not silently lose that field while parsing its value.
+    first, _, remaining = text.partition(" ")
+    if tag.endswith(" world="):
+        values["world"] = first
+    elif tag.endswith(" source="):
+        values["source"] = first
+    else:
+        raise R11SourceRejected("R11_UNSUPPORTED_SOURCE_MARKER")
+    for field in remaining.split():
         if "=" not in field:
             continue  # Paper message prefix or harmless suffix metadata.
         key, value = field.split("=", 1)
