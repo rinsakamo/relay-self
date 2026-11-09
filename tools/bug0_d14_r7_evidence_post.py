@@ -186,3 +186,24 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
         "qualification": "NO_GO",
         "science": "NOT_RUN",
     }
+
+
+def main() -> None:
+    """Inspect existing evidence without writing into the original directory."""
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--evidence-dir", type=Path, required=True)
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    if args.out.exists() or args.out.is_symlink():
+        raise R7ForensicsRejected("forensic output must be new and immutable")
+    result = inspect_r7_source_only(args.evidence_dir)
+    with args.out.open("x", encoding="utf8") as stream:
+        json.dump(result, stream, sort_keys=True, indent=2)
+        stream.write("\n")
+    print(result["status"], result["original_motion_fence_unresolved"])
+
+
+if __name__ == "__main__":
+    main()
