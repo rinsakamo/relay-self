@@ -320,9 +320,17 @@ class NaturalLifeLoop:
                 kind = "ATTACK"
                 target = attack_target
                 event["r9_priority"] = "ATTACK_BEFORE_MOVE_NATIVE_PAIR"
-            # MOVE needs a genuine unsolicited entities event and original
-            # frozen S49/S14 admission. Two correlated probes alone cannot
-            # stand in for that event or authorize a physical MOVE.
+            elif (
+                self.combat_first
+                and not self.owner._post_move_settling_unqualified
+            ):
+                # A zombie at 2.8–4m can approach naturally. Issuing MOVE
+                # here would make the later close-range ATTACK ineligible
+                # until independent Paper-effective STOP, which R9 cannot
+                # prove. WAIT adds no issuer, native effect or fake clearance.
+                event["r9_priority"] = "WAIT_FOR_NATIVE_ATTACK_ADMISSION"
+            # Legacy R6 MOVE remains available with R9 disabled; it still
+            # requires a real unsolicited entities frame and frozen S14.
             elif self.motion is not None:
                 native_event = self.motion.current_candidate(current)
                 if native_event is not None:
