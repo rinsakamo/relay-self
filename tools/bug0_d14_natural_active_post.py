@@ -16,6 +16,8 @@ from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_world import (
     NATURAL_PLUGIN_CONFIG,
     R10_PLUGIN_CONFIG,
+    R11_PLUGIN_CONFIG,
+    R11_WORLD_TICKS,
     NaturalPaperTimeline,
     marker_kind,
     natural_properties,
@@ -40,6 +42,7 @@ def audit_active(
         "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED"
     )
     r10 = report.get("r10_initial_sword_opt_in") is True
+    r11 = report.get("r11_natural_day_opt_in") is True
     if (r6 and motion_fence is None) or (not r6 and motion_fence is not None):
         raise D14NaturalActiveAuditRejected("R6_MOTION_FENCE_SCOPE_MISMATCH")
     if (
@@ -53,8 +56,12 @@ def audit_active(
         or report.get("paper_original_sha256") != original_sha
         or report.get("derivative_journal_sha256") != derivative_sha
         or report.get("plugin_config") != (
+            R11_PLUGIN_CONFIG if r11 else
             R10_PLUGIN_CONFIG if r10 else NATURAL_PLUGIN_CONFIG
         )
+        or (r11 and (
+            not r10 or report.get("requested_paper_horizon_ticks") != R11_WORLD_TICKS
+        ))
         or (r10 and report.get("r10_operator_initial_equipment")
             != "VANILLA_STONE_SWORD_MAIN_HAND_ONE_PAPER_INITIAL_GRANT")
         or report.get("world_config") != "NATURAL_SURVIVAL"
@@ -84,7 +91,9 @@ def audit_active(
     ):
         raise D14NaturalActiveAuditRejected("WORLD_OR_OWNER_SOURCE_NOT_QUALIFIED")
 
-    timeline = NaturalPaperTimeline()
+    timeline = NaturalPaperTimeline(
+        horizon_ticks=R11_WORLD_TICKS if r11 else 10000,
+    )
     original_rows = []
     # Paper console lines can contain carriage returns before the marker.
     # The live reader preserves those bytes within each LF-delimited line.
@@ -328,7 +337,15 @@ def audit_active(
         "world_uuid": timeline.source_summary()["world_uuid"],
         "observed_world_ticks": result["elapsed_ticks"],
         "eventual_reason": result["terminal_reason"],
-        "reached_10000_ticks": result["outcome"] == "WORLD_TICK_LIMIT_REACHED",
+        "reached_10000_ticks": (
+            not r11 and result["outcome"] == "WORLD_TICK_LIMIT_REACHED"
+        ),
+        "r11_natural_day_opt_in": r11,
+        "r11_observed_horizon_ticks": result["elapsed_ticks"],
+        "r11_full_day_survival_observed": (
+            r11 and result["outcome"] == "WORLD_TICK_LIMIT_REACHED"
+            and result["elapsed_ticks"] == R11_WORLD_TICKS
+        ),
         "self_died_before_limit": result["self_died_before_limit"],
         "life_decisions": len(life_decisions),
         "native_safe_stops": len(native_safe_stops),
