@@ -33,10 +33,14 @@ With explicit R9 opt-in, the one existing `NaturalLifeLoop`:
    `require_attack_authorizations` and original `execute_attack` with
    the existing fsynced `OriginalS49NonMotionFence`, **before** considering
    any MOVE.
-4. If no admissible close attack target, retains the unchanged R6 true-native
-   `entities` event + S14 original MOVE admission; never forges that event.
-5. If the original S49 rejects ATTACK, records a DEFER, not a granted Action.
-6. No reissue after an UNKNOWN outcome; no new Action issuer or Self clone.
+4. If a single zombie is close but the pair is not yet attack-admissible
+   (including at 2.8–4m), R9 conservatively WAITs while the real zombie
+   approaches. It does **not** issue R6 MOVE and thereby trap follow-up
+   ATTACK/EAT behind the still-unproven Paper-effective STOP.
+5. Without the R9 grant, original R6 native `entities` + S14 MOVE
+   admission remains completely unchanged.
+6. If original S49 rejects ATTACK, records a DEFER, not a granted Action.
+7. No reissue after UNKNOWN; no new Action issuer or Self clone.
 
 EAT already routes through original S49 to original S51 when Self naturally
 has hunger <=14, real native inventory food, zero nearby entities, and two
