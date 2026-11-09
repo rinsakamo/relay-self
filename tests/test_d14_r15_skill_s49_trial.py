@@ -8,11 +8,12 @@ from types import SimpleNamespace as NS
 import pytest
 
 from tools import bug0_d14_r15_skill_s49_trial as r15
-from tools.bug0_d14_r15_skill_trial_post import (
-    R15PostRejected, inspect_r15_trial,
-)
 from tools.bug0_d14_natural_life import NaturalLifeLoop
 from tools.bug0_d14_r13_action_catalog import action_catalog, shadow_compile
+from tools.bug0_d14_r15_skill_trial_post import (
+    R15PostRejected,
+    inspect_r15_trial,
+)
 
 
 def _step(action: str, guard: str, binding: str,

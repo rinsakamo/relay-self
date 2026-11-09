@@ -18,7 +18,9 @@ from tools.bug0_d14_natural_life import (
 )
 from tools.bug0_d14_r12_l2_shadow import replay_retained_shadow
 from tools.bug0_d14_r13_action_catalog import (
-    action_catalog, shadow_compile, validate_skill_program,
+    action_catalog,
+    shadow_compile,
+    validate_skill_program,
 )
 from tools.bug0_d14_r14_retained_skill_trial import _read_world
 

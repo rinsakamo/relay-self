@@ -134,7 +134,8 @@ def validate_local_sources(
         if environment.get(R11_DAY_GRANT) != "1":
             raise D14LocalRejected("R15_REQUIRES_R11_NATURAL_DAY_GRANTS")
         from tools.bug0_d14_r15_skill_s49_trial import (
-            R15Rejected, verified_prior_skill,
+            R15Rejected,
+            verified_prior_skill,
         )
         try:
             r15_prior = verified_prior_skill(environment)
