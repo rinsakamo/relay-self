@@ -3,6 +3,7 @@ package io.github.rinsakamo.respawn;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
@@ -13,6 +14,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.persistence.PersistentDataType;
 
 /**
  * R10-only disposable World starting equipment + passive Paper combat observer.
@@ -33,14 +35,16 @@ final class R10StoneSwordSource implements Listener {
 
     private final JavaPlugin plugin;
     private final String playerName;
+    private final NamespacedKey managedKey;
     private UUID ownerId;
     private UUID worldId;
     private int damageOrdinal;
     private boolean equipped;
 
-    R10StoneSwordSource(JavaPlugin plugin, String playerName) {
+    R10StoneSwordSource(JavaPlugin plugin, String playerName, NamespacedKey managedKey) {
         this.plugin = plugin;
         this.playerName = playerName;
+        this.managedKey = managedKey;
     }
 
     void start() {
@@ -96,7 +100,9 @@ final class R10StoneSwordSource implements Listener {
         Entity victim = event.getEntity();
         Entity attacker = event.getDamager();
         boolean onZombie;
-        if (victim instanceof Zombie && attacker instanceof Player player
+        if (victim instanceof Zombie zombie && attacker instanceof Player player
+                && zombie.getPersistentDataContainer().has(
+                        managedKey, PersistentDataType.BYTE)
                 && playerName.equals(player.getName())
                 && target(player, victim)) {
             self = player;
@@ -104,6 +110,8 @@ final class R10StoneSwordSource implements Listener {
         } else if (victim instanceof Player player
                 && playerName.equals(player.getName())
                 && attacker instanceof Zombie zombie
+                && zombie.getPersistentDataContainer().has(
+                        managedKey, PersistentDataType.BYTE)
                 && target(player, zombie)) {
             self = player;
             onZombie = false;
