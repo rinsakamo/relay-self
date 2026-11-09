@@ -26,6 +26,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
+from adapters.mineflayer.startup_process_ownership import terminate_and_reap
 from tools.bug0_d6_multigen_world import _uuid
 from tools.bug0_d14_tick_horizon_world import (
     _field,
@@ -586,7 +587,11 @@ async def run(
             life.final_audit_fields()
         if session is not None:
             try:
-                report["node_exit"] = await session.shutdown(timeout_s=10)
+                # R11 has more native frames to drain than R10. Graceful
+                # shutdown stays bounded and never qualifies invalid W3.
+                report["node_exit"] = await session.shutdown(
+                    timeout_s=30 if r11_day else 10,
+                )
             except Exception as exc:
                 try:
                     report["node_exit"] = await session.terminate()
@@ -622,14 +627,30 @@ async def run(
             )
         if server is not None:
             try:
-                await _shutdown_server(server, collector)
+                # Legacy Paper stop may wedge in process.wait() with open
+                # pipes. Bound the whole teardown, then use the existing
+                # custody helper for terminate->kill->confirmed reap.
+                await asyncio.wait_for(
+                    _shutdown_server(server, collector),
+                    timeout=65 if r11_day else 60,
+                )
                 report["java_exit"] = server.returncode
             except Exception as exc:
                 report["server_cleanup_error"] = f"{type(exc).__name__}: {exc}"
-                if server.returncode is None:
-                    server.kill()
-                    await server.wait()
-                report["java_exit"] = server.returncode
+                try:
+                    report["java_exit"] = await terminate_and_reap(
+                        server, timeout_s=5,
+                    )
+                except BaseException as reap_error:
+                    report["java_reap_unconfirmed"] = (
+                        f"{type(reap_error).__name__}: {reap_error}"
+                    )
+                    report["java_exit"] = server.returncode
+                if collector is not None and not collector.done():
+                    collector.cancel()
+                    settled, _ = await asyncio.wait({collector}, timeout=2)
+                    if not settled:
+                        report["java_collector_unconfirmed"] = True
         if temporary is not None:
             temporary.cleanup()
         if (any(k.endswith("_error") for k in report)

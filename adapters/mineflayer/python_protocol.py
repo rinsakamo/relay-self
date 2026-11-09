@@ -884,14 +884,11 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             "food_saturation",
             payload["food_saturation"],
         ),
-        oxygen_level=(
-            None
-            if payload["oxygen_level"] is None
-            else _decoded_non_negative_number(
-                "oxygen_level",
-                payload["oxygen_level"],
-            )
-        ),
+        # Mineflayer 4.39.0 can emit -1 for oxygen not currently
+        # observed. Retain the unmodified -1 in W3 raw stdout; admit the
+        # exact sentinel here as UNKNOWN (None), never as zero/full air.
+        # Other negative, NaN, boolean and nonnumeric values still fail.
+        oxygen_level=_decode_native_oxygen_level(payload["oxygen_level"]),
         position=position,
         time=time,
         inventory=inventory,
@@ -903,6 +900,17 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             **fields, native_orientation=_decode_native_orientation(payload["native_orientation"]),
         )
     return MineflayerSnapshot(**fields)
+
+
+def _decode_native_oxygen_level(value: object) -> float | None:
+    """Only the exact native -1 unobserved sentinel may become unknown.
+
+    This is a read-only protocol interpretation, NOT a breath/viability
+    certificate, and does not modify immutable W3 raw stdout.
+    """
+    if value is None or (type(value) in (int, float) and value == -1):
+        return None
+    return _decoded_non_negative_number("oxygen_level", value)
 
 
 def _decode_native_orientation(value: object) -> MineflayerNativeOrientation:

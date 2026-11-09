@@ -334,6 +334,20 @@ class NaturalLifeLoop:
                 current_rotten - prior_rotten if prior_rotten is not None else None
             )
             self._r11_last_rotten_inventory_count = current_rotten
+        if self.r11_day and (
+            previous.snapshot.oxygen_level is None
+            or current.snapshot.oxygen_level is None
+        ):
+            # A raw Mineflayer oxygen=-1 is a *missing* breath reading,
+            # not proof of oxygen=0 or full breathing. Keep live readback
+            # and genuine World sampling, but do not mint S49 Action grants.
+            event["r12_oxygen_observed"] = False
+            event["r12_action_admission"] = (
+                "DEFER_UNKNOWN_OXYGEN_NO_PHYSICAL_ISSUE"
+            )
+            self.report["life_decisions"].append(event)
+            save("LIFE_DECISION", "", native=event)
+            return
         self.report["life_decisions"].append(event)
         save("LIFE_DECISION", "", native=event)
 
