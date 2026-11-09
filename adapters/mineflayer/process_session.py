@@ -132,7 +132,11 @@ class MineflayerProcessSession:
             if os.environ.get("D14_10000_TICK_WORLD_ONLY") == "1":
                 # Bounded original native readbacks across the full 10k-tick
                 # DEV World; default S50 8192 source contract is unchanged.
-                child_env["RELAYSELF_S50_D14_MAX_ROWS"] = "12000"
+                child_env["RELAYSELF_S50_D14_MAX_ROWS"] = (
+                    "48000"
+                    if os.environ.get("D14_R11_NATURAL_DAY_ONEWORLD_ONLY") == "1"
+                    else "12000"
+                )
 
         # Custody remains with the spawn task across cancellation before
         # create_subprocess_exec() exposes its Process handle. Once returned,
