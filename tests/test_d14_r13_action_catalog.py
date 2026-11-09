@@ -149,3 +149,37 @@ def test_catalog_and_program_json_roundtrip() -> None:
     catalog = json.loads(json.dumps(r13.action_catalog()))
     program = json.loads(json.dumps(skill()))
     assert r13.validate_skill_program(program, catalog) == program
+
+
+def test_added_owner_argument_also_rejects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def expanded_api(
+        self, previous_probe, probe, target_entity_id, propose, issue,
+        *, unqualified_grant=False,
+    ):
+        return None
+    monkeypatch.setattr(
+        r13.NormalSessionActionExecutor,
+        "require_attack_authorizations", expanded_api,
+    )
+    with pytest.raises(r13.CatalogRejected, match="SIGNATURE_DRIFT"):
+        r13.action_catalog()
+
+
+def test_added_authorization_field_rejects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    original = r13.fields
+
+    def augmented_fields(cls):
+        members = list(original(cls))
+        if cls is r13.NormalAttackingAuthorization:
+            members.append(SimpleNamespace(name="unsafe_new_grant"))
+        return members
+
+    monkeypatch.setattr(r13, "fields", augmented_fields)
+    with pytest.raises(r13.CatalogRejected, match="FIELDS_DRIFT"):
+        r13.action_catalog()
