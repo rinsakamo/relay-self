@@ -23,6 +23,7 @@ from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
 from tools.bug0_d14_natural_life import (
+    F1_DEFENSE_GRANT,
     R4_GRANT,
     R6_GRANT,
     R9_COMBAT_GRANT,
@@ -129,6 +130,16 @@ def validate_local_sources(
         )
     ):
         raise D14LocalRejected("R11_DAY_REQUIRES_R10_R9_R6_R7_S50_GRANTS")
+    if environment.get(F1_DEFENSE_GRANT) == "1" and any(
+        environment.get(k) != "1" for k in (
+            R11_DAY_GRANT, R10_SWORD_GRANT, R9_COMBAT_GRANT,
+            R7_EVIDENCE_GRANT, R6_GRANT,
+            "D7_PASSIVE_CONTROLS_WORLD_ONLY",
+        )
+    ):
+        raise D14LocalRejected(
+            "F1_DEFENSE_REQUIRES_R11_R10_R9_R7_R6_S50_GRANTS"
+        )
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -176,6 +187,9 @@ def validate_local_sources(
         "r6_original_s49_motion_opt_in": environment.get(R6_GRANT) == "1",
         "r7_source_capture_opt_in": environment.get(R7_EVIDENCE_GRANT) == "1",
         "r9_combat_first_opt_in": environment.get(R9_COMBAT_GRANT) == "1",
+        "f1_reactive_defense_opt_in": (
+            environment.get(F1_DEFENSE_GRANT) == "1"
+        ),
         "r10_stone_sword_initial_opt_in": environment.get(R10_SWORD_GRANT) == "1",
         "r11_natural_day_opt_in": environment.get(R11_DAY_GRANT) == "1",
         "requested_paper_horizon_ticks": (
