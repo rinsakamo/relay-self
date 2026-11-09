@@ -44,6 +44,8 @@ NATURAL_PLUGIN_CONFIG = (
 )
 R3_ENV = ("S49_REAL_SERVER_CI", "D14_10000_TICK_WORLD_ONLY", "D14_R3_NATURAL_WORLD_ONCE")
 R7_EVIDENCE_GRANT = "D14_R7_NATIVE_EVIDENCE_ONEWORLD_ONLY"
+R10_SWORD_GRANT = "D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY"
+R10_PLUGIN_CONFIG = NATURAL_PLUGIN_CONFIG + "dev-r10-initial-stone-sword: true\n"
 MAX_WALL_SECONDS = 1200  # Guard only. Paper-owned elapsed ticks decide qualification.
 NATIVE_TIMEOUT_SECONDS = 9
 
@@ -411,7 +413,13 @@ async def run(
     }
     server = collector = session = temporary = life = None
     r7_evidence = os.environ.get(R7_EVIDENCE_GRANT) == "1"
+    r10_sword = os.environ.get(R10_SWORD_GRANT) == "1"
     report["r7_native_evidence_opt_in"] = r7_evidence
+    report["r10_initial_sword_opt_in"] = r10_sword
+    report["r10_operator_initial_equipment"] = (
+        "VANILLA_STONE_SWORD_MAIN_HAND_ONE_PAPER_INITIAL_GRANT"
+        if r10_sword else "NONE"
+    )
     report["r7_stop_qualification"] = "UNATTESTED"
     code = 2
     try:
@@ -433,6 +441,16 @@ async def run(
             or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
         ):
             raise D14NaturalWorldRejected("R7_EVIDENCE_REQUIRES_R6_LOCAL_AND_S50_GRANTS")
+        if r10_sword and (
+            life_factory is None
+            or not r7_evidence
+            or os.environ.get("D14_R9_COMBAT_FIRST_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D14_R6_NATURAL_MOTION_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+        ):
+            raise D14NaturalWorldRejected(
+                "R10_SWORD_REQUIRES_R9_R7_R6_S50_NATURAL_ONEWORLD"
+            )
         if any(path.exists() or path.is_symlink()
                for path in (report_path, paper_log, journal_path)):
             raise D14NaturalWorldRejected("PROTECTED_OUTPUT_ALREADY_EXISTS")
@@ -455,9 +473,14 @@ async def run(
         plugindir = root / "plugins" / "RelayZombieRespawnDev"
         plugindir.mkdir(parents=True)
         shutil.copyfile(plugin, root / "plugins" / PLUGIN_NAME)
-        (plugindir / "config.yml").write_text(NATURAL_PLUGIN_CONFIG, encoding="utf8")
+        effective_plugin_config = (
+            R10_PLUGIN_CONFIG if r10_sword else NATURAL_PLUGIN_CONFIG
+        )
+        (plugindir / "config.yml").write_text(
+            effective_plugin_config, encoding="utf8",
+        )
         report["server_properties"] = properties.read_text(encoding="utf8")
-        report["plugin_config"] = NATURAL_PLUGIN_CONFIG
+        report["plugin_config"] = effective_plugin_config
         report["paper_sha256"] = PAPER_1218_SHA256
         report["plugin_sha256"] = digest
         report["phase"] = "WORLD_START"

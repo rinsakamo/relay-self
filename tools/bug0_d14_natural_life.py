@@ -295,6 +295,10 @@ class NaturalLifeLoop:
                 item.count for item in current.snapshot.inventory
                 if item.name == "rotten_flesh"
             ),
+            "r10_native_stone_sword_inventory_slots": sorted(
+                item.slot for item in current.snapshot.inventory
+                if item.name == "stone_sword" and item.count == 1
+            ),
             "source": "NATIVE_BODY_WORLD_CURRENT_NOT_GLOBAL_TRUTH",
             "action_id": None, "terminal": None,
         }

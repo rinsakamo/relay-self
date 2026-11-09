@@ -15,6 +15,7 @@ from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_world import (
     NATURAL_PLUGIN_CONFIG,
+    R10_PLUGIN_CONFIG,
     NaturalPaperTimeline,
     marker_kind,
     natural_properties,
@@ -38,6 +39,7 @@ def audit_active(
     r6 = report.get("classification") == (
         "DEV_D14_R6_NATURAL_ORIGINAL_S49_MOTION_SOURCE_OBSERVED"
     )
+    r10 = report.get("r10_initial_sword_opt_in") is True
     if (r6 and motion_fence is None) or (not r6 and motion_fence is not None):
         raise D14NaturalActiveAuditRejected("R6_MOTION_FENCE_SCOPE_MISMATCH")
     if (
@@ -50,7 +52,11 @@ def audit_active(
         or report.get("node_exit") != 0 or report.get("java_exit") != 0
         or report.get("paper_original_sha256") != original_sha
         or report.get("derivative_journal_sha256") != derivative_sha
-        or report.get("plugin_config") != NATURAL_PLUGIN_CONFIG
+        or report.get("plugin_config") != (
+            R10_PLUGIN_CONFIG if r10 else NATURAL_PLUGIN_CONFIG
+        )
+        or (r10 and report.get("r10_operator_initial_equipment")
+            != "VANILLA_STONE_SWORD_MAIN_HAND_ONE_PAPER_INITIAL_GRANT")
         or report.get("world_config") != "NATURAL_SURVIVAL"
         or report.get("server_properties")
             != natural_properties(report.get("server_properties", ""))
@@ -88,6 +94,39 @@ def audit_active(
             timeline.admit(kind, line)
             original_rows.append((kind, line))
     result = timeline.finish()
+    # The R10 operator-provided sword is a real Paper-logged world input,
+    # not an S49 Action and not a naturally crafted item. Reject duplicate
+    # or reordered equipment, source spoofing, and any sword without opt-in.
+    equipment_lines = [
+        x for x in paper_original.split("\n")
+        if "RSELF_R10_INITIAL_STONE_SWORD world=" in x
+    ]
+    if r10:
+        source = timeline.source_summary()
+        equipped = equipment_lines[0] if len(equipment_lines) == 1 else ""
+        first_initial = timeline.initial[0] if timeline.initial else ""
+        if (
+            len(equipment_lines) != 1
+            or not first_initial
+            or paper_original.find(equipped) > paper_original.find(first_initial)
+            or "world=" + source["world_uuid"] not in equipped
+            or not all(fragment in equipped for fragment in (
+                " item=STONE_SWORD count=1 hand=MAIN_HAND",
+                " source=PAPER_OPERATOR_INITIAL_ONLY",
+                " physics=VANILLA no_auto_attack=true",
+            ))
+            or not any(
+                "RSELF_R10_SOURCE_READY " in line
+                for line in paper_original.split("\n")
+            )
+        ):
+            raise D14NaturalActiveAuditRejected(
+                "R10_INITIAL_EQUIPMENT_PAPER_SOURCE_NOT_ATTESTED"
+            )
+    elif equipment_lines:
+        raise D14NaturalActiveAuditRejected(
+            "R10_STONE_SWORD_WITHOUT_OPERATOR_OPT_IN"
+        )
     if (
         result != report.get("result")
         or timeline.source_summary() != report.get("paper_source")
@@ -304,6 +343,16 @@ def audit_active(
         ),
         "native_entity_event_independently_attested": False,
         "effective_physical_stop_attested": False,
+        "r10_operator_initial_stone_sword_attested": r10,
+        "r10_paper_damage_event_count_source_only": sum(
+            "RSELF_R10_ZOMBIE_DAMAGE source=PAPER_ENTITY_DAMAGE_MONITOR" in row
+            for row in paper_original.split("\n")
+        ) if r10 else 0,
+        "r10_paper_self_damage_event_count_source_only": sum(
+            "RSELF_R10_SELF_DAMAGE source=PAPER_ENTITY_DAMAGE_MONITOR" in row
+            for row in paper_original.split("\n")
+        ) if r10 else 0,
+        "r10_damage_caused_by_specific_s49_action_attested": False,
         "c1_intent_experiences_committed": 0,
         "learning_updates": 0,
         "long_run_autonomous_self_proven": False,
