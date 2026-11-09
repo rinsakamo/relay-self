@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
+from os import environ
 from pathlib import Path
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
@@ -622,6 +623,7 @@ class NormalSessionActionExecutor:
         *, max_sequential_attacks: int = 1,
         max_intent_epochs: int = 1,
         dev_hunt_extended_epochs: bool = False,
+        dev_reactive_defense_source: bool = False,
     ) -> None:
         if (
             not isinstance(session_id, str) or not session_id
@@ -630,6 +632,11 @@ class NormalSessionActionExecutor:
             or type(max_sequential_attacks) is not int
             or not 1 <= max_sequential_attacks <= 32
             or type(dev_hunt_extended_epochs) is not bool
+            or type(dev_reactive_defense_source) is not bool
+            or (
+                dev_reactive_defense_source
+                and environ.get("D14_F1_REACTIVE_DEFENSE_ONEWORLD_ONLY") != "1"
+            )
             or type(max_intent_epochs) is not int
             or not 1 <= max_intent_epochs <= (
                 12 if dev_hunt_extended_epochs else 4
@@ -643,6 +650,7 @@ class NormalSessionActionExecutor:
         self._dispatched: set[str] = set()
         self._count = 0
         self._attack_count = 0
+        self._dev_reactive_defense_source = dev_reactive_defense_source
         self._max_sequential_attacks = max_sequential_attacks
         self._max_intent_epochs = max_intent_epochs
         self._intent_epoch = 1
@@ -1382,6 +1390,13 @@ class NormalSessionActionExecutor:
         ):
             raise NormalActionRejected("original S49 ATTACK source/owner not eligible")
         if reactive_damage_source is not None:
+            if (
+                not self._dev_reactive_defense_source
+                or environ.get("D14_F1_REACTIVE_DEFENSE_ONEWORLD_ONLY") != "1"
+            ):
+                raise NormalActionRejected(
+                    "reactive defense source requires original S49 DEV grant"
+                )
             # Opted-in Defense-F1 still uses THIS original S49 owner,
             # PROPOSE/ISSUE identity, pre-ISSUE fence, and S16. It may
             # admit bounded reactive motion only with a fresh typed
