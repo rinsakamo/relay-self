@@ -149,7 +149,7 @@ def _require_params(owner: type, method: str,
         raise CatalogRejected("OWNER_METHOD_MISSING:" + owner.__name__ + "." + method)
     signature = inspect.signature(fn)
     actual = tuple(signature.parameters)
-    if any(name not in actual for name in expected):
+    if actual != ("self", *expected):
         raise CatalogRejected("OWNER_SIGNATURE_DRIFT:" + method)
     return {
         "method": owner.__name__ + "." + method,
@@ -159,7 +159,7 @@ def _require_params(owner: type, method: str,
 
 def _require_fields(kind: type, expected: tuple[str, ...]) -> list[str]:
     actual = tuple(field.name for field in fields(kind))
-    if any(name not in actual for name in expected):
+    if actual != expected:
         raise CatalogRejected("ACTION_AUTHORIZATION_FIELDS_DRIFT:" + kind.__name__)
     return list(actual)
 
@@ -173,7 +173,8 @@ def _owner_contracts() -> dict[str, dict[str, Any]]:
     )
     move["authorization_fields"] = _require_fields(
         NormalActionAuthorization,
-        ("stage", "event_seq", "probe_seq", "entity_id", "granted"),
+        ("stage", "authority_id", "intent_id", "session_id", "action_id",
+         "event_seq", "probe_seq", "entity_id", "granted", "provenance"),
     )
     attack = _require_params(
         NormalSessionActionExecutor, "require_attack_authorizations",
@@ -181,8 +182,9 @@ def _owner_contracts() -> dict[str, dict[str, Any]]:
     )
     attack["authorization_fields"] = _require_fields(
         NormalAttackingAuthorization,
-        ("stage", "probe_seq", "probe_request_id",
-         "target_entity_id", "granted"),
+        ("stage", "authority_id", "intent_id", "session_id", "action_id",
+         "probe_seq", "probe_request_id", "target_entity_id", "granted",
+         "provenance"),
     )
     eat = _require_params(
         NormalSessionActionExecutor, "require_eating_authorizations",
@@ -190,8 +192,9 @@ def _owner_contracts() -> dict[str, dict[str, Any]]:
     )
     eat["authorization_fields"] = _require_fields(
         NormalEatingAuthorization,
-        ("stage", "probe_seq", "probe_request_id",
-         "food_item", "food_slot", "granted"),
+        ("stage", "authority_id", "intent_id", "session_id", "action_id",
+         "probe_seq", "probe_request_id", "food_item", "food_slot", "granted",
+         "provenance"),
     )
     decision = _require_params(
         S49BasicPriorityL0, "decide", ("probe", "rest_requested"),
