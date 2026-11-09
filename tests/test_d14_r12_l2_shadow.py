@@ -297,3 +297,24 @@ def test_l2_skill_schema_is_typed_not_bare_action_names() -> None:
         "action", "guard", "binding", "repeat", "if_unavailable",
     }
     assert step["additionalProperties"] is False
+
+
+def test_oxygen_unknown_original_admission_is_visible_to_l2() -> None:
+    event = r12._event_view({
+        "session_id": "native-s",
+        "native_seq": 25,
+        "native_request_id": "fresh25",
+        "cycle": 3,
+        "intent_id": "i3",
+        "selected": "DEFER",
+        "r12_action_admission": (
+            "DEFER_UNKNOWN_OXYGEN_NO_PHYSICAL_ISSUE"
+        ),
+        "r12_oxygen_observed": False,
+    }, "LIFE_DECISION", "world-w", "native-s")
+    obs = event["observation"]
+    assert obs["r12_action_admission"] == (
+        "DEFER_UNKNOWN_OXYGEN_NO_PHYSICAL_ISSUE"
+    )
+    assert obs["r12_oxygen_observed"] is False
+    assert "paper_zombie_drop" not in obs
