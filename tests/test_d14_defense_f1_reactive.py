@@ -90,8 +90,12 @@ def test_f1_refuses_unsafe_or_unbound_native_source(change):
     if change == "foreign":
         prior = native(3, health=20, session_id="foreign")
     if change == "stale":
-        prior = native(
-            6-MAX_DAMAGE_WITNESS_SEQ_LAG-1, health=20,
+        prior = native(1, health=20)
+        before = native(
+            MAX_DAMAGE_WITNESS_SEQ_LAG + 3, health=18, distance=2.4,
+        )
+        current = native(
+            MAX_DAMAGE_WITNESS_SEQ_LAG + 4, health=17, distance=1.5,
         )
     if change == "out_of_reach":
         current = native(6, health=17, distance=3.0)
@@ -101,8 +105,16 @@ def test_f1_refuses_unsafe_or_unbound_native_source(change):
     if change == "teleported_self":
         current = native(6, health=17, distance=1.5, body_x=1.5)
     if change == "truncated":
+        extras = tuple(
+            MineflayerEntityFact(
+                entity_id=40 + i, name="zombie", entity_type="mob",
+                distance=2, position=MineflayerPosition(2, 64, 0),
+            ) for i in range(15)
+        )
         before = replace(before, snapshot=replace(
-            before.snapshot, nearby_entities_coverage=replace(
+            before.snapshot,
+            nearby_entities=before.snapshot.nearby_entities + extras,
+            nearby_entities_coverage=replace(
                 before.snapshot.nearby_entities_coverage,
                 candidate_count=17, truncated=True,
             ),
