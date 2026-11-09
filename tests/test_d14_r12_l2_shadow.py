@@ -112,6 +112,10 @@ def test_postworld_proposal_persists_shadow_not_installed(tmp_path: Path) -> Non
     assert (out / "request.raw.json").exists()
     assert (out / "response.raw.json").exists()
     assert (out / "shadow_candidate.json").exists()
+    replay = r12.replay_retained_shadow(projection, out)
+    assert replay["classification"] == "DEV_R12_SHADOW_CANDIDATE_REPLAY_READ_ONLY"
+    assert replay["authority"] == "NONE"
+    assert replay["model_posts"] == 0
     with pytest.raises(r12.R12Rejected, match="ALREADY_EXISTS"):
         r12.propose_shadow(
             projection, endpoint="http://127.0.0.1:8080/v1/chat/completions",
@@ -220,3 +224,26 @@ def test_invalid_l2_response_is_preserved_but_not_retained(
         )
     assert (out / "response.raw.json").exists()
     assert not (out / "shadow_candidate.json").exists()
+
+
+def test_raw_replay_detects_tampered_retained_file(tmp_path: Path) -> None:
+    projection = {
+        "classification": "DEV_R12_AUDITED_NATURAL_EXPERIENCE_VIEW",
+        "source_sha256": {"original": "b"},
+        "l2_context": _context(),
+    }
+    out = tmp_path / "raw"
+    def fake_transport(payload: bytes) -> bytes:
+        return json.dumps({"choices": [{
+            "finish_reason": "stop",
+            "message": {"content": json.dumps(_choice(False))},
+        }]}).encode()
+    r12.propose_shadow(
+        projection, endpoint="http://localhost:8080/v1/chat/completions",
+        model="local", record_dir=out, transport=fake_transport,
+    )
+    saved = json.loads((out / "shadow_candidate.json").read_text())
+    saved["shadow_skill"] = _skill()
+    (out / "shadow_candidate.json").write_text(json.dumps(saved))
+    with pytest.raises(r12.R12Rejected, match="SHADOW_RAW_SOURCE_REPLAY_REJECTED"):
+        r12.replay_retained_shadow(projection, out)
