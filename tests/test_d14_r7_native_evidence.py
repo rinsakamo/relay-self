@@ -173,3 +173,36 @@ def test_r7_unknown_move_persists_read_only_exception_diagnostic(tmp_path, monke
     assert captured[-1][0] == "LIFE_ACTION_UNRESOLVED"
     assert report["life_action_outcomes"] == []
     assert report["c1_intent_experiences"] == 0
+
+
+def test_read_only_historical_fence_does_not_create_missing_lock(tmp_path):
+    fence = unresolved_fence(tmp_path)
+    lock = fence.path.with_name(fence.path.name + ".lock")
+    lock.unlink()  # simulate an old immutable archive missing the lock
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    result = inspect_r7_source_only(tmp_path)
+    after = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    assert result["original_motion_fence_unresolved"] is True
+    assert before == after
+    assert not lock.exists()
+
+
+def test_foreign_s50_client_cannot_claim_native_clear(tmp_path):
+    unresolved_fence(tmp_path)
+    make_s50(tmp_path)
+    file = tmp_path / "r7-s50-client-readback.jsonl"
+    file.write_text(file.read_text().replace("native-session", "foreign-session"))
+    result = inspect_r7_source_only(tmp_path)
+    assert result["s50_same_client_scope"] == "FOREIGN_ORIGINAL_S49_SESSION"
+    assert result["actions"][0]["s50_same_client_clear_ack_seen"] is False
+
+
+def test_cross_source_clear_seq_must_match(tmp_path):
+    unresolved_fence(tmp_path)
+    make_w3(tmp_path)
+    make_s50(tmp_path)
+    file = tmp_path / "r7-s50-client-readback.jsonl"
+    file.write_text(file.read_text().replace('"native_seq": 2', '"native_seq": 99'))
+    result = inspect_r7_source_only(tmp_path)
+    assert result["actions"][0]["stdout_s50_clear_seq_match"] is False
+    assert result["paper_tick_aligned_stop_attested"] is False
