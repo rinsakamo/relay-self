@@ -18,6 +18,13 @@ from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
 from tools.bug0_d14_r11_day_foraging_post import inspect_r11_natural_day
+from tools.bug0_d14_r13_action_catalog import (
+    CatalogRejected,
+    action_catalog,
+    shadow_compile,
+    skill_program_schema,
+    validate_skill_program,
+)
 
 MAX_L2_EVENTS = 48
 L2_SKILL_STEPS = ("MOVE_AWAY", "ATTACK", "EAT", "REST", "WAIT")
@@ -146,6 +153,7 @@ def project_r11(*, report_bytes: bytes, paper_bytes: bytes,
         "experience_events": events[-MAX_L2_EVENTS:],
         "omitted_older_events": max(0, len(events) - MAX_L2_EVENTS),
         "action_authority": "NONE_POST_WORLD_READ_ONLY",
+        "action_catalog": action_catalog(),
         "unknowns": [
             "Paper item provenance is not native item type knowledge",
             "S16 ATTACK outcome does not prove a zombie kill",
@@ -173,27 +181,14 @@ def project_r11(*, report_bytes: bytes, paper_bytes: bytes,
 
 
 def l2_schema() -> dict[str, Any]:
-    step = {"type": "string", "enum": list(L2_SKILL_STEPS)}
-    skill = {
-        "type": "object", "additionalProperties": False,
-        "properties": {
-            "name": {"type": "string"},
-            "cue": {"type": "string"},
-            "steps": {"type": "array", "items": step},
-            "max_actions": {"type": "integer", "enum": list(range(1, 11))},
-            "stop_condition": {"type": "string", "enum": ["GOAL_OR_SOURCE_CHANGE"]},
-            "on_failure": {"type": "string", "enum": ["ESCALATE"]},
-        },
-        "required": ["name", "cue", "steps", "max_actions",
-                     "stop_condition", "on_failure"],
-    }
+    """L2 may produce a program only from R13's verified owner Catalog."""
     return {
         "type": "object", "additionalProperties": False,
         "properties": {
             "decision": {"type": "string", "enum": list(L2_CHOICES)},
             "reason": {"type": "string"},
             "evidence_ids": {"type": "array", "items": {"type": "string"}},
-            "skill": {"anyOf": [skill, {"type": "null"}]},
+            "skill": {"anyOf": [skill_program_schema(), {"type": "null"}]},
         },
         "required": ["decision", "reason", "evidence_ids", "skill"],
     }
@@ -220,19 +215,12 @@ def validate_l2_choice(choice: object, context: dict[str, Any]) -> dict[str, Any
         if skill is not None:
             raise R12Rejected("L2_NON_SKILL_DECISION_HAS_SKILL")
         return choice
-    if (not ids or type(skill) is not dict or set(skill) != {
-            "name", "cue", "steps", "max_actions", "stop_condition", "on_failure",
-    } or not _require_str(skill["name"], 80)
-            or not _require_str(skill["cue"], 240)
-            or type(skill["steps"]) is not list
-            or not 1 <= len(skill["steps"]) <= 10
-            or any(type(s) is not str or s not in L2_SKILL_STEPS
-                   for s in skill["steps"])
-            or type(skill["max_actions"]) is not int
-            or not len(skill["steps"]) <= skill["max_actions"] <= 10
-            or skill["stop_condition"] != "GOAL_OR_SOURCE_CHANGE"
-            or skill["on_failure"] != "ESCALATE"):
-        raise R12Rejected("L2_SHADOW_SKILL_INVALID")
+    if not ids:
+        raise R12Rejected("L2_SKILL_WITHOUT_EXPERIENCE")
+    try:
+        validate_skill_program(skill, action_catalog())
+    except CatalogRejected as exc:
+        raise R12Rejected("L2_SHADOW_SKILL_OWNER_CATALOG_REJECTED") from exc
     return choice
 
 
@@ -259,13 +247,23 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
             or context["world_is_terminated"] is not True
             or context["action_authority"] != "NONE_POST_WORLD_READ_ONLY"):
         raise R12Rejected("MODEL_REQUIRES_AUDITED_TERMINATED_WORLD")
+    catalog = action_catalog()
+    if context.get("action_catalog", catalog) != catalog:
+        raise R12Rejected("L2_CONTEXT_ACTION_CATALOG_STALE")
+    model_context = {**context, "action_catalog": catalog}
     instruction = (
-        "You are RelaySelf L2. You may choose to continue an old method, "
-        "try something, observe, abstain, or propose an optional conditional "
-        "Skill. Do not force a Skill or pretend to know hidden outcomes. "
-        "This is a POST-WORLD, READ-ONLY reflection; no physical Action can "
-        "be issued and proposed Skills are not installed. Use only supplied "
-        "experience_ids. Keep uncertainty honest. Return strict JSON."
+        "You are RelaySelf L2. Use the supplied Action Catalog as your "
+        "reference for possible Action, typed arguments, guards, and limitations. "
+        "You may choose to continue, try something later, observe, defer or "
+        "propose an optional bounded Skill program. A program is a sequence "
+        "of owner-bound steps with conditional guard, source binding, "
+        "bounded repetitions and STOP/SKIP when a guard is unavailable. "
+        "Keep each step's guard/binding EXACTLY the same as its catalog entry. "
+        "No runtime evaluation or physical permission comes from a Skill. "
+        "REST is intent only; WAIT issues no physical Action. "
+        "Do not invent targets, food slots, outcomes, physics, tool names or "
+        "experience IDs. A proposed Skill need not be better or useful. "
+        "You may abstain. This is POST-WORLD READ-ONLY. Return strict JSON."
     )
     request = {
         "model": model, "temperature": 0, "max_tokens": 512,
@@ -273,7 +271,7 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "messages": [
             {"role": "system", "content": instruction},
             {"role": "user", "content": json.dumps(
-                context, ensure_ascii=False, allow_nan=False,
+                model_context, ensure_ascii=False, allow_nan=False,
             )},
         ],
         "response_format": {"type": "json_schema", "json_schema": {
@@ -310,6 +308,10 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         raise R12Rejected("MODEL_RESPONSE_UNVERIFIED") from exc
     if source_still_current is not None and not source_still_current():
         raise R12Rejected("ORIGINAL_SOURCE_CHANGED_BEFORE_SHADOW_RETENTION")
+    # A compiled shadow is a structured proposal, never callable S49 code.
+    shadow_program = shadow_compile(choice["skill"], catalog) if (
+        choice["skill"] is not None
+    ) else None
     # Durable, non-executable candidate only. The file may later be read by
     # a separate retention experiment; it is NOT an owner Memory/Habit commit.
     result = {
@@ -324,6 +326,8 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "reason": choice["reason"],
         "evidence_ids": choice["evidence_ids"],
         "shadow_skill": choice["skill"],
+        "owner_catalog_sha256": catalog["catalog_sha256"],
+        "shadow_compilation": shadow_program,
         "shadow_retention_status": (
             "CANDIDATE_ONLY_NOT_INSTALLED" if choice["skill"] is not None
             else "NO_SKILL_PROPOSED"
@@ -351,6 +355,11 @@ def replay_retained_shadow(projection: dict[str, Any],
         choice = json.loads(answer["message"]["content"])
         context = projection["l2_context"]
         validate_l2_choice(choice, context)
+        catalog = action_catalog()
+        model_context = {**context, "action_catalog": catalog}
+        compiled = shadow_compile(choice["skill"], catalog) if (
+            choice["skill"] is not None
+        ) else None
         if (
             original["classification"] != "DEV_R12_L2_SHADOW_REFLECTION"
             or original["experience_source_sha256"] != projection["source_sha256"]
@@ -365,11 +374,13 @@ def replay_retained_shadow(projection: dict[str, Any],
             or original["reason"] != choice["reason"]
             or original["evidence_ids"] != choice["evidence_ids"]
             or original["shadow_skill"] != choice["skill"]
+            or original["owner_catalog_sha256"] != catalog["catalog_sha256"]
+            or original["shadow_compilation"] != compiled
             or request["response_format"]["json_schema"]["strict"] is not True
             or request["response_format"]["json_schema"]["schema"] != l2_schema()
             or request["reasoning_effort"] != "none"
             or request["messages"][1]["content"] != json.dumps(
-                context, ensure_ascii=False, allow_nan=False,
+                model_context, ensure_ascii=False, allow_nan=False,
             )
             or answer["finish_reason"] != "stop"
             or answer["message"].get("reasoning_content")
@@ -386,6 +397,8 @@ def replay_retained_shadow(projection: dict[str, Any],
         "classification": "DEV_R12_SHADOW_CANDIDATE_REPLAY_READ_ONLY",
         "source_status": "REPLAY_VERIFIED_NOT_LIVE",
         "shadow_skill": original["shadow_skill"],
+        "shadow_compilation": original["shadow_compilation"],
+        "owner_catalog_sha256": catalog["catalog_sha256"],
         "original_world_uuid": context["world_uuid"],
         "original_native_session_id": context["native_session_id"],
         "authority": "NONE",
