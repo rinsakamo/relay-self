@@ -21,6 +21,7 @@ from typing import Any
 from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_1218_SIZE
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
+from tools.bug0_d14_defense_f1_replay import replay_w3_f1
 from tools.bug0_d14_natural_active_post import audit_active
 from tools.bug0_d14_natural_life import (
     F1_DEFENSE_GRANT,
@@ -41,7 +42,6 @@ from tools.bug0_d14_natural_world import (
 from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 from tools.bug0_d14_r10_combat_post import inspect_r10_paper_combat
 from tools.bug0_d14_r11_day_foraging_post import inspect_r11_natural_day
-from tools.bug0_d14_defense_f1_replay import replay_w3_f1
 
 R5_GRANT = "D14_R5_LOCAL_ONEWORLD_ONLY"
 MIN_WATCHDOG = 600
