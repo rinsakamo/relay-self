@@ -43,7 +43,7 @@ With explicit R9 opt-in, the one existing `NaturalLifeLoop`:
 7. No reissue after UNKNOWN; no new Action issuer or Self clone.
 
 EAT already routes through original S49 to original S51 when Self naturally
-has hunger <=14, real native inventory food, zero nearby entities, and two
+has observed food <14, real native inventory food, zero nearby entities, and two
 fresh stationary native probes. That **requires no prior MOVE**.
 The original STOP fence still forbids EAT or ATTACK after MOVE until
 independent physical STOP qualification. Existing S49/S51 food provenance
