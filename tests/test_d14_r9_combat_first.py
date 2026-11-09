@@ -20,9 +20,9 @@ from adapters.mineflayer.python_protocol import (
 from relay_self.action import ActionState
 from test_d14_natural_motion_r6 import controller, observation
 from tools.bug0_d14_natural_life import (
+    R9_COMBAT_GRANT,
     NaturalLifeLoop,
     NaturalLifeRejected,
-    R9_COMBAT_GRANT,
     admissible_natural_attack,
 )
 
