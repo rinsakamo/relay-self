@@ -19,10 +19,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerStreamDecoder,
 )
-from adapters.mineflayer.self_world_stage_w3_capture import audit_w3_sealed_stdout
 from adapters.mineflayer.s49_reactive_defense import (
     evaluate_native_damage_defense,
 )
+from adapters.mineflayer.self_world_stage_w3_capture import audit_w3_sealed_stdout
 from tools.bug0_d14_natural_life import admissible_natural_attack
 
 F1_NATIVE_REQUEST = re.compile(r"d14-r4-([0-9]{3})-(pre|fresh)\Z")
