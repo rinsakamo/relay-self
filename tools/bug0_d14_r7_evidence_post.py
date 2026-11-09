@@ -151,9 +151,9 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
     # A source with a different client session can never attach to this
     # original S49 persistent owner, even for a diagnostic readout.
     sessions = {row["session_id"] for row in fence.actions}
-    if w3 and ({row["session_id"] for row in w3} != sessions):
+    if sessions and w3 and ({row["session_id"] for row in w3} != sessions):
         w3, w3_scope = [], "FOREIGN_ORIGINAL_S49_SESSION"
-    if s50 and ({row["session_id"] for row in s50} != sessions):
+    if sessions and s50 and ({row["session_id"] for row in s50} != sessions):
         s50, s50_scope = [], "FOREIGN_ORIGINAL_S49_SESSION"
     actions = []
     for row in fence.actions:
