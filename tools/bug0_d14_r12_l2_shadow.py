@@ -358,7 +358,7 @@ def replay_retained_shadow(projection: dict[str, Any],
             or original["world_uuid"] != context["world_uuid"]
             or original["native_session_id"] != context["native_session_id"]
             or original["raw_request_sha256"] != _sha(
-                request_raw.removesuffix(b"\\n")
+                request_raw.removesuffix(b"\n")
             )
             or original["raw_response_sha256"] != _sha(response_raw)
             or original["decision"] != choice["decision"]
