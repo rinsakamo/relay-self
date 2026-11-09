@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from adapters.mineflayer.attack_execution import AttackActionReceipt
+from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.normal_action import (
     NormalActionRejected,
     NormalActionStage,
@@ -440,6 +442,28 @@ class NaturalLifeLoop:
             "original_fence_sha256": self.nonmotion.sha256,
             "interpretation": "S16_OUTCOME_NOT_WORLD_SUCCESS_PROOF",
         }
+        if kind == "ATTACK" and isinstance(receipt, AttackActionReceipt):
+            # Native effect / event claims are NOT Paper health/death or
+            # damage attribution. Preserve exactly what the S49 owner saw.
+            outcome.update({
+                "original_s49_native_attack_ack_seq": receipt.effect.seq,
+                "original_s49_native_attack_ack_result": receipt.effect.result,
+                "native_target_entity_id": receipt.target_entity_id,
+                "native_target_hurt_event_seen": receipt.observed_target_hurt,
+                "native_target_missing_after": receipt.target_missing_in_native_view,
+                "damage_attested": False,
+                "zombie_kill_attested": False,
+            })
+        elif kind == "EAT" and isinstance(receipt, EatingActionReceipt):
+            # Verified S51 food+inventory deltas, not nutrition or C1 credit.
+            outcome.update({
+                "original_s51_food_before": receipt.outcome.food_before,
+                "original_s51_food_after": receipt.outcome.food_after,
+                "original_s51_consumed_item": receipt.outcome.consumed_item,
+                "original_s51_inventory_before": receipt.outcome.count_before,
+                "original_s51_inventory_after": receipt.outcome.count_after,
+                "original_s51_after_probe_seq": receipt.outcome.after_probe_seq,
+            })
         event["terminal"] = outcome["terminal"]
         self.report["life_action_outcomes"].append(outcome)
         save("LIFE_ACTION", "", native=outcome)
