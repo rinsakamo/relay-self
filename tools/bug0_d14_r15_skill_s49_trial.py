@@ -231,12 +231,14 @@ class S49SkillTrialCursor:
             ),
             "s49_original_issuer_matched": matched and physical,
             "nonphysical_skill_choice_applied": matched and not physical,
+            # L0 surface disagreement is not necessarily a difference in
+            # physical Action: R9 may also WAIT if its own admission fails.
+            "skill_hint_differs_from_l0_recommendation": (
+                matched and action != pending["original_l0_selected"]
+            ),
             "skill_selection_differs_from_old_r11": (
-                matched and (
-                    action == "MOVE_AWAY"  # original combat-first R11 WAITs here
-                    or (action == "WAIT"
-                        and pending["original_l0_selected"] != "WAIT")
-                )
+                matched and physical and action == "MOVE_AWAY"
+                # R11 combat-first never selects this R6 MOVE branch.
             ),
             "skill_effectiveness_or_goal_success_proven": False,
             "source_bound_skill_experience": (
