@@ -125,6 +125,7 @@ class NaturalLifeLoop:
             "original_s49_intent_id": self.intent.current_intent.intent_id,
             "life_decisions": [],
             "life_action_outcomes": [],
+            "life_unresolved_actions": [],
             "life_policy_epochs": 1,
             "new_s49_actions": 0,
             "life_stop_reason": None,
@@ -307,10 +308,45 @@ class NaturalLifeLoop:
                     event["action_id"] = (
                         f"d14-r6-s49-move-{self.cycles}-{self.sid}"
                     )
+                    self.motion.last_receipt_diagnostic = None
                     try:
                         outcome = await self.motion.issue_original_move(
                             self.session, native_event, current, cycle=self.cycles,
                         )
+                    except BaseException as exc:
+                        # Never recover, reissue or assert a terminal Outcome.
+                        # Preserve the exact original supervisor state when one
+                        # exists, plus the original partial S16 receipt.
+                        try:
+                            s49_state = self.owner.supervisor.get(
+                                event["action_id"]
+                            ).state.value
+                        except (KeyError, ValueError):
+                            s49_state = None
+                        unresolved = {
+                            "cycle": self.cycles,
+                            "action_id": event["action_id"],
+                            "session_id": self.sid,
+                            "intent_id": self.intent.current_intent.intent_id,
+                            "native_event_seq": native_event.seq,
+                            "native_admitted_seq": current.seq,
+                            "error_type": type(exc).__name__,
+                            "error_detail": str(exc)[:512],
+                            "original_s49_supervisor_state": s49_state,
+                            "original_move_fence_unresolved": (
+                                self.motion.fence.unresolved
+                            ),
+                            "original_move_fence_sha256": self.motion.fence.sha256,
+                            "original_s16_receipt": (
+                                self.motion.last_receipt_diagnostic
+                            ),
+                            "interpretation": (
+                                "UNRESOLVED_NOT_DISPATCH_OR_STOP_PROOF"
+                            ),
+                        }
+                        self.report["life_unresolved_actions"].append(unresolved)
+                        save("LIFE_ACTION_UNRESOLVED", "", native=unresolved)
+                        raise
                     finally:
                         self.report["new_s49_actions"] = self.owner._count
                     event["terminal"] = outcome["terminal"]

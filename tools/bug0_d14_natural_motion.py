@@ -76,6 +76,9 @@ class NaturalOriginalS49Motion:
         )
         self.events: deque[MineflayerObservation] = deque(maxlen=MAX_EVENT_BUFFER)
         self.seen_event_frames = 0
+        # The original receipt is retained read-only on a non-OUTCOME terminal.
+        # This is not evidence that an absent native command actually ran.
+        self.last_receipt_diagnostic: dict[str, object] | None = None
 
     def capture_event(self, frame: MineflayerObservation) -> None:
         """Record raw event as received; never reinterpret a probe as event."""
@@ -217,6 +220,7 @@ class NaturalOriginalS49Motion:
         propose, issue = self._operator_grants(step)
         self.executor.require_authorizations(step, bound, probe, propose, issue)
         self.fence.require_clear()
+        self.last_receipt_diagnostic = None
         receipt = await self.executor.execute(
             session, step, bound, probe, propose, issue,
             pre_issue_reservation=lambda: self.fence.prepare(
@@ -224,6 +228,32 @@ class NaturalOriginalS49Motion:
                 action_id=action_id, probe=probe,
             ),
         )
+        consequence = receipt.consequence
+        self.last_receipt_diagnostic = {
+            "action_id": action_id,
+            "original_s16_terminal": receipt.terminal.state.value,
+            "world_consequence_status": consequence.status.value,
+            "world_consequence_error": consequence.error,
+            "before_probe_seq": (
+                consequence.before_observation.seq
+                if consequence.before_observation is not None else None
+            ),
+            "native_dispatch_ack_seq": (
+                consequence.dispatch_receipt.seq
+                if consequence.dispatch_receipt is not None else None
+            ),
+            "native_clear_ack_seq": (
+                consequence.cleanup_receipt.seq
+                if consequence.cleanup_receipt is not None else None
+            ),
+            "after_probe_seq": (
+                consequence.after_observation.seq
+                if consequence.after_observation is not None else None
+            ),
+            "cleanup_attempted": consequence.cleanup_attempted,
+            "movement_m": consequence.movement_distance,
+            "source_scope": "S49_S16_RECEIPT_NOT_EXTERNAL_WIRE_ATTESTATION",
+        }
         if receipt.terminal.state is not ActionState.OUTCOME:
             raise NaturalMotionRejected("ORIGINAL_S49_MOVE_S16_NOT_OUTCOME")
         self.fence.close(
