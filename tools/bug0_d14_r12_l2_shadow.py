@@ -383,6 +383,10 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "l2_context_sha256": _sha(_canonical(context)),
         "l2_selected_context_sha256": _sha(_canonical(model_context)),
         "l2_native_preflight": token_receipt is not None,
+        "token_preflight_sha256": (
+            _sha(_canonical(token_receipt)) if token_receipt is not None
+            else None
+        ),
         "raw_request_sha256": _sha(req_bytes),
         "raw_response_sha256": _sha(response_bytes),
         "decision": choice["decision"],
@@ -441,6 +445,10 @@ def replay_retained_shadow(projection: dict[str, Any],
                 not in (None, _sha(_canonical(model_context)))
             or original.get("l2_native_preflight", False)
                 is not has_native_preflight
+            or original.get("token_preflight_sha256") != (
+                _sha(_canonical(token_receipt)) if has_native_preflight
+                else None
+            )
             or (has_native_preflight and
                 original.get("l2_selected_context_sha256")
                 != _sha(_canonical(model_context)))
