@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - dev/d14-r16-l2-bounded-context-preflight-20261109
+  pull_request:
+    branches:
+      - dev/d14-r15b-native-fixes-skill-trial-20261109
   workflow_dispatch:
 
 permissions:
@@ -19,11 +22,11 @@ jobs:
       - name: Checkout exact source HEAD
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Verify checked-out SHA
         env:
-          EXPECTED_HEAD: ${{ github.sha }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
       - name: Setup Python 3.12
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
