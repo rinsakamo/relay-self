@@ -84,9 +84,11 @@ def test_f2_never_ignores_unknown_hostile_or_second_zombie(name, entity_type):
 
 def test_f2_rejects_ambiguous_or_truncated_native_coverage():
     witness, before, current = pair()
+    # Real protocol disallows candidate_count < observed entities, so
+    # represent a valid incomplete registry without forging its structure.
     bad_coverage = replace(
         current.snapshot.nearby_entities_coverage,
-        candidate_count=1,
+        candidate_count=3,
     )
     bad = replace(current, snapshot=replace(
         current.snapshot, nearby_entities_coverage=bad_coverage,
