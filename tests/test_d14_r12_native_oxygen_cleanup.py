@@ -93,6 +93,11 @@ def test_r11_unknown_oxygen_continues_observation_but_no_action(
     previous, current = native_pair()
     previous.snapshot.oxygen_level = None
     current.snapshot.oxygen_level = None
+    # The test fixture's simple zombie has no native entity_type field;
+    # production MineflayerEntityFact always carries this typed field.
+    for probe in (previous, current):
+        for entity in probe.snapshot.nearby_entities:
+            entity.entity_type = "mob"
     loop._read = AsyncMock(side_effect=[previous, current])
     loop.policy = NS(decide=lambda *args, **kwargs: NS(
         selected="DEFER", preferred="MOVE_AWAY", fallback="ATTACK",
