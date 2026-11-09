@@ -20,6 +20,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
 from adapters.mineflayer.startup_process_ownership import (
+    _supervise,
     spawn_with_custody,
     terminate_and_reap,
 )
@@ -349,7 +350,9 @@ class MineflayerProcessSession:
         # No second event consumer is introduced during S49 active control.
         try:
             if self._process.returncode is None:
-                await self._send(encode_shutdown())
+                await asyncio.wait_for(
+                    self._send(encode_shutdown()), timeout=timeout_s,
+                )
             async def until_eof() -> None:
                 while True:
                     try:
@@ -360,12 +363,78 @@ class MineflayerProcessSession:
             rc = await asyncio.wait_for(self._process.wait(), timeout=timeout_s)
             self._seal_raw_capture(exit_code=rc, reason="clean_shutdown")
             return rc
-        except Exception:
-            await _terminate_child(self._process)
-            self._seal_raw_capture(
-                exit_code=self._process.returncode, reason="aborted_shutdown",
-            )
+        except BaseException:
+            # The first receiver has already ended/cancelled. During an
+            # abnormal shutdown, Node may be blocked writing a pipe full
+            # of pending native frames. Waiting on process.wait() alone can
+            # hang forever even after SIGTERM when stdout stays unread.
+            # Reuse the SAME reader in teardown, not an extra Action owner.
+            try:
+                await _supervise(self._reap_with_stdout_drain())
+            finally:
+                self._seal_raw_capture(
+                    exit_code=self._process.returncode,
+                    reason="aborted_shutdown",
+                )
             raise
+
+    async def _reap_with_stdout_drain(self) -> int:
+        """Reap owned Node under bounded stdout draining after failed shutdown.
+
+        This is only called when no other receive() task is alive. A bad
+        protocol frame keeps W3 incomplete and does NOT authorize Actions.
+        """
+        async def drain() -> None:
+            assert self._process.stdout is not None
+            while True:
+                if self._raw_capture is None:
+                    raw = await self._process.stdout.readline()
+                    if not raw:
+                        return
+                    continue
+                try:
+                    await self.receive()
+                except MineflayerProcessEnded:
+                    return
+                except (ValueError, UnicodeError):
+                    # receive() has marked W3 as broken. Drain remaining
+                    # native stdout to unblock OS process wait, but NEVER
+                    # record those bytes as successfully decoded evidence.
+                    while await self._process.stdout.readline():
+                        pass
+                    return
+
+        task = asyncio.create_task(drain())
+        reap_error: BaseException | None = None
+        result: int | None = None
+        try:
+            try:
+                result = await terminate_and_reap(self._process, timeout_s=5)
+            except BaseException as exc:
+                reap_error = exc
+            # Even if the process reports exit, a stuck stdout reader is
+            # NOT a complete source and must never be silently abandoned.
+            done, _ = await asyncio.wait({task}, timeout=5)
+            if not done:
+                task.cancel()
+                done, _ = await asyncio.wait({task}, timeout=0.25)
+                if not done:
+                    task.add_done_callback(
+                        lambda pending: pending.exception()
+                        if not pending.cancelled() else None
+                    )
+                    raise MineflayerProcessIOError(
+                        "Node stdout drain did not settle after bounded reap"
+                    )
+            if not task.cancelled():
+                task.result()
+            if reap_error is not None:
+                raise reap_error
+            assert type(result) is int
+            return result
+        finally:
+            if not task.done():
+                task.cancel()
 
     def _seal_raw_capture(self, *, exit_code: int | None, reason: str) -> None:
         if self._raw_capture is not None and self._raw_receipt is None:
@@ -400,8 +469,11 @@ class MineflayerProcessSession:
         return rc
 
     async def terminate(self) -> int:
-        """Terminate the owned child without retrying or launching a replacement."""
-        rc = await _terminate_child(self._process)
+        """Terminate one owned child with bounded stdout/pipe cleanup."""
+        if self._raw_capture is None:
+            rc = await _terminate_child(self._process)
+        else:
+            rc = await _supervise(self._reap_with_stdout_drain())
         self._seal_raw_capture(exit_code=rc, reason="terminated")
         return rc
 
@@ -423,9 +495,8 @@ class MineflayerProcessSession:
 
 
 async def _terminate_child(process: asyncio.subprocess.Process) -> int:
-    if process.returncode is None:
-        process.terminate()
-    return await process.wait()
+    # Non-W3 legacy use still benefits from bounded terminate→kill→reap.
+    return await terminate_and_reap(process, timeout_s=5)
 
 
 def _require_positive_timeout(name: str, value: object) -> None:
