@@ -99,6 +99,13 @@ def test_postworld_proposal_persists_shadow_not_installed(tmp_path: Path) -> Non
         observed.append(request)
         assert request["response_format"]["json_schema"]["strict"] is True
         assert request["reasoning_effort"] == "none"
+        model_input = json.loads(request["messages"][1]["content"])
+        catalog = model_input["action_catalog"]
+        assert catalog["scope"] == "POST_WORLD_L2_REFERENCE_ONLY"
+        assert [entry["action"] for entry in catalog["entries"]] == [
+            "MOVE_AWAY", "ATTACK", "EAT", "REST", "WAIT",
+        ]
+        assert catalog["no_implicit_action_grant"] is True
         return json.dumps({"choices": [{
             "finish_reason": "stop",
             "message": {"content": json.dumps(_choice()), "reasoning_content": None},
@@ -257,3 +264,36 @@ def test_raw_replay_detects_tampered_retained_file(tmp_path: Path) -> None:
     (out / "shadow_candidate.json").write_text(json.dumps(saved))
     with pytest.raises(r12.R12Rejected, match="SHADOW_RAW_SOURCE_REPLAY_REJECTED"):
         r12.replay_retained_shadow(projection, out)
+
+
+def test_stale_model_catalog_blocks_post_before_raw_dir(tmp_path: Path) -> None:
+    context = _context()
+    context["action_catalog"] = {"version": "fabricated"}
+    projection = {
+        "classification": "DEV_R12_AUDITED_NATURAL_EXPERIENCE_VIEW",
+        "source_sha256": {},
+        "l2_context": context,
+    }
+    posts = []
+    def never_post(raw: bytes) -> bytes:
+        posts.append(raw)
+        return b"{}"
+    with pytest.raises(r12.R12Rejected, match="CATALOG_STALE"):
+        r12.propose_shadow(
+            projection, endpoint="http://127.0.0.1:8080/v1/chat/completions",
+            model="gemma", record_dir=tmp_path / "raw",
+            transport=never_post,
+        )
+    assert posts == []
+    assert not (tmp_path / "raw").exists()
+
+
+def test_l2_skill_schema_is_typed_not_bare_action_names() -> None:
+    schema = r12.l2_schema()
+    branches = schema["properties"]["skill"]["anyOf"]
+    step = branches[0]["properties"]["steps"]["items"]
+    assert step["type"] == "object"
+    assert set(step["required"]) == {
+        "action", "guard", "binding", "repeat", "if_unavailable",
+    }
+    assert step["additionalProperties"] is False
