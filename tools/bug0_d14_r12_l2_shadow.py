@@ -490,7 +490,10 @@ def replay_retained_shadow(projection: dict[str, Any],
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--phase", choices=("project", "propose", "replay"), required=True)
+    p.add_argument(
+        "--phase", choices=("project", "preflight", "propose", "replay"),
+        required=True,
+    )
     p.add_argument("--report", required=True, type=Path)
     p.add_argument("--server-log", required=True, type=Path)
     p.add_argument("--event-journal", required=True, type=Path)
@@ -517,7 +520,24 @@ def main() -> None:
         raise R12Rejected("SOURCE_CHANGED_BEFORE_OUTPUT")
     if a.out.exists() or a.out.parent in {x.parent for x in source_paths}:
         raise R12Rejected("OUTPUT_MUST_BE_EXCLUSIVE_AND_SEPARATE_FROM_ORIGINALS")
-    if a.phase == "propose":
+    if a.phase == "preflight":
+        # Read-only llama.cpp /apply-template and /tokenize; no generation
+        # grant and no /v1/chat/completions POST in this branch.
+        if a.endpoint is None or a.model is None:
+            raise R12Rejected("PREFLIGHT_REQUIRES_EXPLICIT_LOCAL_MODEL")
+        selected, receipt = prepare_native_bounded_l2(
+            projection, endpoint=a.endpoint, model=a.model,
+        )
+        result = {
+            "classification": "DEV_R16_PREMODEL_TOKEN_BUDGET_ACCEPTED",
+            "source_sha256": projection["source_sha256"],
+            "selected_model_context": selected,
+            "preflight": receipt,
+            "model_inference_posts": 0, "s49_actions": 0,
+            "learning_updates": 0, "skill_installs": 0,
+            "qualification": "NO_GO", "science": "NOT_RUN",
+        }
+    elif a.phase == "propose":
         if (a.record_dir is None or a.endpoint is None or a.model is None
                 or a.record_dir.parent in {x.parent for x in source_paths}):
             raise R12Rejected("EXPLICIT_INDEPENDENT_MODEL_RECORD_DIR_REQUIRED")
