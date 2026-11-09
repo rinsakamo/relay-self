@@ -41,7 +41,9 @@ def _field(line: str, name: str) -> int:
 
 
 
-def qualified_early_terminal(start_line: str, terminal_line: str) -> dict:
+def qualified_early_terminal(
+    start_line: str, terminal_line: str, *, horizon_ticks: int = 10000,
+) -> dict:
     """Accept a genuine Paper death/disconnect as an EARLY stop, never 10k PASS."""
     start_tick = _field(start_line, "start_tick")
     tick = _field(terminal_line, "observed_tick")
@@ -49,9 +51,9 @@ def qualified_early_terminal(start_line: str, terminal_line: str) -> dict:
     if (
         _uuid(start_line, "world") != _uuid(terminal_line, "world")
         or _field(terminal_line, "start_tick") != start_tick
-        or _field(terminal_line, "scheduled_stop_tick") != start_tick + 10000
+        or _field(terminal_line, "scheduled_stop_tick") != start_tick + horizon_ticks
         or _field(terminal_line, "elapsed_ticks") != tick - start_tick
-        or not start_tick <= tick < start_tick + 10000
+        or not start_tick <= tick < start_tick + horizon_ticks
         or reason not in ("SELF_DIED", "SELF_DISCONNECTED", "WORLD_SCOPE_LOST")
         or "horizon_reached=false" not in terminal_line
     ):
