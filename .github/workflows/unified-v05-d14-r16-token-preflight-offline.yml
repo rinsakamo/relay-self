@@ -1,0 +1,58 @@
+name: D14 R16 native token budget read-only offline DEV
+on:
+  push:
+    branches:
+      - dev/d14-r16-l2-bounded-context-preflight-20261109
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r16-source-bound-token-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact source HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify checked-out SHA
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Setup Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned lint and tests
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Source/repository contracts
+        run: python tools/check_repository.py
+      - name: R16 exact token budget and parent R12-R15 regressions
+        run: |
+          python -m pytest -q -x \
+            tests/test_d14_r16_bounded_l2_context.py \
+            tests/test_d14_r15_skill_s49_trial.py \
+            tests/test_d14_r14_retained_skill_trial.py \
+            tests/test_d14_r13_action_catalog.py \
+            tests/test_d14_r12_l2_shadow.py \
+            tests/test_d14_r12_native_oxygen_cleanup.py \
+            tests/test_d14_r11_natural_day_foraging.py \
+            tests/test_d14_local_oneworld.py \
+            tests/test_d14_natural_active_s49.py \
+            tests/test_d12_experience_bridge.py
+      - name: Ruff scope
+        run: |
+          ruff check \
+            tools/bug0_d14_r16_bounded_l2_context.py \
+            tests/test_d14_r16_bounded_l2_context.py \
+            tools/bug0_d14_r12_l2_shadow.py \
+            tests/test_d14_r12_l2_shadow.py \
+            tools/bug0_d14_r13_action_catalog.py \
+            tools/bug0_d14_r14_retained_skill_trial.py \
+            tools/bug0_d14_r15_skill_s49_trial.py
