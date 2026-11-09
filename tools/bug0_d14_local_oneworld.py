@@ -22,7 +22,6 @@ from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_121
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
-from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 from tools.bug0_d14_natural_life import R4_GRANT, R6_GRANT, NaturalLifeLoop
 from tools.bug0_d14_natural_world import (
     PLUGIN_NAME,
@@ -31,6 +30,7 @@ from tools.bug0_d14_natural_world import (
     marker_kind,
     run,
 )
+from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 
 R5_GRANT = "D14_R5_LOCAL_ONEWORLD_ONLY"
 MIN_WATCHDOG = 600
