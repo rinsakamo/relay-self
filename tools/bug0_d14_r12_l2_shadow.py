@@ -27,7 +27,6 @@ from tools.bug0_d14_r13_action_catalog import (
 )
 
 MAX_L2_EVENTS = 48
-L2_SKILL_STEPS = ("MOVE_AWAY", "ATTACK", "EAT", "REST", "WAIT")
 L2_CHOICES = ("CONTINUE", "TRY_SOMETHING", "PROPOSE_SKILL", "OBSERVE", "DEFER")
 
 
@@ -266,7 +265,7 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "You may abstain. This is POST-WORLD READ-ONLY. Return strict JSON."
     )
     request = {
-        "model": model, "temperature": 0, "max_tokens": 512,
+        "model": model, "temperature": 0, "max_tokens": 1024,
         "reasoning_effort": "none", "cache_prompt": False,
         "messages": [
             {"role": "system", "content": instruction},
