@@ -34,6 +34,7 @@ R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
 R6_GRANT = "D14_R6_NATURAL_MOTION_ONEWORLD_ONLY"
 R9_COMBAT_GRANT = "D14_R9_COMBAT_FIRST_ONEWORLD_ONLY"
 F1_DEFENSE_GRANT = "D14_F1_REACTIVE_DEFENSE_ONEWORLD_ONLY"
+F2_DEFENSE_GRANT = "D14_F2_SINGLE_ZOMBIE_BYSTANDERS_ONEWORLD_ONLY"
 MAX_DECISIONS = 1024
 R11_MAX_DECISIONS = 4096  # Read-only observation capacity; S49 Action budget unchanged.
 R11_DAY_GRANT = "D14_R11_NATURAL_DAY_ONEWORLD_ONLY"
@@ -98,6 +99,7 @@ class NaturalLifeLoop:
         self.combat_first = os.environ.get(R9_COMBAT_GRANT) == "1"
         self.r11_day = os.environ.get(R11_DAY_GRANT) == "1"
         self.defense_f1 = os.environ.get(F1_DEFENSE_GRANT) == "1"
+        self.defense_f2 = os.environ.get(F2_DEFENSE_GRANT) == "1"
         self._defense_last_native = None
         self.decision_limit = R11_MAX_DECISIONS if self.r11_day else MAX_DECISIONS
         self._r11_last_rotten_inventory_count: int | None = None
@@ -117,6 +119,8 @@ class NaturalLifeLoop:
             or os.environ.get("D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY") != "1"
         ):
             raise NaturalLifeRejected("F1_DEFENSE_REQUIRES_R11_R10_R9_OWNER_GRANTS")
+        if self.defense_f2 and not self.defense_f1:
+            raise NaturalLifeRejected("F2_DEFENSE_REQUIRES_EXPLICIT_F1_OWNER")
         sid = session.started.session_id
         self.session = session
         self.sid = sid
@@ -131,6 +135,7 @@ class NaturalLifeLoop:
         self.owner = NormalSessionActionExecutor(
             sid, self.intent, max_sequential_attacks=MAX_ACTIONS,
             dev_reactive_defense_source=self.defense_f1,
+            dev_reactive_bystanders_source=self.defense_f2,
         )
         self.policy = S49BasicPriorityL0(sid, max_decisions=POLICY_EPOCH_DECISIONS)
         self.nonmotion = OriginalS49NonMotionFence.create(
@@ -154,6 +159,8 @@ class NaturalLifeLoop:
             "r9_combat_first_opt_in": self.combat_first,
             "f1_reactive_defense_opt_in": self.defense_f1,
             "f1_reactive_defense_actions": 0,
+            "f2_single_zombie_bystanders_opt_in": self.defense_f2,
+            "f2_reactive_defense_actions": 0,
             "r11_natural_day_opt_in": self.r11_day,
             "r11_l0_decision_resource_limit": self.decision_limit,
             "r11_item_seek_action_authorized": False,
@@ -315,6 +322,18 @@ class NaturalLifeLoop:
                 refusals.append(reason)
             if reactive is None:
                 f1_reason = "/".join(refusals)
+            if reactive is None and self.defense_f2:
+                for witness in sources:
+                    candidate, reason = evaluate_native_damage_defense(
+                        previous, current, witness,
+                        allow_known_bystanders=True,
+                    )
+                    if candidate is not None:
+                        reactive, f1_reason = candidate, reason
+                        break
+                    refusals.append(reason)
+                if reactive is None:
+                    f1_reason = "/".join(refusals)
         self._defense_last_native = current
 
         decision = self.policy.decide(
@@ -349,6 +368,9 @@ class NaturalLifeLoop:
         }
         if self.defense_f1:
             event["f1_source_candidate_reason"] = f1_reason
+            if self.defense_f2:
+                event["f2_source_candidate_reason"] = f1_reason
+                event["f2_candidate_source_is_native_only"] = True
             event["f1_native_health_loss"] = (
                 reactive.health_loss if reactive is not None else None
             )
@@ -581,6 +603,11 @@ class NaturalLifeLoop:
             outcome["f1_reactive_damage_source"] = (
                 "NATIVE_HEALTH_DROP_NEAR_ZOMBIE_NOT_CAUSAL_PROOF"
             )
+            if self.defense_f2 and reactive_source.source.endswith(
+                "KNOWN_BYSTANDERS_CAUSE_UNATTESTED"
+            ):
+                outcome["f2_reactive_damage_source"] = reactive_source.source
+                self.report["f2_reactive_defense_actions"] += 1
             outcome["f1_reactive_witness_seq"] = reactive_source.witness.seq
             outcome["f1_native_health_loss"] = reactive_source.health_loss
             self.report["f1_reactive_defense_actions"] += 1

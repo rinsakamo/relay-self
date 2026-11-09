@@ -79,6 +79,8 @@ def replay_w3_f1(
     diagnostic_counts: Counter[str] = Counter()
     complete = 0
     reactive_candidates = 0
+    f2_reactive_candidates = 0
+    f2_reasons: Counter[str] = Counter()
     stationary_r9_candidates = 0
     earlier_seq = -1
     for cycle in sorted(pairs):
@@ -140,6 +142,25 @@ def replay_w3_f1(
         diagnostic_counts.update(failures)
         def position(value):
             return {axis: getattr(value, axis) for axis in ("x", "y", "z")}
+        # Defense-F2 is a *separate* counterfactual. In the original
+        # World the physical F2 grant was absent and no Action occurred.
+        f2_candidate = None
+        f2_refusals = []
+        for witness in (before, last_native):
+            f2_probe, f2_reason = evaluate_native_damage_defense(
+                before, after, witness, allow_known_bystanders=True,
+            )
+            if f2_probe is not None:
+                f2_candidate = f2_probe
+                break
+            f2_refusals.append(f2_reason)
+        f2_cause = (
+            "F2_SINGLE_ZOMBIE_KNOWN_BYSTANDERS_REACTIVE_CANDIDATE"
+            if f2_candidate is not None else "/".join(f2_refusals)
+        )
+        f2_reasons[f2_cause] += 1
+        if f2_candidate is not None:
+            f2_reactive_candidates += 1
         stationary = admissible_natural_attack(before, after)
         if stationary is not None:
             stationary_r9_candidates += 1
@@ -171,6 +192,17 @@ def replay_w3_f1(
                 candidate.target_entity_id if candidate else None
             ),
             "f1_candidate_reason": reason,
+            "f2_candidate_reason": f2_cause,
+            "f2_native_target_candidate": (
+                f2_candidate.target_entity_id if f2_candidate else None
+            ),
+            "f2_native_witness_seq": (
+                f2_candidate.witness.seq if f2_candidate else None
+            ),
+            "f2_health_loss": (
+                f2_candidate.health_loss if f2_candidate else None
+            ),
+            "f2_original_owner_grant_was_present": False,
             "f1_candidate_health_loss": (
                 candidate.health_loss if candidate else None
             ),
@@ -189,6 +221,9 @@ def replay_w3_f1(
         "r12_complete_native_decision_pairs": complete,
         "r9_stationary_pair_candidates": stationary_r9_candidates,
         "f1_health_loss_reactive_candidates": reactive_candidates,
+        "f2_single_zombie_with_known_bystanders_candidates": f2_reactive_candidates,
+        "f2_source_refusal_reasons": dict(sorted(f2_reasons.items())),
+        "f2_original_s49_reactive_authority_exercised": False,
         "decision_refusal_reasons": dict(sorted(reasons.items())),
         "overlapping_diagnostic_counts": dict(sorted(diagnostic_counts.items())),
         "decision_rows": records,

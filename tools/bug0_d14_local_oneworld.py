@@ -25,6 +25,7 @@ from tools.bug0_d14_defense_f1_replay import replay_w3_f1
 from tools.bug0_d14_natural_active_post import audit_active
 from tools.bug0_d14_natural_life import (
     F1_DEFENSE_GRANT,
+    F2_DEFENSE_GRANT,
     R4_GRANT,
     R6_GRANT,
     R9_COMBAT_GRANT,
@@ -141,6 +142,13 @@ def validate_local_sources(
         raise D14LocalRejected(
             "F1_DEFENSE_REQUIRES_R11_R10_R9_R7_R6_S50_GRANTS"
         )
+    if environment.get(F2_DEFENSE_GRANT) == "1" and (
+        environment.get(F1_DEFENSE_GRANT) != "1"
+        or environment.get(R11_DAY_GRANT) != "1"
+    ):
+        raise D14LocalRejected(
+            "F2_DEFENSE_REQUIRES_F1_AND_R11_EXPLICIT_GRANTS"
+        )
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -190,6 +198,9 @@ def validate_local_sources(
         "r9_combat_first_opt_in": environment.get(R9_COMBAT_GRANT) == "1",
         "f1_reactive_defense_opt_in": (
             environment.get(F1_DEFENSE_GRANT) == "1"
+        ),
+        "f2_single_zombie_bystanders_opt_in": (
+            environment.get(F2_DEFENSE_GRANT) == "1"
         ),
         "r10_stone_sword_initial_opt_in": environment.get(R10_SWORD_GRANT) == "1",
         "r11_natural_day_opt_in": environment.get(R11_DAY_GRANT) == "1",
@@ -380,18 +391,33 @@ async def run_local(
                             if action.get("f1_reactive_damage_source")
                             == "NATIVE_HEALTH_DROP_NEAR_ZOMBIE_NOT_CAUSAL_PROOF"
                         ]
+                        f2_sources = {
+                            (row["fresh_seq"], row["f2_native_witness_seq"])
+                            for row in source["decision_rows"]
+                            if row.get("f2_native_target_candidate") is not None
+                        }
+                        f2_actions = [
+                            action for action in f1_actions
+                            if action.get("f2_reactive_damage_source") is not None
+                        ]
                         if (
                             len(f1_actions) != report.get("f1_reactive_defense_actions")
                             or any(
                                 (a.get("native_admitted_seq"),
-                                 a.get("f1_reactive_witness_seq")) not in candidates
+                                 a.get("f1_reactive_witness_seq")) not in (
+                                     f2_sources if a in f2_actions else candidates
+                                 )
                                 for a in f1_actions
+                            )
+                            or len(f2_actions) != report.get(
+                                "f2_reactive_defense_actions"
                             )
                         ):
                             raise D14LocalRejected(
                                 "F1_REACTIVE_ISSUED_ACTION_NOT_MATCHED_TO_ORIGINAL_W3"
                             )
                         source["f1_action_count_cross_checked"] = len(f1_actions)
+                        source["f2_action_count_cross_checked"] = len(f2_actions)
                         _write_json_once(
                             output_dir / "f1_native_reactive_source_only.json",
                             source,
