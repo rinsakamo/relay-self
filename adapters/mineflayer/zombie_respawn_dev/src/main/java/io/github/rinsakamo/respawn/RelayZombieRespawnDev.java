@@ -76,7 +76,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         devEnabled = true;
         Bukkit.getPluginManager().registerEvents(this, this);
         if (r10InitialSword) {
-            r10StoneSwordSource = new R10StoneSwordSource(this, TARGET_PLAYER);
+            r10StoneSwordSource = new R10StoneSwordSource(this, TARGET_PLAYER, managedKey);
             r10StoneSwordSource.start();
         }
         Bukkit.getScheduler().runTaskTimer(this, this::worldTick, 1L, 1L);
