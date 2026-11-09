@@ -130,6 +130,7 @@ class NaturalLifeLoop:
         )
         self.owner = NormalSessionActionExecutor(
             sid, self.intent, max_sequential_attacks=MAX_ACTIONS,
+            dev_reactive_defense_source=self.defense_f1,
         )
         self.policy = S49BasicPriorityL0(sid, max_decisions=POLICY_EPOCH_DECISIONS)
         self.nonmotion = OriginalS49NonMotionFence.create(
