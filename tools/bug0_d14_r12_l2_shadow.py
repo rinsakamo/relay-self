@@ -25,6 +25,12 @@ from tools.bug0_d14_r13_action_catalog import (
     skill_program_schema,
     validate_skill_program,
 )
+from tools.bug0_d14_r16_bounded_l2_context import (
+    R16Rejected,
+    native_llamacpp_token_counter,
+    select_token_bounded_context,
+    verify_preflight_receipt,
+)
 
 MAX_L2_EVENTS = 48
 L2_CHOICES = ("CONTINUE", "TRY_SOMETHING", "PROPOSE_SKILL", "OBSERVE", "DEFER")
@@ -234,24 +240,9 @@ def _local_endpoint(endpoint: str) -> None:
         raise R12Rejected("ONLY_EXPLICIT_LOCAL_LLAMACPP_ENDPOINT_ALLOWED")
 
 
-def propose_shadow(projection: dict[str, Any], *, endpoint: str,
-                   model: str, record_dir: Path, timeout: float = 120.0,
-                   transport: Any = None,
-                   source_still_current: Any = None) -> dict[str, Any]:
-    if not _require_str(model, 200) or not 1 <= timeout <= 300:
-        raise R12Rejected("MODEL_OR_TIMEOUT_INVALID")
-    _local_endpoint(endpoint)
-    context = projection["l2_context"]
-    if (projection["classification"] !=
-            "DEV_R12_AUDITED_NATURAL_EXPERIENCE_VIEW"
-            or context["world_is_terminated"] is not True
-            or context["action_authority"] != "NONE_POST_WORLD_READ_ONLY"):
-        raise R12Rejected("MODEL_REQUIRES_AUDITED_TERMINATED_WORLD")
-    catalog = action_catalog()
-    if context.get("action_catalog", catalog) != catalog:
-        raise R12Rejected("L2_CONTEXT_ACTION_CATALOG_STALE")
-    model_context = {**context, "action_catalog": catalog}
-    instruction = (
+def _l2_instruction() -> str:
+    """Original Gemma R12/R13 instruction, byte-stable for token preflight."""
+    return (
         "You are RelaySelf L2. Use the supplied Action Catalog as your "
         "reference for possible Action, typed arguments, guards, and limitations. "
         "You may choose to continue, try something later, observe, defer or "
@@ -265,11 +256,15 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "experience IDs. A proposed Skill need not be better or useful. "
         "You may abstain. This is POST-WORLD READ-ONLY. Return strict JSON."
     )
-    request = {
+
+
+def _l2_request(model: str, model_context: dict[str, Any]) -> dict[str, Any]:
+    """One exact request builder used in counting, POST and replay."""
+    return {
         "model": model, "temperature": 0, "max_tokens": 1024,
         "reasoning_effort": "none", "cache_prompt": False,
         "messages": [
-            {"role": "system", "content": instruction},
+            {"role": "system", "content": _l2_instruction()},
             {"role": "user", "content": json.dumps(
                 model_context, ensure_ascii=False, allow_nan=False,
             )},
@@ -278,12 +273,78 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
             "name": "r12_l2_shadow_skill", "strict": True, "schema": l2_schema(),
         }},
     }
+
+
+def prepare_native_bounded_l2(
+    projection: dict[str, Any], *, endpoint: str, model: str,
+    token_counter: Any = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Read-only preflight; never send an inference POST or create World."""
+    _local_endpoint(endpoint)
+    context = projection["l2_context"]
+    if (projection["classification"] !=
+            "DEV_R12_AUDITED_NATURAL_EXPERIENCE_VIEW"
+            or context.get("world_is_terminated") is not True
+            or context.get("action_authority") != "NONE_POST_WORLD_READ_ONLY"
+            or context.get("action_catalog") != action_catalog()):
+        raise R12Rejected("R16_SOURCE_OR_OWNER_CATALOG_NOT_QUALIFIED")
+    counter = token_counter
+    if counter is None:
+        counter = native_llamacpp_token_counter(endpoint)
+    try:
+        selected, receipt = select_token_bounded_context(
+            context, lambda ctx: _l2_request(model, ctx),
+            counter,
+        )
+        verify_preflight_receipt(
+            context, selected, _l2_request(model, selected), receipt,
+        )
+    except R16Rejected as exc:
+        raise R12Rejected("R16_PREMODEL_TOKEN_BUDGET_REJECTED") from exc
+    return selected, receipt
+
+
+def propose_shadow(projection: dict[str, Any], *, endpoint: str,
+                   model: str, record_dir: Path, timeout: float = 120.0,
+                   transport: Any = None,
+                   source_still_current: Any = None,
+                   token_counter: Any = None) -> dict[str, Any]:
+    if not _require_str(model, 200) or not 1 <= timeout <= 300:
+        raise R12Rejected("MODEL_OR_TIMEOUT_INVALID")
+    _local_endpoint(endpoint)
+    context = projection["l2_context"]
+    if (projection["classification"] !=
+            "DEV_R12_AUDITED_NATURAL_EXPERIENCE_VIEW"
+            or context["world_is_terminated"] is not True
+            or context["action_authority"] != "NONE_POST_WORLD_READ_ONLY"):
+        raise R12Rejected("MODEL_REQUIRES_AUDITED_TERMINATED_WORLD")
+    catalog = action_catalog()
+    if context.get("action_catalog", catalog) != catalog:
+        raise R12Rejected("L2_CONTEXT_ACTION_CATALOG_STALE")
+    model_context = {**context, "action_catalog": catalog}
+    token_receipt = None
+    if token_counter is None and transport is None:
+        token_counter = native_llamacpp_token_counter(endpoint)
+    if token_counter is not None:
+        model_context, token_receipt = prepare_native_bounded_l2(
+            projection, endpoint=endpoint, model=model,
+            token_counter=token_counter,
+        )
+    request = _l2_request(model, model_context)
+    if token_receipt is not None:
+        verify_preflight_receipt(context, model_context, request, token_receipt)
     if record_dir.exists():
         raise R12Rejected("RAW_RECORD_DIR_ALREADY_EXISTS")
     record_dir.mkdir(parents=True, mode=0o700)
     req_bytes = _canonical(request)
     (record_dir / "request.raw.json").write_bytes(req_bytes + b"\n")
-    # The only network operation. No retry; no native World/S49 path.
+    if token_receipt is not None:
+        (record_dir / "token_preflight.json").open(
+            "x", encoding="utf-8"
+        ).write(json.dumps(
+            token_receipt, ensure_ascii=False, sort_keys=True, indent=2,
+        ) + "\n")
+    # The only inference network operation. No retry; no native World/S49 path.
     if transport is None:
         def transport(payload: bytes) -> bytes:
             http = Request(
@@ -303,7 +364,7 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
                 or answer["message"].get("reasoning_content")):
             raise R12Rejected("MODEL_TRUNCATED_OR_REASONING_NOT_DISABLED")
         choice = json.loads(answer["message"]["content"])
-        validate_l2_choice(choice, context)
+        validate_l2_choice(choice, model_context)
     except (KeyError, TypeError, IndexError, json.JSONDecodeError) as exc:
         raise R12Rejected("MODEL_RESPONSE_UNVERIFIED") from exc
     if source_still_current is not None and not source_still_current():
@@ -320,6 +381,12 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         "native_session_id": context["native_session_id"],
         "experience_source_sha256": projection["source_sha256"],
         "l2_context_sha256": _sha(_canonical(context)),
+        "l2_selected_context_sha256": _sha(_canonical(model_context)),
+        "l2_native_preflight": token_receipt is not None,
+        "token_preflight_sha256": (
+            _sha(_canonical(token_receipt)) if token_receipt is not None
+            else None
+        ),
         "raw_request_sha256": _sha(req_bytes),
         "raw_response_sha256": _sha(response_bytes),
         "decision": choice["decision"],
@@ -354,9 +421,19 @@ def replay_retained_shadow(projection: dict[str, Any],
         answer = response["choices"][0]
         choice = json.loads(answer["message"]["content"])
         context = projection["l2_context"]
-        validate_l2_choice(choice, context)
         catalog = action_catalog()
-        model_context = {**context, "action_catalog": catalog}
+        has_native_preflight = (record_dir / "token_preflight.json").exists()
+        if has_native_preflight:
+            model_context = json.loads(request["messages"][1]["content"])
+            token_receipt = json.loads(
+                (record_dir / "token_preflight.json").read_bytes()
+            )
+            verify_preflight_receipt(
+                context, model_context, request, token_receipt,
+            )
+        else:
+            model_context = {**context, "action_catalog": catalog}
+        validate_l2_choice(choice, model_context)
         compiled = shadow_compile(choice["skill"], catalog) if (
             choice["skill"] is not None
         ) else None
@@ -364,6 +441,17 @@ def replay_retained_shadow(projection: dict[str, Any],
             original["classification"] != "DEV_R12_L2_SHADOW_REFLECTION"
             or original["experience_source_sha256"] != projection["source_sha256"]
             or original["l2_context_sha256"] != _sha(_canonical(context))
+            or original.get("l2_selected_context_sha256")
+                not in (None, _sha(_canonical(model_context)))
+            or original.get("l2_native_preflight", False)
+                is not has_native_preflight
+            or original.get("token_preflight_sha256") != (
+                _sha(_canonical(token_receipt)) if has_native_preflight
+                else None
+            )
+            or (has_native_preflight and
+                original.get("l2_selected_context_sha256")
+                != _sha(_canonical(model_context)))
             or original["world_uuid"] != context["world_uuid"]
             or original["native_session_id"] != context["native_session_id"]
             or original["raw_request_sha256"] != _sha(
@@ -410,7 +498,10 @@ def replay_retained_shadow(projection: dict[str, Any],
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--phase", choices=("project", "propose", "replay"), required=True)
+    p.add_argument(
+        "--phase", choices=("project", "preflight", "propose", "replay"),
+        required=True,
+    )
     p.add_argument("--report", required=True, type=Path)
     p.add_argument("--server-log", required=True, type=Path)
     p.add_argument("--event-journal", required=True, type=Path)
@@ -437,7 +528,24 @@ def main() -> None:
         raise R12Rejected("SOURCE_CHANGED_BEFORE_OUTPUT")
     if a.out.exists() or a.out.parent in {x.parent for x in source_paths}:
         raise R12Rejected("OUTPUT_MUST_BE_EXCLUSIVE_AND_SEPARATE_FROM_ORIGINALS")
-    if a.phase == "propose":
+    if a.phase == "preflight":
+        # Read-only llama.cpp /apply-template and /tokenize; no generation
+        # grant and no /v1/chat/completions POST in this branch.
+        if a.endpoint is None or a.model is None:
+            raise R12Rejected("PREFLIGHT_REQUIRES_EXPLICIT_LOCAL_MODEL")
+        selected, receipt = prepare_native_bounded_l2(
+            projection, endpoint=a.endpoint, model=a.model,
+        )
+        result = {
+            "classification": "DEV_R16_PREMODEL_TOKEN_BUDGET_ACCEPTED",
+            "source_sha256": projection["source_sha256"],
+            "selected_model_context": selected,
+            "preflight": receipt,
+            "model_inference_posts": 0, "s49_actions": 0,
+            "learning_updates": 0, "skill_installs": 0,
+            "qualification": "NO_GO", "science": "NOT_RUN",
+        }
+    elif a.phase == "propose":
         if (a.record_dir is None or a.endpoint is None or a.model is None
                 or a.record_dir.parent in {x.parent for x in source_paths}):
             raise R12Rejected("EXPLICIT_INDEPENDENT_MODEL_RECORD_DIR_REQUIRED")
