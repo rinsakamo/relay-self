@@ -385,6 +385,41 @@ async def run_local(
                                 "paper_daylight_and_pickup_attested": False,
                             },
                         )
+                if metadata["r15_skill_trial_opt_in"]:
+                    try:
+                        from tools.bug0_d14_r15_skill_s49_trial import (
+                            verified_prior_skill,
+                        )
+                        from tools.bug0_d14_r15_skill_trial_post import (
+                            inspect_r15_trial,
+                        )
+                        prior = verified_prior_skill(dict(os.environ))
+                        if (prior["program_sha256"]
+                                != metadata["r15_prior_program_sha256"]):
+                            raise D14LocalRejected("R15_PRIOR_SKILL_CHANGED_DURING_WORLD")
+                        trial = inspect_r15_trial(
+                            report, independent,
+                            (output_dir / "r15_skill_s49_trial.jsonl").read_text(
+                                encoding="utf8"
+                            ),
+                            prior,
+                        )
+                        _write_json_once(
+                            output_dir / "r15_skill_original_s49_readout.json",
+                            trial,
+                        )
+                    except Exception as r15_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "r15_skill_original_s49_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(r15_error).__name__}: {r15_error}"
+                                ),
+                                "skill_success_claimed": False,
+                                "original_s49_result_rewritten": False,
+                            },
+                        )
                 if metadata["r10_stone_sword_initial_opt_in"]:
                     try:
                         r10 = inspect_r10_paper_combat(
