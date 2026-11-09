@@ -15,7 +15,7 @@ from adapters.mineflayer.self_world_stage_w3_capture import (
     W3CaptureRejected,
     audit_w3_sealed_stdout,
 )
-from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
+from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence, _load
 
 W3_LIMIT = 32 * 1024 * 1024
 S50_LIMIT = 16 * 1024 * 1024
@@ -139,9 +139,13 @@ def inspect_r7_source_only(evidence: Path) -> dict[str, Any]:
     """Read already-created originals only. This does not mutate Action state."""
     if not evidence.is_dir() or evidence.is_symlink():
         raise R7ForensicsRejected("existing non-symlink evidence directory required")
-    fence = OriginalS49PhysicalFence.restore(
-        evidence / "original_s49_motion_fence.json", self_id="s49-original-self",
-    )
+    # The public restore() takes an exclusive lock and may create a .lock
+    # file. Historical SHA256 manifests must NEVER be changed by this reader.
+    motion_path = evidence / "original_s49_motion_fence.json"
+    body, digest = _load(motion_path)
+    if body["self_id"] != "s49-original-self":
+        raise R7ForensicsRejected("foreign original S49 Self fence")
+    fence = OriginalS49PhysicalFence(motion_path, body, digest)
     w3, w3_scope = _w3(evidence)
     s50, s50_scope = _s50(evidence)
     # A source with a different client session can never attach to this
