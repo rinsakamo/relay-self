@@ -273,3 +273,14 @@ def test_retained_trial_is_json_serializable() -> None:
     assert json.loads(json.dumps(result))["classification"] == (
         "DEV_R14_RETAINED_CROSSWORLD_S49_SHADOW_REUSE"
     )
+
+
+def test_tampered_compiled_program_rejected() -> None:
+    replay = _replay()
+    replay["shadow_compilation"]["max_attempts"] = 999
+    with pytest.raises(r14.R14Rejected, match="CANDIDATE_COMPILATION"):
+        r14.evaluate_shadow_reuse(
+            prior=_projection("worldA", "sessionA", []),
+            later=_projection("worldB", "sessionB", _later_events()),
+            replay=replay,
+        )
