@@ -42,6 +42,7 @@ jobs:
       - name: R11 day and item source plus R10 R9 R7 R6 D14 regressions
         run: |
           python -m pytest -q -x \
+            tests/test_d14_defense_f2_replay.py \
             tests/test_d14_defense_f2_bystanders.py \
             tests/test_d14_defense_f1_reactive.py \
             tests/test_d14_defense_f1_replay.py \
