@@ -248,7 +248,8 @@ def _local_endpoint(endpoint: str) -> None:
 
 def propose_shadow(projection: dict[str, Any], *, endpoint: str,
                    model: str, record_dir: Path, timeout: float = 120.0,
-                   transport: Any = None) -> dict[str, Any]:
+                   transport: Any = None,
+                   source_still_current: Any = None) -> dict[str, Any]:
     if not _require_str(model, 200) or not 1 <= timeout <= 300:
         raise R12Rejected("MODEL_OR_TIMEOUT_INVALID")
     _local_endpoint(endpoint)
@@ -307,6 +308,8 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
         validate_l2_choice(choice, context)
     except (KeyError, TypeError, IndexError, json.JSONDecodeError) as exc:
         raise R12Rejected("MODEL_RESPONSE_UNVERIFIED") from exc
+    if source_still_current is not None and not source_still_current():
+        raise R12Rejected("ORIGINAL_SOURCE_CHANGED_BEFORE_SHADOW_RETENTION")
     # Durable, non-executable candidate only. The file may later be read by
     # a separate retention experiment; it is NOT an owner Memory/Habit commit.
     result = {
@@ -335,9 +338,66 @@ def propose_shadow(projection: dict[str, Any], *, endpoint: str,
     return result
 
 
+def replay_retained_shadow(projection: dict[str, Any],
+                           record_dir: Path) -> dict[str, Any]:
+    """Independently recheck original Model raw and source before shadow reuse."""
+    try:
+        original = json.loads((record_dir / "shadow_candidate.json").read_bytes())
+        request_raw = (record_dir / "request.raw.json").read_bytes()
+        response_raw = (record_dir / "response.raw.json").read_bytes()
+        request = json.loads(request_raw)
+        response = json.loads(response_raw)
+        answer = response["choices"][0]
+        choice = json.loads(answer["message"]["content"])
+        context = projection["l2_context"]
+        validate_l2_choice(choice, context)
+        if (
+            original["classification"] != "DEV_R12_L2_SHADOW_REFLECTION"
+            or original["experience_source_sha256"] != projection["source_sha256"]
+            or original["l2_context_sha256"] != _sha(_canonical(context))
+            or original["world_uuid"] != context["world_uuid"]
+            or original["native_session_id"] != context["native_session_id"]
+            or original["raw_request_sha256"] != _sha(
+                request_raw.removesuffix(b"\\n")
+            )
+            or original["raw_response_sha256"] != _sha(response_raw)
+            or original["decision"] != choice["decision"]
+            or original["reason"] != choice["reason"]
+            or original["evidence_ids"] != choice["evidence_ids"]
+            or original["shadow_skill"] != choice["skill"]
+            or request["response_format"]["json_schema"]["strict"] is not True
+            or request["response_format"]["json_schema"]["schema"] != l2_schema()
+            or request["reasoning_effort"] != "none"
+            or request["messages"][1]["content"] != json.dumps(
+                context, ensure_ascii=False, allow_nan=False,
+            )
+            or answer["finish_reason"] != "stop"
+            or answer["message"].get("reasoning_content")
+            or original["real_world_actions"] != 0
+            or original["learning_updates"] != 0
+            or original["memory_owner_writes"] != 0
+            or original["habit_updates"] != 0
+            or original["skill_installs"] != 0
+        ):
+            raise R12Rejected("SHADOW_RAW_SOURCE_OR_RETENTION_MISMATCH")
+    except (OSError, KeyError, ValueError, TypeError, IndexError) as exc:
+        raise R12Rejected("SHADOW_RAW_SOURCE_REPLAY_REJECTED") from exc
+    return {
+        "classification": "DEV_R12_SHADOW_CANDIDATE_REPLAY_READ_ONLY",
+        "source_status": "REPLAY_VERIFIED_NOT_LIVE",
+        "shadow_skill": original["shadow_skill"],
+        "original_world_uuid": context["world_uuid"],
+        "original_native_session_id": context["native_session_id"],
+        "authority": "NONE",
+        "s49_actions": 0, "model_posts": 0, "memory_writes": 0,
+        "learning_updates": 0, "skill_installs": 0,
+        "qualification": "NO_GO", "science": "NOT_RUN",
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--phase", choices=("project", "propose"), required=True)
+    p.add_argument("--phase", choices=("project", "propose", "replay"), required=True)
     p.add_argument("--report", required=True, type=Path)
     p.add_argument("--server-log", required=True, type=Path)
     p.add_argument("--event-journal", required=True, type=Path)
@@ -373,7 +433,16 @@ def main() -> None:
         result = propose_shadow(
             projection, endpoint=a.endpoint, model=a.model,
             record_dir=a.record_dir, timeout=a.timeout,
+            source_still_current=lambda: all(
+                path.read_bytes() == raw
+                for path, raw in zip(source_paths, originals)
+            ),
         )
+    elif a.phase == "replay":
+        if (a.record_dir is None
+                or a.record_dir.parent in {x.parent for x in source_paths}):
+            raise R12Rejected("REPLAY_RECORD_DIR_REQUIRED")
+        result = replay_retained_shadow(projection, a.record_dir)
     else:
         result = projection
     if any(path.read_bytes() != raw
