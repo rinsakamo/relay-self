@@ -89,7 +89,8 @@ def test_retained_skill_wait_instead_of_l0_attack_is_behavioral_only() -> None:
     result = cursor.finish_hint([])
     assert result["nonphysical_skill_choice_applied"] is True
     assert result["s49_original_issuer_matched"] is False
-    assert result["skill_selection_differs_from_old_r11"] is True
+    assert result["skill_hint_differs_from_l0_recommendation"] is True
+    assert result["skill_selection_differs_from_old_r11"] is False
     assert cursor.stopped is True
     assert cursor.physical_outcomes == 0
 
