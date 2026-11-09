@@ -14,3 +14,8 @@ dev-tick-sample-interval: 200
 # D14 R3 only: use vanilla daytime burning instead of D8 arena sun immunity.
 # NoAI / Health / Hunger or teleporting are NOT modified by the plugin.
 dev-natural-world-mode: false
+
+# R10 one-time operator-supplied initial stone sword, BEFORE natural zombie spawn.
+# Vanilla sword, normal player health/hunger, normal zombie AI/health/drop RNG.
+# No new S49 Action or automatic attack. Disabled in all older DEV Worlds.
+dev-r10-initial-stone-sword: false
