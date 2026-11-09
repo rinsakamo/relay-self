@@ -22,10 +22,12 @@ from adapters.mineflayer.s49_p1_paper_server import PAPER_1218_SHA256, PAPER_121
 from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
 from relay_self.s49_nonmotion_physical_fence import OriginalS49NonMotionFence
 from tools.bug0_d14_natural_active_post import audit_active
+from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 from tools.bug0_d14_natural_life import R4_GRANT, R6_GRANT, NaturalLifeLoop
 from tools.bug0_d14_natural_world import (
     PLUGIN_NAME,
     R3_ENV,
+    R7_EVIDENCE_GRANT,
     marker_kind,
     run,
 )
@@ -93,6 +95,11 @@ def validate_local_sources(
         raise D14LocalRejected("R3_R4_AND_LOCAL_R5_ONE_WORLD_GRANTS_REQUIRED")
     if environment.get("NODE_OPTIONS") is not None:
         raise D14LocalRejected("NODE_OPTIONS_INJECTION_REFUSED")
+    if environment.get(R7_EVIDENCE_GRANT) == "1" and (
+        environment.get(R6_GRANT) != "1"
+        or environment.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+    ):
+        raise D14LocalRejected("R7_SOURCE_CAPTURE_REQUIRES_R6_AND_S50_DEV_GRANTS")
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -138,6 +145,7 @@ def validate_local_sources(
         "physical_issuer": "ORIGINAL_S49_ONLY",
         "classification": "DEV_ONLY_QUALIFICATION_NO_GO_SCIENCE_NOT_RUN",
         "r6_original_s49_motion_opt_in": environment.get(R6_GRANT) == "1",
+        "r7_source_capture_opt_in": environment.get(R7_EVIDENCE_GRANT) == "1",
     }
 
 
@@ -199,6 +207,12 @@ def source_only_partial(evidence: Path) -> dict[str, Any]:
         except (OSError, ValueError) as exc:
             source["original_nonmotion_fence_read_failure"] = type(exc).__name__
     motion_path = evidence / "original_s49_motion_fence.json"
+    source["r7_raw_node_stdout_present"] = (
+        evidence / "w3-node-stdout.raw.jsonl"
+    ).is_file()
+    source["r7_s50_same_client_readback_present"] = (
+        evidence / "r7-s50-client-readback.jsonl"
+    ).is_file()
     source["original_motion_fence_present"] = motion_path.is_file()
     if motion_path.is_file():
         try:
@@ -308,6 +322,18 @@ async def run_local(
             partial = source_only_partial(output_dir)
             _write_json_once(output_dir / "local_partial_source_only.json", partial)
         finally:
+            if metadata["r7_source_capture_opt_in"]:
+                try:
+                    post = inspect_r7_source_only(output_dir)
+                    _write_json_once(output_dir / "r7_source_forensics.json", post)
+                except Exception as exc:
+                    _write_json_once(output_dir / "r7_source_forensics_error.json", {
+                        "status": "PARTIAL_SOURCE_ONLY_NOT_QUALIFIED",
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "physical_result_unresolved": "UNKNOWN",
+                        "physical_stop_attested": False,
+                        "original_fence_mutated": False,
+                    })
             write_manifest_once(output_dir)
     return rc
 
