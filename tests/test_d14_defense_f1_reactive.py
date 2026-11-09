@@ -19,15 +19,15 @@ from adapters.mineflayer.s49_reactive_defense import (
     require_native_damage_defense,
 )
 from relay_self.action import ActionState
+from test_d14_local_oneworld import _fixture_paths, _validate
 from test_d14_natural_motion_r6 import controller, observation
 from test_d14_r9_combat_first import _decision
+from tools import bug0_d14_local_oneworld as local
 from tools.bug0_d14_natural_life import (
     F1_DEFENSE_GRANT,
     NaturalLifeRejected,
     admissible_natural_attack,
 )
-from tools import bug0_d14_local_oneworld as local
-from test_d14_local_oneworld import _fixture_paths, _validate
 
 
 def native(
