@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from adapters.mineflayer.attack_execution import AttackActionReceipt
+from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
@@ -18,6 +20,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
 )
 from relay_self.action import ActionState
+from relay_self.eat_hunger import EatingOutcome
 from test_d14_natural_motion_r6 import controller, observation
 from tools.bug0_d14_natural_life import (
     R9_COMBAT_GRANT,
@@ -72,8 +75,13 @@ def test_r9_first_native_zombie_attack_preempts_valid_move(
     loop.motion.issue_original_move = AsyncMock(
         side_effect=AssertionError("MOVE must not issue before admissible ATTACK")
     )
-    loop.owner.execute_attack = AsyncMock(return_value=SimpleNamespace(
+    loop.owner.execute_attack = AsyncMock(return_value=AttackActionReceipt(
         terminal=SimpleNamespace(state=ActionState.OUTCOME),
+        effect=SimpleNamespace(seq=11, result="applied"),
+        after_probe=observation(12), target_entity_id=7,
+        observed_target_hurt=True,
+        observed_hurt_source_entity_ids=(None,),
+        target_missing_in_native_view=False,
     ))
     records = []
     asyncio.run(loop.step(
@@ -87,6 +95,10 @@ def test_r9_first_native_zombie_attack_preempts_valid_move(
     )
     assert report["life_decisions"][0]["admission"] == "ORIGINAL_S49_GRANTED"
     assert report["life_action_outcomes"][0]["kind"] == "ATTACK"
+    assert report["life_action_outcomes"][0]["original_s49_native_attack_ack_seq"] == 11
+    assert report["life_action_outcomes"][0]["native_target_hurt_event_seen"]
+    assert report["life_action_outcomes"][0]["damage_attested"] is False
+    assert report["life_action_outcomes"][0]["zombie_kill_attested"] is False
     assert records[-1][0] == "LIFE_ACTION"
     assert loop.motion.fence.actions == ()
 
@@ -172,8 +184,14 @@ def test_r9_original_s49_eat_remains_reachable_without_prior_move(
     loop.motion.issue_original_move = AsyncMock(
         side_effect=AssertionError("food does not require MOVE")
     )
-    loop.owner.execute_eat = AsyncMock(return_value=SimpleNamespace(
+    loop.owner.execute_eat = AsyncMock(return_value=EatingActionReceipt(
         terminal=SimpleNamespace(state=ActionState.OUTCOME),
+        outcome=EatingOutcome(
+            session_id="native-session", action_id="offline-eat",
+            food_before=10, food_after=14, consumed_item="rotten_flesh",
+            count_before=1, count_after=0, after_probe_seq=9,
+            provenance=food_probe(9).provenance,
+        ),
     ))
     # The real S51 receipt validation is covered by its own tests;
     # this mock checks only selection and original S49 admission.
@@ -182,6 +200,8 @@ def test_r9_original_s49_eat_remains_reachable_without_prior_move(
     loop.motion.issue_original_move.assert_not_awaited()
     loop.owner.execute_eat.assert_awaited_once()
     assert report["life_action_outcomes"][0]["kind"] == "EAT"
+    assert report["life_action_outcomes"][0]["original_s51_food_after"] == 14
+    assert report["life_action_outcomes"][0]["original_s51_inventory_after"] == 0
     assert loop.owner._post_move_settling_unqualified is False
     assert loop.motion.fence.actions == ()
     assert report["c1_intent_experiences"] == 0
