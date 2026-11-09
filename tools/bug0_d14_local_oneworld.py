@@ -39,6 +39,7 @@ from tools.bug0_d14_natural_world import (
 )
 from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 from tools.bug0_d14_r10_combat_post import inspect_r10_paper_combat
+from tools.bug0_d14_r11_day_foraging_post import inspect_r11_natural_day
 
 R5_GRANT = "D14_R5_LOCAL_ONEWORLD_ONLY"
 MIN_WATCHDOG = 600
@@ -342,6 +343,27 @@ async def run_local(
                     motion_fence=motion_fence,
                 )
                 _write_json_once(output_dir / "independent_audit.json", independent)
+                if metadata["r11_natural_day_opt_in"]:
+                    try:
+                        r11 = inspect_r11_natural_day(
+                            paper_log.read_bytes().decode("utf8"),
+                            report, independent,
+                        )
+                        _write_json_once(
+                            output_dir / "r11_natural_day_foraging_readout.json", r11,
+                        )
+                    except Exception as r11_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "r11_natural_day_foraging_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(r11_error).__name__}: {r11_error}"
+                                ),
+                                "original_report_mutated": False,
+                                "paper_daylight_and_pickup_attested": False,
+                            },
+                        )
                 if metadata["r10_stone_sword_initial_opt_in"]:
                     try:
                         r10 = inspect_r10_paper_combat(
