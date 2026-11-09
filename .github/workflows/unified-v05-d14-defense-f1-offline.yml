@@ -42,6 +42,7 @@ jobs:
         run: |
           python -m pytest -q -x \
             tests/test_d14_defense_f1_reactive.py \
+            tests/test_d14_defense_f1_replay.py \
             tests/test_d14_r12_native_oxygen_cleanup.py \
             tests/test_mineflayer_process_session.py \
             tests/test_d14_r11_natural_day_foraging.py \
@@ -62,6 +63,7 @@ jobs:
         run: |
           ruff check \
             adapters/mineflayer/s49_reactive_defense.py \
+            tools/bug0_d14_defense_f1_replay.py \
             adapters/mineflayer/normal_action.py \
             adapters/mineflayer/python_protocol.py \
             adapters/mineflayer/process_session.py \
@@ -74,7 +76,8 @@ jobs:
             tests/test_d14_r10_initial_sword.py \
             tests/test_d14_r11_natural_day_foraging.py \
             tests/test_d14_r12_native_oxygen_cleanup.py \
-            tests/test_d14_defense_f1_reactive.py
+            tests/test_d14_defense_f1_reactive.py \
+            tests/test_d14_defense_f1_replay.py
       - name: Node 22 native protocol regression
         run: |
           node --version
