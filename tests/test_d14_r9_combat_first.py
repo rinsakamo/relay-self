@@ -182,3 +182,28 @@ def test_r9_original_s49_eat_remains_reachable_without_prior_move(
     assert loop.owner._post_move_settling_unqualified is False
     assert loop.motion.fence.actions == ()
     assert report["c1_intent_experiences"] == 0
+
+
+def test_r9_attack_only_world_keeps_w3_s50_without_false_foreign_session(
+    tmp_path,
+):
+    # R9 may attack without any prior MOVE. A zero-row MOVE fence has no
+    # action-bound session and must not mislabel genuine W3/S50 as foreign.
+    from relay_self.c1_physical_action_fence import OriginalS49PhysicalFence
+    from test_d14_r7_native_evidence import make_s50, make_w3
+    from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
+
+    OriginalS49PhysicalFence.create(
+        tmp_path / "original_s49_motion_fence.json",
+        self_id="s49-original-self",
+    )
+    make_w3(tmp_path)
+    make_s50(tmp_path)
+    forensic = inspect_r7_source_only(tmp_path)
+    assert forensic["actions"] == []
+    assert forensic["w3_received_node_stdout_scope"] == (
+        "INCOMPLETE_SAME_PROCESS_NODE_STDOUT_ONLY"
+    )
+    assert forensic["s50_same_client_scope"] == "SAME_CLIENT_READBACK_ONLY"
+    assert forensic["paper_tick_aligned_stop_attested"] is False
+    assert forensic["learning_authorized"] is False
