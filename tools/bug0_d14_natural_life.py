@@ -29,6 +29,7 @@ from tools.bug0_d14_natural_motion import NaturalOriginalS49Motion
 
 R4_GRANT = "D14_R4_NATURAL_S49_ONEWORLD_ONLY"
 R6_GRANT = "D14_R6_NATURAL_MOTION_ONEWORLD_ONLY"
+R9_COMBAT_GRANT = "D14_R9_COMBAT_FIRST_ONEWORLD_ONLY"
 MAX_DECISIONS = 1024
 POLICY_EPOCH_DECISIONS = 64
 MAX_ACTIONS = 32
@@ -88,6 +89,13 @@ class NaturalLifeLoop:
     def __init__(self, session: Any, evidence_dir: Path, report: dict[str, Any]) -> None:
         if os.environ.get(R4_GRANT) != "1":
             raise NaturalLifeRejected("NO_ONEWORLD_R4_PHYSICAL_GRANT")
+        self.combat_first = os.environ.get(R9_COMBAT_GRANT) == "1"
+        if self.combat_first and any(os.environ.get(key) != "1" for key in (
+            "D14_R5_LOCAL_ONEWORLD_ONLY", R6_GRANT,
+            "D14_R7_NATIVE_EVIDENCE_ONEWORLD_ONLY",
+            "D7_PASSIVE_CONTROLS_WORLD_ONLY",
+        )):
+            raise NaturalLifeRejected("R9_COMBAT_REQUIRES_R5_R6_R7_S50_GRANTS")
         sid = session.started.session_id
         self.session = session
         self.sid = sid
@@ -121,6 +129,7 @@ class NaturalLifeLoop:
         self.stopped = False
         self.report.update({
             "s49_physical_issuer": "ORIGINAL_NORMAL_SESSION_ACTION_EXECUTOR",
+            "r9_combat_first_opt_in": self.combat_first,
             "original_s49_session_id": sid,
             "original_s49_intent_id": self.intent.current_intent.intent_id,
             "life_decisions": [],
@@ -298,10 +307,23 @@ class NaturalLifeLoop:
             and decision.preferred == "MOVE_AWAY"
             and decision.fallback == "ATTACK"
         ):
+            # R9 is a separate DEV opt-in. A stable, close, same-ID native
+            # zombie is eligible for original S49 ATTACK BEFORE any MOVE;
+            # otherwise the original R6 MOVE admission remains unchanged.
+            # In particular, do not lift the original post-MOVE STOP fence.
+            attack_target = admissible_natural_attack(previous, current)
+            if (
+                self.combat_first
+                and attack_target is not None
+                and not self.owner._post_move_settling_unqualified
+            ):
+                kind = "ATTACK"
+                target = attack_target
+                event["r9_priority"] = "ATTACK_BEFORE_MOVE_NATIVE_PAIR"
             # MOVE needs a genuine unsolicited entities event and original
             # frozen S49/S14 admission. Two correlated probes alone cannot
             # stand in for that event or authorize a physical MOVE.
-            if self.motion is not None:
+            elif self.motion is not None:
                 native_event = self.motion.current_candidate(current)
                 if native_event is not None:
                     event["admission"] = "R6_ORIGINAL_S49_MOVE_SELECTED"
@@ -353,9 +375,10 @@ class NaturalLifeLoop:
                     self.report["life_action_outcomes"].append(outcome)
                     save("LIFE_ACTION", "", native=outcome)
                     return
-            target = admissible_natural_attack(previous, current)
-            if target is not None:
-                kind = "ATTACK"
+            if kind is None:
+                target = attack_target
+                if target is not None:
+                    kind = "ATTACK"
         elif decision.selected == "EAT":
             kind = "EAT"
             choice = self.policy.food._last_decision.choice
