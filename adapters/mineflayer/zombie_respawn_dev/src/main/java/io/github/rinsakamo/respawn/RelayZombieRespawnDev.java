@@ -2,6 +2,7 @@ package io.github.rinsakamo.respawn;
 
 import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRule;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -126,6 +127,11 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             fail("INITIAL_ANCHOR_OR_MANAGED_ENTITY");
             return;
         }
+        if (r11NaturalLootSource != null && !Boolean.TRUE.equals(
+                player.getWorld().getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE))) {
+            fail("R11_NATURAL_DAYLIGHT_CYCLE_DISABLED");
+            return;
+        }
         if (r10StoneSwordSource != null) {
             try {
                 // One actual vanilla ItemStack, before any zombie/Action;
@@ -153,7 +159,8 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
                 + " start_tick=" + horizon.startTick()
                 + " stop_tick=" + horizon.endTick()
                 + " horizon_ticks=" + horizon.ticks()
-                + " natural_600tick_respawns_unchanged=true");
+                + " natural_600tick_respawns_unchanged=true"
+                + daySourceSuffix(player.getWorld()));
         }
     }
 
@@ -203,7 +210,8 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
                     + " elapsed_ticks=" + horizon.elapsed(now)
                     + " generation=" + cycle.generation()
                     + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
-                    + " stop_new_spawns=true no_forced_death=true");
+                    + " stop_new_spawns=true no_forced_death=true"
+                    + daySourceSuffix(player.getWorld()));
                 return;
             }
             if (horizon.sample(now)) {
@@ -212,8 +220,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
                     + " generation=" + cycle.generation()
                     + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
                     + " pending_due_tick=" + cycle.dueTick()
-                    + " world_time=" + player.getWorld().getTime()
-                    + " world_full_time=" + player.getWorld().getFullTime());
+                    + daySourceSuffix(player.getWorld()));
             }
         }
         if (cycle.due(player.getWorld().getUID(), now)) {
@@ -227,6 +234,13 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             // Unexpected disappearance is not an EntityDeathEvent.
             fail("MISSING_LIVING_WITHOUT_DEATH");
         }
+    }
+
+    private String daySourceSuffix(World world) {
+        return r11NaturalLootSource == null ? ""
+            : " world_time=" + world.getTime()
+            + " world_full_time=" + world.getFullTime()
+            + " daylight_cycle=true";
     }
 
     private void spawn(boolean isRespawn, long tick) {
