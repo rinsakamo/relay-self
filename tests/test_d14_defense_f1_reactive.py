@@ -137,7 +137,7 @@ def test_f1_refuses_unsafe_or_unbound_native_source(change):
 def test_f1_source_is_revalidated_by_original_s49_not_only_l0(
     tmp_path, monkeypatch,
 ):
-    monkeypatch.setenv("D14_R4_NATURAL_S49_ONEWORLD_ONLY", "1")
+    _grants(monkeypatch)
     loop, _ = controller(tmp_path, monkeypatch)
     before = native(5, health=18, distance=3.3)
     current = native(6, health=17, distance=2.3)
@@ -163,6 +163,24 @@ def test_f1_source_is_revalidated_by_original_s49_not_only_l0(
         loop.owner.require_attack_authorizations(
             before, current, 7, *grants, reactive_damage_source=candidate,
         )
+
+
+def test_f1_source_cannot_bypass_default_original_s49_owner(tmp_path, monkeypatch):
+    monkeypatch.setenv("D14_R4_NATURAL_S49_ONEWORLD_ONLY", "1")
+    loop, _ = controller(tmp_path, monkeypatch)
+    previous = native(5, health=18, distance=3.3)
+    current = native(6, health=17, distance=2.3)
+    source, _ = evaluate_native_damage_defense(
+        previous, current, native(3, health=20, distance=3.8),
+    )
+    assert source is not None
+    grants = loop._grant("ATTACK", current, "default-owner", target=7)
+    with pytest.raises(NormalActionRejected, match="requires original S49 DEV grant"):
+        loop.owner.require_attack_authorizations(
+            previous, current, 7, *grants, reactive_damage_source=source,
+        )
+    assert loop.nonmotion.actions == ()
+    assert loop.owner._count == 0
 
 
 def _grants(monkeypatch):
