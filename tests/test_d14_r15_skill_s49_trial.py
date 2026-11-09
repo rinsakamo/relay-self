@@ -8,11 +8,12 @@ from types import SimpleNamespace as NS
 import pytest
 
 from tools import bug0_d14_r15_skill_s49_trial as r15
-from tools.bug0_d14_r15_skill_trial_post import (
-    R15PostRejected, inspect_r15_trial,
-)
 from tools.bug0_d14_natural_life import NaturalLifeLoop
 from tools.bug0_d14_r13_action_catalog import action_catalog, shadow_compile
+from tools.bug0_d14_r15_skill_trial_post import (
+    R15PostRejected,
+    inspect_r15_trial,
+)
 
 
 def _step(action: str, guard: str, binding: str,
@@ -49,14 +50,15 @@ def _prior(program: dict) -> dict:
     }
 
 
-def _obs(seq: int, zombies=(), food: int = 10) -> NS:
+def _obs(seq: int, zombies=(), food: int = 10,
+         oxygen: int | None = 20) -> NS:
     return NS(
         session_id="new-session",
         seq=seq, request_id=f"native-{seq}",
         snapshot=NS(
             nearby_entities_coverage=NS(truncated=False),
             nearby_entities=list(zombies),
-            health=20, food=food,
+            health=20, food=food, oxygen_level=oxygen,
         ),
     )
 
@@ -305,3 +307,24 @@ def test_independent_post_rejects_forged_outcome(tamper: str) -> None:
         active["world_uuid"] = prior["prior_world_uuid"]
     with pytest.raises(R15PostRejected):
         inspect_r15_trial(report, active, sidecar, prior)
+
+
+def test_unknown_oxygen_never_yields_live_skill_hint() -> None:
+    program = _program(_step(
+        "MOVE_AWAY", "S49_NATIVE_MOVE_CANDIDATE", "NATIVE_S49_MOVE_SOURCE",
+    ))
+    cursor = r15.S49SkillTrialCursor(_prior(program), "new-session")
+    zombie = NS(name="zombie", distance=3.0)
+    for previous, current in [
+        (_obs(4, [zombie], oxygen=None), _obs(5, [zombie])),
+        (_obs(4, [zombie]), _obs(5, [zombie], oxygen=None)),
+        (_obs(4, [zombie]), _obs(5, [zombie], oxygen=0)),
+    ]:
+        cursor = r15.S49SkillTrialCursor(_prior(program), "new-session")
+        assert cursor.consider(
+            previous, current,
+            _choice("DEFER", "MOVE_AWAY", "ATTACK"),
+            _owner(candidate=object()),
+        ) is None
+        assert cursor.pending is None
+        assert cursor.physical_outcomes == 0

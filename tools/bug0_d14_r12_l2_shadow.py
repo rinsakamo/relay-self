@@ -58,6 +58,7 @@ def _event_view(row: dict[str, Any], kind: str, world: str,
             "selected", "preferred", "fallback", "reason", "health", "food",
             "zombies", "rotten_count", "r11_native_dropped_item_candidates",
             "r11_native_rotten_inventory_delta_since_last_decision",
+            "r12_action_admission", "r12_oxygen_observed",
             "action_id",
         )
         index = row.get("native_seq")
