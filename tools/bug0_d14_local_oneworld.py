@@ -300,7 +300,7 @@ async def run_local(
                 )
                 independent = audit_active(
                     report,
-                    paper_log.read_text(encoding="utf8"),
+                    paper_log.read_bytes().decode("utf8"),
                     derivative.read_text(encoding="utf8"),
                     fence,
                     original_sha=_sha256(paper_log),

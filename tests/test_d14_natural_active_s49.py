@@ -156,6 +156,30 @@ def test_zero_actions_and_actual_death_not_autonomy(tmp_path):
     assert result["long_run_autonomous_self_proven"] is False
 
 
+def test_paper_console_carriage_returns_preserve_original_lines(tmp_path):
+    report, original, derivative, fence = _active_fixture(tmp_path, early=True)
+    prefix = "> \r  \r"
+    lines = original.splitlines()
+    mapping = {line: prefix + line for line in lines}
+    original = "\n".join(mapping[line] for line in lines) + "\n"
+    source = report["paper_source"]
+    for key, value in source.items():
+        if isinstance(value, str) and value in mapping:
+            source[key] = mapping[value]
+        elif isinstance(value, list):
+            source[key] = [mapping.get(item, item) if isinstance(item, str) else item
+                           for item in value]
+    rows = [json.loads(line) for line in derivative.splitlines()]
+    for row in rows:
+        line = row.get("original_paper_line")
+        if line in mapping:
+            row["original_paper_line"] = mapping[line]
+    derivative = "".join(json.dumps(row) + "\n" for row in rows)
+    report["paper_original_sha256"] = hashlib.sha256(original.encode()).hexdigest()
+    report["derivative_journal_sha256"] = hashlib.sha256(derivative.encode()).hexdigest()
+    assert _audit(report, original, derivative, fence)["status"] == "PASS_DEV"
+
+
 @pytest.mark.parametrize(("field", "invalid"), [
     ("new_s49_actions", 1),
     ("original_s49_fence_sha256", "fabricated"),

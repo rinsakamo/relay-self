@@ -80,7 +80,9 @@ def audit_active(
 
     timeline = NaturalPaperTimeline()
     original_rows = []
-    for line in paper_original.splitlines():
+    # Paper console lines can contain carriage returns before the marker.
+    # The live reader preserves those bytes within each LF-delimited line.
+    for line in paper_original.split("\n"):
         kind = marker_kind(line)
         if kind is not None:
             timeline.admit(kind, line)
@@ -321,7 +323,7 @@ def main() -> None:
     )
     outcome = audit_active(
         report,
-        args.server_log.read_text(encoding="utf8"),
+        args.server_log.read_bytes().decode("utf8"),
         args.event_journal.read_text(encoding="utf8"),
         fence, original_sha=_sha(args.server_log),
         derivative_sha=_sha(args.event_journal),
