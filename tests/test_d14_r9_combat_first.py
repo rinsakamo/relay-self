@@ -102,17 +102,20 @@ def test_r9_unstable_or_distant_zombie_does_not_gain_attack_authority(
     loop._read = AsyncMock(side_effect=[previous, current])
     loop.policy = SimpleNamespace(decide=lambda *_a, **_k: _decision())
     loop.motion.current_candidate = lambda *_: observation(4, kind="entities")
-    loop.motion.issue_original_move = AsyncMock(return_value={
-        "action_id": "offline-move-stub", "kind": "MOVE_AWAY",
-        "terminal": "outcome", "effective_physical_stop": "UNATTESTED",
-    })
+    loop.motion.issue_original_move = AsyncMock(
+        side_effect=AssertionError("R9 must wait, not enter the MOVE STOP trap")
+    )
     loop.owner.execute_attack = AsyncMock(
         side_effect=AssertionError("unstable target cannot attack")
     )
     asyncio.run(loop.step(lambda *_a, **_k: None))
-    loop.motion.issue_original_move.assert_awaited_once()
+    loop.motion.issue_original_move.assert_not_awaited()
     loop.owner.execute_attack.assert_not_awaited()
-    assert "r9_priority" not in report["life_decisions"][0]
+    assert report["life_decisions"][0]["r9_priority"] == (
+        "WAIT_FOR_NATIVE_ATTACK_ADMISSION"
+    )
+    assert report["life_action_outcomes"] == []
+    assert loop.motion.fence.actions == ()
 
 
 def test_r9_never_attacks_after_move_without_stop(
@@ -207,3 +210,59 @@ def test_r9_attack_only_world_keeps_w3_s50_without_false_foreign_session(
     assert forensic["s50_same_client_scope"] == "SAME_CLIENT_READBACK_ONLY"
     assert forensic["paper_tick_aligned_stop_attested"] is False
     assert forensic["learning_authorized"] is False
+
+
+def test_r9_wait_for_reach_then_original_s49_attack_same_session(
+    tmp_path, monkeypatch,
+):
+    _grants(monkeypatch)
+    loop, report = controller(tmp_path, monkeypatch)
+    assert loop.motion is not None
+    loop.policy = SimpleNamespace(decide=lambda *_a, **_k: _decision())
+    loop.motion.current_candidate = lambda *_: observation(4, kind="entities")
+    loop.motion.issue_original_move = AsyncMock(
+        side_effect=AssertionError("no MOVE before or after reach")
+    )
+    loop.owner.execute_attack = AsyncMock(return_value=SimpleNamespace(
+        terminal=SimpleNamespace(state=ActionState.OUTCOME),
+    ))
+    loop._read = AsyncMock(side_effect=[
+        observation(5, distance=3.5), observation(6, distance=3.5),
+        observation(7, distance=1.5), observation(8, distance=1.5),
+    ])
+    asyncio.run(loop.step(lambda *_a, **_k: None))
+    assert loop.owner.execute_attack.await_count == 0
+    assert report["life_decisions"][0]["r9_priority"] == (
+        "WAIT_FOR_NATIVE_ATTACK_ADMISSION"
+    )
+    asyncio.run(loop.step(lambda *_a, **_k: None))
+    assert loop.owner.execute_attack.await_count == 1
+    loop.motion.issue_original_move.assert_not_awaited()
+    assert report["life_decisions"][1]["r9_priority"] == (
+        "ATTACK_BEFORE_MOVE_NATIVE_PAIR"
+    )
+    assert report["life_action_outcomes"][0]["kind"] == "ATTACK"
+    assert loop.motion.fence.actions == ()
+
+
+def test_original_r6_move_behavior_unchanged_without_r9(
+    tmp_path, monkeypatch,
+):
+    _grants(monkeypatch)
+    monkeypatch.delenv(R9_COMBAT_GRANT)
+    loop, report = controller(tmp_path, monkeypatch)
+    assert not loop.combat_first
+    assert loop.motion is not None
+    loop._read = AsyncMock(side_effect=[
+        observation(5, distance=3.5),
+        observation(6, distance=3.5),
+    ])
+    loop.policy = SimpleNamespace(decide=lambda *_a, **_k: _decision())
+    loop.motion.current_candidate = lambda *_: observation(4, kind="entities")
+    loop.motion.issue_original_move = AsyncMock(return_value={
+        "action_id": "offline-move-stub", "kind": "MOVE_AWAY",
+        "terminal": "outcome", "effective_physical_stop": "UNATTESTED",
+    })
+    asyncio.run(loop.step(lambda *_a, **_k: None))
+    loop.motion.issue_original_move.assert_awaited_once()
+    assert "r9_priority" not in report["life_decisions"][0]
