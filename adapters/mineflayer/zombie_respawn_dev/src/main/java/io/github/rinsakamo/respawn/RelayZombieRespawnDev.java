@@ -2,6 +2,7 @@ package io.github.rinsakamo.respawn;
 
 import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRule;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -40,6 +41,7 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
     private long deathWallNanos;
     private TickObservationHorizon horizon;
     private R10StoneSwordSource r10StoneSwordSource;
+    private R11NaturalLootSource r11NaturalLootSource;
 
     @Override
     public void onEnable() {
@@ -55,12 +57,23 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         naturalWorldMode = getConfig().getBoolean("dev-natural-world-mode", false);
         boolean r10InitialSword = getConfig().getBoolean(
                 "dev-r10-initial-stone-sword", false);
+        boolean r11NaturalDay = getConfig().getBoolean(
+                "dev-r11-natural-day", false);
+        int requestedTicks = getConfig().getInt("dev-tick-endurance-ticks", 0);
+        if (r11NaturalDay && (
+                !naturalWorldMode || !r10InitialSword
+                || !getConfig().getBoolean("dev-tick-endurance-enabled", false)
+                || requestedTicks != 24000
+                || getConfig().getInt("dev-tick-sample-interval", 200) != 200)) {
+            throw new IllegalStateException(
+                    "R11 natural day requires 24000 Paper ticks, R10 sword and 200-tick samples");
+        }
         if (r10InitialSword && (
                 !naturalWorldMode
                 || !getConfig().getBoolean("dev-tick-endurance-enabled", false)
-                || getConfig().getInt("dev-tick-endurance-ticks", 0) != 10000)) {
+                || requestedTicks != (r11NaturalDay ? 24000 : 10000))) {
             throw new IllegalStateException(
-                    "R10 initial sword requires natural 10000-tick DEV World");
+                    "R10 initial sword requires natural 10000-tick or R11 24000-tick DEV World");
         }
         if (naturalWorldMode && !getConfig().getBoolean("dev-tick-endurance-enabled", false)) {
             throw new IllegalStateException("natural World requires 10000 tick horizon");
@@ -78,6 +91,10 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         if (r10InitialSword) {
             r10StoneSwordSource = new R10StoneSwordSource(this, TARGET_PLAYER, managedKey);
             r10StoneSwordSource.start();
+        }
+        if (r11NaturalDay) {
+            r11NaturalLootSource = new R11NaturalLootSource(this, TARGET_PLAYER);
+            r11NaturalLootSource.start();
         }
         Bukkit.getScheduler().runTaskTimer(this, this::worldTick, 1L, 1L);
         Player existing = Bukkit.getPlayerExact(TARGET_PLAYER);
@@ -110,6 +127,11 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             fail("INITIAL_ANCHOR_OR_MANAGED_ENTITY");
             return;
         }
+        if (r11NaturalLootSource != null && !Boolean.TRUE.equals(
+                player.getWorld().getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE))) {
+            fail("R11_NATURAL_DAYLIGHT_CYCLE_DISABLED");
+            return;
+        }
         if (r10StoneSwordSource != null) {
             try {
                 // One actual vanilla ItemStack, before any zombie/Action;
@@ -136,7 +158,9 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             getLogger().info("RSELF_ENDURANCE_START world=" + cycle.world()
                 + " start_tick=" + horizon.startTick()
                 + " stop_tick=" + horizon.endTick()
-                + " horizon_ticks=10000 natural_600tick_respawns_unchanged=true");
+                + " horizon_ticks=" + horizon.ticks()
+                + " natural_600tick_respawns_unchanged=true"
+                + daySourceSuffix(player.getWorld()));
         }
     }
 
@@ -151,6 +175,9 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
         }
         deathWallNanos = System.nanoTime();
         living = null;
+        if (r11NaturalLootSource != null) {
+            r11NaturalLootSource.recordManagedZombieDeath(event, tick);
+        }
         // Never alter drops or force rotten flesh. No claim of who killed it.
         getLogger().info("RSELF_RESPAWN_DEATH world=" + cycle.world()
             + " entity=" + zombie.getUniqueId()
@@ -183,7 +210,8 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
                     + " elapsed_ticks=" + horizon.elapsed(now)
                     + " generation=" + cycle.generation()
                     + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
-                    + " stop_new_spawns=true no_forced_death=true");
+                    + " stop_new_spawns=true no_forced_death=true"
+                    + daySourceSuffix(player.getWorld()));
                 return;
             }
             if (horizon.sample(now)) {
@@ -191,7 +219,8 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
                     + " tick=" + now + " elapsed_ticks=" + horizon.elapsed(now)
                     + " generation=" + cycle.generation()
                     + " living=" + (cycle.living() == null ? "NONE" : cycle.living())
-                    + " pending_due_tick=" + cycle.dueTick());
+                    + " pending_due_tick=" + cycle.dueTick()
+                    + daySourceSuffix(player.getWorld()));
             }
         }
         if (cycle.due(player.getWorld().getUID(), now)) {
@@ -205,6 +234,13 @@ public final class RelayZombieRespawnDev extends JavaPlugin implements Listener 
             // Unexpected disappearance is not an EntityDeathEvent.
             fail("MISSING_LIVING_WITHOUT_DEATH");
         }
+    }
+
+    private String daySourceSuffix(World world) {
+        return r11NaturalLootSource == null ? ""
+            : " world_time=" + world.getTime()
+            + " world_full_time=" + world.getFullTime()
+            + " daylight_cycle=true";
     }
 
     private void spawn(boolean isRespawn, long tick) {

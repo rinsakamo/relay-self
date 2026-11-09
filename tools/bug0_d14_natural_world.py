@@ -46,6 +46,14 @@ R3_ENV = ("S49_REAL_SERVER_CI", "D14_10000_TICK_WORLD_ONLY", "D14_R3_NATURAL_WOR
 R7_EVIDENCE_GRANT = "D14_R7_NATIVE_EVIDENCE_ONEWORLD_ONLY"
 R10_SWORD_GRANT = "D14_R10_INITIAL_STONE_SWORD_ONEWORLD_ONLY"
 R10_PLUGIN_CONFIG = NATURAL_PLUGIN_CONFIG + "dev-r10-initial-stone-sword: true\n"
+R11_DAY_GRANT = "D14_R11_NATURAL_DAY_ONEWORLD_ONLY"
+R11_WORLD_TICKS = 24000
+R11_PLUGIN_CONFIG = (
+    R10_PLUGIN_CONFIG.replace(
+        "dev-tick-endurance-ticks: 10000\n",
+        "dev-tick-endurance-ticks: 24000\n",
+    ) + "dev-r11-natural-day: true\n"
+)
 MAX_WALL_SECONDS = 1200  # Guard only. Paper-owned elapsed ticks decide qualification.
 NATIVE_TIMEOUT_SECONDS = 9
 
@@ -125,7 +133,11 @@ def marker_kind(line: str) -> str | None:
 class NaturalPaperTimeline:
     """Pure source boundary: no synthetic clock, observations or physical Actions."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, horizon_ticks: int = 10000) -> None:
+        if horizon_ticks not in (10000, R11_WORLD_TICKS):
+            raise D14NaturalWorldRejected("UNRECOGNIZED_NATURAL_HORIZON")
+        self.horizon_ticks = horizon_ticks
+        self.sample_limit = horizon_ticks // 200 - 1
         self.start: str | None = None
         self.stop: str | None = None
         self.terminal: str | None = None
@@ -142,6 +154,12 @@ class NaturalPaperTimeline:
         if kind == "START":
             if self.start is not None:
                 raise D14NaturalWorldRejected("DUPLICATE_START")
+            if (
+                _field(original, "stop_tick") - _field(original, "start_tick")
+                != self.horizon_ticks
+                or _field(original, "horizon_ticks") != self.horizon_ticks
+            ):
+                raise D14NaturalWorldRejected("NATURAL_WORLD_START_WRONG_HORIZON")
             self.start = original
             return
         if kind == "ZOMBIE_INITIAL":
@@ -156,13 +174,15 @@ class NaturalPaperTimeline:
             if self.stop is not None or self.terminal is not None:
                 raise D14NaturalWorldRejected("DUPLICATE_OR_CONFLICTING_END")
             if kind == "TERMINAL":
-                qualified_early_terminal(self.start, original)
+                qualified_early_terminal(
+                    self.start, original, horizon_ticks=self.horizon_ticks,
+                )
                 self.terminal = original
             else:
                 if (
                     _uuid(self.start, "world") != _uuid(original, "world")
                     or _field(original, "observed_tick") != _field(self.start, "stop_tick")
-                    or _field(original, "elapsed_ticks") != 10000
+                    or _field(original, "elapsed_ticks") != self.horizon_ticks
                     or _field(original, "start_tick") != _field(self.start, "start_tick")
                     or _field(original, "end_tick") != _field(self.start, "stop_tick")
                     or "stop_new_spawns=true no_forced_death=true" not in original
@@ -176,7 +196,7 @@ class NaturalPaperTimeline:
             elapsed = _field(original, "elapsed_ticks")
             tick = _field(original, "tick")
             if (
-                len(self.samples) >= 49
+                len(self.samples) >= self.sample_limit
                 or elapsed != (len(self.samples) + 1) * 200
                 or tick != _field(self.start, "start_tick") + elapsed
                 or _uuid(original, "world") != _uuid(self.start, "world")
@@ -203,20 +223,22 @@ class NaturalPaperTimeline:
         if self.start is None or len(self.initial) != 1:
             raise D14NaturalWorldRejected("WORLD_START_OR_MANAGED_ZOMBIE_MISSING")
         if self.stop is not None:
-            if len(self.samples) != 49 or self.terminal is not None:
-                raise D14NaturalWorldRejected("10000_TICK_SAMPLE_OR_END_MISMATCH")
+            if len(self.samples) != self.sample_limit or self.terminal is not None:
+                raise D14NaturalWorldRejected("CONFIGURED_TICK_SAMPLE_OR_END_MISMATCH")
             return {
                 "outcome": "WORLD_TICK_LIMIT_REACHED",
-                "elapsed_ticks": 10000,
+                "elapsed_ticks": self.horizon_ticks,
                 "terminal_reason": "PAPER_WORLD_LIMIT",
                 "self_died_before_limit": False,
             }
         if self.terminal is not None:
-            info = qualified_early_terminal(self.start, self.terminal)
+            info = qualified_early_terminal(
+                self.start, self.terminal, horizon_ticks=self.horizon_ticks,
+            )
             actual = info["elapsed_ticks"]
             # Early death may occur exactly at one of the 200tick samples;
             # never manufacture a missing simultaneous Paper sampling event.
-            if not len(self.samples) <= min(49, actual // 200):
+            if not len(self.samples) <= min(self.sample_limit, actual // 200):
                 raise D14NaturalWorldRejected("SAMPLE_AFTER_SELF_TERMINAL")
             return {
                 "outcome": "SELF_EARLY_TERMINAL",
@@ -255,7 +277,12 @@ async def observe_natural_world(
 ) -> None:
     if journal_path.exists() or journal_path.is_symlink():
         raise D14NaturalWorldRejected("DERIVATIVE_JOURNAL_ALREADY_EXISTS")
-    timeline = NaturalPaperTimeline()
+    timeline = NaturalPaperTimeline(
+        horizon_ticks=(
+            R11_WORLD_TICKS
+            if report.get("r11_natural_day_opt_in") is True else 10000
+        ),
+    )
     read_offset = 0
     unconsumed = b""
     readback_errors = 0
@@ -414,6 +441,11 @@ async def run(
     server = collector = session = temporary = life = None
     r7_evidence = os.environ.get(R7_EVIDENCE_GRANT) == "1"
     r10_sword = os.environ.get(R10_SWORD_GRANT) == "1"
+    r11_day = os.environ.get(R11_DAY_GRANT) == "1"
+    report["r11_natural_day_opt_in"] = r11_day
+    report["requested_paper_horizon_ticks"] = (
+        R11_WORLD_TICKS if r11_day else 10000
+    )
     report["r7_native_evidence_opt_in"] = r7_evidence
     report["r10_initial_sword_opt_in"] = r10_sword
     report["r10_operator_initial_equipment"] = (
@@ -451,6 +483,17 @@ async def run(
             raise D14NaturalWorldRejected(
                 "R10_SWORD_REQUIRES_R9_R7_R6_S50_NATURAL_ONEWORLD"
             )
+        if r11_day and (
+            not r10_sword
+            or life_factory is None
+            or not r7_evidence
+            or os.environ.get("D14_R9_COMBAT_FIRST_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D14_R6_NATURAL_MOTION_ONEWORLD_ONLY") != "1"
+            or os.environ.get("D7_PASSIVE_CONTROLS_WORLD_ONLY") != "1"
+        ):
+            raise D14NaturalWorldRejected(
+                "R11_DAY_REQUIRES_R10_R9_R7_R6_S50_GRANTS"
+            )
         if any(path.exists() or path.is_symlink()
                for path in (report_path, paper_log, journal_path)):
             raise D14NaturalWorldRejected("PROTECTED_OUTPUT_ALREADY_EXISTS")
@@ -474,6 +517,7 @@ async def run(
         plugindir.mkdir(parents=True)
         shutil.copyfile(plugin, root / "plugins" / PLUGIN_NAME)
         effective_plugin_config = (
+            R11_PLUGIN_CONFIG if r11_day else
             R10_PLUGIN_CONFIG if r10_sword else NATURAL_PLUGIN_CONFIG
         )
         (plugindir / "config.yml").write_text(

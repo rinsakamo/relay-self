@@ -33,11 +33,13 @@ from tools.bug0_d14_natural_world import (
     R3_ENV,
     R7_EVIDENCE_GRANT,
     R10_SWORD_GRANT,
+    R11_DAY_GRANT,
     marker_kind,
     run,
 )
 from tools.bug0_d14_r7_evidence_post import inspect_r7_source_only
 from tools.bug0_d14_r10_combat_post import inspect_r10_paper_combat
+from tools.bug0_d14_r11_day_foraging_post import inspect_r11_natural_day
 
 R5_GRANT = "D14_R5_LOCAL_ONEWORLD_ONLY"
 MIN_WATCHDOG = 600
@@ -120,6 +122,13 @@ def validate_local_sources(
         )
     ):
         raise D14LocalRejected("R10_STONE_SWORD_REQUIRES_R9_R6_R7_S50_GRANTS")
+    if environment.get(R11_DAY_GRANT) == "1" and any(
+        environment.get(k) != "1" for k in (
+            R10_SWORD_GRANT, R9_COMBAT_GRANT, R6_GRANT, R7_EVIDENCE_GRANT,
+            "D7_PASSIVE_CONTROLS_WORLD_ONLY",
+        )
+    ):
+        raise D14LocalRejected("R11_DAY_REQUIRES_R10_R9_R6_R7_S50_GRANTS")
     repo = repo.resolve(strict=True)
     if check_checkout:
         validate_local_checkout(repo, exact_head)
@@ -168,6 +177,10 @@ def validate_local_sources(
         "r7_source_capture_opt_in": environment.get(R7_EVIDENCE_GRANT) == "1",
         "r9_combat_first_opt_in": environment.get(R9_COMBAT_GRANT) == "1",
         "r10_stone_sword_initial_opt_in": environment.get(R10_SWORD_GRANT) == "1",
+        "r11_natural_day_opt_in": environment.get(R11_DAY_GRANT) == "1",
+        "requested_paper_horizon_ticks": (
+            24000 if environment.get(R11_DAY_GRANT) == "1" else 10000
+        ),
     }
 
 
@@ -330,6 +343,27 @@ async def run_local(
                     motion_fence=motion_fence,
                 )
                 _write_json_once(output_dir / "independent_audit.json", independent)
+                if metadata["r11_natural_day_opt_in"]:
+                    try:
+                        r11 = inspect_r11_natural_day(
+                            paper_log.read_bytes().decode("utf8"),
+                            report, independent,
+                        )
+                        _write_json_once(
+                            output_dir / "r11_natural_day_foraging_readout.json", r11,
+                        )
+                    except Exception as r11_error:
+                        rc = 2
+                        _write_json_once(
+                            output_dir / "r11_natural_day_foraging_error.json", {
+                                "status": "FAIL_CLOSED",
+                                "reason": (
+                                    f"{type(r11_error).__name__}: {r11_error}"
+                                ),
+                                "original_report_mutated": False,
+                                "paper_daylight_and_pickup_attested": False,
+                            },
+                        )
                 if metadata["r10_stone_sword_initial_opt_in"]:
                     try:
                         r10 = inspect_r10_paper_combat(

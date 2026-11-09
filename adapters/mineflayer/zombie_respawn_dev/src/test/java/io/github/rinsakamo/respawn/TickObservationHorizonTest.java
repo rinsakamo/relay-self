@@ -30,7 +30,19 @@ public final class TickObservationHorizonTest {
             h.finish(11234);
             throw new AssertionError("cannot double finish");
         } catch (IllegalStateException expected) { checked++; }
-        for (int bad : new int[]{0, 600, 9999, 10001}) {
+        // R11 opt-in: one full 24000-tick Minecraft day; 119 actual 200tick
+        // samples before the final 24000 limit, no fabricated last sample.
+        TickObservationHorizon fullDay = new TickObservationHorizon(24000, 200);
+        fullDay.begin(42);
+        ok(fullDay.ticks() == 24000);
+        ok(fullDay.endTick() == 24042);
+        ok(fullDay.sample(242));
+        ok(fullDay.sample(23842));
+        ok(!fullDay.sample(24042));
+        ok(!fullDay.reached(24041) && fullDay.reached(24042));
+        fullDay.finish(24042);
+        ok(!fullDay.sample(24042));
+        for (int bad : new int[]{0, 600, 9999, 10001, 23999, 24001, 26000}) {
             try {
                 new TickObservationHorizon(bad, 200);
                 throw new AssertionError("horizon must be exact 10000");

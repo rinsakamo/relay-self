@@ -19,3 +19,8 @@ dev-natural-world-mode: false
 # Vanilla sword, normal player health/hunger, normal zombie AI/health/drop RNG.
 # No new S49 Action or automatic attack. Disabled in all older DEV Worlds.
 dev-r10-initial-stone-sword: false
+
+# R11 only: one full 24000-tick natural day, same ordinary daylight cycle.
+# Requires R10 initial stone sword and a dedicated LocalCodex one-World grant.
+# Passive managed zombie death, nearby rotten ItemSpawn and Self pickup events.
+dev-r11-natural-day: false
