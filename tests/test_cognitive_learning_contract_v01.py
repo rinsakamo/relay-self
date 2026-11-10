@@ -19,7 +19,6 @@ from relay_self.cognitive_learning_contract import (
     IntentAttempt,
     IntentOutcomeReadout,
     LearningContractError,
-    L0PromotionProposal,
     OutcomeAssessment,
     RetainedRevisionRead,
     ReuseAssessment,
@@ -36,7 +35,6 @@ from relay_self.intent import IntentCommitment, ReconsiderationDecision
 from relay_self.persistent_cognition import IdentitySpecification, PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.three_self_present import EpistemicStatus, Lens
-
 
 SCOPE = ScopeRef("self-A", "world-A")
 NATIVE = Provenance("synthetic-native", "world-A:seq-72")
