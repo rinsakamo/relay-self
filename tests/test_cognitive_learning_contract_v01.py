@@ -415,6 +415,7 @@ def test_c4_self_selected_l1_reuse_requires_exact_retained_owner_and_guards() ->
     ({"cues": cues(surface="ice")}, "CONDITION_MISMATCH"),
     ({"viability_confirmed": False}, "WORLD_BODY_VIABILITY_UNKNOWN"),
     ({"cost_budget_ns": 20}, "COGNITIVE_BUDGET_EXCEEDED"),
+    ({"current_contradiction_refs": ("world-A-new-failure",)}, "CURRENT_COUNTEREXAMPLE"),
     ({"current_scope": ScopeRef("self-B", "world-A")}, "FOREIGN_SELF"),
     ({"cues": cues(scope=ScopeRef("self-A", "world-B"))}, "FOREIGN_CUE_SCOPE"),
 ])
@@ -500,6 +501,8 @@ def test_c3_l0_crystallization_is_only_proposal_not_executable_rule() -> None:
         replace(proposal, required_deadline_ns=0)
     with pytest.raises(LearningContractError, match="bounded guard"):
         replace(proposal, guard=())
+    with pytest.raises(LearningContractError, match="bounded guard"):
+        replace(proposal, guard=("not-a-guard",))
 
 
 def test_c3_learnt_candidate_cannot_mint_world_or_memory_ownership() -> None:
