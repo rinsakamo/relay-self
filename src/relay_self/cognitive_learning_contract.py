@@ -330,11 +330,6 @@ def propose_understanding_revision(
             raise LearningContractError("comparison cannot treat UNKNOWN as observed")
     if comparison is Comparison.NO_PREDICTION and experience.attempt.before is not None:
         raise LearningContractError("NO_PREDICTION conflicts with recorded before")
-    if comparison is Comparison.INCOMPARABLE and experience.outcome.disposition not in (
-        OutcomeAssessment.UNKNOWN, OutcomeAssessment.PARTIAL,
-        OutcomeAssessment.SUCCESS, OutcomeAssessment.FAILURE,
-    ):
-        raise LearningContractError("invalid incomparable evidence")
     return UnderstandingProposal(
         proposal_ref=proposal_ref,
         episode_key=experience.episode_key,
@@ -388,6 +383,7 @@ class GuardCondition:
 
 @dataclass(frozen=True, slots=True)
 class CurrentCue:
+    scope: ScopeRef
     key: str
     value: CueValue | None
     status: EpistemicStatus
@@ -395,6 +391,7 @@ class CurrentCue:
     provenance: tuple[Provenance, ...]
 
     def __post_init__(self) -> None:
+        _scope(self.scope)
         _text("cue key", self.key)
         if not isinstance(self.status, EpistemicStatus):
             raise LearningContractError("invalid epistemic cue status")
@@ -456,6 +453,7 @@ def assess_conditional_reuse(
     *,
     retained: RetainedRevisionRead | None,
     current_owner_revision: int | None,
+    current_scope: ScopeRef,
     current_source_revision_refs: tuple[str, ...],
     cues: tuple[CurrentCue, ...],
     allow_l1_reuse: bool,
@@ -465,6 +463,7 @@ def assess_conditional_reuse(
     """Admit read-only candidate *consideration*, never actual Habit/Action use."""
     if not isinstance(candidate, ConditionalReuseCandidate):
         raise LearningContractError("reuse candidate required")
+    _scope(current_scope)
     _refs("current_source_revision_refs", current_source_revision_refs)
     _nonnegative("cost_budget_ns", cost_budget_ns)
     _bool("allow_l1_reuse", allow_l1_reuse)
@@ -480,6 +479,10 @@ def assess_conditional_reuse(
             if isinstance(retained, RetainedRevisionRead) and retained.accepted else None,
         )
 
+    if candidate.proposal.episode_key[0] != current_scope.self_id:
+        return readout(ReuseStage.ABSTAIN, "FOREIGN_SELF")
+    if any(c.scope != current_scope for c in cues):
+        return readout(ReuseStage.ABSTAIN, "FOREIGN_CUE_SCOPE")
     if not viability_confirmed:
         return readout(ReuseStage.ABSTAIN, "WORLD_BODY_VIABILITY_UNKNOWN")
     if candidate.expected_l1_cost_ns > cost_budget_ns:
@@ -532,8 +535,8 @@ class IndependentReuseObservation:
         _provenance(self.source_provenance)
         if self.prior_episode_key == self.later_episode_key:
             raise LearningContractError("same episode cannot prove independent reuse")
-        if self.prior_episode_key[:2] != self.later_episode_key[:2]:
-            raise LearningContractError("cross-Self/session reuse cannot prove same scope")
+        if self.prior_episode_key[0] != self.later_episode_key[0]:
+            raise LearningContractError("cross-Self reuse is not a self learning claim")
         if not isinstance(self.later_outcome, OutcomeAssessment):
             raise LearningContractError("invalid later outcome")
         if not isinstance(self.comparison, ReuseAssessment):
