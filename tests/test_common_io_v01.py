@@ -29,7 +29,6 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, OpenCognitionResult
 from relay_self.skill import SkillExecution
 
-
 SCOPE = ScopeRef("self-A", "world-A")
 NATIVE = Provenance("native", "seq-41")
 INTERNAL = Provenance("offline-cognition", "epoch-4")
