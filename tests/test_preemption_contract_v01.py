@@ -52,7 +52,6 @@ from relay_self.preemption_contract import (
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice
 
-
 SCOPE = ScopeRef("self-A", "world-A")
 INTERNAL = Provenance("offline-owner-fixture", "owner-epoch-7")
 NATIVE = Provenance("offline-native-fixture", "world-A:seq-41")
