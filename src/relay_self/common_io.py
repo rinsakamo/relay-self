@@ -239,6 +239,7 @@ def result_is_current(
     scope: ScopeRef,
     current_source_revision_refs: tuple[str, ...],
     now_ns: int,
+    compute_admitted: bool,
     preemption: PreemptionTrace | None = None,
 ) -> bool:
     """Check a model receipt before caller-owned Intent/Skill/Action admission."""
@@ -259,12 +260,16 @@ def result_is_current(
         or not isinstance(result.provenance, Provenance)
     ):
         return False
+    if result.profile in {Profile.L1, Profile.L2} and not compute_admitted:
+        return False
     if result.profile is Profile.L1:
         if result.choice_id not in {c.choice_id for c in task.choices}:
             return False
     elif result.choice_id is not None:
         return False
-    if result.profile is Profile.L2 and preemption is not None:
+    if result.profile is Profile.L2:
+        if preemption is None:
+            return False
         if (
             preemption.l2_task_ref != result.task_ref
             or preemption.l2_generation != result.generation
