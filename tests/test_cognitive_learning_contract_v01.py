@@ -13,6 +13,7 @@ from relay_self.cognitive_learning_contract import (
     Comparison,
     ConditionalReuseCandidate,
     CurrentCue,
+    EvidenceOrigin,
     GuardCondition,
     IndependentReuseObservation,
     IntentAttempt,
@@ -98,6 +99,7 @@ def attempt(
         owner_revision=4, started_at_ns=20, kind=kind,
         attempt_provenance=OWNER,
         original_source_refs=(NATIVE,),
+        evidence_origin=EvidenceOrigin.WORLD_BODY_OBSERVED,
         action_refs=("S49-move-1", "S49-move-2")
         if action_refs is None and kind is AttemptKind.ACTIONS else (
             () if action_refs is None else action_refs
@@ -118,6 +120,7 @@ def readout(
         scope=scope, intent_id="intent-A", attempt_ref=attempt_ref,
         assessed_at_ns=assessed_at_ns, disposition=disposition,
         assessment_provenance=OWNER,
+        evidence_origin=EvidenceOrigin.WORLD_BODY_OBSERVED if known else EvidenceOrigin.UNKNOWN,
         world_source_refs=(NATIVE,) if known else (),
         objective_check_ref="intent-goal-verified-by-world-readback" if known else None,
         uncertainty_ref="uncertainty-not-zero" if not known else None,
@@ -279,6 +282,10 @@ def test_action_outcome_or_llm_claim_not_sufficient_for_intent_success() -> None
     with pytest.raises(LearningContractError, match="UNKNOWN"):
         replace(readout(disposition=OutcomeAssessment.UNKNOWN),
                 objective_check_ref="hallucinated-verification")
+    with pytest.raises(LearningContractError, match="WorldBody evidence"):
+        replace(readout(), evidence_origin=EvidenceOrigin.COGNITION_ONLY)
+    with pytest.raises(LearningContractError, match="WorldBody evidence"):
+        replace(attempt(), evidence_origin=EvidenceOrigin.COGNITION_ONLY)
     assert experience().outcome.objective_check_ref is not None
     # But a pointer is still only a caller-supplied witness, not native attestation.
 
