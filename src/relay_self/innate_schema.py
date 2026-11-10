@@ -33,7 +33,7 @@ class SchemaDependency:
 
     def __post_init__(self) -> None:
         _text("dependency schema_id", self.schema_id)
-        if self.minimum_mode not in (SchemaMode.FAST, SchemaMode.FULL):
+        if not isinstance(self.minimum_mode, SchemaMode) or self.minimum_mode is SchemaMode.OFF:
             raise SchemaContractError("dependency minimum_mode must be FAST or FULL")
 
 
@@ -55,7 +55,7 @@ class SchemaModuleSpec:
             not isinstance(self.supported_modes, frozenset)
             or not self.supported_modes
             or SchemaMode.OFF in self.supported_modes
-            or any(m not in (SchemaMode.FAST, SchemaMode.FULL) for m in self.supported_modes)
+            or any(not isinstance(m, SchemaMode) for m in self.supported_modes)
         ):
             raise SchemaContractError("supported_modes must contain FAST and/or FULL")
         _refs("signal_kinds", self.signal_kinds, require_nonempty=True)
@@ -170,7 +170,7 @@ def check_schema_eligibility(
     """No Goal, compute, action, installed-rule or Memory authorization."""
     _text("schema_id", schema_id)
     _nonnegative("current_registry_revision", current_registry_revision)
-    if requested_mode not in (SchemaMode.FAST, SchemaMode.FULL):
+    if not isinstance(requested_mode, SchemaMode) or requested_mode is SchemaMode.OFF:
         raise SchemaContractError("requested mode must be FAST or FULL")
 
     reason = "ELIGIBLE"
@@ -267,6 +267,7 @@ class CognitiveSignal:
     registry_revision: int
     source_revision_refs: tuple[str, ...]
     signal_kind: str
+    execution_mode: SchemaMode
     epistemic_status: str
     question_candidate: ExplorationQuestion | None = None
 
@@ -278,7 +279,7 @@ class CognitiveSignal:
         _nonnegative("registry_revision", self.registry_revision)
         _refs("source_revision_refs", self.source_revision_refs, require_nonempty=True)
         _text("signal_kind", self.signal_kind)
-        if self.epistemic_status not in ("HYPOTHETICAL", "INFERRED", "UNKNOWN"):
+        if self.execution_mode not in (SchemaMode.FAST, SchemaMode.FULL) or not isinstance(\n            self.execution_mode, SchemaMode\n        ):\n            raise SchemaContractError("signal execution mode must be FAST or FULL")\n        if self.epistemic_status not in ("HYPOTHETICAL", "INFERRED", "UNKNOWN"):
             raise SchemaContractError("schema output cannot masquerade as observed World fact")
         if (self.signal_kind == "QUESTION_CANDIDATE") != (
             self.question_candidate is not None
@@ -300,6 +301,7 @@ def signal_is_current(
         signal.envelope.scope != scope
         or signal.registry_revision != snapshot.revision
         or signal.source_revision_refs != source_revision_refs
+        or signal.execution_mode is not requested_mode
         or not isinstance(signal.envelope.provenance, Provenance)
     ):
         return False
@@ -358,6 +360,7 @@ def propose_exploratory_question(
         registry_revision=snapshot.revision,
         source_revision_refs=opportunity.source_revision_refs,
         signal_kind="QUESTION_CANDIDATE",
+        execution_mode=SchemaMode.FULL,
         epistemic_status="HYPOTHETICAL",
         question_candidate=ExplorationQuestion(
             unknown_target_ref=opportunity.unknown_target_ref,
