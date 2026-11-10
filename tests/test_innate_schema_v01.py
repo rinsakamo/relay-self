@@ -41,7 +41,6 @@ from relay_self.innate_schema import (
 from relay_self.persistent_cognition import IdentitySpecification, Memory, PersistentCognition
 from relay_self.provenance import Provenance
 
-
 SCOPE = ScopeRef("self-A", "world-A")
 NATIVE = Provenance("native", "seq-14")
 SCHEMA = Provenance("schema-owner", "spec-v1")
@@ -319,7 +318,7 @@ def test_fast_cue_original_installed_cpu_path_not_controlled_by_schema_registry(
         expires_at_ns=150,
     )
     disabled = with_schema_mode(snapshot(), schema_id="exploratory", mode=SchemaMode.OFF)
-    assert not disabled.get("exploratory").mode is SchemaMode.FULL
+    assert disabled.get("exploratory").mode is not SchemaMode.FULL
     assert fast_cue_eligible(
         cue, scope=SCOPE, source_revision_ref="native-seq-14",
         installed_rule_refs=frozenset({"existing-s49-emergency-rule"}), now_ns=120,
