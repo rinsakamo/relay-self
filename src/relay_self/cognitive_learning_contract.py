@@ -20,6 +20,12 @@ class LearningContractError(ValueError):
     """Incorrect scope, owner lineage, evidence or reuse admission."""
 
 
+class EvidenceOrigin(str, Enum):
+    WORLD_BODY_OBSERVED = "WORLD_BODY_OBSERVED"
+    COGNITION_ONLY = "COGNITION_ONLY"
+    UNKNOWN = "UNKNOWN"
+
+
 class AttemptKind(str, Enum):
     ACTIONS = "ACTIONS"
     GUARDED_REST = "GUARDED_REST"
@@ -99,6 +105,7 @@ class IntentAttempt:
     kind: AttemptKind
     attempt_provenance: Provenance
     original_source_refs: tuple[Provenance, ...]
+    evidence_origin: EvidenceOrigin
     action_refs: tuple[str, ...] = ()
     before: BeforePrediction | None = None
 
@@ -112,6 +119,8 @@ class IntentAttempt:
             raise LearningContractError("invalid Intent attempt kind")
         _provenance(self.attempt_provenance)
         _provenances("original_source_refs", self.original_source_refs, required=True)
+        if self.evidence_origin is not EvidenceOrigin.WORLD_BODY_OBSERVED:
+            raise LearningContractError("Intent attempt requires WorldBody evidence, not L2 text")
         _refs("action_refs", self.action_refs)
         if self.kind is AttemptKind.ACTIONS and not self.action_refs:
             raise LearningContractError("ACTIONS attempt requires action lineage")
@@ -134,6 +143,7 @@ class IntentOutcomeReadout:
     assessed_at_ns: int
     disposition: OutcomeAssessment
     assessment_provenance: Provenance
+    evidence_origin: EvidenceOrigin
     world_source_refs: tuple[Provenance, ...] = ()
     objective_check_ref: str | None = None
     uncertainty_ref: str | None = None
@@ -148,6 +158,8 @@ class IntentOutcomeReadout:
         _provenance(self.assessment_provenance)
         _provenances("world_source_refs", self.world_source_refs)
         if self.disposition is not OutcomeAssessment.UNKNOWN:
+            if self.evidence_origin is not EvidenceOrigin.WORLD_BODY_OBSERVED:
+                raise LearningContractError("known outcome requires WorldBody evidence, not L2 text")
             if not self.world_source_refs or self.objective_check_ref is None:
                 raise LearningContractError(
                     "known Intent result requires native observation and objective check"
@@ -155,6 +167,8 @@ class IntentOutcomeReadout:
             _text("objective_check_ref", self.objective_check_ref)
         elif self.objective_check_ref is not None:
             raise LearningContractError("UNKNOWN cannot claim verified objective check")
+        if not isinstance(self.evidence_origin, EvidenceOrigin):
+            raise LearningContractError("invalid outcome evidence origin")
         if self.uncertainty_ref is not None:
             _text("uncertainty_ref", self.uncertainty_ref)
 
