@@ -35,7 +35,6 @@ from relay_self.three_self_present import (
     review_question_candidate,
 )
 
-
 SCOPE = ScopeRef("self-A", "world-A")
 NATIVE = Provenance("native-receiver", "world-A:seq-42")
 RETAINED = Provenance("retained-owner", "memory-integration-7")
