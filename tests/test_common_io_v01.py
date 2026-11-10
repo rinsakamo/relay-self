@@ -8,8 +8,8 @@ from relay_self.action import ActionLifecycle, ActionState, InvalidTransition
 from relay_self.common_io import (
     Clock,
     ClockStamp,
-    CognitiveTask,
     CognitionResultReceipt,
+    CognitiveTask,
     CommonEnvelope,
     CommonIOError,
     FastCue,
