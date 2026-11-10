@@ -279,7 +279,9 @@ class CognitiveSignal:
         _nonnegative("registry_revision", self.registry_revision)
         _refs("source_revision_refs", self.source_revision_refs, require_nonempty=True)
         _text("signal_kind", self.signal_kind)
-        if self.execution_mode not in (SchemaMode.FAST, SchemaMode.FULL) or not isinstance(\n            self.execution_mode, SchemaMode\n        ):\n            raise SchemaContractError("signal execution mode must be FAST or FULL")\n        if self.epistemic_status not in ("HYPOTHETICAL", "INFERRED", "UNKNOWN"):
+        if not isinstance(self.execution_mode, SchemaMode) or self.execution_mode is SchemaMode.OFF:
+            raise SchemaContractError("signal execution mode must be FAST or FULL")
+        if self.epistemic_status not in ("HYPOTHETICAL", "INFERRED", "UNKNOWN"):
             raise SchemaContractError("schema output cannot masquerade as observed World fact")
         if (self.signal_kind == "QUESTION_CANDIDATE") != (
             self.question_candidate is not None
