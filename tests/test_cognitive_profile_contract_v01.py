@@ -27,13 +27,13 @@ from relay_self.common_io import (
     fast_cue_eligible,
     result_is_current,
 )
-
 from relay_self.innate_schema import SchemaSnapshot
 from relay_self.intent import IntentCommitment
 from relay_self.persistent_cognition import IdentitySpecification, PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, DecisionStatus
 from relay_self.three_self_present import project_present_frame, project_three_self
+
 SCOPE = ScopeRef("self-A", "world-A")
 SOURCE = ("native-seq-71", "present-5")
 NATIVE = Provenance("offline-native", "world-A:71")
