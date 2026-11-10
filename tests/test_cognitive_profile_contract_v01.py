@@ -4,6 +4,17 @@ from dataclasses import replace
 
 import pytest
 
+from relay_self.cognitive_profile_contract import (
+    GPUState,
+    OriginKind,
+    ProfileContractError,
+    ProfileCostEstimate,
+    ResourceReadout,
+    TaskOrigin,
+    bind_present_task,
+    note_l1_abstention,
+    route_bound_task,
+)
 from relay_self.common_io import (
     Clock,
     ClockStamp,
@@ -16,25 +27,13 @@ from relay_self.common_io import (
     fast_cue_eligible,
     result_is_current,
 )
-from relay_self.cognitive_profile_contract import (
-    GPUState,
-    OriginKind,
-    ProfileContractError,
-    ProfileCostEstimate,
-    ResourceReadout,
-    TaskOrigin,
-    bind_present_task,
-    note_l1_abstention,
-    route_bound_task,
-)
+
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.intent import IntentCommitment
 from relay_self.persistent_cognition import IdentitySpecification, PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, DecisionStatus
 from relay_self.three_self_present import project_present_frame, project_three_self
-from relay_self.innate_schema import SchemaSnapshot
-
-
 SCOPE = ScopeRef("self-A", "world-A")
 SOURCE = ("native-seq-71", "present-5")
 NATIVE = Provenance("offline-native", "world-A:71")
@@ -335,7 +334,7 @@ def test_invalid_resource_or_cost_estimate_cannot_be_authority() -> None:
         replace(costs()[1], required_vram_mib=0)
     with pytest.raises(ProfileContractError, match="expiry"):
         replace(resources(), expires_at_ns=90)
-    with pytest.raises(ProfileContractError, match="L2 owner"):
+    with pytest.raises(ProfileContractError, match="gpu_l2_owner_task_ref"):
         replace(resources(), gpu_state=GPUState.BUSY_L2)
     with pytest.raises(ProfileContractError, match="non-L2-busy"):
         replace(resources(), gpu_l2_owner_task_ref="stale-l2")
