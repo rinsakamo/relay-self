@@ -473,12 +473,14 @@ def assess_conditional_reuse(
     allow_l1_reuse: bool,
     viability_confirmed: bool,
     cost_budget_ns: int,
+    current_contradiction_refs: tuple[str, ...] = (),
 ) -> ReuseReadout:
     """Admit read-only candidate *consideration*, never actual Habit/Action use."""
     if not isinstance(candidate, ConditionalReuseCandidate):
         raise LearningContractError("reuse candidate required")
     _scope(current_scope)
     _refs("current_source_revision_refs", current_source_revision_refs)
+    _refs("current_contradiction_refs", current_contradiction_refs)
     _nonnegative("cost_budget_ns", cost_budget_ns)
     _bool("allow_l1_reuse", allow_l1_reuse)
     _bool("viability_confirmed", viability_confirmed)
@@ -497,6 +499,8 @@ def assess_conditional_reuse(
         return readout(ReuseStage.ABSTAIN, "FOREIGN_SELF")
     if any(c.scope != current_scope for c in cues):
         return readout(ReuseStage.ABSTAIN, "FOREIGN_CUE_SCOPE")
+    if current_contradiction_refs:
+        return readout(ReuseStage.ABSTAIN, "CURRENT_COUNTEREXAMPLE")
     if not viability_confirmed:
         return readout(ReuseStage.ABSTAIN, "WORLD_BODY_VIABILITY_UNKNOWN")
     if candidate.expected_l1_cost_ns > cost_budget_ns:
@@ -579,7 +583,9 @@ class L0PromotionProposal:
 
     def __post_init__(self) -> None:
         _text("candidate_ref", self.candidate_ref)
-        if not self.guard:
+        if not isinstance(self.guard, tuple) or not self.guard or not all(
+            isinstance(g, GuardCondition) for g in self.guard
+        ):
             raise LearningContractError("L0 promotion needs a bounded guard")
         _positive("required_deadline_ns", self.required_deadline_ns)
         _text("rollback_ref", self.rollback_ref)
