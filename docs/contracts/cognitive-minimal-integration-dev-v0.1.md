@@ -73,6 +73,12 @@ remains an explicit separate #843 migration.
   nearby entity and a stable selected inventory item/slot; ATTACK checks
   exactly the same near single Zombie and bounded entity movement. The
   resulting `S49ReadOnlyHandoff` is explicitly **not** an Action grant.
+  It now records the Self identity and **proposed** Intent ID, checks the
+  selected Goal still exists with the same Skill, and exposes the current
+  Schema registry revision for diagnosis. An unrelated Schema revision
+  does not invalidate a still-valid selected Goal/Skill/Target. The original
+  Intent is *not* committed, and original S51 food policy and S49 authority
+  remain unverified (explicitly false fields in the witness).
   With `--s49-readonly-shadow`, the CLI makes **two new post-L1 read-only
   probes** and reports `S49_SHADOW_READY` or `S49_SHADOW_REJECTED`,
   never a native Action. This is mutually exclusive with `--execute-native`.
