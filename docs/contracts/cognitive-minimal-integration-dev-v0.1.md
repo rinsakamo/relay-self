@@ -66,12 +66,22 @@ remains an explicit separate #843 migration.
   latency/p50/p95 and simulation deadline misses. The 48-epoch adversarial
   test has no native Action, no actual GPU preemption, and is not a
   production L0 Scheduler or a real FAST deadline guarantee.
+- `experiments/cognitive_s49_readonly_handoff.py` implements a **read-only**
+  original-S49-shaped two-probe Goal/Skill/Target precheck: unique native
+  request IDs, one session, bounded seq gap, stable body position, and
+  action-specific source constraints. EAT additionally checks no observed
+  nearby entity and a stable selected inventory item/slot; ATTACK checks
+  exactly the same near single Zombie and bounded entity movement. The
+  resulting `S49ReadOnlyHandoff` is explicitly **not** an Action grant.
+  With `--s49-readonly-shadow`, the CLI makes **two new post-L1 read-only
+  probes** and reports `S49_SHADOW_READY` or `S49_SHADOW_REJECTED`,
+  never a native Action. This is mutually exclusive with `--execute-native`.
 - See `docs/contracts/cognitive-s49-preissue-fence-audit-v0.1.md` for
-  concrete differences with original S49 #767: current main-based
-  `MineflayerObservation` now supports the **read-only** correlated
-  native `request_id` backport. However the original S49 two-probe/steady
-  window, independent grants and `NormalSessionActionExecutor` are still
-  not wired into this stacked runtime, and nothing writes a pre-ISSUE WAL here.
+  concrete differences with original S49 #767. The read-only correlated
+  two-probe witness is now implemented, but original S49's **actual**
+  independent authority, S15/S16 owner, post-move settling, lifecycle
+  admission, `NormalSessionActionExecutor` and PRE-ISSUE WAL remain
+  unconnected. Do not equate a positive witness with original S49 approval.
 - L2 escalation may construct one `RelayEngine.OPEN` request. Strict
   parser accepts only exact innate-format typed CPU patterns and rejects
   arbitrary code/unknown/costly forms. No Self acceptance is presumed.
@@ -83,7 +93,9 @@ remains an explicit separate #843 migration.
 Run:
 ```bash
 PYTHONPATH=src:. python -m pytest tests/test_cognitive_minimal_dev_v01.py \
-    tests/test_cognitive_minimal_minecraft_dev.py -q
+    tests/test_cognitive_minimal_minecraft_dev.py \\
+    tests/test_cognitive_s49_readonly_handoff.py \\
+    tests/test_cognitive_minimal_world_cli.py -q
 ```
 
 Synthetic D1 EAT with inventory → original supervisor two effects/outcomes
@@ -120,6 +132,12 @@ PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
   --llama-timeout-s 30 --evidence-path ./cognitive-dev-evidence.json
 ```
 
+For an additional **non-issuing** two-probe S49-shaped precheck, add
+`--s49-readonly-shadow` to the command above. The returned witness includes
+selected Goal/Skill/Target, two independent probe sequences/request IDs and
+any food slot or zombie entity ID. An accepted witness is **not** an original
+S49 admission or physical qualification, and issuing remains disabled.
+
 Only after confirming the actual World/readback/Item/target and grant
 conditions, add **both** `--execute-native` and
 `--acknowledge-unfenced-dev` to permit the bounded main-branch EAT/FIGHT
@@ -145,8 +163,9 @@ the file. Pre-ISSUE durable reservation in the full S49/#767 Action path
 must remain a separate qualification gate. `--llama-timeout-s` limits a
 provider HTTP request, **not** a guaranteed GPU abort or hard CPU deadline.
 
-CI additionally runs complete fake-process CLI composition for shadow and
-native EAT plus a disconnected-in-flight failure. The fake sessions and
+CI additionally runs complete fake-process CLI composition for shadow,
+read-only S49-shaped two-probe EAT/ATTACK and movement refusal, native EAT,
+and a disconnected-in-flight failure. The fake sessions and
 model provider do not constitute physical World/GPU evidence.
 
 Record exact HEAD, model artifact hash, llama.cpp runtime SHA, GPU driver,
