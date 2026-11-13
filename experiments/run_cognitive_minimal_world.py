@@ -192,6 +192,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     session: MineflayerProcessSession | None = None
     first: MineflayerObservation | None = None
     spawn: MineflayerObservation | None = None
+    pre_l1_probe_diagnostics: dict[str, object] | None = None
     owner = IntentCommitment()
     supervisor = ActionSupervisor()
     try:
@@ -231,9 +232,29 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             # native fact, not the possibly early spawn inventory snapshot.
             if args.pre_l1_wait_s:
                 await asyncio.sleep(args.pre_l1_wait_s)
+            probe_id = f"cognitive-pre-l1-{uuid.uuid4().hex}"
+            pre_l1_probe_diagnostics = {
+                "request_id": probe_id,
+                "stage": "PRE_L1_PROBE_REQUEST_PREPARED",
+                "receive_limit": 4096,
+            }
+            _write_evidence(args.evidence_path, {
+                "evidence_class": "DEV_INITIAL_NATIVE_CHECKPOINT",
+                "stage": "PRE_L1_PROBE_REQUEST_PREPARED",
+                "native_success_claim": False,
+                "physical_action_issued": False,
+                "world_session": spawn.session_id,
+                "spawn_native_observation": _native_observation_record(spawn),
+                "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
+                "original_s49_preissue_wal": "NOT_CONNECTED",
+            })
+            # The post-spawn 0..60s wait may queue many passive native move/
+            # inventory events. Use an enlarged but strictly bounded budget
+            # ONLY here. Post-L1 shadow still uses its strict 32-event budget.
             first = await read_correlated_native_probe(
                 session, spawn, scenario,
-                request_id=f"cognitive-pre-l1-{uuid.uuid4().hex}",
+                request_id=probe_id, max_messages=4096,
+                diagnostics=pre_l1_probe_diagnostics,
             )
             _write_evidence(args.evidence_path, {
                 "evidence_class": "DEV_INITIAL_NATIVE_CHECKPOINT",
@@ -245,6 +266,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 "spawn_native_observation": _native_observation_record(spawn),
                 "initial_native_observation": _native_observation_record(first),
                 "pre_l1_probe_requested": True,
+                "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
                 "pre_l1_wait_s": args.pre_l1_wait_s,
                 "scenario_inputs": {
                     "edible_item_names": list(scenario.edible_item_names),
@@ -282,6 +304,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "initial_native_observation": _native_observation_record(first),
             "spawn_native_observation": _native_observation_record(spawn),
             "pre_l1_probe_requested": args.pre_l1_native_probe,
+            "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
             "pre_l1_wait_s": args.pre_l1_wait_s,
             "initial_schema_frame": asdict(receipt.initial_frame),
             "current_schema_frame": (
@@ -382,6 +405,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 None if spawn is None else _native_observation_record(spawn)
             ),
             "pre_l1_probe_requested": args.pre_l1_native_probe,
+            "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
             "current_intent_id": (
                 None if owner.current_intent is None
                 else owner.current_intent.intent_id
