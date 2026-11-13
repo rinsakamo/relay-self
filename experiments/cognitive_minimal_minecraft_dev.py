@@ -91,7 +91,7 @@ def native_schema_percept(
         raise MinimalCognitionError("dead WorldBody is not actionable")
 
     snapshot = observation.snapshot
-    hunger = int(snapshot.food) if snapshot.food.is_integer() else None
+    hunger = int(snapshot.food) if float(snapshot.food).is_integer() else None
     targets: list[Target] = []
     # Existing adapter sends items and counts, not an is_edible fact. The
     # scenario's explicitly recognized food names are the only valid EAT targets.
