@@ -341,6 +341,60 @@ ticks, STOP, prior MOVE settling or safety. Original S51 food policy,
 S49 Owner/grants/S15-S16 and #767 pre-ISSUE WAL remain separate OPEN
 integration requirements.
 
+## Controlled EAT real DEV failure: native pre-L1 event backlog/horizon
+
+LocalCodex's real controlled-World attempt on PR #844 HEAD
+`769e7e565112ac228f00e193bde264a5ae64f69b`
+([read-only DEV report](https://github.com/rinsakamo/relay-self/pull/844#issuecomment-6853945121))
+did **not** reach L1, CPU Schema, post-L1 probes or S49 handoff.
+Spawn seq1 was healthy/food20/bread absent. The independent test-World
+console accepted giving bread and applying Hunger, but **no qualified
+native readback of these changes was retained**. The pre-L1 observer
+consumed **32 received messages** and refused
+`no qualified probe within bounded event horizon`.
+The original code did not preserve the probe request ID, event kinds
+or last observed seq in that failure path. Event backlog during the
+30-second operator setup window is **plausible but not proven**; no
+source-qualified EAT positive was measured. Action/Outcome count remained
+zero; this was an appropriate fail-closed result.
+
+The DEV remediation remains strictly read-only:
+
+- `read_correlated_native_probe()` now exposes a bounded
+  `NativeProbeFailure.diagnostics` plus an optional caller-held live
+  diagnostics dictionary. The data includes exact requested ID,
+  native World session, initial seq, whether send completed, received
+  count, event kind histogram, first/last six event summaries
+  (kind/session/seq/request ID), most recent *diagnostic-only*
+  decoded observation (never a qualified handoff), elapsed time,
+  exception class/limited message when applicable, and the
+  terminal refusal reason. The exact probe request ID is written to
+  `--evidence-path` **before** sending the request, then retained in
+  a handled failure audit. The last diagnostic observation is **not
+  substituted for a correlated probe**.
+- **Only the pre-L1 observer** explicitly raises the event bound
+  from the shared default 32 to **4,096** to tolerate a passive event
+  backlog after the bounded World setup wait. Its original read
+  timeout still applies (`--evidence-timeout-s`, default 8s).
+  No unbounded retries, synthetic probes, dropped/assumed request IDs,
+  alternate Action issuer, or change to the post-L1/S49-shaped 32-event
+  horizon. 4,096 events or expiry without a matching response still
+  fails closed with telemetry.
+- Synthetic full-CLI regression reproduces a wait-borne 51-event
+  queue followed by a genuinely correlated pre-L1 EAT snapshot,
+  L1 EAT choice and two post-L1 probes, without any native Action.
+  Additional negatives prove the original 32-event post-L1 horizon
+  is unchanged and a pre-L1 stream failure retains the request ID,
+  source, last seq, event counts and no-Action audit.
+
+**Next local real DEV**: inspect the exact PR HEAD/CI, launch the isolated
+Minecraft 1.21.8 + Mineflayer + real Gemma as necessary, repeat exactly
+one EAT positive-control attempt with a real post-setup native observation
+and compare the new probe telemetry to the test-World logs. The
+`pre_l1_probe_diagnostics.received_count` and histogram show whether a
+backlog preceded the matched probe. Do not infer source success from
+console ACKs, and do not silently turn this into an EAT action.
+
 ## Remaining boundaries
 
 1. **Real world + model measurements:** Run grant-backed CLI on operator
