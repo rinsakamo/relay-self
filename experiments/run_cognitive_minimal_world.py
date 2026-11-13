@@ -18,6 +18,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
     MineflayerCommandError,
     MineflayerConnectionEnd,
+    MineflayerEffectResult,
     MineflayerLaunchConfig,
     MineflayerObservation,
 )
@@ -121,6 +122,15 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             supervisor=supervisor, grant_real_world=True,
             issue_native=args.execute_native,
         )
+        issued_at = next(
+            (event.at_ns for action in ([] if receipt.run is None else receipt.run.actions)
+             for event in action.events if event.state.value == "issued"),
+            None,
+        )
+        committed_at = (
+            None if owner.current_intent is None
+            else owner.current_intent.committed_at_ns
+        )
         outcome = {
             "evidence_class": "REAL_LLM_AND_NATIVE_WORLD_DEV_ATTEMPT",
             "qualification": "NOT_CLAIMED",
@@ -132,6 +142,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "status": receipt.status,
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
+            "intent_to_action_issued_ns": (
+                None if issued_at is None or committed_at is None
+                else issued_at - committed_at
+            ),
             "schema_cpu_epoch_ns": receipt.initial_frame.elapsed_ns,
             "schema_pattern_checks": receipt.initial_frame.pattern_checks,
             "target_count": len(receipt.initial_frame.options),
@@ -145,12 +159,22 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 [{"action_id": a.action_id, "state": a.state.value}
                  for a in receipt.run.actions]
             ),
+            "native_effect_receipts": (
+                [] if receipt.run is None else [
+                    {"action_id": message.action_id, "result": message.result,
+                     "effect": message.effect, "source_ref": message.provenance.reference}
+                    for message in receipt.run.messages
+                    if isinstance(message, MineflayerEffectResult)
+                ]
+            ),
             "skill_final_state": (
                 None if receipt.run is None else
                 receipt.run.skill_execution.state.value
             ),
             "provider_prompt_tokens": receipt.l1_result.observed_prompt_tokens,
             "provider_completion_tokens": receipt.l1_result.observed_completion_tokens,
+            "separate_prefill_decode_timing": "NOT_MEASURED",
+            "gpu_preemption": "NOT_MEASURED",
             "self_grant_execute_native": args.execute_native,
         }
         if args.enable_l2_proposal and receipt.status == "ESCALATE_L2":
