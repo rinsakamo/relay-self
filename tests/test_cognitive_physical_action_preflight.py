@@ -20,8 +20,8 @@ from relay_self.physical_action_port import (
 )
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
-from test_cognitive_s49_readonly_handoff import select
 from test_cognitive_minimal_minecraft_dev import bread, observation, zombie
+from test_cognitive_s49_readonly_handoff import select
 
 
 def original_selected_eat():
