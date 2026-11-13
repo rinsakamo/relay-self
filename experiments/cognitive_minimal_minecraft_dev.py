@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Callable
 
 from adapters.mineflayer.python_protocol import (
@@ -232,49 +232,144 @@ def _rebound_decision(
     raise MinimalCognitionError("no existing ActionPort adapter for bound Skill")
 
 
+class NativeProbeFailure(MinimalCognitionError):
+    """Fail-closed probe with bounded native receive evidence; never a grant."""
+
+    def __init__(self, reason: str, diagnostics: dict[str, object]) -> None:
+        super().__init__(reason)
+        self.diagnostics = diagnostics
+
+
 async def read_correlated_native_probe(
     session: MineflayerScenarioSession,
     initial: MineflayerObservation,
     scenario: ControlledScenario,
     *,
     request_id: str,
+    max_messages: int | None = None,
+    diagnostics: dict[str, object] | None = None,
 ) -> MineflayerObservation:
-    """One source-correlated native observation, before or after L1.
+    """Require an exact echoed native probe; bound both elapsed time and traffic.
 
-    Bounded and fail closed; no physical Action, no inferred separate tick.
+    The usual post-L1/S49 shadow keeps the scenario's 32-message horizon.
+    A caller can opt into a larger, still-bounded *pre-L1* drain after an
+    operator-owned World setup wait. This never relaxes source qualification,
+    creates an Action, or asserts a distinct Minecraft physics tick.
 
-    Does not swallow an unexpected primitive effect receipt that belongs to
-    another owner: the caller must coordinate other outstanding actions first.
+    Diagnostics retain an exact request ID and bounded event summaries,
+    rather than silently losing the sequence/kinds that exhausted a horizon.
     """
-    await session.send_observe(request_id)
-    deadline = asyncio.get_running_loop().time() + scenario.evidence_timeout_s
-    for _ in range(scenario.max_evidence_messages):
-        remaining = deadline - asyncio.get_running_loop().time()
+    limit = scenario.max_evidence_messages if max_messages is None else max_messages
+    if type(limit) is not int or not 1 <= limit <= 4096:
+        raise MinimalCognitionError("native probe event budget must be 1..4096")
+    if diagnostics is not None and not isinstance(diagnostics, dict):
+        raise MinimalCognitionError("probe diagnostics must be a dictionary")
+
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    report: dict[str, object] = {
+        "request_id": request_id,
+        "session_id": initial.session_id,
+        "initial_seq": initial.seq,
+        "max_messages": limit,
+        "received_count": 0,
+        "event_kind_counts": {},
+        "first_events": [],
+        "last_events": [],
+        "last_received_seq": None,
+        "last_observed_snapshot": None,
+        "response_matched": False,
+        "send_completed": False,
+        "terminal_reason": "NOT_FINISHED",
+        "elapsed_ms": 0.0,
+    }
+
+    def publish(reason: str, *, matched: bool = False) -> None:
+        report["terminal_reason"] = reason
+        report["response_matched"] = matched
+        report["elapsed_ms"] = round((loop.time() - started) * 1000, 3)
+        if diagnostics is not None:
+            diagnostics.clear()
+            diagnostics.update(report)
+
+    def refuse(reason: str) -> NativeProbeFailure:
+        publish(reason)
+        return NativeProbeFailure(reason, dict(report))
+
+    try:
+        await session.send_observe(request_id)
+    except Exception as exc:
+        raise refuse("could not send correlated native probe") from exc
+    report["send_completed"] = True
+    deadline = loop.time() + scenario.evidence_timeout_s
+
+    for _ in range(limit):
+        remaining = deadline - loop.time()
         if remaining <= 0:
-            raise MinimalCognitionError("fresh native probe timed out")
+            raise refuse("fresh native probe timed out")
         try:
             message = await asyncio.wait_for(session.receive(), timeout=remaining)
         except TimeoutError as exc:
-            raise MinimalCognitionError("fresh native probe timed out") from exc
+            raise refuse("fresh native probe timed out") from exc
+        except Exception as exc:
+            raise refuse("native stream failed before correlated probe") from exc
+
+        kind = (
+            f"observation:{message.kind}" if isinstance(message, MineflayerObservation)
+            else type(message).__name__
+        )
+        kinds = report["event_kind_counts"]
+        assert isinstance(kinds, dict)
+        kinds[kind] = kinds.get(kind, 0) + 1
+        report["received_count"] = int(report["received_count"]) + 1
+        report["last_received_seq"] = message.seq
+        event = {
+            "kind": kind,
+            "seq": message.seq,
+            "request_id": (
+                message.request_id if isinstance(message, MineflayerObservation)
+                else None
+            ),
+        }
+        first = report["first_events"]
+        last = report["last_events"]
+        assert isinstance(first, list) and isinstance(last, list)
+        if len(first) < 6:
+            first.append(event)
+        last.append(event)
+        if len(last) > 6:
+            del last[0]
+
+        if isinstance(message, MineflayerObservation):
+            # Last *observed* snapshot is diagnosis only. It is NOT promoted
+            # into the source-qualified request/response handoff.
+            report["last_observed_snapshot"] = {
+                "seq": message.seq,
+                "kind": message.kind,
+                "source_ref": message.provenance.reference,
+                "snapshot": asdict(message.snapshot),
+            }
+
         if message.session_id != initial.session_id:
-            raise MinimalCognitionError("World session changed during L1/probe")
+            raise refuse("World session changed during L1/probe")
         if message.seq <= initial.seq:
-            raise MinimalCognitionError("non-monotonic native probe")
+            raise refuse("non-monotonic native probe")
         if isinstance(message, MineflayerEffectResult):
-            raise MinimalCognitionError("unexpected Action receipt during probe")
+            raise refuse("unexpected Action receipt during probe")
         if isinstance(message, (MineflayerConnectionEnd, MineflayerCommandError,
                                 MineflayerAdapterErrorMessage)):
-            raise MinimalCognitionError("native probe session became unavailable")
+            raise refuse("native probe session became unavailable")
         if isinstance(message, MineflayerObservation):
             if message.kind in {"death", "respawn"} or message.snapshot.health <= 0:
-                raise MinimalCognitionError("WorldBody life-cycle changed")
+                raise refuse("WorldBody life-cycle changed")
             if message.kind == "probe":
                 if message.request_id != request_id:
-                    raise MinimalCognitionError(
-                        "uncorrelated or stale native probe response"
-                    )
+                    raise refuse("uncorrelated or stale native probe response")
+                publish("MATCHED", matched=True)
                 return message
-    raise MinimalCognitionError("no qualified probe within bounded event horizon")
+
+    raise refuse("no qualified probe within bounded event horizon")
+
 
 
 async def execute_one_cognitive_world_turn(
