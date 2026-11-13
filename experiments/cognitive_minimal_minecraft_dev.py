@@ -223,6 +223,7 @@ async def execute_one_cognitive_world_turn(
     intent_owner: IntentCommitment,
     supervisor: ActionSupervisor,
     grant_real_world: bool,
+    issue_native: bool = False,
     allowed_skills: frozenset[tuple[str, int]] = frozenset({
         ("EAT", 1), ("ATTACK", 1),
     }),
@@ -299,6 +300,11 @@ async def execute_one_cognitive_world_turn(
         )
     # This is a physical-capability check, NOT a second L1 Skill chooser.
     decision = _rebound_decision(selection.option, current_observation, scenario)
+    if not issue_native:
+        return WorldStepReceipt(
+            "READY_NO_ISSUE", selection, original_frame, current_frame,
+            l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+        )
     intent_owner.commit(
         intent_id,
         objective=selection.option.goal_id,
