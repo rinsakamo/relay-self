@@ -299,6 +299,8 @@ async def read_correlated_native_probe(
     try:
         await session.send_observe(request_id)
     except Exception as exc:
+        report["send_error_class"] = type(exc).__name__
+        report["send_error"] = str(exc)[:200]
         raise refuse("could not send correlated native probe") from exc
     report["send_completed"] = True
     deadline = loop.time() + scenario.evidence_timeout_s
@@ -312,6 +314,8 @@ async def read_correlated_native_probe(
         except TimeoutError as exc:
             raise refuse("fresh native probe timed out") from exc
         except Exception as exc:
+            report["receive_error_class"] = type(exc).__name__
+            report["receive_error"] = str(exc)[:200]
             raise refuse("native stream failed before correlated probe") from exc
 
         kind = (
@@ -325,6 +329,7 @@ async def read_correlated_native_probe(
         report["last_received_seq"] = message.seq
         event = {
             "kind": kind,
+            "session_id": message.session_id,
             "seq": message.seq,
             "request_id": (
                 message.request_id if isinstance(message, MineflayerObservation)
