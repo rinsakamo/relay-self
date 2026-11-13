@@ -102,7 +102,6 @@ def test_existing_owner_yields_proposed_only_and_keeps_native_and_owner_unmodifi
     ("goal_id", "OTHER_GOAL"),
     ("skill_id", "MOVE"),
     ("skill_execution_id", "other-skill"),
-    ("action_id", " "),
     ("capability_ref", "attack_entity"),
     ("capability_version", 2),
     ("body_channel", "movement"),
@@ -243,7 +242,7 @@ def test_invalid_time_cannot_propose_before_committed_intent():
 
 @pytest.mark.parametrize("change", [
     {"skill_version": 0}, {"capability_version": 0},
-    {"native_seq": -1}, {"native_request_id": ""},
+    {"native_seq": -1}, {"native_request_id": ""}, {"action_id": " "},
     {"scope": ScopeRef("self-A")},
 ])
 def test_malformed_physical_binding_is_invalid(change):
