@@ -831,10 +831,13 @@ class FakePhysicalProcessSession(FakeProcessSession, MineflayerProcessSession):
         self.sent.append(("observe", request_id))
         if self.observation_no <= 3:
             # pre-L1 then two post-L1 source-qualified *World* observations.
+            no_target = self.fail_at == "no_target"
+            stale_target = self.fail_at == "stale_target" and self.observation_no == 3
             self.messages.append(replace(
                 _observation(
-                    self.observation_no + 1, kind="probe", food=7,
-                    bread_count=2,
+                    self.observation_no + 1, kind="probe",
+                    food=20 if no_target else 7,
+                    bread_count=0 if no_target or stale_target else 2,
                 ),
                 request_id=request_id,
             ))
@@ -1018,3 +1021,25 @@ def test_cli_journal_created_once_must_not_be_reset(monkeypatch, tmp_path):
         asyncio.run(run(args))
     assert "existing physical history" in exc.value.audit["error"]
     assert called == [True]
+
+
+@pytest.mark.parametrize("no_issue_case", ["no_target", "stale_target"])
+def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
+    monkeypatch, tmp_path, no_issue_case,
+):
+    session = FakePhysicalProcessSession(fail_at=no_issue_case)
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["status"] in ("ESCALATE_L2", "S49_SHADOW_REJECTED", "REJECTED")
+    assert result["physical_eat_parent_action_id"] is None
+    assert result["physical_fence"] == "WAL_READY_NO_ISSUE"
+    assert result["physical_journal_unresolved"] is False
+    assert result["physical_journal_records"] == []
+    assert result["native_actions"] == []
+    assert result["native_effect_receipts"] == []
+    assert result["action_outcome_count"] == 0
+    assert not any(x[0] == "equip_item" for x in session.sent)
+    assert not any(x[0] == "consume_held" for x in session.sent)
+    assert session.closed
