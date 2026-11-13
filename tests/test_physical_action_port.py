@@ -263,3 +263,41 @@ def test_invalid_readback_or_capability_is_invalid():
             replace(readback, **bad)
     with pytest.raises(PhysicalActionPortRefusal):
         replace(cap, available=1)
+
+
+@pytest.mark.parametrize("unresolved", ["unknown", "timeout"])
+def test_prior_ambiguous_action_refuses_new_physical_proposal(unresolved):
+    binding, cap, native, owner, skill, supervisor, provenance = fixture()
+    old = ActionLifecycle.propose(
+        "prior-physical-action", skill_execution=skill,
+        intent_commitment=owner, at_ns=3, provenance=provenance,
+    )
+    supervisor.issue(
+        old.authorize(
+            at_ns=4, provenance=provenance, authority="external-test-authority",
+        ),
+        at_ns=5, deadline_ns=10, provenance=provenance,
+    )
+    if unresolved == "unknown":
+        supervisor.mark_unknown(
+            "prior-physical-action", at_ns=6, provenance=provenance,
+        )
+    else:
+        supervisor.advance(at_ns=11, provenance=provenance)
+    assert supervisor.open_actions == ()
+    with pytest.raises(PhysicalActionPortRefusal, match="prior unresolved"):
+        propose_bound_physical_action(
+            binding, capability=cap, readback=native,
+            intent_owner=owner, skill_execution=skill,
+            supervisor=supervisor, at_ns=12, provenance=provenance,
+        )
+
+
+def test_proposal_timestamp_cannot_precede_started_skill():
+    binding, cap, native, owner, skill, supervisor, provenance = fixture()
+    with pytest.raises(PhysicalActionPortRefusal, match="precedes Skill"):
+        propose_bound_physical_action(
+            binding, capability=cap, readback=native,
+            intent_owner=owner, skill_execution=skill,
+            supervisor=supervisor, at_ns=2, provenance=provenance,
+        )
