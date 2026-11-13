@@ -176,7 +176,7 @@ def test_cpu_shadow_invalid_frame_fails_without_physical_recovery() -> None:
                 break
             await asyncio.sleep(.001)
         try:
-            with pytest.raises(MinimalCognitionError, match="source"):
+            with pytest.raises(MinimalCognitionError, match="native-scoped"):
                 await simulate_cpu_schema_during_l1(
                     l1_task=task, percept_at_epoch=lambda _: None,
                     registry=initial_patterns(), allowed_skills=SKILLS,
