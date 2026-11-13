@@ -25,6 +25,9 @@ class S49ReadOnlyHandoff:
     skill_version: int
     goal_id: str
     target_ref: str
+    self_id: str
+    proposed_intent_id: str
+    schema_registry_revision: int
     session_id: str
     previous_probe_seq: int
     previous_probe_request_id: str
@@ -35,6 +38,8 @@ class S49ReadOnlyHandoff:
     food_slot: int | None = None
     target_entity_id: int | None = None
     original_s49_authorized: bool = False
+    original_s49_intent_committed: bool = False
+    original_s49_policy_verified: bool = False
     physical_action_issued: bool = False
 
 
@@ -53,6 +58,7 @@ def assess_s49_readonly_handoff(
     current_frame: SchemaFrame,
     previous_probe: MineflayerObservation,
     current_probe: MineflayerObservation,
+    proposed_intent_id: str,
 ) -> S49ReadOnlyHandoff:
     """Check *selected* Skill/Target against original-S49-like native witnesses.
 
@@ -62,13 +68,24 @@ def assess_s49_readonly_handoff(
     does not make a reservation, confer a physical Skill, or infer World safety.
     """
     if (
-        not isinstance(selection, Selection)
+        not isinstance(proposed_intent_id, str)
+        or not proposed_intent_id.strip()
+        or not isinstance(selection, Selection)
         or selection.status != "READY"
         or selection.option is None
         or not isinstance(original_frame, SchemaFrame)
         or not isinstance(current_frame, SchemaFrame)
         or selection.world_scope != original_frame.scope
         or current_frame.scope != original_frame.scope
+        or current_frame.registry_revision != original_frame.registry_revision
+        or not any(
+            goal.goal_id == selection.option.goal_id
+            and goal.schema_id == selection.option.schema_id
+            and goal.skill_id == selection.option.skill_id
+            and goal.skill_version == selection.option.skill_version
+            and not goal.unresolved
+            for goal in current_frame.goals
+        )
         or selection.option not in original_frame.options
         or selection.option not in current_frame.options
         or not isinstance(previous_probe, MineflayerObservation)
@@ -106,6 +123,9 @@ def assess_s49_readonly_handoff(
         "skill_version": option.skill_version,
         "goal_id": option.goal_id,
         "target_ref": option.target_ref,
+        "self_id": current_frame.scope.self_id,
+        "proposed_intent_id": proposed_intent_id,
+        "schema_registry_revision": current_frame.registry_revision,
         "session_id": session,
         "previous_probe_seq": previous_probe.seq,
         "previous_probe_request_id": previous_probe.request_id,
