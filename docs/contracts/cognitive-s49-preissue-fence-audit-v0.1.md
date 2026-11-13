@@ -1,5 +1,15 @@
 # Cognitive v0.1 → original S49 durable ATTACK/EAT fence: DEV compatibility audit
 
+> **2026-11-13 replacement decision:** This audit remains a valuable record
+> of S49's physical guarantees but its suggestion to graft the **whole**
+> original S49 Owner is **superseded** by the minimal Physical ActionPort
+> contract in [physical-action-port-v0.1.md](physical-action-port-v0.1.md).
+> Keep native source, action supervision, effect verification, durable
+> pre-ISSUE and UNKNOWN STOP semantics; **do not** import the old S49
+> WorldL0/FoodL0 selection, old Intent epochs, or Stage R/T as the
+> Cognitive v0.1 runtime. As of this HEAD only nonissuing PROPOSED is
+> connected; the physical issuer and journal are still OPEN.
+
 **Evidence type:** source/code review + fake native protocol tests only.
 **Classification:** `DEV_BOUNDARY_AUDITED / S49_DURABLE_NOT_CONNECTED /
 REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
@@ -121,7 +131,7 @@ the current original probe; any mismatch must return RECONSIDER/REJECT,
 with the original S51/S49 code when stacked lineage is reconciled, not by
 hardcoding a second food hierarchy into Cognitive Schema.
 
-## Suggested original-owner migration (not implemented in #844)
+## Historical original-owner migration suggestion (SUPERSEDED; not implemented)
 
 - First reconcile the stacked branches and adopt #767's existing tested
   original S49 fence and `NormalSessionActionExecutor` without copying it
