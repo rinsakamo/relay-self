@@ -69,6 +69,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--grant-real-llm", action="store_true")
     p.add_argument("--execute-native", action="store_true",
                    help="opt into main-branch EAT/FIGHT physical issuer; default shadow")
+    p.add_argument("--s49-readonly-shadow", action="store_true",
+                   help="two post-L1 native probes and S49-like Target precheck; "
+                        "never issue an Action or grant S49 authority")
     p.add_argument("--acknowledge-unfenced-dev", action="store_true",
                    help="explicit DEV-only risk acceptance: original S49 #767 "
                         "durable PRE-ISSUE fence is not integrated")
@@ -122,6 +125,10 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
+    if args.s49_readonly_shadow and args.execute_native:
+        raise MinimalCognitionError(
+            "S49 read-only shadow cannot be combined with native Action issuance"
+        )
     if args.execute_native and not args.acknowledge_unfenced_dev:
         raise MinimalCognitionError(
             "UNFENCED_DEV_ONLY: --execute-native requires "
@@ -163,6 +170,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             supervisor=supervisor, grant_real_world=True,
             issue_native=args.execute_native,
             acknowledge_unfenced_dev=args.acknowledge_unfenced_dev,
+            s49_readonly_shadow=args.s49_readonly_shadow,
         )
         issued_at = next(
             (event.at_ns for action in ([] if receipt.run is None else receipt.run.actions)
@@ -194,6 +202,11 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "probe_latency_ns": receipt.probe_elapsed_ns,
             "correlated_probe_request_id": receipt.probe_request_id,
             "correlated_probe_seq": receipt.probe_sequence,
+            "s49_readonly_handoff": (
+                None if receipt.s49_readonly_handoff is None
+                else asdict(receipt.s49_readonly_handoff)
+            ),
+            "s49_shadow_refusal": receipt.s49_shadow_refusal,
             "selected": (None if receipt.selection.option is None
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
