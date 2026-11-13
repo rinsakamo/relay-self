@@ -102,9 +102,6 @@ def main() -> None:
                     round_, result, current_frame=epoch,
                     intent_owner=owner, available_skills=SKILLS,
                 )
-                choice = None if result.choice_id is None else dict(round_.numbered).get(
-                    result.choice_id
-                )
                 correct = (
                     case == "D1" and receipt.status == "READY"
                     and receipt.option is not None and receipt.option.skill_id == "EAT"
