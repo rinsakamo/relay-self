@@ -9,20 +9,6 @@ from experiments.run_cognitive_minimal_world import parser, run
 from relay_self.cognitive_minimal_dev import MinimalCognitionError
 
 
-def test_cli_default_is_shadow_and_refuses_all_real_ends_without_grants() -> None:
-    args = parser().parse_args(["--model", "synthetic-model"])
-    assert not args.execute_native
-    assert not args.grant_real_llm and not args.grant_real_world
-    with pytest.raises(MinimalCognitionError, match="both explicit"):
-        asyncio.run(run(args))
-
-
-def test_cli_native_execution_flag_is_not_a_grant_for_real_model_or_world() -> None:
-    args = parser().parse_args(["--model", "synthetic-model", "--execute-native"])
-    with pytest.raises(MinimalCognitionError, match="both explicit"):
-        asyncio.run(run(args))
-
-
 # Exercise the *entire* CLI composition with source-typed fake messages,
 # including provider constructor, adapter session, native action and audit.
 import json
@@ -41,6 +27,20 @@ from adapters.mineflayer.python_protocol import (
 )
 from experiments import run_cognitive_minimal_world as cli
 from relay_self.relay_engine import CognitionMode, ProviderDecision
+
+
+def test_cli_default_is_shadow_and_refuses_all_real_ends_without_grants() -> None:
+    args = parser().parse_args(["--model", "synthetic-model"])
+    assert not args.execute_native
+    assert not args.grant_real_llm and not args.grant_real_world
+    with pytest.raises(MinimalCognitionError, match="both explicit"):
+        asyncio.run(run(args))
+
+
+def test_cli_native_execution_flag_is_not_a_grant_for_real_model_or_world() -> None:
+    args = parser().parse_args(["--model", "synthetic-model", "--execute-native"])
+    with pytest.raises(MinimalCognitionError, match="both explicit"):
+        asyncio.run(run(args))
 
 
 def _observation(seq: int, *, kind: str, food: float = 7) -> MineflayerObservation:
