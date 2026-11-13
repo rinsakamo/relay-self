@@ -138,6 +138,8 @@ def test_cli_fake_live_shadow_full_path_never_issues(monkeypatch) -> None:
     # This is a MOCK runtime; evidence_class is a CLI label, not a test claim.
     assert receipt["status"] == "READY_NO_ISSUE"
     assert receipt["l1_choice_id"] == "1"
+    assert receipt["correlated_probe_request_id"].startswith("cognitive-")
+    assert receipt["correlated_probe_seq"] == 2
     assert receipt["action_outcome_count"] == 0
     assert session.sent == [("observe",)]
     assert session.closed
