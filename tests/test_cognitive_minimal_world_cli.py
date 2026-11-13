@@ -302,3 +302,69 @@ def test_cli_disconnect_after_equip_ack_keeps_both_child_action_records(
     assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
     assert audit["native_success_claim"] is False
     assert session.closed
+
+
+def test_cli_two_correlated_native_probes_yield_nonissuing_s49_handoff(
+    monkeypatch,
+) -> None:
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn"),
+        _observation(2, kind="probe"),
+        _observation(3, kind="probe"),
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    result = asyncio.run(run(args))
+    assert result["status"] == "S49_SHADOW_READY"
+    assert result["action_outcome_count"] == 0
+    assert result["native_actions"] == []
+    assert result["skill_final_state"] is None
+    assert result["s49_shadow_refusal"] is None
+    witness = result["s49_readonly_handoff"]
+    assert witness["skill_id"] == "EAT"
+    assert witness["target_ref"] == "inventory:bread"
+    assert witness["food_slot"] == 9
+    assert witness["previous_probe_seq"] == 2
+    assert witness["current_probe_seq"] == 3
+    assert witness["previous_probe_request_id"] != witness["current_probe_request_id"]
+    assert witness["original_s49_authorized"] is False
+    assert witness["physical_action_issued"] is False
+    assert result["correlated_probe_request_id"] == witness["current_probe_request_id"]
+    assert result["correlated_probe_seq"] == 3
+    assert session.sent == [("observe",), ("observe",)]
+    assert session.closed
+
+
+def test_cli_two_probe_shadow_target_lost_never_issues(
+    monkeypatch,
+) -> None:
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn"),
+        _observation(2, kind="probe"),
+        _observation(3, kind="probe", bread_count=0),
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    result = asyncio.run(run(args))
+    assert result["status"] == "REJECTED"
+    assert result["s49_readonly_handoff"] is None
+    assert result["native_actions"] == []
+    assert session.sent == [("observe",), ("observe",)]
+    assert session.closed
+
+
+def test_cli_shadow_and_physical_issue_conflict_rejected_before_native(
+    monkeypatch,
+) -> None:
+    launched = []
+
+    async def fake_launch(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError("should not launch")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", fake_launch)
+    args = _granted_args(native=True)
+    args.s49_readonly_shadow = True
+    with pytest.raises(MinimalCognitionError, match="cannot be combined"):
+        asyncio.run(run(args))
+    assert not launched
