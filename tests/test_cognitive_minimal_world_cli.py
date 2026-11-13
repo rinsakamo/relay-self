@@ -227,7 +227,7 @@ def test_cli_task_cancel_after_native_issue_preserves_uncertainty(
         async def receive(self):
             if not self.messages:
                 raise asyncio.CancelledError("simulated cancelled native wait")
-            return self.messages.pop(0)
+            return await super().receive()
 
     session = CancelledProcessSession([
         _observation(1, kind="spawn"),
