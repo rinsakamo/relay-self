@@ -725,6 +725,7 @@ def test_pre_l1_observe_drains_more_than_32_queued_passive_events_before_eat(
     }
     assert diag["last_observed_snapshot"]["snapshot"]["food"] == 7
     assert diag["first_events"][0]["seq"] == 2
+    assert diag["first_events"][0]["session_id"] == "session-1"
     assert diag["last_events"][-1]["seq"] == 53
     assert receipt["native_actions"] == []
     assert receipt["action_outcome_count"] == 0
@@ -786,6 +787,8 @@ def test_pre_l1_probe_failure_preserves_request_id_and_buffered_event_types(
     assert diag["send_completed"] is True
     assert diag["received_count"] == 2
     assert diag["last_received_seq"] == 3
+    assert diag["receive_error_class"] == "RuntimeError"
+    assert diag["receive_error"] == "SIMULATED_CONNECTION_LOSS"
     assert diag["event_kind_counts"] == {
         "observation:inventory": 1, "observation:move": 1,
     }
