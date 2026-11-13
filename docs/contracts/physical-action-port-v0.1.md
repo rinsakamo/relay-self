@@ -74,6 +74,75 @@ switch with independent operator admission and negative restart
 verification exists. A genuine Minecraft/Gemma Action/Outcome has
 **NOT** yet been observed through this new journal.
 
+## 2026-11-14 — one-shot canonical runner wiring (DEV, LIVE NOT YET RUN)
+
+`experiments/cognitive_physical_eat_runner.py` now bridges the existing
+real-native + Gemma `WorldStepReceipt` to the same Physical ActionPort
+without selecting another Goal, Skill or food. A **new explicit**
+`--physical-eat-dev` mode in
+`experiments/run_cognitive_minimal_world.py` (mutually exclusive with
+legacy `--execute-native` and shadow-only
+`--s49-readonly-shadow`) performs:
+
+1. Load a journal *before Mineflayer launch/Gemma inference*: restore an
+   existing self-owned file, or explicitly `--physical-create-journal`
+   **only for an absent file**. Pending `PREPARED_UNRESOLVED` means
+   **STOP/UNKNOWN before connecting to the World**, not recreation.
+   Use one journal file per Self across World sessions, and do not share
+   with other CLI processes that bypass the new port.
+2. Spawn, optional post-spawn test server setup, exact pre-L1 native
+   probe, CPU Schema and real L1 number choice. Require a current
+   **two-probe** read-only EAT witness; if absent, preserve
+   `ESCALATE_L2/REJECTED` with **no** WAL reservation/Action.
+   This reuses the prior read-only S49-*shaped* witness as
+   observational evidence, not the original S49 decision owner.
+3. Commit the selected Intent and start only the matching EAT Skill,
+   create the existing `ActionLifecycle.PROPOSED` through the new
+   Physical ActionPort, then the one EAT DEV issuer persists a
+   fsynced `PREPARED_UNRESOLVED` reservation **before** issuing any
+   Mineflayer command. Distinct native equip/consume ACKs and
+   correlated nutrition/inventory effects seal the journal.
+4. Save positive/failure JSON with exact model selection, native
+   probe ID/seq, original Self/World/source, journal status/history,
+   parent Action and child effect IDs, plus whether the observed
+   outcome was attested. Even an in-memory OUTCOME with **failed WAL
+   close** remains persistent STOP/UNKNOWN. The new issuer uses logical
+   ActionLifecycle clocks; **do not report those as measured
+   Intent-to-Action nanosecond latency**.
+5. Exit and clean up *only processes owned by this test*. Nothing
+   issues automatically without every required explicit DEV CLI flag.
+
+Required flags include: `--grant-real-world --grant-real-llm`,
+`--physical-eat-dev --physical-journal-path PATH`,
+`--acknowledge-physical-dev-unverified-grants`,
+`--physical-propose-authority LABEL_A` and
+`--physical-issue-authority LABEL_B` (distinct, but **labels are not
+independent authentication**); use `--physical-create-journal` only
+when the path has never existed. `--pre-l1-native-probe` and the
+optional `--pre-l1-wait-s 30` support an **isolated, explicitly
+controlled** test World with server-side hunger and bread setup.
+**Do not** pass `--execute-native`,
+`--acknowledge-unfenced-dev`, or `--s49-readonly-shadow` with
+`--physical-eat-dev`.
+
+At this stage the default runner remains read-only. The experimental
+old unfenced issuer code is still present for earlier regression
+tests; this CLI refuses **simultaneous** old/new modes, but cannot
+guarantee external processes are not invoking unrelated issuers.
+LocalCodex/operator must verify exclusive ownership of the isolated
+World and native bridge. Independent principal authentication, a
+multi-process global ActionPort arbiter, and physical qualification
+remain OPEN.
+
+`tests/test_cognitive_minimal_world_cli.py` now composes a real-shaped
+typed Mineflayer stream into L1 EAT, two probes, one new parent EAT,
+persisted WAL-before-first-command, two child ACKs, post-EAT native
+food/inventory readback, and success. Negative cases: no Target,
+stale bread/slot, lost equip/consume/after-probe ACK, persisted
+UNKNOWN blocking a fresh *process* **before World launch**, missing
+journal refusing reset, and old/new physical flags rejected. All
+are **scripted native/provider tests**, not live Minecraft results.
+
 ## Decision: S49 is a reference implementation, not a runtime block
 
 The previous proposal to bring the complete original S49
