@@ -169,6 +169,8 @@ def test_d1_native_inventory_to_l1_eat_and_original_action_outcomes() -> None:
     result, owner, supervisor = turn(session, initial)
     assert result.status == "ACTION_ATTEMPTED"
     assert result.selection.option.target_ref == "inventory:bread"
+    assert result.probe_request_id == "cognitive-test-probe"
+    assert result.probe_sequence == 2
     assert result.run.skill_execution.state is SkillState.SUCCEEDED
     assert result.actual_action_outcomes == 2
     assert result.native_eat_consequence_attested is True
