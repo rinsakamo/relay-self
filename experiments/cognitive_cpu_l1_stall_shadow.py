@@ -19,6 +19,7 @@ from relay_self.cognitive_minimal_dev import (
     cpu_schema_epoch,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class CpuShadowSample:
     epoch: int
