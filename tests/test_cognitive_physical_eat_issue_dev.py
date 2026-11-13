@@ -50,13 +50,20 @@ class OwnedFakeNative(MineflayerProcessSession):
         )
         self.events = list(events)
         self.sent = []
-        self.failure = None
+        self.journal = None
+        self.wal_at_first_native_send = None
 
     @property
     def process_returncode(self):
         return None
 
     async def send_equip_item(self, action_id, *, item_name):
+        # Observe the *on-disk* WAL state when the first physical command
+        # crosses the transport boundary, not just a Python flag.
+        if self.journal is not None:
+            self.wal_at_first_native_send = json.loads(
+                self.journal.path.read_text()
+            )["body"]["actions"][-1]["status"]
         self.sent.append(("equip_item", action_id, item_name))
 
     async def send_consume_held(self, action_id):
@@ -117,6 +124,7 @@ def setup(tmp_path):
         inventory=(MineflayerInventoryItem("bread", 1, 9),),
     )
     session = OwnedFakeNative([equip, consume, after])
+    session.journal = journal
     kw = {
         "proposal": proposal, "previous_probe": previous,
         "current_probe": current, "propose_grant": grants[0],
@@ -142,6 +150,7 @@ def test_eat_native_parent_issues_once_only_after_fsynced_journal(tmp_path):
     assert receipt.item == "bread"
     assert receipt.item_count_before == 2 and receipt.item_count_after == 1
     assert receipt.food_before == 7 and receipt.food_after == 13
+    assert session.wal_at_first_native_send == "PREPARED_UNRESOLVED"
     assert session.sent == [
         ("equip_item", "action-eat-A-equip", "bread"),
         ("consume_held", "action-eat-A-consume"),
