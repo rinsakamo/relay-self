@@ -232,14 +232,16 @@ def _rebound_decision(
     raise MinimalCognitionError("no existing ActionPort adapter for bound Skill")
 
 
-async def _fresh_probe(
+async def read_correlated_native_probe(
     session: MineflayerScenarioSession,
     initial: MineflayerObservation,
     scenario: ControlledScenario,
     *,
     request_id: str,
 ) -> MineflayerObservation:
-    """One current native observation after L1; bounded, fail closed.
+    """One source-correlated native observation, before or after L1.
+
+    Bounded and fail closed; no physical Action, no inferred separate tick.
 
     Does not swallow an unexpected primitive effect receipt that belongs to
     another owner: the caller must coordinate other outstanding actions first.
@@ -362,7 +364,7 @@ async def execute_one_cognitive_world_turn(
         f"cognitive-{uuid.uuid4().hex}"
         if probe_request_id is None else probe_request_id
     )
-    current_observation = await _fresh_probe(
+    current_observation = await read_correlated_native_probe(
         session, initial_observation, scenario,
         request_id=unique_probe_request_id,
     )
@@ -371,7 +373,7 @@ async def execute_one_cognitive_world_turn(
         # Separate original-S49-shaped post-L1 witness. This consumes one
         # additional read-only native probe, not any Action authority.
         unique_probe_request_id = f"cognitive-{uuid.uuid4().hex}"
-        current_observation = await _fresh_probe(
+        current_observation = await read_correlated_native_probe(
             session, previous_observation, scenario,
             request_id=unique_probe_request_id,
         )
