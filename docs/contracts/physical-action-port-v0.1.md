@@ -154,31 +154,39 @@ core Physical ActionPort contract.
 
 **EAT is not a single primitive**: its verified native workflow contains
 at least `equip_item` and `consume_held` with separate receipts.
-A proposed primitive `equip_item` is not an EAT outcome. The Skill
-interpreter must request each primitive in sequence and admit native
-results; the Physical ActionPort is not a second EAT choice policy.
+A proposed primitive `equip_item` is not an EAT outcome. The narrow
+DEV issuer now treats `EAT@1` as one supervised parent Action enclosing
+two distinct Mineflayer child effects; this is a specific Body adapter
+mapping, not a general L0 Skill interpreter, target chooser or proof
+of Minecraft success. The eventual general interpreter must preserve
+these primitive-level distinctions and branch/UNKNOWN semantics.
 
-## Requirements still OPEN before any physical Action on the new port
+## Requirements still OPEN before canonical live Physical ActionPort readiness
 
-1. **Authoritative issuer / runtime ownership.** Provide one actual
-   Action issuer that checks the latest session, exact Target, source,
-   Action binding, current Intent/Skill and L0/WorldBody physical limits.
-   Do not keep two concurrently enabled issuer paths; legacy
-   `--execute-native --acknowledge-unfenced-dev` is explicitly an
-   unrelated risky DEV path and cannot be considered this port.
-2. **Durable reservation before external side effects.** Extract/reuse
-   #767's proven fsync/CAS journal behind this port, keyed to Self,
-   World session, Intent, Action ID, native request/seq and exact target.
-   Pending `PREPARED_UNRESOLVED` after crash/timeout/restart implies
-   **STOP/UNKNOWN**, not redispatch/retry. A memory-only
-   `ActionSupervisor.issue` is insufficient.
-3. **Native consequence.** Bind each EAT/ATTACK primitive ACK and
-   post-Action native readback to the issued physical Action; preserve
-   missing ACK, ambiguous delivery and disconnect as UNKNOWN.
-   `Action OUTCOME` is not automatically `Skill success` or learned
-   benefit. For EAT require both native child ACKs, food increase and
-   selected inventory decrease; for ATTACK an ACK alone is not proof
-   of zombie death/damage attribution.
+1. **Authoritative issuer / runtime ownership.** A **narrow EAT DEV issuer
+   candidate exists** and checks native session, selected Target,
+   Intent/Skill, explicit grants and a durable file, but is not attached
+   to the canonical runner or a trustworthy operator/principal source.
+   Select exactly one active physical owner and retire/disable the
+   legacy `--execute-native --acknowledge-unfenced-dev` branch before
+   enabling a new real-World issuance flow. Do not treat two caller-
+   constructed grant objects as independent authenticated operators.
+2. **Durable reservation before external side effects.** The new
+   `PhysicalActionJournal` adapts #767's fsync/CAS approach for
+   one EAT transaction; its offline tests prove ordering and fail-
+   closed restore for scripted sources. It is **not** the original
+   S49 journal transplanted verbatim, is not yet a universal primitive
+   log, and needs canonical real-world ownership, crash/restart and
+   multi-session migration validation. A prior
+   `PREPARED_UNRESOLVED` remains **STOP/UNKNOWN**, never retry.
+3. **Native consequence.** The scripted EAT candidate now requires
+   exact applied equip/consume child receipts and later source-
+   correlated food increase plus selected item count decrease;
+   missing ACK, ambiguity or disconnect leaves persistent UNKNOWN.
+   This has **not been measured on the real Minecraft server** through
+   the new path. ATTACK/MOVE/REST ports and any cross-Action arbitration
+   remain separate. `Action OUTCOME` is not automatically `Skill success`
+   or learned benefit; ATTACK ACK is not proof of zombie death.
 4. **Body channel arbiter and movement STOP.** Current v0.1 proposal
    blocks on *any* supervised issued Action. Channel-aware concurrent
    issue is future work. STOP input-clear ACK, settling, physical
@@ -192,11 +200,13 @@ results; the Physical ActionPort is not a second EAT choice policy.
    rather than trusting LLM text or transplanting the old S51
    food-selection priority into CPU Schema. If a food changed,
    report REFUSE/RECONSIDER; never retarget.
-6. **Real DEV / QUAL separately.** This code is offline-only and
-   intentionally cannot reach physical issuance. Run an independently
-   approved actual Minecraft World once the issuer, journal and
-   negative restart/replay suite are connected. Physical QUAL and
-   SCIENCE remain separate.
+6. **Real DEV / QUAL separately.** The core proposal is nonissuing.
+   The new standalone DEV EAT issuer *can* send a native command if
+   separately invoked with grants and session, but is **not** wired
+   to the normal real-World runner and has not run live. First
+   reconcile the exclusive owner/explicit grant entrypoint, then
+   repeat the isolated Minecraft 1.21.8 controlled EAT with evidence
+   and safe cleanup. Physical QUAL and SCIENCE remain separate.
 
 ## Offline contract probes
 
