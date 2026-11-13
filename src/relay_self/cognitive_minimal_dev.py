@@ -181,6 +181,7 @@ class WorldPercept:
     hunger: int | None
     fatigue_high: bool | None
     targets: tuple[Target, ...]
+    threat_cue: bool = False
 
     def __post_init__(self) -> None:
         if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
@@ -193,6 +194,8 @@ class WorldPercept:
             raise MinimalCognitionError("invalid observed hunger")
         if self.fatigue_high is not None and type(self.fatigue_high) is not bool:
             raise MinimalCognitionError("invalid fatigue")
+        if type(self.threat_cue) is not bool:
+            raise MinimalCognitionError("invalid threat cue")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
@@ -250,6 +253,7 @@ def cpu_schema_epoch(
     *,
     allowed_skills: frozenset[tuple[str, int]],
     epoch: int,
+    hunger_threshold: float = 17,
 ) -> SchemaFrame:
     """Synchronous finite CPU-only step; caller controls event-loop cadence.
 
@@ -258,18 +262,23 @@ def cpu_schema_epoch(
     t0 = time.perf_counter_ns()
     if type(epoch) is not int or epoch < 0:
         raise MinimalCognitionError("invalid epoch")
+    if (isinstance(hunger_threshold, bool)
+            or not isinstance(hunger_threshold, (int, float))
+            or not 0 <= hunger_threshold <= 20):
+        raise MinimalCognitionError("invalid hunger threshold")
     goals: list[Goal] = []
     options: list[Option] = []
     constraints: list[ConstraintSensation] = []
     checks = 0
     threats = tuple(t for t in percept.targets if t.kind == "ZOMBIE" and t.live)
+    threat_present = bool(threats) or percept.threat_cue
     for pattern in registry.patterns:
         checks += 1
         triggered = (
             pattern.predicate is Predicate.HUNGRY
-            and percept.hunger is not None and percept.hunger < 18
+            and percept.hunger is not None and percept.hunger <= hunger_threshold
         ) or (
-            pattern.predicate is Predicate.ZOMBIE_NEAR and bool(threats)
+            pattern.predicate is Predicate.ZOMBIE_NEAR and threat_present
         ) or (
             pattern.predicate is Predicate.FATIGUE_HIGH
             and percept.fatigue_high is True
@@ -299,7 +308,7 @@ def cpu_schema_epoch(
     return SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
-        ("ZOMBIE_NEAR",) if threats else (), checks,
+        ("ZOMBIE_NEAR",) if threat_present else (), checks,
         time.perf_counter_ns() - t0,
     )
 
