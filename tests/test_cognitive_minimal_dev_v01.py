@@ -103,6 +103,9 @@ def test_d1_hunger_food_selected_then_original_owner_proposes_not_issues() -> No
     assert prepared.skill.skill_id == "EAT"
     assert prepared.action.intent_id == "intent-1"
     assert prepared.action.state is ActionState.PROPOSED
+    assert prepared.option.target_ref == "apple-1"
+    assert prepared.option.skill_version == 1
+    assert prepared.world_scope == SCOPE
 
 
 def test_d2_hunger_and_zombie_both_visible_l1_can_choose_defense() -> None:
