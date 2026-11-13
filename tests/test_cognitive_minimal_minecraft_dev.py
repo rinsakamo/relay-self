@@ -143,7 +143,7 @@ def turn(
         session, initial, scenario() if config is None else config,
         self_id="self-A", intent_id="intent-1", registry=initial_patterns(),
         relay_engine=engine_with_choice(choice), intent_owner=owner,
-        supervisor=supervisor, grant_real_world=grant,
+        supervisor=supervisor, grant_real_world=grant, issue_native=True,
     ))
     return result, owner, supervisor
 
@@ -252,7 +252,7 @@ def test_d5_cpu_remains_callable_while_l1_network_thread_is_blocked() -> None:
             session, initial, scenario(), self_id="self-A", intent_id="intent-1",
             registry=initial_patterns(), relay_engine=RelayEngine(blocked_provider),
             intent_owner=owner, supervisor=ActionSupervisor(),
-            grant_real_world=True,
+            grant_real_world=True, issue_native=False,
         ))
         for _ in range(100):
             if started.is_set():
@@ -344,3 +344,22 @@ def test_unknown_hunger_fractional_does_not_invent_current_need() -> None:
         p, initial_patterns(), epoch=1, allowed_skills=SKILLS,
         hunger_threshold=10,
     ).goals
+
+
+def test_default_live_probe_never_issues_without_explicit_native_switch() -> None:
+    async def run():
+        initial = observation(1, inventory=(bread(),))
+        session = FakeNativeSession([observation(2, inventory=(bread(),))])
+        owner = IntentCommitment()
+        supervisor = ActionSupervisor()
+        receipt = await execute_one_cognitive_world_turn(
+            session, initial, scenario(), self_id="self-A", intent_id="intent-1",
+            registry=initial_patterns(), relay_engine=engine_with_choice("1"),
+            intent_owner=owner, supervisor=supervisor, grant_real_world=True,
+        )
+        assert receipt.status == "READY_NO_ISSUE"
+        assert receipt.run is None
+        assert owner.current_intent is None and not owner.events
+        assert supervisor.open_actions == ()
+        assert session.sent == [("observe",)]
+    asyncio.run(run())
