@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -75,13 +76,20 @@ class FakeProcessSession:
         self.messages = list(messages)
         self.sent: list[tuple[str, ...]] = []
         self.closed = False
+        self.probe_request_id = None
 
     async def receive(self):
         if not self.messages:
             raise RuntimeError("SIMULATED_CONNECTION_LOSS")
-        return self.messages.pop(0)
+        result = self.messages.pop(0)
+        if (isinstance(result, MineflayerObservation)
+                and result.kind == "probe" and result.request_id is None):
+            # Explicit mock server echoes the requested correlation ID.
+            result = replace(result, request_id=self.probe_request_id)
+        return result
 
-    async def send_observe(self):
+    async def send_observe(self, request_id=None):
+        self.probe_request_id = request_id
         self.sent.append(("observe",))
 
     async def send_equip_item(self, action_id, *, item_name):
