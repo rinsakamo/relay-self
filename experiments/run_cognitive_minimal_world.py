@@ -9,8 +9,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import sys
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 
@@ -24,7 +26,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerLaunchConfig,
     MineflayerObservation,
 )
-from experiments.cognitive_minimal_minecraft_dev import execute_one_cognitive_world_turn
+from experiments.cognitive_minimal_minecraft_dev import (
+    execute_one_cognitive_world_turn,
+    read_correlated_native_probe,
+)
 from experiments.controlled_minecraft_vertical import ControlledScenario
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
@@ -88,6 +93,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--s49-readonly-shadow", action="store_true",
                    help="two post-L1 native probes and S49-like Target precheck; "
                         "never issue an Action or grant S49 authority")
+    p.add_argument("--pre-l1-native-probe", action="store_true",
+                   help="only with read-only shadow: use fresh correlated native "
+                        "probe (not spawn) as L1 starting observation")
+    p.add_argument("--pre-l1-wait-s", type=float, default=0,
+                   help="0..60 seconds after native spawn for controlled DEV "
+                        "World setup before the pre-L1 probe; no effects issued")
     p.add_argument("--acknowledge-unfenced-dev", action="store_true",
                    help="explicit DEV-only risk acceptance: original S49 #767 "
                         "durable PRE-ISSUE fence is not integrated")
@@ -145,6 +156,18 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         raise MinimalCognitionError(
             "S49 read-only shadow cannot be combined with native Action issuance"
         )
+    if args.pre_l1_native_probe and (
+        not args.s49_readonly_shadow or args.execute_native
+    ):
+        raise MinimalCognitionError(
+            "pre-L1 native probe is read-only and requires S49 shadow mode"
+        )
+    if (not math.isfinite(args.pre_l1_wait_s)
+            or not 0 <= args.pre_l1_wait_s <= 60
+            or (args.pre_l1_wait_s > 0 and not args.pre_l1_native_probe)):
+        raise MinimalCognitionError(
+            "pre-L1 World setup wait requires read-only probe and 0..60 seconds"
+        )
     if args.execute_native and not args.acknowledge_unfenced_dev:
         raise MinimalCognitionError(
             "UNFENCED_DEV_ONLY: --execute-native requires "
@@ -168,6 +191,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     ))
     session: MineflayerProcessSession | None = None
     first: MineflayerObservation | None = None
+    spawn: MineflayerObservation | None = None
     owner = IntentCommitment()
     supervisor = ActionSupervisor()
     try:
@@ -178,7 +202,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             node_executable=args.node, startup_timeout_s=args.startup_timeout_s,
         )
-        first = await _initial_spawn(session, args.startup_timeout_s)
+        spawn = await _initial_spawn(session, args.startup_timeout_s)
+        first = spawn
         # Before any GPU inference, persist source-qualified initial native
         # facts. A handled failure includes this in final audit, while an
         # interrupted process can leave this checkpoint as partial evidence.
@@ -190,6 +215,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "world_session": first.session_id,
             "initial_native_observation": _native_observation_record(first),
+            "spawn_native_observation": _native_observation_record(spawn),
+            "pre_l1_probe_requested": args.pre_l1_native_probe,
             "scenario_inputs": {
                 "edible_item_names": list(scenario.edible_item_names),
                 "hazard_entity_names": sorted(scenario.hazard_entity_names),
@@ -197,6 +224,35 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 "food_threshold": scenario.food_threshold,
             },
         })
+        if args.pre_l1_native_probe:
+            # The isolated test World may be configured by its **server**
+            # owner after the player spawns; never make World changes here.
+            # The actual cognition input is a fresh correlated, post-setup
+            # native fact, not the possibly early spawn inventory snapshot.
+            if args.pre_l1_wait_s:
+                await asyncio.sleep(args.pre_l1_wait_s)
+            first = await read_correlated_native_probe(
+                session, spawn, scenario,
+                request_id=f"cognitive-pre-l1-{uuid.uuid4().hex}",
+            )
+            _write_evidence(args.evidence_path, {
+                "evidence_class": "DEV_INITIAL_NATIVE_CHECKPOINT",
+                "stage": "PRE_L1_NATIVE_PROBE_OBSERVED_BEFORE_L1",
+                "native_success_claim": False,
+                "physical_action_issued": False,
+                "original_s49_preissue_wal": "NOT_CONNECTED",
+                "world_session": first.session_id,
+                "spawn_native_observation": _native_observation_record(spawn),
+                "initial_native_observation": _native_observation_record(first),
+                "pre_l1_probe_requested": True,
+                "pre_l1_wait_s": args.pre_l1_wait_s,
+                "scenario_inputs": {
+                    "edible_item_names": list(scenario.edible_item_names),
+                    "hazard_entity_names": sorted(scenario.hazard_entity_names),
+                    "fight_max_distance": scenario.fight_max_distance,
+                    "food_threshold": scenario.food_threshold,
+                },
+            })
         receipt = await execute_one_cognitive_world_turn(
             session, first, scenario,
             self_id=args.self_id, intent_id=args.intent_id,
@@ -224,6 +280,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "systemone_backend": bool(args.systemone_endpoint),
             "world_session": first.session_id,
             "initial_native_observation": _native_observation_record(first),
+            "spawn_native_observation": _native_observation_record(spawn),
+            "pre_l1_probe_requested": args.pre_l1_native_probe,
+            "pre_l1_wait_s": args.pre_l1_wait_s,
             "initial_schema_frame": asdict(receipt.initial_frame),
             "current_schema_frame": (
                 None if receipt.current_frame is None
@@ -319,6 +378,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "initial_native_observation": (
                 None if first is None else _native_observation_record(first)
             ),
+            "spawn_native_observation": (
+                None if spawn is None else _native_observation_record(spawn)
+            ),
+            "pre_l1_probe_requested": args.pre_l1_native_probe,
             "current_intent_id": (
                 None if owner.current_intent is None
                 else owner.current_intent.intent_id
