@@ -39,13 +39,15 @@ def test_cli_native_execution_flag_is_not_a_grant_for_real_model_or_world() -> N
         asyncio.run(run(args))
 
 
-def _observation(seq: int, *, kind: str, food: float = 7) -> MineflayerObservation:
+def _observation(
+    seq: int, *, kind: str, food: float = 7, bread_count: int = 2,
+) -> MineflayerObservation:
     return MineflayerObservation(
         "session-1", seq, kind,
         MineflayerSnapshot(
             health=20, food=food, food_saturation=5,
             oxygen_level=None, position=MineflayerPosition(0, 64, 0),
-            time=None, inventory=(MineflayerInventoryItem("bread", 2, 9),),
+            time=None, inventory=(MineflayerInventoryItem("bread", bread_count, 9),),
             nearby_entities=(),
             nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
                 source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
@@ -144,11 +146,12 @@ def test_cli_fake_native_eat_through_existing_issuer(monkeypatch) -> None:
         MineflayerEffectResult(
             "session-1", 4, prefix + ":consume", "consume_held", "applied", None,
         ),
-        _observation(5, kind="health", food=13),
+        _observation(5, kind="health", food=13, bread_count=1),
     ])
     receipt = asyncio.run(run(_granted_args(native=True)))
     assert receipt["status"] == "ACTION_ATTEMPTED"
     assert receipt["action_outcome_count"] == 2
+    assert receipt["native_eat_consequence_attested"] is True
     assert receipt["physical_fence"] == "UNFENCED_DEV_ONLY"
     assert receipt["original_s49_preissue_wal"] == "NOT_CONNECTED"
     assert receipt["skill_final_state"] == "succeeded"
