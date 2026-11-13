@@ -52,6 +52,23 @@ remains an explicit separate #843 migration.
   a Minecraft server, invent item stock, change world Hunger, or silently
   retry. The actual local WSL2 GPU/World session has NOT been accessed
   from GitHub CI / this environment.
+- The main experimental `controlled_minecraft_vertical` checks food
+  increase but does not require consumed-item inventory decrement. #844 now
+  independently reports `native_eat_consequence_attested`, which requires
+  two applied native child ACKs, a later increased food value, and a
+  reduced count of the selected inventory item. This does not rewrite
+  legacy SkillState or seal #767's original S49 fence.
+- `experiments/cognitive_cpu_l1_stall_shadow.py` is a read-only bounded
+  *offline* CPU tick simulator. Under a stalled L1 thread, it traces
+  per-epoch Pattern checks, FAST cues, source session changes, CPU wall
+  latency/p50/p95 and simulation deadline misses. The 48-epoch adversarial
+  test has no native Action, no actual GPU preemption, and is not a
+  production L0 Scheduler or a real FAST deadline guarantee.
+- See `docs/contracts/cognitive-s49-preissue-fence-audit-v0.1.md` for
+  concrete differences with original S49 #767: current main-based
+  `MineflayerObservation` lacks the correlated native `request_id` that
+  #767's durable fence requires, the original `NormalSessionActionExecutor`
+  is not in this stacked runtime, and nothing writes a pre-ISSUE WAL here.
 - L2 escalation may construct one `RelayEngine.OPEN` request. Strict
   parser accepts only exact innate-format typed CPU patterns and rejects
   arbitrary code/unknown/costly forms. No Self acceptance is presumed.
@@ -101,8 +118,11 @@ PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
 ```
 
 Only after confirming the actual World/readback/Item/target and grant
-conditions, add `--execute-native` to permit the bounded original
-EAT/FIGHT Action path. The runner defaults to a single turn and
+conditions, add **both** `--execute-native` and
+`--acknowledge-unfenced-dev` to permit the bounded main-branch EAT/FIGHT
+Action path. The latter is explicit acknowledgment that the original #767
+S49 pre-ISSUE durable fence is **not** connected; this is a DEV-only risky
+physical boundary and must never be counted as S49 durability or QUAL. The runner defaults to a single turn and
 **does not automatically choose or invent another Action**. The scenario
 values are *examples*, not claims about a specific World or a confirmed
 physical ATTACK reach. If the local runtime lacks the Jev endpoint,
@@ -142,6 +162,9 @@ durations, CPU utilization, or long-run p95**.
 3. **True CPU continuous FAST/L0:** The one-shot caller awaits L1 using
    `asyncio.to_thread`, leaving the event loop available, but does NOT
    independently run a sustained fast sensory loop during model calls.
+   The bounded 48-epoch shadow simulation only shows CPU work can continue
+   in the event loop during a blocked model thread, not physical FAST,
+   host load/SLO or native concurrent read ownership.
    GPU L2 preemption/release and independent CPU load measurements are open.
 4. **L2 and learned Self:** A typed candidate parser / immutable data
    registry is an offline contract, not actual Self acceptance, persistent
