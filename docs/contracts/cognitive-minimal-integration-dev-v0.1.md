@@ -233,10 +233,11 @@ grants and existing repository DEV rules:
 3. Run a single read-only CLI with both grants,
    `--s49-readonly-shadow`, `--evidence-path`, and the **actual** host,
    port and served model name. Do **not** specify `--execute-native` or
-   `--acknowledge-unfenced-dev`. Do not artificially give food, change
-   Hunger, spawn a Zombie, or invent a source readback merely to obtain
-   `S49_SHADOW_READY`. Observed EAT/ATTACK opportunities are contingent
-   on actual test World conditions.
+   `--acknowledge-unfenced-dev`. In the **natural World observational arm**,
+   do not artificially give food, change Hunger, spawn a Zombie or invent
+   a source readback to obtain `S49_SHADOW_READY`. Its EAT/ATTACK targets
+   are contingent on actual natural World conditions. The **separate,
+   explicitly labeled controlled World positive arm** is documented below.
 4. Preserve the final JSON including decoded initial source snapshot,
    scenario inputs and two source-correlated post-L1 probes. If selected
    target is absent, report `ESCALATE_L2 / native transport observed /`
@@ -248,6 +249,97 @@ grants and existing repository DEV rules:
    evidence and issue comments. If an owned process cannot stop, report
    that explicitly. Do not claim earlier successful World runs can be
    reconstructed from missing source observations.
+
+
+## Controlled World EAT positive control (NOT natural World)
+
+**Goal:** independently confirm real Gemma chooses the source-qualified
+`HUNGER_RELIEF → EAT → inventory:bread` when the isolated *test server*
+owns and presents a genuinely hungry Self with bread, then the existing
+read-only S49-shaped post-L1 two-probe window gives a typed
+`S49_SHADOW_READY`. **No EAT, ATTACK or other Self Action** is issued. Do
+not count this controlled result as evidence of naturally learned hunger
+seeking or of original S49 physical authorization.
+
+The first real natural World probe on exact HEAD
+`9081754f572a945cc818e5c0c1fd36896b406b2e` attested a fresh
+source-qualified snapshot, no physical option, L1 `ESCALATE_L2` in
+1,221.750 ms and two independently correlated native probes (seq 30 and
+31, combined 4.346 ms) but **no Target or S49 handoff**.
+See [PR #844 real two-probe report](https://github.com/rinsakamo/relay-self/pull/844#issuecomment-6852963571).
+
+To prepare a **distinct positive-control World**, LocalCodex starts a
+dedicated, disposable Minecraft 1.21.8 instance with its server console
+owned by the test. The player connects; only the **isolated test server
+operator**, not the Self ActionPort or L1, sets up a real bread item in
+inventory and a genuinely low food bar. Use server-native supported
+commands/procedures; do not synthesize adapter JSON, inject a fake probe,
+change source provenance, patch CPU Schema/LLM choices or issue native
+Self Actions to prepare the fixture. Let the player finish joining and
+inventory sync. Keep Self stationary, alive and with **zero nearby entity
+candidates** within the native 16m coverage for both post-L1 probes.
+Read back the *actual* native `food < hunger_threshold`, bread count
+`> 0`, stable slot, position, health and coverage before claiming the
+positive control. The user has approved test World startup for DEV; do
+not touch unrelated or production server instances.
+
+Use the same one-shot real-World runner on this isolated World but with a
+**new opt-in read-only pre-L1 native probe**. The runner checkpoints the
+initial `spawn` observation immediately, optionally allows a bounded
+server setup window, then sends `observe(request_id)` to obtain a
+correlated **pre-L1** `probe`, checkpoints this as the *cognition starting
+snapshot*, and only then asks real Gemma. The pre-L1 probe must have the
+same session, increasing seq, native source and echoed request ID.
+The model-selected Goal/Skill/Target is subsequently rechecked with
+**two additional, separately correlated read-only probes**. Example:
+
+```bash
+PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
+  --grant-real-world --grant-real-llm --s49-readonly-shadow \
+  --pre-l1-native-probe --pre-l1-wait-s 20 \
+  --mc-host 127.0.0.1 --mc-port YOUR_OWNED_TEST_WORLD_PORT \
+  --mc-version 1.21.8 --model YOUR_SERVED_GEMMA_MODEL \
+  --llama-endpoint http://127.0.0.1:YOUR_PORT/v1/chat/completions \
+  --edible-item bread --hazard-name zombie --fight-max-distance 3 \
+  --hunger-threshold 10 --evidence-path ./controlled-eat-readonly.json
+```
+
+The optional 20-second **post-spawn/pre-L1** wait is just a window for
+the owned test server to establish state before the fresh probe; it is
+not an assertion that the World has reached the desired state. The
+operator should monitor the `INITIAL_NATIVE_OBSERVED_BEFORE_L1`
+checkpoint and apply test-World setup through the server console during
+the wait. Time can be set from 0 to 60 seconds; a nonzero wait requires
+`--pre-l1-native-probe`, and this flag requires
+`--s49-readonly-shadow` with no `--execute-native`. After the probe,
+the file advances to `PRE_L1_NATIVE_PROBE_OBSERVED_BEFORE_L1` before L1;
+the final JSON retains **both** `spawn_native_observation` and the
+`initial_native_observation` used for cognition, plus the two post-L1
+records in `native_probe_trace`.
+
+A positive result requires **all** of:
+- Source-provenance, request ID, native seq and session validation for
+  pre-L1 and both post-L1 probes; their request IDs must all differ.
+- Current **pre-L1** WorldBody actually hungry, bread observed and
+  listed in configured edible items, CPU Schema Goal `HUNGER_RELIEF`
+  and one `EAT@1/inventory:bread` option.
+- **Actual real Gemma** selected that L1 option (not a mock provider,
+  forced numeric ID, or post hoc retargeting).
+- S49-shaped witness `skill_id=EAT`, `food_item=bread`,
+  `food_slot` stable, `S49_SHADOW_READY`, while
+  `original_s49_intent_committed=False`,
+  `original_s49_authorized=False`,
+  `physical_action_issued=False`, native Action/Outcome counts zero.
+
+If this fails, preserve the real current facts and classify the
+failure: server fixture not reflected in pre-L1 probe, Schema target
+missing, Gemma alternative choice, changed inventory/body/coverage,
+uncorrelated probe, or S49 shadow refusal. Do not retry indefinitely
+or silently forge a Target. The two post-L1 probes might have
+**identical Minecraft World time**: they do not prove distinct physics
+ticks, STOP, prior MOVE settling or safety. Original S51 food policy,
+S49 Owner/grants/S15-S16 and #767 pre-ISSUE WAL remain separate OPEN
+integration requirements.
 
 ## Remaining boundaries
 
