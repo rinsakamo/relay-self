@@ -68,7 +68,10 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--grant-real-world", action="store_true")
     p.add_argument("--grant-real-llm", action="store_true")
     p.add_argument("--execute-native", action="store_true",
-                   help="opt into original EAT/FIGHT physical issuer; default shadow")
+                   help="opt into main-branch EAT/FIGHT physical issuer; default shadow")
+    p.add_argument("--acknowledge-unfenced-dev", action="store_true",
+                   help="explicit DEV-only risk acceptance: original S49 #767 "
+                        "durable PRE-ISSUE fence is not integrated")
     p.add_argument("--mc-host", default="127.0.0.1")
     p.add_argument("--mc-port", type=int, default=25565)
     p.add_argument("--mc-version", default="1.21.8")
@@ -119,6 +122,11 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
+    if args.execute_native and not args.acknowledge_unfenced_dev:
+        raise MinimalCognitionError(
+            "UNFENCED_DEV_ONLY: --execute-native requires "
+            "--acknowledge-unfenced-dev; #767 S49 pre-ISSUE fence is absent"
+        )
     if args.fight_max_distance is not None and args.fight_max_distance <= 0:
         raise MinimalCognitionError("invalid configured fight range")
     scenario = ControlledScenario(
@@ -154,6 +162,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             registry=initial_patterns(), relay_engine=engine, intent_owner=owner,
             supervisor=supervisor, grant_real_world=True,
             issue_native=args.execute_native,
+            acknowledge_unfenced_dev=args.acknowledge_unfenced_dev,
         )
         issued_at = next(
             (event.at_ns for action in ([] if receipt.run is None else receipt.run.actions)
@@ -209,6 +218,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "separate_prefill_decode_timing": "NOT_MEASURED",
             "gpu_preemption": "NOT_MEASURED",
             "self_grant_execute_native": args.execute_native,
+            "physical_fence": (
+                "UNFENCED_DEV_ONLY" if args.execute_native else "NOT_ISSUED"
+            ),
+            "original_s49_preissue_wal": "NOT_CONNECTED",
         }
         if args.enable_l2_proposal and receipt.status == "ESCALATE_L2":
             request = prepare_l2_pattern_request(receipt.initial_frame)
@@ -248,6 +261,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 else "NO_PENDING_ISSUED_ACTION_AT_FAILURE"
             ),
             "native_success_claim": False,
+            "original_s49_preissue_wal": "NOT_CONNECTED",
         }
         raise CognitiveWorldRunError(audit) from exc
     finally:
