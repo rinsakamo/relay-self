@@ -366,6 +366,7 @@ class Selection:
     status: str
     option: Option | None
     reason: str
+    world_scope: ScopeRef | None = None
 
 
 def resolve_l1_choice(
@@ -399,7 +400,7 @@ def resolve_l1_choice(
         return Selection("REJECTED", None, "Goal/Target/Skill dependencies stale")
     if intent_owner.current_intent is not None:
         return Selection("DEFER", None, "legacy single CurrentIntent is busy")
-    return Selection("READY", chosen, "current selected dependencies")
+    return Selection("READY", chosen, "current selected dependencies", current_frame.scope)
 
 
 @dataclass(frozen=True, slots=True)
@@ -407,6 +408,8 @@ class OwnerProposal:
     intent_id: str
     skill: SkillExecution
     action: ActionLifecycle
+    option: Option
+    world_scope: ScopeRef
 
 
 def prepare_existing_owner_action(
@@ -424,8 +427,9 @@ def prepare_existing_owner_action(
     The existing S49/ActionPort must authorize and issue this grounded proposal
     with native capability/currentness/session/target checks before World effect.
     """
-    if selection.status != "READY" or selection.option is None:
-        raise MinimalCognitionError("only READY selections may start Skill")
+    if (selection.status != "READY" or selection.option is None
+            or selection.world_scope is None):
+        raise MinimalCognitionError("only scoped READY selections may start Skill")
     if intent_owner.current_intent is not None:
         raise MinimalCognitionError("legacy Intent owner busy")
     option = selection.option
@@ -437,4 +441,4 @@ def prepare_existing_owner_action(
     action = ActionLifecycle.propose(action_id, skill_execution=skill,
                                      intent_commitment=intent_owner, at_ns=at_ns,
                                      provenance=provenance)
-    return OwnerProposal(intent_id, skill, action)
+    return OwnerProposal(intent_id, skill, action, option, selection.world_scope)
