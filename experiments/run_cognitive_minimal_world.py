@@ -247,6 +247,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         # A command could already be *issued* but never acknowledged. A
         # failure must retain IDs and uncertainty; do not invent OUTCOMEs.
         in_flight = supervisor.open_actions
+        history = supervisor.recorded_actions
         audit: dict[str, object] = {
             "evidence_class": "DEV_FAILED_NOT_QUALIFIED",
             "error": f"{type(exc).__name__}: {str(exc)[:500]}",
@@ -257,9 +258,14 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "open_action_ids": [action.action_id for action in in_flight],
             "open_action_states": [action.state.value for action in in_flight],
+            "recorded_actions": [
+                {"action_id": action.action_id, "state": action.state.value}
+                for action in history
+            ],
             "action_consequence": (
                 "UNKNOWN_POSSIBLY_ISSUED" if in_flight
-                else "NO_PENDING_ISSUED_ACTION_AT_FAILURE"
+                else "PRIOR_EFFECTS_REQUIRE_REVIEW" if history
+                else "NO_SUPERVISED_ISSUE_RECORDED"
             ),
             "native_success_claim": False,
             "original_s49_preissue_wal": "NOT_CONNECTED",
