@@ -324,6 +324,10 @@ def test_cli_two_correlated_native_probes_yield_nonissuing_s49_handoff(
     witness = result["s49_readonly_handoff"]
     assert witness["skill_id"] == "EAT"
     assert witness["target_ref"] == "inventory:bread"
+    assert witness["self_id"] == "relay-self-cognitive-dev"
+    assert witness["proposed_intent_id"] == "intent-cognitive-dev-1"
+    assert witness["original_s49_intent_committed"] is False
+    assert witness["original_s49_policy_verified"] is False
     assert witness["food_slot"] == 9
     assert witness["previous_probe_seq"] == 2
     assert witness["current_probe_seq"] == 3
@@ -400,6 +404,10 @@ def test_cli_two_probe_s49_shadow_attack_stable_same_zombie_without_action(
     assert receipt["status"] == "S49_SHADOW_READY"
     assert witness["target_entity_id"] == 7
     assert witness["skill_id"] == "ATTACK"
+    assert witness["self_id"] == "relay-self-cognitive-dev"
+    assert witness["proposed_intent_id"] == "intent-cognitive-dev-1"
+    assert witness["original_s49_intent_committed"] is False
+    assert witness["original_s49_policy_verified"] is False
     assert witness["original_s49_authorized"] is False
     assert receipt["native_actions"] == []
     assert session.sent == [("observe",), ("observe",)]
