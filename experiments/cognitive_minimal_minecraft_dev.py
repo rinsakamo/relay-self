@@ -230,6 +230,7 @@ async def execute_one_cognitive_world_turn(
     supervisor: ActionSupervisor,
     grant_real_world: bool,
     issue_native: bool = False,
+    acknowledge_unfenced_dev: bool = False,
     allowed_skills: frozenset[tuple[str, int]] = frozenset({
         ("EAT", 1), ("ATTACK", 1),
     }),
@@ -240,12 +241,22 @@ async def execute_one_cognitive_world_turn(
 
     Never call prepare_existing_owner_action here: that would start a second
     Skill/Action root ahead of the controlled MVP's canonical physical issuer.
+    Physical issuance here uses the existing experimental main-branch issuer;
+    it does NOT write or restore #767's original S49 durable fence.
+    Callers must explicitly acknowledge this DEV-only crash/retry risk.
     The model is called off the event-loop thread, so an independent CPU
     perception owner *can* continue, but this one-shot runner does not itself
     implement a continuous L0/FAST loop or GPU preemption.
     """
     if grant_real_world is not True:
         raise MinimalCognitionError("real World DEV requires explicit grant")
+    if type(issue_native) is not bool or type(acknowledge_unfenced_dev) is not bool:
+        raise MinimalCognitionError("native issuance flags must be bool")
+    if issue_native and not acknowledge_unfenced_dev:
+        raise MinimalCognitionError(
+            "native issue is UNFENCED_DEV_ONLY; original S49 #767 "
+            "pre-ISSUE journal not integrated; explicit risk acknowledgement required"
+        )
     if not isinstance(relay_engine, RelayEngine):
         raise MinimalCognitionError("existing RelayEngine required")
     if not isinstance(supervisor, ActionSupervisor):
