@@ -226,3 +226,70 @@ def test_readonly_attack_refuses_unstable_or_wrong_native_target(change):
         proposed_intent_id="intent-A",
         )
     assert owner.events == ()
+
+
+@pytest.mark.parametrize("invalid_intent", ["", "   ", None, 123])
+def test_readonly_handoff_refuses_missing_or_forged_intent_identity(
+    invalid_intent,
+) -> None:
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    earlier = observation(2, inventory=(bread(),), request_id="s49-a")
+    later = observation(3, inventory=(bread(),), request_id="s49-b")
+    first, current, selected, owner = select(initial, later)
+    with pytest.raises(S49ShadowRefusal, match="current"):
+        assess_s49_readonly_handoff(
+            selected, original_frame=first, current_frame=current,
+            previous_probe=earlier, current_probe=later,
+            proposed_intent_id=invalid_intent,
+        )
+    assert owner.events == ()
+
+
+def test_readonly_handoff_rejects_tampered_goal_while_option_still_listed() -> None:
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    earlier = observation(2, inventory=(bread(),), request_id="s49-a")
+    later = observation(3, inventory=(bread(),), request_id="s49-b")
+    first, current, selected, owner = select(initial, later)
+    current = replace(current, goals=())
+    with pytest.raises(S49ShadowRefusal, match="current"):
+        assess_s49_readonly_handoff(
+            selected, original_frame=first, current_frame=current,
+            previous_probe=earlier, current_probe=later,
+            proposed_intent_id="intent-A",
+        )
+    assert owner.current_intent is None
+
+
+def test_readonly_handoff_allows_unrelated_schema_registry_revision() -> None:
+    # L1 depends on selected Goal/Skill/Target, not global Schema equality.
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    earlier = observation(2, inventory=(bread(),), request_id="s49-a")
+    later = observation(3, inventory=(bread(),), request_id="s49-b")
+    first, current, selected, owner = select(initial, later)
+    current = replace(current, registry_revision=current.registry_revision + 1)
+    witness = assess_s49_readonly_handoff(
+        selected, original_frame=first, current_frame=current,
+        previous_probe=earlier, current_probe=later,
+        proposed_intent_id="intent-A",
+    )
+    assert witness.schema_registry_revision == current.registry_revision
+    assert not witness.original_s49_intent_committed
+    assert not witness.original_s49_policy_verified
+    assert owner.events == ()
+
+
+def test_readonly_handoff_rejects_foreign_self_scoping() -> None:
+    from relay_self.common_io import ScopeRef
+
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    earlier = observation(2, inventory=(bread(),), request_id="s49-a")
+    later = observation(3, inventory=(bread(),), request_id="s49-b")
+    first, current, selected, owner = select(initial, later)
+    current = replace(current, scope=ScopeRef("foreign-self", "session-1"))
+    with pytest.raises(S49ShadowRefusal, match="current"):
+        assess_s49_readonly_handoff(
+            selected, original_frame=first, current_frame=current,
+            previous_probe=earlier, current_probe=later,
+            proposed_intent_id="intent-A",
+        )
+    assert owner.events == ()
