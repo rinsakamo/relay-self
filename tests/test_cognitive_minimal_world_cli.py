@@ -457,9 +457,9 @@ def test_no_target_s49_shadow_still_probes_without_inventing_l1_target(
     assert receipt["status"] == "ESCALATE_L2"
     assert receipt["selection_reason"] == "L1 requested cognitive escalation"
     assert receipt["l1_choice_id"] == "1"
-    assert receipt["initial_schema_frame"]["options"] == []
-    assert receipt["initial_schema_frame"]["goals"] == []
-    assert receipt["current_schema_frame"]["options"] == []
+    assert receipt["initial_schema_frame"]["options"] == ()
+    assert receipt["initial_schema_frame"]["goals"] == ()
+    assert receipt["current_schema_frame"]["options"] == ()
     assert receipt["initial_native_observation"]["evidence_format"] == (
         "TYPED_DECODED_MINEFLAYER_OBSERVATION_V1"
     )
@@ -497,7 +497,7 @@ def test_no_target_without_shadow_keeps_original_no_probe_behavior(
     args = _granted_args(native=False)
     result = asyncio.run(run(args))
     assert result["status"] == "ESCALATE_L2"
-    assert result["initial_schema_frame"]["options"] == []
+    assert result["initial_schema_frame"]["options"] == ()
     assert result["initial_native_observation"]["observation"]["snapshot"]["food"] == 20
     assert result["native_probe_trace"] == []
     assert result["current_schema_frame"] is None
