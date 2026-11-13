@@ -178,6 +178,9 @@ def test_cli_disconnected_after_native_issue_preserves_unknown_action(
     assert audit["world_session"] == "session-1"
     assert audit["open_action_ids"] == [prefix + ":equip"]
     assert audit["open_action_states"] == ["issued"]
+    assert audit["recorded_actions"] == [
+        {"action_id": prefix + ":equip", "state": "issued"},
+    ]
     assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
     assert "SIMULATED_CONNECTION_LOSS" in audit["error"]
     assert session.closed
@@ -234,6 +237,7 @@ def test_cli_task_cancel_after_native_issue_preserves_uncertainty(
     assert audit["native_success_claim"] is False
     assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
     assert audit["open_action_ids"] == ["skill:eat:session-1:2:equip"]
+    assert audit["recorded_actions"][0]["state"] == "issued"
     assert "CancelledError" in audit["error"]
     assert session.closed
 
@@ -263,3 +267,28 @@ def test_unfenced_ack_alone_does_not_authorize_world_execution() -> None:
     ])
     with pytest.raises(MinimalCognitionError, match="both explicit"):
         asyncio.run(run(args))
+
+
+def test_cli_disconnect_after_equip_ack_keeps_both_child_action_records(
+    monkeypatch,
+) -> None:
+    prefix = "skill:eat:session-1:2"
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn"),
+        _observation(2, kind="probe"),
+        MineflayerEffectResult(
+            "session-1", 3, prefix + ":equip", "equip_item", "applied", None,
+        ),
+        # No consume ACK: connection loss after the second ISSUE.
+    ])
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(_granted_args(native=True)))
+    audit = exc.value.audit
+    assert audit["open_action_ids"] == [prefix + ":consume"]
+    assert audit["recorded_actions"] == [
+        {"action_id": prefix + ":consume", "state": "issued"},
+        {"action_id": prefix + ":equip", "state": "outcome"},
+    ]
+    assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
+    assert audit["native_success_claim"] is False
+    assert session.closed
