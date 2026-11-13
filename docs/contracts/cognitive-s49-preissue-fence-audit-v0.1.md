@@ -94,9 +94,10 @@ exactly-once, S49 durability, QUAL or SCIENCE claims.
   or introducing another physical Action issuer.
 - Adapt L1 `Selection.option` to the original owner grants, carrying exact
   Target identity, original World session, Intent scope and native source
-  reference. The original S49 must request/verify its **own correlated**
-  native pre-Action probe; do not reuse the uncorrelated main bridge's
-  `probe` object as if it had `request_id`.
+  reference. Original S49 must still request and verify its **own
+  two correlated pre-Action probes**, original steady-window physics,
+  independent source/grants and real S15/S16 owner; one correlated #844
+  `probe` is not enough to qualify that original transaction.
 - Route EAT and ATTACK only through original S49. Run #767's restore,
   CAS/stale source, pre-ISSUE disk failure, missing ACK, wrong after-probe,
   duplicate action, crash/restart STOP and child receipt attestation tests.
