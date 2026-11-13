@@ -6,6 +6,7 @@ It composes the existing #829/#831/RelayEngine/Intent/Skill/Action contracts.
 """
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -19,6 +20,7 @@ from relay_self.relay_engine import (
     BoundedChoiceRequest,
     CognitionDatum,
     DecisionStatus,
+    OpenCognitionRequest,
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
@@ -442,3 +444,71 @@ def prepare_existing_owner_action(
                                      intent_commitment=intent_owner, at_ns=at_ns,
                                      provenance=provenance)
     return OwnerProposal(intent_id, skill, action, option, selection.world_scope)
+
+
+def prepare_l2_pattern_request(frame: SchemaFrame) -> OpenCognitionRequest:
+    """Optional one-shot SystemTwo question; no generation inside CPU Schema.
+
+    This is only a proposal. No target is invented and no CPU rule is installed.
+    """
+    unresolved = [g.goal_id for g in frame.goals if g.unresolved]
+    if not unresolved:
+        raise MinimalCognitionError("no unresolved Goal for L2")
+    context = CognitionDatum.from_value(
+        "unresolved_goals",
+        {"goals": unresolved, "constraints": [
+            {"schema": c.schema_id, "sensation": c.sensation}
+            for c in frame.constraints
+        ], "world_session": frame.scope.world_session_id},
+        frame.source,
+    )
+    return OpenCognitionRequest(
+        request_id=f"schema-l2-{frame.scope.self_id}-{frame.epoch}",
+        instruction=(
+            "Propose one HYPOTHETICAL learned CPU SchemaPattern as a JSON object "
+            "with exactly keys pattern_id, version, schema_id, kind, predicate, "
+            "goal_id, skill_id, skill_version, target_kind. "
+            "Allowed predicate values: HUNGRY, ZOMBIE_NEAR, FATIGUE_HIGH. "
+            "Only GOAL or CONSTRAINT kinds, no code, expressions, loops, or new "
+            "physical capability. Existing known Skill must be checked by Self. "
+            "Do not pretend an unobserved Target exists. "
+            "The suggestion will NOT be executed without Self acceptance."
+        ),
+        intent_id=None,
+        focus="SCHEMA_PATTERN_PROPOSAL",
+        context=(context,),
+    )
+
+
+def parse_l2_pattern_proposal(
+    expression_text: str,
+    *,
+    model_provenance: Provenance,
+) -> SchemaPattern:
+    """Strict data parser for L2 output, using the *innate* SchemaPattern type."""
+    if not isinstance(expression_text, str) or len(expression_text) > 4096:
+        raise MinimalCognitionError("L2 proposal exceeds bounded text size")
+    try:
+        obj = json.loads(expression_text)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise MinimalCognitionError("L2 output is not JSON") from exc
+    keys = {"pattern_id", "version", "schema_id", "kind", "predicate",
+            "goal_id", "skill_id", "skill_version", "target_kind"}
+    if not isinstance(obj, dict) or set(obj) != keys:
+        raise MinimalCognitionError("L2 pattern fields do not match innate format")
+    try:
+        return SchemaPattern(
+            pattern_id=obj["pattern_id"],
+            version=obj["version"],
+            schema_id=obj["schema_id"],
+            kind=PatternKind(obj["kind"]),
+            predicate=Predicate(obj["predicate"]),
+            goal_id=obj["goal_id"],
+            skill_id=obj["skill_id"],
+            skill_version=obj["skill_version"],
+            target_kind=obj["target_kind"],
+            origin=Origin.LEARNED,
+            provenance=model_provenance,
+        )
+    except (ValueError, TypeError, KeyError) as exc:
+        raise MinimalCognitionError("invalid learned CPU pattern") from exc
