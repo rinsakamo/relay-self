@@ -61,6 +61,7 @@ class WorldStepReceipt:
     l1_elapsed_ns: int
     probe_elapsed_ns: int | None
     run: SkillRunResult | None
+    native_eat_consequence_attested: bool | None = None
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -69,6 +70,46 @@ class WorldStepReceipt:
         from relay_self.action import ActionState
 
         return sum(action.state is ActionState.OUTCOME for action in self.run.actions)
+
+
+def _native_eat_consequence_attested(
+    before: MineflayerObservation,
+    run: SkillRunResult,
+) -> bool:
+    """Stronger post-EAT native evidence; does not mutate legacy SkillState.
+
+    Follows #767 semantics: two applied native primitive ACKs, later food
+    increase and inventory decrease. This still is NOT an original S49 S16
+    durable fence or real-world physical exactly-once proof.
+    """
+    item_name = run.decision.item_name
+    if run.decision.skill is not ControlledSkill.EAT or item_name is None:
+        return False
+    initial_count = sum(
+        item.count for item in before.snapshot.inventory if item.name == item_name
+    )
+    if initial_count <= 0:
+        return False
+    applied_effects = {
+        msg.effect for msg in run.messages
+        if isinstance(msg, MineflayerEffectResult)
+        and msg.session_id == before.session_id
+        and msg.result == "applied"
+        and msg.action_id in {action.action_id for action in run.actions}
+    }
+    if not {"equip_item", "consume_held"}.issubset(applied_effects):
+        return False
+    for msg in run.messages:
+        if not isinstance(msg, MineflayerObservation):
+            continue
+        if msg.session_id != before.session_id or msg.seq <= before.seq:
+            continue
+        after_count = sum(
+            item.count for item in msg.snapshot.inventory if item.name == item_name
+        )
+        if msg.snapshot.food > before.snapshot.food and after_count < initial_count:
+            return True
+    return False
 
 
 def native_schema_percept(
@@ -336,4 +377,8 @@ async def execute_one_cognitive_world_turn(
     return WorldStepReceipt(
         "ACTION_ATTEMPTED", selection, original_frame, current_frame,
         l1_result, l1_elapsed_ns, probe_elapsed_ns, run,
+        native_eat_consequence_attested=(
+            _native_eat_consequence_attested(current_observation, run)
+            if run is not None and decision.skill is ControlledSkill.EAT else None
+        ),
     )
