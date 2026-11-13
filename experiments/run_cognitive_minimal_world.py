@@ -37,6 +37,20 @@ from relay_self.intent import IntentCommitment
 from relay_self.relay_engine import RelayEngine
 
 
+def _native_observation_record(observation: MineflayerObservation) -> dict[str, object]:
+    """Complete *decoded* native facts with exact session/seq provenance.
+
+    This is not the original adapter stdout JSON byte stream, nor an S49
+    grant. Preserve all sensor fields, including unknown/null and coverage.
+    """
+    return {
+        "evidence_format": "TYPED_DECODED_MINEFLAYER_OBSERVATION_V1",
+        "native_source": observation.provenance.source,
+        "native_source_ref": observation.provenance.reference,
+        "observation": asdict(observation),
+    }
+
+
 class CognitiveWorldRunError(RuntimeError):
     """Failed DEV run with preserved *uncertain*, not successful, native evidence."""
 
@@ -163,6 +177,24 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             node_executable=args.node, startup_timeout_s=args.startup_timeout_s,
         )
         first = await _initial_spawn(session, args.startup_timeout_s)
+        # Before any GPU inference, persist source-qualified initial native
+        # facts. A handled failure includes this in final audit, while an
+        # interrupted process can leave this checkpoint as partial evidence.
+        _write_evidence(args.evidence_path, {
+            "evidence_class": "DEV_INITIAL_NATIVE_CHECKPOINT",
+            "stage": "INITIAL_NATIVE_OBSERVED_BEFORE_L1",
+            "native_success_claim": False,
+            "physical_action_issued": False,
+            "original_s49_preissue_wal": "NOT_CONNECTED",
+            "world_session": first.session_id,
+            "initial_native_observation": _native_observation_record(first),
+            "scenario_inputs": {
+                "edible_item_names": list(scenario.edible_item_names),
+                "hazard_entity_names": sorted(scenario.hazard_entity_names),
+                "fight_max_distance": scenario.fight_max_distance,
+                "food_threshold": scenario.food_threshold,
+            },
+        })
         receipt = await execute_one_cognitive_world_turn(
             session, first, scenario,
             self_id=args.self_id, intent_id=args.intent_id,
@@ -189,6 +221,21 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "model_declared": args.model,
             "systemone_backend": bool(args.systemone_endpoint),
             "world_session": first.session_id,
+            "initial_native_observation": _native_observation_record(first),
+            "initial_schema_frame": asdict(receipt.initial_frame),
+            "current_schema_frame": (
+                None if receipt.current_frame is None
+                else asdict(receipt.current_frame)
+            ),
+            "native_probe_trace": [
+                _native_observation_record(obs) for obs in receipt.native_probe_trace
+            ],
+            "scenario_inputs": {
+                "edible_item_names": list(scenario.edible_item_names),
+                "hazard_entity_names": sorted(scenario.hazard_entity_names),
+                "fight_max_distance": scenario.fight_max_distance,
+                "food_threshold": scenario.food_threshold,
+            },
             "status": receipt.status,
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
@@ -267,6 +314,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "evidence_class": "DEV_FAILED_NOT_QUALIFIED",
             "error": f"{type(exc).__name__}: {str(exc)[:500]}",
             "world_session": None if first is None else first.session_id,
+            "initial_native_observation": (
+                None if first is None else _native_observation_record(first)
+            ),
             "current_intent_id": (
                 None if owner.current_intent is None
                 else owner.current_intent.intent_id
