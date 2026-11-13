@@ -68,6 +68,7 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 | L1-selected Target revalidation after native probe | Implemented in bounded main-based runner | DEV PASS |
 | Original S49 S15 correlated `probe.request_id` | Backported optional request ID through Python + Node + bridge; two additional independently correlated post-L1 probes now checked in optional read-only shadow | DEV PARTIAL; **not S49 issuance** |
 | Read-only selected Target + two original-S49-shaped native probes | `--s49-readonly-shadow` tests steady EAT inventory slot/no nearby Entity and stable single Zombie ATTACK, returns typed non-authorizing witness | **OFFLINE DEV PASS**; no owner grant |
+| Self/Intent identity and selected Goal/Skill closure | Witness carries original Self scope, caller-proposed Intent ID, current Schema revision, and verifies selected Goal; no original Intent commit | **OFFLINE DEV PASS**; uncommitted candidate |
 | Original S49 `NormalSessionActionExecutor` ownership | Current physical path instead calls `controlled_minecraft_vertical`; shadow issues nothing | **BLOCKED** |
 | Original durable `prepare_*()` before physical ISSUE | #767 not in current import/ownership path | **BLOCKED** |
 | S49 terminal identity + verified native S16 closure | Existing main-based supervised Action Outcome only | **BLOCKED** |
@@ -93,6 +94,32 @@ separate `acknowledge_unfenced_dev=True` guard. Missing any required gate
 prevents Action. The flag **does not** install a physical fence; a granted
 legacy run remains explicitly `UNFENCED_DEV_ONLY`, unsuitable for
 exactly-once, S49 durability, QUAL or SCIENCE claims.
+
+## S51 original food-policy divergence (OPEN, not an admission)
+
+Original #767 `src/relay_self/eat_hunger.py` owns `EatCursor.choose` and a
+source-controlled ordered `ALLOWED_FOODS` catalogue. By contrast, #844
+constructs L1 food options from the `ControlledScenario.edible_item_names`
+configured for the bounded main-based Action port. These are **not the same
+source of authority**. For example, when both bread and apple are in inventory,
+the pinned original S51 cursor prefers bread; a valid L1 selection of apple
+must not be silently retargeted to bread. Likewise, a Scenario-declared food
+absent from original S51 policy cannot be treated as original-S49 ready.
+
+#844 now emits `S49ReadOnlyHandoff` with `self_id`, a
+`proposed_intent_id`, current `schema_registry_revision` and native
+Goal/Skill/Target/slot or entity ID. Its `original_s49_intent_committed`,
+`original_s49_policy_verified`, `original_s49_authorized` and
+`physical_action_issued` remain **false**, including on
+`S49_SHADOW_READY`. The proposed Intent ID is metadata only; no new
+Intent/Action Owner and no S49 grant is created.
+
+**Unresolved before full original-S49 ISSUE:** original S51 must read and
+accept the *exact* L1-selected food/slot using its native physical policy and
+the current original probe; any mismatch must return RECONSIDER/REJECT,
+**never choose a different food behind L1's back**. This must be implemented
+with the original S51/S49 code when stacked lineage is reconciled, not by
+hardcoding a second food hierarchy into Cognitive Schema.
 
 ## Suggested original-owner migration (not implemented in #844)
 
