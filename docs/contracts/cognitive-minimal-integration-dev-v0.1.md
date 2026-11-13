@@ -132,7 +132,11 @@ For L2 hypothesis-only output, add `--enable-l2-proposal`.
 The CLI writes an atomic JSON result at `--evidence-path` on normal exit
 and handled failure. A disconnect after an Action has been issued but before
 its receipt is reported as `UNKNOWN_POSSIBLY_ISSUED` with the still-open
-Action IDs, **not as an OUTCOME or Skill success**. This is only in-process
+Action IDs, **not as an OUTCOME or Skill success**. The CLI now also
+retains the original supervisor's read-only `recorded_actions` history,
+including already-closed child effects such as a successful equip followed by
+an unresolved consume; a closed equip ACK must not be mistaken for complete
+physical EAT. This is only in-process
 exit-path evidence: a host power loss or `SIGKILL` before write still loses
 the file. Pre-ISSUE durable reservation in the full S49/#767 Action path
 must remain a separate qualification gate. `--llama-timeout-s` limits a
