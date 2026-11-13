@@ -30,9 +30,14 @@ planned multi-Intent `IntentBook`.
   or occupied legacy Intent owner block a new physical proposal.
 - `prepare_existing_owner_action` uses existing `IntentCommitment.commit`,
   `SkillExecution.start` and `ActionLifecycle.propose`. Its return
-  **stops at PROPOSED**. Native authorization, S49/ActionPort, Mineflayer
+  preserves the selected Target/World session and **stops at PROPOSED**. Native authorization, S49/ActionPort, Mineflayer
   submission, ACK, post-World observation and OUTCOME are not bypassed or
   simulated as successful.
+- For unresolved Goals, `prepare_l2_pattern_request` constructs a single
+  existing RelayEngine OPEN/SystemTwo request (no Schema model call).
+  `parse_l2_pattern_proposal` admits only exact typed CPU SchemaPattern JSON,
+  with no executable code, unknown predicates, extra fields or capability grant.
+  This L2 seam is **offline-tested with a mock provider**, not live Gemma.
 - A proposed learned Pattern is only published by a caller with affirmative
   Self acceptance, expected registry revision, supported CPU predicate, known
   schema and existing physical Skill capability. Publication yields a new
@@ -75,9 +80,10 @@ No physical Action is issued by these tests.
    collect ActionLifecycle ISSUED and actual qualified WorldBody Outcome
    separately. Current `OwnerProposal` has no native ActionPort call.
 4. **L2:** `ESCALATE_L2` is a preserved typed cognitive routing decision.
-   A live SystemTwo model prompt, Self acceptance owner, persistent registry,
-   and true GPU preemption/release are *not* yet wired; learned CPU pattern
-   validation is currently offline only.
+   An offline one-shot OPEN/SystemTwo request and strict response parser exist.
+   Live Gemma invocation on this path, Self acceptance owner, persistent
+   registry, richer CPU predicates and true GPU preemption/release are
+   *not* yet wired; learned pattern proposal/validation is offline only.
 5. **Multi-Intent:** #843 calls for an `IntentBook` with multiple active
    commitments and independent SkillRun owner checks. This branch intentionally
    uses original single slot to avoid a new physical issuer. Do not claim
