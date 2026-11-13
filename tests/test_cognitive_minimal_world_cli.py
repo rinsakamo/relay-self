@@ -114,7 +114,7 @@ def _granted_args(*, native: bool):
         "--llama-timeout-s", "1.5",
     ]
     if native:
-        flags.append("--execute-native")
+        flags.extend(("--execute-native", "--acknowledge-unfenced-dev"))
     return parser().parse_args(flags)
 
 
@@ -149,6 +149,8 @@ def test_cli_fake_native_eat_through_existing_issuer(monkeypatch) -> None:
     receipt = asyncio.run(run(_granted_args(native=True)))
     assert receipt["status"] == "ACTION_ATTEMPTED"
     assert receipt["action_outcome_count"] == 2
+    assert receipt["physical_fence"] == "UNFENCED_DEV_ONLY"
+    assert receipt["original_s49_preissue_wal"] == "NOT_CONNECTED"
     assert receipt["skill_final_state"] == "succeeded"
     assert receipt["intent_to_action_issued_ns"] is not None
     assert len(receipt["native_effect_receipts"]) == 2
@@ -231,3 +233,30 @@ def test_cli_task_cancel_after_native_issue_preserves_uncertainty(
     assert audit["open_action_ids"] == ["skill:eat:session-1:2:equip"]
     assert "CancelledError" in audit["error"]
     assert session.closed
+
+
+def test_cli_refuses_native_without_unfenced_ack_before_any_connection(
+    monkeypatch,
+) -> None:
+    called = []
+
+    async def no_connection(*args, **kwargs):
+        called.append("launched")
+        raise AssertionError("should not launch")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", no_connection)
+    args = parser().parse_args([
+        "--model", "mock", "--grant-real-world", "--grant-real-llm",
+        "--execute-native",
+    ])
+    with pytest.raises(MinimalCognitionError, match="UNFENCED_DEV_ONLY"):
+        asyncio.run(run(args))
+    assert not called
+
+
+def test_unfenced_ack_alone_does_not_authorize_world_execution() -> None:
+    args = parser().parse_args([
+        "--model", "mock", "--acknowledge-unfenced-dev", "--execute-native",
+    ])
+    with pytest.raises(MinimalCognitionError, match="both explicit"):
+        asyncio.run(run(args))
