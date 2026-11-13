@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from relay_self.cognitive_profile_contract import OriginKind
 from relay_self.common_io import (
     Clock,
-    CognitiveTask,
     CognitionResultReceipt,
+    CognitiveTask,
     CommonEnvelope,
     Profile,
     ProfileDecision,
