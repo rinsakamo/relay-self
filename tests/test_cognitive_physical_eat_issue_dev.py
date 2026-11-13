@@ -313,3 +313,54 @@ def test_journal_close_rejects_replaced_native_after_probe(tmp_path):
             events[0], events[1], events[2],
             result.terminal, kw["supervisor"],
         )
+
+
+def test_forged_action_binding_cannot_issue_different_proposal_lifecycle(tmp_path):
+    kw, session, _, _ = setup(tmp_path)
+    wrong = replace(
+        kw["proposal"].binding, action_id="another-native-action",
+    )
+    kw["proposal"] = replace(kw["proposal"], binding=wrong)
+    with pytest.raises(PhysicalEatRefusal, match="native correlated window"):
+        run(kw, session)
+    assert kw["journal"].records == ()
+    assert kw["supervisor"].recorded_actions == ()
+    assert session.sent == []
+
+
+def test_close_fsync_failure_after_native_eat_keeps_wal_unresolved(tmp_path, monkeypatch):
+    kw, session, _, _ = setup(tmp_path)
+    journal = kw["journal"]
+    original = journal._commit
+    commit_count = 0
+
+    def fail_after_native_eat(rows):
+        nonlocal commit_count
+        commit_count += 1
+        if commit_count == 2:
+            raise OSError("SIMULATED_CLOSE_FSYNC_FAILURE")
+        return original(rows)
+
+    monkeypatch.setattr(journal, "_commit", fail_after_native_eat)
+    with pytest.raises(OSError, match="SIMULATED_CLOSE_FSYNC_FAILURE"):
+        run(kw, session)
+    assert commit_count == 2
+    assert len(session.sent) == 3  # The one equip and consume already happened.
+    assert kw["supervisor"].get("action-eat-A").state is ActionState.OUTCOME
+    recovered = PhysicalActionJournal.restore(journal.path, self_id="self-A")
+    with pytest.raises(PhysicalJournalUnresolved, match="STOP/UNKNOWN"):
+        recovered.require_clear()
+    assert recovered.records[0]["status"] == "PREPARED_UNRESOLVED"
+    # A terminal in-memory Action does not retroactively prove durable close.
+
+
+def test_native_eat_rejected_equip_keeps_unknown_without_consume(tmp_path):
+    kw, session, _, events = setup(tmp_path)
+    session.events = [
+        replace(events[0], result="rejected", error="cannot_equip"),
+    ]
+    with pytest.raises(PhysicalEatRefusal, match="ACK not applied"):
+        run(kw, session)
+    assert session.sent == [("equip_item", "action-eat-A-equip", "bread")]
+    assert kw["supervisor"].get("action-eat-A").state is ActionState.UNKNOWN
+    assert kw["journal"].unresolved
