@@ -47,7 +47,9 @@ def _native_observation_record(observation: MineflayerObservation) -> dict[str, 
         "evidence_format": "TYPED_DECODED_MINEFLAYER_OBSERVATION_V1",
         "native_source": observation.provenance.source,
         "native_source_ref": observation.provenance.reference,
-        "observation": asdict(observation),
+        # Convert typed tuples to JSON arrays now, not only when the CLI
+        # writes its file, so returned evidence and checkpoint compare exactly.
+        "observation": json.loads(json.dumps(asdict(observation), allow_nan=False)),
     }
 
 
