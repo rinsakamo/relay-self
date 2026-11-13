@@ -37,7 +37,9 @@ remains an explicit separate #843 migration.
   `ControlledScenario`, **not** from a hardcoded LLM-generated plan.
   Current adapter does NOT expose physical fatigue: mark as UNKNOWN.
   A distant Zombie raises defensive Need but is not an executable ATTACK.
-- After L1, the bridge requests a new native `probe` and validates
+- After L1, the bridge requests a newly correlated native
+  `probe(request_id)` (adapted from original S49 #767's read-only protocol)
+  and validates the returned request ID, World session/sequence, and
   session and bound Target. On READY, the **existing**
   `experiments.controlled_minecraft_vertical.execute_decision` is used
   directly for EAT/FIGHT with original
@@ -66,9 +68,10 @@ remains an explicit separate #843 migration.
   production L0 Scheduler or a real FAST deadline guarantee.
 - See `docs/contracts/cognitive-s49-preissue-fence-audit-v0.1.md` for
   concrete differences with original S49 #767: current main-based
-  `MineflayerObservation` lacks the correlated native `request_id` that
-  #767's durable fence requires, the original `NormalSessionActionExecutor`
-  is not in this stacked runtime, and nothing writes a pre-ISSUE WAL here.
+  `MineflayerObservation` now supports the **read-only** correlated
+  native `request_id` backport. However the original S49 two-probe/steady
+  window, independent grants and `NormalSessionActionExecutor` are still
+  not wired into this stacked runtime, and nothing writes a pre-ISSUE WAL here.
 - L2 escalation may construct one `RelayEngine.OPEN` request. Strict
   parser accepts only exact innate-format typed CPU patterns and rejects
   arbitrary code/unknown/costly forms. No Self acceptance is presumed.
