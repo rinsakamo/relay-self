@@ -77,7 +77,6 @@ def assess_s49_readonly_handoff(
         or not isinstance(current_frame, SchemaFrame)
         or selection.world_scope != original_frame.scope
         or current_frame.scope != original_frame.scope
-        or current_frame.registry_revision != original_frame.registry_revision
         or not any(
             goal.goal_id == selection.option.goal_id
             and goal.schema_id == selection.option.schema_id
