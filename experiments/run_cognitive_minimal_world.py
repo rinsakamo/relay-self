@@ -453,7 +453,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 None if physical_journal is None else physical_journal.unresolved
             ),
             "physical_journal_records": (
-                [] if physical_journal is None else physical_journal.records
+                [] if physical_journal is None else list(physical_journal.records)
             ),
             "native_actions": (
                 [{"action_id": a.action_id, "state": a.state.value}
@@ -534,7 +534,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 None if physical_journal is None else physical_journal.unresolved
             ),
             "physical_journal_records": (
-                [] if physical_journal is None else physical_journal.records
+                [] if physical_journal is None else list(physical_journal.records)
             ),
             "current_intent_id": (
                 None if owner.current_intent is None
