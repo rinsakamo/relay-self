@@ -288,7 +288,7 @@ def test_native_unactionable_distant_zombie_retains_unresolved_defensive_goal() 
         p, initial_patterns(), epoch=1,
         allowed_skills=SKILLS, hunger_threshold=10,
     )
-    assert f.fast_cues == ("ZOMBIE_NEAR",)
+    assert f.fast_cues == ()  # Distant defensive Need is not an emergency reflex.
     assert [g.goal_id for g in f.goals] == ["DEFEND_SELF"]
     assert f.goals[0].unresolved
     assert not f.options
