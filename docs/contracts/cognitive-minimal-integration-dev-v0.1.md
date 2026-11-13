@@ -1,93 +1,140 @@
-# Cognitive v0.1 — minimal CPU Schema → SystemOne → original Owner DEV
+# Cognitive v0.1 — CPU Schema → SystemOne → native WorldBody DEV
 
 Parent #828 §27 (2026-11-13); children #829, #831, #841, #843.
 
-**Status: initial offline-integrated DEV seam, not real Gemma or real World.**
-This is stacked on #842's CPU contract code. It deliberately leaves the existing
-single-`CurrentIntent` implementation in place and refuses a second new
-physical proposal while that legacy owner is busy. It does not implement the
-planned multi-Intent `IntentBook`.
+**Status: OFFLINE_INTEGRATION_PASS / REAL_LLM_NOT_RUN_HERE /
+REAL_WORLD_NOT_RUN_HERE / QUAL_NO_GO / SCIENCE_NOT_RUN.**
+This is stacked on #842's CPU contracts. It deliberately keeps the
+existing single-`CurrentIntent` owner rather than adding a second
+Owner/Scheduler or another native Action issuer. Multi-Intent `IntentBook`
+remains an explicit separate #843 migration.
 
-## Implemented here
+## Implemented
 
-- `cognitive_minimal_dev.py`: bounded pure CPU pattern matching and source-bound
-  WorldPercept. Typed `SchemaPattern` is identical for innate and accepted learned
-  definitions. No LLM or memory retrieval occurs in Schema. Initially:
-  Homeostatic HUNGRY → HUNGER_RELIEF/EAT/FOOD, Defensive ZOMBIE_NEAR
-  → DEFEND_SELF/ATTACK/ZOMBIE, Body FATIGUE_HIGH → constraint sensation
-  without a Goal. Both Goals may be simultaneously projected. The source
-  Percept/targets must be provided by existing qualified perception gateway;
-  the sample caller must **not** forge native readbacks.
-- Finite `Goal × Skill@version × Target` options, up to eight concrete items.
-  L1 context combines Schema CURRENT, live `IntentCommitment` state and up
-  to three supplied RECENT 3Self summaries. Optional RETRIEVED memory is absent.
-  L1 uses the existing `BoundedChoiceRequest`, strict finite IDs, explicit
-  `ESCALATE_L2` and `DEFER`, `think_allowed=False`. The existing
-  `LlamaCppRelayProvider` can run generated bounded or configured Jev.
-- On response, compare just selected dependencies against freshly generated
-  current SchemaFrame and known Skill version; **do not** require global epoch
-  equality. Disappeared target, changed World session, unavailable Skill,
-  or occupied legacy Intent owner block a new physical proposal.
-- `prepare_existing_owner_action` uses existing `IntentCommitment.commit`,
-  `SkillExecution.start` and `ActionLifecycle.propose`. Its return
-  preserves the selected Target/World session and **stops at PROPOSED**. Native authorization, S49/ActionPort, Mineflayer
-  submission, ACK, post-World observation and OUTCOME are not bypassed or
-  simulated as successful.
-- For unresolved Goals, `prepare_l2_pattern_request` constructs a single
-  existing RelayEngine OPEN/SystemTwo request (no Schema model call).
-  `parse_l2_pattern_proposal` admits only exact typed CPU SchemaPattern JSON,
-  with no executable code, unknown predicates, extra fields or capability grant.
-  This L2 seam is **offline-tested with a mock provider**, not live Gemma.
-- A proposed learned Pattern is only published by a caller with affirmative
-  Self acceptance, expected registry revision, supported CPU predicate, known
-  schema and existing physical Skill capability. Publication yields a new
-  immutable PatternRegistry snapshot; previous versions are preserved.
+- `src/relay_self/cognitive_minimal_dev.py` is a bounded CPU-only
+  pattern interpreter. The same typed `SchemaPattern` data shape and
+  validator are used for innate and accepted learned patterns. No LLM,
+  arbitrary code or Memory retrieval in Schema.
+  - HUNGRY → HUNGER_RELIEF/EAT/FOOD (body-threshold controlled)
+  - ZOMBIE_NEAR → DEFEND_SELF/ATTACK/ZOMBIE (may be unresolved)
+  - FATIGUE_HIGH → goal-less Constraint Sensation (when sensed).
+  Multiple Goals share a bounded L1 CURRENT; distant observed threats may
+  raise an unresolved defensive Goal without implying immediate FAST reflex.
+- CPU-constructed `Goal × Skill@version × Target` options are finite.
+  `BoundedChoiceRequest` uses one existing RelayEngine/SystemOne selection,
+  with DEFER and ESCALATE_L2; no automatic THINK, second Skill search or
+  model-generated target text. RECENT is caller supplied (max three refs),
+  RETRIEVED Memory not required per ordinary SELECT.
+- L1 may operate on a slightly stale epoch. Selection checks its actual
+  Goal/Skill/Target dependencies, not full World/Schema snapshot equality.
+  `prepare_existing_owner_action` demonstrates the original
+  `IntentCommitment → SkillExecution → ActionLifecycle.PROPOSED`
+  offline seam and preserves selected target/session (no native issue there).
+- `experiments/cognitive_minimal_minecraft_dev.py` translates genuine
+  `MineflayerObservation` snapshots from the existing decoded native bridge:
+  source/session/sequence, bounded inventory and nearby entity facts. Known
+  edible names, hazard names and physical ATTACK range come from existing
+  `ControlledScenario`, **not** from a hardcoded LLM-generated plan.
+  Current adapter does NOT expose physical fatigue: mark as UNKNOWN.
+  A distant Zombie raises defensive Need but is not an executable ATTACK.
+- After L1, the bridge requests a new native `probe` and validates
+  session and bound Target. On READY, the **existing**
+  `experiments.controlled_minecraft_vertical.execute_decision` is used
+  directly for EAT/FIGHT with original
+  `IntentCommitment → SkillExecution → ActionLifecycle →
+  ActionSupervisor → Mineflayer` effect/outcome. No duplicate Skill start
+  from `prepare_existing_owner_action`. Native accepted/rejected effects
+  are known Action Outcomes, not automatically successful Skills.
+  `issue_native=False` by default: fresh observation and READY without
+  Action issuance is possible and test-covered.
+- `experiments/run_cognitive_minimal_world.py` provides a one-turn,
+  explicit-grant real llama.cpp + Mineflayer CLI (below). It does not start
+  a Minecraft server, invent item stock, change world Hunger, or silently
+  retry. The actual local WSL2 GPU/World session has NOT been accessed
+  from GitHub CI / this environment.
+- L2 escalation may construct one `RelayEngine.OPEN` request. Strict
+  parser accepts only exact innate-format typed CPU patterns and rejects
+  arbitrary code/unknown/costly forms. No Self acceptance is presumed.
+  CLI can request an **unpublished hypothesis** with
+  `--enable-l2-proposal`; real L2/acceptance qualification is open.
 
-## DEV negative tests
+## Offline DEV tests
 
-`python -m pytest tests/test_cognitive_minimal_dev_v01.py -q`
+Run:
+```bash
+PYTHONPATH=src:. python -m pytest tests/test_cognitive_minimal_dev_v01.py \
+    tests/test_cognitive_minimal_minecraft_dev.py -q
+```
 
-D1 hunger + food → EAT L1 → existing Owner Action **PROPOSED**.
-D2 simultaneous hunger + zombie → both Goals, defense eligible.
-D3 hunger without a FOOD target → L2 escalation selectable, Need persists.
-D4 in-flight target loss → reject/no Intent/Action.
-D5 blocked L1 thread → independent CPU Schema/FAST epoch completes.
-D6 Goal-less fatigue → L1 constraint sensation.
-D7 bad/unauthorized L2 pattern → no install; valid accepted pattern → new snapshot.
-D8 unrelated World update → selected still-valid dependency retained.
-Additional invalid option, foreign session, unavailable Skill and busy legacy
-single Intent owner controls.
+Synthetic D1 EAT with inventory → original supervisor two effects/outcomes
+and observed later food increase. D2 hunger + Zombie → L1 ATTACK option →
+original FIGHT effect/attributed hurt path. D3 no food → ESCALATE_L2
+without Action. D4 native probe discovers vanished target → reject.
+D5 CPU epoch can continue on asyncio event loop while L1 runs in a
+thread (not a real GPU contention or sustained L0 scheduler proof).
+D6 goal-less Body fatigue sensation on synthetic input; native physical
+fatigue sensor UNKNOWN. D7 unaccepted/bad L2 Pattern rejected.
+D8 unrelated observation/Goal does not invalidate selected EAT.
+Additional negatives: action grant gate, native default no issue,
+wrong World session, rejected equip != Skill success, unqualified
+distant ATTACK, invalid/unknown hunger and busy original owner.
 
-These tests use synthetic input and provider decisions. D5 only proves a
-threaded *possibility*, **not actual GPU contention or FAST latency**.
-No physical Action is issued by these tests.
+These tests use scripted `MineflayerObservation` and model responses.
+The tests DO NOT make real physical Minecraft or Gemma calls.
 
-## Boundaries and next real measurements
+## Real DEV execution (only on explicitly approved local host)
 
-1. **Read-only WorldBody integration:** translate actual S49/Mineflayer native
-   hunger, inventory, visible zombie, fatigue and source-qualified
-   `world_session_id/sequence` into `WorldPercept`. Do not infer item existence
-   or native availability from L1 text. Preserve existing primary S49 Action
-   issuer. Use a DEV-only opt-in bridge rather than modifying production owner.
-2. **Real Gemma:** with local llama.cpp available and local user-approved grant,
-   use `experiments/cognitive_minimal_l1_benchmark.py` to invoke the existing
-   `LlamaCppRelayProvider` via explicit model/endpoint, warmups and repeated
-   D1–D3 samples. Record exact model SHA/version, runtime, GPU, prompt tokens,
-   p50/p95 provider latency and selection error rates. Do **not** declare
-   0.2s achieved without measurements.
-3. **Physical execution:** only after selected-Target revalidation at native
-   ActionPort, use the original S49 authorized path to issue EAT/ATTACK;
-   collect ActionLifecycle ISSUED and actual qualified WorldBody Outcome
-   separately. Current `OwnerProposal` has no native ActionPort call.
-4. **L2:** `ESCALATE_L2` is a preserved typed cognitive routing decision.
-   An offline one-shot OPEN/SystemTwo request and strict response parser exist.
-   Live Gemma invocation on this path, Self acceptance owner, persistent
-   registry, richer CPU predicates and true GPU preemption/release are
-   *not* yet wired; learned pattern proposal/validation is offline only.
-5. **Multi-Intent:** #843 calls for an `IntentBook` with multiple active
-   commitments and independent SkillRun owner checks. This branch intentionally
-   uses original single slot to avoid a new physical issuer. Do not claim
-   multiple simultaneous Intent/action support.
+The Minecraft 1.21.8 World and the configured llama.cpp backend must already
+be running, Node 22/Mineflayer 4.39.0 dependencies installed, with explicit
+operator grant under repo rules. From the repository root, for a
+**non-issuing native probe/shadow** first:
 
-`DEV / QUAL / SCIENCE` remain distinct. The GitHub CI workers cannot access
-the operator's local RTX 3060, WSL2, Gemma socket or private Minecraft world.
+```bash
+PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
+  --grant-real-world --grant-real-llm \
+  --model 'YOUR_SERVED_GEMMA_MODEL' \
+  --llama-endpoint http://127.0.0.1:8080/v1/chat/completions \
+  --systemone-endpoint http://127.0.0.1:8080/v1/systemone \
+  --mc-host 127.0.0.1 --mc-port 25565 --mc-version 1.21.8 \
+  --edible-item bread --hazard-name zombie --fight-max-distance 3
+```
+
+Only after confirming the actual World/readback/Item/target and grant
+conditions, add `--execute-native` to permit the bounded original
+EAT/FIGHT Action path. The runner defaults to a single turn and
+**does not automatically choose or invent another Action**. The scenario
+values are *examples*, not claims about a specific World or a confirmed
+physical ATTACK reach. If the local runtime lacks the Jev endpoint,
+omit `--systemone-endpoint` for the supported generated bounded path.
+For L2 hypothesis-only output, add `--enable-l2-proposal`.
+
+Record exact HEAD, model artifact hash, llama.cpp runtime SHA, GPU driver,
+actual World session, native timestamps, Action/Skill outcomes and
+L1 token/prefill/decode latency separately. This CLI currently captures
+total L1 wall latency and whatever aggregate prompt/decode token counts
+the provider reports; it **does not separately measure prefill/decode
+durations, CPU utilization, or long-run p95**.
+
+## Remaining boundaries
+
+1. **Real world + model measurements:** Run grant-backed CLI on operator
+   WSL2/RTX 3060, capture native target/Action Outcome and performance.
+   Current environment cannot reach that local host.
+2. **Original full S49 optional adapter:** The main-branch bounded
+   `controlled_minecraft_vertical.execute_decision` is an
+   already-existing verified ActionSupervisor issuer, not the unmerged
+   long-run S49 WorldBody adapter. No second native path was added here,
+   but matching long-run S49 epochs/owner receipts is still open.
+3. **True CPU continuous FAST/L0:** The one-shot caller awaits L1 using
+   `asyncio.to_thread`, leaving the event loop available, but does NOT
+   independently run a sustained fast sensory loop during model calls.
+   GPU L2 preemption/release and independent CPU load measurements are open.
+4. **L2 and learned Self:** A typed candidate parser / immutable data
+   registry is an offline contract, not actual Self acceptance, persistent
+   learned Schema installer, GPU preemption or autonomous Skill generation.
+5. **Multi-Intent:** The existing main `IntentCommitment` is single-slot.
+   A second physical issuance cannot be requested while its owner
+   or ActionSupervisor is busy; true IntentBook/parallel SkillRun is
+   still #843's implementation work.
+
+DEV/QUAL/SCIENCE are strictly separate. Do not claim real World DEV from CI.
