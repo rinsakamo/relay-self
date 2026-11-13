@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Callable
 
@@ -225,13 +226,15 @@ async def _fresh_probe(
     session: MineflayerScenarioSession,
     initial: MineflayerObservation,
     scenario: ControlledScenario,
+    *,
+    request_id: str,
 ) -> MineflayerObservation:
     """One current native observation after L1; bounded, fail closed.
 
     Does not swallow an unexpected primitive effect receipt that belongs to
     another owner: the caller must coordinate other outstanding actions first.
     """
-    await session.send_observe()
+    await session.send_observe(request_id)
     deadline = asyncio.get_running_loop().time() + scenario.evidence_timeout_s
     for _ in range(scenario.max_evidence_messages):
         remaining = deadline - asyncio.get_running_loop().time()
@@ -254,6 +257,10 @@ async def _fresh_probe(
             if message.kind in {"death", "respawn"} or message.snapshot.health <= 0:
                 raise MinimalCognitionError("WorldBody life-cycle changed")
             if message.kind == "probe":
+                if message.request_id != request_id:
+                    raise MinimalCognitionError(
+                        "uncorrelated or stale native probe response"
+                    )
                 return message
     raise MinimalCognitionError("no qualified probe within bounded event horizon")
 
@@ -277,6 +284,7 @@ async def execute_one_cognitive_world_turn(
     }),
     epoch: int = 1,
     recent_3self: tuple[str, ...] = (),
+    probe_request_id: str | None = None,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -332,7 +340,14 @@ async def execute_one_cognitive_world_turn(
 
     # Never infer that L1's now-possibly-stale target still exists.
     probe_started = time.perf_counter_ns()
-    current_observation = await _fresh_probe(session, initial_observation, scenario)
+    unique_probe_request_id = (
+        f"cognitive-{uuid.uuid4().hex}"
+        if probe_request_id is None else probe_request_id
+    )
+    current_observation = await _fresh_probe(
+        session, initial_observation, scenario,
+        request_id=unique_probe_request_id,
+    )
     probe_elapsed_ns = time.perf_counter_ns() - probe_started
     current_percept = native_schema_percept(
         current_observation, scenario, self_id=self_id,
