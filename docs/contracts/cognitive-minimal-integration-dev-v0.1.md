@@ -1,5 +1,14 @@
 # Cognitive v0.1 — CPU Schema → SystemOne → native WorldBody DEV
 
+> **Current migration decision (2026-11-13):** The minimal
+> [Physical ActionPort v0.1](physical-action-port-v0.1.md) replaces
+> the prior plan to import the entire original S49 runtime. #844 now has
+> an offline-tested, **nonissuing** existing-Action `PROPOSED` seam.
+> The proven real Gemma/Minecraft EAT `S49_SHADOW_READY` remains a
+> read-only source observation, not a physical grant or Outcome. The
+> new physical issuer, #767-derived pre-ISSUE durable journal and
+> restart/UNKNOWN qualifications remain separate OPEN work.
+
 Parent #828 §27 (2026-11-13); children #829, #831, #841, #843.
 
 **Status: OFFLINE_INTEGRATION_PASS / LOCALCODEX_REAL_L1_AND_WORLD_CONNECT_RECORDED /
