@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from dataclasses import replace
 
 import pytest
 
@@ -439,3 +440,28 @@ def test_native_eat_legacy_success_without_inventory_loss_is_not_attested() -> N
     assert result.actual_action_outcomes == 2
     assert result.native_eat_consequence_attested is False
     assert supervisor.open_actions == ()
+
+
+@pytest.mark.parametrize("correlation", ["wrong", "missing"])
+def test_native_stale_or_uncorrelated_probe_must_not_reach_action_port(
+    correlation: str,
+) -> None:
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    received = observation(2, inventory=(bread(),),
+                           request_id="old-probe-id")
+    if correlation == "missing":
+        received = replace(received, request_id=None)
+    session = FakeNativeSession([received])
+    owner = IntentCommitment()
+    supervisor = ActionSupervisor()
+    with pytest.raises(MinimalCognitionError, match="uncorrelated or stale"):
+        asyncio.run(execute_one_cognitive_world_turn(
+            session, initial, scenario(),
+            self_id="self-A", intent_id="intent-1", registry=initial_patterns(),
+            relay_engine=engine_with_choice("1"), intent_owner=owner,
+            supervisor=supervisor, grant_real_world=True, issue_native=True,
+            acknowledge_unfenced_dev=True,
+            probe_request_id="cognitive-test-probe",
+        ))
+    assert session.sent == [("observe",)]
+    assert owner.current_intent is None and supervisor.recorded_actions == ()
