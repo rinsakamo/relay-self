@@ -145,6 +145,7 @@ def turn(
         self_id="self-A", intent_id="intent-1", registry=initial_patterns(),
         relay_engine=engine_with_choice(choice), intent_owner=owner,
         supervisor=supervisor, grant_real_world=grant, issue_native=True,
+        acknowledge_unfenced_dev=True,
     ))
     return result, owner, supervisor
 
@@ -392,3 +393,20 @@ def test_non_zombie_entity_cannot_be_innate_zombie_pattern_target() -> None:
         hunger_threshold=10,
     )
     assert not f.goals and not f.options and not f.fast_cues
+
+
+def test_direct_native_issue_requires_independent_unfenced_dev_ack() -> None:
+    initial = observation(1, inventory=(bread(),))
+    session = FakeNativeSession([])
+    owner = IntentCommitment()
+    supervisor = ActionSupervisor()
+    with pytest.raises(MinimalCognitionError, match="UNFENCED_DEV_ONLY"):
+        asyncio.run(execute_one_cognitive_world_turn(
+            session, initial, scenario(),
+            self_id="self-A", intent_id="intent-1", registry=initial_patterns(),
+            relay_engine=engine_with_choice("1"), intent_owner=owner,
+            supervisor=supervisor, grant_real_world=True, issue_native=True,
+        ))
+    assert session.sent == []
+    assert owner.current_intent is None
+    assert supervisor.open_actions == ()
