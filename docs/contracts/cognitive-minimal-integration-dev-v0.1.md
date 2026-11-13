@@ -96,7 +96,8 @@ PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
   --llama-endpoint http://127.0.0.1:8080/v1/chat/completions \
   --systemone-endpoint http://127.0.0.1:8080/v1/systemone \
   --mc-host 127.0.0.1 --mc-port 25565 --mc-version 1.21.8 \
-  --edible-item bread --hazard-name zombie --fight-max-distance 3
+  --edible-item bread --hazard-name zombie --fight-max-distance 3 \
+  --llama-timeout-s 30 --evidence-path ./cognitive-dev-evidence.json
 ```
 
 Only after confirming the actual World/readback/Item/target and grant
@@ -107,6 +108,19 @@ values are *examples*, not claims about a specific World or a confirmed
 physical ATTACK reach. If the local runtime lacks the Jev endpoint,
 omit `--systemone-endpoint` for the supported generated bounded path.
 For L2 hypothesis-only output, add `--enable-l2-proposal`.
+
+The CLI writes an atomic JSON result at `--evidence-path` on normal exit
+and handled failure. A disconnect after an Action has been issued but before
+its receipt is reported as `UNKNOWN_POSSIBLY_ISSUED` with the still-open
+Action IDs, **not as an OUTCOME or Skill success**. This is only in-process
+exit-path evidence: a host power loss or `SIGKILL` before write still loses
+the file. Pre-ISSUE durable reservation in the full S49/#767 Action path
+must remain a separate qualification gate. `--llama-timeout-s` limits a
+provider HTTP request, **not** a guaranteed GPU abort or hard CPU deadline.
+
+CI additionally runs complete fake-process CLI composition for shadow and
+native EAT plus a disconnected-in-flight failure. The fake sessions and
+model provider do not constitute physical World/GPU evidence.
 
 Record exact HEAD, model artifact hash, llama.cpp runtime SHA, GPU driver,
 actual World session, native timestamps, Action/Skill outcomes and
