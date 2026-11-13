@@ -74,6 +74,7 @@ def observation(
     inventory: tuple[MineflayerInventoryItem, ...] = (),
     entities: tuple[MineflayerEntityFact, ...] = (),
     session_id: str = "session-1",
+    request_id: str | None = None,
 ) -> MineflayerObservation:
     return MineflayerObservation(
         session_id, seq, kind,
@@ -88,6 +89,8 @@ def observation(
                 candidate_count=len(entities), truncated=False,
             ),
         ),
+        request_id=("cognitive-test-probe" if request_id is None and kind == "probe"
+                    else request_id),
     )
 
 
@@ -108,7 +111,8 @@ class FakeNativeSession:
             raise AssertionError("unexpected native read")
         return self.messages.pop(0)
 
-    async def send_observe(self):
+    async def send_observe(self, request_id=None):
+        assert request_id == "cognitive-test-probe"
         self.sent.append(("observe",))
 
     async def send_equip_item(self, action_id, *, item_name):
@@ -146,6 +150,7 @@ def turn(
         relay_engine=engine_with_choice(choice), intent_owner=owner,
         supervisor=supervisor, grant_real_world=grant, issue_native=True,
         acknowledge_unfenced_dev=True,
+        probe_request_id="cognitive-test-probe",
     ))
     return result, owner, supervisor
 
@@ -362,6 +367,7 @@ def test_default_live_probe_never_issues_without_explicit_native_switch() -> Non
             session, initial, scenario(), self_id="self-A", intent_id="intent-1",
             registry=initial_patterns(), relay_engine=engine_with_choice("1"),
             intent_owner=owner, supervisor=supervisor, grant_real_world=True,
+            probe_request_id="cognitive-test-probe",
         )
         assert receipt.status == "READY_NO_ISSUE"
         assert receipt.run is None
