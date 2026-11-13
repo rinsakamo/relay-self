@@ -5,8 +5,74 @@ Parent: [#828](https://github.com/rinsakamo/relay-self/issues/828),
 [#843](https://github.com/rinsakamo/relay-self/issues/843).
 Development branch: [Draft #844](https://github.com/rinsakamo/relay-self/pull/844).
 
-**Status: OFFLINE PROPOSAL CONTRACT ONLY / NO PHYSICAL ISSUE / NO DURABLE
-PRE-ISSUE JOURNAL CONNECTED / QUAL_NO_GO / SCIENCE_NOT_RUN.**
+**Status: OFFLINE DEV EAT ISSUER + FSYNC/CAS JOURNAL TESTED / NOT WIRED TO CANONICAL REAL-WORLD RUNNER / REAL PHYSICAL ACTION NOT RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.**
+
+## 2026-11-14 update — EAT physical DEV issuer and durable journal (OFFLINE ONLY)
+
+The original nonissuing `PROPOSED` seam remains unchanged. Added
+`src/relay_self/physical_action_journal.py` and
+`experiments/cognitive_physical_eat_issue_dev.py` as a *separate
+DEV-only candidate for one physical EAT parent Action*. This uses only
+existing `ActionLifecycle`, `ActionSupervisor`, `IntentCommitment`,
+`SkillExecution`, and the Mineflayer process-session/typed result
+contracts; **no `NormalSessionActionExecutor`, old S49 L0, S51
+`EatCursor` or autonomous priority policy is imported**.
+
+The journal adapts #767's C1/S49 mechanism: regular non-symlink
+preexisting directory, OS file lock, immutable SHA256-checked JSON
+envelope, on-disk CAS, temp-file fsync + atomic rename + parent-directory
+fsync. `create` will not reset an existing journal; `restore`
+validates the exact owning Self. `prepare_eat` persists
+`PREPARED_UNRESOLVED` scoped to Self/World session, Intent,
+SkillExecution, Action ID, selected item, native request ID/seq/source
+**before** supervisor ISSUE or any native IO. No automatic recovery,
+repair, deletion or retry of an unresolved entry. A disk/CAS failure
+blocks issuance. Full replay/tamper-resistance against a malicious
+privileged host is **not** claimed by an unkeyed checksum.
+
+The opt-in DEV `issue_selected_eat_dev` checks the already-selected
+`EAT@1/inventory:<item>`, started Skill/committed Intent, two fresh
+different correlated native probes, same food slot and stationary
+viable WorldBody with no observed nearby entities, exact existing
+Action proposal identity, no in-flight/supervised prior Action, plus
+two separately scoped, caller-provided PROPOSE/ISSUE grant objects.
+The grant objects are **not independently authenticated**, so an
+explicit `grant_real_world=True` and
+`acknowledge_dev_unverified_principal=True` are additionally
+required even to invoke this non-CLI experimental entrypoint. No
+operator grant can originate from mere Schema/LLM preference.
+
+One supervised EAT **parent Action** uses two distinct native child
+command IDs, `<action>-equip` and `<action>-consume`. The existing
+Mineflayer bridge rejects reused child IDs. The resulting native ACKs
+must match exact action/effect/World and be chronologically followed by
+a newly correlated probe showing **food increase and selected item
+quantity decrease**. Missing, foreign, rejected or interrupted IO is
+`ActionState.UNKNOWN` plus persistent `PREPARED_UNRESOLVED`,
+not an Action retry or successful food experience. A journal close
+fsync/CAS failure after observed native success *also* leaves the
+physical journal unresolved, even if in-memory ActionSupervisor holds
+OUTCOME. This candidate is **one bounded EAT parent transaction**,
+not yet a general Skill IR/primitive scheduler.
+
+New `tests/test_cognitive_physical_eat_issue_dev.py` uses a scripted,
+typed MineflayerProcessSession subclass. Positive: distinct equip/
+consume and after probe, exact native food/slot consequence, fsynced
+terminal close; negatives: no grants, altered target, stale session,
+wrong Action identity, lost/rejected ACK, no nutritional readback,
+journal disk failure before issue or after physical result, restart
+STOP, foreign Self, CAS stale owner, tampered checksum, symlinks and
+double-issue. These tests **do not run a Minecraft World** and do not
+authenticate the grant principal.
+
+The **existing runner remains read-only by default and its legacy
+`--execute-native` path is NOT THIS new issuer**. Do not enable
+two physical issuers on the same Self session, do not interpret
+`PhysicalEatDevReceipt` as independent S49 QUAL, and do not run this
+new issuer in a real World until one canonical runtime owner/CLI
+switch with independent operator admission and negative restart
+verification exists. A genuine Minecraft/Gemma Action/Outcome has
+**NOT** yet been observed through this new journal.
 
 ## Decision: S49 is a reference implementation, not a runtime block
 
