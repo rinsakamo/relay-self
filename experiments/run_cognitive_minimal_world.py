@@ -31,6 +31,8 @@ from experiments.cognitive_minimal_minecraft_dev import (
     read_correlated_native_probe,
 )
 from experiments.controlled_minecraft_vertical import ControlledScenario
+from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
+from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
@@ -89,13 +91,28 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--grant-real-world", action="store_true")
     p.add_argument("--grant-real-llm", action="store_true")
     p.add_argument("--execute-native", action="store_true",
-                   help="opt into main-branch EAT/FIGHT physical issuer; default shadow")
+                   help="LEGACY UNFENCED DEV (not Physical ActionPort); default shadow")
+    p.add_argument("--physical-eat-dev", action="store_true",
+                   help="explicit single EAT parent Action via durable Physical ActionPort; "
+                        "mutually exclusive with old physical issuer and shadow-only mode")
+    p.add_argument("--physical-journal-path",
+                   help="persistent, owned journal path; REQUIRED for physical EAT DEV")
+    p.add_argument("--physical-create-journal", action="store_true",
+                   help="explicitly create a NEW journal in an existing directory; "
+                        "never reset an existing WAL")
+    p.add_argument("--acknowledge-physical-dev-unverified-grants",
+                   action="store_true",
+                   help="DEV-only: caller-provided authority labels do not authenticate principal")
+    p.add_argument("--physical-propose-authority",
+                   help="explicit operator supplied PROPOSE authority label")
+    p.add_argument("--physical-issue-authority",
+                   help="explicit distinct operator supplied ISSUE authority label")
     p.add_argument("--s49-readonly-shadow", action="store_true",
                    help="two post-L1 native probes and S49-like Target precheck; "
                         "never issue an Action or grant S49 authority")
     p.add_argument("--pre-l1-native-probe", action="store_true",
-                   help="only with read-only shadow: use fresh correlated native "
-                        "probe (not spawn) as L1 starting observation")
+                   help="with read-only shadow or EAT DEV: use fresh correlated "
+                        "native probe (not spawn) as L1 starting observation")
     p.add_argument("--pre-l1-wait-s", type=float, default=0,
                    help="0..60 seconds after native spawn for controlled DEV "
                         "World setup before the pre-L1 probe; no effects issued")
@@ -152,15 +169,43 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
-    if args.s49_readonly_shadow and args.execute_native:
+    if args.s49_readonly_shadow and (args.execute_native or args.physical_eat_dev):
         raise MinimalCognitionError(
-            "S49 read-only shadow cannot be combined with native Action issuance"
+            "explicit S49 shadow-only mode cannot issue any physical Action"
+        )
+    if args.physical_eat_dev and args.execute_native:
+        raise MinimalCognitionError(
+            "two physical issuers cannot coexist: legacy unfenced vs durable EAT"
         )
     if args.pre_l1_native_probe and (
-        not args.s49_readonly_shadow or args.execute_native
+        not (args.s49_readonly_shadow or args.physical_eat_dev)
+        or args.execute_native
     ):
         raise MinimalCognitionError(
-            "pre-L1 native probe is read-only and requires S49 shadow mode"
+            "pre-L1 native probe requires read-only shadow or durable EAT DEV"
+        )
+    if args.physical_eat_dev:
+        if (
+            not args.physical_journal_path
+            or not args.acknowledge_physical_dev_unverified_grants
+            or not args.physical_propose_authority
+            or not args.physical_issue_authority
+            or args.physical_propose_authority == args.physical_issue_authority
+            or args.acknowledge_unfenced_dev
+        ):
+            raise MinimalCognitionError(
+                "physical EAT DEV requires durable WAL, two distinct external "
+                "authority labels and explicit unauthenticated-grants acknowledgement"
+            )
+    elif (
+        args.physical_journal_path is not None
+        or args.physical_create_journal
+        or args.acknowledge_physical_dev_unverified_grants
+        or args.physical_propose_authority is not None
+        or args.physical_issue_authority is not None
+    ):
+        raise MinimalCognitionError(
+            "physical EAT journal and authority options require --physical-eat-dev"
         )
     if (not math.isfinite(args.pre_l1_wait_s)
             or not 0 <= args.pre_l1_wait_s <= 60
@@ -190,12 +235,26 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         model=args.model, timeout=args.llama_timeout_s,
     ))
     session: MineflayerProcessSession | None = None
+    physical_journal: PhysicalActionJournal | None = None
+    physical_eat = None
     first: MineflayerObservation | None = None
     spawn: MineflayerObservation | None = None
     pre_l1_probe_diagnostics: dict[str, object] | None = None
     owner = IntentCommitment()
     supervisor = ActionSupervisor()
     try:
+        if args.physical_eat_dev:
+            # A journal from a previous session is never silently reseeded.
+            # Check STOP/UNKNOWN before World connect or GPU inference.
+            physical_journal = (
+                PhysicalActionJournal.create(
+                    args.physical_journal_path, self_id=args.self_id,
+                ) if args.physical_create_journal else
+                PhysicalActionJournal.restore(
+                    args.physical_journal_path, self_id=args.self_id,
+                )
+            )
+            physical_journal.require_clear()
         session = await MineflayerProcessSession.launch(
             MineflayerLaunchConfig(
                 host=args.mc_host, port=args.mc_port, username=args.mc_username,
@@ -282,10 +341,35 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             supervisor=supervisor, grant_real_world=True,
             issue_native=args.execute_native,
             acknowledge_unfenced_dev=args.acknowledge_unfenced_dev,
-            s49_readonly_shadow=args.s49_readonly_shadow,
+            # Pre-issue two-probe evidence is read-only; the physical EAT
+            # route is a separate, explicitly granted single ActionPort.
+            s49_readonly_shadow=(args.s49_readonly_shadow or args.physical_eat_dev),
+        )
+        if (
+            args.physical_eat_dev
+            and receipt.status == "S49_SHADOW_READY"
+            and receipt.selection.option is not None
+            and receipt.selection.option.skill_id == "EAT"
+        ):
+            assert physical_journal is not None
+            physical_eat = await issue_eat_from_selected_l1_dev(
+                session, receipt,
+                intent_owner=owner, supervisor=supervisor,
+                journal=physical_journal, self_id=args.self_id,
+                intent_id=args.intent_id,
+                propose_authority_id=args.physical_propose_authority,
+                issue_authority_id=args.physical_issue_authority,
+                dev_physical_grant=True,
+                acknowledge_unverified_principal=(
+                    args.acknowledge_physical_dev_unverified_grants
+                ),
+            )
+        supervised_actions = (
+            supervisor.recorded_actions if args.physical_eat_dev
+            else (() if receipt.run is None else receipt.run.actions)
         )
         issued_at = next(
-            (event.at_ns for action in ([] if receipt.run is None else receipt.run.actions)
+            (event.at_ns for action in supervised_actions
              for event in action.events if event.state.value == "issued"),
             None,
         )
@@ -297,7 +381,11 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "evidence_class": "REAL_LLM_AND_NATIVE_WORLD_DEV_ATTEMPT",
             "qualification": "NOT_CLAIMED",
             "original_s49_full_runtime": "NOT_CONNECTED",
-            "existing_issuer": "controlled_minecraft_vertical.execute_decision",
+            "existing_issuer": (
+                "cognitive_physical_eat_runner.issue_eat_from_selected_l1_dev"
+                if args.physical_eat_dev else
+                "controlled_minecraft_vertical.execute_decision"
+            ),
             "model_declared": args.model,
             "systemone_backend": bool(args.systemone_endpoint),
             "world_session": first.session_id,
@@ -320,7 +408,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 "fight_max_distance": scenario.fight_max_distance,
                 "food_threshold": scenario.food_threshold,
             },
-            "status": receipt.status,
+            "status": (
+                "NATIVE_EAT_OUTCOME_DEV_ONLY" if physical_eat is not None
+                else receipt.status
+            ),
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
             "intent_to_action_issued_ns": (
@@ -341,22 +432,43 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "selected": (None if receipt.selection.option is None
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
-            "action_outcome_count": receipt.actual_action_outcomes,
-            "native_eat_consequence_attested": receipt.native_eat_consequence_attested,
+            "action_outcome_count": (
+                1 if physical_eat is not None else receipt.actual_action_outcomes
+            ),
+            "native_eat_consequence_attested": (
+                True if physical_eat is not None
+                else receipt.native_eat_consequence_attested
+            ),
+            "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_eat_parent_action_id": (
+                None if physical_eat is None else physical_eat.action_id
+            ),
+            "physical_journal_path": args.physical_journal_path,
+            "physical_journal_unresolved": (
+                None if physical_journal is None else physical_journal.unresolved
+            ),
+            "physical_journal_records": (
+                [] if physical_journal is None else physical_journal.records
+            ),
             "native_actions": (
-                [] if receipt.run is None else
                 [{"action_id": a.action_id, "state": a.state.value}
-                 for a in receipt.run.actions]
+                 for a in supervised_actions]
             ),
             "native_effect_receipts": (
+                ([
+                    {"action_id": m.action_id, "result": m.result,
+                     "effect": m.effect, "source_ref": m.provenance.reference}
+                    for m in (physical_eat.action.equip, physical_eat.action.consume)
+                ] if physical_eat is not None else
                 [] if receipt.run is None else [
                     {"action_id": message.action_id, "result": message.result,
                      "effect": message.effect, "source_ref": message.provenance.reference}
                     for message in receipt.run.messages
                     if isinstance(message, MineflayerEffectResult)
-                ]
+                ])
             ),
             "skill_final_state": (
+                "started" if physical_eat is not None else
                 None if receipt.run is None else
                 receipt.run.skill_execution.state.value
             ),
@@ -366,6 +478,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "gpu_preemption": "NOT_MEASURED",
             "self_grant_execute_native": args.execute_native,
             "physical_fence": (
+                "PREISSUE_WAL_EAT_DEV" if physical_eat is not None else
+                "WAL_READY_NO_ISSUE" if args.physical_eat_dev else
                 "UNFENCED_DEV_ONLY" if args.execute_native else "NOT_ISSUED"
             ),
             "original_s49_preissue_wal": "NOT_CONNECTED",
@@ -406,6 +520,14 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
+            "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_journal_path": args.physical_journal_path,
+            "physical_journal_unresolved": (
+                None if physical_journal is None else physical_journal.unresolved
+            ),
+            "physical_journal_records": (
+                [] if physical_journal is None else physical_journal.records
+            ),
             "current_intent_id": (
                 None if owner.current_intent is None
                 else owner.current_intent.intent_id
@@ -417,8 +539,11 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 for action in history
             ],
             "action_consequence": (
-                "UNKNOWN_POSSIBLY_ISSUED" if in_flight
-                else "PRIOR_EFFECTS_REQUIRE_REVIEW" if history
+                "UNKNOWN_POSSIBLY_ISSUED" if (
+                    in_flight or (
+                        physical_journal is not None and physical_journal.unresolved
+                    )
+                ) else "PRIOR_EFFECTS_REQUIRE_REVIEW" if history
                 else "NO_SUPERVISED_ISSUE_RECORDED"
             ),
             "native_success_claim": False,
