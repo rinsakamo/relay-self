@@ -229,7 +229,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                     "published": False,
                 }
         return outcome
-    except Exception as exc:
+    except (Exception, asyncio.CancelledError, KeyboardInterrupt) as exc:
         # A command could already be *issued* but never acknowledged. A
         # failure must retain IDs and uncertainty; do not invent OUTCOMEs.
         in_flight = supervisor.open_actions
