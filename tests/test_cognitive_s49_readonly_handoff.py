@@ -112,9 +112,14 @@ def test_readonly_eat_refuses_unqualified_witnesses(change):
             ),
         ))
     elif change == "truncated":
+        # Native snapshot requires a coherent full 16-entry window to be
+        # allowed to declare truncated coverage (>16 candidate entities).
+        saturated = tuple(zombie(entity_id=100 + n) for n in range(16))
         later = replace(later, snapshot=replace(
-            later.snapshot, nearby_entities_coverage=replace(
-                later.snapshot.nearby_entities_coverage, truncated=True,
+            later.snapshot, nearby_entities=saturated,
+            nearby_entities_coverage=replace(
+                later.snapshot.nearby_entities_coverage,
+                candidate_count=17, truncated=True,
             ),
         ))
     elif change == "changed_slot":
@@ -185,9 +190,14 @@ def test_readonly_attack_refuses_unstable_or_wrong_native_target(change):
             later.snapshot, position=replace(later.snapshot.position, z=.051),
         ))
     elif change == "truncated":
+        # Native snapshot requires a coherent full 16-entry window to be
+        # allowed to declare truncated coverage (>16 candidate entities).
+        saturated = tuple(zombie(entity_id=100 + n) for n in range(16))
         later = replace(later, snapshot=replace(
-            later.snapshot, nearby_entities_coverage=replace(
-                later.snapshot.nearby_entities_coverage, truncated=True,
+            later.snapshot, nearby_entities=saturated,
+            nearby_entities_coverage=replace(
+                later.snapshot.nearby_entities_coverage,
+                candidate_count=17, truncated=True,
             ),
         ))
     elif change == "id_changed":
