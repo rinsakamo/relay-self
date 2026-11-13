@@ -1,9 +1,10 @@
-"""D1-D8 minimal Cognitive v0.1 CPU/L1/Owner seam; synthetic DEV only.
+"""D1-D8 and L2-pattern Cognitive v0.1 CPU/L1/Owner seam; synthetic DEV only.
 
 WorldBody/ActionPort are NOT exercised; ActionLifecycle remains PROPOSED.
 """
 from __future__ import annotations
 
+import json
 import threading
 from dataclasses import replace
 
@@ -22,6 +23,8 @@ from relay_self.cognitive_minimal_dev import (
     assemble_l1_select,
     cpu_schema_epoch,
     initial_patterns,
+    parse_l2_pattern_proposal,
+    prepare_l2_pattern_request,
     prepare_existing_owner_action,
     resolve_l1_choice,
 )
@@ -32,6 +35,7 @@ from relay_self.relay_engine import (
     CognitionMode,
     DecisionStatus,
     ProviderDecision,
+    ProviderExpression,
     RelayEngine,
 )
 
@@ -282,3 +286,69 @@ def test_negative_percept_bounds_reject_foreign_target_and_unknown_hunger_preser
         percept(targets=(wrong,))
     f = frame(percept(hunger=None, fatigue=None))
     assert not f.goals and not f.constraints
+
+
+def test_d3_l2_open_proposes_only_and_self_must_accept_typed_cpu_pattern() -> None:
+    registry = initial_patterns()
+    f = frame(percept(hunger=10, targets=()))
+    request = prepare_l2_pattern_request(f)
+    proposed_json = json.dumps({
+        "pattern_id": "l2-hunger-hypothesis-1",
+        "version": 1,
+        "schema_id": "homeostatic",
+        "kind": "GOAL",
+        "predicate": "HUNGRY",
+        "goal_id": "HUNGER_RELIEF",
+        "skill_id": "EAT",
+        "skill_version": 1,
+        "target_kind": "FOOD",
+    })
+    calls = []
+
+    def provider(req, *, mode):
+        calls.append(mode)
+        assert req is request and mode is CognitionMode.OPEN
+        return ProviderExpression(proposed_json, source(3))
+
+    expression = RelayEngine(provider).open(request)
+    assert calls == [CognitionMode.OPEN]
+    proposal = parse_l2_pattern_proposal(
+        expression.text, model_provenance=expression.provenance,
+    )
+    assert proposal.origin is Origin.LEARNED
+    assert registry.revision == 0
+    with pytest.raises(MinimalCognitionError, match="not Self-accepted"):
+        accept_learned_pattern(
+            registry, proposal, accepted_by_self=False,
+            expected_revision=0, allowed_skills=SKILLS,
+        )
+    accepted = accept_learned_pattern(
+        registry, proposal, accepted_by_self=True,
+        expected_revision=0, allowed_skills=SKILLS,
+    )
+    assert accepted.revision == 1 and registry.revision == 0
+    assert len(accepted.patterns) == len(registry.patterns) + 1
+
+
+def test_l2_invalid_code_and_shape_never_becomes_executable_cpu_pattern() -> None:
+    with pytest.raises(MinimalCognitionError, match="not JSON"):
+        parse_l2_pattern_proposal(
+            "__import__('os').system('echo unsafe')", model_provenance=source(),
+        )
+    with pytest.raises(MinimalCognitionError, match="fields"):
+        parse_l2_pattern_proposal(
+            '{"python":"while True: pass"}', model_provenance=source(),
+        )
+    with pytest.raises(MinimalCognitionError, match="invalid learned"):
+        parse_l2_pattern_proposal(json.dumps({
+            "pattern_id": "l2-invalid",
+            "version": 1,
+            "schema_id": "body",
+            "kind": "CONSTRAINT",
+            "predicate": "exec('while True: pass')",
+            "goal_id": None,
+            "skill_id": None,
+            "skill_version": None,
+            "target_kind": None,
+        }), model_provenance=source())
+    assert len(initial_patterns().patterns) == 3
