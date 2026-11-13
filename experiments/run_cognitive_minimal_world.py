@@ -415,8 +415,13 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
             "intent_to_action_issued_ns": (
-                None if issued_at is None or committed_at is None
+                None if args.physical_eat_dev
+                or issued_at is None or committed_at is None
                 else issued_at - committed_at
+            ),
+            "intent_to_action_timing_note": (
+                "NOT_MEASURED_LOGICAL_CLOCK_ONLY" if args.physical_eat_dev
+                else "ACTION_LIFECYCLE_TIME_DELTA"
             ),
             "schema_cpu_epoch_ns": receipt.initial_frame.elapsed_ns,
             "schema_pattern_checks": receipt.initial_frame.pattern_checks,
@@ -483,6 +488,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 "UNFENCED_DEV_ONLY" if args.execute_native else "NOT_ISSUED"
             ),
             "original_s49_preissue_wal": "NOT_CONNECTED",
+            "physical_actionport_preissue_wal": (
+                "FSYNC_CAS_EAT_DEV" if args.physical_eat_dev else "NOT_CONNECTED"
+            ),
         }
         if args.enable_l2_proposal and receipt.status == "ESCALATE_L2":
             request = prepare_l2_pattern_request(receipt.initial_frame)
@@ -548,6 +556,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "native_success_claim": False,
             "original_s49_preissue_wal": "NOT_CONNECTED",
+            "physical_actionport_preissue_wal": (
+                "FSYNC_CAS_EAT_DEV" if physical_journal is not None
+                else "NOT_CONNECTED"
+            ),
         }
         raise CognitiveWorldRunError(audit) from exc
     finally:
