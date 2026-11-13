@@ -8,32 +8,32 @@ from pathlib import Path
 
 import pytest
 
+from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
-    MineflayerAdapterStarted,
-    MineflayerLaunchConfig,
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerAdapterStarted,
     MineflayerEffectResult,
     MineflayerEntityFact,
     MineflayerInventoryItem,
+    MineflayerLaunchConfig,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
 )
 from experiments import run_cognitive_minimal_world as cli
-from adapters.mineflayer.process_session import MineflayerProcessSession
-from relay_self.physical_action_journal import (
-    PhysicalActionJournal,
-    PhysicalJournalUnresolved,
-)
 from experiments.cognitive_minimal_minecraft_dev import (
     NativeProbeFailure,
     read_correlated_native_probe,
 )
 from experiments.run_cognitive_minimal_world import parser, run
 from relay_self.cognitive_minimal_dev import MinimalCognitionError
+from relay_self.physical_action_journal import (
+    PhysicalActionJournal,
+    PhysicalJournalUnresolved,
+)
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 
 # Exercise the entire CLI composition with source-typed fake messages.
@@ -390,7 +390,7 @@ def test_cli_shadow_and_physical_issue_conflict_rejected_before_native(
     monkeypatch.setattr(cli.MineflayerProcessSession, "launch", fake_launch)
     args = _granted_args(native=True)
     args.s49_readonly_shadow = True
-    with pytest.raises(MinimalCognitionError, match="cannot be combined"):
+    with pytest.raises(MinimalCognitionError, match="cannot issue any physical Action"):
         asyncio.run(run(args))
     assert not launched
 
@@ -641,7 +641,7 @@ def test_pre_l1_native_probe_rejected_without_read_only_shadow_before_launch(
     monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
     args = _granted_args(native=False)
     args.pre_l1_native_probe = True
-    with pytest.raises(MinimalCognitionError, match="requires S49 shadow"):
+    with pytest.raises(MinimalCognitionError, match="requires read-only shadow"):
         asyncio.run(run(args))
     args = _granted_args(native=True)
     args.pre_l1_native_probe = True
@@ -997,7 +997,7 @@ def test_cli_uninitialized_journal_is_not_created_without_explicit_flag(
     args = _physical_args(tmp_path, create=False)
     with pytest.raises(cli.CognitiveWorldRunError) as exc:
         asyncio.run(run(args))
-    assert "physical journal" in exc.value.audit["error"]
+    assert "existing regular journal required" in exc.value.audit["error"]
     assert called == []
     assert not Path(args.physical_journal_path).exists()
 
