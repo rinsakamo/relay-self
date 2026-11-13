@@ -37,7 +37,7 @@ from relay_self.physical_action_port import (
     propose_bound_physical_action,
 )
 from relay_self.provenance import Provenance
-from test_cognitive_minimal_minecraft_dev import bread, observation
+from test_cognitive_minimal_minecraft_dev import bread, observation, zombie
 from test_physical_action_port import fixture
 
 
@@ -203,7 +203,7 @@ def test_reject_before_wal_and_native_io(tmp_path, changed):
                     kw["current_probe"].snapshot.nearby_entities_coverage,
                     candidate_count=1,
                 ),
-                nearby_entities=(),
+                nearby_entities=(zombie(),),
             ),
         )
     elif changed == "busy_skill":
