@@ -192,6 +192,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "schema_pattern_checks": receipt.initial_frame.pattern_checks,
             "target_count": len(receipt.initial_frame.options),
             "probe_latency_ns": receipt.probe_elapsed_ns,
+            "correlated_probe_request_id": receipt.probe_request_id,
+            "correlated_probe_seq": receipt.probe_sequence,
             "selected": (None if receipt.selection.option is None
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
