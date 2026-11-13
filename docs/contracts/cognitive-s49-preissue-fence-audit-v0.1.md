@@ -80,10 +80,12 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 #844's CLI defaults to no physical Action. L1 post-decision source
 revalidation now sends a unique `observe(request_id)` and requires the
 same `request_id` on the `probe` observation. Optional
-`--s49-readonly-shadow` requests a second independent native probe and
+`--s49-readonly-shadow` requests a second correlated native probe and
 runs `assess_s49_readonly_handoff()` on the *same selected* Target. It
-returns a typed, non-authorizing, non-issuing witness or a refusal. This
-shadow flag is incompatible with `--execute-native`. Legacy uncorrelated probes
+returns a typed, non-authorizing, non-issuing witness or a refusal. Two
+separate probe request IDs are **not** proof of distinct physical World
+ticks or STOP/settling. The shadow flag is incompatible with
+`--execute-native`. Legacy uncorrelated probes
 remain readable for other callers but cannot satisfy this check. `--execute-native` additionally
 requires `--acknowledge-unfenced-dev` *and* explicit existing
 `--grant-real-world --grant-real-llm`; the direct DEV function also has a
