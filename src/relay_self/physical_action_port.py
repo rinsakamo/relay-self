@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relay_self.action import ActionLifecycle
+from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
@@ -201,8 +201,16 @@ def propose_bound_physical_action(
         raise PhysicalActionPortRefusal("physical body currently has an issued Action")
     if any(x.action_id == binding.action_id for x in supervisor.recorded_actions):
         raise PhysicalActionPortRefusal("physical Action ID already supervised")
+    # Any prior unknown/timed-out physical issue may still have taken effect.
+    # This is a fail-closed *proposal* gate; the durable cross-restart
+    # unresolved check still belongs to the future canonical issuer.
+    if any(x.state in {ActionState.UNKNOWN, ActionState.TIMEOUT}
+           for x in supervisor.recorded_actions):
+        raise PhysicalActionPortRefusal("prior unresolved Action requires reconciliation")
     if intent_owner.last_at_ns is not None and at_ns < intent_owner.last_at_ns:
         raise PhysicalActionPortRefusal("proposal time precedes Intent owner")
+    if at_ns < skill_execution.events[-1].at_ns:
+        raise PhysicalActionPortRefusal("proposal time precedes Skill execution")
 
     # Existing ActionLifecycle enforces live Skill/Intent binding and creates
     # PROPOSED only. This method never touches ActionSupervisor.issue().
