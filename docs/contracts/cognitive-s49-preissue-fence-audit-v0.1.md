@@ -66,8 +66,9 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 |---|---|---|
 | CPU Schema bounded Goal/Skill/Target and existing L1 selection | Implemented, offline-tested | DEV PASS |
 | L1-selected Target revalidation after native probe | Implemented in bounded main-based runner | DEV PASS |
-| Original S49 S15 correlated `probe.request_id` | Backported optional request ID through Python + Node + bridge, L1 freshness checks it; missing original two-probe/window authority | PARTIAL |
-| Original S49 `NormalSessionActionExecutor` ownership | Current path instead calls `controlled_minecraft_vertical` | **BLOCKED** |
+| Original S49 S15 correlated `probe.request_id` | Backported optional request ID through Python + Node + bridge; two additional independently correlated post-L1 probes now checked in optional read-only shadow | DEV PARTIAL; **not S49 issuance** |
+| Read-only selected Target + two original-S49-shaped native probes | `--s49-readonly-shadow` tests steady EAT inventory slot/no nearby Entity and stable single Zombie ATTACK, returns typed non-authorizing witness | **OFFLINE DEV PASS**; no owner grant |
+| Original S49 `NormalSessionActionExecutor` ownership | Current physical path instead calls `controlled_minecraft_vertical`; shadow issues nothing | **BLOCKED** |
 | Original durable `prepare_*()` before physical ISSUE | #767 not in current import/ownership path | **BLOCKED** |
 | S49 terminal identity + verified native S16 closure | Existing main-based supervised Action Outcome only | **BLOCKED** |
 | EAT item-count delta alongside food and ACKs | Additional separate #844 readback attestation; not S49 ledger seal | PARTIAL |
@@ -78,7 +79,11 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 
 #844's CLI defaults to no physical Action. L1 post-decision source
 revalidation now sends a unique `observe(request_id)` and requires the
-same `request_id` on the `probe` observation. Legacy uncorrelated probes
+same `request_id` on the `probe` observation. Optional
+`--s49-readonly-shadow` requests a second independent native probe and
+runs `assess_s49_readonly_handoff()` on the *same selected* Target. It
+returns a typed, non-authorizing, non-issuing witness or a refusal. This
+shadow flag is incompatible with `--execute-native`. Legacy uncorrelated probes
 remain readable for other callers but cannot satisfy this check. `--execute-native` additionally
 requires `--acknowledge-unfenced-dev` *and* explicit existing
 `--grant-real-world --grant-real-llm`; the direct DEV function also has a
@@ -94,10 +99,11 @@ exactly-once, S49 durability, QUAL or SCIENCE claims.
   or introducing another physical Action issuer.
 - Adapt L1 `Selection.option` to the original owner grants, carrying exact
   Target identity, original World session, Intent scope and native source
-  reference. Original S49 must still request and verify its **own
-  two correlated pre-Action probes**, original steady-window physics,
-  independent source/grants and real S15/S16 owner; one correlated #844
-  `probe` is not enough to qualify that original transaction.
+  reference. #844's read-only double-probe witness can be a proposed
+  *candidate* for the original S49, but cannot substitute for **that
+  original Owner's own admission**, complete steady-window and post-move
+  checks, independently scoped PROPOSE/ISSUE grants, or original S15/S16
+  transaction. Do not transfer this witness as authorization.
 - Route EAT and ATTACK only through original S49. Run #767's restore,
   CAS/stale source, pre-ISSUE disk failure, missing ACK, wrong after-probe,
   duplicate action, crash/restart STOP and child receipt attestation tests.
