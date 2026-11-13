@@ -20,6 +20,11 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
+from experiments.cognitive_s49_readonly_handoff import (
+    S49ReadOnlyHandoff,
+    S49ShadowRefusal,
+    assess_s49_readonly_handoff,
+)
 from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
     ControlledSkill,
@@ -65,6 +70,8 @@ class WorldStepReceipt:
     native_eat_consequence_attested: bool | None = None
     probe_request_id: str | None = None
     probe_sequence: int | None = None
+    s49_readonly_handoff: S49ReadOnlyHandoff | None = None
+    s49_shadow_refusal: str | None = None
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -287,6 +294,7 @@ async def execute_one_cognitive_world_turn(
     epoch: int = 1,
     recent_3self: tuple[str, ...] = (),
     probe_request_id: str | None = None,
+    s49_readonly_shadow: bool = False,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -301,8 +309,13 @@ async def execute_one_cognitive_world_turn(
     """
     if grant_real_world is not True:
         raise MinimalCognitionError("real World DEV requires explicit grant")
-    if type(issue_native) is not bool or type(acknowledge_unfenced_dev) is not bool:
-        raise MinimalCognitionError("native issuance flags must be bool")
+    if (type(issue_native) is not bool or type(acknowledge_unfenced_dev) is not bool
+            or type(s49_readonly_shadow) is not bool):
+        raise MinimalCognitionError("native issuance/shadow flags must be bool")
+    if s49_readonly_shadow and issue_native:
+        raise MinimalCognitionError(
+            "S49 read-only two-probe handoff never permits a native Action"
+        )
     if issue_native and not acknowledge_unfenced_dev:
         raise MinimalCognitionError(
             "native issue is UNFENCED_DEV_ONLY; original S49 #767 "
@@ -350,6 +363,15 @@ async def execute_one_cognitive_world_turn(
         session, initial_observation, scenario,
         request_id=unique_probe_request_id,
     )
+    previous_observation = current_observation
+    if s49_readonly_shadow:
+        # Separate original-S49-shaped post-L1 witness. This consumes one
+        # additional read-only native probe, not any Action authority.
+        unique_probe_request_id = f"cognitive-{uuid.uuid4().hex}"
+        current_observation = await _fresh_probe(
+            session, previous_observation, scenario,
+            request_id=unique_probe_request_id,
+        )
     probe_elapsed_ns = time.perf_counter_ns() - probe_started
     current_percept = native_schema_percept(
         current_observation, scenario, self_id=self_id,
@@ -376,6 +398,31 @@ async def execute_one_cognitive_world_turn(
             l1_elapsed_ns, probe_elapsed_ns, None,
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
+        )
+    if s49_readonly_shadow:
+        try:
+            witness = assess_s49_readonly_handoff(
+                selection, original_frame=original_frame,
+                current_frame=current_frame,
+                previous_probe=previous_observation,
+                current_probe=current_observation,
+            )
+        except S49ShadowRefusal as exc:
+            return WorldStepReceipt(
+                "S49_SHADOW_REJECTED",
+                Selection("REJECTED", None, str(exc)),
+                original_frame, current_frame, l1_result, l1_elapsed_ns,
+                probe_elapsed_ns, None,
+                probe_request_id=unique_probe_request_id,
+                probe_sequence=current_observation.seq,
+                s49_shadow_refusal=str(exc),
+            )
+        return WorldStepReceipt(
+            "S49_SHADOW_READY", selection, original_frame, current_frame,
+            l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
+            s49_readonly_handoff=witness,
         )
     # This is a physical-capability check, NOT a second L1 Skill chooser.
     decision = _rebound_decision(selection.option, current_observation, scenario)
