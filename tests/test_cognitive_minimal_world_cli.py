@@ -555,3 +555,132 @@ def test_initial_native_checkpoint_precedes_llm_and_survives_model_error(
     assert session.sent == []
     assert session.closed
     assert not output.with_name(output.name + ".tmp").exists()
+
+
+def test_pre_l1_probe_uses_controlled_world_after_spawn_for_eat_positive(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    # Fake server state *changes between spawn and first correlated probe*.
+    # That probe, not the early spawn snapshot, must seed real L1 selection.
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn", food=20, bread_count=0),
+        _observation(2, kind="probe", food=7, bread_count=2),
+        _observation(3, kind="probe", food=7, bread_count=2),
+        _observation(4, kind="probe", food=7, bread_count=2),
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.pre_l1_native_probe = True
+    args.evidence_path = str(tmp_path / "pre-l1.json")
+
+    receipt = asyncio.run(run(args))
+    assert receipt["status"] == "S49_SHADOW_READY"
+    assert receipt["l1_choice_id"] == "1"
+    assert receipt["target_count"] == 1
+    assert receipt["selected"]["target_ref"] == "inventory:bread"
+    assert receipt["selected"]["skill_id"] == "EAT"
+    assert receipt["spawn_native_observation"]["observation"]["kind"] == "spawn"
+    assert receipt["spawn_native_observation"]["observation"]["snapshot"]["food"] == 20
+    assert receipt["spawn_native_observation"]["observation"]["snapshot"][
+        "inventory"
+    ][0]["count"] == 0
+    first = receipt["initial_native_observation"]["observation"]
+    assert first["kind"] == "probe"
+    assert first["request_id"].startswith("cognitive-pre-l1-")
+    assert first["seq"] == 2
+    assert first["snapshot"]["food"] == 7
+    assert first["snapshot"]["inventory"][0]["count"] == 2
+    assert receipt["pre_l1_probe_requested"] is True
+    assert receipt["initial_schema_frame"]["options"][0]["target_ref"] == "inventory:bread"
+    assert receipt["initial_schema_frame"]["goals"][0]["goal_id"] == "HUNGER_RELIEF"
+    native = receipt["native_probe_trace"]
+    assert len(native) == 2
+    assert [x["observation"]["seq"] for x in native] == [3, 4]
+    ids = [first["request_id"]] + [x["observation"]["request_id"] for x in native]
+    assert len(set(ids)) == 3
+    assert all(x is not None for x in ids)
+    witness = receipt["s49_readonly_handoff"]
+    assert witness["skill_id"] == "EAT"
+    assert witness["food_item"] == "bread" and witness["food_slot"] == 9
+    assert witness["previous_probe_seq"] == 3
+    assert witness["current_probe_seq"] == 4
+    assert not witness["original_s49_authorized"]
+    assert not witness["physical_action_issued"]
+    assert receipt["action_outcome_count"] == 0
+    assert receipt["native_actions"] == []
+    assert receipt["physical_fence"] == "NOT_ISSUED"
+    assert session.sent == [("observe",), ("observe",), ("observe",)]
+    assert session.closed
+    # run() alone leaves the second checkpoint until main() writes final JSON.
+    checkpoint = json.loads(Path(args.evidence_path).read_text())
+    assert checkpoint["stage"] == "PRE_L1_NATIVE_PROBE_OBSERVED_BEFORE_L1"
+    assert checkpoint["spawn_native_observation"] == receipt["spawn_native_observation"]
+    assert checkpoint["initial_native_observation"] == receipt["initial_native_observation"]
+
+
+def test_pre_l1_native_probe_rejected_without_read_only_shadow_before_launch(
+    monkeypatch,
+) -> None:
+    launched = []
+
+    async def forbidden_launch(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError("must reject before any native session")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _granted_args(native=False)
+    args.pre_l1_native_probe = True
+    with pytest.raises(MinimalCognitionError, match="requires S49 shadow"):
+        asyncio.run(run(args))
+    args = _granted_args(native=True)
+    args.pre_l1_native_probe = True
+    with pytest.raises(MinimalCognitionError):
+        asyncio.run(run(args))
+    assert not launched
+
+
+@pytest.mark.parametrize("value", ["0.1", "61", "-1", "nan", "inf"])
+def test_pre_l1_world_setup_wait_refuses_missing_probe_or_invalid_interval(
+    monkeypatch, value: str,
+) -> None:
+    launched = []
+
+    async def forbidden_launch(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError("must reject before any native session")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.pre_l1_wait_s = float(value)
+    if value != "0.1":
+        args.pre_l1_native_probe = True
+    with pytest.raises(MinimalCognitionError, match="pre-L1 World setup wait"):
+        asyncio.run(run(args))
+    assert not launched
+
+
+def test_pre_l1_probe_rejects_foreign_session_before_llm_and_retains_spawn(
+    monkeypatch,
+) -> None:
+    other = replace(
+        _observation(2, kind="probe", food=7, bread_count=2),
+        session_id="unexpected-session",
+    )
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn", food=20, bread_count=0),
+        other,
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.pre_l1_native_probe = True
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert "World session changed" in audit["error"]
+    assert audit["initial_native_observation"]["native_source_ref"] == "session-1:1"
+    assert audit["spawn_native_observation"]["native_source_ref"] == "session-1:1"
+    assert audit["recorded_actions"] == []
+    assert audit["native_success_claim"] is False
+    assert session.sent == [("observe",)]
+    assert session.closed
