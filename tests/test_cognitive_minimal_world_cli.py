@@ -202,3 +202,32 @@ def test_cli_atomic_failure_evidence_persists_unknown_state(
     assert cli.main() == 1
     assert json.loads(output.read_text()) == audit
     assert not output.with_name(output.name + ".tmp").exists()
+
+
+def test_cli_task_cancel_after_native_issue_preserves_uncertainty(
+    monkeypatch,
+) -> None:
+    class CancelledProcessSession(FakeProcessSession):
+        async def receive(self):
+            if not self.messages:
+                raise asyncio.CancelledError("simulated cancelled native wait")
+            return self.messages.pop(0)
+
+    session = CancelledProcessSession([
+        _observation(1, kind="spawn"),
+        _observation(2, kind="probe"),
+    ])
+
+    async def fake_launch(*args, **kwargs):
+        return session
+
+    monkeypatch.setattr(cli, "LlamaCppRelayProvider", FakeProvider)
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", fake_launch)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(_granted_args(native=True)))
+    audit = exc.value.audit
+    assert audit["native_success_claim"] is False
+    assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
+    assert audit["open_action_ids"] == ["skill:eat:session-1:2:equip"]
+    assert "CancelledError" in audit["error"]
+    assert session.closed
