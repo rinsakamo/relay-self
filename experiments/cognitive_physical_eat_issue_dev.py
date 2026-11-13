@@ -246,6 +246,9 @@ async def issue_selected_eat_dev(
         or not 0 < evidence_timeout_s <= 30
     ):
         raise PhysicalEatRefusal("explicit single-owner DEV physical grant required")
+    # A restored unresolved ledger has priority over a stale in-memory
+    # proposal: STOP/UNKNOWN is never converted into a retryable refusal.
+    journal.require_clear()
     binding = proposal.binding
     food, _ = _check_native_window(proposal, previous_probe, current_probe)
     _check_grants(binding, propose_grant, issue_grant)
