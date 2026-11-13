@@ -142,6 +142,13 @@ def test_cli_fake_live_shadow_full_path_never_issues(monkeypatch) -> None:
     assert receipt["correlated_probe_request_id"].startswith("cognitive-")
     assert receipt["correlated_probe_seq"] == 2
     assert receipt["action_outcome_count"] == 0
+    assert receipt["initial_native_observation"]["native_source_ref"] == "session-1:1"
+    assert receipt["initial_native_observation"]["observation"]["snapshot"]["food"] == 7
+    assert len(receipt["native_probe_trace"]) == 1
+    assert receipt["native_probe_trace"][0]["observation"]["request_id"] == (
+        receipt["correlated_probe_request_id"]
+    )
+    assert receipt["initial_schema_frame"]["options"]
     assert session.sent == [("observe",)]
     assert session.closed
 
@@ -187,6 +194,8 @@ def test_cli_disconnected_after_native_issue_preserves_unknown_action(
     audit = exc.value.audit
     assert audit["native_success_claim"] is False
     assert audit["world_session"] == "session-1"
+    assert audit["initial_native_observation"]["native_source_ref"] == "session-1:1"
+    assert audit["initial_native_observation"]["observation"]["snapshot"]["food"] == 7
     assert audit["open_action_ids"] == [prefix + ":equip"]
     assert audit["open_action_states"] == ["issued"]
     assert audit["recorded_actions"] == [
@@ -431,3 +440,118 @@ def test_cli_two_probe_s49_shadow_movement_refused_without_issuer(
     assert receipt["s49_readonly_handoff"] is None
     assert receipt["native_actions"] == []
     assert session.sent == [("observe",), ("observe",)]
+
+
+def test_no_target_s49_shadow_still_probes_without_inventing_l1_target(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn", food=20, bread_count=0),
+        _observation(2, kind="probe", food=20, bread_count=0),
+        _observation(3, kind="probe", food=20, bread_count=0),
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.evidence_path = str(tmp_path / "native-checkpoint.json")
+    receipt = asyncio.run(run(args))
+    assert receipt["status"] == "ESCALATE_L2"
+    assert receipt["selection_reason"] == "L1 requested cognitive escalation"
+    assert receipt["l1_choice_id"] == "1"
+    assert receipt["initial_schema_frame"]["options"] == []
+    assert receipt["initial_schema_frame"]["goals"] == []
+    assert receipt["current_schema_frame"]["options"] == []
+    assert receipt["initial_native_observation"]["evidence_format"] == (
+        "TYPED_DECODED_MINEFLAYER_OBSERVATION_V1"
+    )
+    assert receipt["initial_native_observation"]["observation"]["snapshot"]["food"] == 20
+    assert receipt["initial_native_observation"]["observation"]["snapshot"][
+        "inventory"
+    ][0]["count"] == 0
+    assert receipt["scenario_inputs"]["edible_item_names"] == ["bread"]
+    assert len(receipt["native_probe_trace"]) == 2
+    ids = [x["observation"]["request_id"] for x in receipt["native_probe_trace"]]
+    assert all(x.startswith("cognitive-") for x in ids)
+    assert ids[0] != ids[1]
+    assert [x["observation"]["seq"] for x in receipt["native_probe_trace"]] == [2, 3]
+    assert receipt["correlated_probe_request_id"] == ids[1]
+    assert receipt["s49_readonly_handoff"] is None
+    assert receipt["selected"] is None
+    assert receipt["native_actions"] == []
+    assert receipt["action_outcome_count"] == 0
+    assert receipt["physical_fence"] == "NOT_ISSUED"
+    assert session.sent == [("observe",), ("observe",)]
+    assert session.closed
+    # Direct run() leaves the early checkpoint in place until main() writes
+    # the final outcome, so even interruption after L1 can leave native facts.
+    saved = json.loads(Path(args.evidence_path).read_text())
+    assert saved["stage"] == "INITIAL_NATIVE_OBSERVED_BEFORE_L1"
+    assert saved["initial_native_observation"] == receipt["initial_native_observation"]
+
+
+def test_no_target_without_shadow_keeps_original_no_probe_behavior(
+    monkeypatch,
+) -> None:
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn", food=20, bread_count=0),
+    ])
+    args = _granted_args(native=False)
+    result = asyncio.run(run(args))
+    assert result["status"] == "ESCALATE_L2"
+    assert result["initial_schema_frame"]["options"] == []
+    assert result["initial_native_observation"]["observation"]["snapshot"]["food"] == 20
+    assert result["native_probe_trace"] == []
+    assert result["current_schema_frame"] is None
+    assert result["s49_readonly_handoff"] is None
+    assert result["correlated_probe_request_id"] is None
+    assert session.sent == []
+
+
+def test_initial_native_checkpoint_precedes_llm_and_survives_model_error(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    output = tmp_path / "run.json"
+    session = FakeProcessSession([
+        _observation(1, kind="spawn", food=19, bread_count=1),
+    ])
+    called: list[bool] = []
+
+    class FailingProvider:
+        def __init__(self, **kwargs):
+            assert kwargs["model"] == "model-example"
+
+        def __call__(self, request, *, mode):
+            called.append(True)
+            before = json.loads(output.read_text())
+            assert before["stage"] == "INITIAL_NATIVE_OBSERVED_BEFORE_L1"
+            assert before["native_success_claim"] is False
+            assert before["physical_action_issued"] is False
+            native = before["initial_native_observation"]
+            assert native["native_source_ref"] == "session-1:1"
+            assert native["observation"]["snapshot"]["food"] == 19
+            assert native["observation"]["snapshot"]["inventory"][0]["count"] == 1
+            raise RuntimeError("SIMULATED_MODEL_UNAVAILABLE")
+
+    async def fake_launch(*args, **kwargs):
+        return session
+
+    monkeypatch.setattr(cli, "LlamaCppRelayProvider", FailingProvider)
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", fake_launch)
+    monkeypatch.setattr("sys.argv", [
+        "run_cognitive_minimal_world",
+        "--grant-real-world", "--grant-real-llm",
+        "--model", "model-example",
+        "--edible-item", "bread",
+        "--s49-readonly-shadow",
+        "--evidence-path", str(output),
+    ])
+    assert cli.main() == 1
+    final = json.loads(output.read_text())
+    assert len(called) == 1
+    assert "SIMULATED_MODEL_UNAVAILABLE" in final["error"]
+    assert final["initial_native_observation"]["native_source_ref"] == "session-1:1"
+    assert final["initial_native_observation"]["observation"]["snapshot"]["food"] == 19
+    assert final["action_consequence"] == "NO_SUPERVISED_ISSUE_RECORDED"
+    assert final["native_success_claim"] is False
+    assert session.sent == []
+    assert session.closed
+    assert not output.with_name(output.name + ".tmp").exists()
