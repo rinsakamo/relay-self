@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterStarted,
+    MineflayerLaunchConfig,
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
@@ -21,6 +23,11 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
 )
 from experiments import run_cognitive_minimal_world as cli
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from relay_self.physical_action_journal import (
+    PhysicalActionJournal,
+    PhysicalJournalUnresolved,
+)
 from experiments.cognitive_minimal_minecraft_dev import (
     NativeProbeFailure,
     read_correlated_native_probe,
@@ -800,3 +807,214 @@ def test_pre_l1_probe_failure_preserves_request_id_and_buffered_event_types(
     assert audit["recorded_actions"] == []
     assert session.sent == [("observe",)]
     assert session.closed
+
+
+class FakePhysicalProcessSession(FakeProcessSession, MineflayerProcessSession):
+    """CLI-complete scripted DEV transport; never spawns a Minecraft process."""
+
+    def __init__(self, *, fail_at: str | None = None):
+        super().__init__([_observation(1, kind="spawn", food=20, bread_count=0)])
+        self._started = MineflayerAdapterStarted(
+            "session-1", 0, "4.39.0", MineflayerLaunchConfig(),
+        )
+        self.fail_at = fail_at
+        self.observation_no = 0
+        self.first_wal_status = None
+        self.wal_path: Path | None = None
+
+    @property
+    def process_returncode(self):
+        return None
+
+    async def send_observe(self, request_id=None):
+        self.observation_no += 1
+        self.sent.append(("observe", request_id))
+        if self.observation_no <= 3:
+            # pre-L1 then two post-L1 source-qualified *World* observations.
+            self.messages.append(replace(
+                _observation(
+                    self.observation_no + 1, kind="probe", food=7,
+                    bread_count=2,
+                ),
+                request_id=request_id,
+            ))
+        else:
+            if self.fail_at == "after_probe":
+                return
+            self.messages.append(replace(
+                _observation(7, kind="probe", food=13, bread_count=1),
+                request_id=request_id,
+            ))
+
+    async def send_equip_item(self, action_id, *, item_name):
+        assert self.wal_path is not None
+        raw = json.loads(self.wal_path.read_text())
+        self.first_wal_status = raw["body"]["actions"][-1]["status"]
+        self.sent.append(("equip_item", action_id, item_name))
+        if self.fail_at == "equip":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 5, action_id, "equip_item", "applied", None,
+        ))
+
+    async def send_consume_held(self, action_id):
+        self.sent.append(("consume_held", action_id))
+        if self.fail_at == "consume":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 6, action_id, "consume_held", "applied", None,
+        ))
+
+
+def _physical_args(tmp_path, *, create=True):
+    args = [
+        "--grant-real-world", "--grant-real-llm",
+        "--model", "model-example", "--llama-timeout-s", "1.5",
+        "--edible-item", "bread",
+        "--physical-eat-dev", "--physical-journal-path",
+        str(tmp_path / "owned-physical-wal.json"),
+        "--acknowledge-physical-dev-unverified-grants",
+        "--physical-propose-authority", "DEV_OPERATOR_PROPOSE",
+        "--physical-issue-authority", "DEV_OPERATOR_ISSUE",
+        "--pre-l1-native-probe",
+    ]
+    if create:
+        args.append("--physical-create-journal")
+    return parser().parse_args(args)
+
+
+def _inject_physical_transport(monkeypatch, session):
+    async def fake_launch(*args, **kwargs):
+        return session
+
+    monkeypatch.setattr(cli, "LlamaCppRelayProvider", FakeProvider)
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", fake_launch)
+
+
+def test_cli_real_shaped_l1_eat_to_exact_one_fsynced_physical_parent(
+    monkeypatch, tmp_path,
+):
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["status"] == "NATIVE_EAT_OUTCOME_DEV_ONLY"
+    assert result["existing_issuer"].endswith("issue_eat_from_selected_l1_dev")
+    assert result["l1_choice_id"] == "1"
+    assert result["initial_native_observation"]["observation"]["snapshot"]["food"] == 7
+    assert result["selected"]["target_ref"] == "inventory:bread"
+    assert result["physical_fence"] == "PREISSUE_WAL_EAT_DEV"
+    assert result["physical_eat_dev_selected"] is True
+    assert result["physical_journal_unresolved"] is False
+    assert result["physical_journal_records"][0]["status"] == "NATIVE_EAT_OUTCOME"
+    assert result["action_outcome_count"] == 1
+    assert result["native_eat_consequence_attested"] is True
+    assert result["skill_final_state"] == "started"  # Not semantic Skill success.
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert len(result["native_actions"]) == 1
+    assert result["native_actions"][0]["state"] == "outcome"
+    assert len(result["native_effect_receipts"]) == 2
+    assert [x["effect"] for x in result["native_effect_receipts"]] == [
+        "equip_item", "consume_held",
+    ]
+    assert len([x for x in session.sent if x[0] == "equip_item"]) == 1
+    assert len([x for x in session.sent if x[0] == "consume_held"]) == 1
+    assert [x["observation"]["seq"] for x in result["native_probe_trace"]] == [3, 4]
+    assert session.closed
+
+
+@pytest.mark.parametrize("where", ["equip", "consume", "after_probe"])
+def test_cli_ambiguous_native_failure_is_persisted_unknown_and_no_replay(
+    monkeypatch, tmp_path, where,
+):
+    session = FakePhysicalProcessSession(fail_at=where)
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert audit["physical_eat_dev_selected"] is True
+    assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][0]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["recorded_actions"][0]["state"] == "unknown"
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert session.closed
+    restored = PhysicalActionJournal.restore(args.physical_journal_path,
+                                             self_id=args.self_id)
+    with pytest.raises(PhysicalJournalUnresolved):
+        restored.require_clear()
+
+    # A NEW process / same Self must refuse even before launching a World.
+    second = FakePhysicalProcessSession()
+    second.wal_path = session.wal_path
+    _inject_physical_transport(monkeypatch, second)
+    second_args = _physical_args(tmp_path, create=False)
+    with pytest.raises(cli.CognitiveWorldRunError) as new_exc:
+        asyncio.run(run(second_args))
+    assert "STOP/UNKNOWN" in new_exc.value.audit["error"]
+    assert new_exc.value.audit["physical_journal_unresolved"] is True
+    assert second.sent == []
+    assert not second.closed  # No session started on the failed restart.
+
+
+@pytest.mark.parametrize("badflag", [
+    "--execute-native",
+    "--s49-readonly-shadow",
+])
+def test_cli_refuses_concurrent_or_implicit_physical_issuers_before_launch(
+    monkeypatch, tmp_path, badflag,
+):
+    called = []
+
+    async def forbidden_launch(*args, **kwargs):
+        called.append(True)
+        raise AssertionError("World must not be reached")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _physical_args(tmp_path)
+    if badflag == "--execute-native":
+        args.execute_native = True
+    else:
+        args.s49_readonly_shadow = True
+    with pytest.raises(MinimalCognitionError):
+        asyncio.run(run(args))
+    assert called == []
+
+
+def test_cli_uninitialized_journal_is_not_created_without_explicit_flag(
+    monkeypatch, tmp_path,
+):
+    called = []
+
+    async def forbidden_launch(*args, **kwargs):
+        called.append(True)
+        raise AssertionError("World must not be reached")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _physical_args(tmp_path, create=False)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    assert "physical journal" in exc.value.audit["error"]
+    assert called == []
+    assert not Path(args.physical_journal_path).exists()
+
+
+def test_cli_journal_created_once_must_not_be_reset(monkeypatch, tmp_path):
+    called = []
+
+    async def forbidden_launch(*args, **kwargs):
+        called.append(True)
+        raise RuntimeError("simulated launch refusal")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _physical_args(tmp_path)
+    with pytest.raises(cli.CognitiveWorldRunError):
+        asyncio.run(run(args))
+    assert Path(args.physical_journal_path).exists()
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    assert "existing physical history" in exc.value.audit["error"]
+    assert called == [True]
