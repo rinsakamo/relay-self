@@ -15,8 +15,9 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
   `docs/unified-v05-s49-attack-eat-durable-fence-dev.md`.
 - Original S49 uses `NormalSessionActionExecutor`, original S49
   `ActionSupervisor`, native S15 and S16, and optional
-  `OriginalS49NonMotionFence`. This contract does **not** exist as a usable
-  imported module in #844's current stacked base.
+  `OriginalS49NonMotionFence`. This physical fence contract still does **not** exist as a usable
+  imported module in #844's current stacked base. The **read-only**
+  correlated probe request ID protocol has now been ported from #767.
 - Current main-based #844 physical action experiment calls the older
   `controlled_minecraft_vertical.execute_decision` and its own existing
   `ActionSupervisor` (one physical issuer per invocation). This **is not**
@@ -65,7 +66,7 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 |---|---|---|
 | CPU Schema bounded Goal/Skill/Target and existing L1 selection | Implemented, offline-tested | DEV PASS |
 | L1-selected Target revalidation after native probe | Implemented in bounded main-based runner | DEV PASS |
-| Original S49 S15 correlated `probe.request_id` | Main-based MineflayerObservation lacks `request_id` | **BLOCKED** |
+| Original S49 S15 correlated `probe.request_id` | Backported optional request ID through Python + Node + bridge, L1 freshness checks it; missing original two-probe/window authority | PARTIAL |
 | Original S49 `NormalSessionActionExecutor` ownership | Current path instead calls `controlled_minecraft_vertical` | **BLOCKED** |
 | Original durable `prepare_*()` before physical ISSUE | #767 not in current import/ownership path | **BLOCKED** |
 | S49 terminal identity + verified native S16 closure | Existing main-based supervised Action Outcome only | **BLOCKED** |
@@ -75,7 +76,10 @@ REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN`.
 
 ## Fail-closed interim DEV policy
 
-#844's CLI defaults to no physical Action. `--execute-native` additionally
+#844's CLI defaults to no physical Action. L1 post-decision source
+revalidation now sends a unique `observe(request_id)` and requires the
+same `request_id` on the `probe` observation. Legacy uncorrelated probes
+remain readable for other callers but cannot satisfy this check. `--execute-native` additionally
 requires `--acknowledge-unfenced-dev` *and* explicit existing
 `--grant-real-world --grant-real-llm`; the direct DEV function also has a
 separate `acknowledge_unfenced_dev=True` guard. Missing any required gate
