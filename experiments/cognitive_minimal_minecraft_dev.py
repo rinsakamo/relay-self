@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from typing import Callable
 
 from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterErrorMessage,
+    MineflayerCommandError,
+    MineflayerConnectionEnd,
     MineflayerEffectResult,
     MineflayerObservation,
 )
@@ -107,7 +110,7 @@ def native_schema_percept(
 
     observed_threats = [
         entity for entity in snapshot.nearby_entities
-        if entity.name in scenario.hazard_entity_names
+        if entity.name == "zombie" and entity.name in scenario.hazard_entity_names
     ]
     # A distant threat still motivates DEFEND_SELF, even when ATTACK lacks
     # current physical range. Never offer ATTACK beyond the configured port.
@@ -203,6 +206,9 @@ async def _fresh_probe(
             raise MinimalCognitionError("non-monotonic native probe")
         if isinstance(message, MineflayerEffectResult):
             raise MinimalCognitionError("unexpected Action receipt during probe")
+        if isinstance(message, (MineflayerConnectionEnd, MineflayerCommandError,
+                                MineflayerAdapterErrorMessage)):
+            raise MinimalCognitionError("native probe session became unavailable")
         if isinstance(message, MineflayerObservation):
             if message.kind in {"death", "respawn"} or message.snapshot.health <= 0:
                 raise MinimalCognitionError("WorldBody life-cycle changed")
