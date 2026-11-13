@@ -14,6 +14,7 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerConnectionEnd,
     MineflayerEffectResult,
     MineflayerEntityFact,
     MineflayerEntityHurt,
@@ -363,3 +364,31 @@ def test_default_live_probe_never_issues_without_explicit_native_switch() -> Non
         assert supervisor.open_actions == ()
         assert session.sent == [("observe",)]
     asyncio.run(run())
+
+
+def test_native_session_end_during_probe_cannot_start_action() -> None:
+    initial = observation(1, inventory=(bread(),))
+    session = FakeNativeSession([MineflayerConnectionEnd("session-1", 2, "EOF")])
+    with pytest.raises(MinimalCognitionError, match="became unavailable"):
+        turn(session, initial)
+    assert session.sent == [("observe",)]
+
+
+def test_non_zombie_entity_cannot_be_innate_zombie_pattern_target() -> None:
+    creeper = MineflayerEntityFact(
+        12, "creeper", "mob", 2, MineflayerPosition(2, 64, 0),
+    )
+    configured = ControlledScenario(
+        hazard_entity_names=frozenset({"creeper"}),
+        food_threshold=10, edible_item_names=(), destinations=(),
+        fight_max_distance=4,
+    )
+    p = native_schema_percept(
+        observation(1, food=20, entities=(creeper,)),
+        configured, self_id="self-A",
+    )
+    f = cpu_schema_epoch(
+        p, initial_patterns(), epoch=1, allowed_skills=SKILLS,
+        hunger_threshold=10,
+    )
+    assert not f.goals and not f.options and not f.fast_cues
