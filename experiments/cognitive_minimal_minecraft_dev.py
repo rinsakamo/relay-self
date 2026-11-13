@@ -72,6 +72,7 @@ class WorldStepReceipt:
     probe_sequence: int | None = None
     s49_readonly_handoff: S49ReadOnlyHandoff | None = None
     s49_shadow_refusal: str | None = None
+    native_probe_trace: tuple[MineflayerObservation, ...] = ()
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -342,8 +343,10 @@ async def execute_one_cognitive_world_turn(
     l1_elapsed_ns = time.perf_counter_ns() - started
 
     selected = dict(round_.numbered).get(l1_result.choice_id)
-    # Explicit nonphysical options do not require a native Action probe.
-    if not isinstance(selected, Option):
+    # An explicit nonphysical choice remains nonphysical. In ordinary mode
+    # skip probing; opt-in S49 read-only shadow may gather diagnostics without
+    # inventing a new L1 Target, changing the selected choice, or issuing.
+    if not isinstance(selected, Option) and not s49_readonly_shadow:
         selection = resolve_l1_choice(
             round_, l1_result, current_frame=original_frame,
             intent_owner=intent_owner, available_skills=allowed_skills,
@@ -372,6 +375,10 @@ async def execute_one_cognitive_world_turn(
             session, previous_observation, scenario,
             request_id=unique_probe_request_id,
         )
+    probe_trace = (
+        (previous_observation, current_observation)
+        if s49_readonly_shadow else (current_observation,)
+    )
     probe_elapsed_ns = time.perf_counter_ns() - probe_started
     current_percept = native_schema_percept(
         current_observation, scenario, self_id=self_id,
@@ -384,12 +391,24 @@ async def execute_one_cognitive_world_turn(
         round_, l1_result, current_frame=current_frame,
         intent_owner=intent_owner, available_skills=allowed_skills,
     )
+    if not isinstance(selected, Option):
+        # E.g. ESCALATE_L2 in a naturally uneventful World: two correlated
+        # read-only probes prove transport worked, but do not manufacture
+        # a physical choice or S49 handoff. Keep the original L1 status.
+        return WorldStepReceipt(
+            selection.status, selection, original_frame, current_frame,
+            l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
+        )
     if selection.status != "READY" or selection.option is None:
         return WorldStepReceipt(
             selection.status, selection, original_frame,
             current_frame, l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
         )
     if supervisor.open_actions:
         return WorldStepReceipt(
@@ -398,6 +417,7 @@ async def execute_one_cognitive_world_turn(
             l1_elapsed_ns, probe_elapsed_ns, None,
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
         )
     if s49_readonly_shadow:
         try:
@@ -417,6 +437,7 @@ async def execute_one_cognitive_world_turn(
                 probe_request_id=unique_probe_request_id,
                 probe_sequence=current_observation.seq,
                 s49_shadow_refusal=str(exc),
+                native_probe_trace=probe_trace,
             )
         return WorldStepReceipt(
             "S49_SHADOW_READY", selection, original_frame, current_frame,
@@ -424,6 +445,7 @@ async def execute_one_cognitive_world_turn(
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
             s49_readonly_handoff=witness,
+            native_probe_trace=probe_trace,
         )
     # This is a physical-capability check, NOT a second L1 Skill chooser.
     decision = _rebound_decision(selection.option, current_observation, scenario)
@@ -433,6 +455,7 @@ async def execute_one_cognitive_world_turn(
             l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
         )
     intent_owner.commit(
         intent_id,
@@ -454,4 +477,5 @@ async def execute_one_cognitive_world_turn(
         ),
         probe_request_id=unique_probe_request_id,
         probe_sequence=current_observation.seq,
+        native_probe_trace=probe_trace,
     )
