@@ -77,6 +77,10 @@ def _check_native_window(
         proposal.proposal.state is not ActionState.PROPOSED
         or not proposal.proposal.is_current_snapshot
         or proposal.physical_authorized or proposal.physical_issued
+        or proposal.preissue_persisted
+        or proposal.proposal.action_id != b.action_id
+        or proposal.proposal.intent_id != b.intent_id
+        or proposal.proposal.skill_execution_id != b.skill_execution_id
         or b.skill_id != "EAT" or b.skill_version != 1
         or b.capability_ref != "EAT" or b.capability_version != 1
         or b.body_channel != "hand" or b.target_kind != "FOOD"
@@ -265,6 +269,7 @@ async def issue_selected_eat_dev(
         or skill_execution.skill_id != binding.skill_id
         or skill_execution.intent_id != binding.intent_id
         or supervisor.open_actions or supervisor.recorded_actions
+        or proposal.proposal.action_id != binding.action_id
         or not proposal.proposal.is_current_snapshot
     ):
         raise PhysicalEatRefusal("physical owner/Skill/Intent no longer eligible")
