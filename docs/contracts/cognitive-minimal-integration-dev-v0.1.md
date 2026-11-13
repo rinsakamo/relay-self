@@ -2,8 +2,9 @@
 
 Parent #828 §27 (2026-11-13); children #829, #831, #841, #843.
 
-**Status: OFFLINE_INTEGRATION_PASS / REAL_LLM_NOT_RUN_HERE /
-REAL_WORLD_NOT_RUN_HERE / QUAL_NO_GO / SCIENCE_NOT_RUN.**
+**Status: OFFLINE_INTEGRATION_PASS / LOCALCODEX_REAL_L1_AND_WORLD_CONNECT_RECORDED /
+TWO_PROBE_REAL_DEV_NOT_YET_REPEATED_ON_THIS_HEAD / QUAL_NO_GO /
+SCIENCE_NOT_RUN.**
 This is stacked on #842's CPU contracts. It deliberately keeps the
 existing single-`CurrentIntent` owner rather than adding a second
 Owner/Scheduler or another native Action issuer. Multi-Intent `IntentBook`
@@ -122,9 +123,14 @@ The tests DO NOT make real physical Minecraft or Gemma calls.
 
 ## Real DEV execution (only on explicitly approved local host)
 
-The Minecraft 1.21.8 World and the configured llama.cpp backend must already
-be running, Node 22/Mineflayer 4.39.0 dependencies installed, with explicit
-operator grant under repo rules. From the repository root, for a
+Minecraft 1.21.8 and the configured llama.cpp backend must be available,
+with Node 22/Mineflayer 4.39.0 dependencies and explicit operator grants.
+**LocalCodex should independently start an isolated test World and the
+real Gemma backend if they are absent**, using the operator's verified
+local server/model artifacts and only after checking ownership and active
+listeners. This Python runner itself intentionally does not auto-launch
+Minecraft or llama.cpp. It launches the existing Mineflayer bridge process
+for the one-shot connection; no second Mineflayer daemon is necessary. From the repository root, for a
 **non-issuing native probe/shadow** first:
 
 ```bash
@@ -139,10 +145,14 @@ PYTHONPATH=src:. python -m experiments.run_cognitive_minimal_world \
 ```
 
 For an additional **non-issuing** two-probe S49-shaped precheck, add
-`--s49-readonly-shadow` to the command above. The returned witness includes
-selected Goal/Skill/Target, two independent probe sequences/request IDs and
-any food slot or zombie entity ID. An accepted witness is **not** an original
-S49 admission or physical qualification, and issuing remains disabled.
+`--s49-readonly-shadow` to the command above. With an L1-selected physical
+Goal/Skill/Target the returned witness includes two distinct correlated
+probe sequences/request IDs and the food slot or Zombie entity ID. If L1
+chooses a nonphysical option such as `ESCALATE_L2` with **zero physical
+options**, shadow mode still performs **two read-only probes**, records their
+exact decoded native snapshots, and **retains `ESCALATE_L2` with no S49
+handoff**. It never invents a Goal or retargets L1. Distinct probe IDs are
+not evidence of distinct Minecraft physics ticks. Issuing remains disabled.
 
 Only after confirming the actual World/readback/Item/target and grant
 conditions, add **both** `--execute-native` and
@@ -155,6 +165,17 @@ values are *examples*, not claims about a specific World or a confirmed
 physical ATTACK reach. If the local runtime lacks the Jev endpoint,
 omit `--systemone-endpoint` for the supported generated bounded path.
 For L2 hypothesis-only output, add `--enable-l2-proposal`.
+
+With `--evidence-path`, the CLI now first checkpoints the **complete typed
+and decoded spawn observation** (session, seq, source, health, food, inventory,
+nearby entities/coverage, time, oxygen, position) *before* asking Gemma.
+The completed output includes this initial native observation, initial/current
+CPU Schema frames, full bounded source-qualified `native_probe_trace`,
+explicit scenario capability inputs, and selection/outcome. This is not the
+original adapter stdout byte stream; the evidence format is
+`TYPED_DECODED_MINEFLAYER_OBSERVATION_V1`. When L1 escalates with zero
+physical options, the initial snapshot is required to distinguish absent
+physical opportunities from scenario/configuration/sensor coverage effects.
 
 The CLI writes an atomic JSON result at `--evidence-path` on normal exit
 and handled failure. A disconnect after an Action has been issued but before
@@ -170,7 +191,9 @@ must remain a separate qualification gate. `--llama-timeout-s` limits a
 provider HTTP request, **not** a guaranteed GPU abort or hard CPU deadline.
 
 CI additionally runs complete fake-process CLI composition for shadow,
-read-only S49-shaped two-probe EAT/ATTACK and movement refusal, native EAT,
+read-only S49-shaped two-probe EAT/ATTACK and movement refusal, **zero-option
+L2 escalation with two read-only correlated probes but no Target/Action**,
+pre-L1 native checkpoint durability on handled model failure, native EAT,
 and a disconnected-in-flight failure. The fake sessions and
 model provider do not constitute physical World/GPU evidence.
 
@@ -180,6 +203,51 @@ L1 token/prefill/decode latency separately. This CLI currently captures
 total L1 wall latency and whatever aggregate prompt/decode token counts
 the provider reports; it **does not separately measure prefill/decode
 durations, CPU utilization, or long-run p95**.
+
+## LocalCodex test-World lifecycle (operator-approved DEV)
+
+2026-11-13 first measured real run at PR #844 HEAD
+`e5d107a17adb79576ed9ba1523488e9b3beefb6f`: local
+Minecraft 1.21.8 and Mineflayer connected, Gemma 4 12B generated bounded
+L1 selected `ESCALATE_L2` in 1,201.173 ms (304 prompt/17 completion
+tokens), CPU Schema 4.098 µs, physical options zero, native Actions zero.
+The old runner skipped both probes because L1 selected a nonphysical
+option. This is a **real DEV observation**, not an EAT/ATTACK or S49
+2-probe qualification. Source: [PR #844 real World report](https://github.com/rinsakamo/relay-self/pull/844#issuecomment-6852458825).
+
+For the *next* local run, do not require the user to separately start a
+World. LocalCodex owns the following lifecycle under explicit operator
+grants and existing repository DEV rules:
+
+1. Preflight the exact checkout/CI, running listeners, Java 21, verified
+   Minecraft 1.21.8 jar, Node 22, Mineflayer 4.39.0, real Gemma model,
+   llama.cpp endpoint, GPU resources and prior World evidence. Do not
+   assume a previous test World is still running or silently attach to an
+   unrelated production World.
+2. If absent, start an **isolated** existing-version test World on a
+   free localhost port using the locally verified server jar and a
+   dedicated test directory. Start the real Gemma backend only if absent;
+   record the command, PID, log, model hash, listener and GPU state. Use
+   only processes created or explicitly owned by this DEV to clean up.
+   `MineflayerProcessSession.launch` creates the one-shot bridge itself.
+3. Run a single read-only CLI with both grants,
+   `--s49-readonly-shadow`, `--evidence-path`, and the **actual** host,
+   port and served model name. Do **not** specify `--execute-native` or
+   `--acknowledge-unfenced-dev`. Do not artificially give food, change
+   Hunger, spawn a Zombie, or invent a source readback merely to obtain
+   `S49_SHADOW_READY`. Observed EAT/ATTACK opportunities are contingent
+   on actual test World conditions.
+4. Preserve the final JSON including decoded initial source snapshot,
+   scenario inputs and two source-correlated post-L1 probes. If selected
+   target is absent, report `ESCALATE_L2 / native transport observed /`
+   `S49 handoff NOT_ATTESTED`; if EAT/ATTACK is selected and the two
+   source-qualified snapshots agree, report the read-only witness **only**.
+   Preserve exact World session, source refs and elapsed time.
+5. Stop only the server/model/bridge PIDs this run started, verify
+   exit/readback and released GPU compute resources, retain original
+   evidence and issue comments. If an owned process cannot stop, report
+   that explicitly. Do not claim earlier successful World runs can be
+   reconstructed from missing source observations.
 
 ## Remaining boundaries
 
