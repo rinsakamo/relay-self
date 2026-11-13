@@ -24,8 +24,8 @@ from relay_self.cognitive_minimal_dev import (
     cpu_schema_epoch,
     initial_patterns,
     parse_l2_pattern_proposal,
-    prepare_l2_pattern_request,
     prepare_existing_owner_action,
+    prepare_l2_pattern_request,
     resolve_l1_choice,
 )
 from relay_self.common_io import ScopeRef
