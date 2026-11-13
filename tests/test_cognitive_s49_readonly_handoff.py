@@ -61,6 +61,7 @@ def test_readonly_eat_witness_binds_two_probes_food_slot_and_original_l1_option(
     receipt = assess_s49_readonly_handoff(
         selected, original_frame=first, current_frame=current,
         previous_probe=earlier, current_probe=later,
+        proposed_intent_id="intent-A",
     )
     assert receipt.skill_id == "EAT" and receipt.target_ref == "inventory:bread"
     assert (receipt.food_item, receipt.food_slot) == ("bread", 9)
@@ -69,6 +70,11 @@ def test_readonly_eat_witness_binds_two_probes_food_slot_and_original_l1_option(
     )
     assert receipt.current_source_ref == "session-1:3"
     assert receipt.original_s49_authorized is False
+    assert receipt.original_s49_intent_committed is False
+    assert receipt.original_s49_policy_verified is False
+    assert receipt.self_id == "self-A"
+    assert receipt.proposed_intent_id == "intent-A"
+    assert receipt.schema_registry_revision == current.registry_revision
     assert receipt.physical_action_issued is False
     assert receipt.evidence_class.endswith("NOT_AUTHORIZED")
     assert owner.events == ()
@@ -134,6 +140,7 @@ def test_readonly_eat_refuses_unqualified_witnesses(change):
         assess_s49_readonly_handoff(
             selected, original_frame=first, current_frame=current,
             previous_probe=earlier, current_probe=later,
+        proposed_intent_id="intent-A",
         )
     assert owner.events == ()
 
@@ -146,11 +153,15 @@ def test_readonly_attack_witness_single_stable_zombie_no_s49_grant():
     witness = assess_s49_readonly_handoff(
         selected, original_frame=first, current_frame=current,
         previous_probe=earlier, current_probe=later,
+        proposed_intent_id="intent-A",
     )
     assert witness.skill_id == "ATTACK"
     assert witness.target_ref == "entity:7" and witness.target_entity_id == 7
     assert witness.food_item is None and witness.food_slot is None
     assert not witness.original_s49_authorized and not witness.physical_action_issued
+    assert not witness.original_s49_intent_committed
+    assert not witness.original_s49_policy_verified
+    assert witness.self_id == "self-A" and witness.proposed_intent_id == "intent-A"
     assert owner.current_intent is None
 
 
@@ -212,5 +223,6 @@ def test_readonly_attack_refuses_unstable_or_wrong_native_target(change):
         assess_s49_readonly_handoff(
             selected, original_frame=first, current_frame=current,
             previous_probe=earlier, current_probe=later,
+        proposed_intent_id="intent-A",
         )
     assert owner.events == ()
