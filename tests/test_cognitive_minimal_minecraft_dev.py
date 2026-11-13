@@ -157,13 +157,15 @@ def test_d1_native_inventory_to_l1_eat_and_original_action_outcomes() -> None:
         observation(2, inventory=(bread(),)),
         effect(3, prefix + ":equip", "equip_item"),
         effect(4, prefix + ":consume", "consume_held"),
-        observation(5, kind="health", food=13),
+        observation(5, kind="health", food=13,
+                    inventory=(MineflayerInventoryItem("bread", 1, 9),)),
     ])
     result, owner, supervisor = turn(session, initial)
     assert result.status == "ACTION_ATTEMPTED"
     assert result.selection.option.target_ref == "inventory:bread"
     assert result.run.skill_execution.state is SkillState.SUCCEEDED
     assert result.actual_action_outcomes == 2
+    assert result.native_eat_consequence_attested is True
     assert all(a.state is ActionState.OUTCOME for a in result.run.actions)
     assert owner.current_intent.intent_id == "intent-1"
     assert supervisor.open_actions == ()
@@ -226,11 +228,13 @@ def test_d8_unrelated_native_entity_update_does_not_cancel_eat() -> None:
         observation(2, inventory=(bread(),), entities=(zombie(distance=9),)),
         effect(3, prefix + ":equip", "equip_item"),
         effect(4, prefix + ":consume", "consume_held"),
-        observation(5, food=13),
+        observation(5, food=13,
+                    inventory=(MineflayerInventoryItem("bread", 1, 9),)),
     ])
     result, _, _ = turn(session, initial)
     assert result.status == "ACTION_ATTEMPTED"
     assert result.run.skill_execution.state is SkillState.SUCCEEDED
+    assert result.native_eat_consequence_attested is True
     assert {g.goal_id for g in result.current_frame.goals} == {
         "HUNGER_RELIEF", "DEFEND_SELF",
     }
@@ -409,4 +413,23 @@ def test_direct_native_issue_requires_independent_unfenced_dev_ack() -> None:
         ))
     assert session.sent == []
     assert owner.current_intent is None
+    assert supervisor.open_actions == ()
+
+
+def test_native_eat_legacy_success_without_inventory_loss_is_not_attested() -> None:
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    prefix = "skill:eat:session-1:2"
+    session = FakeNativeSession([
+        observation(2, inventory=(bread(),)),
+        effect(3, prefix + ":equip", "equip_item"),
+        effect(4, prefix + ":consume", "consume_held"),
+        observation(5, kind="health", food=13, inventory=(bread(),)),
+    ])
+    result, _, supervisor = turn(session, initial)
+    # The existing original controlled Skill only checked native food increase.
+    # The Cognitive DEV attestation must not turn that into a S49-quality
+    # successful physical consumption if item count did not decrease.
+    assert result.run.skill_execution.state is SkillState.SUCCEEDED
+    assert result.actual_action_outcomes == 2
+    assert result.native_eat_consequence_attested is False
     assert supervisor.open_actions == ()
