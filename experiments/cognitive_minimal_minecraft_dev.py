@@ -63,6 +63,8 @@ class WorldStepReceipt:
     probe_elapsed_ns: int | None
     run: SkillRunResult | None
     native_eat_consequence_attested: bool | None = None
+    probe_request_id: str | None = None
+    probe_sequence: int | None = None
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -364,12 +366,16 @@ async def execute_one_cognitive_world_turn(
         return WorldStepReceipt(
             selection.status, selection, original_frame,
             current_frame, l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
         )
     if supervisor.open_actions:
         return WorldStepReceipt(
             "DEFER", Selection("DEFER", None, "ActionSupervisor became busy"),
             original_frame, current_frame, l1_result,
             l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
         )
     # This is a physical-capability check, NOT a second L1 Skill chooser.
     decision = _rebound_decision(selection.option, current_observation, scenario)
@@ -377,6 +383,8 @@ async def execute_one_cognitive_world_turn(
         return WorldStepReceipt(
             "READY_NO_ISSUE", selection, original_frame, current_frame,
             l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
         )
     intent_owner.commit(
         intent_id,
@@ -396,4 +404,6 @@ async def execute_one_cognitive_world_turn(
             _native_eat_consequence_attested(current_observation, run)
             if run is not None and decision.skill is ControlledSkill.EAT else None
         ),
+        probe_request_id=unique_probe_request_id,
+        probe_sequence=current_observation.seq,
     )
