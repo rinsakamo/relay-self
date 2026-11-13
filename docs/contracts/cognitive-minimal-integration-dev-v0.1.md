@@ -39,8 +39,8 @@ remains an explicit separate #843 migration.
   A distant Zombie raises defensive Need but is not an executable ATTACK.
 - After L1, the bridge requests a newly correlated native
   `probe(request_id)` (adapted from original S49 #767's read-only protocol)
-  and validates the returned request ID, World session/sequence, and
-  session and bound Target. On READY, the **existing**
+  and validates the returned request ID, World session/sequence and
+  selected Target. On READY, the **existing**
   `experiments.controlled_minecraft_vertical.execute_decision` is used
   directly for EAT/FIGHT with original
   `IntentCommitment → SkillExecution → ActionLifecycle →
