@@ -13,6 +13,7 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerEffectResult,
+    MineflayerEntityFact,
     MineflayerInventoryItem,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
@@ -368,3 +369,57 @@ def test_cli_shadow_and_physical_issue_conflict_rejected_before_native(
     with pytest.raises(MinimalCognitionError, match="cannot be combined"):
         asyncio.run(run(args))
     assert not launched
+
+
+def test_cli_two_probe_s49_shadow_attack_stable_same_zombie_without_action(
+    monkeypatch,
+) -> None:
+    def zombie_frame(seq: int, *, kind: str):
+        native = _observation(seq, kind=kind, food=20)
+        mob = MineflayerEntityFact(
+            7, "zombie", "mob", 2.0, MineflayerPosition(2, 64, 0),
+        )
+        return replace(native, snapshot=replace(
+            native.snapshot, inventory=(), nearby_entities=(mob,),
+            nearby_entities_coverage=replace(
+                native.snapshot.nearby_entities_coverage, candidate_count=1,
+            ),
+        ))
+
+    session = _inject_fake_runtime(monkeypatch, [
+        zombie_frame(1, kind="spawn"),
+        zombie_frame(2, kind="probe"),
+        zombie_frame(3, kind="probe"),
+    ])
+    args = _granted_args(native=False)
+    args.hazard_name = ["zombie"]
+    args.fight_max_distance = 4
+    args.s49_readonly_shadow = True
+    receipt = asyncio.run(run(args))
+    witness = receipt["s49_readonly_handoff"]
+    assert receipt["status"] == "S49_SHADOW_READY"
+    assert witness["target_entity_id"] == 7
+    assert witness["skill_id"] == "ATTACK"
+    assert witness["original_s49_authorized"] is False
+    assert receipt["native_actions"] == []
+    assert session.sent == [("observe",), ("observe",)]
+
+
+def test_cli_two_probe_s49_shadow_movement_refused_without_issuer(
+    monkeypatch,
+) -> None:
+    first = _observation(1, kind="spawn")
+    before = _observation(2, kind="probe")
+    after = _observation(3, kind="probe")
+    after = replace(after, snapshot=replace(
+        after.snapshot, position=replace(after.snapshot.position, z=.1),
+    ))
+    session = _inject_fake_runtime(monkeypatch, [first, before, after])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    receipt = asyncio.run(run(args))
+    assert receipt["status"] == "S49_SHADOW_REJECTED"
+    assert "steady" in receipt["s49_shadow_refusal"]
+    assert receipt["s49_readonly_handoff"] is None
+    assert receipt["native_actions"] == []
+    assert session.sent == [("observe",), ("observe",)]
