@@ -245,7 +245,7 @@ def test_d5_cpu_remains_callable_while_l1_network_thread_is_blocked() -> None:
     def blocked_provider(request, *, mode):
         started.set()
         assert release.wait(timeout=3)
-        return ProviderDecision.resolved("2")  # DEFER, no physical request.
+        return ProviderDecision.resolved("3")  # DEFER after EAT and ESCALATE_L2.
 
     async def run():
         task = asyncio.create_task(execute_one_cognitive_world_turn(
