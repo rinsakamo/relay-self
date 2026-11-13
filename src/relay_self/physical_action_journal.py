@@ -181,6 +181,8 @@ def _read(path: Path) -> tuple[dict[str, Any], str]:
         if envelope["sha256"] != digest:
             raise PhysicalJournalError("physical journal checksum mismatch")
         return body, digest
+    except PhysicalJournalError:
+        raise
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise PhysicalJournalError("cannot trust physical journal") from exc
 
