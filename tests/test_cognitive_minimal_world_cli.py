@@ -21,6 +21,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
 )
 from experiments import run_cognitive_minimal_world as cli
+from experiments.cognitive_minimal_minecraft_dev import (
+    NativeProbeFailure,
+    read_correlated_native_probe,
+)
 from experiments.run_cognitive_minimal_world import parser, run
 from relay_self.cognitive_minimal_dev import MinimalCognitionError
 from relay_self.relay_engine import CognitionMode, ProviderDecision
@@ -682,5 +686,114 @@ def test_pre_l1_probe_rejects_foreign_session_before_llm_and_retains_spawn(
     assert audit["spawn_native_observation"]["native_source_ref"] == "session-1:1"
     assert audit["recorded_actions"] == []
     assert audit["native_success_claim"] is False
+    assert session.sent == [("observe",)]
+    assert session.closed
+
+
+def test_pre_l1_observe_drains_more_than_32_queued_passive_events_before_eat(
+    monkeypatch,
+) -> None:
+    # Model a 30-second local setup wait that buffered >32 native events.
+    # Transport may see move/inventory messages before its own probe response.
+    initial = _observation(1, kind="spawn", food=20, bread_count=0)
+    queued = [
+        _observation(seq, kind="move", food=20, bread_count=0)
+        for seq in range(2, 53)
+    ]
+    session = _inject_fake_runtime(monkeypatch, [
+        initial, *queued,
+        _observation(53, kind="probe", food=7, bread_count=2),
+        _observation(54, kind="probe", food=7, bread_count=2),
+        _observation(55, kind="probe", food=7, bread_count=2),
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.pre_l1_native_probe = True
+    receipt = asyncio.run(run(args))
+    assert receipt["status"] == "S49_SHADOW_READY"
+    assert receipt["initial_native_observation"]["observation"]["seq"] == 53
+    assert receipt["selected"]["target_ref"] == "inventory:bread"
+    assert receipt["s49_readonly_handoff"]["food_slot"] == 9
+    diag = receipt["pre_l1_probe_diagnostics"]
+    assert diag["response_matched"] is True
+    assert diag["terminal_reason"] == "MATCHED"
+    assert diag["max_messages"] == 4096
+    assert diag["received_count"] == 52
+    assert diag["last_received_seq"] == 53
+    assert diag["event_kind_counts"] == {
+        "observation:move": 51, "observation:probe": 1,
+    }
+    assert diag["last_observed_snapshot"]["snapshot"]["food"] == 7
+    assert diag["first_events"][0]["seq"] == 2
+    assert diag["last_events"][-1]["seq"] == 53
+    assert receipt["native_actions"] == []
+    assert receipt["action_outcome_count"] == 0
+    assert session.sent == [("observe",), ("observe",), ("observe",)]
+
+
+def test_strict_post_l1_horizon_does_not_expand_for_backlog() -> None:
+    # Existing post-L1 limit is intentionally not changed by pre-L1 catchup.
+    initial = _observation(1, kind="spawn", food=20, bread_count=0)
+    queued = [
+        _observation(seq, kind="move", food=20, bread_count=0)
+        for seq in range(2, 40)
+    ]
+    session = FakeProcessSession(queued)
+    report: dict[str, object] = {}
+    cfg = cli.ControlledScenario(
+        hazard_entity_names=frozenset(),
+        food_threshold=10,
+        edible_item_names=("bread",),
+        destinations=(),
+        evidence_timeout_s=1,
+        max_evidence_messages=32,
+    )
+    with pytest.raises(NativeProbeFailure, match="bounded event horizon") as exc:
+        asyncio.run(read_correlated_native_probe(
+            session, initial, cfg, request_id="strict-probe",
+            diagnostics=report,
+        ))
+    assert report["request_id"] == "strict-probe"
+    assert report["received_count"] == 32
+    assert report["max_messages"] == 32
+    assert report["last_received_seq"] == 33
+    assert report["event_kind_counts"] == {"observation:move": 32}
+    assert report["response_matched"] is False
+    assert report["terminal_reason"] == "no qualified probe within bounded event horizon"
+    assert exc.value.diagnostics["first_events"][0]["seq"] == 2
+    assert exc.value.diagnostics["last_events"][-1]["seq"] == 33
+    assert session.sent == [("observe",)]
+
+
+def test_pre_l1_probe_failure_preserves_request_id_and_buffered_event_types(
+    monkeypatch,
+) -> None:
+    session = _inject_fake_runtime(monkeypatch, [
+        _observation(1, kind="spawn", food=20, bread_count=0),
+        _observation(2, kind="inventory", food=7, bread_count=2),
+        _observation(3, kind="move", food=7, bread_count=2),
+        # No qualified echo; native receive ends inside bounded horizon.
+    ])
+    args = _granted_args(native=False)
+    args.s49_readonly_shadow = True
+    args.pre_l1_native_probe = True
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    diag = audit["pre_l1_probe_diagnostics"]
+    assert "native stream failed before correlated probe" in audit["error"]
+    assert diag["request_id"].startswith("cognitive-pre-l1-")
+    assert diag["send_completed"] is True
+    assert diag["received_count"] == 2
+    assert diag["last_received_seq"] == 3
+    assert diag["event_kind_counts"] == {
+        "observation:inventory": 1, "observation:move": 1,
+    }
+    assert diag["last_observed_snapshot"]["snapshot"]["food"] == 7
+    assert diag["last_observed_snapshot"]["snapshot"]["inventory"][0]["count"] == 2
+    assert diag["response_matched"] is False
+    assert audit["initial_native_observation"]["observation"]["seq"] == 1
+    assert audit["action_consequence"] == "NO_SUPERVISED_ISSUE_RECORDED"
+    assert audit["recorded_actions"] == []
     assert session.sent == [("observe",)]
     assert session.closed
