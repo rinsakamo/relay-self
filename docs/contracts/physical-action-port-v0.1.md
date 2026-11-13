@@ -5,7 +5,7 @@ Parent: [#828](https://github.com/rinsakamo/relay-self/issues/828),
 [#843](https://github.com/rinsakamo/relay-self/issues/843).
 Development branch: [Draft #844](https://github.com/rinsakamo/relay-self/pull/844).
 
-**Status: OFFLINE DEV EAT ISSUER + FSYNC/CAS JOURNAL TESTED / NOT WIRED TO CANONICAL REAL-WORLD RUNNER / REAL PHYSICAL ACTION NOT RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.**
+**Status: OFFLINE DEV EAT ISSUER + FSYNC/CAS JOURNAL + ONE-SHOT CLI COMPOSITION TESTED / REAL PHYSICAL ACTION NOT RUN / OPERATOR AUTHENTICATION OPEN / QUAL_NO_GO / SCIENCE_NOT_RUN.**
 
 ## 2026-11-14 update — EAT physical DEV issuer and durable journal (OFFLINE ONLY)
 
@@ -65,16 +65,18 @@ STOP, foreign Self, CAS stale owner, tampered checksum, symlinks and
 double-issue. These tests **do not run a Minecraft World** and do not
 authenticate the grant principal.
 
-The **existing runner remains read-only by default and its legacy
-`--execute-native` path is NOT THIS new issuer**. Do not enable
-two physical issuers on the same Self session, do not interpret
+The **existing runner remains read-only by default**. Only an explicit
+`--physical-eat-dev` option enters the new EAT issuer. Its legacy
+`--execute-native` path is NOT THIS new issuer and is mutually exclusive
+within the CLI, but **external issuer processes must still be excluded**.
+Do not enable two physical issuers on the same Self session, do not interpret
 `PhysicalEatDevReceipt` as independent S49 QUAL, and do not run this
 new issuer in a real World until one canonical runtime owner/CLI
 switch with independent operator admission and negative restart
 verification exists. A genuine Minecraft/Gemma Action/Outcome has
 **NOT** yet been observed through this new journal.
 
-## 2026-11-14 — one-shot canonical runner wiring (DEV, LIVE NOT YET RUN)
+## 2026-11-14 — one-shot EAT runner wiring (DEV, LIVE NOT YET RUN)
 
 `experiments/cognitive_physical_eat_runner.py` now bridges the existing
 real-native + Gemma `WorldStepReceipt` to the same Physical ActionPort
