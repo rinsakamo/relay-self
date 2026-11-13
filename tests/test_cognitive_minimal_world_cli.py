@@ -1,18 +1,11 @@
-"""CLI grant and non-issuing defaults: no local GPU/World calls in CI."""
+"""CLI grant and fake native bridge evidence: no real GPU/World calls in CI."""
 from __future__ import annotations
 
 import asyncio
-
-import pytest
-
-from experiments.run_cognitive_minimal_world import parser, run
-from relay_self.cognitive_minimal_dev import MinimalCognitionError
-
-
-# Exercise the *entire* CLI composition with source-typed fake messages,
-# including provider constructor, adapter session, native action and audit.
 import json
 from pathlib import Path
+
+import pytest
 
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
@@ -26,8 +19,11 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
 )
 from experiments import run_cognitive_minimal_world as cli
+from experiments.run_cognitive_minimal_world import parser, run
+from relay_self.cognitive_minimal_dev import MinimalCognitionError
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 
+# Exercise the entire CLI composition with source-typed fake messages.
 
 def test_cli_default_is_shadow_and_refuses_all_real_ends_without_grants() -> None:
     args = parser().parse_args(["--model", "synthetic-model"])
