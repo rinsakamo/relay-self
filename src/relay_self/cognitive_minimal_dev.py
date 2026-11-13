@@ -308,7 +308,7 @@ def cpu_schema_epoch(
     return SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
-        ("ZOMBIE_NEAR",) if threat_present else (), checks,
+        ("ZOMBIE_NEAR",) if threats else (), checks,
         time.perf_counter_ns() - t0,
     )
 
