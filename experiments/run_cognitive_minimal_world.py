@@ -30,9 +30,8 @@ from experiments.cognitive_minimal_minecraft_dev import (
     execute_one_cognitive_world_turn,
     read_correlated_native_probe,
 )
-from experiments.controlled_minecraft_vertical import ControlledScenario
 from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
-from relay_self.physical_action_journal import PhysicalActionJournal
+from experiments.controlled_minecraft_vertical import ControlledScenario
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
@@ -41,6 +40,7 @@ from relay_self.cognitive_minimal_dev import (
     prepare_l2_pattern_request,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.relay_engine import RelayEngine
 
 
