@@ -196,6 +196,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
             "action_outcome_count": receipt.actual_action_outcomes,
+            "native_eat_consequence_attested": receipt.native_eat_consequence_attested,
             "native_actions": (
                 [] if receipt.run is None else
                 [{"action_id": a.action_id, "state": a.state.value}
