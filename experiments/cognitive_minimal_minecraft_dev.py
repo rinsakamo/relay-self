@@ -406,6 +406,7 @@ async def execute_one_cognitive_world_turn(
                 current_frame=current_frame,
                 previous_probe=previous_observation,
                 current_probe=current_observation,
+                proposed_intent_id=intent_id,
             )
         except S49ShadowRefusal as exc:
             return WorldStepReceipt(
