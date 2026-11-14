@@ -21,7 +21,7 @@ from relay_self.causal_recovery import (
     WalReceipt,
     WalState,
     WorldCheckpoint,
-    WorldEffect,
+    WorldEvent,
     WorldEntityState,
     assess_reconstruction,
     project_physical_journal,
@@ -55,7 +55,7 @@ def _fixture():
             WalState.NATIVE_ATTACK_HURT_OBSERVED, "a" * 64,
         ),
     )
-    event = WorldEffect(
+    event = WorldEvent(
         event_id="server-hurt-105", world_id=world.world_id,
         branch_id=world.branch_id, tick=105, actor_self_id="A",
         action_id="attack-A", native_session_id="mineflayer-session-1",
@@ -140,7 +140,7 @@ def test_distinct_uuid_respawns_after_killed_zombie_is_consistent():
         WorldEntityState("zombie-uuid-Z1", False),
         WorldEntityState("zombie-uuid-Z2", True),
     ))
-    spawn = WorldEffect(
+    spawn = WorldEvent(
         "new-zombie-uuid", world.world_id, world.branch_id, 108,
         None, None, None, "zombie-uuid-Z2", True, None, "paper:spawn-Z2",
     )
@@ -229,7 +229,7 @@ def test_world_action_from_current_self_without_wal_is_hold():
 
 def test_event_from_external_actor_does_not_require_self_wal():
     world, selves, wal, events = _fixture()
-    environment = WorldEffect(
+    environment = WorldEvent(
         "server-external", world.world_id, world.branch_id, 109, "external-actor",
         "external-action", "external-session", "zombie-uuid-Z3", False,
         "other-native:2", "world:server:109",
