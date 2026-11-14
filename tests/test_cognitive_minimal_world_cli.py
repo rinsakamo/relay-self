@@ -1043,3 +1043,110 @@ def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
     assert not any(x[0] == "equip_item" for x in session.sent)
     assert not any(x[0] == "consume_held" for x in session.sent)
     assert session.closed
+
+
+def test_cli_selected_l1_eat_via_l0_ir_still_uses_single_existing_wal_issuer(
+    monkeypatch, tmp_path,
+):
+    """Scripted native/LLM transport; not a real World or Skill qualification."""
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    args.l0_skill_ir_dev = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+
+    assert result["l1_choice_id"] == "1"
+    assert result["selected"]["skill_id"] == "EAT"
+    assert result["selected"]["target_ref"] == "inventory:bread"
+    assert result["l0_skill_ir_dev_selected"] is True
+    assert result["existing_issuer"].endswith("issue_eat_from_selected_l1_dev")
+    assert result["status"] == "NATIVE_EAT_OUTCOME_DEV_ONLY"
+    assert result["l0_skill_ir_terminal_candidate_only"] is True
+    trace = result["l0_skill_ir_trace"]
+    assert [item["status"] for item in trace] == [
+        "PROPOSE_ACTION", "AWAIT_ACTION", "ADVANCED", "TERMINAL_CANDIDATE",
+    ]
+    assert trace[0]["capability_ref"] == "EAT"
+    assert trace[0]["action_id"] == result["physical_eat_parent_action_id"]
+    assert trace[0]["action_id"].endswith("-l0-1")
+    assert result["action_outcome_count"] == 1
+    assert result["skill_final_state"] == "started"
+    assert result["native_eat_consequence_attested"] is True
+    assert result["physical_journal_unresolved"] is False
+    assert result["physical_journal_records"][-1]["status"] == "NATIVE_EAT_OUTCOME"
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert len([x for x in session.sent if x[0] == "equip_item"]) == 1
+    assert len([x for x in session.sent if x[0] == "consume_held"]) == 1
+    assert len(result["native_actions"]) == 1
+    assert session.closed
+
+
+@pytest.mark.parametrize("case", ["no_target", "stale_target"])
+def test_cli_l0_ir_cannot_override_l1_missing_or_stale_food(
+    monkeypatch, tmp_path, case,
+):
+    session = FakePhysicalProcessSession(fail_at=case)
+    args = _physical_args(tmp_path)
+    args.l0_skill_ir_dev = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["l0_skill_ir_dev_selected"] is True
+    assert result["l0_skill_ir_trace"] == []
+    assert result["physical_eat_parent_action_id"] is None
+    assert result["action_outcome_count"] == 0
+    assert result["physical_journal_records"] == []
+    assert not any(x[0] == "equip_item" for x in session.sent)
+    assert session.closed
+
+
+@pytest.mark.parametrize("failed_effect", ["equip", "consume", "after_probe"])
+def test_cli_l0_ir_ambiguous_native_effect_keeps_wal_stop(
+    monkeypatch, tmp_path, failed_effect,
+):
+    session = FakePhysicalProcessSession(fail_at=failed_effect)
+    args = _physical_args(tmp_path)
+    args.l0_skill_ir_dev = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as raised:
+        asyncio.run(run(args))
+    audit = raised.value.audit
+    assert audit["l0_skill_ir_dev_selected"] is True
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][-1]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert session.closed
+    resumed = PhysicalActionJournal.restore(
+        args.physical_journal_path, self_id=args.self_id,
+    )
+    with pytest.raises(PhysicalJournalUnresolved):
+        resumed.require_clear()
+
+
+@pytest.mark.parametrize("mode", [
+    "none", "legacy", "shadow",
+])
+def test_cli_l0_ir_requires_single_wal_owned_eat_mode_before_world_launch(
+    monkeypatch, tmp_path, mode,
+):
+    launched = []
+
+    async def forbidden_launch(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError("no World should launch")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden_launch)
+    args = _physical_args(tmp_path)
+    args.l0_skill_ir_dev = True
+    if mode == "none":
+        args.physical_eat_dev = False
+    elif mode == "legacy":
+        args.execute_native = True
+    else:
+        args.s49_readonly_shadow = True
+    with pytest.raises(MinimalCognitionError):
+        asyncio.run(run(args))
+    assert launched == []
