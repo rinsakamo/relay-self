@@ -36,17 +36,20 @@ def main() -> int:
 
     verify = options.add_parser("verify", help="read-only exact inventory/hash validation")
     verify.add_argument("--archive-dir", required=True)
+    verify.add_argument("--expected-manifest-sha256", help="optional out-of-band DEV pin")
 
     restore = options.add_parser("restore", help="create a fresh branched World, NEVER overwrite")
     restore.add_argument("--archive-dir", required=True)
     restore.add_argument("--new-world-dir", required=True)
     restore.add_argument("--restore-id", required=True)
+    restore.add_argument("--expected-manifest-sha256", help="optional out-of-band DEV pin")
 
     verify_restored = options.add_parser(
         "verify-restored", help="verify restored World bytes and new-branch receipt before launch",
     )
     verify_restored.add_argument("--archive-dir", required=True)
     verify_restored.add_argument("--restored-world-dir", required=True)
+    verify_restored.add_argument("--expected-manifest-sha256", help="optional out-of-band DEV pin")
 
     args = p.parse_args()
     try:
@@ -59,14 +62,18 @@ def main() -> int:
                 stopped_server_ref=args.stopped_server_ref,
             )
         elif args.operation == "verify":
-            result = verify_world_checkpoint(args.archive_dir)
+            result = verify_world_checkpoint(
+                args.archive_dir, expected_manifest_sha256=args.expected_manifest_sha256,
+            )
         elif args.operation == "verify-restored":
             result = verify_restored_world(
                 args.archive_dir, args.restored_world_dir,
+                expected_manifest_sha256=args.expected_manifest_sha256,
             )
         else:
             result = restore_world_to_new_branch(
                 args.archive_dir, args.new_world_dir, restore_id=args.restore_id,
+                expected_manifest_sha256=args.expected_manifest_sha256,
             )
     except (WorldCheckpointError, OSError) as exc:
         p.exit(2, f"WORLD_CHECKPOINT_DEV_REFUSED: {exc}\n")
