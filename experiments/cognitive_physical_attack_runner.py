@@ -9,7 +9,7 @@ import json
 import os
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -24,6 +24,10 @@ from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalGrantStage,
 )
 from experiments.cognitive_s49_readonly_handoff import assess_s49_readonly_handoff
+from experiments.p0b_paper_ticket_dev import (
+    PaperTicketRefusal,
+    arm_paper_ticket_before_attack,
+)
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
@@ -199,6 +203,40 @@ async def issue_attack_from_selected_l1_dev(
     steps.append(waiting)
 
     binding = proposed.binding
+
+    ticket_dir = os.environ.get("RELAY_P0B_TICKET_REQUEST_DIR")
+    ticket_ack_dir = os.environ.get("RELAY_P0B_TICKET_ACK_DIR")
+    ticket_world_id = os.environ.get("RELAY_P0B_TICKET_WORLD_ID")
+    ticket_branch_id = os.environ.get("RELAY_P0B_TICKET_BRANCH_ID")
+    ticket_evidence_path = os.environ.get("RELAY_P0B_TICKET_EVIDENCE_PATH")
+    ticket_parameters = (
+        ticket_dir, ticket_ack_dir, ticket_world_id, ticket_branch_id,
+        ticket_evidence_path,
+    )
+    if any(v is not None for v in ticket_parameters):
+        if not all(ticket_parameters) or not p0b_witness or not p0b_expected:
+            raise PhysicalAttackRefusal(
+                "P0-B ticket requires complete separate server/native identity and paths"
+            )
+        # Must occur BEFORE WAL reservation and BEFORE physical ATTACK issue.
+        # A failed observer ACK cannot cause an unjournaled native Action.
+        try:
+            expected = json.loads(Path(p0b_expected).read_text())
+            armed = await arm_paper_ticket_before_attack(
+                Path(ticket_dir), Path(ticket_ack_dir),
+                world_id=ticket_world_id, branch_id=ticket_branch_id,
+                action_id=binding.action_id, native_session_id=current.session_id,
+                actor_uuid=expected["actor_uuid"], target_uuid=expected["target_uuid"],
+            )
+            with Path(ticket_evidence_path).open("x", encoding="utf-8") as handle:
+                json.dump(asdict(armed), handle, sort_keys=True)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+        except (OSError, KeyError, TypeError, ValueError, PaperTicketRefusal) as exc:
+            raise PhysicalAttackRefusal(
+                "P0-B server observation ticket not committed before ATTACK"
+            ) from exc
 
     def grant(stage: PhysicalGrantStage, label: str) -> PhysicalEatGrant:
         return PhysicalEatGrant(
