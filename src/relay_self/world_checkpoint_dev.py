@@ -43,15 +43,23 @@ def _sha(data: bytes) -> str:
 def _hash_file(path: Path) -> tuple[str, int]:
     digest = hashlib.sha256()
     count = 0
-    with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise WorldCheckpointError("hash source must be a regular file")
+        while chunk := os.read(fd, 1024 * 1024):
             digest.update(chunk)
             count += len(chunk)
+    finally:
+        os.close(fd)
     return digest.hexdigest(), count
 
 
 def _safe_root(path: str | Path, *, must_exist: bool) -> Path:
-    p = Path(path).absolute()
+    original = Path(path)
+    if ".." in original.parts:
+        raise WorldCheckpointError("parent traversal forbidden")
+    p = original.absolute()
     if not p.is_absolute():
         raise WorldCheckpointError("absolute path required")
     # Never silently traverse symlinked source, archive or destination parents.
