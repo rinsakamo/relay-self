@@ -30,6 +30,7 @@ from experiments.cognitive_minimal_minecraft_dev import (
     execute_one_cognitive_world_turn,
     read_correlated_native_probe,
 )
+from experiments.cognitive_physical_attack_runner import issue_attack_from_selected_l1_dev
 from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
 from experiments.controlled_minecraft_vertical import ControlledScenario
 from relay_self.action_supervision import ActionSupervisor
@@ -95,10 +96,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--physical-eat-dev", action="store_true",
                    help="explicit single EAT parent Action via durable Physical ActionPort; "
                         "mutually exclusive with old physical issuer and shadow-only mode")
+    p.add_argument("--physical-attack-dev", action="store_true",
+                   help="DEV only: selected ATTACK@1 through L0 and the shared "
+                        "Self-owned WAL; source-attributed hurt is NOT damage proof")
     p.add_argument("--l0-skill-ir-dev", action="store_true",
-                   help="DEV only: execute the already-selected EAT@1 through the "
-                        "bounded CPU L0 Skill IR; requires --physical-eat-dev and "
-                        "reuses the same WAL-owned physical issuer")
+                   help="DEV: bounded CPU L0 for selected EAT@1 or ATTACK@1; "
+                        "requires matching opt-in shared WAL physical mode")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
     p.add_argument("--physical-create-journal", action="store_true",
@@ -173,26 +176,38 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
-    if args.l0_skill_ir_dev and not args.physical_eat_dev:
+    physical_mode = args.physical_eat_dev or args.physical_attack_dev
+    if args.l0_skill_ir_dev and not physical_mode:
         raise MinimalCognitionError(
-            "L0 Skill IR DEV requires the one WAL-owned --physical-eat-dev issuer"
+            "L0 Skill IR DEV requires one WAL-owned physical DEV issuer"
         )
-    if args.s49_readonly_shadow and (args.execute_native or args.physical_eat_dev):
+    if args.physical_attack_dev and (
+        args.physical_eat_dev or not args.l0_skill_ir_dev
+        or not args.pre_l1_native_probe
+        or args.hazard_name != ["zombie"]
+        or args.fight_max_distance is None
+        or not 0 < args.fight_max_distance <= 2.8
+    ):
+        raise MinimalCognitionError(
+            "ATTACK DEV requires exclusive L0/WAL, pre-L1 probe, exact "
+            "zombie hazard and explicit <=2.8m attack range"
+        )
+    if args.s49_readonly_shadow and (args.execute_native or physical_mode):
         raise MinimalCognitionError(
             "explicit S49 shadow-only mode cannot issue any physical Action"
         )
-    if args.physical_eat_dev and args.execute_native:
+    if physical_mode and args.execute_native:
         raise MinimalCognitionError(
             "two physical issuers cannot coexist: legacy unfenced vs durable EAT"
         )
     if args.pre_l1_native_probe and (
-        not (args.s49_readonly_shadow or args.physical_eat_dev)
+        not (args.s49_readonly_shadow or physical_mode)
         or args.execute_native
     ):
         raise MinimalCognitionError(
             "pre-L1 native probe requires read-only shadow or durable EAT DEV"
         )
-    if args.physical_eat_dev:
+    if physical_mode:
         if (
             not args.physical_journal_path
             or not args.acknowledge_physical_dev_unverified_grants
@@ -202,7 +217,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             or args.acknowledge_unfenced_dev
         ):
             raise MinimalCognitionError(
-                "physical EAT DEV requires durable WAL, two distinct external "
+                "physical DEV requires durable WAL, two distinct external "
                 "authority labels and explicit unauthenticated-grants acknowledgement"
             )
     elif (
@@ -213,7 +228,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         or args.physical_issue_authority is not None
     ):
         raise MinimalCognitionError(
-            "physical EAT journal and authority options require --physical-eat-dev"
+            "physical journal and authority options require physical DEV mode"
         )
     if (not math.isfinite(args.pre_l1_wait_s)
             or not 0 <= args.pre_l1_wait_s <= 60
@@ -245,13 +260,14 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     session: MineflayerProcessSession | None = None
     physical_journal: PhysicalActionJournal | None = None
     physical_eat = None
+    physical_attack = None
     first: MineflayerObservation | None = None
     spawn: MineflayerObservation | None = None
     pre_l1_probe_diagnostics: dict[str, object] | None = None
     owner = IntentCommitment()
     supervisor = ActionSupervisor()
     try:
-        if args.physical_eat_dev:
+        if physical_mode:
             # A journal from a previous session is never silently reseeded.
             # Check STOP/UNKNOWN before World connect or GPU inference.
             physical_journal = (
@@ -351,7 +367,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             acknowledge_unfenced_dev=args.acknowledge_unfenced_dev,
             # Pre-issue two-probe evidence is read-only; the physical EAT
             # route is a separate, explicitly granted single ActionPort.
-            s49_readonly_shadow=(args.s49_readonly_shadow or args.physical_eat_dev),
+            s49_readonly_shadow=(args.s49_readonly_shadow or physical_mode),
         )
         if (
             args.physical_eat_dev
@@ -373,8 +389,27 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 ),
                 l0_skill_ir_dev=args.l0_skill_ir_dev,
             )
+        if (
+            args.physical_attack_dev
+            and receipt.status == "S49_SHADOW_READY"
+            and receipt.selection.option is not None
+            and receipt.selection.option.skill_id == "ATTACK"
+        ):
+            assert physical_journal is not None
+            physical_attack = await issue_attack_from_selected_l1_dev(
+                session, receipt, intent_owner=owner, supervisor=supervisor,
+                journal=physical_journal, self_id=args.self_id,
+                intent_id=args.intent_id,
+                propose_authority_id=args.physical_propose_authority,
+                issue_authority_id=args.physical_issue_authority,
+                dev_physical_grant=True,
+                acknowledge_unverified_principal=(
+                    args.acknowledge_physical_dev_unverified_grants
+                ),
+            )
+        physical_result = physical_eat or physical_attack
         supervised_actions = (
-            supervisor.recorded_actions if args.physical_eat_dev
+            supervisor.recorded_actions if physical_mode
             else (() if receipt.run is None else receipt.run.actions)
         )
         issued_at = next(
@@ -393,6 +428,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "existing_issuer": (
                 "cognitive_physical_eat_runner.issue_eat_from_selected_l1_dev"
                 if args.physical_eat_dev else
+                "cognitive_physical_attack_runner.issue_attack_from_selected_l1_dev"
+                if args.physical_attack_dev else
                 "controlled_minecraft_vertical.execute_decision"
             ),
             "model_declared": args.model,
@@ -419,17 +456,18 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             },
             "status": (
                 "NATIVE_EAT_OUTCOME_DEV_ONLY" if physical_eat is not None
-                else receipt.status
+                else "NATIVE_ATTACK_HURT_OBSERVED_DEV_ONLY"
+                if physical_attack is not None else receipt.status
             ),
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
             "intent_to_action_issued_ns": (
-                None if args.physical_eat_dev
+                None if physical_mode
                 or issued_at is None or committed_at is None
                 else issued_at - committed_at
             ),
             "intent_to_action_timing_note": (
-                "NOT_MEASURED_LOGICAL_CLOCK_ONLY" if args.physical_eat_dev
+                "NOT_MEASURED_LOGICAL_CLOCK_ONLY" if physical_mode
                 else "ACTION_LIFECYCLE_TIME_DELTA"
             ),
             "schema_cpu_epoch_ns": receipt.initial_frame.elapsed_ns,
@@ -447,25 +485,39 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
             "action_outcome_count": (
-                1 if physical_eat is not None else receipt.actual_action_outcomes
+                1 if physical_result is not None else receipt.actual_action_outcomes
             ),
             "native_eat_consequence_attested": (
                 True if physical_eat is not None
                 else receipt.native_eat_consequence_attested
             ),
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
             "l0_skill_ir_trace": (
-                [] if physical_eat is None else [
-                    asdict(step) for step in physical_eat.l0_trace
+                [] if physical_result is None else [
+                    asdict(step) for step in physical_result.l0_trace
                 ]
             ),
             "l0_skill_ir_terminal_candidate_only": (
-                bool(physical_eat and physical_eat.l0_trace and
-                     physical_eat.l0_trace[-1].status == "TERMINAL_CANDIDATE")
+                bool(physical_result and physical_result.l0_trace and
+                     physical_result.l0_trace[-1].status == "TERMINAL_CANDIDATE")
             ),
             "physical_eat_parent_action_id": (
                 None if physical_eat is None else physical_eat.action_id
+            ),
+            "physical_attack_parent_action_id": (
+                None if physical_attack is None else physical_attack.action_id
+            ),
+            "attack_hurt_evidence": (
+                None if physical_attack is None else {
+                    "target_entity_id": physical_attack.action.entity_id,
+                    "hurt_seq": physical_attack.action.hurt.seq,
+                    "source_entity_id": physical_attack.action.hurt.source_entity_id,
+                    "actor_entity_id": physical_attack.action.hurt.actor_entity_id,
+                    "source_ref": physical_attack.action.hurt.provenance.reference,
+                    "independent_damage_attested": False,
+                }
             ),
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
@@ -484,6 +536,12 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                      "effect": m.effect, "source_ref": m.provenance.reference}
                     for m in (physical_eat.action.equip, physical_eat.action.consume)
                 ] if physical_eat is not None else
+                [{
+                    "action_id": physical_attack.action.ack.action_id,
+                    "result": physical_attack.action.ack.result,
+                    "effect": physical_attack.action.ack.effect,
+                    "source_ref": physical_attack.action.ack.provenance.reference,
+                }] if physical_attack is not None else
                 [] if receipt.run is None else [
                     {"action_id": message.action_id, "result": message.result,
                      "effect": message.effect, "source_ref": message.provenance.reference}
@@ -492,7 +550,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 ])
             ),
             "skill_final_state": (
-                "started" if physical_eat is not None else
+                "started" if physical_result is not None else
                 None if receipt.run is None else
                 receipt.run.skill_execution.state.value
             ),
@@ -503,12 +561,13 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "self_grant_execute_native": args.execute_native,
             "physical_fence": (
                 "PREISSUE_WAL_EAT_DEV" if physical_eat is not None else
-                "WAL_READY_NO_ISSUE" if args.physical_eat_dev else
+                "PREISSUE_WAL_ATTACK_DEV" if physical_attack is not None else
+                "WAL_READY_NO_ISSUE" if physical_mode else
                 "UNFENCED_DEV_ONLY" if args.execute_native else "NOT_ISSUED"
             ),
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "physical_actionport_preissue_wal": (
-                "FSYNC_CAS_EAT_DEV" if args.physical_eat_dev else "NOT_CONNECTED"
+                "FSYNC_CAS_SELF_DEV" if physical_mode else "NOT_CONNECTED"
             ),
         }
         if args.enable_l2_proposal and receipt.status == "ESCALATE_L2":
@@ -548,6 +607,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
@@ -577,7 +637,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "native_success_claim": False,
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "physical_actionport_preissue_wal": (
-                "FSYNC_CAS_EAT_DEV" if physical_journal is not None
+                "FSYNC_CAS_SELF_DEV" if physical_journal is not None
                 else "NOT_CONNECTED"
             ),
         }
