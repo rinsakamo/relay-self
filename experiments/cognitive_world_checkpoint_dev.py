@@ -12,6 +12,7 @@ from relay_self.world_checkpoint_dev import (
     WorldCheckpointError,
     capture_stopped_world,
     restore_world_to_new_branch,
+    verify_restored_world,
     verify_world_checkpoint,
 )
 
@@ -41,6 +42,12 @@ def main() -> int:
     restore.add_argument("--new-world-dir", required=True)
     restore.add_argument("--restore-id", required=True)
 
+    verify_restored = options.add_parser(
+        "verify-restored", help="verify restored World bytes and new-branch receipt before launch",
+    )
+    verify_restored.add_argument("--archive-dir", required=True)
+    verify_restored.add_argument("--restored-world-dir", required=True)
+
     args = p.parse_args()
     try:
         if args.operation == "capture":
@@ -53,6 +60,10 @@ def main() -> int:
             )
         elif args.operation == "verify":
             result = verify_world_checkpoint(args.archive_dir)
+        elif args.operation == "verify-restored":
+            result = verify_restored_world(
+                args.archive_dir, args.restored_world_dir,
+            )
         else:
             result = restore_world_to_new_branch(
                 args.archive_dir, args.new_world_dir, restore_id=args.restore_id,
