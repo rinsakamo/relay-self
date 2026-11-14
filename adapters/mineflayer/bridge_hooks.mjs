@@ -73,7 +73,7 @@ export function probeIdentityWitness (bot, snapshot, sessionId, seq) {
   return {
     session_id: sessionId,
     probe_seq: seq,
-    actor: { id: bot.entity.id, uuid: bot.entity.uuid ?? null },
+    actor: { id: bot.entity.id, uuid: bot.player?.uuid ?? null },
     targets: snapshot.nearby_entities.map((entity) => ({
       id: entity.id,
       uuid: bot.entities[entity.id]?.uuid ?? null
