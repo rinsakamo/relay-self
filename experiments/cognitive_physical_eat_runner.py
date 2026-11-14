@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
@@ -53,6 +53,9 @@ class CognitivePhysicalEatResult:
     l0_trace: tuple[L0StepReceipt, ...] = ()
     original_s49_authorized: bool = False
     qualification_attested: bool = False
+    skill_execution_snapshot: SkillExecution | None = field(
+        default=None, repr=False, compare=False,
+    )
 
 
 async def issue_eat_from_selected_l1_dev(
@@ -250,4 +253,5 @@ async def issue_eat_from_selected_l1_dev(
     return CognitivePhysicalEatResult(
         effect, intent_id, skill.execution_id,
         binding.target_ref, action_id, journal.digest, tuple(l0_steps),
+        skill_execution_snapshot=skill,
     )
