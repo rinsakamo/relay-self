@@ -98,6 +98,7 @@ class WorldEvent:
     entity_alive_after: bool | None
     native_source_ref: str | None
     server_source_ref: str
+    native_target_ref: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("event_id", "world_id", "branch_id", "server_source_ref"):
@@ -107,8 +108,10 @@ class WorldEvent:
             for name in ("actor_self_id", "native_session_id", "native_source_ref"):
                 _text(name, getattr(self, name))
             _text("action_id", self.action_id)
+            _text("World-event native Target", self.native_target_ref)
         elif any(getattr(self, name) is not None for name in (
-            "actor_self_id", "native_session_id", "native_source_ref"
+            "actor_self_id", "native_session_id", "native_source_ref",
+            "native_target_ref",
         )):
             raise RecoveryContractError("unattributed World event cannot claim an actor")
         if self.target_uuid is not None:
@@ -308,6 +311,9 @@ def assess_reconstruction(
                 hold.append(f"Self {s.self_id} claimed Action {claim.action_id} lacks its WAL")
             elif row.native_target_ref != claim.native_target_ref:
                 hold.append(f"Action {claim.action_id} has stale native Target")
+            if (claim.native_target_ref.startswith("entity:")
+                    and claim.expected_target_uuid is None):
+                hold.append(f"Action {claim.action_id} lacks native Entity ID to UUID join")
             effect = event_by_action.get(claim.action_id)
             if effect is None:
                 hold.append(f"Action {claim.action_id} lacks independent World effect join")
@@ -333,6 +339,9 @@ def assess_reconstruction(
             hold.append(f"WAL Action {row.action_id} has no independent World effect")
         elif (effect.actor_self_id != row.self_id
               or effect.native_session_id != row.native_session_id
+              or effect.native_target_ref != row.native_target_ref
+              or (row.native_target_ref.startswith("entity:")
+                  and not effect.target_uuid)
               or effect.tick > world.tick
               or not effect.native_source_ref or not effect.server_source_ref):
             hold.append(f"WAL Action {row.action_id} lacks matched actor/session/cut/source")
