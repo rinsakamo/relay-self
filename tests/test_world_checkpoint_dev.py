@@ -1,6 +1,7 @@
 """#853 stopped-world checkpoint: filesystem-only DEV, no Minecraft runtime."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -281,3 +282,68 @@ def test_prelaunch_restored_world_gate_rejects_tampering(tmp_path, damage):
         receipt_file.write_text(json.dumps(data))
     with pytest.raises(WorldCheckpointError):
         verify_restored_world(archive, destination)
+
+
+
+def _manifest_pin(archive: Path) -> str:
+    return hashlib.sha256((archive / "manifest.json").read_bytes()).hexdigest()
+
+
+def test_optional_manifest_pin_rejects_metadata_rewrite_without_blocking_dev(tmp_path):
+    """DEV intentionally trusts operator metadata unless independent pin supplied."""
+    source = _world(tmp_path)
+    archive = tmp_path / "W100"
+    _capture(source, archive)
+    original_pin = _manifest_pin(archive)
+    assert verify_world_checkpoint(
+        archive, expected_manifest_sha256=original_pin
+    )["declared_logical_tick"] == 204
+
+    body = json.loads((archive / "manifest.json").read_bytes())
+    body["declared_logical_tick"] = 205
+    (archive / "manifest.json").write_text(json.dumps(body))
+    assert verify_world_checkpoint(archive)["declared_logical_tick"] == 205
+    with pytest.raises(WorldCheckpointError, match="externally pinned SHA256"):
+        verify_world_checkpoint(archive, expected_manifest_sha256=original_pin)
+    with pytest.raises(WorldCheckpointError, match="externally pinned SHA256"):
+        restore_world_to_new_branch(
+            archive, tmp_path / "pinned-restore-must-not-start",
+            restore_id="r2", expected_manifest_sha256=original_pin,
+        )
+    assert not (tmp_path / "pinned-restore-must-not-start").exists()
+    # Weak operator-trust mode is explicitly still available in isolated DEV.
+    receipt = restore_world_to_new_branch(
+        archive, tmp_path / "unpinned-dev-restore", restore_id="r1",
+    )
+    assert receipt["source_declared_logical_tick"] == 205
+    with pytest.raises(WorldCheckpointError, match="externally pinned SHA256"):
+        verify_restored_world(
+            archive, tmp_path / "unpinned-dev-restore",
+            expected_manifest_sha256=original_pin,
+        )
+
+
+@pytest.mark.parametrize("pin", ["", "0" * 63, "G" * 64, "g" * 64])
+def test_bad_optional_manifest_pin_rejected(tmp_path, pin):
+    source = _world(tmp_path)
+    archive = tmp_path / "W100"
+    _capture(source, archive)
+    with pytest.raises(WorldCheckpointError, match="lowercase hex"):
+        verify_world_checkpoint(archive, expected_manifest_sha256=pin)
+
+
+def test_optional_pinned_round_trip_restores_original_dev_behavior(tmp_path):
+    source = _world(tmp_path)
+    archive = tmp_path / "W100"
+    _capture(source, archive)
+    pin = _manifest_pin(archive)
+    manifest = verify_world_checkpoint(archive, expected_manifest_sha256=pin)
+    restored = tmp_path / "fork-restored"
+    receipt = restore_world_to_new_branch(
+        archive, restored, restore_id="r1", expected_manifest_sha256=pin,
+    )
+    assert verify_restored_world(
+        archive, restored, expected_manifest_sha256=pin,
+    ) == receipt
+    assert manifest["declared_logical_tick"] == 204
+    assert receipt["physical_action_authorized"] is False
