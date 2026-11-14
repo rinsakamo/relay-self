@@ -1,7 +1,6 @@
 """#853 stopped-world checkpoint: filesystem-only DEV, no Minecraft runtime."""
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
@@ -212,7 +211,7 @@ def test_source_change_during_capture_leaves_unfinished_archive(tmp_path, monkey
 
     def mutate_after_copy(a, b):
         out = original(a, b)
-        if a.is_relative_to(source) and not triggered[0]:
+        if a.name == "level.dat" and a.is_relative_to(source) and not triggered[0]:
             source.joinpath("level.dat").write_bytes(b"changed-mid-capture")
             triggered[0] = True
         return out
