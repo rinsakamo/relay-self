@@ -336,3 +336,68 @@ def restore_world_to_new_branch(
     _sync_dir(dest)
     _sync_dir(dest.parent)
     return receipt
+
+
+
+def verify_restored_world(
+    archive_dir: str | Path, destination_world: str | Path,
+) -> dict[str, Any]:
+    """Pre-launch World copy + explicit new-branch receipt integrity gate.
+
+    Must run before the restored Minecraft process starts modifying files.
+    A correct file manifest still does NOT authorize native physical issue.
+    """
+    archive = _safe_root(archive_dir, must_exist=True)
+    dest = _safe_root(destination_world, must_exist=True)
+    _nonoverlap(archive, dest)
+    manifest = verify_world_checkpoint(archive)
+    sidecar = dest.parent / f"{dest.name}.restore.json"
+    if sidecar.is_symlink() or not sidecar.is_file():
+        raise WorldCheckpointError("final restore receipt is missing or linked")
+    fd = os.open(sidecar, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise WorldCheckpointError("restore receipt is not regular file")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            receipt = json.load(stream)
+    except (ValueError, UnicodeError, OSError) as exc:
+        raise WorldCheckpointError("restore receipt cannot be trusted") from exc
+    finally:
+        os.close(fd)
+    fields = {
+        "schema", "state", "restore_id", "world_id", "source_branch_id",
+        "new_branch_id", "source_checkpoint_id", "source_declared_logical_tick",
+        "manifest_sha256", "world_effect_coverage_attested",
+        "physical_action_authorized", "semantic_owner_restored",
+    }
+    if type(receipt) is not dict or set(receipt) != fields:
+        raise WorldCheckpointError("restore receipt schema mismatch")
+    if receipt["schema"] != 1 or receipt["state"] != "RESTORED_NEW_BRANCH_FILES_DEV":
+        raise WorldCheckpointError("restore receipt status mismatch")
+    if (receipt["world_effect_coverage_attested"] is not False
+            or receipt["physical_action_authorized"] is not False
+            or receipt["semantic_owner_restored"] is not False):
+        raise WorldCheckpointError("restore receipt must not grant authorities")
+    _text("restore_id", receipt["restore_id"])
+    branch = _text("new_branch_id", receipt["new_branch_id"])
+    try:
+        parsed_uuid = uuid.UUID(branch.removeprefix("fork-"))
+    except ValueError as exc:
+        raise WorldCheckpointError("restore branch UUID malformed") from exc
+    if not branch.startswith("fork-") or parsed_uuid.version != 4:
+        raise WorldCheckpointError("restored history branch must be new UUIDv4")
+    if (
+        receipt["world_id"] != manifest["world_id"]
+        or receipt["source_branch_id"] != manifest["branch_id"]
+        or receipt["new_branch_id"] == manifest["branch_id"]
+        or receipt["source_checkpoint_id"] != manifest["checkpoint_id"]
+        or receipt["source_declared_logical_tick"] != manifest["declared_logical_tick"]
+        or receipt["manifest_sha256"] != _sha((archive / "manifest.json").read_bytes())
+    ):
+        raise WorldCheckpointError("restore receipt/archive identity mismatch")
+    if _scan(dest) != tuple(row["path"] for row in manifest["files"]):
+        raise WorldCheckpointError("restored World file inventory changed")
+    for row in manifest["files"]:
+        if _hash_file(dest / row["path"]) != (row["sha256"], row["size"]):
+            raise WorldCheckpointError("restored World file hash mismatch")
+    return receipt
