@@ -27,11 +27,17 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
 )
 from experiments.cognitive_minimal_minecraft_dev import (
+    NativeProbeFailure,
     execute_one_cognitive_world_turn,
     read_correlated_native_probe,
 )
 from experiments.cognitive_physical_attack_runner import issue_attack_from_selected_l1_dev
 from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
+from experiments.cognitive_semantic_outcome_dev import (
+    SemanticEvaluationRefusal,
+    apply_semantic_outcome_dev,
+    evaluate_semantic_outcome_dev,
+)
 from experiments.controlled_minecraft_vertical import ControlledScenario
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
@@ -102,6 +108,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--l0-skill-ir-dev", action="store_true",
                    help="DEV: bounded CPU L0 for selected EAT@1 or ATTACK@1; "
                         "requires matching opt-in shared WAL physical mode")
+    p.add_argument("--semantic-eval-dev", action="store_true",
+                   help="read-only fresh after-Action Skill/Goal assessment; "
+                        "requires WAL-owned L0 physical DEV mode")
+    p.add_argument("--semantic-apply-dev", action="store_true",
+                   help="explicit DEV-only: apply verified Skill outcome / Goal "
+                        "completion through existing owners; requires semantic evaluation")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
     p.add_argument("--physical-create-journal", action="store_true",
@@ -177,6 +189,14 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
     physical_mode = args.physical_eat_dev or args.physical_attack_dev
+    if args.semantic_eval_dev and (not physical_mode or not args.l0_skill_ir_dev):
+        raise MinimalCognitionError(
+            "semantic evaluation requires WAL-owned L0 physical DEV mode"
+        )
+    if args.semantic_apply_dev and not args.semantic_eval_dev:
+        raise MinimalCognitionError(
+            "semantic owner transitions require explicit semantic evaluation"
+        )
     if args.l0_skill_ir_dev and not physical_mode:
         raise MinimalCognitionError(
             "L0 Skill IR DEV requires one WAL-owned physical DEV issuer"
@@ -408,6 +428,37 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 ),
             )
         physical_result = physical_eat or physical_attack
+        semantic_assessment = None
+        semantic_application = None
+        semantic_error = None
+        semantic_goal_probe = None
+        if args.semantic_eval_dev and physical_result is not None:
+            # Purely read-only fresh evaluation after WAL close. This
+            # request shares the existing *single* Mineflayer stream reader.
+            # Evaluation failure must not turn an already attested physical
+            # OUTCOME into a synthetic physical Action UNKNOWN or retry.
+            try:
+                after_action = physical_result.action.after
+                semantic_goal_probe = await read_correlated_native_probe(
+                    session, after_action, scenario,
+                    request_id=f"cognitive-semantic-{uuid.uuid4().hex}",
+                )
+                semantic_assessment = evaluate_semantic_outcome_dev(
+                    physical_result, receipt.selection,
+                    post_goal_probe=semantic_goal_probe,
+                    journal=physical_journal, supervisor=supervisor,
+                    hunger_threshold=scenario.food_threshold,
+                )
+                if args.semantic_apply_dev:
+                    semantic_application = apply_semantic_outcome_dev(
+                        semantic_assessment, physical_result,
+                        receipt.selection, post_goal_probe=semantic_goal_probe,
+                        journal=physical_journal, supervisor=supervisor,
+                        intent_owner=owner,
+                        hunger_threshold=scenario.food_threshold,
+                    )
+            except (NativeProbeFailure, SemanticEvaluationRefusal) as exc:
+                semantic_error = f"{type(exc).__name__}: {str(exc)[:200]}"
         supervised_actions = (
             supervisor.recorded_actions if physical_mode
             else (() if receipt.run is None else receipt.run.actions)
@@ -550,10 +601,33 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 ])
             ),
             "skill_final_state": (
-                "started" if physical_result is not None else
+                semantic_application.skill_state if semantic_application is not None
+                else "started" if physical_result is not None else
                 None if receipt.run is None else
                 receipt.run.skill_execution.state.value
             ),
+            "intent_final_state": (
+                "committed" if owner.current_intent is not None
+                else "completed" if semantic_application is not None
+                and semantic_application.intent_transition_applied
+                else "not_committed_or_released"
+            ),
+            "semantic_eval_dev_selected": args.semantic_eval_dev,
+            "semantic_apply_dev_selected": args.semantic_apply_dev,
+            "semantic_assessment": (
+                None if semantic_assessment is None
+                else asdict(semantic_assessment)
+            ),
+            "semantic_application": (
+                None if semantic_application is None
+                else asdict(semantic_application)
+            ),
+            "semantic_evaluation_probe": (
+                None if semantic_goal_probe is None
+                else _native_observation_record(semantic_goal_probe)
+            ),
+            "semantic_evaluation_error": semantic_error,
+            "semantic_evaluation_memory_published": False,
             "provider_prompt_tokens": receipt.l1_result.observed_prompt_tokens,
             "provider_completion_tokens": receipt.l1_result.observed_completion_tokens,
             "separate_prefill_decode_timing": "NOT_MEASURED",
@@ -609,6 +683,8 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "physical_eat_dev_selected": args.physical_eat_dev,
             "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
+            "semantic_eval_dev_selected": args.semantic_eval_dev,
+            "semantic_apply_dev_selected": args.semantic_apply_dev,
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
                 None if physical_journal is None else physical_journal.unresolved
