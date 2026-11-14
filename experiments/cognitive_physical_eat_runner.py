@@ -7,6 +7,7 @@ witness is only a source/target preflight, not an S49 authority.
 """
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import dataclass
 
@@ -15,6 +16,7 @@ from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
 from experiments.cognitive_physical_action_preflight import (
     propose_from_cognitive_readonly_evidence,
 )
+from experiments.cognitive_s49_readonly_handoff import assess_s49_readonly_handoff
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatDevReceipt,
     PhysicalEatGrant,
@@ -25,9 +27,17 @@ from experiments.cognitive_physical_eat_issue_dev import (
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.physical_action_port import PhysicalCapability
+from relay_self.physical_action_port import PhysicalCapability, PhysicalReadback
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
+from relay_self.skill_ir_l0 import (
+    ActionStep,
+    EndStep,
+    L0SkillInterpreter,
+    L0StepReceipt,
+    SkillIR,
+    compile_skill_ir,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +50,7 @@ class CognitivePhysicalEatResult:
     selected_target_ref: str
     action_id: str
     journal_sha256: str
+    l0_trace: tuple[L0StepReceipt, ...] = ()
     original_s49_authorized: bool = False
     qualification_attested: bool = False
 
@@ -57,6 +68,7 @@ async def issue_eat_from_selected_l1_dev(
     issue_authority_id: str,
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
+    l0_skill_ir_dev: bool = False,
 ) -> CognitivePhysicalEatResult:
     """Never issue unless the *real* L1 choice and both probes are EAT-ready.
 
@@ -77,6 +89,7 @@ async def issue_eat_from_selected_l1_dev(
         or propose_authority_id == issue_authority_id
         or dev_physical_grant is not True
         or acknowledge_unverified_principal is not True
+        or type(l0_skill_ir_dev) is not bool
         or receipt.status != "S49_SHADOW_READY"
         or receipt.s49_readonly_handoff is None
         or len(receipt.native_probe_trace) != 2
@@ -112,24 +125,86 @@ async def issue_eat_from_selected_l1_dev(
         skill_id=receipt.selection.option.skill_id,
         intent_commitment=intent_owner, at_ns=2, provenance=provenance,
     )
-    action_id = f"cognitive-eat-{uuid.uuid4().hex}"
-    # EAT parent = an existing WorldBody-controlled, ordered
-    # equip_item->consume_held capability, not an extra food-choice policy.
+    # EAT remains an already proven one-parent/two-child WorldBody capability,
+    # never an L0 decomposition into unfenced native equip/consume.
     capability = PhysicalCapability("EAT", 1, "hand", "FOOD", True)
-    proposal = propose_from_cognitive_readonly_evidence(
-        receipt.selection,
-        original_frame=receipt.initial_frame,
-        current_frame=receipt.current_frame,
-        previous_probe=previous, current_probe=current,
-        selected_intent_id=intent_id,
-        capability=capability,
-        action_id=action_id,
-        intent_owner=intent_owner,
-        skill_execution=skill,
-        supervisor=supervisor,
-        at_ns=3,
-        provenance=provenance,
-    ).port_proposal
+    l0: L0SkillInterpreter | None = None
+    l0_steps: list[L0StepReceipt] = []
+    if l0_skill_ir_dev:
+        # Existing source-qualified two-probe handoff remains mandatory:
+        # a typed L0/IR alone cannot establish the real Target's authority.
+        witness = assess_s49_readonly_handoff(
+            receipt.selection,
+            original_frame=receipt.initial_frame,
+            current_frame=receipt.current_frame,
+            previous_probe=previous,
+            current_probe=current,
+            proposed_intent_id=intent_id,
+        )
+        option = receipt.selection.option
+        assert option is not None
+        # The IR is a fixed innate EAT@1 bootstrap for the *already selected*
+        # L1 option, not an accepted model-generated skill nor a new food chooser.
+        ir = SkillIR(
+            skill_id=option.skill_id, version=option.skill_version,
+            origin_task_ref=f"dev-innate-eat:{current.session_id}:{current.seq}",
+            generation=1, scope=receipt.current_frame.scope,
+            goal_id=option.goal_id, target_kind=option.target_kind,
+            target_ref=witness.target_ref, provenance=provenance,
+            entry="eat-action",
+            steps=(
+                ActionStep("eat-action", "EAT", 1, "after-action"),
+                EndStep("after-action", "SUCCESS_CANDIDATE"),
+            ),
+            max_actions=1, max_duration_ns=60_000_000_000,
+        )
+        compiled = compile_skill_ir(
+            ir, capabilities=(capability,), predicate_refs=frozenset(),
+        )
+        l0 = L0SkillInterpreter(
+            compiled, intent_owner=intent_owner, skill_execution=skill,
+            supervisor=supervisor, scope=receipt.current_frame.scope,
+            admitted_version=option.skill_version, admitted_generation=1,
+            started_ns=time.monotonic_ns(),
+        )
+        step = l0.tick(now_ns=time.monotonic_ns())
+        if step.status != "PROPOSE_ACTION" or step.capability_ref != "EAT":
+            raise PhysicalEatRefusal("L0 refused selected EAT capability")
+        l0_steps.append(step)
+        readback = PhysicalReadback(
+            scope=receipt.current_frame.scope, source=current.provenance,
+            seq=current.seq, request_id=current.request_id or "",
+            observed_target_refs=(witness.target_ref,),
+            body_viable=(
+                current.snapshot.health > 0
+                and current.snapshot.oxygen_level != 0
+            ),
+        )
+        proposal = l0.propose_pending(
+            readback=readback, at_ns=3, provenance=provenance,
+        )
+        if proposal.binding.action_id != step.action_id:
+            raise PhysicalEatRefusal("L0 Action identity changed before proposal")
+        l0_steps.append(l0.tick(now_ns=time.monotonic_ns()))
+        if l0_steps[-1].status != "AWAIT_ACTION":
+            raise PhysicalEatRefusal("L0 did not wait for the existing Action owner")
+    else:
+        action_id = f"cognitive-eat-{uuid.uuid4().hex}"
+        proposal = propose_from_cognitive_readonly_evidence(
+            receipt.selection,
+            original_frame=receipt.initial_frame,
+            current_frame=receipt.current_frame,
+            previous_probe=previous, current_probe=current,
+            selected_intent_id=intent_id,
+            capability=capability,
+            action_id=action_id,
+            intent_owner=intent_owner,
+            skill_execution=skill,
+            supervisor=supervisor,
+            at_ns=3,
+            provenance=provenance,
+        ).port_proposal
+    action_id = proposal.binding.action_id
 
     binding = proposal.binding
     def grant(stage: PhysicalGrantStage, authority: str) -> PhysicalEatGrant:
@@ -165,7 +240,14 @@ async def issue_eat_from_selected_l1_dev(
         grant_real_world=dev_physical_grant,
         acknowledge_dev_unverified_principal=acknowledge_unverified_principal,
     )
+    if l0 is not None:
+        # An OUTCOME from the existing ActionSupervisor, not native ACK alone,
+        # advances L0. A terminal is a candidate, never Skill/Intent success.
+        advanced = l0.tick(now_ns=time.monotonic_ns())
+        l0_steps.append(advanced)
+        if advanced.status == "ADVANCED":
+            l0_steps.append(l0.tick(now_ns=time.monotonic_ns()))
     return CognitivePhysicalEatResult(
         effect, intent_id, skill.execution_id,
-        binding.target_ref, action_id, journal.digest,
+        binding.target_ref, action_id, journal.digest, tuple(l0_steps),
     )
