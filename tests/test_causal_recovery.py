@@ -61,6 +61,7 @@ def _fixture():
         action_id="attack-A", native_session_id="mineflayer-session-1",
         target_uuid="zombie-uuid-Z1", entity_alive_after=False,
         native_source_ref="native:41/42", server_source_ref="server:tick105/uuidZ1",
+        native_target_ref="entity:3",
     )
     return world, (a, b), journal, (event,)
 
@@ -232,7 +233,7 @@ def test_event_from_external_actor_does_not_require_self_wal():
     environment = WorldEvent(
         "server-external", world.world_id, world.branch_id, 109, "external-actor",
         "external-action", "external-session", "zombie-uuid-Z3", False,
-        "other-native:2", "world:server:109",
+        "other-native:2", "world:server:109", "entity:7",
     )
     out = assess_reconstruction(world, selves, wal, (*events, environment))
     assert out.verdict is RecoveryVerdict.CANDIDATE_REOBSERVE
@@ -284,3 +285,26 @@ def test_many_fault_combinations_never_authorize_issue_even_if_ticks_fit():
             ))
         n += 1
     assert (n, safe) == (128, 1)
+
+
+def test_stale_native_entity_id_to_world_uuid_join_holds():
+    world, selves, wal, events = _fixture()
+    out = assess_reconstruction(world, selves, wal, (
+        replace(events[0], native_target_ref="entity:77"),))
+    assert out.verdict is RecoveryVerdict.HOLD_PHYSICAL_RECONCILIATION
+
+
+def test_undeclared_uuid_mapping_cannot_recover_attack_claim():
+    world, (a, b), wal, events = _fixture()
+    a = replace(a, claims=(
+        ActionClaim("attack-A", "entity:3", None, 105),
+    ))
+    out = assess_reconstruction(world, (a, b), wal, events)
+    assert out.verdict is RecoveryVerdict.HOLD_PHYSICAL_RECONCILIATION
+    assert any("ID to UUID join" in msg for msg in out.physical_blockers)
+
+
+def test_world_event_without_native_target_ref_cannot_claim_source_join():
+    _, _, _, events = _fixture()
+    with pytest.raises(RecoveryContractError):
+        replace(events[0], native_target_ref=None)
