@@ -7,6 +7,7 @@ Model-generated IR is always a candidate, never a capability or installation.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -115,6 +116,96 @@ def _text(name: str, value: object) -> None:
 def _positive(name: str, value: object, maximum: int) -> None:
     if type(value) is not int or not 1 <= value <= maximum:
         raise SkillIRRefusal(f"{name} exceeds its bounded positive range")
+
+
+
+def parse_skill_ir_json(
+    raw: str,
+    *,
+    scope: ScopeRef,
+    provenance: Provenance,
+    origin_task_ref: str,
+    generation: int,
+) -> SkillIR:
+    """Strict untrusted L2 JSON -> typed CANDIDATE, no execution or admission.
+
+    Native scope, task generation and provenance must come from the caller's
+    qualified task envelope, never from model-supplied JSON fields.
+    """
+    if type(raw) is not str or len(raw) > 16_384 or not raw.strip():
+        raise SkillIRRefusal("bounded JSON Skill IR required")
+    if not isinstance(scope, ScopeRef) or not isinstance(provenance, Provenance):
+        raise SkillIRRefusal("trusted task scope and provenance required")
+    _text("origin_task_ref", origin_task_ref)
+    _positive("generation", generation, 1_000_000_000)
+
+    def exact_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise SkillIRRefusal("duplicate JSON key")
+            result[key] = value
+        return result
+
+    def invalid_constant(value: str) -> None:
+        raise SkillIRRefusal(f"invalid nonfinite JSON constant: {value}")
+
+    try:
+        data = json.loads(
+            raw, object_pairs_hook=exact_object, parse_constant=invalid_constant
+        )
+    except (ValueError, TypeError) as exc:
+        raise SkillIRRefusal("malformed untrusted Skill IR JSON") from exc
+    keys = {
+        "skill_id", "version", "goal_id", "target_kind", "target_ref",
+        "entry", "steps", "max_actions", "max_duration_ns",
+    }
+    if type(data) is not dict or set(data) != keys or type(data["steps"]) is not list:
+        raise SkillIRRefusal("exact bounded Skill IR JSON fields required")
+    if not 1 <= len(data["steps"]) <= 32:
+        raise SkillIRRefusal("Skill IR JSON needs 1..32 steps")
+
+    steps: list[IRStep] = []
+    for step in data["steps"]:
+        if type(step) is not dict or "kind" not in step:
+            raise SkillIRRefusal("typed Skill IR JSON step required")
+        kind = step["kind"]
+        if kind == "CHECK":
+            expected = {
+                "kind", "step_id", "predicate_ref",
+                "if_true", "if_false", "if_unknown",
+            }
+            if set(step) != expected:
+                raise SkillIRRefusal("CHECK step has invalid fields")
+            steps.append(CheckStep(
+                step["step_id"], step["predicate_ref"], step["if_true"],
+                step["if_false"], step["if_unknown"],
+            ))
+        elif kind == "ACTION":
+            expected = {
+                "kind", "step_id", "capability_ref",
+                "capability_version", "after_outcome",
+            }
+            if set(step) != expected:
+                raise SkillIRRefusal("ACTION step has invalid fields")
+            steps.append(ActionStep(
+                step["step_id"], step["capability_ref"],
+                step["capability_version"], step["after_outcome"],
+            ))
+        elif kind == "END":
+            if set(step) != {"kind", "step_id", "result"}:
+                raise SkillIRRefusal("END step has invalid fields")
+            steps.append(EndStep(step["step_id"], step["result"]))
+        else:
+            raise SkillIRRefusal("unknown IR JSON kind")
+    return SkillIR(
+        skill_id=data["skill_id"], version=data["version"],
+        origin_task_ref=origin_task_ref, generation=generation,
+        scope=scope, goal_id=data["goal_id"], target_kind=data["target_kind"],
+        target_ref=data["target_ref"], provenance=provenance,
+        entry=data["entry"], steps=tuple(steps),
+        max_actions=data["max_actions"], max_duration_ns=data["max_duration_ns"],
+    )
 
 
 def compile_skill_ir(
@@ -234,6 +325,11 @@ class L0SkillInterpreter:
     ) -> None:
         if not isinstance(compiled, CompiledSkillIR):
             raise SkillIRRefusal("compile and verify Skill IR before L0")
+        if compile_skill_ir(
+            compiled.ir, capabilities=compiled.capabilities,
+            predicate_refs=compiled.predicate_refs,
+        ) != compiled:
+            raise SkillIRRefusal("forged compiled Skill IR")
         if not isinstance(intent_owner, IntentCommitment) or not isinstance(
             skill_execution, SkillExecution
         ) or not isinstance(supervisor, ActionSupervisor):
