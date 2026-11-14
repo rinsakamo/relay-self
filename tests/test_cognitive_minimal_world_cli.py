@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerEffectResult,
     MineflayerEntityFact,
+    MineflayerEntityHurt,
     MineflayerInventoryItem,
     MineflayerLaunchConfig,
     MineflayerNearbyEntitiesCoverage,
@@ -1150,3 +1151,201 @@ def test_cli_l0_ir_requires_single_wal_owned_eat_mode_before_world_launch(
     with pytest.raises(MinimalCognitionError):
         asyncio.run(run(args))
     assert launched == []
+
+
+
+def _attack_observation(
+    seq: int, *, kind: str, target_id: int | None = 42,
+    x: float = 1.25,
+) -> MineflayerObservation:
+    base = _observation(seq, kind=kind, food=20, bread_count=0)
+    entities = (
+        () if target_id is None else (
+            MineflayerEntityFact(
+                target_id, "zombie", "mob", 1.25,
+                MineflayerPosition(x, 64, 0),
+            ),
+        )
+    )
+    coverage = replace(
+        base.snapshot.nearby_entities_coverage,
+        candidate_count=len(entities),
+    )
+    return replace(base, snapshot=replace(
+        base.snapshot, nearby_entities=entities,
+        nearby_entities_coverage=coverage,
+    ))
+
+
+class FakeAttackProcessSession(FakeProcessSession, MineflayerProcessSession):
+    """A typed fake native stream; never starts real Minecraft or Gemma."""
+
+    def __init__(self, *, fail_at=None):
+        super().__init__([_attack_observation(1, kind="spawn")])
+        self._started = MineflayerAdapterStarted(
+            "session-1", 0, "4.39.0", MineflayerLaunchConfig(),
+        )
+        self.fail_at = fail_at
+        self.observation_no = 0
+        self.wal_path: Path | None = None
+        self.wal_status_before_issue = None
+
+    @property
+    def process_returncode(self):
+        return None
+
+    async def send_observe(self, request_id=None):
+        self.observation_no += 1
+        self.sent.append(("observe", request_id))
+        if self.observation_no <= 3:
+            target_id = (
+                None if self.fail_at == "no_target" else
+                99 if self.fail_at == "stale_target" and self.observation_no == 3
+                else 42
+            )
+            x = 3 if self.fail_at == "moved_target" and self.observation_no == 3 else 1.25
+            self.messages.append(replace(
+                _attack_observation(
+                    self.observation_no + 1, kind="probe",
+                    target_id=target_id, x=x,
+                ),
+                request_id=request_id,
+            ))
+        elif self.fail_at != "after_probe":
+            self.messages.append(replace(
+                _attack_observation(7, kind="probe"),
+                request_id=request_id,
+            ))
+
+    async def send_attack_entity(self, action_id, *, entity_id):
+        assert self.wal_path is not None
+        raw = json.loads(self.wal_path.read_text())
+        self.wal_status_before_issue = raw["body"]["actions"][-1]["status"]
+        self.sent.append(("attack_entity", action_id, entity_id))
+        if self.fail_at != "lost_ack":
+            self.messages.append(MineflayerEffectResult(
+                "session-1", 5, action_id, "attack_entity", "applied", None,
+            ))
+        if self.fail_at != "missing_hurt":
+            self.messages.append(MineflayerEntityHurt(
+                "session-1", 6, 42,
+                None if self.fail_at == "unattributed" else 99, 99,
+            ))
+
+
+def _attack_args(tmp_path, *, create=True):
+    flags = [
+        "--grant-real-world", "--grant-real-llm",
+        "--model", "model-example", "--llama-timeout-s", "1.5",
+        "--physical-attack-dev", "--l0-skill-ir-dev",
+        "--physical-journal-path", str(tmp_path / "self-wal.json"),
+        "--acknowledge-physical-dev-unverified-grants",
+        "--physical-propose-authority", "DEV_ATTACK_PROPOSE",
+        "--physical-issue-authority", "DEV_ATTACK_ISSUE",
+        "--hazard-name", "zombie", "--fight-max-distance", "2.8",
+        "--pre-l1-native-probe",
+    ]
+    if create:
+        flags.append("--physical-create-journal")
+    return parser().parse_args(flags)
+
+
+def test_cli_selected_l1_attack_through_l0_single_wal_attested_hurt(
+    monkeypatch, tmp_path,
+):
+    session = FakeAttackProcessSession()
+    args = _attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["selected"]["skill_id"] == "ATTACK"
+    assert result["selected"]["target_ref"] == "entity:42"
+    assert result["l1_choice_id"] == "1"
+    assert result["status"] == "NATIVE_ATTACK_HURT_OBSERVED_DEV_ONLY"
+    assert result["physical_attack_dev_selected"] is True
+    assert result["existing_issuer"].endswith("issue_attack_from_selected_l1_dev")
+    assert [x["status"] for x in result["l0_skill_ir_trace"]] == [
+        "PROPOSE_ACTION", "AWAIT_ACTION", "ADVANCED", "TERMINAL_CANDIDATE",
+    ]
+    assert result["action_outcome_count"] == 1
+    assert result["skill_final_state"] == "started"
+    assert result["physical_journal_unresolved"] is False
+    assert result["physical_journal_records"][-1]["status"] == "NATIVE_ATTACK_HURT_OBSERVED"
+    assert session.wal_status_before_issue == "PREPARED_UNRESOLVED"
+    assert result["attack_hurt_evidence"]["target_entity_id"] == 42
+    assert result["attack_hurt_evidence"]["independent_damage_attested"] is False
+    assert len([x for x in session.sent if x[0] == "attack_entity"]) == 1
+    assert session.closed
+    restored = PhysicalActionJournal.restore(
+        args.physical_journal_path, self_id=args.self_id,
+    )
+    restored.require_clear()
+
+
+@pytest.mark.parametrize("case", ["no_target", "stale_target", "moved_target"])
+def test_cli_attack_wrong_or_stale_entity_never_issues(
+    monkeypatch, tmp_path, case,
+):
+    session = FakeAttackProcessSession(fail_at=case)
+    args = _attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["physical_attack_dev_selected"] is True
+    assert result["physical_attack_parent_action_id"] is None
+    assert result["action_outcome_count"] == 0
+    assert result["physical_journal_records"] == []
+    assert not any(x[0] == "attack_entity" for x in session.sent)
+
+
+@pytest.mark.parametrize("case", [
+    "lost_ack", "missing_hurt", "unattributed", "after_probe",
+])
+def test_cli_attack_ambiguous_native_keeps_same_self_wal_stop(
+    monkeypatch, tmp_path, case,
+):
+    session = FakeAttackProcessSession(fail_at=case)
+    args = _attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as e:
+        asyncio.run(run(args))
+    audit = e.value.audit
+    assert audit["physical_attack_dev_selected"] is True
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][-1]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["action_consequence"] == "UNKNOWN_POSSIBLY_ISSUED"
+    assert session.wal_status_before_issue == "PREPARED_UNRESOLVED"
+    restored = PhysicalActionJournal.restore(
+        args.physical_journal_path, self_id=args.self_id,
+    )
+    with pytest.raises(PhysicalJournalUnresolved):
+        restored.require_clear()
+    second = FakeAttackProcessSession()
+    second.wal_path = session.wal_path
+    _inject_physical_transport(monkeypatch, second)
+    with pytest.raises(cli.CognitiveWorldRunError):
+        asyncio.run(run(_attack_args(tmp_path, create=False)))
+    assert second.sent == []
+
+
+@pytest.mark.parametrize("bad", ["legacy", "eat", "shadow", "no_l0"])
+def test_cli_attack_mutually_exclusive_before_world_launch(
+    monkeypatch, tmp_path, bad,
+):
+    async def forbidden(*a, **kw):
+        raise AssertionError("World must never launch")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", forbidden)
+    args = _attack_args(tmp_path)
+    if bad == "legacy":
+        args.execute_native = True
+    elif bad == "eat":
+        args.physical_eat_dev = True
+    elif bad == "shadow":
+        args.s49_readonly_shadow = True
+    else:
+        args.l0_skill_ir_dev = False
+    with pytest.raises(MinimalCognitionError):
+        asyncio.run(run(args))
+    assert not Path(args.physical_journal_path).exists()
