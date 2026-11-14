@@ -16,7 +16,6 @@ from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
 from experiments.cognitive_physical_action_preflight import (
     propose_from_cognitive_readonly_evidence,
 )
-from experiments.cognitive_s49_readonly_handoff import assess_s49_readonly_handoff
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatDevReceipt,
     PhysicalEatGrant,
@@ -24,6 +23,7 @@ from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalGrantStage,
     issue_selected_eat_dev,
 )
+from experiments.cognitive_s49_readonly_handoff import assess_s49_readonly_handoff
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
