@@ -48,6 +48,33 @@ branch ID and a fresh fork UUID. The Minecraft server will not see
 that branch automatically: actual World history custody is still
 an external responsibility, not a changed level.dat or native clock.
 
+## DEV metadata-trust policy (2026-11-15)
+
+For isolated development, checking that the World files match the Manifest
+is sufficient to investigate whether Minecraft can restore a saved World.
+Independent metadata authenticity (e.g., proving a recorded tick is not
+forged) is **NOT a prerequisite for DEV experiments** and must not
+automatically block P0-A work.
+
+- Normal `verify`, `restore` and `verify-restored` commands are unchanged.
+- To investigate Manifest metadata tampering, optionally pass
+  `--expected-manifest-sha256 <64 lowercase hex>` to any of these
+  commands. Obtain this pin *independently at capture time*, e.g. from
+  the prior evidence record, never from the same mutable archive being
+  checked. The provided pin is checked before trusting the Manifest.
+- Without a pin, syntactically valid modified Manifest metadata such as
+  tick 476→477 **can still pass**. This is deliberate DEV behavior and
+  is reported as `MANIFEST_METADATA_UNPINNED`, not authenticated truth.
+- The restore receipt records the source Manifest digest to make
+  internal comparisons possible, but does NOT establish external
+  authenticity without independent custody.
+- Keep actual file-level mismatch, unsafe overwrite, foreign World
+  path and unresolved physical Action/WAL replay protections intact.
+
+This mode does not itself change a `P0-A` file restore observation into
+a causal reconstruction proof. QUAL/production requirements may impose
+trusted metadata pins and verified server event clocks later.
+
 ## Integrity and limitations
 
 - Capture includes all regular files recursively, including level.dat,
