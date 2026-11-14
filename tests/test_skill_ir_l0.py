@@ -15,8 +15,13 @@ from relay_self.skill import SkillExecution, SkillState
 from relay_self.skill_ir_l0 import (
     QualifiedActionOutcome,
     QualifiedPredicate,
-    SkillIR, SkillIRRefusal, SkillIRStep, StepKind,
-    compile_skill_ir, start_l0_skill, step_l0_skill,
+    SkillIR,
+    SkillIRRefusal,
+    SkillIRStep,
+    StepKind,
+    compile_skill_ir,
+    start_l0_skill,
+    step_l0_skill,
 )
 
 
@@ -222,12 +227,12 @@ def test_owner_reconsideration_or_terminal_skill_blocks_further_steps():
     owner.request_reconsideration(
         "intent-1", reason="reconsider", at_ns=3, provenance=p,
     )
-    with pytest.raises(SkillIRRefusal, match="owner"):
+    with pytest.raises(SkillIRRefusal, match="Intent/Skill"):
         tick(cursor, owner, skill, sup, rb, p)
     _, _, owner, skill, sup, cursor, rb, p = setup()
     finished = skill.succeed(reason="terminal", at_ns=3, provenance=p)
     for current in (skill, finished):
-        with pytest.raises(SkillIRRefusal, match="owner"):
+        with pytest.raises(SkillIRRefusal, match="Intent/Skill"):
             tick(cursor, owner, current, sup, rb, p)
 
 
