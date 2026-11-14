@@ -404,6 +404,9 @@ class L0SkillInterpreter:
             ]
             if not matching or matching[0].state is ActionState.ISSUED:
                 return L0StepReceipt("AWAIT_ACTION", self._pc, action_id=self._pending)
+            if not self._proposed:
+                self._stopped = "UNPROPOSED_ACTION"
+                return L0StepReceipt("STOP", self._pc, reason=self._stopped)
             action = matching[0]
             if (
                 action.intent_id != self.skill_execution.intent_id
@@ -467,8 +470,12 @@ class L0SkillInterpreter:
         ):
             self._stopped = "BODY_BUSY_OR_UNKNOWN"
             return L0StepReceipt("STOP", self._pc, reason=self._stopped)
+        candidate_id = f"{self.skill_execution.execution_id}-l0-{self._action_count + 1}"
+        if any(x.action_id == candidate_id for x in self.supervisor.recorded_actions):
+            self._stopped = "DUPLICATE_ACTION_ID"
+            return L0StepReceipt("STOP", self._pc, reason=self._stopped)
         self._action_count += 1
-        self._pending = f"{self.skill_execution.execution_id}-l0-{self._action_count}"
+        self._pending = candidate_id
         return L0StepReceipt(
             "PROPOSE_ACTION", node.step_id, self._pending, node.capability_ref
         )
@@ -485,7 +492,7 @@ class L0SkillInterpreter:
             raise SkillIRRefusal("typed native readback required")
         ir = self.compiled.ir
         if (
-            readback.scope != ir.scope or readback.seq < self._last_seq
+            readback.scope != ir.scope or readback.seq <= self._last_seq
             or readback.source.reference != f"{ir.scope.world_session_id}:{readback.seq}"
         ):
             raise SkillIRRefusal("stale or foreign native readback")
@@ -518,4 +525,5 @@ class L0SkillInterpreter:
             supervisor=self.supervisor, at_ns=at_ns, provenance=provenance,
         )
         self._proposed = True
+        self._last_seq = readback.seq
         return result
