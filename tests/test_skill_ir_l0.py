@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from relay_self.action import ActionState
+from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
@@ -410,3 +410,51 @@ def test_forged_compiled_ir_cannot_bypass_static_validation():
             supervisor=supervisor, scope=ir.scope,
             admitted_version=1, admitted_generation=1, started_ns=4,
         )
+
+
+def test_prior_terminal_with_same_future_action_id_is_never_replayed():
+    runner, owner, skill, supervisor, prov = _runner()
+    old = ActionLifecycle.propose(
+        "skill-execution-1-l0-1", skill_execution=skill,
+        intent_commitment=owner, at_ns=3, provenance=prov,
+    )
+    supervisor.issue(
+        old.authorize(at_ns=4, provenance=prov, authority="synthetic-test"),
+        at_ns=5, deadline_ns=40, provenance=prov,
+    )
+    supervisor.record_outcome(old.action_id, at_ns=6, provenance=prov)
+    assert runner.tick(now_ns=5, witness=_witness()).status == "ADVANCED"
+    decision = runner.tick(now_ns=6)
+    assert decision.status == "STOP"
+    assert decision.reason == "DUPLICATE_ACTION_ID"
+    assert len(supervisor.recorded_actions) == 1
+
+
+def test_unproposed_supervisor_outcome_cannot_complete_ir_step():
+    runner, owner, skill, supervisor, prov = _runner()
+    instruction = _to_action(runner)
+    assert instruction.action_id is not None
+    # A recorded Action with the same string ID is not an issued receipt
+    # of this interpreter's not-yet-admitted proposal.
+    unrelated = ActionLifecycle.propose(
+        instruction.action_id, skill_execution=skill,
+        intent_commitment=owner, at_ns=3, provenance=prov,
+    )
+    supervisor.issue(
+        unrelated.authorize(at_ns=4, provenance=prov, authority="test"),
+        at_ns=5, deadline_ns=40, provenance=prov,
+    )
+    supervisor.record_outcome(instruction.action_id, at_ns=6, provenance=prov)
+    receipt = runner.tick(now_ns=8)
+    assert receipt.status == "STOP"
+    assert receipt.reason == "UNPROPOSED_ACTION"
+
+
+def test_port_requires_probe_fresher_than_last_consumed_check():
+    runner, _, _, supervisor, prov = _runner()
+    _to_action(runner)
+    with pytest.raises(SkillIRRefusal, match="stale"):
+        runner.propose_pending(
+            readback=_readback(seq=10), at_ns=7, provenance=prov,
+        )
+    assert supervisor.recorded_actions == ()
