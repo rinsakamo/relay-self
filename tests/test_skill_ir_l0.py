@@ -1,6 +1,7 @@
 """#843 bounded Skill IR: CPU-only proposals/observations, never native issue."""
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -22,6 +23,7 @@ from relay_self.skill_ir_l0 import (
     SkillIR,
     SkillIRRefusal,
     compile_skill_ir,
+    parse_skill_ir_json,
 )
 
 
@@ -332,3 +334,79 @@ def test_two_sequential_action_steps_use_unique_ids_and_supervised_outcomes():
     assert runner.tick(now_ns=8).status == "ADVANCED"
     assert runner.tick(now_ns=9).status == "TERMINAL_CANDIDATE"
     assert len(supervisor.recorded_actions) == 2
+
+
+def _json_ir() -> dict[str, object]:
+    return {
+        "skill_id": "EAT", "version": 1, "goal_id": "HUNGER_RELIEF",
+        "target_kind": "FOOD", "target_ref": "inventory:bread",
+        "entry": "start", "max_actions": 1, "max_duration_ns": 100,
+        "steps": [
+            {"kind": "ACTION", "step_id": "start", "capability_ref": "EAT",
+             "capability_version": 1, "after_outcome": "end"},
+            {"kind": "END", "step_id": "end", "result": "SUCCESS_CANDIDATE"},
+        ],
+    }
+
+
+def test_json_parser_keeps_world_task_and_generation_outside_model_text():
+    base_ir, caps, preds = _base()
+    ir = parse_skill_ir_json(
+        json.dumps(_json_ir()), scope=base_ir.scope,
+        provenance=base_ir.provenance, origin_task_ref="task-external",
+        generation=42,
+    )
+    assert ir.scope == base_ir.scope
+    assert ir.origin_task_ref == "task-external"
+    assert ir.generation == 42
+    assert compile_skill_ir(ir, capabilities=caps, predicate_refs=preds).ir is ir
+
+
+@pytest.mark.parametrize("bad_json", [
+    '{"skill_id":"A","skill_id":"B"}',
+    '{"steps":[{"kind":"END","kind":"ACTION"}]}',
+    '{"x":NaN}',
+    '{"x":Infinity}',
+    '{"bad":true}',
+    '[]',
+    'not json',
+])
+def test_reject_malformed_or_duplicate_json(bad_json):
+    ir, _, _ = _base()
+    with pytest.raises(SkillIRRefusal):
+        parse_skill_ir_json(
+            bad_json, scope=ir.scope, provenance=ir.provenance,
+            origin_task_ref="task", generation=1,
+        )
+
+
+@pytest.mark.parametrize("change", [
+    {"scope": {"self_id": "foreign", "world_session_id": "bad"}},
+    {"steps": [{"kind": "ACTION", "step_id": "start",
+                "capability_ref": "arbitrary_shell", "capability_version": 1,
+                "after_outcome": "end", "python": "os.system('x')"}]},
+    {"steps": [{"kind": "EVAL", "code": "while True: ..."}]},
+])
+def test_json_model_cannot_supply_scope_python_code_or_new_step_kind(change):
+    ir, _, _ = _base()
+    payload = _json_ir() | change
+    with pytest.raises(SkillIRRefusal):
+        parse_skill_ir_json(
+            json.dumps(payload), scope=ir.scope,
+            provenance=ir.provenance, origin_task_ref="task", generation=1,
+        )
+
+
+def test_forged_compiled_ir_cannot_bypass_static_validation():
+    ir, caps, preds = _base()
+    unbounded = replace(
+        ir, steps=(CheckStep("check", "food_low", "check", "check", "check"),),
+    )
+    program = CompiledSkillIR(unbounded, caps, preds)
+    owner, skill, supervisor, _ = _owners()
+    with pytest.raises(SkillIRRefusal, match="cyclic"):
+        L0SkillInterpreter(
+            program, intent_owner=owner, skill_execution=skill,
+            supervisor=supervisor, scope=ir.scope,
+            admitted_version=1, admitted_generation=1, started_ns=4,
+        )
