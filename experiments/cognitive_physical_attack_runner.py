@@ -5,9 +5,12 @@ The DEV outcome is *attributed Mineflayer hurt observed*, NOT damage magnitude.
 """
 from __future__ import annotations
 
+import json
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
@@ -50,6 +53,26 @@ class CognitivePhysicalAttackResult:
     skill_execution_snapshot: SkillExecution | None = field(
         default=None, repr=False, compare=False,
     )
+
+
+def check_p0b_identity_witness(path: Path, expected_path: Path, *, session_id: str,
+                               seq: int, target_id: int) -> None:
+    """Require an independently observed server UUID match before DEV issue."""
+    try:
+        expected = json.loads(expected_path.read_text())
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        rows = [r for r in rows if r["session_id"] == session_id and r["probe_seq"] == seq]
+        if len(rows) != 1:
+            raise ValueError("probe witness missing or ambiguous")
+        row = rows[0]
+        targets = [t for t in row["targets"] if t["id"] == target_id]
+        actor, target = row["actor"]["uuid"], targets[0]["uuid"]
+        if (len(targets) != 1 or str(uuid.UUID(actor)) != actor
+                or str(uuid.UUID(target)) != target or actor == target
+                or actor != expected["actor_uuid"] or target != expected["target_uuid"]):
+            raise ValueError("server and native UUID mismatch")
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
+        raise PhysicalAttackRefusal("P0-B pre-issue identity witness not established") from exc
 
 
 async def issue_attack_from_selected_l1_dev(
@@ -109,6 +132,15 @@ async def issue_attack_from_selected_l1_dev(
     )
     if witness.target_entity_id is None:
         raise PhysicalAttackRefusal("selected zombie identity not observed")
+    p0b_witness = os.environ.get("RELAY_P0B_IDENTITY_WITNESS_PATH")
+    p0b_expected = os.environ.get("RELAY_P0B_EXPECTED_IDENTITY_PATH")
+    if p0b_witness or p0b_expected:
+        if not p0b_witness or not p0b_expected:
+            raise PhysicalAttackRefusal("P0-B identity paths must both be supplied")
+        check_p0b_identity_witness(
+            Path(p0b_witness), Path(p0b_expected), session_id=current.session_id,
+            seq=current.seq, target_id=witness.target_entity_id,
+        )
     option = receipt.selection.option
     provenance = Provenance(
         "cognitive-physical-attack-dev",

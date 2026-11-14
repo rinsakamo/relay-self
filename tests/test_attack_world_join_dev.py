@@ -205,6 +205,8 @@ def test_server_native_sources_must_not_be_identical():
     damage = replace(damage, server_source_ref=native.source_ref)
     out = _join(wal, native, ticket, (damage,))
     assert out.status is AttackWorldJoinStatus.HOLD_UNKNOWN
+    out = _join(wal, native, None, (replace(damage, ticket_nonce=None),))
+    assert out.status is AttackWorldJoinStatus.HOLD_UNKNOWN
 
 
 def test_missing_native_identity_witness_holds_without_ticket_or_world():

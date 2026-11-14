@@ -3,8 +3,19 @@
 Parent #851, existing physical ATTACK #843/#848/#849, semantic evaluation
 #850, file checkpoint P0-A #853/#854.
 
-**Scope: read-only offline join; no physical issue, no live World run, no
-Paper recorder or native registration bridge implemented on this HEAD.**
+The join is read-only. The DEV Paper recorder and opt-in native probe UUID
+witness are observation-only; neither is a ticket bridge or Action issuer.
+Their existence alone is not real World evidence.
+
+The Paper recorder in `experiments/p0b_paper_recorder` logs damage at MONITOR
+and a separately sampled next-tick Health. A missing/dead entity yields
+UNKNOWN, not calculated Health. Death linkage is UNKNOWN. World UUID is
+server-derived; a branch identifier must be supplied separately by the
+isolated-world operator. Before the existing ATTACK issuer, setting both
+`RELAY_P0B_IDENTITY_WITNESS_PATH` and `RELAY_P0B_EXPECTED_IDENTITY_PATH`
+requires the exact current probe's target and actor UUIDs to match the
+independently recorded server identities. These paths must designate new
+evidence files; neither establishes source authentication or a ticket.
 
 ## Provenance and grades
 

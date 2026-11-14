@@ -310,12 +310,12 @@ def join_attack_world_dev(
         return result(AttackWorldJoinStatus.HOLD_UNKNOWN)
     damage = possible[0]
     sources.add(damage.server_source_ref)
-    if ticket is None:
-        reasons.append("server hit matches actor/target but no pre-issued Action ticket")
-        return result(AttackWorldJoinStatus.DEV_SERVER_DAMAGE_UNJOINED, damage)
     if damage.server_source_ref == native.source_ref:
         reasons.append("server and native source must be independently recorded")
         return result(AttackWorldJoinStatus.HOLD_UNKNOWN)
+    if ticket is None:
+        reasons.append("server hit matches actor/target but no pre-issued Action ticket")
+        return result(AttackWorldJoinStatus.DEV_SERVER_DAMAGE_UNJOINED, damage)
     deaths = [
         ev for ev in death_events
         if ev.world_id == world_id and ev.branch_id == branch_id

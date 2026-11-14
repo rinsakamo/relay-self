@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { appendFileSync } from 'node:fs'
 import readline from 'node:readline'
 
 import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
   entityHurtPayload,
+  probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import {
@@ -65,6 +67,11 @@ function emitObservation (kind, requestId = undefined) {
   try {
     const snapshot = snapshotFromBot(bot)
     if (kind === 'probe') {
+      if (process.env.RELAY_P0B_IDENTITY_WITNESS_PATH) {
+        appendFileSync(process.env.RELAY_P0B_IDENTITY_WITNESS_PATH, JSON.stringify(
+          probeIdentityWitness(bot, snapshot, sessionId, seq)
+        ) + '\n')
+      }
       emit('observation', makeProbePayload(snapshot, requestId))
     } else {
       emit('observation', { kind, snapshot })
