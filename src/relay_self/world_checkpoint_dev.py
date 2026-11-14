@@ -40,6 +40,21 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _check_optional_manifest_pin(archive: Path, expected: str | None) -> None:
+    """Optional out-of-band metadata pin for DEV investigations.
+
+    Without a pin, valid but rewritten Manifest metadata is unverified;
+    this is intentional and NOT a production authenticity claim.
+    """
+    if expected is None:
+        return
+    if (type(expected) is not str or len(expected) != 64
+            or any(ch not in "0123456789abcdef" for ch in expected)):
+        raise WorldCheckpointError("expected manifest SHA256 must be lowercase hex")
+    if _hash_file(archive / "manifest.json")[0] != expected:
+        raise WorldCheckpointError("manifest differs from externally pinned SHA256")
+
+
 def _hash_file(path: Path) -> tuple[str, int]:
     digest = hashlib.sha256()
     count = 0
@@ -237,8 +252,10 @@ def capture_stopped_world(
     return manifest
 
 
-def verify_world_checkpoint(archive_dir: str | Path) -> dict[str, Any]:
-    """Verify all archived bytes and exact inventory before allowing copy."""
+def verify_world_checkpoint(
+    archive_dir: str | Path, *, expected_manifest_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Check file integrity; optionally pin metadata provenance outside archive."""
     root = _safe_root(archive_dir, must_exist=True)
     if any(x.is_symlink() for x in (root / "world", root / "manifest.json", root / "SHA256SUMS")):
         raise WorldCheckpointError("symlink checkpoint component")
@@ -246,6 +263,7 @@ def verify_world_checkpoint(archive_dir: str | Path) -> dict[str, Any]:
         raise WorldCheckpointError("checkpoint World payload missing")
     if set(os.listdir(root)) != {"world", "manifest.json", "SHA256SUMS"}:
         raise WorldCheckpointError("archive must have exactly three entries")
+    _check_optional_manifest_pin(root, expected_manifest_sha256)
     try:
         manifest = json.loads((root / "manifest.json").read_bytes())
     except (OSError, ValueError, UnicodeError) as exc:
@@ -293,6 +311,7 @@ def restore_world_to_new_branch(
     destination_world: str | Path,
     *,
     restore_id: str,
+    expected_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Restore into a never-existing directory; issue a new branch in sidecar.
 
@@ -306,7 +325,9 @@ def restore_world_to_new_branch(
     sidecar = dest.parent / f"{dest.name}.restore.json"
     if sidecar.exists() or sidecar.is_symlink():
         raise WorldCheckpointError("restore receipt already exists")
-    manifest = verify_world_checkpoint(archive)
+    manifest = verify_world_checkpoint(
+        archive, expected_manifest_sha256=expected_manifest_sha256,
+    )
     new_branch = f"fork-{uuid.uuid4()}"
     if new_branch == manifest["branch_id"]:
         raise WorldCheckpointError("restore must create a new branch")
@@ -340,7 +361,8 @@ def restore_world_to_new_branch(
 
 
 def verify_restored_world(
-    archive_dir: str | Path, destination_world: str | Path,
+    archive_dir: str | Path, destination_world: str | Path, *,
+    expected_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Pre-launch World copy + explicit new-branch receipt integrity gate.
 
@@ -350,7 +372,9 @@ def verify_restored_world(
     archive = _safe_root(archive_dir, must_exist=True)
     dest = _safe_root(destination_world, must_exist=True)
     _nonoverlap(archive, dest)
-    manifest = verify_world_checkpoint(archive)
+    manifest = verify_world_checkpoint(
+        archive, expected_manifest_sha256=expected_manifest_sha256,
+    )
     sidecar = dest.parent / f"{dest.name}.restore.json"
     if sidecar.is_symlink() or not sidecar.is_file():
         raise WorldCheckpointError("final restore receipt is missing or linked")
