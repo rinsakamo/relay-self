@@ -64,7 +64,8 @@ automatically block P0-A work.
   checked. The provided pin is checked before trusting the Manifest.
 - Without a pin, syntactically valid modified Manifest metadata such as
   tick 476→477 **can still pass**. This is deliberate DEV behavior and
-  is reported as `MANIFEST_METADATA_UNPINNED`, not authenticated truth.
+  should be classified as `MANIFEST_METADATA_UNPINNED` in the DEV report,
+  not authenticated truth; the API does not emit that classification.
 - The restore receipt records the source Manifest digest to make
   internal comparisons possible, but does NOT establish external
   authenticity without independent custody.
