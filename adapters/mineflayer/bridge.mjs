@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { appendFileSync } from 'node:fs'
 import readline from 'node:readline'
 
 import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
   entityHurtPayload,
+  probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -45,6 +49,7 @@ let inputReader = null
 let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
+const seenProbeRequestIds = new Set()
 
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
@@ -58,12 +63,19 @@ function emitAdapterError (error) {
   emit('adapter_error', { message })
 }
 
-function emitObservation (kind) {
+function emitObservation (kind, requestId = undefined) {
   try {
-    emit('observation', {
-      kind,
-      snapshot: snapshotFromBot(bot)
-    })
+    const snapshot = snapshotFromBot(bot)
+    if (kind === 'probe') {
+      if (process.env.RELAY_P0B_IDENTITY_WITNESS_PATH) {
+        appendFileSync(process.env.RELAY_P0B_IDENTITY_WITNESS_PATH, JSON.stringify(
+          probeIdentityWitness(bot, snapshot, sessionId, seq)
+        ) + '\n')
+      }
+      emit('observation', makeProbePayload(snapshot, requestId))
+    } else {
+      emit('observation', { kind, snapshot })
+    }
   } catch (error) {
     emitAdapterError(error)
   }
@@ -290,7 +302,13 @@ async function handleLine (line) {
       emit('command_error', { message: 'observe_before_spawn' })
       return
     }
-    emitObservation('probe')
+    if (command.request_id !== undefined) {
+      if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+        emit('command_error', { message: 'duplicate_probe_request_id' })
+        return
+      }
+    }
+    emitObservation('probe', command.request_id)
     return
   }
 

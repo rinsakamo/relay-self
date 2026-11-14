@@ -68,6 +68,19 @@ export function resolveAttackEntity (bot, entityId) {
   return entity
 }
 
+// Passive evidence only; capture IDs and UUIDs from the same in-memory probe.
+export function probeIdentityWitness (bot, snapshot, sessionId, seq) {
+  return {
+    session_id: sessionId,
+    probe_seq: seq,
+    actor: { id: bot.entity.id, uuid: bot.player?.uuid ?? null },
+    targets: snapshot.nearby_entities.map((entity) => ({
+      id: entity.id,
+      uuid: bot.entities[entity.id]?.uuid ?? null
+    }))
+  }
+}
+
 
 export function entityHurtPayload (entity, source, actorEntityId) {
   if (!entity || !Number.isInteger(entity.id) || entity.id < 0) {
