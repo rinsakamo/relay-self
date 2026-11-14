@@ -16,7 +16,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
-    PhysicalGrantStage as PhysicalGrantStage,  # re-export legacy DEV caller API
+    PhysicalGrantStage,
     begin_physical_issue_dev,
     check_dev_issuer_preflight,
     check_physical_source_window,
@@ -38,6 +38,13 @@ class PhysicalEatRefusal(ValueError):
 
 # Preserve the existing DEV caller API; no new physical grant is created.
 PhysicalEatGrant = PhysicalDevGrant
+__all__ = [
+    "PhysicalEatGrant",
+    "PhysicalGrantStage",
+    "PhysicalEatRefusal",
+    "PhysicalEatDevReceipt",
+    "issue_selected_eat_dev",
+]
 
 
 @dataclass(frozen=True, slots=True)
