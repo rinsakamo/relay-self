@@ -10,6 +10,7 @@ from relay_self.world_checkpoint_dev import (
     WorldCheckpointError,
     capture_stopped_world,
     restore_world_to_new_branch,
+    verify_restored_world,
     verify_world_checkpoint,
 )
 
@@ -244,3 +245,39 @@ def test_copy_declaration_cannot_claim_server_event_coverage(tmp_path):
     (archive / "manifest.json").write_text(json.dumps(payload))
     with pytest.raises(WorldCheckpointError):
         verify_world_checkpoint(archive)
+
+
+
+def test_prelaunch_restored_world_and_branch_receipt_verify(tmp_path):
+    source = _world(tmp_path)
+    archive = tmp_path / "W100"
+    _capture(source, archive)
+    destination = tmp_path / "restored-world"
+    receipt = restore_world_to_new_branch(archive, destination, restore_id="r1")
+    assert verify_restored_world(archive, destination) == receipt
+    assert receipt["new_branch_id"] != receipt["source_branch_id"]
+
+
+@pytest.mark.parametrize("damage", ["changed-file", "extra-file", "missing-receipt", "wrong-branch", "fake-grant"])
+def test_prelaunch_restored_world_gate_rejects_tampering(tmp_path, damage):
+    source = _world(tmp_path)
+    archive = tmp_path / "W100"
+    _capture(source, archive)
+    destination = tmp_path / "restored-world"
+    restore_world_to_new_branch(archive, destination, restore_id="r1")
+    receipt_file = tmp_path / "restored-world.restore.json"
+    if damage == "changed-file":
+        (destination / "level.dat").write_bytes(b"tampered")
+    elif damage == "extra-file":
+        (destination / "extra.json").write_bytes(b"unexpected")
+    elif damage == "missing-receipt":
+        receipt_file.unlink()
+    else:
+        data = json.loads(receipt_file.read_bytes())
+        if damage == "wrong-branch":
+            data["new_branch_id"] = data["source_branch_id"]
+        else:
+            data["physical_action_authorized"] = True
+        receipt_file.write_text(json.dumps(data))
+    with pytest.raises(WorldCheckpointError):
+        verify_restored_world(archive, destination)
