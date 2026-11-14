@@ -21,7 +21,6 @@ from adapters.mineflayer.python_protocol import (
 )
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatGrant,
-    PhysicalGrantStage,
     _check_grants,
 )
 from relay_self.action import ActionLifecycle, ActionState
