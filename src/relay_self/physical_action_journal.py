@@ -19,6 +19,7 @@ from typing import Any, Iterator
 
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
+    MineflayerEntityHurt,
     MineflayerObservation,
 )
 from relay_self.action import ActionLifecycle, ActionState
@@ -62,6 +63,7 @@ _ROW = {
     "status", "effect_seqs", "after_seq", "food_before", "food_after",
     "count_before", "count_after",
 }
+_ATTACK_FIELDS = {"target_entity_id", "hurt_seq", "source_entity_id", "actor_entity_id"}
 
 
 def _validate(value: object) -> dict[str, Any]:
@@ -72,14 +74,31 @@ def _validate(value: object) -> dict[str, Any]:
     seen: set[str] = set()
     max_seq: dict[str, int] = {}
     for idx, entry in enumerate(body["actions"]):
-        row = _exact(entry, _ROW)
+        if type(entry) is not dict:
+            raise PhysicalJournalError("physical journal row must be mapping")
+        row = _exact(entry, _ROW | _ATTACK_FIELDS if entry.get("capability") == "ATTACK"
+                     else _ROW)
         for field in (
             "session_id", "intent_id", "skill_execution_id", "action_id",
             "capability", "target_ref", "probe_request_id", "source_ref",
         ):
             _text(row[field])
-        if row["capability"] != "EAT" or not row["target_ref"].startswith("inventory:"):
-            raise PhysicalJournalError("this DEV journal admits EAT only")
+        if row["capability"] == "EAT":
+            if not row["target_ref"].startswith("inventory:"):
+                raise PhysicalJournalError("invalid EAT target reference")
+        elif row["capability"] == "ATTACK":
+            ref = row["target_ref"]
+            if (
+                type(ref) is not str or not ref.startswith("entity:")
+                or not ref.removeprefix("entity:").isascii()
+                or not ref.removeprefix("entity:").isdecimal()
+                or str(int(ref.removeprefix("entity:"))) != ref.removeprefix("entity:")
+                or row["target_entity_id"] != int(ref.removeprefix("entity:"))
+            ):
+                raise PhysicalJournalError("invalid ATTACK target identity")
+            _number(row["target_entity_id"])
+        else:
+            raise PhysicalJournalError("unknown physical Action capability")
         if row["action_id"] in seen:
             raise PhysicalJournalReplay("physical Action ID replay")
         seen.add(row["action_id"])
@@ -95,8 +114,13 @@ def _validate(value: object) -> dict[str, Any]:
                 )
             ):
                 raise PhysicalJournalError("unresolved Action must be last with no outcome")
+            if row["capability"] == "ATTACK" and any(
+                row[k] is not None for k in
+                ("hurt_seq", "source_entity_id", "actor_entity_id")
+            ):
+                raise PhysicalJournalError("unresolved ATTACK cannot claim a hurt event")
             max_seq[session] = seq
-        elif row["status"] == "NATIVE_EAT_OUTCOME":
+        elif row["status"] == "NATIVE_EAT_OUTCOME" and row["capability"] == "EAT":
             effects = row["effect_seqs"]
             if type(effects) is not list or len(effects) != 2:
                 raise PhysicalJournalError("two native EAT effects required")
@@ -112,6 +136,28 @@ def _validate(value: object) -> dict[str, Any]:
                 and before_count >= 1 and 0 <= after_count < before_count
             ):
                 raise PhysicalJournalError("EAT native effect/outcome evidence invalid")
+            max_seq[session] = after
+        elif (
+            row["status"] == "NATIVE_ATTACK_HURT_OBSERVED"
+            and row["capability"] == "ATTACK"
+        ):
+            effects = row["effect_seqs"]
+            if type(effects) is not list or len(effects) != 1:
+                raise PhysicalJournalError("one native ATTACK ACK required")
+            ack_seq = _number(effects[0])
+            hurt_seq = _number(row["hurt_seq"])
+            after = _number(row["after_seq"])
+            source_id = _number(row["source_entity_id"])
+            actor_id = _number(row["actor_entity_id"])
+            target_id = _number(row["target_entity_id"])
+            if (
+                not seq < min(ack_seq, hurt_seq)
+                or max(ack_seq, hurt_seq) >= after
+                or source_id != actor_id or target_id == actor_id
+                or any(row[k] is not None for k in
+                       ("food_before", "food_after", "count_before", "count_after"))
+            ):
+                raise PhysicalJournalError("ATTACK attributed hurt evidence invalid")
             max_seq[session] = after
         else:
             raise PhysicalJournalError("unknown durable physical status")
@@ -342,4 +388,132 @@ class PhysicalActionJournal:
             "food_after": int(after.snapshot.food),
             "count_before": before_count,
             "count_after": after_count,
+        }])
+
+
+    def prepare_attack(
+        self, binding: PhysicalActionBinding, probe: MineflayerObservation,
+    ) -> None:
+        """Durably reserve the same Self-owned physical WAL, before native ATTACK."""
+        self.require_clear()
+        if (
+            not isinstance(binding, PhysicalActionBinding)
+            or binding.scope.self_id != self._body["self_id"]
+            or binding.skill_id != "ATTACK" or binding.skill_version != 1
+            or binding.capability_ref != "ATTACK" or binding.capability_version != 1
+            or binding.target_kind != "ZOMBIE" or binding.body_channel != "hand"
+            or not isinstance(probe, MineflayerObservation)
+            or probe.kind != "probe" or not probe.request_id
+            or probe.session_id != binding.scope.world_session_id
+            or probe.seq != binding.native_seq
+            or probe.request_id != binding.native_request_id
+            or probe.provenance != binding.native_source
+            or probe.snapshot.health <= 0 or probe.snapshot.oxygen_level == 0
+        ):
+            raise PhysicalJournalError("exact ATTACK binding/native source required")
+        ref = binding.target_ref
+        if (
+            not ref.startswith("entity:")
+            or not ref.removeprefix("entity:").isascii()
+            or not ref.removeprefix("entity:").isdecimal()
+        ):
+            raise PhysicalJournalError("ATTACK target reference malformed")
+        target_id = int(ref.removeprefix("entity:"))
+        if str(target_id) != ref.removeprefix("entity:"):
+            raise PhysicalJournalError("noncanonical ATTACK entity ID")
+        coverage = probe.snapshot.nearby_entities_coverage
+        entity = probe.snapshot.nearby_entities
+        if (
+            coverage.truncated or coverage.candidate_count != 1
+            or len(entity) != 1 or entity[0].entity_id != target_id
+            or entity[0].name != "zombie"
+            or not 0.1 <= entity[0].distance <= 2.8
+        ):
+            raise PhysicalJournalError("ATTACK target not isolated and in range")
+        if self.records and (
+            self.records[-1]["session_id"] == probe.session_id
+            and self.records[-1]["after_seq"] >= probe.seq
+        ):
+            raise PhysicalJournalReplay("ATTACK native source was already consumed")
+        self._commit([*self._body["actions"], {
+            "session_id": probe.session_id,
+            "intent_id": binding.intent_id,
+            "skill_execution_id": binding.skill_execution_id,
+            "action_id": binding.action_id,
+            "capability": "ATTACK",
+            "target_ref": binding.target_ref,
+            "target_entity_id": target_id,
+            "probe_seq": probe.seq,
+            "probe_request_id": probe.request_id,
+            "source_ref": probe.provenance.reference,
+            "status": "PREPARED_UNRESOLVED",
+            "effect_seqs": None,
+            "hurt_seq": None,
+            "source_entity_id": None,
+            "actor_entity_id": None,
+            "after_seq": None,
+            "food_before": None,
+            "food_after": None,
+            "count_before": None,
+            "count_after": None,
+        }])
+
+    def close_attack(
+        self, binding: PhysicalActionBinding, before: MineflayerObservation,
+        ack: MineflayerEffectResult, hurt: MineflayerEntityHurt,
+        after: MineflayerObservation, terminal: ActionLifecycle,
+        supervisor: ActionSupervisor,
+    ) -> None:
+        """Seal only correlated source-attributed hurt + applied ACK, not damage."""
+        if (
+            not self.unresolved or not isinstance(binding, PhysicalActionBinding)
+            or not isinstance(before, MineflayerObservation)
+            or not isinstance(ack, MineflayerEffectResult)
+            or not isinstance(hurt, MineflayerEntityHurt)
+            or not isinstance(after, MineflayerObservation)
+            or not isinstance(terminal, ActionLifecycle)
+            or not isinstance(supervisor, ActionSupervisor)
+        ):
+            raise PhysicalJournalError("ATTACK terminal evidence absent")
+        row = self._body["actions"][-1]
+        if (
+            row["capability"] != "ATTACK"
+            or row["intent_id"] != binding.intent_id
+            or row["skill_execution_id"] != binding.skill_execution_id
+            or row["action_id"] != binding.action_id
+            or row["target_ref"] != binding.target_ref
+            or row["source_ref"] != binding.native_source.reference
+            or row["probe_seq"] != before.seq
+            or row["probe_request_id"] != before.request_id
+            or before.session_id != row["session_id"]
+            or before.provenance != binding.native_source
+            or ack.session_id != before.session_id
+            or ack.action_id != binding.action_id + "-attack"
+            or ack.effect != "attack_entity" or ack.result != "applied"
+            or hurt.session_id != before.session_id
+            or hurt.entity_id != row["target_entity_id"]
+            or hurt.source_entity_id is None
+            or hurt.source_entity_id != hurt.actor_entity_id
+            or hurt.actor_entity_id == hurt.entity_id
+            or after.kind != "probe" or not after.request_id
+            or after.request_id == before.request_id
+            or after.session_id != before.session_id
+            or after.snapshot.health <= 0
+            or not before.seq < min(ack.seq, hurt.seq)
+            or not max(ack.seq, hurt.seq) < after.seq
+            or terminal.state is not ActionState.OUTCOME
+            or terminal.action_id != binding.action_id
+            or terminal.intent_id != binding.intent_id
+            or terminal.skill_execution_id != binding.skill_execution_id
+            or supervisor.get(binding.action_id) is not terminal
+        ):
+            raise PhysicalJournalError("ATTACK ACK/hurt/Outcome source mismatch")
+        self._commit([*self._body["actions"][:-1], {
+            **row,
+            "status": "NATIVE_ATTACK_HURT_OBSERVED",
+            "effect_seqs": [ack.seq],
+            "hurt_seq": hurt.seq,
+            "source_entity_id": hurt.source_entity_id,
+            "actor_entity_id": hurt.actor_entity_id,
+            "after_seq": after.seq,
         }])
