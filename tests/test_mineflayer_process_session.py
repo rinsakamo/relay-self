@@ -375,3 +375,28 @@ def test_clean_shutdown_sends_one_shutdown_and_waits(
         assert process.terminated is False
 
     asyncio.run(scenario())
+
+
+def test_correlated_observe_is_one_read_only_command_without_action_id(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    process = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return process
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        await session.send_observe("cognitive-abcdef")
+        assert [json.loads(x) for x in process.stdin.writes] == [{
+            "type": "observe", "request_id": "cognitive-abcdef",
+        }]
+        assert process.stdin.drain_count == 1
+
+    asyncio.run(scenario())
