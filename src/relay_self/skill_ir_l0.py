@@ -316,7 +316,7 @@ def step_l0_skill(
         if terminal.state not in {ActionState.OUTCOME, ActionState.DENIED}:
             return L0Decision("AWAIT_PHYSICAL_OUTCOME", cursor)
         if terminal.state is ActionState.OUTCOME:
-            if outcome is None:
+            if outcome is None or readback is None:
                 return L0Decision("AWAIT_QUALIFIED_OUTCOME", cursor)
             if (not isinstance(outcome, QualifiedActionOutcome)
                     or outcome.action_id != cursor.pending_action_id
@@ -324,6 +324,8 @@ def step_l0_skill(
                     or type(outcome.native_seq) is not int
                     or outcome.native_seq <= cursor.pending_native_seq
                     or not isinstance(outcome.source, Provenance)
+                    or outcome.native_seq != readback.seq
+                    or outcome.source != readback.source
                     or not outcome.consequence_attested
                     or not outcome.durable_closed):
                 return L0Decision("STOP_UNKNOWN", _advance(cursor, stopped=True))
@@ -368,13 +370,16 @@ def step_l0_skill(
         raise SkillIRRefusal("L0 step budget exhausted")
 
     if node.kind is StepKind.CHECK:
-        if predicate is None or predicate.value is None:
+        if predicate is None:
             return L0Decision("YIELD_OBSERVATION", cursor)
         if (not isinstance(predicate, QualifiedPredicate)
-                or type(predicate.value) is not bool
                 or predicate.predicate_ref != node.predicate_ref
-                or predicate.readback != readback):
+                or predicate.readback != readback
+                or predicate.value is not None
+                and type(predicate.value) is not bool):
             raise SkillIRRefusal("unqualified predicate observation")
+        if predicate.value is None:
+            return L0Decision("YIELD_OBSERVATION", cursor)
         return L0Decision(
             "ADVANCED",
             _advance(
