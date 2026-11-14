@@ -95,6 +95,10 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--physical-eat-dev", action="store_true",
                    help="explicit single EAT parent Action via durable Physical ActionPort; "
                         "mutually exclusive with old physical issuer and shadow-only mode")
+    p.add_argument("--l0-skill-ir-dev", action="store_true",
+                   help="DEV only: execute the already-selected EAT@1 through the "
+                        "bounded CPU L0 Skill IR; requires --physical-eat-dev and "
+                        "reuses the same WAL-owned physical issuer")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
     p.add_argument("--physical-create-journal", action="store_true",
@@ -169,6 +173,10 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
+    if args.l0_skill_ir_dev and not args.physical_eat_dev:
+        raise MinimalCognitionError(
+            "L0 Skill IR DEV requires the one WAL-owned --physical-eat-dev issuer"
+        )
     if args.s49_readonly_shadow and (args.execute_native or args.physical_eat_dev):
         raise MinimalCognitionError(
             "explicit S49 shadow-only mode cannot issue any physical Action"
@@ -363,6 +371,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 acknowledge_unverified_principal=(
                     args.acknowledge_physical_dev_unverified_grants
                 ),
+                l0_skill_ir_dev=args.l0_skill_ir_dev,
             )
         supervised_actions = (
             supervisor.recorded_actions if args.physical_eat_dev
@@ -445,6 +454,16 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 else receipt.native_eat_consequence_attested
             ),
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
+            "l0_skill_ir_trace": (
+                [] if physical_eat is None else [
+                    asdict(step) for step in physical_eat.l0_trace
+                ]
+            ),
+            "l0_skill_ir_terminal_candidate_only": (
+                bool(physical_eat and physical_eat.l0_trace and
+                     physical_eat.l0_trace[-1].status == "TERMINAL_CANDIDATE")
+            ),
             "physical_eat_parent_action_id": (
                 None if physical_eat is None else physical_eat.action_id
             ),
@@ -529,6 +548,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
                 None if physical_journal is None else physical_journal.unresolved
