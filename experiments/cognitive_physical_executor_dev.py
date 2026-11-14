@@ -181,6 +181,11 @@ def begin_physical_issue_dev(
         raise refusal("unregistered physical issuer capability")
     journal.require_clear()
     b = proposal.binding
+    if (
+        b.skill_id != capability or b.skill_version != 1
+        or b.capability_ref != capability or b.capability_version != 1
+    ):
+        raise refusal("physical issuer cannot change selected capability")
     check_physical_grants(b, propose_grant, issue_grant, refusal=refusal)
     owner = intent_owner.current_intent
     if (
