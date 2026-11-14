@@ -19,17 +19,21 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEntityHurt,
     MineflayerObservation,
 )
-from experiments.cognitive_physical_eat_issue_dev import (
-    PhysicalEatGrant,
-    _check_grants,
+from experiments.cognitive_physical_executor_dev import (
+    PhysicalDevGrant,
+    begin_physical_issue_dev,
+    check_dev_issuer_preflight,
+    check_physical_source_window,
+    finish_physical_issue_dev,
+    mark_ambiguous_physical_dev,
 )
-from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action import ActionLifecycle
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalActionProposalReceipt
 from relay_self.provenance import Provenance
-from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill import SkillExecution
 
 
 class PhysicalAttackRefusal(ValueError):
@@ -52,34 +56,11 @@ def _check_window(
     previous: MineflayerObservation,
     current: MineflayerObservation,
 ) -> int:
-    if not isinstance(proposal, PhysicalActionProposalReceipt):
-        raise PhysicalAttackRefusal("Physical ActionPort proposal required")
+    check_physical_source_window(
+        proposal, previous, current, capability="ATTACK",
+        target_kind="ZOMBIE", refusal=PhysicalAttackRefusal,
+    )
     b = proposal.binding
-    if (
-        proposal.proposal.state is not ActionState.PROPOSED
-        or not proposal.proposal.is_current_snapshot
-        or proposal.physical_authorized or proposal.physical_issued
-        or proposal.preissue_persisted
-        or proposal.proposal.action_id != b.action_id
-        or proposal.proposal.intent_id != b.intent_id
-        or proposal.proposal.skill_execution_id != b.skill_execution_id
-        or b.skill_id != "ATTACK" or b.skill_version != 1
-        or b.capability_ref != "ATTACK" or b.capability_version != 1
-        or b.target_kind != "ZOMBIE" or b.body_channel != "hand"
-        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,89}", b.action_id)
-        or not isinstance(previous, MineflayerObservation)
-        or not isinstance(current, MineflayerObservation)
-        or previous.kind != "probe" or current.kind != "probe"
-        or not previous.request_id or not current.request_id
-        or previous.request_id == current.request_id
-        or previous.session_id != b.scope.world_session_id
-        or current.session_id != b.scope.world_session_id
-        or not previous.seq < current.seq <= previous.seq + 32
-        or current.seq != b.native_seq
-        or current.request_id != b.native_request_id
-        or current.provenance != b.native_source
-    ):
-        raise PhysicalAttackRefusal("selected ATTACK/native correlated window not current")
     match = re.fullmatch(r"entity:(0|[1-9][0-9]{0,9})", b.target_ref)
     if match is None:
         raise PhysicalAttackRefusal("canonical bounded target entity ID required")
@@ -193,8 +174,8 @@ async def issue_selected_attack_dev(
     *, proposal: PhysicalActionProposalReceipt,
     previous_probe: MineflayerObservation,
     current_probe: MineflayerObservation,
-    propose_grant: PhysicalEatGrant,
-    issue_grant: PhysicalEatGrant,
+    propose_grant: PhysicalDevGrant,
+    issue_grant: PhysicalDevGrant,
     intent_owner: IntentCommitment,
     skill_execution: SkillExecution,
     supervisor: ActionSupervisor,
@@ -205,59 +186,23 @@ async def issue_selected_attack_dev(
     acknowledge_dev_unverified_principal: bool,
     evidence_timeout_s: float = 9.0,
 ) -> PhysicalAttackDevReceipt:
-    if (
-        type(grant_real_world) is not bool or not grant_real_world
-        or type(acknowledge_dev_unverified_principal) is not bool
-        or not acknowledge_dev_unverified_principal
-        or not isinstance(session, MineflayerProcessSession)
-        or session.process_returncode is not None
-        or not isinstance(intent_owner, IntentCommitment)
-        or not isinstance(skill_execution, SkillExecution)
-        or not isinstance(supervisor, ActionSupervisor)
-        or not isinstance(journal, PhysicalActionJournal)
-        or type(at_ns) is not int or at_ns < 0
-        or not isinstance(provenance, Provenance)
-        or type(evidence_timeout_s) not in (int, float)
-        or not 0 < evidence_timeout_s <= 30
-    ):
-        raise PhysicalAttackRefusal("explicit single-owner DEV physical grant required")
-    journal.require_clear()
+    check_dev_issuer_preflight(
+        session, proposal, intent_owner=intent_owner,
+        skill_execution=skill_execution, supervisor=supervisor, journal=journal,
+        at_ns=at_ns, provenance=provenance, grant_real_world=grant_real_world,
+        acknowledge_dev_unverified_principal=acknowledge_dev_unverified_principal,
+        evidence_timeout_s=evidence_timeout_s, refusal=PhysicalAttackRefusal,
+    )
     entity_id = _check_window(proposal, previous_probe, current_probe)
     b = proposal.binding
-    # Reuse the *exact* EAT DEV envelope validator, not its physical policy.
-    # Grants remain unverified caller-provided labels, not authenticated IDs.
-    _check_grants(b, propose_grant, issue_grant)
-    owner = intent_owner.current_intent
-    if (
-        session.started.session_id != b.scope.world_session_id
-        or journal._body["self_id"] != b.scope.self_id
-        or owner is None or owner.intent_id != b.intent_id
-        or owner.objective != b.goal_id
-        or intent_owner.pending_reconsideration is not None
-        or not skill_execution.is_current_snapshot
-        or skill_execution.state is not SkillState.STARTED
-        or skill_execution.execution_id != b.skill_execution_id
-        or skill_execution.skill_id != "ATTACK"
-        or skill_execution.intent_id != b.intent_id
-        or supervisor.open_actions or supervisor.recorded_actions
-        or proposal.proposal.action_id != b.action_id
-        or not proposal.proposal.is_current_snapshot
-        or at_ns < max(intent_owner.last_at_ns or 0, skill_execution.events[-1].at_ns)
-    ):
-        raise PhysicalAttackRefusal("ATTACK physical owner/Skill/Intent no longer eligible")
-    journal.require_clear()
-    authorized = proposal.proposal.authorize(
-        at_ns=at_ns, provenance=propose_grant.provenance,
-        authority=propose_grant.authority_id,
+    begin_physical_issue_dev(
+        session, capability="ATTACK", proposal=proposal,
+        current_probe=current_probe,
+        propose_grant=propose_grant, issue_grant=issue_grant,
+        intent_owner=intent_owner, skill_execution=skill_execution,
+        supervisor=supervisor, journal=journal, at_ns=at_ns,
+        refusal=PhysicalAttackRefusal,
     )
-    # This is the *same journal* as EAT; the shared CAS/fsync/unknown STOP
-    # cannot be bypassed by a different physical capability.
-    journal.prepare_attack(b, current_probe)
-    issued = supervisor.issue(
-        authorized, at_ns=at_ns + 1, deadline_ns=at_ns + 1000,
-        provenance=issue_grant.provenance,
-    )
-    assert supervisor.get(b.action_id) is issued
     try:
         await session.send_attack_entity(b.action_id + "-attack", entity_id=entity_id)
         ack, hurt = await _expect_native_attack(
@@ -268,17 +213,18 @@ async def issue_selected_attack_dev(
             session, b.action_id,
             after_seq=max(ack.seq, hurt.seq), timeout_s=evidence_timeout_s,
         )
-        terminal = supervisor.record_outcome(
-            b.action_id, at_ns=at_ns + 2, provenance=after.provenance,
-        )
-        journal.close_attack(
-            b, current_probe, ack, hurt, after, terminal, supervisor,
+        terminal = finish_physical_issue_dev(
+            action_id=b.action_id, after=after, supervisor=supervisor,
+            journal=journal, at_ns=at_ns,
+            close=lambda outcome: journal.close_attack(
+                b, current_probe, ack, hurt, after, outcome, supervisor,
+            ),
         )
         return PhysicalAttackDevReceipt(terminal, ack, hurt, after, entity_id)
     except BaseException:
-        if supervisor.get(b.action_id).state is ActionState.ISSUED:
-            supervisor.mark_unknown(
-                b.action_id, at_ns=at_ns + 2, provenance=current_probe.provenance,
-            )
+        mark_ambiguous_physical_dev(
+            action_id=b.action_id, supervisor=supervisor,
+            probe=current_probe, at_ns=at_ns,
+        )
         # PREPARED_UNRESOLVED stays durable. Never reissue.
         raise
