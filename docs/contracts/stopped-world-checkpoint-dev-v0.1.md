@@ -31,6 +31,16 @@ OPERATOR CLAIMS and may be false.
       --new-world-dir /ABS/other-isolated-server/world \
       --restore-id restore-W100-1
 
+    python -m experiments.cognitive_world_checkpoint_dev verify-restored \
+      --archive-dir /ABS/checkpoints/W100 \
+      --restored-world-dir /ABS/other-isolated-server/world
+
+Run verify-restored BEFORE starting the restored server, while its
+files are expected to be byte-identical. This also validates the
+separate fork receipt and explicitly rejects forged permission flags.
+After Minecraft starts, World files naturally change and a byte-identical
+prelaunch check may no longer be valid.
+
 Source and archive must never overlap. Output directories must NOT
 already exist. After restore, the world.restore.json sidecar is written
 in the new World directory's parent and contains both the inherited
