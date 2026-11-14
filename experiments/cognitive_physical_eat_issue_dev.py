@@ -16,7 +16,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
-    PhysicalGrantStage,
+    PhysicalGrantStage as PhysicalGrantStage,  # re-export legacy DEV caller API
     begin_physical_issue_dev,
     check_dev_issuer_preflight,
     check_physical_source_window,
