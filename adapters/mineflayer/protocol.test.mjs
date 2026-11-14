@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -98,6 +100,30 @@ test('observe is a target-local snapshot probe, not an effect', () => {
     () => parseCommand({ type: 'observe', action_id: 'not-an-action' }),
     /fields are invalid/
   )
+})
+
+test('correlated probe request IDs follow original S49 read-only contract', () => {
+  const seen = new Set()
+  assert.deepEqual(parseCommand({ type: 'observe', request_id: 'cognitive-01' }), {
+    type: 'observe', request_id: 'cognitive-01'
+  })
+  assert.equal(admitProbeRequestId(seen, 'cognitive-01'), true)
+  assert.equal(admitProbeRequestId(seen, 'cognitive-01'), false)
+  assert.equal(admitProbeRequestId(seen, 'cognitive-02'), true)
+  assert.deepEqual(makeProbePayload({ health: 20 }, 'cognitive-02'), {
+    kind: 'probe', snapshot: { health: 20 }, request_id: 'cognitive-02'
+  })
+  assert.deepEqual(makeProbePayload({ health: 20 }), {
+    kind: 'probe', snapshot: { health: 20 }
+  })
+  for (const requestId of ['', 'bad space', '☃', '-bad', 'a'.repeat(129)]) {
+    assert.throws(() => parseCommand({ type: 'observe', request_id: requestId }), /request_id/)
+    assert.throws(() => makeProbePayload({}, requestId), /request_id/)
+  }
+  assert.throws(() => parseCommand({
+    type: 'observe', request_id: 'probe-1', action_id: 'invalid'
+  }), /fields are invalid/)
+  assert.throws(() => admitProbeRequestId([], 'probe-1'), /Set/)
 })
 
 test('clear_controls remains a primitive effect without hidden duration', () => {

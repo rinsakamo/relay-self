@@ -36,6 +36,16 @@ class ActionSupervisor:
         return self._last_at_ns
 
     @property
+    def recorded_actions(self) -> tuple[ActionLifecycle, ...]:
+        """Read-only complete original supervisor history, including terminals.
+
+        This does not authorize, issue, close, or retry any physical Action.
+        It lets DEV crash/exception reports distinguish a previously applied
+        child effect from an untouched session even if open_actions is empty.
+        """
+        return tuple(self._lifecycles[k] for k in sorted(self._lifecycles))
+
+    @property
     def open_actions(self) -> tuple[ActionLifecycle, ...]:
         return tuple(
             self._lifecycles[action_id]
