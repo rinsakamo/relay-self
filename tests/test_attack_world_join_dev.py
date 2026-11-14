@@ -183,9 +183,13 @@ def test_duplicate_server_event_ids_are_refused():
         _join(wal, native, ticket, (damage, damage))
 
 
-def test_unjoined_death_with_full_health_reduction_cannot_be_a_kill():
-    wal, native, ticket, damage, death = _sample(death=False)
-    out = _join(wal, native, ticket, (damage,), death)
+def test_death_claim_with_nonlethal_damage_cannot_be_a_kill():
+    wal, native, ticket, damage, _ = _sample(death=False)
+    death = ServerDeathEvent(
+        "minecraft-1", "branch-alpha", "impossible-death", 102, ZOMBIE,
+        ACTOR, "damage-event-1", "paper:impossible-death",
+    )
+    out = _join(wal, native, ticket, (damage,), (death,))
     assert out.status is AttackWorldJoinStatus.HOLD_UNKNOWN
 
 
