@@ -7,47 +7,37 @@ authentication, continuous Body arbiter and QUAL remain open.
 from __future__ import annotations
 
 import asyncio
-import re
 from dataclasses import dataclass
-from enum import Enum
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
-from relay_self.action import ActionLifecycle, ActionState
+from experiments.cognitive_physical_executor_dev import (
+    PhysicalDevGrant,
+    PhysicalGrantStage,
+    begin_physical_issue_dev,
+    check_dev_issuer_preflight,
+    check_physical_source_window,
+    finish_physical_issue_dev,
+    mark_ambiguous_physical_dev,
+)
+from relay_self.action import ActionLifecycle
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalActionProposalReceipt
 from relay_self.provenance import Provenance
-from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill import SkillExecution
 
 
 class PhysicalEatRefusal(ValueError):
     """Current native source, immutable choice or physical permission failed."""
 
 
-class PhysicalGrantStage(str, Enum):
-    PROPOSE = "PROPOSE"
-    ISSUE = "ISSUE"
-
-
-@dataclass(frozen=True, slots=True)
-class PhysicalEatGrant:
-    """Caller-claimed external approval; NOT cryptographically authenticated."""
-
-    stage: PhysicalGrantStage
-    authority_id: str
-    provenance: Provenance
-    intent_id: str
-    action_id: str
-    session_id: str
-    probe_seq: int
-    probe_request_id: str
-    selected_target_ref: str
-    granted: bool
+# Preserve the existing DEV caller API; no new physical grant is created.
+PhysicalEatGrant = PhysicalDevGrant
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,33 +62,13 @@ def _check_native_window(
     previous: MineflayerObservation,
     current: MineflayerObservation,
 ) -> tuple[str, int]:
+    check_physical_source_window(
+        proposal, previous, current, capability="EAT",
+        target_kind="FOOD", refusal=PhysicalEatRefusal,
+    )
     b = proposal.binding
-    if (
-        proposal.proposal.state is not ActionState.PROPOSED
-        or not proposal.proposal.is_current_snapshot
-        or proposal.physical_authorized or proposal.physical_issued
-        or proposal.preissue_persisted
-        or proposal.proposal.action_id != b.action_id
-        or proposal.proposal.intent_id != b.intent_id
-        or proposal.proposal.skill_execution_id != b.skill_execution_id
-        or b.skill_id != "EAT" or b.skill_version != 1
-        or b.capability_ref != "EAT" or b.capability_version != 1
-        or b.body_channel != "hand" or b.target_kind != "FOOD"
-        or not b.target_ref.startswith("inventory:")
-        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,89}", b.action_id)
-        or not isinstance(previous, MineflayerObservation)
-        or not isinstance(current, MineflayerObservation)
-        or previous.kind != "probe" or current.kind != "probe"
-        or not previous.request_id or not current.request_id
-        or previous.request_id == current.request_id
-        or previous.session_id != b.scope.world_session_id
-        or current.session_id != b.scope.world_session_id
-        or not previous.seq < current.seq <= previous.seq + 32
-        or current.seq != b.native_seq
-        or current.request_id != b.native_request_id
-        or current.provenance != b.native_source
-    ):
-        raise PhysicalEatRefusal("selected EAT/native correlated window not current")
+    if not b.target_ref.startswith("inventory:"):
+        raise PhysicalEatRefusal("selected food target reference malformed")
     food = b.target_ref.removeprefix("inventory:")
     slots: list[int] = []
     for obs in (previous, current):
@@ -124,36 +94,6 @@ def _check_native_window(
     ):
         raise PhysicalEatRefusal("EAT food slot/body changed")
     return food, slots[1]
-
-
-def _check_grants(
-    binding, propose: PhysicalEatGrant, issue: PhysicalEatGrant,
-) -> None:
-    if (
-        not isinstance(propose, PhysicalEatGrant)
-        or not isinstance(issue, PhysicalEatGrant)
-        or propose.stage is not PhysicalGrantStage.PROPOSE
-        or issue.stage is not PhysicalGrantStage.ISSUE
-        or not propose.granted or not issue.granted
-        or not propose.authority_id or not issue.authority_id
-        or propose.authority_id == issue.authority_id
-        or not isinstance(propose.provenance, Provenance)
-        or not isinstance(issue.provenance, Provenance)
-        or propose.provenance == issue.provenance
-        or propose.provenance.source == "mineflayer"
-        or issue.provenance.source == "mineflayer"
-    ):
-        raise PhysicalEatRefusal("independent scoped external physical grants required")
-    for grant in (propose, issue):
-        if any((
-            grant.intent_id != binding.intent_id,
-            grant.action_id != binding.action_id,
-            grant.session_id != binding.scope.world_session_id,
-            grant.probe_seq != binding.native_seq,
-            grant.probe_request_id != binding.native_request_id,
-            grant.selected_target_ref != binding.target_ref,
-        )):
-            raise PhysicalEatRefusal("physical grant is foreign/stale/retargeted")
 
 
 async def _expect_applied(
@@ -233,69 +173,22 @@ async def issue_selected_eat_dev(
     The input proposal must come from the same physical port owner, not a
     synthetic replacement. Replaying this call never retries EAT.
     """
-    if (
-        not grant_real_world or not acknowledge_dev_unverified_principal
-        or type(grant_real_world) is not bool
-        or type(acknowledge_dev_unverified_principal) is not bool
-        or not isinstance(session, MineflayerProcessSession)
-        or session.process_returncode is not None
-        or not isinstance(proposal, PhysicalActionProposalReceipt)
-        or not isinstance(intent_owner, IntentCommitment)
-        or not isinstance(skill_execution, SkillExecution)
-        or not isinstance(supervisor, ActionSupervisor)
-        or not isinstance(journal, PhysicalActionJournal)
-        or type(at_ns) is not int or at_ns < 0
-        or not isinstance(provenance, Provenance)
-        or type(evidence_timeout_s) not in (int, float)
-        or not 0 < evidence_timeout_s <= 30
-    ):
-        raise PhysicalEatRefusal("explicit single-owner DEV physical grant required")
-    # A restored unresolved ledger has priority over a stale in-memory
-    # proposal: STOP/UNKNOWN is never converted into a retryable refusal.
-    journal.require_clear()
+    check_dev_issuer_preflight(
+        session, proposal, intent_owner=intent_owner,
+        skill_execution=skill_execution, supervisor=supervisor, journal=journal,
+        at_ns=at_ns, provenance=provenance, grant_real_world=grant_real_world,
+        acknowledge_dev_unverified_principal=acknowledge_dev_unverified_principal,
+        evidence_timeout_s=evidence_timeout_s, refusal=PhysicalEatRefusal,
+    )
     binding = proposal.binding
     food, _ = _check_native_window(proposal, previous_probe, current_probe)
-    _check_grants(binding, propose_grant, issue_grant)
-    if (
-        session.started.session_id != binding.scope.world_session_id
-        or journal._body["self_id"] != binding.scope.self_id
-        or intent_owner.current_intent is None
-        or intent_owner.current_intent.intent_id != binding.intent_id
-        or intent_owner.current_intent.objective != binding.goal_id
-        or intent_owner.pending_reconsideration is not None
-        or not skill_execution.is_current_snapshot
-        or skill_execution.state is not SkillState.STARTED
-        or skill_execution.execution_id != binding.skill_execution_id
-        or skill_execution.skill_id != binding.skill_id
-        or skill_execution.intent_id != binding.intent_id
-        or supervisor.open_actions or supervisor.recorded_actions
-        or proposal.proposal.action_id != binding.action_id
-        or not proposal.proposal.is_current_snapshot
-    ):
-        raise PhysicalEatRefusal("physical owner/Skill/Intent no longer eligible")
-    journal.require_clear()
-    if (
-        journal.records
-        and journal.records[-1]["session_id"] == current_probe.session_id
-        and journal.records[-1]["after_seq"] >= current_probe.seq
-    ):
-        raise PhysicalEatRefusal("previous physical EAT source not yet advanced")
-    if at_ns < max(intent_owner.last_at_ns or 0, skill_execution.events[-1].at_ns):
-        raise PhysicalEatRefusal("physical time precedes selected owner/Skill")
-
-    authorized = proposal.proposal.authorize(
-        at_ns=at_ns, provenance=propose_grant.provenance,
-        authority=propose_grant.authority_id,
+    begin_physical_issue_dev(
+        session, capability="EAT", proposal=proposal, current_probe=current_probe,
+        propose_grant=propose_grant, issue_grant=issue_grant,
+        intent_owner=intent_owner, skill_execution=skill_execution,
+        supervisor=supervisor, journal=journal, at_ns=at_ns,
+        refusal=PhysicalEatRefusal,
     )
-    # S49 #767 invariant: fsync PREPARED_UNRESOLVED before ISSUE or any
-    # external effect. A disk exception means ZERO issue; reservations
-    # already written are never silently undone.
-    journal.prepare_eat(binding, current_probe)
-    issued = supervisor.issue(
-        authorized, at_ns=at_ns + 1, deadline_ns=at_ns + 1000,
-        provenance=issue_grant.provenance,
-    )
-    assert supervisor.get(binding.action_id) is issued
     before_count = sum(
         i.count for i in current_probe.snapshot.inventory if i.name == food
     )
@@ -330,11 +223,12 @@ async def issue_selected_eat_dev(
             await asyncio.sleep(.25)
         else:
             raise PhysicalEatRefusal("native EAT effects applied but nutrition unverified")
-        terminal = supervisor.record_outcome(
-            binding.action_id, at_ns=at_ns + 2, provenance=after.provenance,
-        )
-        journal.close_eat(
-            binding, current_probe, equip, consume, after, terminal, supervisor,
+        terminal = finish_physical_issue_dev(
+            action_id=binding.action_id, after=after, supervisor=supervisor,
+            journal=journal, at_ns=at_ns,
+            close=lambda outcome: journal.close_eat(
+                binding, current_probe, equip, consume, after, outcome, supervisor,
+            ),
         )
         return PhysicalEatDevReceipt(
             terminal, equip, consume, after, food,
@@ -342,10 +236,9 @@ async def issue_selected_eat_dev(
             before_count, after_count,
         )
     except BaseException:
-        if supervisor.get(binding.action_id).state is ActionState.ISSUED:
-            supervisor.mark_unknown(
-                binding.action_id,
-                at_ns=at_ns + 2, provenance=current_probe.provenance,
-            )
+        mark_ambiguous_physical_dev(
+            action_id=binding.action_id, supervisor=supervisor,
+            probe=current_probe, at_ns=at_ns,
+        )
         # Never clear the durable PREPARED_UNRESOLVED journal on ambiguity.
         raise
