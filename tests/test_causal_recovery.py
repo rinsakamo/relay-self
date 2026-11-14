@@ -21,8 +21,8 @@ from relay_self.causal_recovery import (
     WalReceipt,
     WalState,
     WorldCheckpoint,
-    WorldEvent,
     WorldEntityState,
+    WorldEvent,
     assess_reconstruction,
     project_physical_journal,
 )
