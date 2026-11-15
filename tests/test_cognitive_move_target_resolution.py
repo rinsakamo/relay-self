@@ -28,14 +28,14 @@ from relay_self.cognitive_minimal_dev import (
     initial_patterns_with_move,
     resolve_l1_choice,
 )
-from relay_self.intent import IntentCommitment
-from relay_self.move_destination_ref import move_destination_ref
-from relay_self.physical_action_port import PhysicalCapability
 from relay_self.initial_skill_ir import (
     SkillIRRefusal,
     compile_initial_skill,
     initial_skill_descriptors,
 )
+from relay_self.intent import IntentCommitment
+from relay_self.move_destination_ref import move_destination_ref
+from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import CognitionMode, ProviderDecision, RelayEngine
 from test_cognitive_minimal_minecraft_dev import observation
@@ -219,7 +219,7 @@ def test_move_target_recheck_rejects_stale_retargeted_or_unqualified_claims(chan
     elif change == "foreign_session":
         native = replace(native, session_id="other-world")
     elif change == "not_probe":
-        native = replace(native, kind="move")
+        native = replace(native, kind="move", request_id=None)
     elif change == "unviable_body":
         native = replace(native, snapshot=replace(native.snapshot, health=0))
     elif change == "expired_target":
