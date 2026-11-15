@@ -238,9 +238,18 @@ class WorldPercept:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
             raise MinimalCognitionError("duplicate target identity")
-        if any(not isinstance(t, Target) or t.world_session_id != self.scope.world_session_id
-               or t.observed_sequence > self.sequence for t in self.targets):
-            raise MinimalCognitionError("foreign/future/unqualified target")
+        if any(
+            not isinstance(t, Target)
+            or t.world_session_id != self.scope.world_session_id
+            or t.observed_sequence > self.sequence
+            or (t.arrival_contract is not None and (
+                t.kind != "DESTINATION"
+                or t.arrival_contract.scope != self.scope
+                or t.arrival_contract.bound_seq > self.sequence
+            ))
+            for t in self.targets
+        ):
+            raise MinimalCognitionError("foreign/future/unqualified target contract")
 
 
 @dataclass(frozen=True, slots=True)
