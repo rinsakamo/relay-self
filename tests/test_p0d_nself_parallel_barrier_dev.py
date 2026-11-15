@@ -351,3 +351,68 @@ def test_n_self_freeze_failure_cannot_save_world(tmp_path):
     assert f.physical.closed and f.host.held_after_failure
     assert f.stop_count == f.restart_count == 0
     assert not list(f.store.glob("g-*/COMMITTED.json"))
+
+
+
+def test_n_self_actual_owner_freeze_file_io_overlaps_under_one_fence(
+    tmp_path, monkeypatch,
+):
+    import threading
+
+    import relay_self.checkpointed_cognitive_runtime_dev as owner_module
+
+    f = NFixture(tmp_path, 10, freeze_workers=8)
+    original = owner_module.save_self_owner_cut
+    lock = threading.Lock()
+    tracker = {"active": 0, "peak": 0}
+
+    def delayed_write(path, cut):
+        assert f.physical.closed and f.cohort.closed
+        with lock:
+            tracker["active"] += 1
+            tracker["peak"] = max(tracker["active"], tracker["peak"])
+        try:
+            # A synthetic IO delay proves that independent file flushes are
+            # actually outside the global cognition lock, not merely queued.
+            time.sleep(0.025)
+            return original(path, cut)
+        finally:
+            with lock:
+                tracker["active"] -= 1
+
+    monkeypatch.setattr(owner_module, "save_self_owner_cut", delayed_write)
+    first = asyncio.run(f.host.cycle_if_due(0.0))
+    assert first is not None
+    assert tracker["active"] == 0
+    assert tracker["peak"] >= 2
+    assert not f.physical.closed
+    assert len(verify_typed_generation(first.saved.generation)) == 10
+
+
+def test_n_self_owner_fsync_failure_joins_threads_and_holds_before_world(
+    tmp_path, monkeypatch,
+):
+    import relay_self.checkpointed_cognitive_runtime_dev as owner_module
+
+    f = NFixture(tmp_path, 10, freeze_workers=8)
+    original = owner_module.save_self_owner_cut
+    completed = []
+
+    def failed_owner_write(path, cut):
+        time.sleep(0.005)
+        if cut.self_id == f.names[-1]:
+            raise OSError("simulated durable owner file error")
+        original(path, cut)
+        completed.append(cut.self_id)
+
+    monkeypatch.setattr(owner_module, "save_self_owner_cut", failed_owner_write)
+    with pytest.raises(AutosaveBarrierError, match="async native rejoin failed") as err:
+        asyncio.run(f.host.cycle_if_due(0.0))
+    assert err.value.__cause__ is not None
+    assert "durable owner file" in str(err.value.__cause__)
+    assert len(completed) > 0
+    assert f.cohort._freeze_failed
+    assert not f.cohort._freeze_active
+    assert f.physical.closed and f.host.held_after_failure
+    assert f.stop_count == f.restart_count == 0
+    assert not list(f.store.glob("g-*/COMMITTED.json"))
