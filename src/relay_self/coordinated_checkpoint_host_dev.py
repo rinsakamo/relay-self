@@ -12,13 +12,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from relay_self.cohort_parallel_barrier_dev import require_bounded_workers
 from relay_self.checkpoint_stop_neutralization_dev import (
     StopCohortReady,
     StopParticipant,
     prepare_stop_before_autosave,
 )
 from relay_self.checkpointed_cognitive_runtime_dev import CognitionOwnerCohort
+from relay_self.cohort_parallel_barrier_dev import require_bounded_workers
 from relay_self.coordinated_autosave_runtime_dev import (
     AutosaveCycleResult,
     CoordinatedAutosaveRuntime,
