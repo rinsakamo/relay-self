@@ -130,6 +130,17 @@ target UNKNOWN or events incomplete, hold or keep reobserving
 without physical issue. All results physical_action_issue_authorized
 false and self_owner_restored false.
 
+## Existing evidence cannot simply be spliced
+
+P0-A real World checkpoint tests (#854) and P0-B real Paper ATTACK/death
+trials (#857) were performed in **different actual Minecraft Worlds**.
+Their World UUIDs and branch histories do not identify one causal
+trajectory. Do not assemble W100 from the former and W110 from the latter.
+Collect a NEW W100 -> ATTACK ticket / death -> W110 on one actual
+source World/branch before any claim of real forked causal replay.
+The offline tests below use simulated World files and synthetic ticket
+events, not the prior real-world evidence as if it were shared.
+
 ## LocalCodex controlled real Paper 1.21.8 sequence
 
 1. Read repo/#851/#858 and PRs #854/#857 plus this branch exact
