@@ -427,8 +427,9 @@ def test_native_process_stdin_effects_require_exact_active_skill_lease(
         )
         gate = PhysicalIssueAdmission({"A": session.started.session_id})
         session.install_effect_admission(
-            lambda session_id, effect: gate.require_native_effect(
-                self_id="A", native_session_id=session_id, effect=effect,
+            lambda session_id, effect, action_id: gate.require_native_effect(
+                self_id="A", native_session_id=session_id,
+                effect=effect, action_id=action_id,
             )
         )
         with pytest.raises(MineflayerEffectAdmissionError, match="only be installed once"):
@@ -503,8 +504,9 @@ def test_native_effect_admission_denies_direct_low_level_effect_bypass(
         )
         gate = PhysicalIssueAdmission({"A": "session-1"})
         session.install_effect_admission(
-            lambda sid, effect: gate.require_native_effect(
-                self_id="A", native_session_id=sid, effect=effect,
+            lambda sid, effect, action_id: gate.require_native_effect(
+                self_id="A", native_session_id=sid,
+                effect=effect, action_id=action_id,
             )
         )
         with pytest.raises(PhysicalIssueFenceError, match="active capability-scoped"):
