@@ -591,11 +591,6 @@ async def run(
                 True if physical_eat is not None
                 else receipt.native_eat_consequence_attested
             ),
-            "coordinated_physical_issuer_fence": (
-                "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
-                if coordinated_fence else "NOT_CONNECTED"
-            ),
-            "coordinated_checkpoint_committed": False,
             "physical_eat_dev_selected": args.physical_eat_dev,
             "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
@@ -734,6 +729,11 @@ async def run(
             ),
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
+            "coordinated_physical_issuer_fence": (
+                "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
+                if coordinated_fence else "NOT_CONNECTED"
+            ),
+            "coordinated_checkpoint_committed": False,
             "physical_eat_dev_selected": args.physical_eat_dev,
             "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
