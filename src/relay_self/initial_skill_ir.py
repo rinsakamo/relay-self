@@ -117,7 +117,7 @@ def initial_skill_descriptors() -> tuple[InitialSkillDescriptor, ...]:
         InitialSkillDescriptor("EAT", "HUNGER_RELIEF", "FOOD", "EAT", 1,
                                "PROPOSAL_AND_EAT_DEV_ISSUER_EXISTS"),
         InitialSkillDescriptor("ATTACK", "DEFEND_SELF", "ZOMBIE",
-                               "attack_entity", 1, "PROPOSAL_ONLY"),
+                               "attack_entity", 1, "NATIVE_ACK_HURT_DEV_ISSUER_EXISTS"),
         InitialSkillDescriptor("REST", None, None, None, None, "UNMAPPED"),
     )
 
