@@ -165,8 +165,6 @@ def test_w110_with_a105_b98_keeps_b_false_belief_as_memory(tmp_path):
     assert plan.physical_action_issue_authorized is False
     after = reproject_present_from_fresh_world_dev(
         plan, _fresh(plan, False),
-        expected_target_uuid=ZOMBIE, source_world_cut_alive=False,
-        old_native_sessions=(SESSION,),
     )
     assert after.status is ForkRecoveryDevStatus.PRESENT_REPROJECTED_DEV
     assert after.present_target_alive is False
@@ -183,8 +181,6 @@ def test_w100_rollback_keeps_a105_dead_memory_but_present_alive(tmp_path):
     assert "A:" + ZOMBIE + ":105:DEAD" in plan.retained_beliefs
     after = reproject_present_from_fresh_world_dev(
         plan, _fresh(plan, True, native_id=47),
-        expected_target_uuid=ZOMBIE, source_world_cut_alive=True,
-        old_native_sessions=(SESSION,),
     )
     assert after.status is ForkRecoveryDevStatus.PRESENT_REPROJECTED_DEV
     assert after.present_target_alive is True
@@ -208,8 +204,6 @@ def test_unknown_worldbody_cannot_claim_zombie_absence(tmp_path):
     plan = _prepare(_inputs(tmp_path, "W110"))
     after = reproject_present_from_fresh_world_dev(
         plan, _fresh(plan, None),
-        expected_target_uuid=ZOMBIE, source_world_cut_alive=False,
-        old_native_sessions=(SESSION,),
     )
     assert after.status is ForkRecoveryDevStatus.NEEDS_FRESH_WORLD_BODY
     assert after.present_target_alive is None
@@ -300,8 +294,6 @@ def test_fresh_session_must_not_be_original_native_session(tmp_path):
     plan = _prepare(_inputs(tmp_path, "W100"))
     res = reproject_present_from_fresh_world_dev(
         plan, _fresh(plan, True, session=SESSION, native_id=47),
-        expected_target_uuid=ZOMBIE, source_world_cut_alive=True,
-        old_native_sessions=(SESSION,),
     )
     assert res.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
     assert res.physical_action_issue_authorized is False
@@ -311,8 +303,7 @@ def test_fresh_world_observation_from_other_fork_does_not_reproject(tmp_path):
     plan = _prepare(_inputs(tmp_path, "W110"))
     fresh = replace(_fresh(plan, False), new_branch_id="fork-unrelated")
     result = reproject_present_from_fresh_world_dev(
-        plan, fresh, expected_target_uuid=ZOMBIE,
-        source_world_cut_alive=False, old_native_sessions=(SESSION,),
+        plan, fresh,
     )
     assert result.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
 
@@ -321,8 +312,6 @@ def test_fresh_observation_disagrees_with_saved_checkpoint_holds(tmp_path):
     plan = _prepare(_inputs(tmp_path, "W110"))
     out = reproject_present_from_fresh_world_dev(
         plan, _fresh(plan, True),
-        expected_target_uuid=ZOMBIE, source_world_cut_alive=False,
-        old_native_sessions=(SESSION,),
     )
     assert out.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
 
