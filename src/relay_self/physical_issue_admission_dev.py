@@ -14,6 +14,7 @@ import math
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Iterator
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerObservation
@@ -44,6 +45,36 @@ class NeutralStopProof:
     settled_probe: MineflayerObservation
 
 
+@dataclass(frozen=True, slots=True)
+class ResidentIssuerFence:
+    """Original physical owner isolated exactly one Self, not the cohort."""
+
+    self_id: str
+    former_native_session_id: str
+    fence_ref: str
+    active_action_ids: tuple[str, ...]
+    physical_issuer_revoked: bool = True
+    no_physical_inflight: bool = False
+    physical_wal_clear: bool = False
+    native_terminated: bool = False
+    action_issue_authorized: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ResidentIssuerRetired:
+    """Original Action and durable WAL checked; native/GPU/peer are separate."""
+
+    self_id: str
+    former_native_session_id: str
+    fence_ref: str
+    physical_wal_digest: str
+    physical_issuer_revoked: bool = True
+    no_physical_inflight: bool = True
+    physical_wal_clear: bool = True
+    native_terminated: bool = False
+    action_issue_authorized: bool = False
+
+
 _EFFECT_FAMILIES: dict[str, frozenset[str]] = {
     "NONE": frozenset(),
     "EAT": frozenset({"equip_item", "consume_held"}),
@@ -62,7 +93,13 @@ class PhysicalIssueAdmission:
     def __init__(
         self, current_sessions: dict[str, str], *,
         require_neutral_stop: bool = False,
+        resident_mode: bool = False,
+        initially_offline: bool = False,
     ) -> None:
+        if type(resident_mode) is not bool or type(initially_offline) is not bool:
+            raise PhysicalIssueFenceError("resident ownership mode must be explicit")
+        if initially_offline and not resident_mode:
+            raise PhysicalIssueFenceError("initially offline requires resident mode")
         if type(require_neutral_stop) is not bool:
             raise PhysicalIssueFenceError("neutral STOP policy must be bool")
         self._require_neutral_stop = require_neutral_stop
@@ -76,6 +113,15 @@ class PhysicalIssueAdmission:
             raise PhysicalIssueFenceError("one unique native session per Self required")
         self._lock = threading.RLock()
         self._sessions = dict(current_sessions)
+        self._resident_mode = resident_mode
+        # Ordinary all-N checkpoint remains unchanged unless opted in.
+        # Offline session tokens are stale birth refs, NEVER issue grants.
+        self._resident_states = {
+            sid: ("OFFLINE" if initially_offline else "ONLINE")
+            for sid in current_sessions
+        }
+        self._resident_epochs = {sid: 0 for sid in current_sessions}
+        self._resident_fence_refs: dict[str, str] = {}
         self._active: dict[str, IssueLease] = {}
         self._closed = False
         self._poisoned = False
@@ -86,6 +132,31 @@ class PhysicalIssueAdmission:
         self._stop_required: set[str] = set()
         self._stop_active: dict[str, tuple[str, str]] = {}
         self._stop_proofs: dict[str, NeutralStopProof] = {}
+
+    @property
+    def resident_mode(self) -> bool:
+        return self._resident_mode
+
+    @property
+    def resident_states(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._resident_states)
+
+    @property
+    def all_residents_offline(self) -> bool:
+        with self._lock:
+            return (
+                self._resident_mode and not self._closed
+                and not self._poisoned and not self._active
+                and all(x == "OFFLINE" for x in self._resident_states.values())
+            )
+
+    def _require_resident_mode(self, self_id: str) -> None:
+        if (
+            not self._resident_mode or self._closed or self._poisoned
+            or self_id not in self._sessions or self._neutralizing
+        ):
+            raise PhysicalIssueFenceError("individual resident issuer unavailable")
 
     @property
     def requires_neutral_stop(self) -> bool:
@@ -140,6 +211,8 @@ class PhysicalIssueAdmission:
         with self._lock:
             if self._closed:
                 raise PhysicalIssueFenceError("checkpoint fence closed physical admission")
+            if self._resident_states.get(self_id) != "ONLINE":
+                raise PhysicalIssueFenceError("Self resident issuer is revoked or offline")
             if self_id not in self._sessions or self._sessions[self_id] != native_session_id:
                 raise PhysicalIssueFenceError("stale or foreign physical native session")
             if type(action_id) is not str or not action_id.strip():
@@ -175,6 +248,8 @@ class PhysicalIssueAdmission:
         with self._lock:
             if self._poisoned:
                 raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
+            if self._resident_states.get(self_id) != "ONLINE":
+                raise PhysicalIssueFenceError("Self resident native effect blocked")
             if self._sessions.get(self_id) != native_session_id:
                 raise PhysicalIssueFenceError("stale/foreign native effect session")
             if self._closed:
@@ -206,6 +281,12 @@ class PhysicalIssueAdmission:
         with self._lock:
             if self._closed or self._poisoned:
                 raise PhysicalIssueFenceError("physical neutralization already held")
+            if self._resident_mode and any(
+                x != "ONLINE" for x in self._resident_states.values()
+            ):
+                raise PhysicalIssueFenceError(
+                    "mixed offline residents require World-only path, not all-N STOP"
+                )
             self._closed = True
             self._generation += 1
             self._rotated.clear()
@@ -311,6 +392,12 @@ class PhysicalIssueAdmission:
     def close(self) -> ExternalPhysicalFence:
         """Fences new issues; rejects if an in-flight async action has not drained."""
         with self._lock:
+            if self._resident_mode and any(
+                x != "ONLINE" for x in self._resident_states.values()
+            ):
+                raise PhysicalIssueFenceError(
+                    "mixed resident presence cannot masquerade as all-N cut"
+                )
             if not self._closed and self._require_neutral_stop:
                 self._closed = True
                 self._poisoned = True
@@ -385,6 +472,127 @@ class PhysicalIssueAdmission:
             self._fence_token = None
             self._stop_required.clear()
             self._stop_proofs.clear()
+
+    def quarantine_resident(
+        self, *, self_id: str, native_session_id: str,
+    ) -> ResidentIssuerFence:
+        """Atomically remove ONE native Self's final-stdin issue permission.
+
+        A running Action is not force-cancelled by this operation. Its
+        unfinished lease is returned as evidence; retirement is forbidden
+        until the original journal and native process have been reconciled.
+        Other Self keep their leases and current native source IDs.
+        """
+        with self._lock:
+            self._require_resident_mode(self_id)
+            if self._sessions[self_id] != native_session_id:
+                raise PhysicalIssueFenceError("foreign resident native session")
+            if self._resident_states[self_id] == "OFFLINE":
+                raise PhysicalIssueFenceError("already retired individual resident")
+            if self._resident_states[self_id] == "ONLINE":
+                self._resident_epochs[self_id] += 1
+                self._resident_states[self_id] = "QUARANTINED"
+                self._resident_fence_refs[self_id] = (
+                    f"resident-{self_id}-{self._resident_epochs[self_id]}"
+                )
+            active = self._active.get(self_id)
+            return ResidentIssuerFence(
+                self_id=self_id,
+                former_native_session_id=native_session_id,
+                fence_ref=self._resident_fence_refs[self_id],
+                active_action_ids=(active.action_id,) if active is not None else (),
+                no_physical_inflight=active is None,
+            )
+
+    def retire_resident(
+        self, *, self_id: str, native_session_id: str,
+        fence_ref: str, physical_wal_file: Path,
+    ) -> ResidentIssuerRetired:
+        """Read ORIGINAL durable physical journal; only THIS issuer retires Self.
+
+        All new effect writes were already blocked by quarantine. IO is done
+        outside the issuer lock so other Self continue issuing Actions.
+        Revalidate exact old owner fence and active work after disk readback.
+        Does not assert that a native process/GPU/backend actually terminated.
+        """
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        with self._lock:
+            self._require_resident_mode(self_id)
+            if (
+                self._resident_states[self_id] != "QUARANTINED"
+                or self._sessions[self_id] != native_session_id
+                or self._resident_fence_refs.get(self_id) != fence_ref
+                or self_id in self._active
+            ):
+                raise PhysicalIssueFenceError(
+                    "individual retirement requires closed, drained original issue"
+                )
+        journal = PhysicalActionJournal.restore(
+            Path(physical_wal_file), self_id=self_id,
+        )
+        journal.require_clear()
+        with self._lock:
+            self._require_resident_mode(self_id)
+            if (
+                self._resident_states[self_id] != "QUARANTINED"
+                or self._sessions[self_id] != native_session_id
+                or self._resident_fence_refs.get(self_id) != fence_ref
+                or self_id in self._active
+            ):
+                raise PhysicalIssueFenceError("resident issuer changed during retirement")
+            self._resident_states[self_id] = "OFFLINE"
+            return ResidentIssuerRetired(
+                self_id, native_session_id, fence_ref, journal.digest,
+            )
+
+    def admit_resident_login(
+        self, *, self_id: str, former_native_session_id: str,
+        fresh_native_session_id: str, physical_wal_file: Path,
+        source_world_epoch_validated: bool,
+    ) -> None:
+        """Rebind ONE resident only after source-verified WorldBody & WAL read.
+
+        The host must independently verify Paper and native new-session proof,
+        then complete the original cognitive login before calling this. A
+        bool here is a precondition, never a replacement for source evidence.
+        No other Self session is modified or silently accepted.
+        """
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        if source_world_epoch_validated is not True:
+            raise PhysicalIssueFenceError("new World epoch source not validated")
+        with self._lock:
+            self._require_resident_mode(self_id)
+            if (
+                self._resident_states[self_id] != "OFFLINE"
+                or self._sessions[self_id] != former_native_session_id
+                or type(fresh_native_session_id) is not str
+                or not fresh_native_session_id.strip()
+                or fresh_native_session_id == former_native_session_id
+                or fresh_native_session_id in self._sessions.values()
+                or self_id in self._active
+            ):
+                raise PhysicalIssueFenceError(
+                    "new resident session not fresh, source-scoped or safely retired"
+                )
+            expected_epoch = self._resident_epochs[self_id]
+        PhysicalActionJournal.restore(
+            Path(physical_wal_file), self_id=self_id,
+        ).require_clear()
+        with self._lock:
+            self._require_resident_mode(self_id)
+            if (
+                self._resident_states[self_id] != "OFFLINE"
+                or self._sessions[self_id] != former_native_session_id
+                or expected_epoch != self._resident_epochs[self_id]
+                or fresh_native_session_id in self._sessions.values()
+            ):
+                raise PhysicalIssueFenceError("individual issuer changed during login")
+            self._sessions[self_id] = fresh_native_session_id
+            self._resident_states[self_id] = "ONLINE"
+            self._resident_epochs[self_id] += 1
+            self._resident_fence_refs.pop(self_id, None)
 
     async def issue_eat(self, session: Any, **kwargs: Any) -> Any:
         """Wrap existing native issuer, WAL and async ACK+consequence readback."""
