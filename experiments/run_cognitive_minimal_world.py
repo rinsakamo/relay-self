@@ -777,7 +777,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "native_success_claim": False,
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "physical_actionport_preissue_wal": (
-                "FSYNC_CAS_EAT_DEV" if physical_journal is not None
+                ("FSYNC_CAS_MOVE_DEV" if args.physical_move_dev else
+                 "FSYNC_CAS_ATTACK_DEV" if args.physical_attack_dev else
+                 "FSYNC_CAS_EAT_DEV") if physical_journal is not None
                 else "NOT_CONNECTED"
             ),
         }

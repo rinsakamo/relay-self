@@ -524,6 +524,17 @@ def test_paper_observer_is_armed_before_native_and_checked_before_wal_close(tmp_
     assert receipt.arrived_at_destination is False
 
 
+def test_paper_window_finishes_even_if_native_stop_residual_fails(tmp_path):
+    kw, session = setup(tmp_path, bad="unstable_stop")
+    paper = FakeQualifiedPaper(session, kw["journal"], kw["target"])
+    with pytest.raises(PhysicalMoveRefusal, match="native stability"):
+        asyncio.run(issue_selected_move_dev(session, paper_witness=paper, **kw))
+    assert paper.events[-1] == "paper-final-16tick-proof"
+    assert kw["journal"].unresolved
+    assert len([x for x in session.sent if x[0] == "set_control"]) == 1
+    assert len([x for x in session.sent if x[0] == "clear_controls"]) == 1
+
+
 @pytest.mark.parametrize("failure", ["unavailable", "foreign_action"])
 def test_paper_mismatch_after_native_stop_preserves_unresolved_parent(
     tmp_path, failure,

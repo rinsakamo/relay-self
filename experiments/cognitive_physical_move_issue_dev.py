@@ -355,11 +355,13 @@ async def issue_selected_move_dev(
         residual = _spatial(
             first_stop.snapshot.position, final_stop.snapshot.position,
         )
-        if advanced < .25 or residual > .05:
-            raise PhysicalMoveRefusal("MOVE progress or STOP native stability unverified")
+        # Preserve the already-armed passive Paper window even if the native
+        # residual fails. This adds no control command and never closes the WAL.
         paper_proof = (
             None if paper_witness is None else await paper_witness.finish()
         )
+        if advanced < .25 or residual > .05:
+            raise PhysicalMoveRefusal("MOVE progress or STOP native stability unverified")
         if paper_witness is not None and (
             not isinstance(paper_proof, PaperMoveStopProof)
             or paper_proof.action_id != binding.action_id
