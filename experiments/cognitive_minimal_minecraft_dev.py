@@ -25,6 +25,11 @@ from experiments.cognitive_s49_readonly_handoff import (
     S49ShadowRefusal,
     assess_s49_readonly_handoff,
 )
+from experiments.cognitive_move_target_resolution import (
+    MoveTargetRefusal,
+    ResolvedMoveTarget,
+    resolve_selected_move_target,
+)
 from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
     ControlledSkill,
@@ -74,6 +79,7 @@ class WorldStepReceipt:
     s49_readonly_handoff: S49ReadOnlyHandoff | None = None
     s49_shadow_refusal: str | None = None
     native_probe_trace: tuple[MineflayerObservation, ...] = ()
+    move_target: ResolvedMoveTarget | None = None
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -420,6 +426,7 @@ async def execute_one_cognitive_world_turn(
     recent_3self: tuple[str, ...] = (),
     probe_request_id: str | None = None,
     s49_readonly_shadow: bool = False,
+    exploration_need: bool = False,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -435,7 +442,8 @@ async def execute_one_cognitive_world_turn(
     if grant_real_world is not True:
         raise MinimalCognitionError("real World DEV requires explicit grant")
     if (type(issue_native) is not bool or type(acknowledge_unfenced_dev) is not bool
-            or type(s49_readonly_shadow) is not bool):
+            or type(s49_readonly_shadow) is not bool
+            or type(exploration_need) is not bool):
         raise MinimalCognitionError("native issuance/shadow flags must be bool")
     if s49_readonly_shadow and issue_native:
         raise MinimalCognitionError(
@@ -454,7 +462,10 @@ async def execute_one_cognitive_world_turn(
         raise MinimalCognitionError("existing IntentCommitment required")
     if supervisor.open_actions:
         raise MinimalCognitionError("existing ActionSupervisor still owns Actions")
-    first = native_schema_percept(initial_observation, scenario, self_id=self_id)
+    first = native_schema_percept(
+        initial_observation, scenario, self_id=self_id,
+        exploration_need=exploration_need,
+    )
     original_frame = cpu_schema_epoch(
         first, registry, epoch=epoch, allowed_skills=allowed_skills,
         hunger_threshold=scenario.food_threshold,
@@ -506,6 +517,7 @@ async def execute_one_cognitive_world_turn(
     probe_elapsed_ns = time.perf_counter_ns() - probe_started
     current_percept = native_schema_percept(
         current_observation, scenario, self_id=self_id,
+        exploration_need=exploration_need,
     )
     current_frame = cpu_schema_epoch(
         current_percept, registry, epoch=epoch + 1,
@@ -542,6 +554,38 @@ async def execute_one_cognitive_world_turn(
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
             native_probe_trace=probe_trace,
+        )
+    if selection.option.skill_id == "MOVE":
+        # Target geometry only. Old FLEE is not a qualified MOVE issuer and
+        # STOP/settling cannot be inferred from clear_controls ACK. This
+        # branch always abstains from native Action, even if the caller
+        # requested legacy unfenced issuance.
+        if issue_native:
+            raise MinimalCognitionError(
+                "no qualified physical MOVE/STOP issuer: native issue refused"
+            )
+        try:
+            bound_move = resolve_selected_move_target(
+                selection, frame=current_frame, percept=current_percept,
+                current_probe=current_observation, scenario=scenario,
+            )
+        except MoveTargetRefusal as exc:
+            return WorldStepReceipt(
+                "MOVE_TARGET_REFUSED",
+                Selection("REJECTED", None, str(exc)),
+                original_frame, current_frame, l1_result, l1_elapsed_ns,
+                probe_elapsed_ns, None,
+                probe_request_id=unique_probe_request_id,
+                probe_sequence=current_observation.seq,
+                native_probe_trace=probe_trace,
+            )
+        return WorldStepReceipt(
+            "MOVE_TARGET_BOUND_NO_ISSUE", selection, original_frame, current_frame,
+            l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
+            move_target=bound_move,
         )
     if s49_readonly_shadow:
         try:
