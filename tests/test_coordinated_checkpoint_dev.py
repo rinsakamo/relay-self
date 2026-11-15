@@ -1,6 +1,8 @@
 """#860 DEV generation tests. Filesystem fixtures; not a real running server."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from relay_self.coordinated_checkpoint_dev import (
@@ -167,3 +169,78 @@ def test_autosave_gate_sixty_seconds_and_failed_capture_not_committed(tmp_path):
         gate.run_if_due(220.0, lambda: store / "g-000000000003")
     assert gate.last_success_monotonic == 160.0
     assert latest_verified_generation(store) == second
+
+
+def test_paper_full_dimension_generation_rollback_same_branch(tmp_path):
+    world, store, selves = _fixtures(tmp_path)
+    paper_world = world.with_name("world")
+    world.rename(paper_world)
+    for name in ("world_nether", "world_the_end"):
+        dimension = paper_world.parent / name
+        dimension.mkdir()
+        (dimension / "level.dat").write_bytes(name.encode())
+        (dimension / "region").mkdir()
+        (dimension / "region" / "r.0.0.mca").write_bytes(
+            b"checkpoint-" + name.encode()
+        )
+    with pytest.raises(CoordinatedCheckpointError, match="omitted"):
+        _capture(paper_world, store, selves)
+    assert latest_verified_generation(store) is None
+
+    saved = _capture(paper_world, store, selves, paper_layout=True)
+    manifest = verify_generation(saved)
+    assert manifest["schema"] == 2
+    assert set(manifest["paper_dimensions"]) == {"world_nether", "world_the_end"}
+    for name in manifest["paper_dimensions"]:
+        (paper_world.parent / name / "region" / "r.0.0.mca").write_bytes(b"post-cut")
+
+    recovered = tmp_path / "new-paper-branch"
+    receipt = restore_generation(saved, recovered, restore_id="paper-rollback")
+    for name in ("world_nether", "world_the_end"):
+        assert (recovered / name / "region" / "r.0.0.mca").read_bytes() == (
+            b"checkpoint-" + name.encode()
+        )
+        sidecar = json.loads((recovered / f"{name}.restore.json").read_bytes())
+        assert sidecar["new_branch_id"] == receipt["fork_branch_id"]
+    assert latest_verified_generation(store) == saved
+
+
+@pytest.mark.parametrize("fault", ["missing", "changed", "link", "unknown"])
+def test_paper_dimension_loss_cannot_be_adopted(tmp_path, fault):
+    world, store, selves = _fixtures(tmp_path)
+    paper_world = world.with_name("world")
+    world.rename(paper_world)
+    nether = paper_world.parent / "world_nether"
+    nether.mkdir()
+    (nether / "level.dat").write_bytes(b"nether-stopped")
+    saved = _capture(paper_world, store, selves, paper_layout=True)
+    target = saved / "paper-dimensions" / "world_nether"
+    if fault == "missing":
+        (target / "world" / "level.dat").unlink()
+    elif fault == "changed":
+        (target / "world" / "level.dat").write_bytes(b"tamper")
+    elif fault == "link":
+        (target / "world" / "level.dat").unlink()
+        (target / "world" / "level.dat").symlink_to(paper_world / "level.dat")
+    else:
+        (saved / "paper-dimensions" / "unknown").mkdir()
+    with pytest.raises((CoordinatedCheckpointError, ValueError)):
+        verify_generation(saved)
+    assert latest_verified_generation(store) is None
+    with pytest.raises((CoordinatedCheckpointError, ValueError)):
+        restore_generation(saved, tmp_path / "refused", restore_id="refuse")
+    assert not (tmp_path / "refused").exists()
+
+
+def test_paper_dimension_incomplete_capture_does_not_commit(tmp_path):
+    world, store, selves = _fixtures(tmp_path)
+    paper_world = world.with_name("world")
+    world.rename(paper_world)
+    nether = paper_world.parent / "world_nether"
+    nether.mkdir()
+    (nether / "region").mkdir()
+    (nether / "region" / "r.0.0.mca").write_bytes(b"missing-level-dat")
+    with pytest.raises(ValueError, match="level.dat"):
+        _capture(paper_world, store, selves, paper_layout=True)
+    assert latest_verified_generation(store) is None
+    assert not (store / "g-000000000001" / "COMMITTED.json").exists()

@@ -150,9 +150,13 @@ class CoordinatedAutosaveRuntime:
         branch_id: str, participants: tuple[SelfRuntimeHooks, ...],
         world: WorldRuntimeHooks, admission: AdmissionHooks,
         strict_typed_owner_cut: bool = False,
+        paper_layout: bool = False,
     ) -> None:
         if type(strict_typed_owner_cut) is not bool:
             raise AutosaveBarrierError("typed owner checkpoint flag must be bool")
+        if type(paper_layout) is not bool:
+            raise AutosaveBarrierError("Paper layout flag must be bool")
+        self.paper_layout = paper_layout
         self.strict_typed_owner_cut = strict_typed_owner_cut
         if not participants or len({p.self_id for p in participants}) != len(participants):
             raise AutosaveBarrierError("expected distinct nonempty Self roster")
@@ -176,6 +180,7 @@ class CoordinatedAutosaveRuntime:
         self._held_after_failure = False
         self._last_server_session_id: str | None = None
         self._last_native_sessions: dict[str, str] = {}
+        self._last_paper_dimensions: tuple[str, ...] | None = None
 
     @property
     def held_after_failure(self) -> bool:
@@ -262,6 +267,21 @@ class CoordinatedAutosaveRuntime:
         _ref(stopped.tick_source_ref)
         _ref(stopped.stopped_server_ref)
 
+        paper_dimensions: tuple[str, ...] | None = None
+        if self.paper_layout:
+            from relay_self.coordinated_checkpoint_dev import _paper_siblings
+
+            paper_dimensions = tuple(
+                name for name, _ in _paper_siblings(self.source_world)
+            )
+            if (
+                self._last_paper_dimensions is not None
+                and paper_dimensions != self._last_paper_dimensions
+            ):
+                raise AutosaveBarrierError(
+                    "Paper dimension roster changed between generations; HOLD"
+                )
+
         if self.strict_typed_owner_cut:
             from relay_self.self_owner_checkpoint_dev import (
                 capture_typed_generation,
@@ -281,6 +301,7 @@ class CoordinatedAutosaveRuntime:
             tick_source_ref=stopped.tick_source_ref,
             stopped_server_ref=stopped.stopped_server_ref,
             quiesced_selves_ref="cohort:" + generation_id + ":" + token,
+            paper_layout=self.paper_layout,
         )
         verify_generation(generation)
         if self.strict_typed_owner_cut:
@@ -321,6 +342,7 @@ class CoordinatedAutosaveRuntime:
         self.admission.release(token)
         self._last_server_session_id = restarted.new_server_session_id
         self._last_native_sessions = new_native_sessions
+        self._last_paper_dimensions = paper_dimensions
         return AutosaveCycleResult(
             generation=generation, sequence=sequence,
             saved_self_ids=tuple(p.self_id for p in self.participants),

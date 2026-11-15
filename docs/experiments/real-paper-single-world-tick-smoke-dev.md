@@ -61,3 +61,12 @@ PYTHONPATH=src:. python -m experiments.p0d_real_paper_smoke_dev \
 ## Classification while the real script has not been executed
 
 `REAL_PAPER_SMOKE_HARNESS_OFFLINE_DEV_PASS / REAL_PAPER_1_21_8_SMOKE_NOT_RUN / REAL_TWO_SELF_60S_AUTOSAVE_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN` (only after CI success).
+
+
+## Next DEV slice: coherent Paper dimensions and multi-Self generations
+
+The single-World smoke copied all **present** standard Paper folders (`world`, `world_nether`, `world_the_end`). An ordinary World+Self generation previously only captured `source_world`, which would omit sibling dimensions when the server uses Paper's folder layout. Stage 13 introduces an **opt-in** `paper_layout=True` in the existing generation and synchronous autosave contracts. It captures each present standard sibling World into the *same* generation before writing `COMMITTED.json`, includes checksummed per-dimension manifests, requires source World/branch/tick/stop receipts to match, and restores all World roots on one **new fork branch** before `RESTORE_PREPARED.json`. A canonical `world` folder with companion siblings fails closed if the option is not used. Unknown `world_*` siblings also fail closed instead of being silently dropped.
+
+Tests remain filesystem-only and never launch Paper or Self. This does not demonstrate live 60-second A/B autosave, atomic World+WAL attestation, or full cognitive-owner resurrection. A real next-stage runner must opt in to `paper_layout`, provide verified A/B owned native sessions, and verify each restored dimension and the entire Self roster before any new action.
+
+During a 60-second multi-generation run, the synchronous runtime pins the list of present Paper dimension roots from the first successful cut. A removed/added dimension at a later cut blocks the next commit and holds the admission gate for operator review. This does not authenticate the Paper source at runtime, or stop arbitrary direct native issuers.

@@ -43,6 +43,32 @@ def _name(value: str) -> str:
     return value
 
 
+_PAPER_COMPANIONS = ("world_nether", "world_the_end")
+
+
+def _paper_siblings(source_world: Path) -> tuple[tuple[str, Path], ...]:
+    """Only the two standard Paper sibling dimensions in a disposable World."""
+    root = Path(source_world).absolute()
+    if root.name != "world":
+        raise CoordinatedCheckpointError("Paper layout requires the world directory")
+    for entry in root.parent.iterdir():
+        if (entry.name.startswith("world_")
+                and entry.name not in _PAPER_COMPANIONS):
+            raise CoordinatedCheckpointError(
+                "unrecognized Paper world companion; refuse partial save"
+            )
+    found: list[tuple[str, Path]] = []
+    for name in _PAPER_COMPANIONS:
+        sibling = root.parent / name
+        if sibling.is_symlink():
+            raise CoordinatedCheckpointError("symlink Paper dimension forbidden")
+        if sibling.exists():
+            if not sibling.is_dir():
+                raise CoordinatedCheckpointError("non-directory Paper dimension")
+            found.append((name, sibling))
+    return tuple(found)
+
+
 def _hash(path: Path) -> str:
     if path.is_symlink() or not path.is_file():
         raise CoordinatedCheckpointError(f"snapshot file unavailable: {path}")
@@ -117,6 +143,7 @@ def capture_generation(
     world_id: str, branch_id: str, logical_tick: int,
     tick_source_ref: str, stopped_server_ref: str, quiesced_selves_ref: str,
     precommit_validator: Callable[[Path], None] | None = None,
+    paper_layout: bool = False,
 ) -> Path:
     """Capture one externally quiesced cohort; commit marker is written LAST.
 
@@ -125,6 +152,18 @@ def capture_generation(
     """
     if type(sequence) is not int or sequence < 0:
         raise CoordinatedCheckpointError("invalid autosave sequence")
+    if type(paper_layout) is not bool:
+        raise CoordinatedCheckpointError("Paper layout flag must be bool")
+    companions = (
+        _paper_siblings(source_world) if Path(source_world).name == "world"
+        else ()
+    )
+    if paper_layout and Path(source_world).name != "world":
+        raise CoordinatedCheckpointError("Paper layout requires the world directory")
+    if not paper_layout and companions:
+        raise CoordinatedCheckpointError(
+            "Paper sibling dimensions would be omitted without paper_layout"
+        )
     if (not expected_self_ids or len(set(expected_self_ids)) != len(expected_self_ids)
             or set(expected_self_ids) != {s.self_id for s in selves}
             or len(selves) != len(expected_self_ids)):
@@ -146,6 +185,19 @@ def capture_generation(
         checkpoint_id=gen.name, logical_tick=logical_tick,
         tick_source_ref=tick_source_ref, stopped_server_ref=stopped_server_ref,
     )
+    paper_records: dict[str, str] = {}
+    if paper_layout:
+        paper_root = gen / "paper-dimensions"
+        paper_root.mkdir(mode=0o700)
+        for name, dimension in companions:
+            capture_stopped_world(
+                dimension, paper_root / name,
+                world_id=world_id, branch_id=branch_id,
+                checkpoint_id=gen.name, logical_tick=logical_tick,
+                tick_source_ref=tick_source_ref,
+                stopped_server_ref=stopped_server_ref,
+            )
+            paper_records[name] = _hash(paper_root / name / "manifest.json")
     self_dir = gen / "selves"
     self_dir.mkdir(mode=0o700)
     records = {}
@@ -170,7 +222,8 @@ def capture_generation(
             for name, src in files.items()
         }
     manifest = {
-        "schema": 1, "sequence": sequence, "generation_id": gen.name,
+        "schema": 2 if paper_layout else 1,
+        "sequence": sequence, "generation_id": gen.name,
         "world_id": world_id, "branch_id": branch_id,
         "world_manifest_sha256": _hash(archive / "manifest.json"),
         "declared_tick": world["declared_logical_tick"],
@@ -180,6 +233,8 @@ def capture_generation(
         "atomic_capture_attested": False, "full_self_owner_restored": False,
         "physical_action_issue_authorized": False,
     }
+    if paper_layout:
+        manifest["paper_dimensions"] = paper_records
     # The complete verified contents precede this exclusive commit marker.
     verify_world_checkpoint(archive)
     if precommit_validator is not None:
@@ -194,7 +249,11 @@ def verify_generation(generation: Path) -> dict:
     root = Path(generation)
     if root.is_symlink() or not root.is_dir():
         raise CoordinatedCheckpointError("generation unavailable")
-    if set(p.name for p in root.iterdir()) != {"world", "selves", "COMMITTED.json"}:
+    entries = set(p.name for p in root.iterdir())
+    if entries not in (
+        {"world", "selves", "COMMITTED.json"},
+        {"world", "paper-dimensions", "selves", "COMMITTED.json"},
+    ):
         raise CoordinatedCheckpointError("uncommitted or unexpected generation entries")
     marker = root / "COMMITTED.json"
     if marker.is_symlink():
@@ -210,8 +269,15 @@ def verify_generation(generation: Path) -> dict:
         "atomic_capture_attested", "full_self_owner_restored",
         "physical_action_issue_authorized",
     }
-    if (type(body) is not dict or set(body) != required
-            or body["schema"] != 1 or body["generation_id"] != root.name
+    if type(body) is not dict:
+        raise CoordinatedCheckpointError("invalid generation metadata")
+    schema = body.get("schema")
+    if schema == 2:
+        required.add("paper_dimensions")
+    if (set(body) != required
+            or schema not in (1, 2)
+            or (schema == 2) != ("paper-dimensions" in entries)
+            or body["generation_id"] != root.name
             or type(body["sequence"]) is not int or body["sequence"] < 0
             or root.name != f'g-{body["sequence"]:012d}'
             or body["atomic_capture_attested"] is not False
@@ -225,6 +291,32 @@ def verify_generation(generation: Path) -> dict:
             or body["declared_tick"] != manifest["declared_logical_tick"]
             or body["world_manifest_sha256"] != _hash(root / "world" / "manifest.json")):
         raise CoordinatedCheckpointError("World does not belong to generation")
+    if schema == 2:
+        dimensions = body["paper_dimensions"]
+        root_dims = root / "paper-dimensions"
+        if (
+            type(dimensions) is not dict
+            or set(dimensions) - set(_PAPER_COMPANIONS)
+            or root_dims.is_symlink()
+            or not root_dims.is_dir()
+            or set(p.name for p in root_dims.iterdir()) != set(dimensions)
+        ):
+            raise CoordinatedCheckpointError("Paper dimensions not complete")
+        for name, digest in dimensions.items():
+            archive = root_dims / name
+            if (
+                type(digest) is not str
+                or len(digest) != 64
+                or any(x not in "0123456789abcdef" for x in digest)
+                or _hash(archive / "manifest.json") != digest
+            ):
+                raise CoordinatedCheckpointError("Paper dimension checksum mismatch")
+            other = verify_world_checkpoint(archive)
+            if any(other[key] != manifest[key] for key in (
+                "world_id", "branch_id", "checkpoint_id", "declared_logical_tick",
+                "tick_source_ref", "stopped_server_ref",
+            )):
+                raise CoordinatedCheckpointError("Paper dimension generation mismatch")
     roster = body["roster"]
     if type(body["selves"]) is not dict:
         raise CoordinatedCheckpointError("invalid Self manifest")
@@ -274,6 +366,18 @@ def restore_generation(
     receipt = restore_world_to_new_branch(
         Path(generation) / "world", dest / "world", restore_id=restore_id,
     )
+    if body["schema"] == 2:
+        for name in body["paper_dimensions"]:
+            companion = restore_world_to_new_branch(
+                Path(generation) / "paper-dimensions" / name,
+                dest / name, restore_id=restore_id + "-" + name,
+                new_branch_id=receipt["new_branch_id"],
+            )
+            if (
+                companion["new_branch_id"] != receipt["new_branch_id"]
+                or companion["source_checkpoint_id"] != body["generation_id"]
+            ):
+                raise CoordinatedCheckpointError("Paper dimension fork mismatch")
     recovered = dest / "selves"
     recovered.mkdir(mode=0o700)
     for sid in body["roster"]:
