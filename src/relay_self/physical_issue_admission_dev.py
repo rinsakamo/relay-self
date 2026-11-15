@@ -10,11 +10,13 @@ until migrated; therefore this alone does NOT attest a global real-world fence.
 """
 from __future__ import annotations
 
+import math
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator
 
+from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerObservation
 from relay_self.checkpointed_cognitive_runtime_dev import ExternalPhysicalFence
 
 
@@ -29,6 +31,17 @@ class IssueLease:
     action_id: str
     epoch: int
     effect_family: str = "NONE"
+
+
+@dataclass(frozen=True, slots=True)
+class NeutralStopProof:
+    """Two same-session native probes after the ACK, with World clock spacing."""
+
+    stop_action_id: str
+    ack: MineflayerEffectResult
+    initial_probe: MineflayerObservation
+    first_probe: MineflayerObservation
+    settled_probe: MineflayerObservation
 
 
 _EFFECT_FAMILIES: dict[str, frozenset[str]] = {
@@ -46,7 +59,13 @@ class PhysicalIssueAdmission:
     rather than falsely reporting a clean World/Self checkpoint.
     """
 
-    def __init__(self, current_sessions: dict[str, str]) -> None:
+    def __init__(
+        self, current_sessions: dict[str, str], *,
+        require_neutral_stop: bool = False,
+    ) -> None:
+        if type(require_neutral_stop) is not bool:
+            raise PhysicalIssueFenceError("neutral STOP policy must be bool")
+        self._require_neutral_stop = require_neutral_stop
         if (
             type(current_sessions) is not dict
             or not current_sessions
@@ -63,11 +82,33 @@ class PhysicalIssueAdmission:
         self._fence_token: str | None = None
         self._generation = 0
         self._rotated: set[str] = set()
+        self._neutralizing = False
+        self._stop_required: set[str] = set()
+        self._stop_active: dict[str, tuple[str, str]] = {}
+        self._stop_proofs: dict[str, NeutralStopProof] = {}
+
+    @property
+    def requires_neutral_stop(self) -> bool:
+        return self._require_neutral_stop
+
+    @property
+    def self_roster(self) -> tuple[str, ...]:
+        with self._lock:
+            return tuple(sorted(self._sessions))
 
     @property
     def closed(self) -> bool:
         with self._lock:
             return self._closed
+
+    @property
+    def neutralization_complete(self) -> bool:
+        with self._lock:
+            return (
+                self._closed and self._neutralizing and not self._poisoned
+                and self._stop_required == set(self._stop_proofs)
+                and not self._stop_active
+            )
 
     @property
     def active_action_ids(self) -> tuple[str, ...]:
@@ -106,7 +147,8 @@ class PhysicalIssueAdmission:
                     del self._active[self_id]
 
     def require_native_effect(
-        self, *, self_id: str, native_session_id: str, effect: str,
+        self, *, self_id: str, native_session_id: str,
+        effect: str, action_id: str | None = None,
     ) -> None:
         """Actual Mineflayer stdin gate: require an active typed EAT/ATTACK lease.
 
@@ -115,10 +157,20 @@ class PhysicalIssueAdmission:
         is installed; an emergency STOP has its own separately supervised path.
         """
         with self._lock:
-            if self._closed or self._poisoned:
+            if self._poisoned:
                 raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
             if self._sessions.get(self_id) != native_session_id:
                 raise PhysicalIssueFenceError("stale/foreign native effect session")
+            if self._closed:
+                authorized_stop = self._stop_active.get(self_id)
+                if (
+                    self._neutralizing and effect == "clear_controls"
+                    and authorized_stop is not None
+                    and authorized_stop[0] == native_session_id
+                    and authorized_stop[1] == action_id
+                ):
+                    return
+                raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
             lease = self._active.get(self_id)
             if (
                 lease is None or lease.native_session_id != native_session_id
@@ -128,10 +180,139 @@ class PhysicalIssueAdmission:
                     "native effect requires active capability-scoped issuer lease"
                 )
 
+    def begin_neutralization(self) -> str:
+        """Lock normal physical effects before one supervised STOP per Self.
+
+        An in-flight EAT/ATTACK is a fatal dirty cut; never attempt STOP over
+        an unresolved physical issue. This is a PRE-checkpoint phase; the
+        cognition/World cut starts only after stop readback is verified.
+        """
+        with self._lock:
+            if self._closed or self._poisoned:
+                raise PhysicalIssueFenceError("physical neutralization already held")
+            self._closed = True
+            self._generation += 1
+            self._rotated.clear()
+            self._fence_token = f"physical-cohort-{self._generation}"
+            self._stop_required = set(self._sessions)
+            self._stop_active.clear()
+            self._stop_proofs.clear()
+            self._neutralizing = True
+            if self._active:
+                self._poisoned = True
+                raise PhysicalIssueFenceError(
+                    "in-flight physical Action prevents STOP; admission held"
+                )
+            return self._fence_token
+
+    def abort_neutralization(self) -> None:
+        """A failed pre-save STOP must never become a later valid COMMIT."""
+        with self._lock:
+            if self._closed and self._neutralizing:
+                self._poisoned = True
+
+    @contextmanager
+    def stop_lease(
+        self, *, fence_ref: str, self_id: str,
+        native_session_id: str, stop_action_id: str,
+    ) -> Iterator[None]:
+        """Single-use STOP capability while normal effects are globally closed."""
+        with self._lock:
+            if (
+                self._poisoned or not self._closed or not self._neutralizing
+                or fence_ref != self._fence_token
+                or self._sessions.get(self_id) != native_session_id
+                or type(stop_action_id) is not str or not stop_action_id.strip()
+                or self_id in self._stop_active or self_id in self._stop_proofs
+                or self._active or any(
+                    item[1] == stop_action_id for item in self._stop_active.values()
+                )
+            ):
+                raise PhysicalIssueFenceError("STOP requires unique current closed cohort lease")
+            self._stop_active[self_id] = (native_session_id, stop_action_id)
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._stop_active.pop(self_id, None)
+                if self_id not in self._stop_proofs:
+                    # STOP may have reached native before the callback failed.
+                    self._poisoned = True
+
+    def confirm_neutral_stop(
+        self, *, fence_ref: str, self_id: str, proof: NeutralStopProof,
+    ) -> None:
+        """Verify native ACK + same source + two clock-separated 3D positions."""
+        with self._lock:
+            active = self._stop_active.get(self_id)
+            if (
+                self._poisoned or not self._closed or not self._neutralizing
+                or fence_ref != self._fence_token or active is None
+                or not isinstance(proof, NeutralStopProof)
+                or active[1] != proof.stop_action_id
+            ):
+                raise PhysicalIssueFenceError("STOP proof has no active generation lease")
+            sid = active[0]
+            ack = proof.ack
+            initial, first, last = (
+                proof.initial_probe, proof.first_probe, proof.settled_probe
+            )
+            if (
+                not isinstance(ack, MineflayerEffectResult)
+                or any(not isinstance(p, MineflayerObservation)
+                       for p in (initial, first, last))
+                or any(e.session_id != sid for e in (ack, initial, first, last))
+                or ack.action_id != proof.stop_action_id
+                or ack.effect != "clear_controls" or ack.result != "applied"
+                or not ack.seq < initial.seq < first.seq < last.seq
+                or any(p.kind != "probe" or not p.request_id
+                       or p.snapshot.time is None or p.snapshot.health <= 0
+                       for p in (initial, first, last))
+                or len({p.request_id for p in (initial, first, last)}) != 3
+            ):
+                raise PhysicalIssueFenceError("STOP ACK and correlated probe lineage absent")
+            pre_time = initial.snapshot.time
+            before_time = first.snapshot.time
+            after_time = last.snapshot.time
+            pre_tick = pre_time.day * 24000 + pre_time.time_of_day
+            before_tick = before_time.day * 24000 + before_time.time_of_day
+            after_tick = after_time.day * 24000 + after_time.time_of_day
+            if not (
+                8 <= before_tick - pre_tick <= 200
+                and 8 <= after_tick - before_tick <= 200
+            ):
+                raise PhysicalIssueFenceError(
+                    "STOP lacks initial 8-tick settle and subsequent 8-tick stable windows"
+                )
+            pos0, pos1 = first.snapshot.position, last.snapshot.position
+            displacement = math.dist(
+                (pos0.x, pos0.y, pos0.z), (pos1.x, pos1.y, pos1.z),
+            )
+            if not math.isfinite(displacement) or displacement > 0.06:
+                raise PhysicalIssueFenceError("STOP body not settled within 0.06m in 3D")
+            self._stop_proofs[self_id] = proof
+
     def close(self) -> ExternalPhysicalFence:
         """Fences new issues; rejects if an in-flight async action has not drained."""
         with self._lock:
+            if not self._closed and self._require_neutral_stop:
+                self._closed = True
+                self._poisoned = True
+                raise PhysicalIssueFenceError(
+                    "full-cohort STOP required before physical checkpoint"
+                )
             if self._closed:
+                if self._neutralizing:
+                    if self._poisoned or not self.neutralization_complete:
+                        self._poisoned = True
+                        raise PhysicalIssueFenceError(
+                            "not all Self bodies settled; checkpoint HOLD"
+                        )
+                    self._neutralizing = False
+                    return ExternalPhysicalFence(
+                        self._fence_token, physically_blocked=True,
+                        physical_inflight_action_ids=(),
+                    )
                 raise PhysicalIssueFenceError("physical admission already held")
             self._closed = True
             self._generation += 1
@@ -155,8 +336,8 @@ class PhysicalIssueAdmission:
     ) -> None:
         """Record qualified rebind; external adapter must prove its authenticity."""
         with self._lock:
-            if self._poisoned:
-                raise PhysicalIssueFenceError("failed physical checkpoint requires operator recovery")
+            if self._poisoned or self._neutralizing:
+                raise PhysicalIssueFenceError("failed/unsettled physical checkpoint requires operator recovery")
             if not self._closed or fence_ref != self._fence_token:
                 raise PhysicalIssueFenceError("missing current physical fence")
             if self_id not in self._sessions or self._sessions[self_id] != old_session_id:
@@ -177,7 +358,7 @@ class PhysicalIssueAdmission:
         """Only full A/B fresh session rejoin may reopen issuer admission."""
         with self._lock:
             if (
-                self._poisoned or not self._closed
+                self._poisoned or self._neutralizing or not self._closed
                 or self._fence_token != fence_ref
                 or self._active or self._rotated != set(self._sessions)
             ):
@@ -186,6 +367,8 @@ class PhysicalIssueAdmission:
                 )
             self._closed = False
             self._fence_token = None
+            self._stop_required.clear()
+            self._stop_proofs.clear()
 
     async def issue_eat(self, session: Any, **kwargs: Any) -> Any:
         """Wrap existing native issuer, WAL and async ACK+consequence readback."""

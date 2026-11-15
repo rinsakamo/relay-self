@@ -337,8 +337,9 @@ async def run(
             # Even direct native effect sends must possess the same active
             # selected L1 EAT/ATTACK lease. No legacy MOVE/LOOK effects allowed.
             session.install_effect_admission(
-                lambda session_id, effect: physical_issue_admission.require_native_effect(
-                    self_id=args.self_id, native_session_id=session_id, effect=effect,
+                lambda session_id, effect, action_id: physical_issue_admission.require_native_effect(
+                    self_id=args.self_id, native_session_id=session_id,
+                    effect=effect, action_id=action_id,
                 )
             )
         spawn = await _initial_spawn(session, args.startup_timeout_s)

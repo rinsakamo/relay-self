@@ -52,7 +52,7 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
-        self._effect_admission: Callable[[str, str], None] | None = None
+        self._effect_admission: Callable[[str, str, str], None] | None = None
 
     @classmethod
     async def launch(
@@ -125,7 +125,7 @@ class MineflayerProcessSession:
     ) -> None:
         """One-way opt-in gate for ALL native effect commands on this session.
 
-        check_effect(session_id, effect) must be owned by the shared checkpoint
+        check_effect(session_id, effect, action_id) must be owned by the shared checkpoint
         issuer. Observation and shutdown remain allowed. No gate removal API.
         """
         if (
@@ -267,7 +267,10 @@ class MineflayerProcessSession:
                 effect = command.get("effect")
                 if type(effect) is not str or not effect:
                     raise MineflayerEffectAdmissionError("untyped physical effect")
-                gate(self.started.session_id, effect)
+                action_id = command.get("action_id")
+                if type(action_id) is not str or not action_id:
+                    raise MineflayerEffectAdmissionError("missing physical action ID")
+                gate(self.started.session_id, effect, action_id)
             elif command_type not in {"observe", "shutdown"}:
                 raise MineflayerEffectAdmissionError(
                     "unknown native command during coordinated checkpoint mode"
