@@ -52,6 +52,11 @@ public final class Recorder extends JavaPlugin implements Listener {
             throw new IllegalStateException("P0B observer ticket spool cannot initialize", exc);
         }
         Bukkit.getPluginManager().registerEvents(this, this);
+        try {
+            new TickWitness(this).start();
+        } catch (IOException exc) {
+            throw new IllegalStateException("P0D Paper tick witness spool cannot initialize", exc);
+        }
         Bukkit.getScheduler().runTaskTimer(this, this::readTicketRequests, 1L, 1L);
         getLogger().info("P0B_READY source=PAPER_MONITOR ticket_dev=LOCAL_SPOOL");
     }
