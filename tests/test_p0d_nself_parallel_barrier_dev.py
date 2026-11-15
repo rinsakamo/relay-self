@@ -58,8 +58,9 @@ from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 class SyntheticNative:
     """A different native socket-like process per Self. NOT real Mineflayer."""
 
-    def __init__(self, sid: str, native: str, gate, *, fault=None):
+    def __init__(self, sid: str, native: str, gate, *, fault=None, gauge=None):
         self.self_id = sid
+        self.gauge = gauge
         self.started = SimpleNamespace(session_id=native)
         self.gate = gate
         self.fault = fault
@@ -82,9 +83,18 @@ class SyntheticNative:
             self.started.session_id, self._seq(), action_id,
             "clear_controls", "applied", None,
         ))
-        # A native write is independently awaited per actor, so 100 actors
-        # cannot be counted as parallel merely by submitting 100 coroutines.
-        await asyncio.sleep(0.002)
+        # This is a source-shaped stub. Verify actual asynchronous overlap,
+        # not simply the number of submitted worker tasks.
+        if self.gauge is not None:
+            self.gauge["active"] += 1
+            self.gauge["max"] = max(
+                self.gauge["max"], self.gauge["active"],
+            )
+        try:
+            await asyncio.sleep(0.002)
+        finally:
+            if self.gauge is not None:
+                self.gauge["active"] -= 1
 
     async def send_observe(self, request_id=None):
         self.observations += 1
@@ -152,10 +162,12 @@ class NFixture:
             {sid: "old-" + sid for sid in self.names},
             require_neutral_stop=True,
         )
+        self.stop_parallel = {"active": 0, "max": 0}
         self.native = {
             sid: SyntheticNative(
                 sid, "old-" + sid, self.physical,
                 fault=(fault_stop if sid == self.names[-1] else None),
+                gauge=self.stop_parallel,
             ) for sid in self.names
         }
         self.rejoin_fault = fault_rejoin
@@ -245,7 +257,9 @@ class NFixture:
                 fresh = "all-shared-session"
             else:
                 fresh = f"native-{sid}-{paper}"
-            self.native[sid] = SyntheticNative(sid, fresh, self.physical)
+            self.native[sid] = SyntheticNative(
+                sid, fresh, self.physical, gauge=self.stop_parallel,
+            )
             return fresh
         finally:
             self.inflight_rejoin -= 1
@@ -277,7 +291,9 @@ def test_n_self_bounded_stop_freeze_rejoin_two_generations(tmp_path, count):
         assert len(verify_typed_generation(second.saved.generation)) == count
         assert not second.historical_replay_performed
         assert not f.physical.closed
-        assert f.max_inflight_rejoin > 1 if count > 1 else True
+        assert f.max_inflight_rejoin > 1
+        assert f.stop_parallel["max"] > 1
+        assert f.stop_parallel["active"] == 0
     asyncio.run(exercise())
     assert f.stop_count == f.restart_count == f.close_count == 2
     assert f.runtime.timer.last_success_monotonic == 60.0
