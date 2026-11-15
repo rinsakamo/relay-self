@@ -316,10 +316,15 @@ class CheckpointedCognitiveOwner:
     def _eligible(self) -> None:
         assert self.cohort is not None
         self.cohort._mutating()
+        if self.fresh_native_observation_required:
+            raise LiveCognitionCheckpointError(
+                "fresh native WorldBody observation required after rebind"
+            )
 
     def observe_world_tick(self, *, session_id: str, world_tick: int) -> None:
         with self._mutating():
-            self._eligible()
+            assert self.cohort is not None
+            self.cohort._mutating()
             if (session_id != self.native_session_id or type(world_tick) is not int
                     or world_tick < self.last_observed_tick):
                 raise LiveCognitionCheckpointError("old session/future epoch observation")
