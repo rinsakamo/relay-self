@@ -212,6 +212,9 @@ async def _stop_one(
                 raise StopNeutralizationError(
                     "STOP body never settled for 8 World ticks after initial wait"
                 )
+            then = (
+                first.snapshot.time.day * 24000 + first.snapshot.time.time_of_day
+            )
             proof = NeutralStopProof(action_id, ack, first, last)
             admission.confirm_neutral_stop(
                 fence_ref=fence_ref, self_id=sid, proof=proof,
