@@ -14,7 +14,6 @@ import json
 import threading
 import urllib.error
 import urllib.request
-from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import urlsplit
