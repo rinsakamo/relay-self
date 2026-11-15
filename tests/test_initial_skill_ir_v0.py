@@ -8,18 +8,29 @@ import pytest
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
-    Option, Selection, Target, WorldPercept, cpu_schema_epoch, initial_patterns,
+    Option,
+    Selection,
+    Target,
+    WorldPercept,
+    cpu_schema_epoch,
+    initial_patterns,
 )
 from relay_self.common_io import ScopeRef
 from relay_self.initial_skill_ir import (
-    ActionOutcomeWitness, FiniteSkillInterpreter,
-    SkillIRRefusal, SkillOrigin, SkillStep, StepKind,
-    compile_initial_skill, initial_skill_descriptors,
+    ActionOutcomeWitness,
+    FiniteSkillInterpreter,
+    SkillIRRefusal,
+    SkillOrigin,
+    SkillStep,
+    StepKind,
+    compile_initial_skill,
+    initial_skill_descriptors,
 )
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_port import (
     PhysicalActionBinding,
-    PhysicalCapability, PhysicalReadback,
+    PhysicalCapability,
+    PhysicalReadback,
 )
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution, SkillState
