@@ -9,7 +9,7 @@ Common I/O #829, Schema #831, physical Skill/Action #843.
 | Initial Skill | Existing input | Actual bridge ability | v0 status |
 |---|---|---|---|
 | EAT | `initial_patterns()` HUNGER_RELIEF / FOOD; L1 Option | Mineflayer `equip_item` + `consume_held` already ordered as the **single parent EAT@1** by #844's WAL-owning DEV issuer | finite IR compiles **only** when actual `PhysicalCapability("EAT", 1, "hand", "FOOD", True)` is supplied; proposal possible; physical path exists in #844 but not invoked here |
-| ATTACK | `initial_patterns()` DEFEND_SELF / ZOMBIE; L1 Option | `attack_entity(entity_id)` in Mineflayer bridge | proposal-only when adapter supplies versioned available capability; no canonical ATTACK WAL-owning issuer integrated |
+| ATTACK | `initial_patterns()` DEFEND_SELF / ZOMBIE; L1 Option | `attack_entity(entity_id)` in Mineflayer bridge | proposal plus opt-in one-shot ATTACK WAL issuer for native ACK/hurt correlation; no independent damage attestation |
 | MOVE | no current Schema Goal/Skill option | `set_control` changes controls, but this does **not** attest general `MOVE(target)`, pathing, motion settling, collision or stop | **UNMAPPED**, no compiled IR/physical issue |
 | REST | fatigue is a **constraint-only** Schema signal | `clear_controls` does not attest stamina recovery / REST success | **UNMAPPED**, no compiled IR/physical issue |
 
