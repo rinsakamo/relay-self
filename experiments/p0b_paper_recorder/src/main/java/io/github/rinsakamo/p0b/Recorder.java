@@ -54,6 +54,7 @@ public final class Recorder extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         try {
             new TickWitness(this).start();
+            new ResidentPresenceWitness(this).start();
         } catch (IOException exc) {
             throw new IllegalStateException("P0D Paper tick witness spool cannot initialize", exc);
         }
