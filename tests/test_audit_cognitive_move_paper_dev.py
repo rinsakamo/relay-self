@@ -9,7 +9,6 @@ from dataclasses import asdict
 import pytest
 
 from experiments.audit_cognitive_move_paper_dev import (
-    MoveEvidenceAuditError,
     audit_move_paper_bundle,
     main,
 )
@@ -17,8 +16,8 @@ from experiments.cognitive_move_paper_witness_dev import qualify_paper_move_trac
 from experiments.run_cognitive_minimal_world import _native_observation_record
 from relay_self.physical_action_journal import PhysicalActionJournal
 from test_cognitive_move_paper_witness_dev import (
-    ACTOR,
     ACTION,
+    ACTOR,
     BOOT,
     NONCE,
     SESSION,
