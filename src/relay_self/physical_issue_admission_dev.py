@@ -51,6 +51,7 @@ class PhysicalIssueAdmission:
         self._sessions = dict(current_sessions)
         self._active: dict[str, IssueLease] = {}
         self._closed = False
+        self._poisoned = False
         self._fence_token: str | None = None
         self._generation = 0
         self._rotated: set[str] = set()
@@ -100,6 +101,9 @@ class PhysicalIssueAdmission:
             self._rotated.clear()
             self._fence_token = f"physical-cohort-{self._generation}"
             if self._active:
+                # This generation cannot recover from an unsettled native effect.
+                # A later lease completion does NOT transform a failed cut into a success.
+                self._poisoned = True
                 raise PhysicalIssueFenceError(
                     "in-flight physical Action prevents checkpoint; gate held"
                 )
@@ -114,6 +118,8 @@ class PhysicalIssueAdmission:
     ) -> None:
         """Record qualified rebind; external adapter must prove its authenticity."""
         with self._lock:
+            if self._poisoned:
+                raise PhysicalIssueFenceError("failed physical checkpoint requires operator recovery")
             if not self._closed or fence_ref != self._fence_token:
                 raise PhysicalIssueFenceError("missing current physical fence")
             if self_id not in self._sessions or self._sessions[self_id] != old_session_id:
@@ -134,7 +140,8 @@ class PhysicalIssueAdmission:
         """Only full A/B fresh session rejoin may reopen issuer admission."""
         with self._lock:
             if (
-                not self._closed or self._fence_token != fence_ref
+                self._poisoned or not self._closed
+                or self._fence_token != fence_ref
                 or self._active or self._rotated != set(self._sessions)
             ):
                 raise PhysicalIssueFenceError(
