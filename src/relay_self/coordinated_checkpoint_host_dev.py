@@ -22,6 +22,7 @@ from relay_self.coordinated_autosave_runtime_dev import (
     CoordinatedAutosaveRuntime,
 )
 from relay_self.coordinated_checkpoint_dev import verify_generation
+from relay_self.checkpointed_cognitive_runtime_dev import CognitionOwnerCohort
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 
@@ -51,6 +52,7 @@ class CoordinatedCheckpointHost:
     def __init__(
         self, *, runtime: CoordinatedAutosaveRuntime,
         physical: PhysicalIssueAdmission,
+        cognitive_cohort: CognitionOwnerCohort,
         participants_now: Callable[[], tuple[StopParticipant, ...]],
         stop_audit_dir: Path,
         owned_paper: OwnedPaperWorld | None = None,
@@ -67,7 +69,17 @@ class CoordinatedCheckpointHost:
         ):
             raise CheckpointHostError("strict typed owner and STOP required")
         if (
+            not isinstance(cognitive_cohort, CognitionOwnerCohort)
+            or cognitive_cohort.world_id != runtime.world_id
+            or cognitive_cohort.branch_id != runtime.branch_id
+            or getattr(runtime.admission.close, "__self__", None) is not cognitive_cohort
+            or getattr(runtime.admission.release, "__self__", None) is not cognitive_cohort
+        ):
+            raise CheckpointHostError("one actual cognition owner cohort required")
+        if (
             tuple(p.self_id for p in runtime.participants) != physical.self_roster
+            or tuple(o.self_id for o in cognitive_cohort.owners)
+            != physical.self_roster
             or not callable(participants_now) or not callable(monotonic_clock)
             or not callable(sleep)
         ):
@@ -90,6 +102,7 @@ class CoordinatedCheckpointHost:
             raise CheckpointHostError("preexisting STOP evidence directory required")
         self.runtime = runtime
         self.physical = physical
+        self.cognitive_cohort = cognitive_cohort
         self.participants_now = participants_now
         self.stop_audit_dir = stop_audit_dir
         self.owned_paper = owned_paper
@@ -128,6 +141,14 @@ class CoordinatedCheckpointHost:
             sessions[member.self_id] = session_id
         if sessions != self.physical.current_native_sessions:
             raise CheckpointHostError("stale native session after Paper restart")
+        for owner in self.cognitive_cohort.owners:
+            if (
+                owner.native_session_id != sessions[owner.self_id]
+                or owner.fresh_native_observation_required
+            ):
+                raise CheckpointHostError(
+                    "cognitive Self not ready in the current WorldBody session"
+                )
         return tuple(sorted(members, key=lambda x: x.self_id))
 
     async def cycle_if_due(self, now_monotonic: float) -> HostCheckpointCycle | None:
