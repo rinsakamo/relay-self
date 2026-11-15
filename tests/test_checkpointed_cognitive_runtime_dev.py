@@ -67,7 +67,7 @@ from relay_self.self_owner_checkpoint_dev import PeerDelivery, verify_typed_gene
 
 
 class RuntimeFixture:
-    def __init__(self, tmp_path: Path):
+    def __init__(self, tmp_path: Path, *, paper_layout: bool = False):
         self.world_dir = tmp_path / "world"
         self.world_dir.mkdir()
         (self.world_dir / "level.dat").write_bytes(b"W100-simulated")
@@ -162,6 +162,7 @@ class RuntimeFixture:
             world=WorldRuntimeHooks(stop_world, restart_world),
             admission=self.cohort.admission_hooks(),
             strict_typed_owner_cut=True,
+            paper_layout=paper_layout,
         )
 
     def baseline(self):
@@ -579,7 +580,7 @@ def _owned_host_fixture(tmp_path, *, failure_b=None, paper=True):
 
     The child only *mimics* Paper's console. This is not Minecraft.
     """
-    f = RuntimeFixture(tmp_path)
+    f = RuntimeFixture(tmp_path, paper_layout=paper)
     f.baseline()
     physical = PhysicalIssueAdmission(
         {o.self_id: o.native_session_id for o in f.owners},
