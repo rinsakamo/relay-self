@@ -160,9 +160,12 @@ async def _owned_resident_trial(
     await asyncio.sleep(1.0)
     # This reads ONLY the explicitly owned Paper Popen stdout log.
     source = paper.read_owned_log(paper_session)
-    source_ref = f"paper-owned-log:{paper_session}:sha256:{file_sha256(
-        evidence_dir / (paper_session + '.log')
-    )}"
+    import hashlib
+
+    source_ref = (
+        f"paper-owned-log:{paper_session}:sha256:"
+        f"{hashlib.sha256(source).hexdigest()}"
+    )
     trace = parse_owned_paper_resident_trace(
         owned_paper_session_id=paper_session,
         expected_world_uuid=world_uuid,
