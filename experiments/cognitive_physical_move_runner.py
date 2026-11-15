@@ -67,7 +67,7 @@ async def issue_move_from_selected_l1_dev(
     issue_authority_id: str,
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
-    expected_username: str = "RelaySelf",
+    expected_username: str,
     paper_move_spool: Path | None = None,
     paper_move_owned_log: Path | None = None,
     paper_world_uuid: str | None = None,
