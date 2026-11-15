@@ -20,16 +20,16 @@ from experiments.controlled_minecraft_vertical import (
     ControlledDestination,
     ControlledScenario,
 )
-from relay_self.cognitive_minimal_dev import (
-    SchemaFrame,
-    Selection,
-    WorldPercept,
-)
 from relay_self.approach_controller import (
     ApproachRecommendation,
     BodyApproachCapabilities,
     GaitMode,
     recommend_approach,
+)
+from relay_self.cognitive_minimal_dev import (
+    SchemaFrame,
+    Selection,
+    WorldPercept,
 )
 from relay_self.common_io import ScopeRef
 from relay_self.move_destination_ref import move_destination_ref
@@ -39,8 +39,8 @@ from relay_self.target_contract import (
     ReferenceFrame,
     TargetContract,
     TargetContractRefusal,
-    TargetKind,
     TargetBodyObservation,
+    TargetKind,
 )
 
 
