@@ -88,6 +88,13 @@ def test_close_during_real_async_issue_holds_and_never_creates_clean_cut():
         finish.set()
         assert await action_task == "native-ack-observed"
         assert cohort.active_action_ids == ()
+        with pytest.raises(PhysicalIssueFenceError, match="complete"):
+            cohort.release("physical-cohort-1")
+        with pytest.raises(PhysicalIssueFenceError, match="operator recovery"):
+            cohort.rotate_native_session(
+                fence_ref="physical-cohort-1", self_id="A",
+                old_session_id="native-A", new_session_id="native-A-new",
+            )
         with pytest.raises(PhysicalIssueFenceError, match="closed"):
             await cohort.run_guarded(
                 self_id="B", native_session_id="native-B",
