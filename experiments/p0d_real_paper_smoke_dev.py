@@ -32,6 +32,13 @@ class RealPaperSmokeRefusal(RuntimeError):
     """Do not promote a partial/unowned/uncertain Paper World observation."""
 
 
+# Official PaperMC Fill v3 1.21.8 stable build 60, as published by PaperMC.
+# Do not silently run another Minecraft version or an unreviewed server binary.
+PAPER_1218_60_SHA256 = (
+    "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+)
+
+
 def file_sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as data:
@@ -193,6 +200,10 @@ def run_real_paper_smoke(
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
         scratch_parent=scratch_parent, accepted_eula=accepted_eula,
     )
+    if paper_sha256 != PAPER_1218_60_SHA256:
+        raise RealPaperSmokeRefusal(
+            "only pinned official Paper 1.21.8 stable build 60 may be launched"
+        )
     root = Path(tempfile.mkdtemp(prefix="p0d-real-paper-only-", dir=scratch))
     os.chmod(root, 0o700)
     evidence = root / "evidence"
