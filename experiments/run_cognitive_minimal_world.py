@@ -212,6 +212,10 @@ async def run(
         raise MinimalCognitionError(
             "injected physical fence requires explicit coordinated checkpoint mode"
         )
+    if coordinated_fence and physical_issue_admission.closed:
+        raise MinimalCognitionError(
+            "coordinated physical issuer held before World/LLM launch"
+        )
     if args.semantic_eval_dev and (not physical_mode or not args.l0_skill_ir_dev):
         raise MinimalCognitionError(
             "semantic evaluation requires WAL-owned L0 physical DEV mode"
