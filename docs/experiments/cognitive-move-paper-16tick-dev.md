@@ -61,6 +61,26 @@ session or the actual Paper process. In particular the raw file and a
 manually supplied log are not cryptographic remote attestation. Do not
 promote to QUAL or infer another Self's action causality from this trace.
 
+## Actor identity gate before native LOOK
+
+The P0M plugin now emits a source-qualified `P0M_PLAYER` line on
+`PlayerJoinEvent`, containing `boot_id`, `world_uuid`,
+`player UUID`, exact Minecraft login name and Paper tick. The strict
+MOVE runner passes the *configured Mineflayer* `--mc-username` into
+`PaperMoveWitnessSession`, which checks this player-join entry in the
+same operator-supplied Paper log **before native LOOK** (and after the
+fsynced WAL PREPARED record). The original `qualify_paper_move_trace`
+also requires the joined name/UUID/World/boot log line to appear in order
+between P0M_READY and P0M_ARM. If the plugin was enabled only *after*
+the player joined, a fresh join is needed; no identity is invented.
+
+This is a strict DEV guard against observing another online player as
+the Self while issuing a movement Action. It **does not independently
+authenticate that the supplied Paper log is the actual server process**,
+that the local file belongs to the correct PID, or that the caller can
+issue commands for that Self. The user/operator must still supply and
+preserve independent process ownership evidence.
+
 ## Build (no server launch)
 
 ```sh
@@ -126,6 +146,54 @@ exists. Missing source snapshots, a different Paper boot, world UUID,
 actor UUID or native session are all refusals. Clock comparisons across
 Paper and Mineflayer are not invented; only the explicit ordered
 host-side ACK→marker handoff and main-thread tick sequence are asserted.
+
+## Read-only post-run independent artifact replay
+
+After one operator-authorized real DEV attempt, capture the unchanged
+**original** files: (a) runner `--evidence-path` JSON, (b) exact Self-owned
+`--physical-journal-path` WAL, (c) P0M
+`complete/<nonce>.trace` from the **same** Paper boot and move,
+(d) original owner-sourced Paper process log covering P0M_READY,
+P0M_PLAYER, ARM, STOP_MARK and COMPLETE, and (e) exact plugin and Paper
+jar hashes. If the attempt failed, copy the unresolved WAL and failure
+JSON; **do not synthesize a terminal receipt** or overwrite originals.
+Do not run another MOVE in the same Self WAL if it is unresolved.
+
+For a successful DEV attempt only, re-audit the immutable bundle with:
+
+```sh
+python -m experiments.audit_cognitive_move_paper_dev \
+  --evidence "$AUDIT_JSON" \
+  --wal "$SELF_WAL" \
+  --paper-trace "$PAPER_PLUGINS/P0MMoveWitness/p0m/complete/$NONCE.trace" \
+  --paper-owned-log "$OWNED_PAPER_PROCESS_LOG" \
+  --self-id "$SELF_ID" \
+  --actor-uuid "$ACTOR_UUID" \
+  --world-uuid "$WORLD_UUID" \
+  --mc-username "$MC_USERNAME" \
+  --output "$NEW_AUDIT_RESULT"
+```
+
+The auditor restores the WAL with schema/digest/owner validation, checks
+L1-selected Goal/Skill/Target and native source/seq, **all three** original
+native effect receipts with action ID+session+seq, native progress/STOP
+typed probe positions against the persisted `motion` row, and independently
+replays the **raw** Paper tick file against the owner-provided log and
+Paper actor name+UUID+World join. It compares the recomputed complete
+Paper proof with the original runner's JSON, and records SHA256 hashes of
+the evidence JSON, WAL, raw P0M trace and Paper log. It cannot verify
+any other actor's bodily state, original process PID or cryptographic
+source integrity.
+
+The only passing verdict is
+`PAPER_8TICK_POSITION_STABILITY_DEV_BUNDLE_RECHECKED` with
+`qualifying_real_world=false`,
+`causal_paper_stop_ack_attested=false` and
+`checkpoint_resume_authorized=false`. This is deliberately *not*
+a qualification success: final operator review must verify the Paper
+and Mineflayer processes/JARs and consistent actor session, and preserve
+the result as one real DEV specimen. Absent files or mismatches are
+`HOLD_EVIDENCE_INSUFFICIENT`, never a promoted MOVE Skill.
 
 ## Test and evidence boundary
 
