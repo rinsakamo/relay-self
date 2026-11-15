@@ -3,8 +3,9 @@
 Parent #851, existing physical ATTACK #843/#848/#849, semantic evaluation
 #850, file checkpoint P0-A #853/#854.
 
-The join is read-only. The DEV Paper recorder and opt-in native probe UUID
-witness are observation-only; neither is a ticket bridge or Action issuer.
+The join is read-only. The original #856 real-run Paper recorder and
+native probe witness were observation-only and did not include a ticket.
+The new #857 ticket observer is still not a physical Action issuer.
 Their existence alone is not real World evidence.
 
 The Paper recorder in `experiments/p0b_paper_recorder` logs damage at MONITOR
