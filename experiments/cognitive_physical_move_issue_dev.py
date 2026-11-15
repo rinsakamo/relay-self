@@ -86,6 +86,7 @@ def _check_admission(
         or b.body_channel != "movement" or b.target_kind != "DESTINATION"
         or not isinstance(target, ResolvedMoveTarget)
         or target.physical_issued or target.reached or target.stop_settled_attested
+        or target.arrival_contract is not None
         or target.status != "TARGET_BOUND_NO_PHYSICAL_MOVE_CAPABILITY"
         or target.scope != b.scope
         or target.goal_id != b.goal_id
