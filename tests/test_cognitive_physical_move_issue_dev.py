@@ -13,6 +13,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerLaunchConfig,
     MineflayerPosition,
 )
+from experiments.cognitive_move_paper_witness_dev import (
+    PaperMoveWitnessError,
+    PaperMoveWitnessSession,
+)
 from experiments.cognitive_move_target_resolution import resolve_selected_move_target
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatGrant,
@@ -40,6 +44,8 @@ from relay_self.physical_action_port import (
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
 from test_cognitive_minimal_minecraft_dev import observation
+from test_cognitive_move_paper_witness_dev import _data as paper_data
+from test_cognitive_move_paper_witness_dev import _qualified as paper_qualified
 from test_cognitive_move_target_resolution import prepare, select
 from test_cognitive_physical_eat_issue_dev import OwnedFakeNative
 from test_cognitive_physical_eat_issue_dev import run as eat_run
@@ -421,3 +427,100 @@ def test_move_terminal_disk_close_failure_does_not_resolve_wal(tmp_path, monkeyp
     with pytest.raises(PhysicalJournalUnresolved):
         run({**kw, "journal": reopened}, session)
     assert len([x for x in session.sent if x[0] == "set_control"]) == 1
+
+
+class FakeQualifiedPaper(PaperMoveWitnessSession):
+    """No Java/Paper process; verifies exact observer ordering only."""
+
+    def __init__(self, session, journal, target, *, bad=None):
+        self.session = session
+        self.journal = journal
+        self.native_start = target.native_position
+        self.native_target = target.destination_position
+        self.action_id = "action-M"
+        self.native_session_id = "world-A"
+        raw, log = paper_data()
+        sample = paper_qualified(raw, log)
+        self.world_uuid = sample.world_uuid
+        self.actor_uuid = sample.actor_uuid
+        self.proof = replace(
+            sample, action_id=self.action_id, native_session_id=self.native_session_id,
+        )
+        self.bad = bad
+        self.events = []
+        self.armed = False
+        self.marked = False
+
+    async def arm(self, seconds=3.0):
+        assert self.journal.records[-1]["status"] == "PREPARED_UNRESOLVED"
+        assert self.session.sent == []
+        self.armed = True
+        self.events.append("paper-arm-before-look")
+
+    async def mark_stop_after_ack(self, seconds=3.0):
+        assert self.armed
+        assert self.session.sent[-1] == ("clear_controls", "action-M-stop")
+        self.marked = True
+        self.events.append("paper-stop-mark-after-native-ack")
+
+    async def finish(self, seconds=6.0):
+        assert self.marked
+        assert [x[0] for x in self.session.sent][-2:] == ["observe", "observe"]
+        self.events.append("paper-final-16tick-proof")
+        if self.bad == "unavailable":
+            raise PaperMoveWitnessError("missing independent Paper trace")
+        if self.bad == "foreign_action":
+            return replace(self.proof, action_id="wrong-parent")
+        return self.proof
+
+
+def test_paper_observer_is_armed_before_native_and_checked_before_wal_close(tmp_path):
+    kw, session = setup(tmp_path)
+    paper = FakeQualifiedPaper(session, kw["journal"], kw["target"])
+    receipt = asyncio.run(issue_selected_move_dev(
+        session, paper_witness=paper, **kw,
+    ))
+    assert receipt.terminal.state is ActionState.OUTCOME
+    assert receipt.paper_proof is paper.proof
+    assert paper.events == [
+        "paper-arm-before-look",
+        "paper-stop-mark-after-native-ack",
+        "paper-final-16tick-proof",
+    ]
+    restored = PhysicalActionJournal.restore(kw["journal"].path, self_id="self-A")
+    assert not restored.unresolved
+    assert restored.records[-1]["status"] == "NATIVE_MOVE_PROGRESS_STOP_READBACK"
+    assert receipt.paper_stop_settled_attested is False
+    assert receipt.arrived_at_destination is False
+
+
+@pytest.mark.parametrize("failure", ["unavailable", "foreign_action"])
+def test_paper_mismatch_after_native_stop_preserves_unresolved_parent(
+    tmp_path, failure,
+):
+    kw, session = setup(tmp_path)
+    paper = FakeQualifiedPaper(
+        session, kw["journal"], kw["target"], bad=failure,
+    )
+    with pytest.raises((PhysicalMoveRefusal, PaperMoveWitnessError)):
+        asyncio.run(issue_selected_move_dev(
+            session, paper_witness=paper, **kw,
+        ))
+    assert paper.events[-1] == "paper-final-16tick-proof"
+    assert kw["supervisor"].get("action-M").state is ActionState.UNKNOWN
+    assert PhysicalActionJournal.restore(
+        kw["journal"].path, self_id="self-A",
+    ).unresolved
+    assert len([x for x in session.sent if x[0] == "clear_controls"]) == 1
+
+
+def test_preused_paper_watch_refused_before_wal_and_any_motor(tmp_path):
+    kw, session = setup(tmp_path)
+    paper = FakeQualifiedPaper(session, kw["journal"], kw["target"])
+    paper.armed = True
+    with pytest.raises(PhysicalMoveRefusal, match="pre-used"):
+        asyncio.run(issue_selected_move_dev(
+            session, paper_witness=paper, **kw,
+        ))
+    assert kw["journal"].records == ()
+    assert session.sent == []
