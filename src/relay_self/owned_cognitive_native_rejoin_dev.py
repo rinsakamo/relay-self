@@ -218,6 +218,7 @@ class OwnedCognitiveNativeBridge:
         self.work = work
         self._verified: dict[str, NativePreparedRejoin] = {}
         self._observed: set[str] = set()
+        self._fence_ref: str | None = None
 
     def close_physical(self) -> ExternalPhysicalFence:
         receipt = self.physical.close()
@@ -295,8 +296,6 @@ class OwnedCognitiveNativeBridge:
             proof.new_native_session_id, True, True, True,
         )
 
-    _fence_ref: str | None = None
-
     def close(self) -> ExternalPhysicalFence:
         result = self.close_physical()
         self._fence_ref = result.fence_ref
@@ -324,18 +323,29 @@ class OwnedCognitiveNativeBridge:
             or self._observed
         ):
             raise OwnedWorkRejoinError("cohort must be freshly rebound and released")
-        for owner in cognition.owners:
-            proof = self._verified[owner.self_id]
-            if (
-                owner.native_session_id != proof.new_native_session_id
-                or proof.probe_world_tick < owner.last_observed_tick
-                or not owner.fresh_native_observation_required
-            ):
-                raise OwnedWorkRejoinError("native probe is stale for cognitive owner")
-        for owner in cognition.owners:
-            proof = self._verified[owner.self_id]
-            owner.observe_world_tick(
-                session_id=proof.new_native_session_id,
-                world_tick=proof.probe_world_tick,
-            )
-            self._observed.add(owner.self_id)
+        try:
+            for owner in cognition.owners:
+                proof = self._verified[owner.self_id]
+                current = self.native.sessions[owner.self_id]
+                if (
+                    owner.native_session_id != proof.new_native_session_id
+                    or current.started.session_id != proof.new_native_session_id
+                    or getattr(current, "process_returncode", None) is not None
+                    or proof.probe_world_tick < owner.last_observed_tick
+                    or not owner.fresh_native_observation_required
+                ):
+                    raise OwnedWorkRejoinError(
+                        "native probe is stale for cognitive owner"
+                    )
+            for owner in cognition.owners:
+                proof = self._verified[owner.self_id]
+                owner.observe_world_tick(
+                    session_id=proof.new_native_session_id,
+                    world_tick=proof.probe_world_tick,
+                )
+                self._observed.add(owner.self_id)
+        except BaseException:
+            # A stale WorldBody probe after release is not permission to keep
+            # any native effect path open. Poison the physical gate globally.
+            self.physical.hold_for_operator()
+            raise
