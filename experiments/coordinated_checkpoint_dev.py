@@ -10,9 +10,12 @@ import json
 from pathlib import Path
 
 from relay_self.coordinated_checkpoint_dev import (
-    CoordinatedCheckpointError, SelfSnapshotSource,
-    capture_generation, latest_verified_generation,
-    restore_generation, verify_generation,
+    CoordinatedCheckpointError,
+    SelfSnapshotSource,
+    capture_generation,
+    latest_verified_generation,
+    restore_generation,
+    verify_generation,
 )
 
 
