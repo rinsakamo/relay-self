@@ -23,6 +23,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
+from relay_self.cohort_parallel_barrier_dev import (
+    require_bounded_workers,
+    run_async_cohort_barrier,
+)
 from relay_self.physical_issue_admission_dev import (
     NeutralStopProof,
     PhysicalIssueAdmission,
@@ -252,6 +256,7 @@ async def prepare_stop_before_autosave(
     admission: PhysicalIssueAdmission, *,
     participants: tuple[StopParticipant, ...],
     audit_dir: Path, timeout_s: float = 8.0,
+    parallel_workers: int = 1, total_timeout_s: float = 60.0,
 ) -> StopCohortReady:
     """Fence normal physical effects, then neutralize every fixed Self.
 
@@ -264,6 +269,11 @@ async def prepare_stop_before_autosave(
         or not admission.requires_neutral_stop
         or type(participants) is not tuple or not participants
         or type(timeout_s) not in (int, float) or not 0 < timeout_s <= 60
+        or type(total_timeout_s) not in (int, float)
+        or not math.isfinite(total_timeout_s)
+        or not 0 < total_timeout_s <= 60
+        or type(parallel_workers) is not int
+        or not 1 <= parallel_workers <= 64
         or not Path(audit_dir).is_dir()
         or Path(audit_dir).is_symlink()
     ):
@@ -280,7 +290,6 @@ async def prepare_stop_before_autosave(
     # No asynchronous wait before initial physical closure: no new user Action
     # can acquire a lease between roster validation and this closed transition.
     fence_ref = admission.begin_neutralization()
-    files: list[Path] = []
     try:
         # Crash-safe STOP audit check. Any earlier PREPARED without the
         # corresponding verified receipt can mean native STOP was applied
@@ -295,10 +304,18 @@ async def prepare_stop_before_autosave(
                 raise StopNeutralizationError(
                     "earlier STOP PREPARED_UNRESOLVED requires operator recovery"
                 )
-        for p in ordered:
-            files.append(await _stop_one(
-                admission, p, fence_ref, Path(audit_dir), timeout_s,
-            ))
+        # Workers share exactly one pre-closed physical epoch. STOP leases
+        # remain disjoint per Self; no worker may save World or release.
+        # The barrier joins *every* result before cognition/World cut.
+        async def stop_member(participant: StopParticipant) -> Path:
+            return await _stop_one(
+                admission, participant, fence_ref, Path(audit_dir), timeout_s,
+            )
+
+        files = await run_async_cohort_barrier(
+            ordered, stop_member, workers=require_bounded_workers(parallel_workers),
+            total_timeout_s=total_timeout_s,
+        )
         if not admission.neutralization_complete:
             raise StopNeutralizationError("not all Self STOP proofs verified")
     except BaseException:
