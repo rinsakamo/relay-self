@@ -26,6 +26,9 @@ from relay_self.physical_issue_admission_dev import (
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkOwner,
 )
+from relay_self.resident_llama_inference_lane_dev import (
+    ResidentLlamaInferenceLane,
+)
 from relay_self.world_resident_lifecycle_dev import (
     LoginTicket,
     LogoutFenceEvidence,
@@ -87,11 +90,20 @@ class OwnedResidentPhysicalBridge:
         ] = MineflayerProcessSession.launch,
         probe_timeout_s: float = 12.0,
         cognitive_work: ResidentCognitiveWorkOwner | None = None,
+        inference_lane: ResidentLlamaInferenceLane | None = None,
     ) -> None:
         if (
             not isinstance(lifecycle, WorldResidentLifecycle)
             or not isinstance(physical, PhysicalIssueAdmission)
             or not physical.resident_mode
+            or (
+                inference_lane is not None
+                and (
+                    not isinstance(inference_lane, ResidentLlamaInferenceLane)
+                    or cognitive_work is None
+                    or inference_lane.cognitive_work is not cognitive_work
+                )
+            )
             or (
                 cognitive_work is not None
                 and (
@@ -139,6 +151,7 @@ class OwnedResidentPhysicalBridge:
         self.probe_timeout_s = float(probe_timeout_s)
         self.work = InertResidentWorkBoundary(lifecycle.self_roster)
         self.cognitive_work = cognitive_work
+        self.inference_lane = inference_lane
         self.sessions: dict[str, MineflayerProcessSession] = {}
         self.retired: dict[str, ResidentIssuerRetired] = {}
         self._pending_login: set[str] = set()
@@ -221,6 +234,8 @@ class OwnedResidentPhysicalBridge:
                     native_session_id=launched.started.session_id,
                     world_epoch=ticket.world.epoch, world_tick=observed_tick,
                 )
+                if self.inference_lane is not None:
+                    self.inference_lane.bind_login(self_id)
             else:
                 owner.native_session_id = launched.started.session_id
                 owner.last_observed_tick = observed_tick
@@ -236,6 +251,13 @@ class OwnedResidentPhysicalBridge:
                 self.physical.quarantine_resident(
                     self_id=self_id, native_session_id=current,
                 )
+                if self.cognitive_work is not None:
+                    try:
+                        self.cognitive_work.fence_self(self_id)
+                    except Exception:
+                        pass  # still HOLD; failed cognition admission cannot become ONLINE
+                if self.inference_lane is not None:
+                    self.inference_lane.fence_self(self_id)
             if self.lifecycle.view(self_id).status is not Presence.QUARANTINED:
                 self.lifecycle.fail_self(self_id)
             if launched is not None:
@@ -257,6 +279,8 @@ class OwnedResidentPhysicalBridge:
         )
         if self.cognitive_work is not None:
             self.cognitive_work.fence_self(self_id)
+        if self.inference_lane is not None:
+            self.inference_lane.fence_self(self_id)
         self.lifecycle.fail_self(self_id)
 
     async def logout(self, self_id: str) -> LogoutFenceEvidence:
@@ -279,6 +303,8 @@ class OwnedResidentPhysicalBridge:
         # first async await. A late CPU job cannot rewrite a frozen Self.
         if self.cognitive_work is not None:
             self.cognitive_work.fence_self(self_id)
+        if self.inference_lane is not None:
+            self.inference_lane.fence_self(self_id)
         try:
             if view.status is Presence.ONLINE:
                 self.lifecycle.begin_logout(self_id)
@@ -286,6 +312,8 @@ class OwnedResidentPhysicalBridge:
             cognitive_retired = None
             if self.cognitive_work is not None:
                 cognitive_retired = await self.cognitive_work.retire_self(self_id)
+            if self.inference_lane is not None:
+                await self.inference_lane.retire_self(self_id)
             owner = self.owners[self_id]
             if fence.active_action_ids or owner.supervisor.open_actions:
                 raise OwnedResidentBridgeError("in-flight native Action; quarantine")
@@ -345,6 +373,13 @@ class OwnedResidentPhysicalBridge:
                 raise OwnedResidentBridgeError(
                     "unretired original resident cognitive writers"
                 )
+            if (
+                self.inference_lane is not None
+                and not self.inference_lane.retired_clean(sid)
+            ):
+                raise OwnedResidentBridgeError(
+                    "unretired actual shared inference slot work"
+                )
             if self.lifecycle.view(sid).status is not Presence.OFFLINE:
                 raise OwnedResidentBridgeError("Self presence not really retired")
             owner = self.owners[sid]
@@ -363,6 +398,8 @@ class OwnedResidentPhysicalBridge:
                 )
             if sid not in self.retired:
                 raise OwnedResidentBridgeError("no original owner retirement receipt")
+        if self.inference_lane is not None:
+            self.inference_lane.require_world_idle()
         return WorldOnlyQuiescenceEvidence(
             world_epoch=self.lifecycle.world.epoch,
             checked_self_ids=self.lifecycle.self_roster,
