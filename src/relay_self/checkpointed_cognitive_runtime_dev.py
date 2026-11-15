@@ -253,6 +253,11 @@ class CognitionOwnerCohort:
             self._mutating()
             sender = self._owner(delivery.sender_self_id)
             receiver = self._owner(delivery.recipient_self_id)
+            if (sender.fresh_native_observation_required
+                    or receiver.fresh_native_observation_required):
+                raise LiveCognitionCheckpointError(
+                    "fresh native WorldBody observation required for both peers"
+                )
             if (delivery.message_id in sender.peer_deliveries
                     or delivery.message_id in receiver.peer_deliveries
                     or delivery.received_world_tick > sender.last_observed_tick
