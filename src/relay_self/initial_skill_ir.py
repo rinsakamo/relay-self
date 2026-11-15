@@ -166,6 +166,7 @@ class SkillCursor:
     index: int
     action_count: int
     pending_action_id: str | None
+    pending_native_source: Provenance | None
     blocked: bool
     deadline_ns: int
     _lease: object = field(repr=False, compare=False)
@@ -247,7 +248,7 @@ class FiniteSkillInterpreter:
         cursor = SkillCursor(
             selection.world_scope, owner.intent_id, skill_execution.execution_id,
             ir.skill_id, ir.version, ir.goal_id, option.target_ref,
-            option.target_kind, 0, 0, None, False, deadline_ns, self._lease,
+            option.target_kind, 0, 0, None, None, False, deadline_ns, self._lease,
         )
         self._current, self._ir = cursor, ir
         return cursor
@@ -334,6 +335,7 @@ class FiniteSkillInterpreter:
         )
         updated = replace(
             cursor, pending_action_id=binding.action_id,
+            pending_native_source=binding.native_source,
             action_count=cursor.action_count + 1,
         )
         self._current = updated
@@ -354,7 +356,8 @@ class FiniteSkillInterpreter:
                 or not action.is_current_snapshot
                 or action.action_id != cursor.pending_action_id
                 or action.skill_execution_id != cursor.execution_id
-                or action.intent_id != cursor.intent_id):
+                or action.intent_id != cursor.intent_id
+                or action.events[-1].at_ns > at_ns):
             raise SkillIRRefusal("Action Outcome identity/currentness mismatch")
         if action.state in (ActionState.PROPOSED, ActionState.AUTHORIZED,
                             ActionState.ISSUED):
@@ -368,12 +371,15 @@ class FiniteSkillInterpreter:
         if (not isinstance(witness, ActionOutcomeWitness)
                 or witness.scope != cursor.scope
                 or witness.action_id != action.action_id
-                or not isinstance(witness.native_source, Provenance)
+                or witness.native_source != cursor.pending_native_source
                 or not witness.journal_closed or not witness.effect_correlated):
             # Outcome alone, or an ambiguous disk close, cannot advance a Skill.
             self._current = replace(cursor, blocked=True)
             return SkillStepReceipt("STOP_UNKNOWN", self._current, action_ref=action.action_id)
-        updated = replace(cursor, index=cursor.index + 1, pending_action_id=None)
+        updated = replace(
+            cursor, index=cursor.index + 1,
+            pending_action_id=None, pending_native_source=None,
+        )
         self._current = updated
         return SkillStepReceipt(
             "YIELD_EVALUATION" if updated.index == len(ir.steps) else "NEXT_STEP",
