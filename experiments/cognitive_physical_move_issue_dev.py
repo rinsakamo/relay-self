@@ -369,6 +369,7 @@ async def issue_selected_move_dev(
             or paper_proof.physical_arrival_attested is not False
             or paper_proof.native_stop_ack_attributed is not False
             or paper_proof.source != "PAPER_MAIN_THREAD"
+            or paper_proof.actor_name_joined is not True
         ):
             raise PhysicalMoveRefusal("Paper MOVE proof does not match original Action/World")
         terminal = supervisor.record_outcome(
