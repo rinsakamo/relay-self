@@ -5,8 +5,6 @@ not a substitute for real Paper artifacts and owned log readback.
 """
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPosition
