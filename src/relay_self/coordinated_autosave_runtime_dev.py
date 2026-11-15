@@ -117,6 +117,7 @@ class AutosaveCycleResult:
     physical_action_issue_authorized: bool = False
     historical_replay_performed: bool = False
     live_owner_restoration_attested: bool = False
+    typed_owner_cut_validated: bool = False
 
 
 def next_generation_sequence(store: Path) -> int:
@@ -148,7 +149,11 @@ class CoordinatedAutosaveRuntime:
         self, *, source_world: Path, store: Path, world_id: str,
         branch_id: str, participants: tuple[SelfRuntimeHooks, ...],
         world: WorldRuntimeHooks, admission: AdmissionHooks,
+        strict_typed_owner_cut: bool = False,
     ) -> None:
+        if type(strict_typed_owner_cut) is not bool:
+            raise AutosaveBarrierError("typed owner checkpoint flag must be bool")
+        self.strict_typed_owner_cut = strict_typed_owner_cut
         if not participants or len({p.self_id for p in participants}) != len(participants):
             raise AutosaveBarrierError("expected distinct nonempty Self roster")
         if any(
@@ -257,7 +262,17 @@ class CoordinatedAutosaveRuntime:
         _ref(stopped.tick_source_ref)
         _ref(stopped.stopped_server_ref)
 
-        generation = capture_generation(
+        if self.strict_typed_owner_cut:
+            from relay_self.self_owner_checkpoint_dev import (
+                capture_typed_generation,
+                verify_typed_generation,
+            )
+
+            capture_fn = capture_typed_generation
+        else:
+            capture_fn = capture_generation
+
+        generation = capture_fn(
             self.source_world, self.store, sequence=sequence,
             expected_self_ids=tuple(p.self_id for p in self.participants),
             selves=tuple(f.snapshot for f in cohort),
@@ -268,6 +283,8 @@ class CoordinatedAutosaveRuntime:
             quiesced_selves_ref="cohort:" + generation_id + ":" + token,
         )
         verify_generation(generation)
+        if self.strict_typed_owner_cut:
+            verify_typed_generation(generation)
 
         restarted = self.world.restart_same_source_world()
         if (
@@ -308,6 +325,7 @@ class CoordinatedAutosaveRuntime:
             generation=generation, sequence=sequence,
             saved_self_ids=tuple(p.self_id for p in self.participants),
             world_id=self.world_id, branch_id=self.branch_id,
+            typed_owner_cut_validated=self.strict_typed_owner_cut,
         )
 
     def last_verified(self) -> Path | None:
