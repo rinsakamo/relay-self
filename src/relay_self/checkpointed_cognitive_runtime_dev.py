@@ -107,10 +107,26 @@ class CognitionOwnerCohort:
             raise LiveCognitionCheckpointError("full unique Self roster required")
         if any(o.cohort is not None for o in owners):
             raise LiveCognitionCheckpointError("Self is already attached to a cohort")
+        # Parallel durable writes must never alias another enrolled Self's
+        # canonical owner subtree, even if Self IDs are distinct.
+        roots = {o.files.self_root.resolve() for o in owners}
+        if (
+            len(roots) != len(owners)
+            or any(
+                parent in roots
+                for root in roots
+                for parent in root.parents
+            )
+            or any(o.files.self_root.is_symlink() for o in owners)
+        ):
+            raise LiveCognitionCheckpointError(
+                "parallel Self owner roots overlap or are symlinked"
+            )
         if not world_id or not branch_id:
             raise LiveCognitionCheckpointError("World identity required")
         self.lock = threading.RLock()
         self.owners = tuple(sorted(owners, key=lambda o: o.self_id))
+        self._owners_by_id = {owner.self_id: owner for owner in self.owners}
         self.world_id = world_id
         self.branch_id = branch_id
         self.external_close_physical = external_close_physical
@@ -132,10 +148,12 @@ class CognitionOwnerCohort:
             raise LiveCognitionCheckpointError("cognitive epoch fenced by checkpoint")
 
     def _owner(self, self_id: str) -> "CheckpointedCognitiveOwner":
-        for owner in self.owners:
-            if owner.self_id == self_id:
-                return owner
-        raise LiveCognitionCheckpointError("unregistered Self identity")
+        try:
+            return self._owners_by_id[self_id]
+        except (KeyError, TypeError) as exc:
+            raise LiveCognitionCheckpointError(
+                "unregistered Self identity"
+            ) from exc
 
     def admission_hooks(self) -> AdmissionHooks:
         return AdmissionHooks(self.close, self.release)
