@@ -416,3 +416,34 @@ def test_n_self_owner_fsync_failure_joins_threads_and_holds_before_world(
     assert f.physical.closed and f.host.held_after_failure
     assert f.stop_count == f.restart_count == 0
     assert not list(f.store.glob("g-*/COMMITTED.json"))
+
+
+
+@pytest.mark.parametrize("overlap", ["identical", "nested"])
+def test_n_self_parallel_owner_roots_must_be_physically_disjoint(
+    tmp_path, overlap,
+):
+    from relay_self.checkpointed_cognitive_runtime_dev import (
+        LiveCognitionCheckpointError,
+    )
+
+    f = NFixture(tmp_path, 2)
+    a, b = f.owners
+    a.cohort = None
+    b.cohort = None
+    root = a.files.self_root
+    if overlap == "nested":
+        root = root / "nested"
+    b.files = CognitiveOwnerFiles(
+        root, b.files.cognition_file, b.files.physical_wal_file,
+    )
+    with pytest.raises(LiveCognitionCheckpointError, match="roots overlap"):
+        CognitionOwnerCohort(
+            owners=(a, b), world_id="n-world", branch_id="source",
+            external_close_physical=lambda: f.physical.close(),
+            external_release_physical=f.physical.release,
+            external_native_rejoin=lambda sid, paper, old: ExternalRejoin(
+                "new-" + sid, True, True, True,
+            ),
+        )
+    assert not f.physical.closed
