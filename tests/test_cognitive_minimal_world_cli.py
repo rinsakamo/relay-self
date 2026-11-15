@@ -914,6 +914,9 @@ def test_cli_real_shaped_l1_eat_to_exact_one_fsynced_physical_parent(
     assert result["action_outcome_count"] == 1
     assert result["native_eat_consequence_attested"] is True
     assert result["skill_final_state"] == "started"  # Not semantic Skill success.
+    assert result["initial_skill_ir"] == "EAT@1"
+    assert result["initial_skill_step_status"] == "PROPOSED_NOT_ISSUED"
+    assert result["initial_skill_evaluation_status"] == "YIELD_EVALUATION"
     assert session.first_wal_status == "PREPARED_UNRESOLVED"
     assert len(result["native_actions"]) == 1
     assert result["native_actions"][0]["state"] == "outcome"
@@ -1034,6 +1037,8 @@ def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
     result = asyncio.run(run(args))
     assert result["status"] in ("ESCALATE_L2", "S49_SHADOW_REJECTED", "REJECTED")
     assert result["physical_eat_parent_action_id"] is None
+    assert result["initial_skill_ir"] is None
+    assert result["initial_skill_evaluation_status"] is None
     assert result["physical_fence"] == "WAL_READY_NO_ISSUE"
     assert result["physical_journal_unresolved"] is False
     assert result["physical_journal_records"] == []
@@ -1042,4 +1047,29 @@ def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
     assert result["action_outcome_count"] == 0
     assert not any(x[0] == "equip_item" for x in session.sent)
     assert not any(x[0] == "consume_held" for x in session.sent)
+    assert session.closed
+
+
+def test_cli_initial_skill_ir_rejection_prevents_eat_wal_and_native_issue(
+    monkeypatch, tmp_path,
+):
+    """An Interpreter CHECK refusal cannot be bypassed by EAT's old runner."""
+    from relay_self.initial_skill_ir import FiniteSkillInterpreter, SkillIRRefusal
+
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+
+    def reject(*_args, **_kwargs):
+        raise SkillIRRefusal("simulated CPU L0 target no longer current")
+
+    monkeypatch.setattr(FiniteSkillInterpreter, "check_target", reject)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert "simulated CPU L0" in audit["error"]
+    assert audit["physical_journal_records"] == []
+    assert audit["recorded_actions"] == []
+    assert not any(x[0] in {"equip_item", "consume_held"} for x in session.sent)
     assert session.closed
