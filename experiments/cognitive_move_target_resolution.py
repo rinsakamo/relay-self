@@ -28,6 +28,13 @@ from relay_self.cognitive_minimal_dev import (
 from relay_self.common_io import ScopeRef
 from relay_self.move_destination_ref import move_destination_ref
 from relay_self.provenance import Provenance
+from relay_self.target_contract import (
+    ArrivalCondition,
+    ReferenceFrame,
+    TargetContract,
+    TargetContractRefusal,
+    TargetKind,
+)
 
 
 class MoveTargetRefusal(ValueError):
@@ -161,4 +168,39 @@ def resolve_selected_move_target(
         native_probe_provenance=current_probe.provenance,
         native_seq=current_probe.seq,
         native_request_id=current_probe.request_id,
+    )
+
+
+def propose_arrival_contract_for_selected_move(
+    target: ResolvedMoveTarget, condition: ArrivalCondition,
+) -> TargetContract:
+    """Propose a target-specific PLACE envelope without physical authority.
+
+    The *existing* L1 Option selected the destination ref, not this new
+    precision envelope. This function creates a separately SHA256-bound
+    contract candidate for later L1/schema approval; it cannot silently
+    install/authorize a new tolerance or alter an issued MOVE/WAL.
+    """
+    if (
+        not isinstance(target, ResolvedMoveTarget)
+        or target.status != "TARGET_BOUND_NO_PHYSICAL_MOVE_CAPABILITY"
+        or target.physical_issued or target.reached or target.stop_settled_attested
+        or target.skill_id != "MOVE" or target.skill_version != 1
+        or not isinstance(condition, ArrivalCondition)
+        or move_destination_ref(
+            target.target_ref.removeprefix("destination:").split("@", 1)[0],
+            target.destination_position, target.destination_provenance,
+        ) != target.target_ref
+    ):
+        raise TargetContractRefusal("not an unchanged selected native MOVE target")
+    return TargetContract(
+        scope=target.scope,
+        goal_id=target.goal_id,
+        target_ref=target.target_ref,
+        kind=TargetKind.PLACE,
+        reference_frame=ReferenceFrame.WORLD,
+        provenance=target.destination_provenance,
+        condition=condition,
+        bound_seq=target.native_seq,
+        anchor=target.destination_position,
     )
