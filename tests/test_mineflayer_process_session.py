@@ -20,6 +20,7 @@ from relay_self.physical_issue_admission_dev import (
     PhysicalIssueFenceError,
 )
 
+
 def started_line() -> bytes:
     return (
         json.dumps(
