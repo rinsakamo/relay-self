@@ -178,7 +178,7 @@ def test_paper_full_dimension_generation_rollback_same_branch(tmp_path):
     for name in ("world_nether", "world_the_end"):
         dimension = paper_world.parent / name
         dimension.mkdir()
-        (dimension / "level.dat").write_bytes(name.encode())
+        # Real Paper companions may have region/ files without level.dat.
         (dimension / "region").mkdir()
         (dimension / "region" / "r.0.0.mca").write_bytes(
             b"checkpoint-" + name.encode()
@@ -238,9 +238,10 @@ def test_paper_dimension_incomplete_capture_does_not_commit(tmp_path):
     world.rename(paper_world)
     nether = paper_world.parent / "world_nether"
     nether.mkdir()
+    # A directory with no data files is incomplete; a populated Paper
+    # sibling without level.dat is now a valid role-qualified archive.
     (nether / "region").mkdir()
-    (nether / "region" / "r.0.0.mca").write_bytes(b"missing-level-dat")
-    with pytest.raises(ValueError, match="level.dat"):
+    with pytest.raises(ValueError, match="empty Paper companion"):
         _capture(paper_world, store, selves, paper_layout=True)
     assert latest_verified_generation(store) is None
     assert not (store / "g-000000000001" / "COMMITTED.json").exists()

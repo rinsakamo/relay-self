@@ -104,6 +104,7 @@ class OwnedNativeRejoinCohort:
         self.launch = launch or MineflayerProcessSession.launch
         self.probe_timeout_s = float(probe_timeout_s)
         self._prepared: dict[str, NativePreparedRejoin] = {}
+        self._initial_verified: dict[str, tuple[int, int, str]] = {}
         try:
             for sid, session in self.sessions.items():
                 self._install(sid, session)
@@ -190,6 +191,32 @@ class OwnedNativeRejoinCohort:
                     raise NativeCohortRejoinError("unmatched or unclocked native rejoin probe")
                 return spawn.seq, entry.seq, request_id
         raise NativeCohortRejoinError("native rejoin probe not received")
+
+    async def verify_initial_cohort(self) -> dict[str, tuple[int, int, str]]:
+        """Require spawn and correlated native probe from every initial process.
+
+        This is a read-only process-side witness. It cannot certify a Paper
+        World UUID, GPU task disposal, or a durable Self cognitive snapshot.
+        Never silently retry a partially read initial native session.
+        """
+        if self._initial_verified or self.physical.closed:
+            raise NativeCohortRejoinError("initial native cohort already read/held")
+        proofs: dict[str, tuple[int, int, str]] = {}
+        try:
+            for sid in sorted(self.sessions):
+                proof = await self._spawn_and_probe(self.sessions[sid])
+                if (
+                    self.sessions[sid].process_returncode is not None
+                    or self.sessions[sid].started.session_id
+                    != self.physical.current_native_sessions[sid]
+                ):
+                    raise NativeCohortRejoinError("initial source changed during probe")
+                proofs[sid] = proof
+            self._initial_verified = proofs
+            return dict(proofs)
+        except BaseException:
+            self.physical.hold_for_operator()
+            raise
 
     async def prepare_rejoin(
         self, self_id: str, paper_session: str, former_native: str,

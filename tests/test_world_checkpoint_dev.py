@@ -347,3 +347,57 @@ def test_optional_pinned_round_trip_restores_original_dev_behavior(tmp_path):
     ) == receipt
     assert manifest["declared_logical_tick"] == 204
     assert receipt["physical_action_authorized"] is False
+
+
+
+def test_paper_companion_without_level_dat_uses_explicit_role_and_restores(tmp_path):
+    """Paper Nether/End siblings need not contain the overworld's level.dat."""
+    source = tmp_path / "world_nether"
+    source.mkdir()
+    (source / "DIM-1").mkdir()
+    (source / "DIM-1" / "region").mkdir()
+    (source / "DIM-1" / "region" / "r.0.0.mca").write_bytes(b"native-nether")
+    with pytest.raises(WorldCheckpointError, match="level.dat"):
+        _capture(source, tmp_path / "ordinary")
+    archive = tmp_path / "typed-companion"
+    record = _capture(source, archive, paper_companion=True)
+    assert record["schema"] == 2
+    assert record["world_file_role"] == "PAPER_COMPANION"
+    assert verify_world_checkpoint(archive) == record
+    restored = tmp_path / "restored-nether"
+    receipt = restore_world_to_new_branch(
+        archive, restored, restore_id="restore-paper-nether",
+    )
+    assert receipt["physical_action_authorized"] is False
+    assert (restored / "DIM-1" / "region" / "r.0.0.mca").read_bytes() == b"native-nether"
+    assert verify_restored_world(archive, restored) == receipt
+
+
+@pytest.mark.parametrize("bad_role", ["OVERWORLD", None, True])
+def test_paper_companion_manifest_role_tamper_rejected(tmp_path, bad_role):
+    source = tmp_path / "world_the_end"
+    source.mkdir()
+    (source / "DIM1").mkdir()
+    (source / "DIM1" / "entities").mkdir()
+    (source / "DIM1" / "entities" / "r.0.0.mca").write_bytes(b"end")
+    archive = tmp_path / "end-archive"
+    _capture(source, archive, paper_companion=True)
+    marker = archive / "manifest.json"
+    record = json.loads(marker.read_text())
+    record["world_file_role"] = bad_role
+    marker.write_text(json.dumps(record))
+    with pytest.raises(WorldCheckpointError, match="schema"):
+        verify_world_checkpoint(archive)
+    with pytest.raises(WorldCheckpointError):
+        restore_world_to_new_branch(
+            archive, tmp_path / "untrusted-restored-end", restore_id="bad",
+        )
+    assert not (tmp_path / "untrusted-restored-end").exists()
+
+
+def test_empty_paper_companion_refused_before_archive_creation(tmp_path):
+    empty = tmp_path / "world_nether"
+    empty.mkdir()
+    with pytest.raises(WorldCheckpointError, match="empty Paper"):
+        _capture(empty, tmp_path / "no-archive", paper_companion=True)
+    assert not (tmp_path / "no-archive").exists()

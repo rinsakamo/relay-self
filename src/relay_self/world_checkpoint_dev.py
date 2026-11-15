@@ -103,7 +103,7 @@ def _rel(path: str) -> str:
     return path
 
 
-def _scan(root: Path) -> tuple[str, ...]:
+def _scan(root: Path, *, require_level_dat: bool = True) -> tuple[str, ...]:
     """Complete, deterministic inventory; refuse links and special files."""
     found: list[str] = []
     for directory, dirs, files in os.walk(root, followlinks=False):
@@ -121,7 +121,7 @@ def _scan(root: Path) -> tuple[str, ...]:
         for name in files:
             found.append(_rel((Path(directory) / name).relative_to(root).as_posix()))
     found.sort()
-    if "level.dat" not in found:
+    if require_level_dat and "level.dat" not in found:
         raise WorldCheckpointError("Minecraft level.dat missing")
     return tuple(found)
 
@@ -200,6 +200,7 @@ def capture_stopped_world(
     logical_tick: int,
     tick_source_ref: str,
     stopped_server_ref: str,
+    paper_companion: bool = False,
 ) -> dict[str, Any]:
     """Capture a *declared stopped* World to a new archive, leaving originals intact.
 
@@ -217,7 +218,11 @@ def capture_stopped_world(
     ):
         _text(name, value)
     _tick(logical_tick)
-    inventory = _scan(src)
+    if type(paper_companion) is not bool:
+        raise WorldCheckpointError("Paper companion role must be explicit boolean")
+    inventory = _scan(src, require_level_dat=not paper_companion)
+    if not inventory:
+        raise WorldCheckpointError("empty Paper companion cannot be captured")
     dest.mkdir(mode=0o700)
     payload = dest / "world"
     payload.mkdir(mode=0o700)
@@ -226,7 +231,7 @@ def capture_stopped_world(
         digest, size = _copy_hashed(src / rel, payload / rel)
         rows.append({"path": rel, "sha256": digest, "size": size})
     # Check for added, removed or changed files across the copy window.
-    if _scan(src) != inventory:
+    if _scan(src, require_level_dat=not paper_companion) != inventory:
         raise WorldCheckpointError("World inventory changed during capture")
     for row in rows:
         if _hash_file(src / row["path"]) != (row["sha256"], row["size"]):
@@ -234,7 +239,8 @@ def capture_stopped_world(
         if _hash_file(payload / row["path"]) != (row["sha256"], row["size"]):
             raise WorldCheckpointError("World archive copy checksum mismatch")
     manifest: dict[str, Any] = {
-        "schema": 1, "state": "CAPTURED_STOPPED_WORLD_FILES_DEV",
+        "schema": 2 if paper_companion else 1,
+        "state": "CAPTURED_STOPPED_WORLD_FILES_DEV",
         "world_id": world_id, "branch_id": branch_id,
         "checkpoint_id": checkpoint_id, "declared_logical_tick": logical_tick,
         "tick_source_ref": tick_source_ref,
@@ -243,6 +249,8 @@ def capture_stopped_world(
         "world_effect_coverage_attested": False,
         "files": rows,
     }
+    if paper_companion:
+        manifest["world_file_role"] = "PAPER_COMPANION"
     _write_new(dest / "SHA256SUMS", _checksums(rows))
     _sync_dir(payload)
     # Last-written manifest acts as a completion marker; no implicit repair.
@@ -271,9 +279,16 @@ def verify_world_checkpoint(
     keys = {"schema", "state", "world_id", "branch_id", "checkpoint_id",
             "declared_logical_tick", "tick_source_ref", "stopped_server_ref",
             "stop_attestation_is_external", "world_effect_coverage_attested", "files"}
-    if type(manifest) is not dict or set(manifest) != keys:
+    if type(manifest) is not dict:
         raise WorldCheckpointError("unknown checkpoint manifest schema")
-    if (manifest["schema"] != 1 or manifest["state"] != "CAPTURED_STOPPED_WORLD_FILES_DEV"
+    paper_companion = manifest.get("schema") == 2
+    if (
+        set(manifest) != (keys | {"world_file_role"} if paper_companion else keys)
+        or (paper_companion and manifest["world_file_role"] != "PAPER_COMPANION")
+    ):
+        raise WorldCheckpointError("unknown checkpoint manifest schema")
+    if (manifest["schema"] not in (1, 2)
+            or manifest["state"] != "CAPTURED_STOPPED_WORLD_FILES_DEV"
             or manifest["stop_attestation_is_external"] is not True
             or manifest["world_effect_coverage_attested"] is not False):
         raise WorldCheckpointError("unsupported checkpoint status")
@@ -296,7 +311,11 @@ def verify_world_checkpoint(
                 or any(x not in "0123456789abcdef" for x in digest)):
             raise WorldCheckpointError("invalid checkpoint digest")
         rels.append(rel)
-    if rels != sorted(set(rels)) or _scan(root / "world") != tuple(rels):
+    if (
+        rels != sorted(set(rels))
+        or _scan(root / "world", require_level_dat=not paper_companion)
+        != tuple(rels)
+    ):
         raise WorldCheckpointError("World checkpoint inventory mismatch")
     for row in rows:
         if _hash_file(root / "world" / row["path"]) != (row["sha256"], row["size"]):
@@ -345,7 +364,10 @@ def restore_world_to_new_branch(
         digest, size = _copy_hashed(archive / "world" / row["path"], dest / row["path"])
         if (digest, size) != (row["sha256"], row["size"]):
             raise WorldCheckpointError("restore copy differs from verified checkpoint")
-    if _scan(dest) != tuple(x["path"] for x in manifest["files"]):
+    if (
+        _scan(dest, require_level_dat=manifest["schema"] == 1)
+        != tuple(x["path"] for x in manifest["files"])
+    ):
         raise WorldCheckpointError("restore World inventory differs from snapshot")
     for row in manifest["files"]:
         if _hash_file(dest / row["path"]) != (row["sha256"], row["size"]):
@@ -428,7 +450,10 @@ def verify_restored_world(
         or receipt["manifest_sha256"] != _sha((archive / "manifest.json").read_bytes())
     ):
         raise WorldCheckpointError("restore receipt/archive identity mismatch")
-    if _scan(dest) != tuple(row["path"] for row in manifest["files"]):
+    if (
+        _scan(dest, require_level_dat=manifest["schema"] == 1)
+        != tuple(row["path"] for row in manifest["files"])
+    ):
         raise WorldCheckpointError("restored World file inventory changed")
     for row in manifest["files"]:
         if _hash_file(dest / row["path"]) != (row["sha256"], row["size"]):
