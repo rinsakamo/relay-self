@@ -93,7 +93,13 @@ def prelaunch(
     """Audit source branch event membership and copy BEFORE server starts."""
     if len(self_paths) < 2 or len(self_paths) != len(set(self_paths)):
         raise ForkRecoveryDevError("at least two distinct Self evidence paths required")
-    cut = SourceWorldCutWitness(**_read(cut_path))
+    source_cut = _read(cut_path)
+    if type(source_cut.get("included_effect_event_ids")) is not list:
+        raise ForkRecoveryDevError("cut membership must be a JSON array")
+    source_cut["included_effect_event_ids"] = tuple(
+        source_cut["included_effect_event_ids"]
+    )
+    cut = SourceWorldCutWitness(**source_cut)
     selves = tuple(load_derived_cognitive_cut_dev(p) for p in self_paths)
     event_input = _read(join_path)
     if set(event_input) != {
