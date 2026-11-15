@@ -359,6 +359,18 @@ async def issue_selected_move_dev(
         paper_proof = (
             None if paper_witness is None else await paper_witness.finish()
         )
+        if paper_witness is not None and (
+            not isinstance(paper_proof, PaperMoveStopProof)
+            or paper_proof.action_id != binding.action_id
+            or paper_proof.native_session_id != binding.scope.world_session_id
+            or paper_proof.actor_uuid != paper_witness.actor_uuid
+            or paper_proof.world_uuid != paper_witness.world_uuid
+            or paper_proof.paper_position_stable_8_ticks is not True
+            or paper_proof.physical_arrival_attested is not False
+            or paper_proof.native_stop_ack_attributed is not False
+            or paper_proof.source != "PAPER_MAIN_THREAD"
+        ):
+            raise PhysicalMoveRefusal("Paper MOVE proof does not match original Action/World")
         terminal = supervisor.record_outcome(
             binding.action_id, at_ns=at_ns + 2, provenance=final_stop.provenance,
         )
