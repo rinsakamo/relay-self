@@ -55,7 +55,14 @@ move from one World to another. No Action or Skill is replayed.
   state import, historic replay or issue grant. On false evidence, World
   transitions to irreversible HOLD in this DEV owner.
 - `world_only_owned_checkpoint_dev.py` explicitly controls the **same
-  original OwnedPaperWorld**, only with zero ONLINE Self. It obtains a real
+  original OwnedPaperWorld**, only with zero ONLINE Self AND an independently
+  supplied `WorldOnlyQuiescenceEvidence` from the original physical/GPU/peer
+  owners. The explicit proof requires the exact Self roster, current World
+  epoch, physically closed issuer, absent native sessions, no unresolved
+  Action/WAL, retired GPU epochs and drained peer messages. An in-memory
+  OFFLINE list alone can NEVER authorize World-only stop or World swap.
+  No production receipt provider is connected yet; the test supplies
+  visibly synthetic evidence. It obtains a real
   owned-process STOP/flush receipt, archives main + any known Paper sibling
   dimensions via the **existing** stopped-world archive SHA code, writes
   `WORLD_ONLY_COMMITTED.json` last, verifies manifest/hashes/zero Self
@@ -68,8 +75,9 @@ move from one World to another. No Action or Skill is replayed.
   World and companion source metadata and hashes. This is only archive
   integrity; actual Paper provenance is external.
 - `owned_paper_world_switch_dev.py` now accepts two **different owned
-  Paper server directories**. It requires every Self offline, a STOPPED
-  candidate with a pre-existing World-only committed archive, an
+  Paper server directories**. It requires every Self offline AND a
+  separately supplied, source-qualified original issuer retirement receipt,
+  a STOPPED candidate with a pre-existing World-only committed archive, an
   *externally pinned* SHA256 of that commit marker, exact source-vs-archive
   file inventory/digests for overworld and all Paper dimensions, and
   matching target World/branch identity. Source mismatches are rejected
@@ -112,7 +120,8 @@ Python synthetic tests N=0/2/10/100:
   stopped-file generations, no Self snapshot modified
 - Nether/End hash coverage, corruption refusal, missing flush HOLD,
   and owned stopped-World A→B switch with pinned candidate, wrong pin,
-  modified region, active/quarantined Self rejection
+  modified region, active/quarantined Self rejection, original issuer
+  still open, unresolved physical WAL and stale World retirement epoch
 - N=2/10/100 one quarantined Self while unrelated N-1 remain ONLINE;
   World source clock keeps advancing
 - wrong world branch, stale/reused session, old request, stale clock,
