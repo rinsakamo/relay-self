@@ -1073,3 +1073,32 @@ def test_cli_initial_skill_ir_rejection_prevents_eat_wal_and_native_issue(
     assert audit["recorded_actions"] == []
     assert not any(x[0] in {"equip_item", "consume_held"} for x in session.sent)
     assert session.closed
+
+
+def test_cli_post_issue_wal_readback_mismatch_does_not_claim_skill_progress(
+    monkeypatch, tmp_path,
+):
+    """Even a terminal native result needs a matching persisted WAL readback."""
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+
+    real_restore = PhysicalActionJournal.restore
+
+    def mismatched_restore(path, *, self_id):
+        reopened = real_restore(path, self_id=self_id)
+        reopened.digest = "0" * 64  # Simulate an untrusted/stale readback identity.
+        return reopened
+
+    monkeypatch.setattr(
+        PhysicalActionJournal, "restore", staticmethod(mismatched_restore),
+    )
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    assert "terminal EAT does not match restored physical WAL" in exc.value.audit["error"]
+    assert exc.value.audit["recorded_actions"][0]["state"] == "outcome"
+    assert exc.value.audit["physical_journal_records"][0]["status"] == "NATIVE_EAT_OUTCOME"
+    assert len([x for x in session.sent if x[0] == "equip_item"]) == 1
+    assert len([x for x in session.sent if x[0] == "consume_held"]) == 1
+    assert session.closed
