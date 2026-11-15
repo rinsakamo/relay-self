@@ -523,3 +523,56 @@ def test_native_effect_admission_denies_direct_low_level_effect_bypass(
         assert len(proc.stdin.writes) == 1
 
     asyncio.run(scenario())
+
+
+
+def test_real_python_native_send_allows_exact_precheckpoint_stop_only(
+    monkeypatch, tmp_path: Path,
+):
+    """The final Mineflayer stdin guard permits only the scoped STOP action ID."""
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def exercise():
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        physical = PhysicalIssueAdmission(
+            {"A": session.started.session_id}, require_neutral_stop=True,
+        )
+        session.install_effect_admission(
+            lambda sess, effect, action_id: physical.require_native_effect(
+                self_id="A", native_session_id=sess, effect=effect,
+                action_id=action_id,
+            )
+        )
+        token = physical.begin_neutralization()
+        with physical.stop_lease(
+            fence_ref=token, self_id="A",
+            native_session_id=session.started.session_id, stop_action_id="stop-A",
+        ):
+            with pytest.raises(PhysicalIssueFenceError, match="blocked"):
+                await session.send_clear_controls("forged-other-stop")
+            with pytest.raises(PhysicalIssueFenceError, match="blocked"):
+                await session.send_set_control(
+                    "unsafe-move", control="forward", state=True,
+                )
+            with pytest.raises(PhysicalIssueFenceError, match="blocked"):
+                await session.send_attack_entity("unsafe-attack", entity_id=42)
+            await session.send_clear_controls("stop-A")
+        assert [json.loads(x) for x in proc.stdin.writes] == [{
+            "type": "effect", "effect": "clear_controls", "action_id": "stop-A",
+        }]
+        # Without the matching ACK and delayed settle observations, STOP is
+        # PREPARED_UNRESOLVED and the cohort must never be committed.
+        with pytest.raises(PhysicalIssueFenceError, match="HOLD"):
+            physical.close()
+        assert physical.closed
+
+    asyncio.run(exercise())
