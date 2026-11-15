@@ -15,7 +15,6 @@ from relay_self.action import ActionLifecycle
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
-from relay_self.target_contract import TargetContract
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
@@ -25,6 +24,7 @@ from relay_self.relay_engine import (
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
+from relay_self.target_contract import TargetContract
 
 
 class MinimalCognitionError(ValueError):
