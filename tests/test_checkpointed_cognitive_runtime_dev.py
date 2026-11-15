@@ -623,7 +623,7 @@ def _owned_host_fixture(tmp_path, *, failure_b=None, paper=True):
             "print('Done (0.1s)', flush=True)\n"
             "for line in sys.stdin:\n"
             "    if line.strip() == 'save-all flush':\n"
-            "        print('Saving worlds', flush=True)\n"
+            "        print('Saved the game', flush=True)\n"
             "    if line.strip() == 'stop':\n"
             "        print('Stopping server', flush=True)\n"
             "        sys.exit(0)\n",
