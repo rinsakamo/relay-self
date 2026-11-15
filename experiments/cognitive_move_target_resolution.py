@@ -26,6 +26,7 @@ from relay_self.cognitive_minimal_dev import (
     WorldPercept,
 )
 from relay_self.common_io import ScopeRef
+from relay_self.move_destination_ref import move_destination_ref
 from relay_self.provenance import Provenance
 
 
@@ -89,7 +90,7 @@ def resolve_selected_move_target(
         or chosen.schema_id != "exploration"
         or chosen.pattern_id != "exploration-move"
         or not re.fullmatch(
-            r"destination:[A-Za-z0-9][A-Za-z0-9._:-]{0,89}",
+            r"destination:[A-Za-z0-9][A-Za-z0-9._:-]{0,89}@[a-f0-9]{64}",
             chosen.target_ref,
         )
         or selection.world_scope != frame.scope
@@ -114,7 +115,7 @@ def resolve_selected_move_target(
         or not percept.exploration_need
     ):
         raise MoveTargetRefusal("MOVE Goal/Target/WorldBody observation stale or unselected")
-    destination_id = chosen.target_ref.removeprefix("destination:")
+    destination_id = chosen.target_ref.removeprefix("destination:").split("@", 1)[0]
     matches = tuple(
         d for d in scenario.destinations if d.destination_id == destination_id
     )
@@ -123,7 +124,10 @@ def resolve_selected_move_target(
     destination = matches[0]
     if (
         not isinstance(destination, ControlledDestination)
-        or destination.provenance.source == "mineflayer"
+        or move_destination_ref(
+            destination.destination_id, destination.position,
+            destination.provenance,
+        ) != chosen.target_ref
         or not any(
             t.ref == chosen.target_ref
             and t.kind == "DESTINATION"
