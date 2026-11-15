@@ -4,12 +4,16 @@ These tests do not exercise native motor controls, STOP settling or World reach.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPosition
-from experiments.cognitive_minimal_minecraft_dev import native_schema_percept
+from experiments.cognitive_minimal_minecraft_dev import (
+    execute_one_cognitive_world_turn,
+    native_schema_percept,
+)
 from experiments.cognitive_move_target_resolution import (
     MoveTargetRefusal,
     resolve_selected_move_target,
@@ -33,6 +37,7 @@ from relay_self.initial_skill_ir import (
     compile_initial_skill,
     initial_skill_descriptors,
 )
+from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.move_destination_ref import move_destination_ref
 from relay_self.physical_action_port import PhysicalCapability
@@ -304,3 +309,108 @@ def test_unsafe_move_destination_ids_refused_before_option(id_value):
             id_value, MineflayerPosition(3, 64, 0),
             Provenance("configured-destination", "ref-1"),
         )
+
+
+class ProbeOnlySession:
+    """One source-qualified native probe; no motor command methods."""
+
+    def __init__(self, original, *, drop_probe=False):
+        self.original = original
+        self.sent = []
+        self.responses = []
+        self.drop_probe = drop_probe
+
+    async def send_observe(self, request_id):
+        self.sent.append(("observe", request_id))
+        if not self.drop_probe:
+            self.responses.append(replace(
+                self.original, seq=self.original.seq + 1,
+                kind="probe", request_id=request_id,
+            ))
+
+    async def receive(self):
+        if not self.responses:
+            raise RuntimeError("no current native response")
+        return self.responses.pop(0)
+
+
+def choose_move_engine():
+    def provider(request, *, mode):
+        assert mode is CognitionMode.BOUNDED
+        assert any("MOVE@1" in choice.description for choice in request.choices)
+        return ProviderDecision.resolved("1")
+
+    return RelayEngine(provider)
+
+
+def one_turn(*, scenario=None, need=True, physical=False):
+    scenario = scenario or configured()
+    original = observation(
+        12, kind="probe", session_id="world-A", request_id="initial",
+        food=20,
+    )
+    session = ProbeOnlySession(original)
+    owner = IntentCommitment()
+    supervisor = ActionSupervisor()
+    result = asyncio.run(execute_one_cognitive_world_turn(
+        session, original, scenario,
+        self_id="self-A", intent_id="intent-A",
+        registry=initial_patterns_with_move(),
+        relay_engine=choose_move_engine(), intent_owner=owner,
+        supervisor=supervisor, grant_real_world=True,
+        allowed_skills=MOVE_ONLY, exploration_need=need,
+        issue_native=physical, acknowledge_unfenced_dev=physical,
+    ))
+    return result, session, owner, supervisor
+
+
+def test_one_turn_actual_l1_to_native_move_target_stops_before_motor():
+    out, session, owner, supervisor = one_turn()
+    assert out.status == "MOVE_TARGET_BOUND_NO_ISSUE"
+    assert out.selection.option.skill_id == "MOVE"
+    assert out.move_target is not None
+    assert out.move_target.native_seq == 13
+    assert out.move_target.native_request_id == out.probe_request_id
+    assert out.move_target.physical_issued is False
+    assert out.move_target.stop_settled_attested is False
+    assert out.actual_action_outcomes == 0
+    assert len(session.sent) == 1
+    assert session.sent[0][0] == "observe"
+    assert owner.current_intent is None
+    assert supervisor.recorded_actions == ()
+
+
+def test_one_turn_move_cannot_use_legacy_unfenced_issuer():
+    with pytest.raises(MinimalCognitionError, match="no qualified physical MOVE"):
+        one_turn(physical=True)
+
+
+def test_one_turn_without_destination_escapes_to_l2_not_random_walk():
+    config = configured(targets=())
+    original = observation(
+        12, kind="probe", session_id="world-A",
+        request_id="initial", food=20,
+    )
+    session = ProbeOnlySession(original)
+    owner = IntentCommitment()
+    supervisor = ActionSupervisor()
+
+    def escalate(request, *, mode):
+        assert len(request.choices) == 2
+        assert request.choices[0].description == "ESCALATE_L2"
+        return ProviderDecision.resolved("1")
+
+    receipt = asyncio.run(execute_one_cognitive_world_turn(
+        session, original, config,
+        self_id="self-A", intent_id="intent-A",
+        registry=initial_patterns_with_move(),
+        relay_engine=RelayEngine(escalate), intent_owner=owner,
+        supervisor=supervisor, grant_real_world=True,
+        allowed_skills=MOVE_ONLY, exploration_need=True,
+    ))
+    assert receipt.status == "ESCALATE_L2"
+    assert receipt.initial_frame.goals[0].unresolved
+    assert receipt.move_target is None
+    assert session.sent == []
+    assert owner.current_intent is None
+    assert supervisor.recorded_actions == ()
