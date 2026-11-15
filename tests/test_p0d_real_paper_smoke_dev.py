@@ -120,3 +120,16 @@ def test_malformed_world_uuid_refused_as_no_paper_source(tmp_path):
     (root / "uid.dat").write_bytes(b"not-a-uuid")
     with pytest.raises(RealPaperSmokeRefusal, match="exactly 16"):
         _world_uuid(root)
+
+
+
+def test_only_official_reviewed_paper_build_can_be_launched(tmp_path):
+    paper, sha, plugin, plugin_sha = _resources(tmp_path)
+    with pytest.raises(RealPaperSmokeRefusal, match="only pinned official Paper"):
+        run_real_paper_smoke(
+            paper_jar=paper, paper_sha256=sha,
+            plugin_jar=plugin, plugin_sha256=plugin_sha,
+            scratch_parent=tmp_path, accepted_eula=True,
+        )
+    # This test does not accept a fake Paper binary or create a World.
+    assert not list(tmp_path.glob("p0d-real-paper-only-*"))
