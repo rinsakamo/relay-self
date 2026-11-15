@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
 from experiments.cognitive_physical_action_preflight import (
-    propose_from_cognitive_readonly_evidence,
+    propose_initial_skill_from_cognitive_readonly_evidence,
 )
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatDevReceipt,
@@ -22,7 +22,9 @@ from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalGrantStage,
     issue_selected_eat_dev,
 )
+from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.initial_skill_ir import ActionOutcomeWitness
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
@@ -40,6 +42,9 @@ class CognitivePhysicalEatResult:
     selected_target_ref: str
     action_id: str
     journal_sha256: str
+    initial_skill_ir: str
+    initial_skill_step_status: str
+    initial_skill_evaluation_status: str
     original_s49_authorized: bool = False
     qualification_attested: bool = False
 
@@ -116,7 +121,7 @@ async def issue_eat_from_selected_l1_dev(
     # EAT parent = an existing WorldBody-controlled, ordered
     # equip_item->consume_held capability, not an extra food-choice policy.
     capability = PhysicalCapability("EAT", 1, "hand", "FOOD", True)
-    proposal = propose_from_cognitive_readonly_evidence(
+    interpreted = propose_initial_skill_from_cognitive_readonly_evidence(
         receipt.selection,
         original_frame=receipt.initial_frame,
         current_frame=receipt.current_frame,
@@ -127,10 +132,11 @@ async def issue_eat_from_selected_l1_dev(
         intent_owner=intent_owner,
         skill_execution=skill,
         supervisor=supervisor,
-        at_ns=3,
+        registered_versions=frozenset({("EAT", 1)}),
+        at_ns=3, deadline_ns=1000,
         provenance=provenance,
-    ).port_proposal
-
+    )
+    proposal = interpreted.port_proposal
     binding = proposal.binding
     def grant(stage: PhysicalGrantStage, authority: str) -> PhysicalEatGrant:
         return PhysicalEatGrant(
@@ -165,7 +171,48 @@ async def issue_eat_from_selected_l1_dev(
         grant_real_world=dev_physical_grant,
         acknowledge_dev_unverified_principal=acknowledge_unverified_principal,
     )
+    # A successful return from the existing physical issuer is not alone a
+    # Skill/Goal success. Read back the persisted WAL independently of its
+    # in-memory journal snapshot; correlate the exact original parent Action,
+    # native child ACKs and later food/inventory evidence before L0 advances.
+    persisted = PhysicalActionJournal.restore(journal.path, self_id=self_id)
+    row = persisted.records[-1] if persisted.records else {}
+    if (
+        persisted.digest != journal.digest or persisted.unresolved
+        or effect.terminal.state is not ActionState.OUTCOME
+        or supervisor.get(binding.action_id) is not effect.terminal
+        or row.get("status") != "NATIVE_EAT_OUTCOME"
+        or row.get("action_id") != binding.action_id
+        or row.get("intent_id") != binding.intent_id
+        or row.get("skill_execution_id") != binding.skill_execution_id
+        or row.get("target_ref") != binding.target_ref
+        or row.get("session_id") != binding.scope.world_session_id
+        or row.get("source_ref") != binding.native_source.reference
+        or row.get("probe_seq") != binding.native_seq
+        or row.get("probe_request_id") != binding.native_request_id
+        or row.get("effect_seqs") != [effect.equip.seq, effect.consume.seq]
+        or row.get("after_seq") != effect.after.seq
+        or row.get("count_before") != effect.item_count_before
+        or row.get("count_after") != effect.item_count_after
+        or row.get("food_before") != int(effect.food_before)
+        or row.get("food_after") != int(effect.food_after)
+    ):
+        raise PhysicalEatRefusal("terminal EAT does not match restored physical WAL")
+    step = interpreted.interpreter.observe_action(
+        interpreted.cursor,
+        action=effect.terminal,
+        witness=ActionOutcomeWitness(
+            binding.scope, binding.action_id, binding.native_source,
+            journal_closed=True, effect_correlated=True,
+        ),
+        intent_owner=intent_owner, skill_execution=skill,
+        at_ns=7,  # logical Action time only, not measured latency
+    )
+    if step.status != "YIELD_EVALUATION":
+        raise PhysicalEatRefusal("EAT Skill IR did not yield terminal evaluation")
     return CognitivePhysicalEatResult(
         effect, intent_id, skill.execution_id,
         binding.target_ref, action_id, journal.digest,
+        f"{interpreted.ir.skill_id}@{interpreted.ir.version}",
+        interpreted.status, step.status,
     )
