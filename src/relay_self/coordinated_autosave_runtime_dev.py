@@ -14,7 +14,6 @@ from typing import Callable
 
 from relay_self.coordinated_checkpoint_dev import (
     AutosaveGate,
-    CoordinatedCheckpointError,
     SelfSnapshotSource,
     capture_generation,
     latest_verified_generation,
