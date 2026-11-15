@@ -22,7 +22,7 @@ from relay_self.attack_world_join_dev import (
     ServerDeathEvent,
     attack_from_restored_wal,
 )
-from relay_self.causal_recovery import project_physical_journal
+from relay_self.causal_recovery import WalState, project_physical_journal
 from relay_self.forked_recovery_dev import (
     ForkRecoveryDevDecision,
     ForkRecoveryDevError,
@@ -108,7 +108,12 @@ def prelaunch(
     effects = ()
     if (event_input["server_attack_ticket"] is not None
             and event_input["native_identity"] is not None
-            and len(event_input["server_damage_events"]) == 1):
+            and len(event_input["server_damage_events"]) == 1
+            and any(
+                entry.action_id == event_input["action_id"]
+                and entry.status is WalState.NATIVE_ATTACK_HURT_OBSERVED
+                for entry in wal
+            )):
         attack = attack_from_restored_wal(
             journal, self_id=event_input["self_id"],
             action_id=event_input["action_id"],
