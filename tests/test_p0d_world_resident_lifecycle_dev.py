@@ -532,3 +532,58 @@ def test_world_swap_refused_with_active_or_unresolved_self(tmp_path, state):
         assert old.owned_session_id == life.world.paper_session_id
     finally:
         old.stop_and_save()
+
+
+
+@pytest.mark.parametrize("failure", ["open_issuer", "stale_epoch", "pending_action"])
+def test_world_only_requires_original_issuer_proof_not_presence_only(
+    tmp_path, failure,
+):
+    adapter = _fake_paper(tmp_path)
+    session = adapter.start_owned()
+    life = WorldResidentLifecycle(
+        world=WorldLifetime("world-alpha", "source", session, 0, 0),
+        persisted_self_refs={"A": "retained-A"},
+    )
+    good = _fake_quiescence(life)
+    changes = {
+        "open_issuer": {"original_physical_issuer_closed": False},
+        "stale_epoch": {"world_epoch": 123},
+        "pending_action": {"no_unresolved_physical_actions": False},
+    }
+    from dataclasses import replace
+    fake = replace(good, **changes[failure])
+    store = tmp_path / "store"
+    store.mkdir()
+    runner = WorldOnlyOwnedPaperCheckpoint(
+        lifecycle=life, owned_paper=adapter, store=store,
+        issuer_quiescence=lambda: fake,
+    )
+    try:
+        with pytest.raises(ResidentLifecycleError, match="issuer retirement"):
+            runner.cycle()
+        assert adapter.owned_session_id == session
+        assert not life.world_held
+        assert not list(store.iterdir())
+    finally:
+        adapter.stop_and_save()
+
+
+def test_world_swap_presence_only_cannot_override_live_original_issuer(tmp_path):
+    from dataclasses import replace
+
+    life, switcher, old, new, archive, pin = _prepared_world_swap(tmp_path)
+    claimed = replace(
+        _fake_quiescence(life),
+        native_sessions_absent=False,
+    )
+    switcher.issuer_quiescence = lambda: claimed
+    try:
+        with pytest.raises(ResidentLifecycleError, match="issuer retirement"):
+            switcher.switch_to_preverified_world(
+                candidate_generation=archive, expected_commit_sha256=pin,
+            )
+        assert old.owned_session_id == life.world.paper_session_id
+        assert not life.world_held
+    finally:
+        old.stop_and_save()
