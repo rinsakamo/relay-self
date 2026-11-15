@@ -47,7 +47,9 @@ def _run_witness(
                 "server_session_id": session, "source": source, "world_uuid": world,
             }
             ack = (root / "acks" / (data["nonce"] + ".ack"))
-            ack.write_text("".join(f"{key}={rows[key]}\n" for key in sorted(rows)))
+            staging = ack.with_suffix(".tmp")
+            staging.write_text("".join(f"{key}={rows[key]}\n" for key in sorted(rows)))
+            staging.replace(ack)
             if write_log:
                 marker = (
                     f"P0D_TICK_ACK nonce={nonce} boot={boot} session={session}"

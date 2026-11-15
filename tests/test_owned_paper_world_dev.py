@@ -117,6 +117,28 @@ def test_does_not_attach_or_launch_two_servers(tmp_path):
     adapter.stop_and_save()
 
 
+def test_start_failure_holds_without_issuing_save(tmp_path):
+    adapter, _, _ = _server(tmp_path)
+    adapter.command = (sys.executable, "-c", "raise SystemExit(7)")
+    with pytest.raises(OwnedPaperError, match="exited before readiness"):
+        adapter.start_owned()
+    assert adapter.held_uncertain
+
+
+def test_abnormal_exit_after_flush_is_not_clean_stop(tmp_path):
+    adapter, _, _ = _server(tmp_path)
+    adapter.command = (sys.executable, "-u", "-c", (
+        "import sys\nprint('Done (',flush=True)\n"
+        "for line in sys.stdin:\n"
+        " if line.strip()=='save-all flush': print('Saved the game',flush=True)\n"
+        " if line.strip()=='stop': print('Stopping server',flush=True); sys.exit(7)\n"
+    ))
+    adapter.start_owned()
+    with pytest.raises(OwnedPaperError, match="clean save evidence"):
+        adapter.stop_and_save()
+    assert adapter.held_uncertain
+
+
 def test_wrong_server_tick_session_cannot_stop(tmp_path):
     adapter, _, _ = _server(tmp_path)
     adapter.start_owned()
