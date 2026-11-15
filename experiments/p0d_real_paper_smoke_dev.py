@@ -118,6 +118,10 @@ def _bootstrap_paper(
             launch, cwd=world_root, stdin=subprocess.PIPE,
             stdout=log, stderr=subprocess.STDOUT, shell=False,
         )
+    _write_bytes_new(
+        world_root / "evidence" / "bootstrap.pid",
+        (str(process.pid) + "\n").encode(),
+    )
     try:
         _wait_log(
             process, log_path, timeout_s=timeout_s,
@@ -190,7 +194,7 @@ def run_real_paper_smoke(
 ) -> Path:
     """Return the audit JSON only after two independent real-source tick cuts."""
     if (
-        type(timeout_s) not in (float, int) or not 20 <= timeout_s <= 300
+        type(timeout_s) not in (float, int) or not 20 <= timeout_s <= 180
         or type(heap_mb) is not int or not 512 <= heap_mb <= 8192
         or type(java) is not str or not java.strip()
     ):
