@@ -1,6 +1,7 @@
 """#860 staged autosave barrier: synthetic callbacks, NEVER a live Paper trial."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from pathlib import Path
 
@@ -289,3 +290,67 @@ def test_paper_two_generation_dimension_roster_is_pinned_before_commit(tmp_path:
     assert runner.held_after_failure
     assert runner.last_verified() == second.generation
     assert not (runtime.store / "g-000000000002" / "COMMITTED.json").exists()
+
+
+def test_async_native_rejoin_waits_for_both_before_release(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+    events = []
+
+    async def prepare(sid: str, paper: str, old: str) -> str:
+        assert paper == "paper-new-1"
+        assert old == f"native-before-{sid}"
+        assert runtime.events[-1] in {"world-restart", "rebind:A"}
+        events.append("prepared:" + sid)
+        await asyncio.sleep(0)
+        assert "release" not in runtime.events
+        return f"native-after-{sid}-1"
+
+    result = asyncio.run(runner.run_if_due_async(0.0, prepare_rejoin=prepare))
+    assert result is not None
+    assert events == ["prepared:A", "prepared:B"]
+    assert runner.timer.last_success_monotonic == 0.0
+    assert runner.last_verified() == result.generation
+    assert runtime.events[-3:] == ["rebind:A", "rebind:B", "release"]
+
+
+def test_async_native_rejoin_failure_keeps_gate_closed_with_committed_cut(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+    async def prepare(sid: str, paper: str, old: str) -> str:
+        assert old == f"native-before-{sid}"
+        if sid == "B":
+            raise ConnectionError("native B never respawned")
+        return "native-after-A-1"
+
+    with pytest.raises(AutosaveBarrierError, match="rejoin failed"):
+        asyncio.run(runner.run_if_due_async(0.0, prepare_rejoin=prepare))
+    assert runner.held_after_failure
+    assert runtime.events[-1] == "world-restart"
+    assert runner.timer.last_success_monotonic is None
+    assert runner.last_verified() == runtime.store / "g-000000000000"
+
+
+def test_async_native_rejoin_rejects_mismatched_owner_and_duplicate(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+    async def prepare(sid: str, paper: str, old: str) -> str:
+        return "not-owner-session" if sid == "A" else "native-after-B-1"
+
+    with pytest.raises(AutosaveBarrierError, match="owner rebind differs"):
+        asyncio.run(runner.run_if_due_async(0.0, prepare_rejoin=prepare))
+    assert runner.held_after_failure
+    assert "release" not in runtime.events
+
+
+def test_async_native_rejoin_cancellation_holds_without_implicit_retry(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+    async def prepare(sid: str, paper: str, old: str) -> str:
+        raise asyncio.CancelledError()
+
+    with pytest.raises(AutosaveBarrierError, match="rejoin failed"):
+        asyncio.run(runner.run_if_due_async(0.0, prepare_rejoin=prepare))
+    assert runner.held_after_failure
+    assert runner.timer.last_success_monotonic is None
+    assert "release" not in runtime.events
