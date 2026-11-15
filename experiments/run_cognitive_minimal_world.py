@@ -333,6 +333,14 @@ async def run(
             ),
             node_executable=args.node, startup_timeout_s=args.startup_timeout_s,
         )
+        if coordinated_fence:
+            # Even direct native effect sends must possess the same active
+            # selected L1 EAT/ATTACK lease. No legacy MOVE/LOOK effects allowed.
+            session.install_effect_admission(
+                lambda session_id, effect: physical_issue_admission.require_native_effect(
+                    self_id=args.self_id, native_session_id=session_id, effect=effect,
+                )
+            )
         spawn = await _initial_spawn(session, args.startup_timeout_s)
         first = spawn
         # Before any GPU inference, persist source-qualified initial native
