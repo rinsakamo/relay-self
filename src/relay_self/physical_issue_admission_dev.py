@@ -97,6 +97,22 @@ class PhysicalIssueAdmission:
             return tuple(sorted(self._sessions))
 
     @property
+    def current_native_sessions(self) -> dict[str, str]:
+        """Read-only snapshot for pre-save host roster/source verification."""
+        with self._lock:
+            return dict(self._sessions)
+
+    def hold_for_operator(self) -> None:
+        """Irreversibly deny new issues after host preflight or cycle failure.
+
+        This is an admission fence, NOT proof that an in-flight native Action
+        has already stopped. Operator must reconcile any unresolved WAL.
+        """
+        with self._lock:
+            self._closed = True
+            self._poisoned = True
+
+    @property
     def closed(self) -> bool:
         with self._lock:
             return self._closed
