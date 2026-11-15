@@ -90,7 +90,7 @@ def _verify_local_runtime(java: str, node: str) -> None:
         version = (proc.stdout + "\n" + proc.stderr).strip()
         import re
 
-        if not re.search(rf"\b{required}(?:\.|\b)", version):
+        if not re.search(rf"(?:^|[^0-9])v?{required}(?:\.|\b)", version):
             raise TwoNativePaperRefusal(f"{name} major version must be {required}")
     bridge = Path(__file__).resolve().parents[1] / "adapters" / "mineflayer"
     package = bridge / "node_modules" / "mineflayer" / "package.json"
@@ -160,6 +160,24 @@ async def run_native_two_cycle_smoke(
     proved spawn+probe and rotated. The only permitted subsequent command is
     the next supervised STOP. This does not attest cognitive release safety.
     """
+    try:
+        return await _execute_native_two_cycle_smoke(
+            owner=owner, native=native, physical=physical,
+            world_root=world_root, world_dir=world_dir,
+            stop_audit_dir=stop_audit_dir, evidence_dir=evidence_dir,
+            world_id=world_id, timeout_s=timeout_s,
+        )
+    except BaseException:
+        physical.hold_for_operator()
+        raise
+
+
+async def _execute_native_two_cycle_smoke(
+    *, owner: OwnedPaperWorld, native: OwnedNativeRejoinCohort,
+    physical: PhysicalIssueAdmission, world_root: Path,
+    world_dir: Path, stop_audit_dir: Path, evidence_dir: Path,
+    world_id: str, timeout_s: float,
+) -> list[dict[str, object]]:
     results: list[dict[str, object]] = []
     paper_session = owner.owned_session_id
     if paper_session is None or physical.closed:
@@ -178,6 +196,8 @@ async def run_native_two_cycle_smoke(
         if ready.verified_self_ids != physical.self_roster:
             raise TwoNativePaperRefusal("full native STOP cohort missing")
         fence = physical.close()
+        if ready.fence_ref != fence.fence_ref:
+            raise TwoNativePaperRefusal("STOP proof and physical fence refs differ")
         stopped = owner.stop_and_save()
         if (
             stopped.old_server_session_id != paper_session
