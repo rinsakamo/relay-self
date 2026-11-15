@@ -84,12 +84,12 @@ def _trace(contents=None):
 
 
 def _join(data=None, *, logout=None, login=None, b_before="native-B"):
-    w, l, n = _proofs()
+    world, original_logout, original_login = _proofs()
     return join_resident_paper_presence(
-        trace=_trace(data), world=w,
+        trace=_trace(data), world=world,
         a_name="RelayA", b_name="RelayB",
-        a_logout=l if logout is None else logout,
-        a_relogin=n if login is None else login,
+        a_logout=original_logout if logout is None else logout,
+        a_relogin=original_login if login is None else login,
         original_b_native="native-B",
         surviving_b_native=b_before,
     )
