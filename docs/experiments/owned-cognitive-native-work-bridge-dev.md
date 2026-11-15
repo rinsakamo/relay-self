@@ -27,13 +27,17 @@ interfaces can be composed for a read-only/no-inference A/B experiment.
 4. `CognitionOwnerCohort.rebind` invokes `bridge.external_native_rejoin`.
    It rechecks the current actual native process and immutable receipt,
    and rotates **only the original physical issuer** with the held token.
-5. `bridge.release` requires every A/B rebind before releasing physical
-   admission. The original native IDs are now stale.
-6. After success the cognitive owners still reject mutation until the
-   new process probe clocks are admitted via
-   `bridge.admit_worldbody` → `CheckpointedCognitiveOwner.observe_world_tick`.
-   An invalid/ended/stale session globally closes the physical gate.
-   Only then is the next 60-monotonic-second save pulse eligible.
+5. `bridge.release` requires every A/B rebind AND both source-derived
+   WorldBody probe clocks. It first rechecks both live session IDs,
+   checks the clocks against the previous cognition owner, and invokes
+   `CognitionOwnerCohort.observe_fenced_rejoin_world_tick` while the
+   cognition and physical gates are **still closed**. Only then does
+   the existing physical issuer release. No native physical issue lease
+   can be admitted in a fresh session before its WorldBody clock.
+6. A missing/ended/stale B session or regressed WorldBody clock HOLDs
+   the *whole* physical cohort while retaining the already committed
+   World+Self generation as inert evidence. A future 60-second pulse is
+   eligible only after a successful whole-cohort rebind and release.
 
 ## Strict scope and nonclaims
 
