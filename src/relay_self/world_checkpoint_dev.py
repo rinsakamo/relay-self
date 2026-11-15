@@ -312,6 +312,7 @@ def restore_world_to_new_branch(
     *,
     restore_id: str,
     expected_manifest_sha256: str | None = None,
+    new_branch_id: str | None = None,
 ) -> dict[str, Any]:
     """Restore into a never-existing directory; issue a new branch in sidecar.
 
@@ -328,7 +329,15 @@ def restore_world_to_new_branch(
     manifest = verify_world_checkpoint(
         archive, expected_manifest_sha256=expected_manifest_sha256,
     )
-    new_branch = f"fork-{uuid.uuid4()}"
+    if new_branch_id is None:
+        new_branch = f"fork-{uuid.uuid4()}"
+    else:
+        try:
+            if new_branch_id != "fork-" + str(uuid.UUID(new_branch_id[5:])):
+                raise WorldCheckpointError("noncanonical fork branch identity")
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise WorldCheckpointError("invalid shared fork branch identity") from exc
+        new_branch = new_branch_id
     if new_branch == manifest["branch_id"]:
         raise WorldCheckpointError("restore must create a new branch")
     dest.mkdir(mode=0o700)

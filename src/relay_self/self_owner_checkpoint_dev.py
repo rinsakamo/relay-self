@@ -497,6 +497,7 @@ def capture_typed_generation(
     selves: tuple[SelfSnapshotSource, ...],
     world_id: str, branch_id: str, logical_tick: int,
     tick_source_ref: str, stopped_server_ref: str, quiesced_selves_ref: str,
+    paper_layout: bool = False,
 ) -> Path:
     """Opt-in typed A/B gate; reject mismatched messages BEFORE commit marker."""
     expected = tuple(sorted(expected_self_ids))
@@ -517,7 +518,7 @@ def capture_typed_generation(
         logical_tick=logical_tick, tick_source_ref=tick_source_ref,
         stopped_server_ref=stopped_server_ref,
         quiesced_selves_ref=quiesced_selves_ref,
-        precommit_validator=before_commit,
+        precommit_validator=before_commit, paper_layout=paper_layout,
     )
     verify_typed_generation(generation)
     return generation

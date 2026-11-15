@@ -89,6 +89,7 @@ class CoordinatedCheckpointHost:
             or owned_paper.world_id != runtime.world_id
             or owned_paper.branch_id != runtime.branch_id
             or owned_paper.world_dir != runtime.source_world
+            or not runtime.paper_layout
         ):
             raise CheckpointHostError("owned Paper and runtime World identity mismatch")
         if (
