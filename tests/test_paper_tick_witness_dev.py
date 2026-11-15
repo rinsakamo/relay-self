@@ -185,7 +185,7 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
     spool = _spool(tmp_path)
     fake = tmp_path / "faux_paper_with_p0d.py"
     fake.write_text(
-        "import select,sys,time,uuid\n"
+        "import os,select,sys,time,uuid\n"
         "from pathlib import Path\n"
         "root=Path(sys.argv[1]); world=sys.argv[2]\n"
         "boot=str(uuid.uuid4()); tick=110\n"
@@ -204,10 +204,10 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
         "              f'session={session} world={world} tick={tick} '\n"
         "              'source=PAPER_MAIN_THREAD',flush=True)\n"
         "    if select.select([sys.stdin],[],[],.02)[0]:\n"
-        "        cmd=sys.stdin.readline().strip()\n"
-        "        if cmd=='save-all flush': print('Saving worlds',flush=True)\n"
-        "        if cmd=='stop':\n"
-        "            print('Stopping server',flush=True); sys.exit(0)\n",
+        "        for cmd in os.read(sys.stdin.fileno(),4096).decode().splitlines():\n"
+        "            if cmd=='save-all flush': print('Saving worlds',flush=True)\n"
+        "            if cmd=='stop':\n"
+        "                print('Stopping server',flush=True); sys.exit(0)\n",
         encoding="utf-8",
     )
     owner_ref = {}
