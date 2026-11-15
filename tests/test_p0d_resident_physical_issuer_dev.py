@@ -39,7 +39,12 @@ from relay_self.owned_resident_physical_bridge_dev import (
 )
 from relay_self.persistent_cognition import (
     IdentitySpecification,
+    Memory,
     PersistentCognition,
+)
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
 )
 from relay_self.physical_action_journal import (
     PhysicalActionJournal,
@@ -149,7 +154,7 @@ class FakeNativeResident:
 
 
 class ResidentFixture:
-    def __init__(self, root: Path, n: int):
+    def __init__(self, root: Path, n: int, *, cognitive_work: bool = False):
         self.paper = _fake_paper(root)
         paper_session = self.paper.start_owned()
         self.names = tuple(f"S{i:03d}" for i in range(n))
@@ -207,10 +212,13 @@ class ResidentFixture:
             self.launched.append(value)
             return value
 
+        self.cognitive = (
+            ResidentCognitiveWorkOwner(self.owners) if cognitive_work else None
+        )
         self.bridge = OwnedResidentPhysicalBridge(
             lifecycle=self.lifecycle, physical=self.physical,
             paper=self.paper, configs=self.configs, owners=self.owners,
-            launch=launch,
+            launch=launch, cognitive_work=self.cognitive,
         )
 
     def stop_paper(self):
