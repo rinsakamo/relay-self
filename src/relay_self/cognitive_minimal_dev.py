@@ -15,6 +15,7 @@ from relay_self.action import ActionLifecycle
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+from relay_self.target_contract import TargetContract
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
@@ -190,6 +191,7 @@ class Target:
     world_session_id: str
     observed_sequence: int
     live: bool = True
+    arrival_contract: TargetContract | None = None
 
     def __post_init__(self) -> None:
         if not self.ref or not self.kind or not self.world_session_id:
@@ -198,6 +200,14 @@ class Target:
             raise MinimalCognitionError("invalid target sequence")
         if not isinstance(self.provenance, Provenance) or type(self.live) is not bool:
             raise MinimalCognitionError("invalid target evidence")
+        if self.arrival_contract is not None and (
+            not isinstance(self.arrival_contract, TargetContract)
+            or self.arrival_contract.target_ref != self.ref
+            or self.arrival_contract.provenance != self.provenance
+            or self.arrival_contract.scope.world_session_id != self.world_session_id
+            or self.arrival_contract.bound_seq > self.observed_sequence
+        ):
+            raise MinimalCognitionError("foreign or future target arrival contract")
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,6 +262,7 @@ class Option:
     target_kind: str
     schema_id: str
     pattern_id: str
+    arrival_contract: TargetContract | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -333,9 +344,12 @@ def cpu_schema_epoch(
                 checks += 1
                 if len(options) >= 8:
                     break
-                options.append(Option(pattern.goal_id or "", pattern.skill_id or "",
-                                      pattern.skill_version or 0, t.ref, t.kind,
-                                      pattern.schema_id, pattern.pattern_id))
+                options.append(Option(
+                    pattern.goal_id or "", pattern.skill_id or "",
+                    pattern.skill_version or 0, t.ref, t.kind,
+                    pattern.schema_id, pattern.pattern_id,
+                    t.arrival_contract,
+                ))
     return SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
@@ -387,6 +401,16 @@ def assemble_l1_select(
         else:
             desc = (f"{entry.goal_id}: {entry.skill_id}@{entry.skill_version}"
                     f"({entry.target_ref}) [schema={entry.schema_id}]")
+            if entry.arrival_contract is not None:
+                c = entry.arrival_contract
+                req = c.condition
+                desc += (
+                    f" [target={c.kind.value},"
+                    f" horizontal={req.min_horizontal_m:g}..{req.max_horizontal_m:g}m,"
+                    f" max_y_error={req.max_vertical_error_m:g}m,"
+                    f" still_ticks={req.still_ticks},"
+                    f" condition_ref={c.contract_ref}]"
+                )
         choices.append(BoundedChoice(choice_id, desc))
     request = BoundedChoiceRequest(
         request_id=f"schema-l1-{frame.scope.self_id}-{frame.epoch}",
