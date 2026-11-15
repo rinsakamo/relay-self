@@ -96,6 +96,7 @@ class JoinedActionEffect:
     actor_self_id: str
     native_session_id: str
     native_target_ref: str
+    wal_journal_sha256: str
     target_uuid: str
     target_alive_after: bool | None
     join_status: AttackWorldJoinStatus
@@ -105,7 +106,7 @@ class JoinedActionEffect:
         for label in (
             "world_id", "source_branch_id", "event_id", "damage_event_id",
             "action_id", "actor_self_id", "native_session_id",
-            "native_target_ref", "target_uuid",
+            "native_target_ref", "wal_journal_sha256", "target_uuid",
         ):
             _name(getattr(self, label), label)
         _names(self.source_refs, "effect source refs")
@@ -151,6 +152,7 @@ def joined_action_effect_dev(
         damage_event_id=damage.event_id, action_id=wal.action_id,
         actor_self_id=wal.self_id, native_session_id=wal.session_id,
         native_target_ref=wal.native_target_ref,
+        wal_journal_sha256=wal.journal_sha256,
         target_uuid=native.target_uuid,
         target_alive_after=False if death is not None else
         True if damage.health_after > 0 else None,
@@ -352,14 +354,17 @@ def prepare_forked_recovery_dev(
             effect = effect_by_action.get(claim.action_id)
             if row is None or row.self_id != cp.self_id:
                 hold.append(f"Action {claim.action_id} has no matching Self-owned WAL")
-            elif row.status is WalState.PREPARED_UNRESOLVED:
-                hold.append(f"Action {claim.action_id} remains PREPARED_UNRESOLVED")
+            elif row.status is not WalState.NATIVE_ATTACK_HURT_OBSERVED:
+                hold.append(f"Action {claim.action_id} has no terminal native ATTACK hurt")
             elif row.native_target_ref != claim.native_target_ref:
                 hold.append(f"Action {claim.action_id} uses stale native target")
             if (effect is None or effect.actor_self_id != cp.self_id
                     or effect.target_uuid != claim.expected_target_uuid
                     or effect.native_target_ref != claim.native_target_ref
-                    or row is not None and effect.native_session_id != row.native_session_id):
+                    or row is not None and (
+                        effect.native_session_id != row.native_session_id
+                        or effect.wal_journal_sha256 != row.journal_sha256
+                    )):
                 hold.append(f"Action {claim.action_id} lacks correlated source-branch effect")
             elif effect.event_id not in cut.included_effect_event_ids:
                 remembered.append(claim.action_id)
