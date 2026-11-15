@@ -38,7 +38,7 @@ from relay_self.physical_action_port import (
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
 from test_cognitive_minimal_minecraft_dev import observation
-from test_cognitive_move_target_resolution import configured, prepare, select
+from test_cognitive_move_target_resolution import prepare, select
 from test_cognitive_physical_eat_issue_dev import OwnedFakeNative
 
 
