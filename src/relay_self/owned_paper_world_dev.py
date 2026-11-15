@@ -45,7 +45,7 @@ class OwnedPaperWorld:
         command: tuple[str, ...], world_id: str, branch_id: str,
         tick_readback: Callable[[str], PaperTickReceipt],
         ready_marker: str = "Done (",
-        save_marker: str = "Saving worlds",
+        save_marker: str = "Saved the game",
         shutdown_marker: str = "Stopping server",
         timeout_seconds: float = 30.0,
     ) -> None:
@@ -121,6 +121,7 @@ class OwnedPaperWorld:
         self._process = proc
         self._session_id = session
         self._log_path = log_path
+        (self.evidence_dir / (session + ".pid")).write_text(str(proc.pid) + "\n")
         deadline = time.monotonic() + self.timeout_seconds
         try:
             while time.monotonic() < deadline:
@@ -157,9 +158,24 @@ class OwnedPaperWorld:
         if proc.stdin is None:
             raise OwnedPaperError("owned Paper console stdin missing")
         try:
-            proc.stdin.write(b"save-all flush\nstop\n")
+            offset = len(self._read_log())
+            proc.stdin.write(b"save-all flush\n")
+            proc.stdin.flush()
+            deadline = time.monotonic() + self.timeout_seconds
+            while time.monotonic() < deadline:
+                if proc.poll() is not None:
+                    raise OwnedPaperError("Paper exited before flush completion")
+                if self.save_marker in self._read_log()[offset:]:
+                    break
+                time.sleep(0.02)
+            else:
+                raise OwnedPaperError("Paper flush completion not observed; HOLD")
+            proc.stdin.write(b"stop\n")
             proc.stdin.flush()
             returncode = proc.wait(timeout=self.timeout_seconds)
+        except OwnedPaperError:
+            self._uncertain = True
+            raise
         except (OSError, subprocess.TimeoutExpired) as exc:
             self._uncertain = True
             raise OwnedPaperError("Paper save/stop did not complete cleanly") from exc

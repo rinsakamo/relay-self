@@ -204,7 +204,7 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
         "              'source=PAPER_MAIN_THREAD',flush=True)\n"
         "    if select.select([sys.stdin],[],[],.02)[0]:\n"
         "        for cmd in os.read(sys.stdin.fileno(),4096).decode().splitlines():\n"
-        "            if cmd=='save-all flush': print('Saving worlds',flush=True)\n"
+        "            if cmd=='save-all flush': print('Saved the game',flush=True)\n"
         "            if cmd=='stop':\n"
         "                print('Stopping server',flush=True); sys.exit(0)\n",
         encoding="utf-8",

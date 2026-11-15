@@ -47,7 +47,7 @@ def _server(tmp_path: Path, *, announce_save: bool = True):
         "print('Done (0.8s)! For help, type \"help\"', flush=True)\n"
         "for line in sys.stdin:\n"
         "    if line.strip() == 'save-all flush':\n"
-        + ("        print('Saving worlds', flush=True)\n" if announce_save else "        pass\n")
+        + ("        print('Saved the game', flush=True)\n" if announce_save else "        pass\n")
         + "    if line.strip() == 'stop':\n"
         "        print('Stopping server', flush=True)\n"
         "        sys.exit(0)\n",
@@ -83,7 +83,7 @@ def test_owned_process_stops_saves_then_restarts_new_session(tmp_path):
     assert adapter.owned_session_id is None
     assert not adapter.held_uncertain
     log = (evidence / (first + ".log")).read_text()
-    assert "Saving worlds" in log and "Stopping server" in log
+    assert "Saved the game" in log and "Stopping server" in log
     restarted = adapter.runtime_hooks().restart_same_source_world()
     assert restarted.server_started
     assert restarted.new_server_session_id != first
@@ -95,8 +95,15 @@ def test_owned_process_stops_saves_then_restarts_new_session(tmp_path):
 def test_missing_world_save_log_is_refused_and_fenced(tmp_path):
     adapter, _, _ = _server(tmp_path, announce_save=False)
     adapter.start_owned()
-    with pytest.raises(OwnedPaperError, match="clean save evidence"):
-        adapter.stop_and_save()
+    try:
+        with pytest.raises(OwnedPaperError, match="flush completion"):
+            adapter.stop_and_save()
+    finally:
+        assert adapter._process is not None and adapter._process.stdin is not None
+        adapter._process.stdin.write(b"stop\n")
+        adapter._process.stdin.flush()
+        adapter._process.wait(timeout=3)
+        adapter._process.stdin.close()
     assert adapter.held_uncertain
     with pytest.raises(OwnedPaperError, match="uncertain"):
         adapter.restart_same_source_world()
