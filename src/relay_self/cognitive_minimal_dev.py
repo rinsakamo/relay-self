@@ -34,6 +34,7 @@ class Predicate(str, Enum):
     HUNGRY = "HUNGRY"
     ZOMBIE_NEAR = "ZOMBIE_NEAR"
     FATIGUE_HIGH = "FATIGUE_HIGH"
+    EXPLORE = "EXPLORE"
 
 
 class PatternKind(str, Enum):
@@ -87,6 +88,8 @@ class SchemaPattern:
                 raise MinimalCognitionError("HUNGRY must match FOOD")
             if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
                 raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
+            if self.predicate is Predicate.EXPLORE and self.target_kind != "DESTINATION":
+                raise MinimalCognitionError("EXPLORE must match DESTINATION")
         elif any(x is not None for x in (
             self.goal_id, self.skill_id, self.skill_version, self.target_kind
         )) or self.predicate is not Predicate.FATIGUE_HIGH:
@@ -123,6 +126,28 @@ def initial_patterns() -> PatternRegistry:
                       Predicate.FATIGUE_HIGH, None, None, None, None,
                       Origin.INNATE, provenance),
     ))
+
+
+def initial_move_pattern() -> SchemaPattern:
+    """Innate exploration Goal, opt-in until a real MOVE/STOP issuer is qualified.
+
+    Missing destinations still produce an unresolved Goal so L1 may ask L2
+    instead of fabricating coordinates or using S49's old chooser.
+    """
+    return SchemaPattern(
+        "exploration-move", 1, "exploration", PatternKind.GOAL,
+        Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "DESTINATION",
+        Origin.INNATE, Provenance("innate-schema", "cognitive-v0.1"),
+    )
+
+
+def initial_patterns_with_move() -> PatternRegistry:
+    """Owner opt-in: add MOVE Schema only when real WorldBody support is admitted.
+
+    This is *not* the default initial registry until STOP/settling is qualified.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision, base.patterns + (initial_move_pattern(),))
 
 
 def accept_learned_pattern(
@@ -182,6 +207,7 @@ class WorldPercept:
     fatigue_high: bool | None
     targets: tuple[Target, ...]
     threat_cue: bool = False
+    exploration_need: bool = False
 
     def __post_init__(self) -> None:
         if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
@@ -194,8 +220,8 @@ class WorldPercept:
             raise MinimalCognitionError("invalid observed hunger")
         if self.fatigue_high is not None and type(self.fatigue_high) is not bool:
             raise MinimalCognitionError("invalid fatigue")
-        if type(self.threat_cue) is not bool:
-            raise MinimalCognitionError("invalid threat cue")
+        if type(self.threat_cue) is not bool or type(self.exploration_need) is not bool:
+            raise MinimalCognitionError("invalid threat/exploration cue")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
@@ -282,6 +308,9 @@ def cpu_schema_epoch(
         ) or (
             pattern.predicate is Predicate.FATIGUE_HIGH
             and percept.fatigue_high is True
+        ) or (
+            pattern.predicate is Predicate.EXPLORE
+            and percept.exploration_need is True
         )
         if not triggered:
             continue
