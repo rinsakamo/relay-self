@@ -25,6 +25,12 @@ from relay_self.cognitive_minimal_dev import (
     Selection,
     WorldPercept,
 )
+from relay_self.approach_controller import (
+    ApproachRecommendation,
+    BodyApproachCapabilities,
+    GaitMode,
+    recommend_approach,
+)
 from relay_self.common_io import ScopeRef
 from relay_self.move_destination_ref import move_destination_ref
 from relay_self.provenance import Provenance
@@ -34,6 +40,7 @@ from relay_self.target_contract import (
     TargetContract,
     TargetContractRefusal,
     TargetKind,
+    TargetBodyObservation,
 )
 
 
@@ -207,4 +214,42 @@ def propose_arrival_contract_for_selected_move(
         condition=condition,
         bound_seq=target.native_seq,
         anchor=target.destination_position,
+    )
+
+
+def assess_l1_selected_move_approach(
+    selection: Selection,
+    bound: ResolvedMoveTarget,
+    observed: TargetBodyObservation,
+    capability: BodyApproachCapabilities,
+    *,
+    current_gait: GaitMode | None = None,
+    route_clear: bool | None = None,
+) -> ApproachRecommendation:
+    """CPU-only bridge from actual numbered L1 choice to Target controller.
+
+    No motor invocation or implicit revision of the selected arrival contract.
+    A legacy unconditioned MOVE cannot acquire a policy after the selection;
+    the caller must obtain a fresh L1 choice with declared semantics.
+    """
+    if (
+        not isinstance(selection, Selection)
+        or selection.status != "READY"
+        or selection.option is None
+        or not isinstance(bound, ResolvedMoveTarget)
+        or bound.arrival_contract is None
+        or selection.option.arrival_contract != bound.arrival_contract
+        or selection.option.target_ref != bound.target_ref
+        or selection.option.goal_id != bound.goal_id
+        or bound.arrival_contract.target_ref != bound.target_ref
+        or bound.arrival_contract.scope != bound.scope
+        or bound.arrival_contract.goal_id != bound.goal_id
+        or not isinstance(observed, TargetBodyObservation)
+        or observed.scope != bound.scope
+        or observed.seq < bound.native_seq
+    ):
+        raise TargetContractRefusal("no exact L1-selected current target precision contract")
+    return recommend_approach(
+        bound.arrival_contract, observed, capability,
+        current_gait=current_gait, route_clear=route_clear,
     )
