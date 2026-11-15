@@ -257,6 +257,22 @@ def test_missing_or_unresolved_source_action_never_reissues(tmp_path, failure):
     assert out.physical_action_issue_authorized is False
 
 
+def test_other_wal_digest_cannot_be_joined_into_source_event(tmp_path):
+    case = list(_inputs(tmp_path))
+    case[5] = (replace(case[5][0], journal_sha256="b" * 64),)
+    result = _prepare(case)
+    assert result.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
+    assert result.physical_action_issue_authorized is False
+
+
+def test_eat_terminal_cannot_masquerade_as_attack_source_wal(tmp_path):
+    case = list(_inputs(tmp_path))
+    case[5] = (replace(case[5][0], status=WalState.NATIVE_EAT_OUTCOME),)
+    result = _prepare(case)
+    assert result.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
+    assert result.physical_action_issue_authorized is False
+
+
 def test_derived_a_and_b_cognitive_cuts_are_independent_files(tmp_path):
     a, b = _self_cuts()
     path_a = tmp_path / "Self-A-C105.json"
