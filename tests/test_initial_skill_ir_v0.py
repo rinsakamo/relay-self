@@ -12,13 +12,13 @@ from relay_self.cognitive_minimal_dev import (
 )
 from relay_self.common_io import ScopeRef
 from relay_self.initial_skill_ir import (
-    ActionOutcomeWitness, FiniteSkillInterpreter, PhysicalSkillIR,
+    ActionOutcomeWitness, FiniteSkillInterpreter,
     SkillIRRefusal, SkillOrigin, SkillStep, StepKind,
     compile_initial_skill, initial_skill_descriptors,
 )
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_port import (
-    PhysicalActionBinding, PhysicalActionPortRefusal,
+    PhysicalActionBinding,
     PhysicalCapability, PhysicalReadback,
 )
 from relay_self.provenance import Provenance
@@ -280,18 +280,21 @@ def test_ambiguous_or_denied_outcome_never_advances_or_retries(state):
 def test_waiting_proposed_or_issued_does_not_advance():
     x, _, proposal = proposed()
     interpreter, _, _, _, owner, skill, _, _, _, source = x
-    for action in (
-        proposal.proposal.proposal,
-        proposal.proposal.proposal.authorize(
-            at_ns=6, provenance=source, authority="offline-fake",
-        ).issue(at_ns=7, deadline_ns=60, provenance=source),
-    ):
-        receipt = interpreter.observe_action(
-            proposal.cursor, action=action, witness=None,
-            intent_owner=owner, skill_execution=skill, at_ns=8,
-        )
-        assert receipt.status == "AWAITING_OUTCOME"
-        assert receipt.cursor is proposal.cursor
+    initial = proposal.proposal.proposal
+    receipt = interpreter.observe_action(
+        proposal.cursor, action=initial, witness=None,
+        intent_owner=owner, skill_execution=skill, at_ns=5,
+    )
+    assert receipt.status == "AWAITING_OUTCOME"
+    issued = initial.authorize(
+        at_ns=6, provenance=source, authority="offline-fake",
+    ).issue(at_ns=7, deadline_ns=60, provenance=source)
+    receipt = interpreter.observe_action(
+        proposal.cursor, action=issued, witness=None,
+        intent_owner=owner, skill_execution=skill, at_ns=8,
+    )
+    assert receipt.status == "AWAITING_OUTCOME"
+    assert receipt.cursor is proposal.cursor
 
 
 def test_deadline_owner_release_and_restart_fail_closed():
