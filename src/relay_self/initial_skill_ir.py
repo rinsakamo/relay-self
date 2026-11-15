@@ -195,6 +195,15 @@ class ActionOutcomeWitness:
     journal_closed: bool
     effect_correlated: bool
 
+    def __post_init__(self) -> None:
+        if (not isinstance(self.scope, ScopeRef)
+                or not self.scope.world_session_id
+                or not _text(self.action_id)
+                or not isinstance(self.native_source, Provenance)
+                or type(self.journal_closed) is not bool
+                or type(self.effect_correlated) is not bool):
+            raise SkillIRRefusal("malformed physical Outcome witness")
+
 
 class FiniteSkillInterpreter:
     """Bounded single-run CPU controller, explicitly nonissuing.
