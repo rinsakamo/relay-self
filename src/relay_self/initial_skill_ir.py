@@ -108,12 +108,14 @@ class InitialSkillDescriptor:
 def initial_skill_descriptors() -> tuple[InitialSkillDescriptor, ...]:
     """Grounded in #844 and the existing Mineflayer protocol at its base HEAD.
 
-    MOVE set_control has no qualified target-directed/STOP mapping.
-    REST has no qualified fatigue recovery mapping. Neither is runnable.
-    ATTACK has an opt-in offline one-shot WAL issuer for ACK/hurt correlation.
+    MOVE's opt-in bounded DEV parent uses verified bridge look/forward/
+    clear_controls effects, but does NOT certify Paper tick STOP/settling.
+    REST still lacks a qualified fatigue recovery mapping.
+    ATTACK has a one-shot WAL issuer for ACK/hurt correlation.
     """
     return (
-        InitialSkillDescriptor("MOVE", None, None, None, None, "UNMAPPED"),
+        InitialSkillDescriptor("MOVE", "EXPLORE_WORLD", "DESTINATION",
+                               "MOVE", 1, "NATIVE_BOUNDED_MOVE_DEV_ISSUER_EXISTS"),
         InitialSkillDescriptor("EAT", "HUNGER_RELIEF", "FOOD", "EAT", 1,
                                "PROPOSAL_AND_EAT_DEV_ISSUER_EXISTS"),
         InitialSkillDescriptor("ATTACK", "DEFEND_SELF", "ZOMBIE",
