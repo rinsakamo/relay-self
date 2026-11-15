@@ -287,6 +287,8 @@ def verify_generation(generation: Path) -> dict:
             or body["small_save_time_skew_accepted"] is not True):
         raise CoordinatedCheckpointError("invalid generation metadata")
     manifest = verify_world_checkpoint(root / "world")
+    if manifest["schema"] != 1:
+        raise CoordinatedCheckpointError("main Paper World must retain level.dat schema")
     if (body["world_id"] != manifest["world_id"]
             or body["branch_id"] != manifest["branch_id"]
             or body["declared_tick"] != manifest["declared_logical_tick"]
