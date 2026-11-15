@@ -14,6 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from relay_self.coordinated_checkpoint_dev import (
+    SelfSnapshotSource,
+    capture_generation,
+    verify_generation,
+)
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
@@ -447,3 +452,111 @@ def rehydrate_self_owner(cut: SelfOwnerCut) -> RehydratedSelfOwner:
         }) for skill in cut.skill_executions),
         pattern_registry=cut.pattern_registry,
     )
+
+
+def _load_copied_cohort(
+    generation: Path, *, generation_id: str, world_id: str,
+    branch_id: str, self_ids: tuple[str, ...],
+) -> tuple[SelfOwnerCut, ...]:
+    cuts = []
+    for sid in sorted(self_ids):
+        file = generation / "selves" / sid / "owner-state.json"
+        if not file.is_file() or file.is_symlink():
+            raise SelfOwnerCheckpointError("typed owner-state file required")
+        cut = load_self_owner_cut(file)
+        if cut.self_id != sid:
+            raise SelfOwnerCheckpointError("owner snapshot Self identity mismatch")
+        cuts.append(cut)
+    cohort = tuple(cuts)
+    verify_peer_cohort(
+        cohort, generation_id=generation_id,
+        world_id=world_id, branch_id=branch_id,
+    )
+    return cohort
+
+
+def verify_typed_generation(generation: Path) -> tuple[SelfOwnerCut, ...]:
+    """Type/peer check on top of bytewise generation integrity.
+
+    Generic historical DEV generations with opaque owner-state are NOT qualified.
+    """
+    from relay_self.world_checkpoint_dev import verify_world_checkpoint
+
+    manifest = verify_generation(generation)
+    world = verify_world_checkpoint(Path(generation) / "world")
+    return _load_copied_cohort(
+        Path(generation), generation_id=manifest["generation_id"],
+        world_id=world["world_id"], branch_id=world["branch_id"],
+        self_ids=tuple(manifest["roster"]),
+    )
+
+
+def capture_typed_generation(
+    source_world: Path, store: Path, *,
+    sequence: int, expected_self_ids: tuple[str, ...],
+    selves: tuple[SelfSnapshotSource, ...],
+    world_id: str, branch_id: str, logical_tick: int,
+    tick_source_ref: str, stopped_server_ref: str, quiesced_selves_ref: str,
+) -> Path:
+    """Opt-in typed A/B gate; reject mismatched messages BEFORE commit marker."""
+    expected = tuple(sorted(expected_self_ids))
+    gen_id = f"g-{sequence:012d}"
+    if any(s.owner_state_file is None for s in selves):
+        raise SelfOwnerCheckpointError("all Self owners require typed checkpoint files")
+
+    def before_commit(generation: Path) -> None:
+        _load_copied_cohort(
+            generation, generation_id=gen_id, world_id=world_id,
+            branch_id=branch_id, self_ids=expected,
+        )
+
+    generation = capture_generation(
+        source_world, store, sequence=sequence,
+        expected_self_ids=expected_self_ids, selves=selves,
+        world_id=world_id, branch_id=branch_id,
+        logical_tick=logical_tick, tick_source_ref=tick_source_ref,
+        stopped_server_ref=stopped_server_ref,
+        quiesced_selves_ref=quiesced_selves_ref,
+        precommit_validator=before_commit,
+    )
+    verify_typed_generation(generation)
+    return generation
+
+
+def prepare_typed_owner_restore(
+    generation: Path, restored_directory: Path,
+) -> tuple[RehydratedSelfOwner, ...]:
+    """Read-only owner candidate AFTER a bytewise branched World restoration.
+
+    Does not attach the owner to the runtime, resume started Skills, deliver
+    messages, infer Present or grant a physical Action. The restore must refer
+    to this exact committed generation and have a fresh branch receipt.
+    """
+    cut_cohort = verify_typed_generation(generation)
+    restored = Path(restored_directory)
+    try:
+        prepared = json.loads((restored / "RESTORE_PREPARED.json").read_bytes())
+        receipt = json.loads((restored / "world.restore.json").read_bytes())
+    except (OSError, ValueError) as exc:
+        raise SelfOwnerCheckpointError("brached World restore receipt unavailable") from exc
+    if (
+        type(prepared) is not dict or type(receipt) is not dict
+        or prepared.get("generation_id") != Path(generation).name
+        or prepared.get("fork_branch_id") != receipt.get("new_branch_id")
+        or tuple(prepared.get("self_ids", ())) != tuple(
+            sorted(c.self_id for c in cut_cohort)
+        )
+        or receipt.get("source_checkpoint_id") != Path(generation).name
+        or prepared.get("physical_action_issue_authorized") is not False
+        or receipt.get("physical_action_authorized") is not False
+    ):
+        raise SelfOwnerCheckpointError("restore is not scoped to the same generation")
+    restored_cuts = _load_copied_cohort(
+        restored, generation_id=Path(generation).name,
+        world_id=cut_cohort[0].world_id, branch_id=cut_cohort[0].branch_id,
+        self_ids=tuple(c.self_id for c in cut_cohort),
+    )
+    if restored_cuts != cut_cohort:
+        # Skill lineage internal fields are excluded from dataclass comparisons.
+        raise SelfOwnerCheckpointError("recovered owner bytes differ semantically")
+    return tuple(rehydrate_self_owner(c) for c in restored_cuts)
