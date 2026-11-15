@@ -35,6 +35,7 @@ from relay_self.physical_action_journal import (
     PhysicalActionJournal,
     PhysicalJournalUnresolved,
 )
+from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 
 # Exercise the entire CLI composition with source-typed fake messages.
@@ -1349,3 +1350,119 @@ def test_cli_attack_mutually_exclusive_before_world_launch(
     with pytest.raises(MinimalCognitionError):
         asyncio.run(run(args))
     assert not Path(args.physical_journal_path).exists()
+
+
+
+def test_checkpoint_physical_mode_requires_external_shared_gate_before_launch(
+    monkeypatch, tmp_path: Path,
+):
+    args = _physical_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    launched = []
+
+    async def must_not_launch(*_args, **_kwargs):
+        launched.append(True)
+        raise AssertionError("real session launched before admission gate")
+
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", must_not_launch)
+    with pytest.raises(MinimalCognitionError, match="requires existing shared issuer"):
+        asyncio.run(run(args))
+    assert not launched
+    with pytest.raises(MinimalCognitionError, match="explicit coordinated"):
+        asyncio.run(run(_physical_args(tmp_path), physical_issue_admission=(
+            PhysicalIssueAdmission({"A": "session-1"})
+        )))
+    assert not launched
+
+
+def test_checkpoint_physical_mode_refuses_old_l0_native_route_before_launch(
+    monkeypatch, tmp_path: Path,
+):
+    args = _physical_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    args.execute_native = True
+    launched = []
+    async def no_launch(*args, **kwargs):
+        launched.append(True)
+        raise AssertionError("mixed native issuers")
+    monkeypatch.setattr(cli.MineflayerProcessSession, "launch", no_launch)
+    with pytest.raises(MinimalCognitionError, match="exclusive EAT/ATTACK"):
+        asyncio.run(run(
+            args, physical_issue_admission=PhysicalIssueAdmission(
+                {args.self_id: "session-1"},
+            ),
+        ))
+    assert not launched
+
+
+def test_checkpoint_mode_real_cli_eat_uses_shared_owner_gate(
+    monkeypatch, tmp_path: Path,
+):
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    gate = PhysicalIssueAdmission({args.self_id: "session-1"})
+    receipt = asyncio.run(run(args, physical_issue_admission=gate))
+    assert receipt["status"] == "NATIVE_EAT_OUTCOME_DEV_ONLY"
+    assert receipt["existing_issuer"] == "PhysicalIssueAdmission.run_l1_eat"
+    assert receipt["coordinated_physical_issuer_fence"] == (
+        "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
+    )
+    assert receipt["coordinated_checkpoint_committed"] is False
+    assert gate.active_action_ids == ()
+    assert receipt["physical_journal_unresolved"] is False
+    assert len([row for row in session.sent if row[0] == "consume_held"]) == 1
+
+
+def test_checkpoint_mode_real_cli_attack_uses_shared_owner_gate(
+    monkeypatch, tmp_path: Path,
+):
+    session = FakeAttackProcessSession()
+    args = _attack_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    gate = PhysicalIssueAdmission({args.self_id: "session-1"})
+    receipt = asyncio.run(run(args, physical_issue_admission=gate))
+    assert receipt["status"] == "NATIVE_ATTACK_HURT_OBSERVED_DEV_ONLY"
+    assert receipt["existing_issuer"] == "PhysicalIssueAdmission.run_l1_attack"
+    assert receipt["coordinated_checkpoint_committed"] is False
+    assert gate.active_action_ids == ()
+    assert len([row for row in session.sent if row[0] == "attack_entity"]) == 1
+
+
+def test_checkpoint_mode_closed_fence_refuses_physical_dispatch_and_wal_issue(
+    monkeypatch, tmp_path: Path,
+):
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    gate = PhysicalIssueAdmission({args.self_id: "session-1"})
+    gate.close()
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args, physical_issue_admission=gate))
+    assert "checkpoint fence closed" in exc.value.audit["error"]
+    assert exc.value.audit["physical_journal_unresolved"] is False
+    assert exc.value.audit["physical_journal_records"] == []
+    assert not any(x[0] in ("equip_item", "consume_held") for x in session.sent)
+    assert gate.closed
+
+
+def test_checkpoint_mode_stale_native_session_denies_full_runner_before_wal(
+    monkeypatch, tmp_path: Path,
+):
+    session = FakeAttackProcessSession()
+    args = _attack_args(tmp_path)
+    args.require_coordinated_physical_fence = True
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    gate = PhysicalIssueAdmission({args.self_id: "other-session"})
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args, physical_issue_admission=gate))
+    assert "stale or foreign physical native session" in exc.value.audit["error"]
+    assert exc.value.audit["physical_journal_records"] == []
+    assert not any(x[0] == "attack_entity" for x in session.sent)
