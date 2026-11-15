@@ -139,13 +139,20 @@ class OwnedPaperWorld:
         proc = self._assert_owned()
         session = self._session_id
         assert session is not None
-        tick = self.tick_readback(session)
+        try:
+            tick = self.tick_readback(session)
+        except Exception as exc:
+            # The server is still running, but this attempted save has lost
+            # independent source timing. Never continue with a second cut.
+            self._uncertain = True
+            raise OwnedPaperError("owned Paper source tick readback failed; HOLD") from exc
         if (
             not isinstance(tick, PaperTickReceipt)
             or tick.server_session_id != session
             or type(tick.tick) is not int or tick.tick < 0
             or type(tick.source_ref) is not str or not tick.source_ref.strip()
         ):
+            self._uncertain = True
             raise OwnedPaperError("fresh server-qualified tick readback required")
         if proc.stdin is None:
             raise OwnedPaperError("owned Paper console stdin missing")
