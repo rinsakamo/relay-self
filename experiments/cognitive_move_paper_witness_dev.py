@@ -293,12 +293,25 @@ class PaperMoveWitnessSession:
         if not self.armed or not self.marked or self.proof is not None:
             raise PaperMoveWitnessError("Paper MOVE witness lifecycle incomplete")
         raw = await self._await(self.spool / "complete" / (self.nonce + ".trace"), seconds)
-        proof = qualify_paper_move_trace(
-            raw, nonce=self.nonce, world_uuid=self.world_uuid,
-            actor_uuid=self.actor_uuid, action_id=self.action_id,
-            native_session_id=self.native_session_id,
-            native_start=self.native_start, native_target=self.native_target,
-            paper_owned_log=self.read_owned_log(),
-        )
-        self.proof = proof
-        return proof
+        # The plugin publishes its atomic trace before logging P0M_COMPLETE.
+        # A bounded log-only wait prevents this scheduling race without any
+        # retry of physical MOVE, STOP, or Paper marker issuance.
+        deadline = asyncio.get_running_loop().time() + 2
+        while True:
+            try:
+                proof = qualify_paper_move_trace(
+                    raw, nonce=self.nonce, world_uuid=self.world_uuid,
+                    actor_uuid=self.actor_uuid, action_id=self.action_id,
+                    native_session_id=self.native_session_id,
+                    native_start=self.native_start, native_target=self.native_target,
+                    paper_owned_log=self.read_owned_log(),
+                )
+                self.proof = proof
+                return proof
+            except PaperMoveWitnessError as exc:
+                if (
+                    "not joined to same owned log" not in str(exc)
+                    or asyncio.get_running_loop().time() >= deadline
+                ):
+                    raise
+                await asyncio.sleep(.05)
