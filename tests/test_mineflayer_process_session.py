@@ -15,7 +15,6 @@ from adapters.mineflayer.python_protocol import (
     MineflayerLaunchConfig,
     MineflayerObservation,
 )
-
 from relay_self.physical_issue_admission_dev import (
     PhysicalIssueAdmission,
     PhysicalIssueFenceError,
