@@ -56,6 +56,7 @@ from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.move_destination_ref import move_destination_ref
 from relay_self.relay_engine import RelayEngine, RelayEngineResult
+from relay_self.target_contract import ReferenceFrame, TargetContract, TargetKind
 
 # This is a one-turn integration for the existing main branch's bounded MVP
 # executor, NOT an implementation of unmerged S49's full optional adapter.
@@ -194,14 +195,31 @@ def native_schema_percept(
         for destination in scenario.destinations:
             if len(targets) >= 16:
                 break
+            ref = move_destination_ref(
+                destination.destination_id, destination.position,
+                destination.provenance,
+            )
+            # The contract source revision belongs to the configured Target;
+            # native Percept seq is separately refreshed after L1. Do not
+            # silently mint a new precision revision during probe refresh.
+            arrival = (
+                None if destination.arrival_condition is None
+                else TargetContract(
+                    scope=ScopeRef(self_id, observation.session_id),
+                    goal_id="EXPLORE_WORLD",
+                    target_ref=ref,
+                    kind=TargetKind.PLACE,
+                    reference_frame=ReferenceFrame.WORLD,
+                    provenance=destination.provenance,
+                    condition=destination.arrival_condition,
+                    bound_seq=0,
+                    anchor=destination.position,
+                )
+            )
             targets.append(Target(
-                move_destination_ref(
-                    destination.destination_id,
-                    destination.position,
-                    destination.provenance,
-                ),
-                "DESTINATION", destination.provenance,
+                ref, "DESTINATION", destination.provenance,
                 observation.session_id, observation.seq,
+                arrival_contract=arrival,
             ))
 
     return WorldPercept(
