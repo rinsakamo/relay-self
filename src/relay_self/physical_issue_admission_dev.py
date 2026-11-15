@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterator
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerObservation
-
 from relay_self.checkpointed_cognitive_runtime_dev import ExternalPhysicalFence
 
 
