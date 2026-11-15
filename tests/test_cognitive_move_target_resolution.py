@@ -23,7 +23,6 @@ from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
 )
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.common_io import ScopeRef
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
     Predicate,
@@ -34,6 +33,7 @@ from relay_self.cognitive_minimal_dev import (
     initial_patterns_with_move,
     resolve_l1_choice,
 )
+from relay_self.common_io import ScopeRef
 from relay_self.initial_skill_ir import (
     SkillIRRefusal,
     compile_initial_skill,
@@ -418,8 +418,8 @@ def test_one_turn_without_destination_escapes_to_l2_not_random_walk():
 
 
 def test_l1_selects_exact_arrival_contract_and_recheck_cannot_replace_precision():
-    from relay_self.target_contract import ArrivalCondition
     from experiments.cognitive_minimal_minecraft_dev import native_schema_percept
+    from relay_self.target_contract import ArrivalCondition
 
     original = configured()
     d0 = original.destinations[0]
@@ -472,17 +472,20 @@ def test_l1_selects_exact_arrival_contract_and_recheck_cannot_replace_precision(
 
 
 def test_selected_precise_move_can_get_cpu_gait_preview_but_not_motor_grant():
+    from experiments.cognitive_move_target_resolution import (
+        assess_l1_selected_move_approach,
+    )
     from relay_self.approach_controller import (
         ApproachPhase,
         BodyApproachCapabilities,
         GaitCalibration,
         GaitMode,
     )
-    from relay_self.target_contract import ArrivalCondition, TargetBodyObservation
-    from experiments.cognitive_move_target_resolution import (
-        assess_l1_selected_move_approach,
+    from relay_self.target_contract import (
+        ArrivalCondition,
+        TargetBodyObservation,
+        TargetContractRefusal,
     )
-    from relay_self.target_contract import TargetContractRefusal
 
     original = configured()
     selected_dest = replace(
