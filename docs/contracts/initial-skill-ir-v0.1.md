@@ -376,3 +376,23 @@ multi-Self checkpoint restore, automatic installation, motor settling,
 physical-world success or QUAL/SCIENCE claim. Existing #844 physical-EAT
 candidate remains a separate experimental path that must be used only
 with its operator isolation, WAL restore and grants.
+
+## Target-specific precision and L0 approach recommendation (CPU-only DEV)
+
+Target semantics are not a global MOVE tolerance. The new
+[TargetContract × ApproachController interface](target-contract-approach-v0.1.md)
+separates (a) the selected Goal/Target's admissible position interval,
+precision, facing/LOS, and stillness conditions; (b) source-qualified
+WorldBody gait stopping/position uncertainty observations; and (c) the
+finite CPU recommendation of APPROACH/DECELERATE/STOP/VERIFY/REPLAN/HOLD.
+PLACE, SELF_AT_BIND step, and moving ENTITY_LIVE ranges share the same
+mechanism but may ask for different precision and arrival behavior.
+
+The current L1 MOVE Option selects a destination *without* an arrival
+precision revision. A new condition bound via
+`propose_arrival_contract_for_selected_move` is therefore **a separate
+contract candidate**, NOT retroactive L1 approval or permission to alter
+the one-shot native MOVE issuer. Existing 0.05m native STOP residual check,
+Paper witness, WAL and unresolved 2026-11-16 original real World trial
+remain unchanged. No new physical movement has been run for this interface.
+
