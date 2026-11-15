@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from relay_self.coordinated_checkpoint_dev import _paper_siblings
 from relay_self.owned_paper_world_dev import (
@@ -27,6 +28,7 @@ from relay_self.world_only_owned_checkpoint_dev import (
 from relay_self.world_resident_lifecycle_dev import (
     WorldInstallationEvidence,
     WorldLifetime,
+    WorldOnlyQuiescenceEvidence,
     WorldResidentLifecycle,
 )
 
@@ -111,6 +113,7 @@ class OwnedPaperWorldSwitcher:
         self, *, lifecycle: WorldResidentLifecycle,
         previous_paper: OwnedPaperWorld,
         candidate_paper: OwnedPaperWorld,
+        issuer_quiescence: Callable[[], WorldOnlyQuiescenceEvidence],
     ) -> None:
         if (
             not isinstance(lifecycle, WorldResidentLifecycle)
@@ -118,11 +121,13 @@ class OwnedPaperWorldSwitcher:
             or not isinstance(candidate_paper, OwnedPaperWorld)
             or previous_paper.server_dir == candidate_paper.server_dir
             or previous_paper.world_dir == candidate_paper.world_dir
+            or not callable(issuer_quiescence)
         ):
             raise WorldOwnershipSwitchError("two distinct owned Paper roots required")
         self.lifecycle = lifecycle
         self.previous_paper = previous_paper
         self.candidate_paper = candidate_paper
+        self.issuer_quiescence = issuer_quiescence
         self._held = False
 
     @property
@@ -154,6 +159,9 @@ class OwnedPaperWorldSwitcher:
             new, candidate_generation=candidate_generation,
             expected_commit_sha256=expected_commit_sha256,
         )
+        # No one may claim empty/retired physical actors merely because
+        # a local presence ledger happens to show zero online.
+        self.lifecycle.require_world_only_quiescence(self.issuer_quiescence())
         self.lifecycle.begin_world_transition()
         try:
             stopped = old.stop_and_save()
