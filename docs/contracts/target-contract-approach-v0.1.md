@@ -142,3 +142,57 @@ target intervals and out-of-source precision mutations.
 **Overall:** `OFFLINE_CONTRACT_AND_CPU_CONTROLLER_DEV_ONLY`.
 No real Minecraft World/LLM/Paper attempt, new issuer, qualified MOVE
 terminal, calibration validity, or transferable grant is claimed.
+
+
+## 2026-11-16 second continuation — original L1 target precision selection (offline)
+
+The optional `ControlledDestination.arrival_condition` is a typed input to
+the existing *current* WorldBody/Schema projection. Before any L1 inference,
+`native_schema_percept` creates a `TargetContract(PLACE, WORLD, ...)` using
+the declared arrival envelope and source-stable configuration revision.
+`WorldPercept.Target.arrival_contract` carries this immutable typed value into
+the CPU `cpu_schema_epoch`; each matching `Option.arrival_contract` now
+**includes the same contract directly**, not merely a post-L1 suggestion.
+`assemble_l1_select` exposes to the model the acceptance interval,
+vertical tolerance, stillness count and exact immutable `condition_ref`.
+Existing EAT, ATTACK and no-envelope MOVE choices keep
+`arrival_contract=None`; no default tolerance is manufactured.
+
+The *configured target* contract is bound to its source revision at sequence 0,
+not reissued at each native Percept refresh. Fresh current native Body
+observation still has its **own** `observed_sequence` and is checked
+independently at the source-bound MOVE Target resolver. Consequently the
+original Option remains exactly equal to the later fresh Schema Option when
+the Goal, Target and contract have not changed; changing a tolerance,
+precision, scope, owner, target provenance or geometry makes the old selected
+Option unequal or is rejected at resolution. Even if a caller tries supplying
+an altered scenario with the old frame/percept and unchanged destination
+coordinate hash, `resolve_selected_move_target` rejects the mismatch.
+
+`ResolvedMoveTarget.arrival_contract` now carries **the originally selected
+contract**. `assess_l1_selected_move_approach` gives a pure CPU
+ApproachRecommendation only when this exact selected contract, selected
+Target, current Self/World and source sequence match. It may recommend
+`DECELERATE` under synthetic calibrated gait evidence, but all Action/Goal
+authority flags remain false. In particular the old
+`propose_arrival_contract_for_selected_move` is **still only a candidate
+for a MOVE with no selected contract** and refuses to overwrite an existing
+selected contract.
+
+**Motor pre-ISSUE fail-closed**: until actual WorldBody gait calibration and
+one-parent finite approach/decelerate/STOP execution are integrated,
+`issue_move_from_selected_l1_dev` and `issue_selected_move_dev`
+both refuse selected non-null arrival contracts **before new native controls
+or WAL preparation**. The legacy unconditioned MOVE path still behaves
+exactly as it did before these additions. The original real World
+`NATIVE_ISSUED_UNKNOWN` parent, source hashes and unresolved Self WAL are
+not changed. No new World grant is implied.
+
+Regression tests cover the L1-numbered description, option staleness across
+scenario edits with or without a fresh Percept, real-shaped post-L1 native
+probe refresh, CPU read-only gait recommendation and legacy motor refusal.
+To test without any motor/LLM/World:
+`pytest -q tests/test_cognitive_move_target_resolution.py tests/test_cognitive_physical_move_issue_dev.py`.
+
+**Status: ORIGINAL_L1_CONTRACT_SELECTION_OFFLINE_DEV / PHYSICAL_CONDITIONED_MOVE_HOLD /
+REAL_WORLD_NOT_RUN / QUAL_NO_GO.**
