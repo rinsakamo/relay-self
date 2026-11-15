@@ -196,7 +196,7 @@ class ResidentLlamaInferenceLane:
             return self._uncertain
 
     def bind_login(self, self_id: str) -> None:
-        with self._lock:
+        with self.cognitive_work.lock, self._lock:
             # The original cognition owner MUST have a current verified
             # native session; no stale work from the prior login may exist.
             self.cognitive_work.current_scope(self_id)
@@ -223,8 +223,8 @@ class ResidentLlamaInferenceLane:
             or (mode is CognitionMode.OPEN) != isinstance(request, OpenCognitionRequest)
         ):
             raise ResidentGpuLaneError("typed L1/L2 request and work reference required")
-        scope = self.cognitive_work.current_scope(self_id)
-        with self._lock:
+        with self.cognitive_work.lock, self._lock:
+            scope = self.cognitive_work.current_scope(self_id)
             if self_id in self._fenced or self._uncertain:
                 raise ResidentGpuLaneError("Self or GPU lane is fenced")
             key = (self_id, work_ref)
@@ -276,7 +276,7 @@ class ResidentLlamaInferenceLane:
     def result(
         self, ticket: ResidentInferenceTicket,
     ) -> ProviderDecision | ProviderExpression:
-        with self._lock:
+        with self.cognitive_work.lock, self._lock:
             job = self._require_current_job(ticket)
             if job.future is None or not job.future.done() or not job.terminal_slot_idle:
                 raise ResidentGpuLaneError("backend execution not verifiably terminal")
@@ -317,7 +317,7 @@ class ResidentLlamaInferenceLane:
             type(timeout_s) not in (int, float) or not 0 < timeout_s <= 60
         ):
             raise ResidentGpuLaneError("bounded inference retirement deadline required")
-        with self._lock:
+        with self.cognitive_work.lock, self._lock:
             if self_id not in self._fenced:
                 raise ResidentGpuLaneError("GPU admission must be fenced first")
             relevant = {
@@ -336,7 +336,7 @@ class ResidentLlamaInferenceLane:
                     "llama backend request still active; individual Self HOLD"
                 )
             assert all(f.done() for f in done)
-        with self._lock:
+        with self.cognitive_work.lock, self._lock:
             if (
                 self._uncertain
                 or token != self.cognitive_work.quarantined_scope(self_id)
