@@ -8,7 +8,6 @@ scheduler or model backend is attested by the inert boundary.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
