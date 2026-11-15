@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import stat
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, TypeVar
+from typing import Callable
 
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
@@ -66,7 +67,10 @@ def _copy_stable(source: Path, destination: Path) -> str:
                 digest.update(chunk)
                 view = memoryview(chunk)
                 while view:
-                    view = view[os.write(out, view):]
+                    written = os.write(out, view)
+                    if written <= 0:
+                        raise CoordinatedCheckpointError("short Self file write")
+                    view = view[written:]
             os.fsync(out)
         finally:
             os.close(out)
@@ -88,7 +92,12 @@ def _new_json(path: Path, payload: dict) -> None:
                        separators=(",", ":"), allow_nan=False) + "\n").encode()
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
-        os.write(fd, data)
+        view = memoryview(data)
+        while view:
+            written = os.write(fd, view)
+            if written <= 0:
+                raise CoordinatedCheckpointError("short commit marker write")
+            view = view[written:]
         os.fsync(fd)
     finally:
         os.close(fd)
@@ -277,9 +286,6 @@ def restore_generation(
     return result
 
 
-T = TypeVar("T")
-
-
 class AutosaveGate:
     """Pollable 60-second DEV policy. No background task/server control."""
 
@@ -289,15 +295,19 @@ class AutosaveGate:
         self.last_success_monotonic: float | None = None
 
     def due(self, now_monotonic: float) -> bool:
-        if not isinstance(now_monotonic, (int, float)) or now_monotonic < 0:
+        if (type(now_monotonic) not in (int, float)
+                or not math.isfinite(now_monotonic) or now_monotonic < 0):
             raise CoordinatedCheckpointError("invalid monotonic clock")
         return (self.last_success_monotonic is None
                 or now_monotonic - self.last_success_monotonic >= self.interval_seconds)
 
-    def run_if_due(self, now_monotonic: float, capture: Callable[[], T]) -> T | None:
+    def run_if_due(
+        self, now_monotonic: float, capture: Callable[[], Path],
+    ) -> Path | None:
         if not self.due(now_monotonic):
             return None
-        # A failed generation MUST NOT advance the committed schedule.
-        result = capture()
+        # A callback returning is insufficient: independently check COMMITTED.
+        candidate = Path(capture())
+        verify_generation(candidate)
         self.last_success_monotonic = now_monotonic
-        return result
+        return candidate
