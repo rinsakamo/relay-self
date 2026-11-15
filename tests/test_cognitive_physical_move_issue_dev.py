@@ -42,6 +42,8 @@ from relay_self.skill import SkillExecution
 from test_cognitive_minimal_minecraft_dev import observation
 from test_cognitive_move_target_resolution import prepare, select
 from test_cognitive_physical_eat_issue_dev import OwnedFakeNative
+from test_cognitive_physical_eat_issue_dev import run as eat_run
+from test_cognitive_physical_eat_issue_dev import setup as eat_setup
 
 
 class MoveNative(OwnedFakeNative):
@@ -342,3 +344,80 @@ def test_move_wal_validates_geometry_digest_and_three_dimensional_stop_probes(
             row["effect_seqs"] = row["effect_seqs"][:2]
         with pytest.raises(PhysicalJournalError):
             _validate(altered)
+
+
+def test_same_self_eat_then_move_reuses_one_physical_wal_and_seq_barrier(tmp_path):
+    eat_kw, eat_session, _, _ = eat_setup(tmp_path)
+    meal = eat_run(eat_kw, eat_session)
+    assert meal.terminal.state is ActionState.OUTCOME
+    assert eat_kw["journal"].records[0]["status"] == "NATIVE_EAT_OUTCOME"
+
+    kw, session = setup(tmp_path)
+    joined = PhysicalActionJournal.restore(
+        eat_kw["journal"].path, self_id="self-A",
+    )
+    kw["journal"] = joined
+    session.journal = joined
+    # EAT last after_seq=15; MOVE native probe must advance beyond it.
+    prev = replace(kw["previous_probe"], seq=21, request_id="before-next")
+    cur = replace(kw["current_probe"], seq=22, request_id="next-move-probe")
+    kw["previous_probe"], kw["current_probe"] = prev, cur
+    kw["target"] = replace(
+        kw["target"], native_seq=22,
+        native_request_id="next-move-probe",
+        native_probe_provenance=cur.provenance,
+    )
+    binding = replace(
+        kw["proposal"].binding, native_seq=22,
+        native_request_id="next-move-probe", native_source=cur.provenance,
+    )
+    readback = PhysicalReadback(
+        binding.scope, cur.provenance, 22, "next-move-probe",
+        (binding.target_ref,), True,
+    )
+    kw["proposal"] = propose_bound_physical_action(
+        binding, capability=PhysicalCapability(
+            "MOVE", 1, "movement", "DESTINATION", True,
+        ), readback=readback, intent_owner=kw["intent_owner"],
+        skill_execution=kw["skill_execution"], supervisor=kw["supervisor"],
+        at_ns=3, provenance=kw["provenance"],
+    )
+    for k in ("propose_grant", "issue_grant"):
+        kw[k] = replace(
+            kw[k], probe_seq=22, probe_request_id="next-move-probe",
+        )
+    session.events = [replace(x, seq=x.seq + 10) for x in session.events]
+    result = run(kw, session)
+    assert result.terminal.state is ActionState.OUTCOME
+    restored = PhysicalActionJournal.restore(joined.path, self_id="self-A")
+    assert [x["capability"] for x in restored.records] == ["EAT", "MOVE"]
+    assert [x["status"] for x in restored.records] == [
+        "NATIVE_EAT_OUTCOME", "NATIVE_MOVE_PROGRESS_STOP_READBACK",
+    ]
+    assert restored.records[0]["after_seq"] < restored.records[1]["probe_seq"]
+    assert restored.digest == joined.digest
+    assert session.wal_at_first_native_send == "PREPARED_UNRESOLVED"
+
+
+def test_move_terminal_disk_close_failure_does_not_resolve_wal(tmp_path, monkeypatch):
+    """Even an in-memory Action OUTCOME must never override unresolved disk."""
+    kw, session = setup(tmp_path)
+    original_commit = kw["journal"]._commit
+
+    def disk_failure(records):
+        if records[-1]["status"] == "NATIVE_MOVE_PROGRESS_STOP_READBACK":
+            raise OSError("simulated final journal fsync failure")
+        return original_commit(records)
+
+    monkeypatch.setattr(kw["journal"], "_commit", disk_failure)
+    with pytest.raises(OSError, match="fsync"):
+        run(kw, session)
+    assert kw["supervisor"].get("action-M").state is ActionState.OUTCOME
+    assert kw["journal"].unresolved
+    reopened = PhysicalActionJournal.restore(
+        kw["journal"].path, self_id="self-A",
+    )
+    assert reopened.records[-1]["status"] == "PREPARED_UNRESOLVED"
+    with pytest.raises(PhysicalJournalUnresolved):
+        run({**kw, "journal": reopened}, session)
+    assert len([x for x in session.sent if x[0] == "set_control"]) == 1
