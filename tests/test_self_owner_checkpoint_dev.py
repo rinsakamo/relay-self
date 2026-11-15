@@ -16,6 +16,18 @@ from relay_self.cognitive_minimal_dev import (
     accept_learned_pattern,
     initial_patterns,
 )
+from relay_self.coordinated_autosave_runtime_dev import (
+    AdmissionCloseReceipt,
+    AdmissionHooks,
+    AutosaveBarrierError,
+    CoordinatedAutosaveRuntime,
+    ReboundSelfReceipt,
+    RestartedWorldReceipt,
+    SelfFrozenReceipt,
+    SelfRuntimeHooks,
+    StoppedWorldReceipt,
+    WorldRuntimeHooks,
+)
 from relay_self.coordinated_checkpoint_dev import (
     SelfSnapshotSource,
     capture_generation,
@@ -253,3 +265,91 @@ def test_restore_cannot_accept_modified_peer_or_foreign_receipt(tmp_path: Path):
     receipt_file.write_text(json.dumps(receipt))
     with pytest.raises(SelfOwnerCheckpointError, match="same generation"):
         prepare_typed_owner_restore(checkpoint, destination)
+
+
+
+def _runtime_typed_cohort(world, store, specs):
+    """Synthetic external hooks. Strict owner check is real; Paper is NOT."""
+    observations = []
+    state = {"closed": False}
+
+    def close():
+        state["closed"] = True
+        observations.append("close")
+        return AdmissionCloseReceipt("admission-owner", True, True, True)
+
+    def release(token):
+        assert state["closed"] and token == "admission-owner"
+        observations.append("release")
+        state["closed"] = False
+
+    hooks = []
+    for item in specs:
+        def frozen(generation, source=item):
+            assert state["closed"]
+            observations.append("freeze:" + source.self_id)
+            return SelfFrozenReceipt(
+                source.self_id, source, "old-session-" + source.self_id,
+                generation + ":fenced", (), (), True, True, True,
+            )
+
+        def rebound(_server_session, source=item):
+            assert state["closed"]
+            observations.append("rebind:" + source.self_id)
+            return ReboundSelfReceipt(
+                source.self_id, "new-session-" + source.self_id,
+                "world-1", "source", True, True, True, True,
+            )
+
+        hooks.append(SelfRuntimeHooks(item.self_id, frozen, rebound))
+
+    def stop():
+        observations.append("stop")
+        return StoppedWorldReceipt(
+            "world-1", "source", "paper-old", 110,
+            "mock:tick", "mock:exit0", 0, True,
+        )
+
+    def start():
+        observations.append("restart")
+        return RestartedWorldReceipt("world-1", "source", "paper-new", True)
+
+    runtime = CoordinatedAutosaveRuntime(
+        source_world=world, store=store, world_id="world-1",
+        branch_id="source", participants=tuple(hooks),
+        world=WorldRuntimeHooks(stop, start),
+        admission=AdmissionHooks(close, release),
+        strict_typed_owner_cut=True,
+    )
+    return runtime, observations
+
+
+def test_runtime_strict_typed_cut_commits_before_paper_restarts(tmp_path: Path):
+    world, store, specs, _ = _fixture(tmp_path)
+    # Leave an uncommitted generation 0 so the typed saved cuts use g-1.
+    (store / "g-000000000000").mkdir()
+    runtime, events = _runtime_typed_cohort(world, store, specs)
+    result = runtime.run_if_due(0.0)
+    assert result is not None and result.sequence == 1
+    assert result.typed_owner_cut_validated is True
+    assert len(verify_typed_generation(result.generation)) == 2
+    assert events == [
+        "close", "freeze:A", "freeze:B", "stop", "restart",
+        "rebind:A", "rebind:B", "release",
+    ]
+
+
+def test_runtime_holds_when_peer_delivery_missing_before_restart(tmp_path: Path):
+    world, store, specs, cuts = _fixture(tmp_path)
+    (store / "g-000000000000").mkdir()
+    modified_b = replace(cuts[1], peer_deliveries=())
+    file = specs[1].owner_state_file
+    file.unlink()
+    save_self_owner_cut(file, modified_b)
+    runtime, events = _runtime_typed_cohort(world, store, specs)
+    with pytest.raises(AutosaveBarrierError, match="admission must remain held"):
+        runtime.run_if_due(0.0)
+    assert runtime.held_after_failure
+    assert latest_verified_generation(store) is None
+    assert "restart" not in events and "release" not in events
+    assert not (store / "g-000000000001" / "COMMITTED.json").exists()
