@@ -175,7 +175,14 @@ class PaperMainThreadTickReader:
                     raise PaperTickWitnessError("owned Paper process log unavailable") from exc
                 if not isinstance(paper_log, bytes):
                     raise PaperTickWitnessError("invalid owned Paper log source")
-                if any(marker in line for line in paper_log.decode("utf-8", errors="replace").splitlines()):
+                lines = paper_log.decode("utf-8", errors="replace").splitlines()
+                ready = (
+                    "P0D_TICK_READY boot=" + claimed["boot_id"]
+                    + " source=PAPER_MAIN_THREAD"
+                )
+                ready_indices = [n for n, line in enumerate(lines) if ready in line]
+                ack_indices = [n for n, line in enumerate(lines) if marker in line]
+                if ready_indices and ack_indices and min(ready_indices) < max(ack_indices):
                     self._seen_sessions[owned_server_session] = claimed["boot_id"]
                     self._seen_boots.add(claimed["boot_id"])
                     digest = hashlib.sha256(raw).hexdigest()
