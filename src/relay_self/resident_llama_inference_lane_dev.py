@@ -273,6 +273,28 @@ class ResidentLlamaInferenceLane:
                     self._uncertain = True
             raise
 
+    async def await_result(
+        self, ticket: ResidentInferenceTicket, *, timeout_s: float = 60.0,
+    ) -> ProviderDecision | ProviderExpression:
+        """Wait for true thread completion without disconnecting the model."""
+        if type(timeout_s) not in (int, float) or not 0 < timeout_s <= 120:
+            raise ResidentGpuLaneError("bounded result wait required")
+        with self.cognitive_work.lock, self._lock:
+            job = self._require_current_job(ticket)
+            if job.future is None:
+                raise ResidentGpuLaneError("inference not actually submitted")
+            future = job.future
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(asyncio.wrap_future(future)),
+                timeout=float(timeout_s),
+            )
+        except TimeoutError as exc:
+            raise ResidentGpuLaneError(
+                "result wait elapsed; backend may still be generating"
+            ) from exc
+        return self.result(ticket)
+
     def result(
         self, ticket: ResidentInferenceTicket,
     ) -> ProviderDecision | ProviderExpression:
