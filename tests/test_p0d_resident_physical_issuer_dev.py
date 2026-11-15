@@ -39,6 +39,7 @@ from relay_self.owned_resident_physical_bridge_dev import (
 )
 from relay_self.persistent_cognition import (
     IdentitySpecification,
+    Memory,
     PersistentCognition,
 )
 from relay_self.physical_action_journal import (
@@ -51,6 +52,10 @@ from relay_self.physical_issue_admission_dev import (
     PhysicalIssueFenceError,
 )
 from relay_self.provenance import Provenance
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyOwnedPaperCheckpoint,
 )
@@ -149,7 +154,7 @@ class FakeNativeResident:
 
 
 class ResidentFixture:
-    def __init__(self, root: Path, n: int):
+    def __init__(self, root: Path, n: int, *, cognitive_work: bool = False):
         self.paper = _fake_paper(root)
         paper_session = self.paper.start_owned()
         self.names = tuple(f"S{i:03d}" for i in range(n))
@@ -207,10 +212,13 @@ class ResidentFixture:
             self.launched.append(value)
             return value
 
+        self.cognitive = (
+            ResidentCognitiveWorkOwner(self.owners) if cognitive_work else None
+        )
         self.bridge = OwnedResidentPhysicalBridge(
             lifecycle=self.lifecycle, physical=self.physical,
             paper=self.paper, configs=self.configs, owners=self.owners,
-            launch=launch,
+            launch=launch, cognitive_work=self.cognitive,
         )
 
     def stop_paper(self):
@@ -508,5 +516,206 @@ def test_original_wal_prepared_unresolved_blocks_individual_logout(tmp_path):
 
     try:
         asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+
+
+
+def _memory(sid: str, suffix: str) -> Memory:
+    return Memory(
+        "memory-" + sid + "-" + suffix,
+        "A historically observed experience, not current World authority.",
+        Provenance("synthetic-native", suffix),
+        Provenance("original-cognition-owner", sid),
+    )
+
+
+@pytest.mark.parametrize("count", [2, 10, 100])
+def test_one_self_cognition_cpu_cancel_and_local_peer_discard(
+    tmp_path, count,
+):
+    f = ResidentFixture(tmp_path, count, cognitive_work=True)
+    assert f.cognitive is not None
+
+    async def scenario():
+        for sid in f.names:
+            await f.bridge.login(sid)
+        sid = f.names[-1]
+        peer = f.names[0]
+        before = _memory(sid, "before")
+        f.owners[sid].retain_memory(before)
+        f.owners[peer].retain_memory(_memory(peer, "online"))
+        assert before in f.owners[sid].retained.memories
+
+        started = asyncio.Event()
+
+        async def work():
+            started.set()
+            await asyncio.Event().wait()
+
+        token, task = f.cognitive.start_cpu_task(
+            sid, task_ref="cpu-L1-shadow", work=work(),
+        )
+        await started.wait()
+        f.cognitive.stage_unsent_peer_message(
+            self_id=sid, recipient_self_id=peer,
+            message_ref="message-unsent-before-logout",
+            payload_ref="local-only-not-delivered",
+        )
+        proof = await f.bridge.logout(sid)
+        assert proof.stale_gpu_fenced and proof.peer_transport_drained
+        assert task.done() and task.cancelled()
+        assert f.cognitive.retired_clean(sid)
+        assert f.lifecycle.view(sid).status is Presence.OFFLINE
+        dropped = f.cognitive.discarded_local_messages(sid)
+        assert len(dropped) == 1
+        assert dropped[0].message_ref == "message-unsent-before-logout"
+        assert dropped[0].externally_sent is False
+        assert dropped[0].recipient_delivery_authorized is False
+        with pytest.raises(ResidentCognitiveWorkError, match="late"):
+            f.cognitive.commit_memory_from_work(token, _memory(sid, "late"))
+        assert _memory(sid, "late") not in f.owners[sid].retained.memories
+        with pytest.raises(Exception, match="cognition epoch fenced"):
+            f.owners[sid].retain_memory(_memory(sid, "post-logout"))
+        # The other original cognitive and physical authorities stay active.
+        f.owners[peer].retain_memory(_memory(peer, "after-peer"))
+        assert _memory(peer, "after-peer") in f.owners[peer].retained.memories
+        with f.physical.lease(
+            self_id=peer,
+            native_session_id=f.bridge.sessions[peer].started.session_id,
+            action_id="peer-still-can-eat", effect_family="EAT",
+        ):
+            f.bridge.sessions[peer].send_test_effect(
+                "consume_held", "peer-still-can-eat",
+            )
+        await f.bridge.login(sid)
+        assert f.lifecycle.view(sid).status is Presence.ONLINE
+        # Old token is not current even after the same Self returns.
+        with pytest.raises(ResidentCognitiveWorkError, match="late"):
+            f.cognitive.commit_memory_from_work(token, _memory(sid, "replayed"))
+        assert before in f.owners[sid].retained.memories
+        for member in f.names:
+            await f.bridge.logout(member)
+        assert f.physical.all_residents_offline
+        assert all(f.cognitive.retired_clean(member) for member in f.names)
+        assert f.bridge.world_only_quiescence().all_gpu_epochs_retired
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+
+
+def test_cpu_work_result_only_installed_by_original_owner_in_current_epoch(
+    tmp_path,
+):
+    f = ResidentFixture(tmp_path, 2, cognitive_work=True)
+    assert f.cognitive is not None
+
+    async def scenario():
+        await f.bridge.login("S000")
+        await f.bridge.login("S001")
+        tok, task = f.cognitive.start_cpu_task(
+            "S000", task_ref="provisional-L0-observation",
+            work=asyncio.sleep(0.0, result="NOT_WORLD_AUTHORITY"),
+        )
+        assert await task == "NOT_WORLD_AUTHORITY"
+        memory = _memory("S000", "source-qualified")
+        assert memory not in f.owners["S000"].retained.memories
+        f.cognitive.commit_memory_from_work(tok, memory)
+        assert memory in f.owners["S000"].retained.memories
+        with pytest.raises(ResidentCognitiveWorkError, match="late"):
+            f.cognitive.commit_memory_from_work(tok, _memory("S000", "duplicate"))
+        for sid in f.names:
+            await f.bridge.logout(sid)
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+
+
+def test_cognitive_cancel_timeout_holds_one_actor_not_other_peers(tmp_path):
+    f = ResidentFixture(tmp_path, 2, cognitive_work=True)
+    assert f.cognitive is not None
+
+    async def scenario():
+        await f.bridge.login("S000")
+        await f.bridge.login("S001")
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        async def ignores_one_cancel():
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                await release.wait()
+                return "late output must never be installed"
+
+        token, task = f.cognitive.start_cpu_task(
+            "S000", task_ref="cpu-stubborn", work=ignores_one_cancel(),
+        )
+        await started.wait()
+        f.bridge.quarantine("S000")
+        with pytest.raises(ResidentCognitiveWorkError, match="not stopped"):
+            await f.cognitive.retire_self("S000", timeout_s=0.01)
+        assert f.lifecycle.view("S000").status is Presence.QUARANTINED
+        assert f.physical.resident_states["S000"] == "QUARANTINED"
+        assert f.lifecycle.view("S001").status is Presence.ONLINE
+        with pytest.raises(ResidentCognitiveWorkError, match="late"):
+            f.cognitive.commit_memory_from_work(token, _memory("S000", "too-early"))
+        f.owners["S001"].retain_memory(_memory("S001", "peer-keeps-learning"))
+        with f.physical.lease(
+            self_id="S001",
+            native_session_id=f.bridge.sessions["S001"].started.session_id,
+            action_id="peer-eat-while-A-held", effect_family="EAT",
+        ):
+            pass
+        release.set()
+        assert await task == "late output must never be installed"
+        await f.bridge.logout("S000")
+        assert f.cognitive.retired_clean("S000")
+        with pytest.raises(ResidentCognitiveWorkError, match="late"):
+            f.cognitive.commit_memory_from_work(token, _memory("S000", "late2"))
+        await f.bridge.logout("S001")
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+
+
+def test_cognitive_fenced_owner_world_only_saves_without_current_self_writes(tmp_path):
+    f = ResidentFixture(tmp_path, 2, cognitive_work=True)
+    assert f.cognitive is not None
+    store = tmp_path / "world-only-after-work"
+    store.mkdir()
+
+    async def scenario():
+        for sid in f.names:
+            await f.bridge.login(sid)
+        f.owners["S000"].retain_memory(_memory("S000", "persists"))
+        for sid in f.names:
+            await f.bridge.logout(sid)
+
+    try:
+        asyncio.run(scenario())
+        assert f.cognitive.retired_clean("S000")
+        source = f.bridge.world_only_quiescence()
+        assert source.native_sessions_absent
+        result = WorldOnlyOwnedPaperCheckpoint(
+            lifecycle=f.lifecycle, owned_paper=f.paper,
+            store=store, issuer_quiescence=f.bridge.world_only_quiescence,
+        ).cycle()
+        assert result.new_world.epoch == 1
+        assert not (result.checkpoint_dir / "selves").exists()
+        assert _memory("S000", "persists") in f.owners["S000"].retained.memories
+        # Re-login on new World epoch can use retained history without
+        # inheriting old native physical or future World observation.
+        asyncio.run(f.bridge.login("S000"))
+        assert f.owners["S000"].native_session_id.startswith("native-S000")
+        assert f.lifecycle.view("S000").status is Presence.ONLINE
+        asyncio.run(f.bridge.logout("S000"))
     finally:
         f.stop_paper()

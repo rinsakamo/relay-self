@@ -143,7 +143,9 @@ class CognitionOwnerCohort:
         for owner in self.owners:
             owner.cohort = self
 
-    def _mutating(self) -> None:
+    def _mutating(self, self_id: str | None = None) -> None:
+        # Existing global cohort ignores optional Self scope; the alternative
+        # resident gate requires the Self ID for per-actor write admission.
         if self.hold or self.closed:
             raise LiveCognitionCheckpointError("cognitive epoch fenced by checkpoint")
 
@@ -437,7 +439,7 @@ class CheckpointedCognitiveOwner:
 
     def _eligible(self) -> None:
         assert self.cohort is not None
-        self.cohort._mutating()
+        self.cohort._mutating(self.self_id)
         if self.fresh_native_observation_required:
             raise LiveCognitionCheckpointError(
                 "fresh native WorldBody observation required after rebind"
@@ -446,7 +448,7 @@ class CheckpointedCognitiveOwner:
     def observe_world_tick(self, *, session_id: str, world_tick: int) -> None:
         with self._mutating():
             assert self.cohort is not None
-            self.cohort._mutating()
+            self.cohort._mutating(self.self_id)
             if (session_id != self.native_session_id or type(world_tick) is not int
                     or world_tick < self.last_observed_tick):
                 raise LiveCognitionCheckpointError("old session/future epoch observation")
