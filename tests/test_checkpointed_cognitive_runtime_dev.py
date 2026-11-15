@@ -225,9 +225,18 @@ def test_old_native_session_is_fenced_after_successful_restart(tmp_path):
     assert f.runtime.run_if_due(0.0)
     with pytest.raises(LiveCognitionCheckpointError, match="old session"):
         f.owners[0].observe_world_tick(session_id="native-before-A", world_tick=111)
+    with pytest.raises(LiveCognitionCheckpointError, match="fresh native WorldBody"):
+        f.owners[0].retain_memory(Memory(
+            "stale-result", "Old GPU result cannot update the owner",
+            Provenance("old-model", "old-session"), Provenance("old", "result"),
+        ))
     f.owners[0].observe_world_tick(
         session_id=f.owners[0].native_session_id, world_tick=111,
     )
+    f.owners[0].retain_memory(Memory(
+        "fresh-result", "Fresh WorldBody session can update owner",
+        Provenance("fresh-model", "new-session"), Provenance("fresh", "result"),
+    ))
 
 
 def test_all_cognitive_mutations_fenced_during_external_checkpoint(tmp_path):
