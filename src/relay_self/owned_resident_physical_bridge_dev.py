@@ -250,11 +250,11 @@ class OwnedResidentPhysicalBridge:
         fence = self.physical.quarantine_resident(
             self_id=self_id, native_session_id=native_id,
         )
-        if view.status is Presence.ONLINE:
-            self.lifecycle.begin_logout(self_id)
-        self.work.require_clean(self_id)
-        owner = self.owners[self_id]
         try:
+            if view.status is Presence.ONLINE:
+                self.lifecycle.begin_logout(self_id)
+            self.work.require_clean(self_id)
+            owner = self.owners[self_id]
             if fence.active_action_ids or owner.supervisor.open_actions:
                 raise OwnedResidentBridgeError("in-flight native Action; quarantine")
             result = await session.terminate()
