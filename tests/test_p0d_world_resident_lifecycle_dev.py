@@ -9,12 +9,11 @@ import pytest
 
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.world_only_owned_checkpoint_dev import (
-    WorldOnlyOwnedPaperCheckpoint,
     WorldOnlyCheckpointError,
+    WorldOnlyOwnedPaperCheckpoint,
     verify_world_only_generation,
 )
 from relay_self.world_resident_lifecycle_dev import (
-    LoginTicket,
     LogoutFenceEvidence,
     NativeLoginEvidence,
     Presence,
