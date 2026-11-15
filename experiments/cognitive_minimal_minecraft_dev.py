@@ -20,15 +20,15 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
-from experiments.cognitive_s49_readonly_handoff import (
-    S49ReadOnlyHandoff,
-    S49ShadowRefusal,
-    assess_s49_readonly_handoff,
-)
 from experiments.cognitive_move_target_resolution import (
     MoveTargetRefusal,
     ResolvedMoveTarget,
     resolve_selected_move_target,
+)
+from experiments.cognitive_s49_readonly_handoff import (
+    S49ReadOnlyHandoff,
+    S49ShadowRefusal,
+    assess_s49_readonly_handoff,
 )
 from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
