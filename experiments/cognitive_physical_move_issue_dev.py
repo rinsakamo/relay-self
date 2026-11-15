@@ -16,6 +16,7 @@ from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
+    mineflayer_yaw_to_target,
 )
 from experiments.cognitive_move_target_resolution import ResolvedMoveTarget
 from experiments.cognitive_physical_eat_issue_dev import (
@@ -56,6 +57,10 @@ def _horizontal(a, b) -> float:
     return math.hypot(a.x - b.x, a.z - b.z)
 
 
+def _spatial(a, b) -> float:
+    return math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
+
+
 def _check_admission(
     proposal: PhysicalActionProposalReceipt, target: ResolvedMoveTarget,
     previous: MineflayerObservation, current: MineflayerObservation,
@@ -71,6 +76,7 @@ def _check_admission(
         or proposal.proposal.intent_id != b.intent_id
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,89}", b.action_id)
         or b.skill_id != "MOVE" or b.skill_version != 1
+        or b.goal_id != "EXPLORE_WORLD"
         or b.capability_ref != "MOVE" or b.capability_version != 1
         or b.body_channel != "movement" or b.target_kind != "DESTINATION"
         or not isinstance(target, ResolvedMoveTarget)
@@ -99,6 +105,22 @@ def _check_admission(
         or not .4 <= target.horizontal_distance <= 4
         or abs(target.vertical_delta) > .25
         or not math.isfinite(target.yaw_rad)
+        or not math.isclose(
+            target.horizontal_distance,
+            _horizontal(target.native_position, target.destination_position),
+            abs_tol=1e-9, rel_tol=0,
+        )
+        or not math.isclose(
+            target.vertical_delta,
+            target.destination_position.y - target.native_position.y,
+            abs_tol=1e-9, rel_tol=0,
+        )
+        or not math.isclose(
+            target.yaw_rad,
+            mineflayer_yaw_to_target(
+                target.native_position, target.destination_position,
+            ), abs_tol=1e-9, rel_tol=0,
+        )
         or previous.snapshot.health <= 0 or current.snapshot.health <= 0
         or previous.snapshot.oxygen_level == 0 or current.snapshot.oxygen_level == 0
         or _horizontal(previous.snapshot.position, current.snapshot.position) > .05
@@ -118,7 +140,11 @@ async def _read(
     if msg.session_id != session.started.session_id or msg.seq <= after_seq:
         raise PhysicalMoveRefusal("foreign/reordered MOVE event")
     if isinstance(msg, MineflayerObservation):
-        if msg.kind in {"death", "respawn"} or msg.snapshot.health <= 0:
+        if (
+            msg.kind in {"death", "respawn"}
+            or msg.snapshot.health <= 0
+            or msg.snapshot.oxygen_level == 0
+        ):
             raise PhysicalMoveRefusal("Body died during native MOVE")
     elif not isinstance(msg, MineflayerEffectResult):
         raise PhysicalMoveRefusal("unexpected native MOVE event")
@@ -150,7 +176,7 @@ async def _progress(session, start, dest, *, after_seq, timeout_s):
         if isinstance(msg, MineflayerEffectResult):
             raise PhysicalMoveRefusal("unexpected native receipt during motion")
         if (
-            msg.kind in {"move", "forcedMove", "probe"}
+            msg.kind == "move"
             and _horizontal(start, dest) - _horizontal(
                 msg.snapshot.position, dest,
             ) >= .25
@@ -301,7 +327,7 @@ async def issue_selected_move_dev(
         ) - _horizontal(
             progress.snapshot.position, target.destination_position,
         )
-        residual = _horizontal(
+        residual = _spatial(
             first_stop.snapshot.position, final_stop.snapshot.position,
         )
         if advanced < .25 or residual > .05:
