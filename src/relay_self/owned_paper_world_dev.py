@@ -6,7 +6,6 @@ World + all Self owners share an atomic or semantically complete checkpoint.
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import time
 import uuid
