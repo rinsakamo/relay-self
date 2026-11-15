@@ -313,6 +313,10 @@ def test_queued_other_self_can_logout_without_cancelling_active_owner(tmp_path):
         # cancellation. A continues generating, so global /slots is busy.
         await f.bridge.logout("S001")
         assert lane.retired_clean("S001")
+        receipt = lane.verified_retirement("S001")
+        assert receipt.queued_cancelled_refs == ("queued-B",)
+        assert receipt.backend_idle_checked is False
+        assert receipt.vram_released is False
         assert f.lifecycle.view("S001").status is Presence.OFFLINE
         assert fake.active == 1
         assert fake.calls == ["fake-gemma"]
