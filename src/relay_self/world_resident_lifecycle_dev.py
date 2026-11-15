@@ -127,6 +127,25 @@ class WorldInstallationEvidence:
 
 
 @dataclass(frozen=True, slots=True)
+class WorldOnlyQuiescenceEvidence:
+    """Original physical/GPU/peer owners, not a local presence flag, assert idle.
+
+    Deliberately cannot be generated from a SelfPresenceView. The caller
+    must provide a source-qualified retired-issuer audit independently.
+    """
+
+    world_epoch: int
+    checked_self_ids: tuple[str, ...]
+    source_ref: str
+    original_physical_issuer_closed: bool
+    native_sessions_absent: bool
+    no_unresolved_physical_actions: bool
+    all_gpu_epochs_retired: bool
+    pending_peer_messages_empty: bool
+    action_issue_authorized: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class PresenceView:
     self_id: str
     status: Presence
@@ -215,6 +234,29 @@ class WorldResidentLifecycle:
                 not self._world_held and not self._world_transition
                 and all(a.status is Presence.OFFLINE for a in self._self.values())
             )
+
+    def require_world_only_quiescence(
+        self, evidence: WorldOnlyQuiescenceEvidence,
+    ) -> None:
+        """External original issuer proof, not simply an empty ONLINE list."""
+        with self._lock:
+            if (
+                not self.can_world_only_checkpoint()
+                or not isinstance(evidence, WorldOnlyQuiescenceEvidence)
+                or evidence.world_epoch != self._world.epoch
+                or evidence.checked_self_ids != self.self_roster
+                or type(evidence.source_ref) is not str
+                or not evidence.source_ref.strip()
+                or evidence.original_physical_issuer_closed is not True
+                or evidence.native_sessions_absent is not True
+                or evidence.no_unresolved_physical_actions is not True
+                or evidence.all_gpu_epochs_retired is not True
+                or evidence.pending_peer_messages_empty is not True
+                or evidence.action_issue_authorized is not False
+            ):
+                raise ResidentLifecycleError(
+                    "World-only transition lacks original issuer retirement proof"
+                )
 
     def world_tick(self, *, paper_session_id: str, tick: int,
                    source_ref: str) -> WorldLifetime:
