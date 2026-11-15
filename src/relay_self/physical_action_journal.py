@@ -89,6 +89,12 @@ def _distance(a: tuple[float, float, float], b: tuple[float, float, float]) -> f
     return math.hypot(a[0] - b[0], a[2] - b[2])
 
 
+def _spatial_distance(
+    a: tuple[float, float, float], b: tuple[float, float, float],
+) -> float:
+    return math.dist(a, b)
+
+
 def _position(position: MineflayerPosition) -> list[float]:
     return [float(position.x), float(position.y), float(position.z)]
 
@@ -207,7 +213,7 @@ def _validate(value: object) -> dict[str, Any]:
                 not seq < look < forward < progress_seq < stop < first < second == after
                 or _distance(before, target) - _distance(progress, target) < .25
                 or _distance(before, progress) < .25
-                or _distance(first_position, second_position) > .05
+                or _spatial_distance(first_position, second_position) > .05
                 or any(row[k] is not None for k in (
                     "food_before", "food_after", "count_before", "count_after",
                 ))
@@ -683,7 +689,7 @@ class PhysicalActionJournal:
                     (stop, "stop", "clear_controls"),
                 )
             )
-            or progress.kind not in {"move", "probe", "forcedMove"}
+            or progress.kind != "move"
             or any(
                 msg.kind != "probe" or msg.request_id != request_id
                 or msg.snapshot.health <= 0
