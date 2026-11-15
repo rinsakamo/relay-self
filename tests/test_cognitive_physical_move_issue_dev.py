@@ -565,3 +565,33 @@ def test_preused_paper_watch_refused_before_wal_and_any_motor(tmp_path):
         ))
     assert kw["journal"].records == ()
     assert session.sent == []
+
+def test_selected_precision_contract_cannot_reuse_legacy_unmeasured_motor(tmp_path):
+    from relay_self.target_contract import (
+        ArrivalCondition,
+        ReferenceFrame,
+        TargetContract,
+        TargetKind,
+    )
+
+    kw, session = setup(tmp_path)
+    bound = kw["target"]
+    precise = TargetContract(
+        scope=bound.scope,
+        goal_id=bound.goal_id,
+        target_ref=bound.target_ref,
+        kind=TargetKind.PLACE,
+        reference_frame=ReferenceFrame.WORLD,
+        provenance=bound.destination_provenance,
+        condition=ArrivalCondition(
+            0, .05, .25, still_ticks=8, max_still_drift_m=.05,
+        ),
+        bound_seq=0,
+        anchor=bound.destination_position,
+    )
+    kw["target"] = replace(bound, arrival_contract=precise)
+    with pytest.raises(PhysicalMoveRefusal, match="stale"):
+        run(kw, session)
+    assert kw["journal"].records == ()
+    assert session.sent == []
+    assert kw["supervisor"].recorded_actions == ()
