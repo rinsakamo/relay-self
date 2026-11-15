@@ -141,7 +141,10 @@ def test_adversarial_paper_trace_cannot_forge_settling(change):
 
 def test_arm_ack_has_no_stop_proof_and_samples_cannot_be_added_to_arm():
     raw, _ = _data()
-    first = raw.split(b"stop_mark_tick=")[0]
+    first = b"\n".join(
+        row for row in raw.splitlines()
+        if not row.startswith((b"stop_mark_tick=", b"sample="))
+    ) + b"\n"
     f, sample = _properties(first, trace=False)
     assert f["nonce"] == NONCE
     assert sample == ()
