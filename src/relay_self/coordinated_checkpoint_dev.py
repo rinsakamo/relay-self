@@ -116,6 +116,7 @@ def capture_generation(
     selves: tuple[SelfSnapshotSource, ...],
     world_id: str, branch_id: str, logical_tick: int,
     tick_source_ref: str, stopped_server_ref: str, quiesced_selves_ref: str,
+    precommit_validator: Callable[[Path], None] | None = None,
 ) -> Path:
     """Capture one externally quiesced cohort; commit marker is written LAST.
 
@@ -181,6 +182,8 @@ def capture_generation(
     }
     # The complete verified contents precede this exclusive commit marker.
     verify_world_checkpoint(archive)
+    if precommit_validator is not None:
+        precommit_validator(gen)
     _new_json(gen / "COMMITTED.json", manifest)
     verify_generation(gen)
     return gen
