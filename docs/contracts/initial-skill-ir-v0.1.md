@@ -84,6 +84,51 @@ single parent with persisted PRE-ISSUE reservation and terminal readback,
 L0 rejection before any WAL/native issue, unknown equip/consume/after-probe
 and restart STOP. Synthetic scripted Mineflayer/provider only.
 
+## 2026-11-15 continuation — ATTACK parent WAL / source-correlated hurt (offline)
+
+`--physical-attack-dev` now selects an **exclusive** opt-in one-shot physical
+mode with the same grant labels, Self-owned `PhysicalActionJournal`, L1
+read-only two-probe target admission and existing `PhysicalActionPort`.
+`experiments/cognitive_physical_attack_runner.py` consumes an actual L1
+`ATTACK@1` and executes `CHECK_TARGET → ACTION(PROPOSED)` via the same
+`FiniteSkillInterpreter`. Only the existing physical ActionLifecycle +
+supervisor issue path is used. **No new Intent, SkillExecution or chooser.**
+
+The new `issue_selected_attack_dev` keeps the **same WAL file and CAS/lock/fsync
+schema as EAT**. Before sending `attack_entity`, it creates one durable
+`PREPARED_UNRESOLVED` parent record. It requires a positive native
+`attack_entity/applied` ACK **and a separately observed `entity_hurt` on
+the exact selected runtime entity ID** with non-null `source_entity_id ==
+actor_entity_id` (Mineflayer reports the Self actor ID), followed by a
+current correlated probe. Journal terminal:
+`NATIVE_ATTACK_HURT_CORRELATED`; row `effect_seqs=[attack_ack_seq,
+hurt_event_seq]`. All prior EAT rows are retained/validated unchanged.
+Missing, foreign, ambiguous or rejected ACK/hurt, death, native transport
+loss and after-probe failure leave the fsynced Action **UNKNOWN / STOP**;
+no repeat or journal reset on restore, even if another Action type is
+selected. A successful one-shot runner independently reopens WAL and
+verifies the original Action/Intent/Skill/Target, probe source, ACK/hurt
+sequences and terminal close before yielding `YIELD_EVALUATION`.
+
+**Evidence limitation**: `entity_hurt` is a Mineflayer event and
+`actor_entity_id` is a bridge-provided value, **not** an independent
+Paper event/UUID/health delta. This remains
+`NATIVE_ATTACK_HURT_CORRELATED_DEV_ONLY`, not
+`DAMAGE_ATTESTED`, zombie death, semantic Skill success or qualification.
+The event can arrive before the ACK and is matched within one bounded
+source-qualified receive window. Native process-local entity IDs must never
+be reused as immutable identity across a Minecraft restart. Real server
+damage would require Paper UUID/tick/health and native source/time joins
+without an invented success threshold.
+
+CLI fields include `physical_attack_dev_selected`,
+`physical_attack_parent_action_id`, `native_attack_hurt`,
+`native_attack_damage_attested=false`, the same IR status fields and
+per-Action shared WAL record. `--physical-attack-dev`,
+`--physical-eat-dev`, legacy unfenced `--execute-native` and explicit
+read-only shadow are mutually exclusive. No real world execution took
+place as part of this milestone. MOVE/REST remain UNMAPPED.
+
 ## IR v0 / bounded semantics
 
 - Shared immutable `PhysicalSkillIR` for INNATE and LEARNED:
