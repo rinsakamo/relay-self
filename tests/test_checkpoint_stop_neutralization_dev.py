@@ -74,8 +74,10 @@ class StopSessionFake:
         tick = (100 if self.fault == "no_ticks" else
                 100 + 3 * (self.probe_count - 1))
         x = 10.0
-        if self.probe_count >= 2 and self.fault == "drift":
-            x = 10.25
+        if self.fault == "drift":
+            x = 10.0 + 0.25 * (self.probe_count - 1)
+        elif self.fault == "settles_late" and self.probe_count > 4:
+            x = 10.23
         if self.fault == "clock_regression" and self.probe_count > 1:
             tick = 90
         session = ("foreign-world" if self.fault == "foreign_probe"
@@ -217,3 +219,20 @@ def test_forged_incomplete_roster_refused_before_physical_gate(tmp_path):
         ))
     assert not gate.closed
     assert not list(tmp_path.glob("stop-*"))
+
+
+
+def test_initial_post_stop_residual_motion_then_8_tick_stillness_is_accepted(tmp_path):
+    gate, cohort, a, b = _cohort(tmp_path, fault_b="settles_late")
+    ready = asyncio.run(prepare_stop_before_autosave(
+        gate, participants=cohort, audit_dir=tmp_path, timeout_s=2.0,
+    ))
+    assert gate.neutralization_complete
+    assert a.probe_count >= 7
+    # Drifting after initial settling forces a second later stable window.
+    assert b.probe_count >= 10
+    assert len(ready.receipt_files) == 2
+    receipt_b = json.loads(ready.receipt_files[1].read_text())
+    assert receipt_b["first_position"]["x"] == 10.23
+    assert receipt_b["settled_position"]["x"] == 10.23
+    assert receipt_b["settled_world_tick"] - receipt_b["first_world_tick"] >= 8
