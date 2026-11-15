@@ -33,11 +33,9 @@ from relay_self.physical_action_port import (
 )
 from relay_self.provenance import Provenance
 from test_cognitive_minimal_minecraft_dev import observation, zombie
-from test_cognitive_physical_eat_issue_dev import (
-    OwnedFakeNative,
-    run as eat_run,
-    setup as eat_setup,
-)
+from test_cognitive_physical_eat_issue_dev import OwnedFakeNative
+from test_cognitive_physical_eat_issue_dev import run as eat_run
+from test_cognitive_physical_eat_issue_dev import setup as eat_setup
 from test_initial_skill_ir_v0 import fixture as initial_fixture
 
 
