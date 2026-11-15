@@ -172,7 +172,6 @@ class TargetContract:
             _id("entity ID", self.entity_id)
             if (type(self.max_entity_age_seq) is not int
                     or not 0 <= self.max_entity_age_seq <= 64
-                    or self.condition.min_horizontal_m == 0
                     or not self.condition.require_line_of_sight):
                 raise TargetContractRefusal("attack envelope needs range and live LOS")
         else:
