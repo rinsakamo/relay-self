@@ -142,9 +142,11 @@ def initial_move_pattern() -> SchemaPattern:
 
 
 def initial_patterns_with_move() -> PatternRegistry:
-    """Owner opt-in: add MOVE Schema only when real WorldBody support is admitted.
+    """Opt-in MOVE Schema for read-only target resolution and future admission.
 
-    This is *not* the default initial registry until STOP/settling is qualified.
+    The caller may observe Goal/Target candidates while physical MOVE remains
+    unqualified. Do not include MOVE in issuer-approved skills until STOP and
+    settling are independently qualified; default registry stays unchanged.
     """
     base = initial_patterns()
     return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
