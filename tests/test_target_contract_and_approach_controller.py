@@ -220,7 +220,7 @@ def test_precise_step_selects_sneak_when_calibration_allows_it():
     assert suggested.phase is ApproachPhase.DECELERATE
     assert suggested.requested_gait is GaitMode.SNEAK
     assert recommend_approach(
-        c, body(x=.9, speed=.2, still=0), cap, route_clear=True,
+        c, body(x=.95, speed=.2, still=0), cap, route_clear=True,
     ).phase is ApproachPhase.VERIFY_STILLNESS
 
 
