@@ -19,6 +19,11 @@ from relay_self.coordinated_checkpoint_dev import (
     restore_generation,
     verify_generation,
 )
+from relay_self.owned_paper_world_dev import (
+    OwnedPaperError,
+    OwnedPaperWorld,
+    PaperTickReceipt,
+)
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
@@ -26,11 +31,6 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
-from relay_self.owned_paper_world_dev import (
-    OwnedPaperError,
-    OwnedPaperWorld,
-    PaperTickReceipt,
-)
 
 
 def _server(tmp_path: Path, *, announce_save: bool = True):
