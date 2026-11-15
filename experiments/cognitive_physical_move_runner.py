@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from experiments.cognitive_minimal_minecraft_dev import WorldStepReceipt
+from experiments.cognitive_move_paper_witness_dev import PaperMoveWitnessSession
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatGrant,
     PhysicalGrantStage,
@@ -65,6 +67,10 @@ async def issue_move_from_selected_l1_dev(
     issue_authority_id: str,
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
+    paper_move_spool: Path | None = None,
+    paper_move_owned_log: Path | None = None,
+    paper_world_uuid: str | None = None,
+    paper_actor_uuid: str | None = None,
 ) -> CognitivePhysicalMoveResult:
     """One complete selected MOVE parent; never infer destination arrival."""
     if (
@@ -164,6 +170,27 @@ async def issue_move_from_selected_l1_dev(
             current.seq, current.request_id or "", binding.target_ref, True,
         )
 
+    paper_witness = None
+    if any(v is not None for v in (
+        paper_move_spool, paper_move_owned_log, paper_world_uuid, paper_actor_uuid,
+    )):
+        if (
+            not isinstance(paper_move_spool, Path)
+            or not isinstance(paper_move_owned_log, Path)
+            or not isinstance(paper_world_uuid, str)
+            or not isinstance(paper_actor_uuid, str)
+            or paper_move_owned_log.is_symlink()
+            or not paper_move_owned_log.is_file()
+        ):
+            raise PhysicalMoveRefusal("all four independent Paper witness inputs required")
+        paper_witness = PaperMoveWitnessSession(
+            paper_move_spool, world_uuid=paper_world_uuid,
+            actor_uuid=paper_actor_uuid, action_id=action_id,
+            native_session_id=current.session_id,
+            native_start=receipt.move_target.native_position,
+            native_target=receipt.move_target.destination_position,
+            read_owned_log=paper_move_owned_log.read_bytes,
+        )
     effect = await issue_selected_move_dev(
         session, proposal=proposed.proposal,
         target=receipt.move_target,
@@ -175,6 +202,7 @@ async def issue_move_from_selected_l1_dev(
         supervisor=supervisor, journal=journal, at_ns=4,
         provenance=provenance, grant_real_world=dev_physical_grant,
         acknowledge_dev_unverified_principal=acknowledge_unverified_principal,
+        paper_witness=paper_witness,
     )
     persisted = PhysicalActionJournal.restore(journal.path, self_id=self_id)
     row = persisted.records[-1] if persisted.records else {}
