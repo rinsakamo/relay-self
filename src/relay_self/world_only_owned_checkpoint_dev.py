@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from relay_self.coordinated_checkpoint_dev import (
     _hash,
@@ -23,6 +24,7 @@ from relay_self.world_checkpoint_dev import (
 from relay_self.world_resident_lifecycle_dev import (
     WorldInstallationEvidence,
     WorldLifetime,
+    WorldOnlyQuiescenceEvidence,
     WorldResidentLifecycle,
 )
 
@@ -122,16 +124,19 @@ class WorldOnlyOwnedPaperCheckpoint:
     def __init__(
         self, *, lifecycle: WorldResidentLifecycle,
         owned_paper: OwnedPaperWorld, store: Path,
+        issuer_quiescence: Callable[[], WorldOnlyQuiescenceEvidence],
     ) -> None:
         if (
             not isinstance(lifecycle, WorldResidentLifecycle)
             or not isinstance(owned_paper, OwnedPaperWorld)
             or not Path(store).is_dir() or Path(store).is_symlink()
+            or not callable(issuer_quiescence)
         ):
             raise WorldOnlyCheckpointError("one owned Paper and preexisting store required")
         self.lifecycle = lifecycle
         self.owned_paper = owned_paper
         self.store = Path(store)
+        self.issuer_quiescence = issuer_quiescence
         self._held = False
         self._sequence = 0
 
@@ -150,6 +155,9 @@ class WorldOnlyOwnedPaperCheckpoint:
             or paper.branch_id != before.branch_id
         ):
             raise WorldOnlyCheckpointError("foreign/uncertain owned Paper session")
+        # An OFFLINE list alone is NOT evidence of native physical issuer
+        # retirement. Refuse to touch Paper without its independent owner.
+        self.lifecycle.require_world_only_quiescence(self.issuer_quiescence())
         self.lifecycle.begin_world_transition()
         try:
             stopped = paper.stop_and_save()
