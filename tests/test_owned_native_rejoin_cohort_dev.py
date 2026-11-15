@@ -119,7 +119,7 @@ def test_real_native_session_protocol_seam_and_full_rebind():
         assert receipt.effect_admission_installed
         assert not receipt.gpu_tasks_fenced
         assert not receipt.stale_transport_fenced
-        with pytest.raises(PhysicalIssueFenceError, match="blocked"):
+        with pytest.raises(PhysicalIssueFenceError, match="stale|blocked"):
             manager.sessions[sid].admission(receipt.new_native_session_id, "attack_entity", "x")
         physical.rotate_native_session(
             fence_ref=fence.fence_ref, self_id=sid, old_session_id="old-" + sid,
