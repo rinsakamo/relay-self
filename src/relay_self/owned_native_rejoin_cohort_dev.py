@@ -49,6 +49,70 @@ class NativePreparedRejoin:
     physical_issue_authorized: bool = False
 
 
+async def verify_native_spawn_probe(
+    session: MineflayerProcessSession, *, timeout_s: float,
+) -> tuple[int, int, str, int]:
+    """Verify this owned native child's spawn + request-correlated World tick.
+
+    Common source checker for full-cohort rejoin and per-Self LOGIN.
+    Native sensor evidence alone is NOT authenticated Paper/world identity.
+    """
+    if (
+        type(timeout_s) not in (int, float)
+        or not 0 < timeout_s <= 60
+    ):
+        raise NativeCohortRejoinError("bounded native source timeout required")
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    sid = session.started.session_id
+
+    async def received():
+        left = deadline - loop.time()
+        if left <= 0:
+            raise NativeCohortRejoinError("native rejoin probe timed out")
+        return await asyncio.wait_for(session.receive(), left)
+
+    spawn = None
+    for _ in range(256):
+        entry = await received()
+        if entry.session_id != sid or isinstance(
+            entry, (
+                MineflayerConnectionEnd, MineflayerAdapterErrorMessage,
+                MineflayerCommandError,
+            ),
+        ):
+            raise NativeCohortRejoinError("native startup source/error mismatch")
+        if isinstance(entry, MineflayerObservation) and entry.kind in {"spawn", "respawn"}:
+            spawn = entry
+            break
+    if spawn is None:
+        raise NativeCohortRejoinError("native spawn not independently observed")
+    request_id = "p0d-rejoin-" + uuid.uuid4().hex
+    await session.send_observe(request_id)
+    for _ in range(256):
+        entry = await received()
+        if entry.session_id != sid or isinstance(
+            entry, (
+                MineflayerConnectionEnd, MineflayerAdapterErrorMessage,
+                MineflayerCommandError,
+            ),
+        ):
+            raise NativeCohortRejoinError("native probe source/error mismatch")
+        if isinstance(entry, MineflayerObservation) and entry.kind == "probe":
+            if (
+                entry.request_id != request_id
+                or entry.seq <= spawn.seq
+                or entry.snapshot.time is None
+            ):
+                raise NativeCohortRejoinError("unmatched or unclocked native rejoin probe")
+            native_time = entry.snapshot.time
+            tick = native_time.day * 24000 + native_time.time_of_day
+            if type(tick) is not int or tick < 0:
+                raise NativeCohortRejoinError("invalid native source World clock")
+            return spawn.seq, entry.seq, request_id, tick
+    raise NativeCohortRejoinError("native rejoin probe not received")
+
+
 class OwnedNativeRejoinCohort:
     """Own one session per Self and guard its final native stdin effect boundary.
 
@@ -154,56 +218,11 @@ class OwnedNativeRejoinCohort:
         return receipt
 
     async def _spawn_and_probe(self, session: MineflayerProcessSession) -> tuple[int, int, str]:
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + self.probe_timeout_s
-        sid = session.started.session_id
-
-        async def received():
-            left = deadline - loop.time()
-            if left <= 0:
-                raise NativeCohortRejoinError("native rejoin probe timed out")
-            return await asyncio.wait_for(session.receive(), left)
-
-        spawn = None
-        for _ in range(256):
-            entry = await received()
-            if entry.session_id != sid or isinstance(
-                entry, (
-                    MineflayerConnectionEnd, MineflayerAdapterErrorMessage,
-                    MineflayerCommandError,
-                ),
-            ):
-                raise NativeCohortRejoinError("native startup source/error mismatch")
-            if isinstance(entry, MineflayerObservation) and entry.kind in {"spawn", "respawn"}:
-                spawn = entry
-                break
-        if spawn is None:
-            raise NativeCohortRejoinError("native spawn not independently observed")
-        request_id = "p0d-rejoin-" + uuid.uuid4().hex
-        await session.send_observe(request_id)
-        for _ in range(256):
-            entry = await received()
-            if entry.session_id != sid or isinstance(
-                entry, (
-                    MineflayerConnectionEnd, MineflayerAdapterErrorMessage,
-                    MineflayerCommandError,
-                ),
-            ):
-                raise NativeCohortRejoinError("native probe source/error mismatch")
-            if isinstance(entry, MineflayerObservation) and entry.kind == "probe":
-                if (
-                    entry.request_id != request_id
-                    or entry.seq <= spawn.seq
-                    or entry.snapshot.time is None
-                ):
-                    raise NativeCohortRejoinError("unmatched or unclocked native rejoin probe")
-                native_time = entry.snapshot.time
-                tick = native_time.day * 24000 + native_time.time_of_day
-                if type(tick) is not int or tick < 0:
-                    raise NativeCohortRejoinError("invalid native source World clock")
-                self._verified_probe_ticks[sid] = tick
-                return spawn.seq, entry.seq, request_id
-        raise NativeCohortRejoinError("native rejoin probe not received")
+        spawn_seq, probe_seq, request_id, tick = await verify_native_spawn_probe(
+            session, timeout_s=self.probe_timeout_s,
+        )
+        self._verified_probe_ticks[session.started.session_id] = tick
+        return spawn_seq, probe_seq, request_id
 
     async def verify_initial_cohort(self) -> dict[str, tuple[int, int, str]]:
         """Require spawn and correlated native probe from every initial process.
