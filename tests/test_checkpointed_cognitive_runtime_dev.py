@@ -301,3 +301,30 @@ def test_old_owner_skill_not_automatically_reissued_by_recovery(tmp_path):
     assert all(c.semantic.skill_histories[0].state.value == "started" for c in candidates)
     assert all(not c.semantic.old_skill_resume_authorized for c in candidates)
     assert all(not c.semantic.new_physical_action_issue_authorized for c in candidates)
+
+
+
+def test_peer_messages_wait_for_both_fresh_sessions(tmp_path):
+    f = RuntimeFixture(tmp_path)
+    f.baseline()
+    assert f.runtime.run_if_due(0.0)
+    # Both are rebound to new native sessions but still require new WorldBody facts.
+    with pytest.raises(LiveCognitionCheckpointError, match="both peers"):
+        f.cohort.delivered(PeerDelivery(
+            "post-restart-peer", "A", "B", 108, 109, "new-message",
+        ))
+    f.owners[0].observe_world_tick(
+        session_id=f.owners[0].native_session_id, world_tick=111,
+    )
+    with pytest.raises(LiveCognitionCheckpointError, match="both peers"):
+        f.cohort.delivered(PeerDelivery(
+            "post-restart-peer", "A", "B", 108, 109, "new-message",
+        ))
+    f.owners[1].observe_world_tick(
+        session_id=f.owners[1].native_session_id, world_tick=111,
+    )
+    f.cohort.delivered(PeerDelivery(
+        "post-restart-peer", "A", "B", 108, 109, "new-message",
+    ))
+    assert "post-restart-peer" in f.owners[0].peer_deliveries
+    assert "post-restart-peer" in f.owners[1].peer_deliveries
