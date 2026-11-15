@@ -13,7 +13,9 @@ from relay_self.coordinated_checkpoint_dev import (
     verify_generation,
 )
 from relay_self.persistent_cognition import (
-    IdentitySpecification, PersistentCognition, save_persistent_cognition,
+    IdentitySpecification,
+    PersistentCognition,
+    save_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
