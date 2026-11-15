@@ -128,6 +128,7 @@ def native_schema_percept(
     scenario: ControlledScenario,
     *,
     self_id: str,
+    exploration_need: bool = False,
 ) -> WorldPercept:
     """Source-qualified native projection; no Minecraft-native threat classifier.
 
@@ -142,6 +143,8 @@ def native_schema_percept(
         raise MinimalCognitionError("existing ControlledScenario required")
     if not isinstance(self_id, str) or not self_id.strip():
         raise MinimalCognitionError("Self identity required")
+    if type(exploration_need) is not bool:
+        raise MinimalCognitionError("exploration Need must be a typed Self signal")
     if observation.kind == "death" or observation.snapshot.health <= 0:
         raise MinimalCognitionError("dead WorldBody is not actionable")
 
@@ -177,6 +180,19 @@ def native_schema_percept(
             observation.session_id, observation.seq,
         ))
 
+    # Destinations are explicit configuration/WorldBody Target *claims*, not
+    # observations of reachable ground. Preserve their OWN provenance, never
+    # mislabel them as Mineflayer/Paper facts. No native issue from this list.
+    if exploration_need:
+        for destination in scenario.destinations:
+            if len(targets) >= 16:
+                break
+            targets.append(Target(
+                f"destination:{destination.destination_id}",
+                "DESTINATION", destination.provenance,
+                observation.session_id, observation.seq,
+            ))
+
     return WorldPercept(
         scope=ScopeRef(self_id, observation.session_id),
         source=observation.provenance,
@@ -185,6 +201,7 @@ def native_schema_percept(
         fatigue_high=None,  # No native fatigue sensor in this adapter.
         targets=tuple(targets),
         threat_cue=bool(observed_threats),
+        exploration_need=exploration_need,
     )
 
 
