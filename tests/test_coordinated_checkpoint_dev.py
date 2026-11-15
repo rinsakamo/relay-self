@@ -1,8 +1,6 @@
 """#860 DEV generation tests. Filesystem fixtures; not a real running server."""
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from relay_self.coordinated_checkpoint_dev import (
@@ -142,17 +140,14 @@ def test_corrupt_committed_generation_refused(tmp_path, which):
         restore_generation(generation, tmp_path / "no-restore", restore_id="r2")
 
 
-def test_autosave_gate_sixty_seconds_and_failed_capture_not_committed():
+def test_autosave_gate_sixty_seconds_and_failed_capture_not_committed(tmp_path):
+    world, store, selves = _fixtures(tmp_path)
     gate = AutosaveGate()
-    completed = []
-
-    def success():
-        completed.append("ok")
-        return "committed"
-
-    assert gate.run_if_due(100.0, success) == "committed"
-    assert gate.run_if_due(159.99, success) is None
-    assert completed == ["ok"]
+    first = gate.run_if_due(
+        100.0, lambda: _capture(world, store, selves, sequence=1),
+    )
+    assert first == store / "g-000000000001"
+    assert gate.run_if_due(159.99, lambda: None) is None
     assert gate.due(160.0)
 
     def failure():
@@ -161,6 +156,12 @@ def test_autosave_gate_sixty_seconds_and_failed_capture_not_committed():
     with pytest.raises(RuntimeError):
         gate.run_if_due(160.0, failure)
     assert gate.last_success_monotonic == 100.0
-    assert gate.run_if_due(160.0, success) == "committed"
-    assert len(completed) == 2
+    second = gate.run_if_due(
+        160.0, lambda: _capture(world, store, selves, sequence=2),
+    )
+    assert second == store / "g-000000000002"
     assert not gate.due(219.9)
+    with pytest.raises(CoordinatedCheckpointError):
+        gate.run_if_due(220.0, lambda: store / "g-000000000003")
+    assert gate.last_success_monotonic == 160.0
+    assert latest_verified_generation(store) == second
