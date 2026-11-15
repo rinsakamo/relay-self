@@ -37,6 +37,7 @@ class NativePreparedRejoin:
     spawn_seq: int
     probe_seq: int
     probe_request_id: str
+    probe_world_tick: int = -1
     old_process_terminated: bool = True
     effect_admission_installed: bool = True
     gpu_tasks_fenced: bool = False
@@ -105,6 +106,7 @@ class OwnedNativeRejoinCohort:
         self.probe_timeout_s = float(probe_timeout_s)
         self._prepared: dict[str, NativePreparedRejoin] = {}
         self._initial_verified: dict[str, tuple[int, int, str]] = {}
+        self._verified_probe_ticks: dict[str, int] = {}
         try:
             for sid, session in self.sessions.items():
                 self._install(sid, session)
@@ -189,6 +191,11 @@ class OwnedNativeRejoinCohort:
                     or entry.snapshot.time is None
                 ):
                     raise NativeCohortRejoinError("unmatched or unclocked native rejoin probe")
+                native_time = entry.snapshot.time
+                tick = native_time.day * 24000 + native_time.time_of_day
+                if type(tick) is not int or tick < 0:
+                    raise NativeCohortRejoinError("invalid native source World clock")
+                self._verified_probe_ticks[sid] = tick
                 return spawn.seq, entry.seq, request_id
         raise NativeCohortRejoinError("native rejoin probe not received")
 
@@ -264,6 +271,7 @@ class OwnedNativeRejoinCohort:
             evidence = NativePreparedRejoin(
                 self_id, paper_session, former_native,
                 replacement.started.session_id, spawn_seq, probe_seq, request_id,
+                probe_world_tick=self._verified_probe_ticks[replacement.started.session_id],
             )
             self._prepared[self_id] = evidence
             return evidence.new_native_session_id
