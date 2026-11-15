@@ -17,12 +17,12 @@ from relay_self.checkpoint_stop_neutralization_dev import (
     StopParticipant,
     prepare_stop_before_autosave,
 )
+from relay_self.checkpointed_cognitive_runtime_dev import CognitionOwnerCohort
 from relay_self.coordinated_autosave_runtime_dev import (
     AutosaveCycleResult,
     CoordinatedAutosaveRuntime,
 )
 from relay_self.coordinated_checkpoint_dev import verify_generation
-from relay_self.checkpointed_cognitive_runtime_dev import CognitionOwnerCohort
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 
