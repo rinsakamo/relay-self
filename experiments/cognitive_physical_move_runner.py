@@ -96,6 +96,8 @@ async def issue_move_from_selected_l1_dev(
         or receipt.selection.option.skill_version != 1
         or receipt.selection.option.target_kind != "DESTINATION"
         or receipt.selection.option.target_ref != receipt.move_target.target_ref
+        or receipt.selection.option.arrival_contract is not None
+        or receipt.move_target.arrival_contract is not None
         or receipt.current_frame.scope.self_id != self_id
         or intent_owner.current_intent is not None
         or supervisor.recorded_actions or supervisor.open_actions
