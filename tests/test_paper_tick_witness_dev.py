@@ -38,6 +38,8 @@ def _run_witness(
         if matches:
             request = matches[0]
             data = dict(x.split("=", 1) for x in request.read_text().splitlines())
+            # Match the real Paper plugin: consume each nonce request exactly once.
+            request.rename(request.with_suffix(".handled"))
             nonce = echoed_nonce or data["nonce"]
             session = echoed_session or data["server_session_id"]
             rows = {
