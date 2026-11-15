@@ -47,7 +47,7 @@ def _server(tmp_path: Path, *, announce_save: bool = True):
         "print('Done (0.8s)! For help, type \"help\"', flush=True)\n"
         "for line in sys.stdin:\n"
         "    if line.strip() == 'save-all flush':\n"
-        + ("        print('Saving worlds', flush=True)\n" if announce_save else "")
+        + ("        print('Saving worlds', flush=True)\n" if announce_save else "        pass\n")
         + "    if line.strip() == 'stop':\n"
         "        print('Stopping server', flush=True)\n"
         "        sys.exit(0)\n",
