@@ -48,6 +48,48 @@ calls `authorize`, `issue`, `succeed`, `complete`, or an automatic restart.
 `YIELD_EVALUATION` means at most qualified physical *step progress*; it is
 **not Skill/Goal success, C1 evidence or World-side consequence**.
 
+## Paper STOP tick/XYZ independent evidence extension (DEV-only)
+
+The new isolated `P0MMoveWitness` Paper plugin is a **read-only**
+main-thread actor position sampler and is **not** the Checkpoint #878
+P0D tick witness. The original native MOVE parent keeps the existing
+Self-owned physical WAL and CPU L0 Action owner. An optional strict
+`PaperMoveWitnessSession` arms a nonce+World UUID+actor UUID+native
+session+original Action ID **after** the WAL PREPARED reservation and
+**before** native LOOK; it sends its STOP marker only after the native
+`clear_controls/applied` ACK. Paper's live main-thread task records
+a consecutive tick/XYZ series through STOP marker + 16 ticks.
+
+`qualify_paper_move_trace` independently checks the reported Paper
+boot/session/action/World/actor, ordered Paper process log markers, Paper
+start/native start agreement within 0.20m, Paper targetward progress
+≥0.25m and **every XYZ position during ticks STOP+8..STOP+16**
+within 0.06m of the first of those post-settling positions.
+The completed raw file has a SHA256 evidence digest. Any absent or
+foreign Paper proof when the strict mode is enabled **blocks WAL terminal
+close and leaves UNKNOWN / STOP across restart**. It is never replaced
+with a native-only success.
+
+This proves at most **an eight-Paper-tick position stability interval**,
+not causally server-acknowledged STOP, terminal velocity zero, collision
+freedom, arriving at target, a real-World qualification or cross-World
+Checkpoint consistency. The actor UUID and purported owned process log
+are operator-provided inputs, not authenticated cross-process identity.
+The raw Paper traces and logs remain necessary original artifacts.
+
+The user-optional CLI flags are `--paper-move-spool`,
+`--paper-move-owned-log`, `--paper-move-world-uuid` and
+`--paper-move-actor-uuid`, all or none, with exclusive
+`--physical-move-dev`. The reporting field
+`paper_move_position_stable_8_ticks` is true only on complete strict
+trace verification. `native_move_paper_settled_attested` and
+`native_move_arrival_attested` remain false for all DEV trials.
+
+See [P0M exact-field runbook](../experiments/cognitive-move-paper-16tick-dev.md).
+This PR tests scripted native/Paper observer traces and compiles
+the Paper 1.21.8 plugin with Java 21. **No real Minecraft/Paper/Gemma
+execution was performed** at this extension stage.
+
 ## Latest continuation — one-shot MOVE native control and two STOP probes (OFFLINE DEV)
 
 This stage **supersedes the earlier MOVE-mapping-only status** in historical
