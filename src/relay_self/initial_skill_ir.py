@@ -110,7 +110,7 @@ def initial_skill_descriptors() -> tuple[InitialSkillDescriptor, ...]:
 
     MOVE set_control has no qualified target-directed/STOP mapping.
     REST has no qualified fatigue recovery mapping. Neither is runnable.
-    ATTACK has a native primitive but no WAL-owned physical issuer yet.
+    ATTACK has an opt-in offline one-shot WAL issuer for ACK/hurt correlation.
     """
     return (
         InitialSkillDescriptor("MOVE", None, None, None, None, "UNMAPPED"),
