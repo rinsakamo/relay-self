@@ -608,6 +608,16 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 None if physical_move is None
                 else physical_move.action.residual_motion
             ),
+            "native_move_progress_observation": (
+                None if physical_move is None
+                else _native_observation_record(physical_move.action.progress)
+            ),
+            "native_move_stop_probes": (
+                [] if physical_move is None else [
+                    _native_observation_record(physical_move.action.first_stop),
+                    _native_observation_record(physical_move.action.final_stop),
+                ]
+            ),
             "physical_attack_parent_action_id": (
                 None if physical_attack is None else physical_attack.action_id
             ),
@@ -650,6 +660,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 [{
                     "action_id": m.action_id, "result": m.result,
                     "effect": m.effect, "source_ref": m.provenance.reference,
+                    "session_id": m.session_id, "native_seq": m.seq,
                 } for m in (
                     physical_move.action.look, physical_move.action.forward,
                     physical_move.action.stop,
