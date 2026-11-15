@@ -42,10 +42,6 @@ from relay_self.persistent_cognition import (
     Memory,
     PersistentCognition,
 )
-from relay_self.resident_cognitive_work_owner_dev import (
-    ResidentCognitiveWorkError,
-    ResidentCognitiveWorkOwner,
-)
 from relay_self.physical_action_journal import (
     PhysicalActionJournal,
     PhysicalJournalUnresolved,
@@ -56,6 +52,10 @@ from relay_self.physical_issue_admission_dev import (
     PhysicalIssueFenceError,
 )
 from relay_self.provenance import Provenance
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyOwnedPaperCheckpoint,
 )
