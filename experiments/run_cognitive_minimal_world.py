@@ -480,6 +480,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 acknowledge_unverified_principal=(
                     args.acknowledge_physical_dev_unverified_grants
                 ),
+                expected_username=args.mc_username,
                 paper_move_spool=(
                     Path(args.paper_move_spool) if args.paper_move_spool else None
                 ),
