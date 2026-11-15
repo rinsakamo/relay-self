@@ -82,6 +82,11 @@ class PhysicalIssueAdmission:
         self._stop_proofs: dict[str, NeutralStopProof] = {}
 
     @property
+    def self_roster(self) -> tuple[str, ...]:
+        with self._lock:
+            return tuple(sorted(self._sessions))
+
+    @property
     def closed(self) -> bool:
         with self._lock:
             return self._closed
@@ -132,7 +137,8 @@ class PhysicalIssueAdmission:
                     del self._active[self_id]
 
     def require_native_effect(
-        self, *, self_id: str, native_session_id: str, effect: str,
+        self, *, self_id: str, native_session_id: str,
+        effect: str, action_id: str | None = None,
     ) -> None:
         """Actual Mineflayer stdin gate: require an active typed EAT/ATTACK lease.
 
@@ -151,6 +157,7 @@ class PhysicalIssueAdmission:
                     self._neutralizing and effect == "clear_controls"
                     and authorized_stop is not None
                     and authorized_stop[0] == native_session_id
+                    and authorized_stop[1] == action_id
                 ):
                     return
                 raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
@@ -187,6 +194,12 @@ class PhysicalIssueAdmission:
                     "in-flight physical Action prevents STOP; admission held"
                 )
             return self._fence_token
+
+    def abort_neutralization(self) -> None:
+        """A failed pre-save STOP must never become a later valid COMMIT."""
+        with self._lock:
+            if self._closed and self._neutralizing:
+                self._poisoned = True
 
     @contextmanager
     def stop_lease(
