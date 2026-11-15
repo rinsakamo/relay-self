@@ -19,7 +19,9 @@ from typing import Callable
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.world_checkpoint_dev import (
-    capture_stopped_world, restore_world_to_new_branch, verify_world_checkpoint,
+    capture_stopped_world,
+    restore_world_to_new_branch,
+    verify_world_checkpoint,
 )
 
 
