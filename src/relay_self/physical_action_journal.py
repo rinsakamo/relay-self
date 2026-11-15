@@ -1,4 +1,4 @@
-"""Physical ActionPort fsynced PRE-ISSUE journal (Cognitive v0.1, EAT DEV).
+"""Physical ActionPort shared fsynced PRE-ISSUE journal (Cognitive v0.1 DEV).
 
 Adapted from the #767 OriginalS49NonMotionFence/C1MotionJournal durable
 write/lock/CAS pattern, without importing S49's L0, Intent or food chooser.
