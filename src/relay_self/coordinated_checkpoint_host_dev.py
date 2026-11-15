@@ -56,6 +56,7 @@ class CoordinatedCheckpointHost:
         participants_now: Callable[[], tuple[StopParticipant, ...]],
         stop_audit_dir: Path,
         owned_paper: OwnedPaperWorld | None = None,
+        prepare_native_rejoin: Callable[[str, str, str], Awaitable[str]] | None = None,
         stop_timeout_s: float = 8.0,
         monotonic_clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
@@ -107,6 +108,7 @@ class CoordinatedCheckpointHost:
         self.participants_now = participants_now
         self.stop_audit_dir = stop_audit_dir
         self.owned_paper = owned_paper
+        self.prepare_native_rejoin = prepare_native_rejoin
         self.stop_timeout_s = float(stop_timeout_s)
         self.clock = monotonic_clock
         self.sleep = sleep
@@ -183,7 +185,12 @@ class CoordinatedCheckpointHost:
             # Deliberately no await between full STOP and synchronous cognition/
             # world close/capture/restart. Other-process issuers still require
             # their own global gates and independent qualification.
-            saved = self.runtime.run_if_due(now_monotonic)
+            if self.prepare_native_rejoin is None:
+                saved = self.runtime.run_if_due(now_monotonic)
+            else:
+                saved = await self.runtime.run_if_due_async(
+                    now_monotonic, prepare_rejoin=self.prepare_native_rejoin,
+                )
             if (
                 saved is None or not saved.typed_owner_cut_validated
                 or saved.saved_self_ids != self.physical.self_roster
