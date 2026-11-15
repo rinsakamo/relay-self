@@ -199,8 +199,7 @@ async def _stop_one(
                 "first_request_id": first.request_id,
                 "settled_request_id": last.request_id,
                 "first_world_tick": then, "settled_world_tick": now,
-                "first_position": vars(first.snapshot.position)
-                if hasattr(first.snapshot.position, "__dict__") else {
+                "first_position": {
                     "x": first.snapshot.position.x,
                     "y": first.snapshot.position.y,
                     "z": first.snapshot.position.z,
@@ -248,10 +247,16 @@ async def prepare_stop_before_autosave(
     # can acquire a lease between roster validation and this closed transition.
     fence_ref = admission.begin_neutralization()
     files: list[Path] = []
-    for p in ordered:
-        files.append(await _stop_one(
-            admission, p, fence_ref, Path(audit_dir), timeout_s,
-        ))
-    if not admission.neutralization_complete:
-        raise StopNeutralizationError("not all Self STOP proofs verified")
+    try:
+        for p in ordered:
+            files.append(await _stop_one(
+                admission, p, fence_ref, Path(audit_dir), timeout_s,
+            ))
+        if not admission.neutralization_complete:
+            raise StopNeutralizationError("not all Self STOP proofs verified")
+    except BaseException:
+        # Even a failed final evidence-file fsync after a valid ACK means HOLD.
+        # Includes CancelledError / KeyboardInterrupt; never auto-resume.
+        admission.abort_neutralization()
+        raise
     return StopCohortReady(fence_ref, roster, tuple(files))
