@@ -112,3 +112,27 @@ This stage's GitHub CI can establish only
 `REAL_TWO_NATIVE_HARNESS_OFFLINE_DEV_PASS`. Unless actual native Paper
 evidence has been supplied in this PR's comments, the physical test is
 `REAL_TWO_NATIVE_PAPER_NOT_RUN`.
+
+
+## Paper companion checkpoint layout correction (Stage 15)
+
+During repo-first review, a compatibility blocker was found in #874:
+`world_checkpoint_dev._scan` required `level.dat` in **every** archive
+folder, but the existing Paper-only World hashing helper explicitly allows
+`world_nether` and `world_the_end` folders without `level.dat`.
+Those are not standalone overworld World roots.
+
+The default `capture_stopped_world` still **requires** `level.dat` and emits
+the original schema 1. For opt-in standard Paper sibling dimensions only,
+`capture_stopped_world(..., paper_companion=True)` now records an explicit
+schema-2 `world_file_role=PAPER_COMPANION`, requires at least one real file,
+and hash-verifies the entire directory without inventing a `level.dat`.
+`capture_generation(..., paper_layout=True)` opts into it only for its two
+approved sibling names. The verifier rejects an untyped companion, a
+companion swapped into the main overworld slot, missing or altered files,
+corrupted role metadata and symlinks; restored companions share the same
+new fork branch but never receive physical authority. Existing standalone
+`level.dat` qualification remains unchanged.
+
+This is synthetic layout coverage, **not** a claim of observing the precise
+contents of a newly generated genuine Paper 1.21.8 sibling directory.
