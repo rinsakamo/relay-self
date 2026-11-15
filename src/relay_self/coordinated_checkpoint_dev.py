@@ -196,6 +196,7 @@ def capture_generation(
                 checkpoint_id=gen.name, logical_tick=logical_tick,
                 tick_source_ref=tick_source_ref,
                 stopped_server_ref=stopped_server_ref,
+                paper_companion=True,
             )
             paper_records[name] = _hash(paper_root / name / "manifest.json")
     self_dir = gen / "selves"
@@ -312,6 +313,13 @@ def verify_generation(generation: Path) -> dict:
             ):
                 raise CoordinatedCheckpointError("Paper dimension checksum mismatch")
             other = verify_world_checkpoint(archive)
+            if (
+                other["schema"] != 2
+                or other["world_file_role"] != "PAPER_COMPANION"
+            ):
+                raise CoordinatedCheckpointError(
+                    "Paper companion must have a role-qualified archive"
+                )
             if any(other[key] != manifest[key] for key in (
                 "world_id", "branch_id", "checkpoint_id", "declared_logical_tick",
                 "tick_source_ref", "stopped_server_ref",
