@@ -47,6 +47,43 @@ calls `authorize`, `issue`, `succeed`, `complete`, or an automatic restart.
 `YIELD_EVALUATION` means at most qualified physical *step progress*; it is
 **not Skill/Goal success, C1 evidence or World-side consequence**.
 
+## v0.1 continuation — one-shot L1 EAT → L0 → WAL issuer (offline DEV)
+
+The existing #844 `experiments/cognitive_physical_eat_runner.py` now invokes
+`propose_initial_skill_from_cognitive_readonly_evidence`, rather than creating
+its Physical ActionPort proposal directly. The adapter reuses the **same**
+two-probe read-only selection witness and exact native Target, compiles the
+already-selected `EAT@1` against the explicit WorldBody capability, and
+runs `FiniteSkillInterpreter.begin → CHECK_TARGET → ACTION`. The only emitted
+physical artifact is the existing `ActionLifecycle.PROPOSED`. No additional
+Intent, SkillExecution, Action ID, issuer, S49 chooser or WAL is created.
+
+Only the existing, separately guarded `issue_selected_eat_dev` may issue the
+EAT parent (equip/consume children). On successful return, the runner **restores
+the persisted journal** and verifies its digest, Self/World/Intent/Skill/Action,
+exact native source/probe IDs, child effect sequences, after-probe, food
+increase and inventory decrease against the physical receipt. Only then does
+the interpreter receive an issuer-constructed `ActionOutcomeWitness` to emit
+`YIELD_EVALUATION`. This **does not** complete SkillExecution, Intent or C1.
+A failed journal readback/unknown effect is not retried or reported as Skill
+success. The CLI exposes `initial_skill_ir`,
+`initial_skill_step_status`, and `initial_skill_evaluation_status`
+separately from physical native effects.
+
+The #844 journal is still **EAT-only**; ATTACK is tested as a nonissuing
+Interpreter/ActionPort proposal. MOVE remains unmapped to a verified
+`MOVE(target)` capability and REST remains unmapped to verified fatigue
+recovery. Legacy `--execute-native` is unchanged, unfenced and mutually
+exclusive with `--physical-eat-dev`; no global process arbiter or
+authenticated grants have been added. The adapter maps an existing known
+bridge capability as available for this explicitly guarded DEV test only,
+not as proof of WorldBody success/permission.
+
+Tests: preflight EAT/ATTACK IR routes, unregistered version denial, CLI EAT
+single parent with persisted PRE-ISSUE reservation and terminal readback,
+L0 rejection before any WAL/native issue, unknown equip/consume/after-probe
+and restart STOP. Synthetic scripted Mineflayer/provider only.
+
 ## IR v0 / bounded semantics
 
 - Shared immutable `PhysicalSkillIR` for INNATE and LEARNED:
