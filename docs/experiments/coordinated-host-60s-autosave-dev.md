@@ -33,3 +33,30 @@ Stack: #869 → #868 → #867 → #866 → #865 → #864 → #863 → #862 → #
 Policy: 60-second synchronized full World + every-Self autosave, small stop/save skew accepted, discard checkpoint-intermediate histories, no replay.
 
 Classification after exact HEAD green CI: EXPLICIT_TWO_SELF_HOST_PULSE_OFFLINE_DEV_PASS / LIVE_NATIVE_SESSIONS_NOT_ATTESTED / REAL_PAPER_60S_AUTOSAVE_NOT_RUN / REAL_TWO_SELF_CRASH_ROLLBACK_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+
+## Stage 14: asynchronous native A/B rejoin seam (offline DEV)
+
+The baseline runtime's rebind callbacks are synchronous, but the actual
+`MineflayerProcessSession.launch` and process shutdown are asynchronous.
+`CoordinatedAutosaveRuntime.run_if_due_async` now reuses the exact same
+STOP/freeze/World-stop/save/capture/World-restart cut and awaits a bounded,
+external `prepare_rejoin(self_id, new_paper_session, old_native_session)`
+callback **while all admission gates remain closed**. Only after the entire
+roster's returned native session identities match each corresponding existing
+Self-owner rebind receipt does it release the original admission gate and advance
+the 60s success timer.
+
+`CoordinatedCheckpointHost` passes this optional preparer through while
+keeping the original synchronous fake-process tests intact. Missing B,
+unmatched native session IDs, exceptions, and cancellation all HOLD with
+no automatic retry/replay. A COMMITTED generation may exist after a rejoin
+failure; this is inert durable state and **not a physically resumed World**.
+The preparer has no independent physical authority and must eventually be
+backed by verified Mineflayer bridge processes, WorldBody readbacks, and real
+GPU/transport disposal. All new tests use fake callbacks, not live Paper or A/B.
+
+The async preparer is awaited for at most 15 seconds per Self by default
+(configurable bounded 0..180 seconds). Timeout poisons the runtime; it is not a
+retry signal. The local callback cannot by itself attest native source,
+actual GPU task completion, or cancelled external transport work.

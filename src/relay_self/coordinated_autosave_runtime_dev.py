@@ -7,10 +7,12 @@ strict per-cycle receipts. Failure leaves admission closed (manual recovery).
 """
 from __future__ import annotations
 
+import asyncio
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 
 from relay_self.coordinated_checkpoint_dev import (
     AutosaveGate,
@@ -120,6 +122,18 @@ class AutosaveCycleResult:
     typed_owner_cut_validated: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class _PendingRebind:
+    """One committed file generation, with admissions still closed."""
+
+    token: str
+    sequence: int
+    generation: Path
+    restarted: RestartedWorldReceipt
+    cohort: tuple[SelfFrozenReceipt, ...]
+    paper_dimensions: tuple[str, ...] | None
+
+
 def next_generation_sequence(store: Path) -> int:
     """Advance past incomplete generations, without deleting or reusing them."""
     root = Path(store)
@@ -216,6 +230,66 @@ class CoordinatedAutosaveRuntime:
             self._cycle_active = False
 
     def _cycle(self) -> AutosaveCycleResult:
+        return self._finish_rebind(self._cut_and_restart())
+
+    async def run_if_due_async(
+        self, now_monotonic: float, *,
+        prepare_rejoin: Callable[[str, str, str], Awaitable[str]],
+        native_rejoin_timeout_s: float = 15.0,
+    ) -> AutosaveCycleResult | None:
+        """Await native A/B rejoin while the existing physical/cognitive gate stays closed.
+
+        prepare_rejoin(self_id, new_paper_session, old_native_session) must
+        independently launch and check the new native process. This callback
+        never supplies a physical authorization; the original owner's
+        synchronous rebind hook must still verify its receipts.
+        """
+        if not callable(prepare_rejoin):
+            raise AutosaveBarrierError("async native rejoin preparer required")
+        if (
+            type(native_rejoin_timeout_s) not in (float, int)
+            or not math.isfinite(native_rejoin_timeout_s)
+            or not 0 < native_rejoin_timeout_s <= 180
+        ):
+            raise AutosaveBarrierError("bounded native rejoin timeout required")
+        if self._held_after_failure or self._cycle_active:
+            raise AutosaveBarrierError("autosave held or already in progress")
+        if not self.timer.due(now_monotonic):
+            return None
+        self._cycle_active = True
+        try:
+            pending = self._cut_and_restart()
+            ready: dict[str, str] = {}
+            for frozen in pending.cohort:
+                new_id = await asyncio.wait_for(
+                    prepare_rejoin(
+                        frozen.self_id, pending.restarted.new_server_session_id,
+                        frozen.old_native_session_id,
+                    ), timeout=float(native_rejoin_timeout_s),
+                )
+                if type(new_id) is not str or not new_id.strip():
+                    raise AutosaveBarrierError("native process rejoin unverified")
+                if new_id == frozen.old_native_session_id or new_id in ready.values():
+                    raise AutosaveBarrierError("native rejoin reused session identity")
+                ready[frozen.self_id] = new_id
+            result = self._finish_rebind(pending, ready)
+            verify_generation(result.generation)
+            # No timer advancement until *every* owner rebind and admission release.
+            self.timer.last_success_monotonic = now_monotonic
+            return result
+        except BaseException as exc:
+            # Cancellation is equally fatal: a partially restarted native cohort
+            # must not resume physical effects or silently retry this generation.
+            self._held_after_failure = True
+            if isinstance(exc, AutosaveBarrierError):
+                raise
+            raise AutosaveBarrierError(
+                "async native rejoin failed; admission remains held for operator review"
+            ) from exc
+        finally:
+            self._cycle_active = False
+
+    def _cut_and_restart(self) -> _PendingRebind:
         close = self.admission.close()
         if (
             not isinstance(close, AdmissionCloseReceipt)
@@ -318,6 +392,20 @@ class CoordinatedAutosaveRuntime:
             raise AutosaveBarrierError("World restart receipt does not match saved branch")
         _ref(restarted.new_server_session_id)
 
+        return _PendingRebind(
+            token, sequence, generation, restarted, tuple(cohort), paper_dimensions,
+        )
+
+    def _finish_rebind(
+        self, pending: _PendingRebind,
+        expected_sessions: dict[str, str] | None = None,
+    ) -> AutosaveCycleResult:
+        token = pending.token
+        sequence = pending.sequence
+        generation = pending.generation
+        restarted = pending.restarted
+        cohort = pending.cohort
+        paper_dimensions = pending.paper_dimensions
         sessions: set[str] = set()
         new_native_sessions: dict[str, str] = {}
         for participant, frozen in zip(self.participants, cohort, strict=True):
@@ -335,6 +423,9 @@ class CoordinatedAutosaveRuntime:
                         and rebound.issue_admission_closed)
             ):
                 raise AutosaveBarrierError("Self is not ready for new native session")
+            if (expected_sessions is not None
+                    and rebound.new_native_session_id != expected_sessions[participant.self_id]):
+                raise AutosaveBarrierError("owner rebind differs from started native process")
             sessions.add(_ref(rebound.new_native_session_id))
             new_native_sessions[participant.self_id] = rebound.new_native_session_id
 
