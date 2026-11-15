@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -19,6 +18,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -28,7 +31,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  * Paper save control. A spool file is an untrusted local DEV request; the
  * Bukkit on-main-thread observations are evidence, not an identity proof.
  */
-public final class MoveWitness extends JavaPlugin {
+public final class MoveWitness extends JavaPlugin implements Listener {
     private static final int MAX_ARM_TICKS = 100;
     private static final int POST_STOP_TICKS = 16;
     private final String bootId = UUID.randomUUID().toString();
@@ -75,8 +78,23 @@ public final class MoveWitness extends JavaPlugin {
         } catch (IOException exc) {
             throw new IllegalStateException("cannot create P0M witness spool", exc);
         }
+        Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().runTaskTimer(this, this::sampleOnMainThread, 1L, 1L);
         getLogger().info("P0M_READY boot=" + bootId + " source=PAPER_MAIN_THREAD");
+    }
+
+    /** Bind Paper actor UUID to Mineflayer's configured login name in the
+     * same owned log *before* a MOVE is ever issued.
+     * This is a DEV identity join, not authenticated remote attestation.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void playerJoined(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        getLogger().info("P0M_PLAYER boot=" + bootId
+            + " world=" + player.getWorld().getUID()
+            + " actor=" + player.getUniqueId()
+            + " name=" + player.getName()
+            + " tick=" + Bukkit.getCurrentTick());
     }
 
     private static String field(Properties p, String key) {
