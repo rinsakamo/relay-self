@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from relay_self.cohort_parallel_barrier_dev import require_bounded_workers
 from relay_self.checkpoint_stop_neutralization_dev import (
     StopCohortReady,
     StopParticipant,
@@ -42,7 +43,7 @@ class HostCheckpointCycle:
 
 
 class CoordinatedCheckpointHost:
-    """Owns one explicit STOP→save pulse, with fixed A/B native owner roster.
+    """Owns one explicit STOP→save pulse, with a fixed N-Self native owner roster.
 
     The same PhysicalIssueAdmission must be passed to CognitionOwnerCohort
     external physical close/rebind/release callbacks; this host does not install
@@ -58,6 +59,8 @@ class CoordinatedCheckpointHost:
         owned_paper: OwnedPaperWorld | None = None,
         prepare_native_rejoin: Callable[[str, str, str], Awaitable[str]] | None = None,
         stop_timeout_s: float = 8.0,
+        stop_parallel_workers: int = 1,
+        rejoin_parallel_workers: int = 1,
         monotonic_clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
@@ -110,6 +113,8 @@ class CoordinatedCheckpointHost:
         self.owned_paper = owned_paper
         self.prepare_native_rejoin = prepare_native_rejoin
         self.stop_timeout_s = float(stop_timeout_s)
+        self.stop_parallel_workers = require_bounded_workers(stop_parallel_workers)
+        self.rejoin_parallel_workers = require_bounded_workers(rejoin_parallel_workers)
         self.clock = monotonic_clock
         self.sleep = sleep
         self._cycle_active = False
@@ -181,6 +186,7 @@ class CoordinatedCheckpointHost:
             stopped = await prepare_stop_before_autosave(
                 self.physical, participants=participants,
                 audit_dir=self.stop_audit_dir, timeout_s=self.stop_timeout_s,
+                parallel_workers=self.stop_parallel_workers,
             )
             # Deliberately no await between full STOP and synchronous cognition/
             # world close/capture/restart. Other-process issuers still require
@@ -190,6 +196,7 @@ class CoordinatedCheckpointHost:
             else:
                 saved = await self.runtime.run_if_due_async(
                     now_monotonic, prepare_rejoin=self.prepare_native_rejoin,
+                    rejoin_workers=self.rejoin_parallel_workers,
                 )
             if (
                 saved is None or not saved.typed_owner_cut_validated
