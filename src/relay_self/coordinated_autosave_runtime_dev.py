@@ -169,6 +169,8 @@ class CoordinatedAutosaveRuntime:
         self.timer = AutosaveGate()
         self._cycle_active = False
         self._held_after_failure = False
+        self._last_server_session_id: str | None = None
+        self._last_native_sessions: dict[str, str] = {}
 
     @property
     def held_after_failure(self) -> bool:
@@ -231,6 +233,9 @@ class CoordinatedAutosaveRuntime:
                 raise AutosaveBarrierError("Self not fully frozen at generation cut")
             _ref(frozen.freeze_ref)
             _ref(frozen.old_native_session_id)
+            previous = self._last_native_sessions.get(participant.self_id)
+            if previous is not None and frozen.old_native_session_id != previous:
+                raise AutosaveBarrierError("Self session changed without owner fencing")
             cohort.append(frozen)
 
         stopped = self.world.stop_and_save()
@@ -246,6 +251,9 @@ class CoordinatedAutosaveRuntime:
         ):
             raise AutosaveBarrierError("Paper stopped World receipt invalid")
         _ref(stopped.old_server_session_id)
+        if (self._last_server_session_id is not None
+                and stopped.old_server_session_id != self._last_server_session_id):
+            raise AutosaveBarrierError("Paper source session changed between cuts")
         _ref(stopped.tick_source_ref)
         _ref(stopped.stopped_server_ref)
 
@@ -273,6 +281,7 @@ class CoordinatedAutosaveRuntime:
         _ref(restarted.new_server_session_id)
 
         sessions: set[str] = set()
+        new_native_sessions: dict[str, str] = {}
         for participant, frozen in zip(self.participants, cohort, strict=True):
             rebound = participant.rebind_after_world_restart(restarted.new_server_session_id)
             if (
@@ -289,9 +298,12 @@ class CoordinatedAutosaveRuntime:
             ):
                 raise AutosaveBarrierError("Self is not ready for new native session")
             sessions.add(_ref(rebound.new_native_session_id))
+            new_native_sessions[participant.self_id] = rebound.new_native_session_id
 
         # Release only after every Self is rebound, and never grants a stale Action.
         self.admission.release(token)
+        self._last_server_session_id = restarted.new_server_session_id
+        self._last_native_sessions = new_native_sessions
         return AutosaveCycleResult(
             generation=generation, sequence=sequence,
             saved_self_ids=tuple(p.self_id for p in self.participants),
