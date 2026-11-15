@@ -228,6 +228,7 @@ async def prepare_stop_before_autosave(
     """
     if (
         not isinstance(admission, PhysicalIssueAdmission)
+        or not admission.requires_neutral_stop
         or type(participants) is not tuple or not participants
         or type(timeout_s) not in (int, float) or not 0 < timeout_s <= 60
         or not Path(audit_dir).is_dir()
