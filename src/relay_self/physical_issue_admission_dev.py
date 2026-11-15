@@ -28,6 +28,14 @@ class IssueLease:
     native_session_id: str
     action_id: str
     epoch: int
+    effect_family: str = "NONE"
+
+
+_EFFECT_FAMILIES: dict[str, frozenset[str]] = {
+    "NONE": frozenset(),
+    "EAT": frozenset({"equip_item", "consume_held"}),
+    "ATTACK": frozenset({"attack_entity"}),
+}
 
 
 class PhysicalIssueAdmission:
@@ -69,6 +77,7 @@ class PhysicalIssueAdmission:
     @contextmanager
     def lease(
         self, *, self_id: str, native_session_id: str, action_id: str,
+        effect_family: str = "NONE",
     ) -> Iterator[IssueLease]:
         """Synchronous acquire before async await; finally releases on cancel."""
         with self._lock:
@@ -78,11 +87,16 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("stale or foreign physical native session")
             if type(action_id) is not str or not action_id.strip():
                 raise PhysicalIssueFenceError("physical Action ID required")
+            if effect_family not in _EFFECT_FAMILIES:
+                raise PhysicalIssueFenceError("unsupported physical effect family")
             if self_id in self._active or any(
                 x.action_id == action_id for x in self._active.values()
             ):
                 raise PhysicalIssueFenceError("physical Action already in flight")
-            record = IssueLease(self_id, native_session_id, action_id, self._generation)
+            record = IssueLease(
+                self_id, native_session_id, action_id, self._generation,
+                effect_family,
+            )
             self._active[self_id] = record
         try:
             yield record
@@ -90,6 +104,29 @@ class PhysicalIssueAdmission:
             with self._lock:
                 if self._active.get(self_id) == record:
                     del self._active[self_id]
+
+    def require_native_effect(
+        self, *, self_id: str, native_session_id: str, effect: str,
+    ) -> None:
+        """Actual Mineflayer stdin gate: require an active typed EAT/ATTACK lease.
+
+        L0 MOVE/LOOK/CLEAR controls remain *unsupported* in coordinated mode.
+        The caller must ensure controls were already neutral before this mode
+        is installed; an emergency STOP has its own separately supervised path.
+        """
+        with self._lock:
+            if self._closed or self._poisoned:
+                raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
+            if self._sessions.get(self_id) != native_session_id:
+                raise PhysicalIssueFenceError("stale/foreign native effect session")
+            lease = self._active.get(self_id)
+            if (
+                lease is None or lease.native_session_id != native_session_id
+                or effect not in _EFFECT_FAMILIES[lease.effect_family]
+            ):
+                raise PhysicalIssueFenceError(
+                    "native effect requires active capability-scoped issuer lease"
+                )
 
     def close(self) -> ExternalPhysicalFence:
         """Fences new issues; rejects if an in-flight async action has not drained."""
@@ -159,6 +196,7 @@ class PhysicalIssueAdmission:
             self_id=proposal.binding.scope.self_id,
             native_session_id=session.started.session_id,
             action_id=proposal.binding.action_id,
+            effect_family="EAT",
         ):
             return await issue_selected_eat_dev(session, **kwargs)
 
@@ -171,6 +209,7 @@ class PhysicalIssueAdmission:
             self_id=proposal.binding.scope.self_id,
             native_session_id=session.started.session_id,
             action_id=proposal.binding.action_id,
+            effect_family="ATTACK",
         ):
             return await issue_selected_attack_dev(session, **kwargs)
 
@@ -188,6 +227,7 @@ class PhysicalIssueAdmission:
             self_id=kwargs["self_id"],
             native_session_id=session.started.session_id,
             action_id=admission_ref,
+            effect_family="EAT",
         ):
             return await issue_eat_from_selected_l1_dev(session, receipt, **kwargs)
 
@@ -201,6 +241,7 @@ class PhysicalIssueAdmission:
             self_id=kwargs["self_id"],
             native_session_id=session.started.session_id,
             action_id=admission_ref,
+            effect_family="ATTACK",
         ):
             return await issue_attack_from_selected_l1_dev(session, receipt, **kwargs)
 

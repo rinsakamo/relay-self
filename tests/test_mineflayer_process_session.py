@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.process_session import (
+    MineflayerEffectAdmissionError,
     MineflayerProcessEnded,
     MineflayerProcessSession,
     MineflayerProcessStartError,
@@ -13,6 +14,10 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_VERSION,
     MineflayerLaunchConfig,
     MineflayerObservation,
+)
+from relay_self.physical_issue_admission_dev import (
+    PhysicalIssueAdmission,
+    PhysicalIssueFenceError,
 )
 
 
@@ -398,5 +403,121 @@ def test_correlated_observe_is_one_read_only_command_without_action_id(
             "type": "observe", "request_id": "cognitive-abcdef",
         }]
         assert process.stdin.drain_count == 1
+
+    asyncio.run(scenario())
+
+
+
+def test_native_process_stdin_effects_require_exact_active_skill_lease(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """Actual _send() checks commands, not only higher-level send_* wrappers."""
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario():
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        gate = PhysicalIssueAdmission({"A": session.started.session_id})
+        session.install_effect_admission(
+            lambda session_id, effect: gate.require_native_effect(
+                self_id="A", native_session_id=session_id, effect=effect,
+            )
+        )
+        with pytest.raises(MineflayerEffectAdmissionError, match="only be installed once"):
+            session.install_effect_admission(lambda *_: None)
+        with pytest.raises(PhysicalIssueFenceError, match="active capability-scoped"):
+            await session.send_equip_item("no-lease-equip", item_name="bread")
+        with pytest.raises(PhysicalIssueFenceError, match="active capability-scoped"):
+            await session.send_attack_entity("no-lease-attack", entity_id=7)
+        assert proc.stdin.writes == []
+
+        with gate.lease(
+            self_id="A", native_session_id="session-1",
+            action_id="meal-parent", effect_family="EAT",
+        ):
+            await session.send_equip_item("meal-parent-equip", item_name="bread")
+            await session.send_consume_held("meal-parent-consume")
+            with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+                await session.send_attack_entity("wrong-family", entity_id=7)
+            with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+                await session.send_set_control("old-l0-move", control="forward", state=True)
+            with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+                await session.send_clear_controls("old-l0-stop")
+            with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+                await session.send_look("old-l0-look", yaw=0, pitch=0)
+
+        with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+            await session.send_equip_item("after-release", item_name="bread")
+        with gate.lease(
+            self_id="A", native_session_id="session-1",
+            action_id="attack-parent", effect_family="ATTACK",
+        ):
+            await session.send_attack_entity("attack-parent-child", entity_id=7)
+            with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
+                await session.send_consume_held("wrong-family-eat")
+
+        assert [json.loads(v)["effect"] for v in proc.stdin.writes] == [
+            "equip_item", "consume_held", "attack_entity",
+        ]
+        fence = gate.close()
+        await session.send_observe("probe-fenced")
+        with pytest.raises(PhysicalIssueFenceError, match="blocked by checkpoint"):
+            await session.send_attack_entity("blocked-by-save", entity_id=7)
+        assert json.loads(proc.stdin.writes[-1]) == {
+            "type": "observe", "request_id": "probe-fenced",
+        }
+        gate.rotate_native_session(
+            fence_ref=fence.fence_ref, self_id="A",
+            old_session_id="session-1", new_session_id="new-session-A",
+        )
+        gate.release(fence.fence_ref)
+        with pytest.raises(PhysicalIssueFenceError, match="stale/foreign"):
+            await session.send_attack_entity("old-session-after-rebind", entity_id=7)
+
+    asyncio.run(scenario())
+
+
+def test_native_effect_admission_denies_direct_low_level_effect_bypass(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario():
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        gate = PhysicalIssueAdmission({"A": "session-1"})
+        session.install_effect_admission(
+            lambda sid, effect: gate.require_native_effect(
+                self_id="A", native_session_id=sid, effect=effect,
+            )
+        )
+        with pytest.raises(PhysicalIssueFenceError, match="active capability-scoped"):
+            await session._send(
+                '{"type":"effect","effect":"attack_entity","action_id":"bypass","entity_id":7}\n'
+            )
+        with pytest.raises(MineflayerEffectAdmissionError, match="unknown native command"):
+            await session._send('{"type":"execute-arbitrary"}\n')
+        with pytest.raises(MineflayerEffectAdmissionError, match="invalid command"):
+            await session._send("not JSON\n")
+        assert proc.stdin.writes == []
+        # No physical grant needed for source-qualified read-only observation.
+        await session.send_observe("allowed-read")
+        assert len(proc.stdin.writes) == 1
 
     asyncio.run(scenario())

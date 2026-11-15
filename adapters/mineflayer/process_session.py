@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
+from typing import Callable
 
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
@@ -35,6 +37,10 @@ class MineflayerProcessIOError(MineflayerProcessError):
     """Raised when JSONL input cannot be delivered to the child process."""
 
 
+class MineflayerEffectAdmissionError(MineflayerProcessIOError):
+    """A physical effect was refused before sending to the native bridge."""
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -46,6 +52,7 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
+        self._effect_admission: Callable[[str, str], None] | None = None
 
     @classmethod
     async def launch(
@@ -112,6 +119,24 @@ class MineflayerProcessSession:
                 "Mineflayer session startup has not completed"
             )
         return self._started
+
+    def install_effect_admission(
+        self, check_effect: Callable[[str, str], None],
+    ) -> None:
+        """One-way opt-in gate for ALL native effect commands on this session.
+
+        check_effect(session_id, effect) must be owned by the shared checkpoint
+        issuer. Observation and shutdown remain allowed. No gate removal API.
+        """
+        if (
+            not callable(check_effect)
+            or self._started is None
+            or getattr(self, "_effect_admission", None) is not None
+        ):
+            raise MineflayerEffectAdmissionError(
+                "native effect admission can only be installed once after startup"
+            )
+        self._effect_admission = check_effect
 
     @property
     def process_returncode(self) -> int | None:
@@ -226,6 +251,27 @@ class MineflayerProcessSession:
         return await _terminate_child(self._process)
 
     async def _send(self, line: str) -> None:
+        gate = getattr(self, "_effect_admission", None)
+        if gate is not None:
+            # Check at final native stdin, not only at send_* wrappers.
+            try:
+                command = json.loads(line)
+            except (TypeError, ValueError) as exc:
+                raise MineflayerEffectAdmissionError(
+                    "invalid command under native checkpoint admission"
+                ) from exc
+            if type(command) is not dict:
+                raise MineflayerEffectAdmissionError("invalid native command body")
+            command_type = command.get("type")
+            if command_type == "effect":
+                effect = command.get("effect")
+                if type(effect) is not str or not effect:
+                    raise MineflayerEffectAdmissionError("untyped physical effect")
+                gate(self.started.session_id, effect)
+            elif command_type not in {"observe", "shutdown"}:
+                raise MineflayerEffectAdmissionError(
+                    "unknown native command during coordinated checkpoint mode"
+                )
         if self._process.returncode is not None:
             raise MineflayerProcessEnded(
                 "cannot send to ended Mineflayer bridge; "

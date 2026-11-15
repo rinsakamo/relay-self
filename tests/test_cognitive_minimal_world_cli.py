@@ -1407,6 +1407,9 @@ def test_checkpoint_mode_real_cli_eat_uses_shared_owner_gate(
     receipt = asyncio.run(run(args, physical_issue_admission=gate))
     assert receipt["status"] == "NATIVE_EAT_OUTCOME_DEV_ONLY"
     assert receipt["existing_issuer"] == "PhysicalIssueAdmission.run_l1_eat"
+    # The real process_session native sender uses this installed callback;
+    # the synthetic physical test session overrides send_* and cannot attest IO.
+    assert callable(session._effect_admission)
     assert receipt["coordinated_physical_issuer_fence"] == (
         "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
     )
@@ -1428,6 +1431,7 @@ def test_checkpoint_mode_real_cli_attack_uses_shared_owner_gate(
     receipt = asyncio.run(run(args, physical_issue_admission=gate))
     assert receipt["status"] == "NATIVE_ATTACK_HURT_OBSERVED_DEV_ONLY"
     assert receipt["existing_issuer"] == "PhysicalIssueAdmission.run_l1_attack"
+    assert callable(session._effect_admission)
     assert receipt["coordinated_checkpoint_committed"] is False
     assert gate.active_action_ids == ()
     assert len([row for row in session.sent if row[0] == "attack_entity"]) == 1
