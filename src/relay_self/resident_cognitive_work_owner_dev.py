@@ -154,6 +154,28 @@ class ResidentCognitiveWorkOwner:
             owner.last_observed_tick = world_tick
             owner.fresh_native_observation_required = False
 
+    def current_scope(self, self_id: str) -> tuple[int, str, int]:
+        """Live original Self/native/World tuple for owned L1/L2 admission."""
+        with self.lock:
+            state = self._state(self_id)
+            if (
+                state.mode != "ONLINE" or state.native is None
+                or state.world_epoch is None
+            ):
+                raise ResidentCognitiveWorkError("original Self cognition not online")
+            return (state.epoch, state.native, state.world_epoch)
+
+    def quarantined_scope(self, self_id: str) -> tuple[int, str, int]:
+        """Only after original memory/Intent/Skill writer admission is closed."""
+        with self.lock:
+            state = self._state(self_id)
+            if (
+                state.mode != "QUARANTINED" or state.native is None
+                or state.world_epoch is None
+            ):
+                raise ResidentCognitiveWorkError("original Self cognition not quarantined")
+            return (state.epoch, state.native, state.world_epoch)
+
     def fence_self(self, self_id: str) -> int:
         """Sync: deny new original cognition writes BEFORE any await/cancel."""
         with self.lock:
