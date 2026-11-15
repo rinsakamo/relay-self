@@ -32,10 +32,6 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     LiveCognitionCheckpointError,
     staged_recover_cognition_cohort,
 )
-from relay_self.coordinated_checkpoint_host_dev import (
-    CheckpointHostError,
-    CoordinatedCheckpointHost,
-)
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
@@ -53,13 +49,17 @@ from relay_self.coordinated_autosave_runtime_dev import (
 from relay_self.coordinated_checkpoint_dev import (
     restore_generation,
 )
+from relay_self.coordinated_checkpoint_host_dev import (
+    CheckpointHostError,
+    CoordinatedCheckpointHost,
+)
 from relay_self.intent import IntentCommitment
+from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     Memory,
     PersistentCognition,
 )
-from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
