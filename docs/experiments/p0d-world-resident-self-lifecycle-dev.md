@@ -67,6 +67,20 @@ move from one World to another. No Action or Skill is replayed.
 - `verify_world_only_generation` reads and validates exact World-only
   World and companion source metadata and hashes. This is only archive
   integrity; actual Paper provenance is external.
+- `owned_paper_world_switch_dev.py` now accepts two **different owned
+  Paper server directories**. It requires every Self offline, a STOPPED
+  candidate with a pre-existing World-only committed archive, an
+  *externally pinned* SHA256 of that commit marker, exact source-vs-archive
+  file inventory/digests for overworld and all Paper dimensions, and
+  matching target World/branch identity. Source mismatches are rejected
+  BEFORE the old Paper is disturbed. Once frozen, the old owned Paper
+  is saved/stopped first, the candidate files rechecked, the new owned
+  Paper launched, and a fresh native server tick read back. The new
+  World branch+epoch is then installed without copying any Self Body
+  data or replaying any Action. A failure after transition begins
+  permanently HOLDS this World owner; it never guesses that the old
+  World is still running. This is still an offline **fake-Paper** test,
+  not actual qualified live Paper provenance.
 
 ## Relationship to old checkpoint and dynamic issuer
 
@@ -96,7 +110,9 @@ effects are impossible.
 Python synthetic tests N=0/2/10/100:
 - ticking and world-only owned OS child with **fake Paper console**, two
   stopped-file generations, no Self snapshot modified
-- Nether/End hash coverage, corruption refusal, missing flush HOLD
+- Nether/End hash coverage, corruption refusal, missing flush HOLD,
+  and owned stopped-World A→B switch with pinned candidate, wrong pin,
+  modified region, active/quarantined Self rejection
 - N=2/10/100 one quarantined Self while unrelated N-1 remain ONLINE;
   World source clock keeps advancing
 - wrong world branch, stale/reused session, old request, stale clock,
