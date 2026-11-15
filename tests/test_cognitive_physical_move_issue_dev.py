@@ -27,7 +27,9 @@ from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import (
     PhysicalActionJournal,
+    PhysicalJournalError,
     PhysicalJournalUnresolved,
+    _validate,
 )
 from relay_self.physical_action_port import (
     PhysicalActionBinding,
@@ -154,6 +156,14 @@ def setup(tmp_path, *, bad=None):
         events[5] = shifted(final, .85)
     elif bad == "no_second_stop_probe":
         events = events[:5]
+    elif bad == "forced_move":
+        events[2] = replace(progress, kind="forcedMove")
+    elif bad == "vertical_stop_drift":
+        events[5] = replace(
+            final, snapshot=replace(
+                final.snapshot, position=MineflayerPosition(.61, 64.2, 0),
+            ),
+        )
     elif bad == "foreign_source":
         events[2] = replace(progress, session_id="foreign-world")
     elif bad == "cancel_after_forward":
@@ -221,6 +231,7 @@ def test_bounded_native_move_fsyncs_one_parent_before_look_and_checks_two_stop_p
     "look_rejected", "forward_absent", "progress_wrong_direction",
     "stop_rejected", "stop_probe_wrong_id", "unstable_stop",
     "no_second_stop_probe", "foreign_source", "cancel_after_forward",
+    "forced_move", "vertical_stop_drift",
 ])
 def test_unknown_motion_requires_stop_no_replay_and_wal_survives_restart(tmp_path, bad):
     kw, session = setup(tmp_path, bad=bad)
@@ -244,6 +255,7 @@ def test_unknown_motion_requires_stop_no_replay_and_wal_survives_restart(tmp_pat
     "no_grant", "stale_grant", "bad_target_geometry", "changed_native_position",
     "unstable_body", "wrong_world", "wrong_source", "busy_owner",
     "unsupported_vertical", "out_of_bounds_distance",
+    "forged_yaw", "forged_horizontal_distance",
 ])
 def test_preissue_move_negative_never_writes_wal_or_native(tmp_path, bad):
     kw, session = setup(tmp_path)
@@ -276,6 +288,10 @@ def test_preissue_move_negative_never_writes_wal_or_native(tmp_path, bad):
         kw["target"] = replace(kw["target"], vertical_delta=2)
     elif bad == "out_of_bounds_distance":
         kw["target"] = replace(kw["target"], horizontal_distance=5)
+    elif bad == "forged_yaw":
+        kw["target"] = replace(kw["target"], yaw_rad=.5)
+    elif bad == "forged_horizontal_distance":
+        kw["target"] = replace(kw["target"], horizontal_distance=2.5)
     with pytest.raises((ValueError, RuntimeError)):
         run(kw, session)
     assert kw["journal"].records == ()
@@ -297,3 +313,32 @@ def test_unresolved_attack_or_eat_wal_prevents_new_motion(tmp_path):
     with pytest.raises(PhysicalJournalUnresolved):
         run({**kw, "journal": reopened}, session)
     assert session.sent == []
+
+
+def test_move_wal_validates_geometry_digest_and_three_dimensional_stop_probes(
+    tmp_path,
+):
+    """A recalculated file checksum alone cannot validate forged MOVE evidence."""
+    import copy
+
+    kw, session = setup(tmp_path)
+    effect = run(kw, session)
+    assert effect.terminal.state is ActionState.OUTCOME
+    body = {
+        "schema": 1, "self_id": "self-A",
+        "actions": [copy.deepcopy(kw["journal"].records[-1])],
+    }
+    _validate(body)
+    for tamper in ("target", "stop_y", "wrong_command_order", "missing_stop"):
+        altered = copy.deepcopy(body)
+        row = altered["actions"][0]
+        if tamper == "target":
+            row["motion"]["target"][0] = 3.5
+        elif tamper == "stop_y":
+            row["motion"]["stop_probe_positions"][1][1] = 64.2
+        elif tamper == "wrong_command_order":
+            row["effect_seqs"][2] = row["effect_seqs"][1]
+        else:
+            row["effect_seqs"] = row["effect_seqs"][:2]
+        with pytest.raises(PhysicalJournalError):
+            _validate(altered)
