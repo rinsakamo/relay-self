@@ -55,3 +55,8 @@ failure; this is inert durable state and **not a physically resumed World**.
 The preparer has no independent physical authority and must eventually be
 backed by verified Mineflayer bridge processes, WorldBody readbacks, and real
 GPU/transport disposal. All new tests use fake callbacks, not live Paper or A/B.
+
+The async preparer is awaited for at most 15 seconds per Self by default
+(configurable bounded 0..180 seconds). Timeout poisons the runtime; it is not a
+retry signal. The local callback cannot by itself attest native source,
+actual GPU task completion, or cancelled external transport work.
