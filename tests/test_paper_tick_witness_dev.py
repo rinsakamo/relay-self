@@ -9,10 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from relay_self.owned_paper_world_dev import (
-    OwnedPaperError,
-    OwnedPaperWorld,
-)
+from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.paper_tick_witness_dev import (
     PaperMainThreadTickReader,
     PaperTickWitnessError,
