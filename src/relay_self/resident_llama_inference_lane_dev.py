@@ -395,6 +395,13 @@ class ResidentLlamaInferenceLane:
                 )
             )
 
+    def verified_retirement(self, self_id: str) -> ResidentInferenceRetirement:
+        """Exact actor source proof, not global GPU or VRAM release."""
+        with self._lock:
+            if not self.retired_clean(self_id):
+                raise ResidentGpuLaneError("Self inference retirement not qualified")
+            return self._retired[self_id]
+
     def require_world_idle(self) -> LlamaSlotIdleReceipt:
         with self._lock:
             if self._uncertain or any(
