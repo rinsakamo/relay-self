@@ -47,7 +47,9 @@ def _run_witness(
                 "server_session_id": session, "source": source, "world_uuid": world,
             }
             ack = (root / "acks" / (data["nonce"] + ".ack"))
-            ack.write_text("".join(f"{key}={rows[key]}\n" for key in sorted(rows)))
+            staging = ack.with_suffix(".tmp")
+            staging.write_text("".join(f"{key}={rows[key]}\n" for key in sorted(rows)))
+            staging.replace(ack)
             if write_log:
                 marker = (
                     f"P0D_TICK_ACK nonce={nonce} boot={boot} session={session}"
@@ -204,7 +206,7 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
         "              'source=PAPER_MAIN_THREAD',flush=True)\n"
         "    if select.select([sys.stdin],[],[],.02)[0]:\n"
         "        for cmd in os.read(sys.stdin.fileno(),4096).decode().splitlines():\n"
-        "            if cmd=='save-all flush': print('Saving worlds',flush=True)\n"
+        "            if cmd=='save-all flush': print('Saved the game',flush=True)\n"
         "            if cmd=='stop':\n"
         "                print('Stopping server',flush=True); sys.exit(0)\n",
         encoding="utf-8",

@@ -129,12 +129,24 @@ def _bootstrap_paper(
         )
         if process.stdin is None:
             raise RealPaperSmokeRefusal("owned Paper bootstrap console missing")
-        process.stdin.write(b"save-all flush\nstop\n")
+        offset = len(log_path.read_bytes())
+        process.stdin.write(b"save-all flush\n")
+        process.stdin.flush()
+        end = time.monotonic() + timeout_s
+        while time.monotonic() < end:
+            if process.poll() is not None:
+                raise RealPaperSmokeRefusal("bootstrap exited before flush completion")
+            if b"Saved the game" in log_path.read_bytes()[offset:]:
+                break
+            time.sleep(0.1)
+        else:
+            raise RealPaperSmokeRefusal("bootstrap flush completion unobserved; HOLD")
+        process.stdin.write(b"stop\n")
         process.stdin.flush()
         status = process.wait(timeout=timeout_s)
         raw = log_path.read_bytes()
         if (
-            status != 0 or b"Saving worlds" not in raw
+            status != 0 or b"Saved the game" not in raw[offset:]
             or b"Stopping server" not in raw
         ):
             raise RealPaperSmokeRefusal("bootstrap Paper did not save and exit cleanly")
@@ -248,6 +260,7 @@ def run_real_paper_smoke(
         "multi_self_crash_recovery": False,
         "replay": False,
         "run_dir": str(root),
+        "launch": launch,
         "steps": [],
     }
     owner: OwnedPaperWorld | None = None
@@ -281,13 +294,24 @@ def run_real_paper_smoke(
             if not saved.tick_source_ref.startswith("paper-main-thread:p0d:"):
                 raise RealPaperSmokeRefusal("Paper main-thread source not bound")
             manifest = _world_manifest(root)
+            if _world_uuid(world_dir) != world_id:
+                raise RealPaperSmokeRefusal("World UUID changed after Paper restart")
+            snapshot = evidence / f"cycle-{cycle + 1}-world"
+            snapshot.mkdir()
+            for dimension in ("world", "world_nether", "world_the_end"):
+                if (root / dimension).is_dir():
+                    shutil.copytree(root / dimension, snapshot / dimension)
+            if _world_manifest(snapshot) != manifest:
+                raise RealPaperSmokeRefusal("saved World snapshot readback mismatch")
             step = {
                 "cycle": cycle,
                 "server_session": session,
                 "paper_tick": saved.logical_tick,
                 "paper_tick_source_ref": saved.tick_source_ref,
                 "paper_log_path": saved.stopped_server_ref,
+                "process_exit_code": saved.process_exit_code,
                 "world_files_sha256": manifest,
+                "world_snapshot": str(snapshot),
             }
             audit["steps"].append(step)
         steps = audit["steps"]

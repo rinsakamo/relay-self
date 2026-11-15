@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
+import sys
 import uuid
 import zipfile
 from pathlib import Path
@@ -10,11 +12,26 @@ import pytest
 
 from experiments.p0d_real_paper_smoke_dev import (
     RealPaperSmokeRefusal,
+    _wait_log,
     _world_manifest,
     _world_uuid,
     prepare_assets,
     run_real_paper_smoke,
 )
+
+
+def test_missing_plugin_ready_holds(tmp_path):
+    log = tmp_path / "paper.log"
+    with log.open("wb") as output:
+        proc = subprocess.Popen(
+            (sys.executable, "-u", "-c", "import time; print('Done (',flush=True); time.sleep(1)"),
+            stdout=output,
+        )
+    try:
+        with pytest.raises(RealPaperSmokeRefusal, match="timed out"):
+            _wait_log(proc, log, markers=(b"Done (", b"P0D_TICK_READY"), timeout_s=0.2)
+    finally:
+        proc.wait(timeout=3)
 
 
 def _jar(path: Path, *, paper: bool = False, witness: bool = True) -> str:
