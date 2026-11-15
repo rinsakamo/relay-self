@@ -25,8 +25,23 @@ from relay_self.world_resident_lifecycle_dev import (
     ResidentLifecycleError,
     WorldInstallationEvidence,
     WorldLifetime,
+    WorldOnlyQuiescenceEvidence,
     WorldResidentLifecycle,
 )
+
+
+def _fake_quiescence(life: WorldResidentLifecycle) -> WorldOnlyQuiescenceEvidence:
+    """Simulated ORIGINAL issuer receipt; never evidence of real Paper safety."""
+    return WorldOnlyQuiescenceEvidence(
+        world_epoch=life.world.epoch,
+        checked_self_ids=life.self_roster,
+        source_ref="synthetic:original-issuer-retired",
+        original_physical_issuer_closed=True,
+        native_sessions_absent=True,
+        no_unresolved_physical_actions=True,
+        all_gpu_epochs_retired=True,
+        pending_peer_messages_empty=True,
+    )
 
 
 def _names(count: int) -> tuple[str, ...]:
@@ -278,6 +293,7 @@ def test_world_only_owned_paper_two_cycles_without_any_self_snapshot(
     store.mkdir()
     runner = WorldOnlyOwnedPaperCheckpoint(
         lifecycle=life, owned_paper=adapter, store=store,
+        issuer_quiescence=lambda: _fake_quiescence(life),
     )
     try:
         first = runner.cycle()
@@ -316,6 +332,7 @@ def test_world_only_cannot_checkpoint_while_any_self_online(tmp_path):
     store.mkdir()
     runner = WorldOnlyOwnedPaperCheckpoint(
         lifecycle=life, owned_paper=adapter, store=store,
+        issuer_quiescence=lambda: _fake_quiescence(life),
     )
     try:
         with pytest.raises(WorldOnlyCheckpointError, match="offline"):
@@ -337,6 +354,7 @@ def test_world_only_corrupted_commit_cannot_verify(tmp_path):
     store.mkdir()
     runner = WorldOnlyOwnedPaperCheckpoint(
         lifecycle=life, owned_paper=adapter, store=store,
+        issuer_quiescence=lambda: _fake_quiescence(life),
     )
     try:
         result = runner.cycle()
@@ -363,6 +381,7 @@ def test_world_only_failed_owned_paper_flush_globally_holds_no_false_commit(tmp_
     store.mkdir()
     runner = WorldOnlyOwnedPaperCheckpoint(
         lifecycle=life, owned_paper=adapter, store=store,
+        issuer_quiescence=lambda: _fake_quiescence(life),
     )
     with pytest.raises(Exception, match="flush completion"):
         runner.cycle()
@@ -409,6 +428,7 @@ def _prepared_world_swap(tmp_path: Path, *, candidate_companions=True):
     store.mkdir()
     checkpoint = WorldOnlyOwnedPaperCheckpoint(
         lifecycle=candidate_life, owned_paper=candidate, store=store,
+        issuer_quiescence=lambda: _fake_quiescence(candidate_life),
     ).cycle()
     candidate.stop_and_save()  # Re-check candidate source as STOPPED bytes.
     pin = hashlib.sha256(
@@ -423,6 +443,7 @@ def _prepared_world_swap(tmp_path: Path, *, candidate_companions=True):
     switcher = OwnedPaperWorldSwitcher(
         lifecycle=old_life, previous_paper=old,
         candidate_paper=candidate,
+        issuer_quiescence=lambda: _fake_quiescence(old_life),
     )
     return old_life, switcher, old, candidate, checkpoint.checkpoint_dir, pin
 
