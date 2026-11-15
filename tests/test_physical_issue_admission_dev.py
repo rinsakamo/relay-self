@@ -182,3 +182,56 @@ def test_repeated_close_and_wrong_token_never_release():
     with pytest.raises(PhysicalIssueFenceError, match="complete"):
         cohort.release("bad-token")
     assert cohort.closed
+
+
+
+def test_selected_l1_runner_entrypoints_fence_full_pipeline(monkeypatch):
+    import experiments.cognitive_physical_attack_runner as ar
+    import experiments.cognitive_physical_eat_runner as er
+
+    async def run():
+        gate = PhysicalIssueAdmission({"A": "session-A"})
+        session = SimpleNamespace(started=SimpleNamespace(session_id="session-A"))
+        calls = []
+
+        async def selected_eat(_session, receipt, **kwargs):
+            calls.append(("EAT", receipt, kwargs, gate.active_action_ids))
+            await asyncio.sleep(0)
+            return "selected-eat-finished"
+
+        async def selected_attack(_session, receipt, **kwargs):
+            calls.append(("ATTACK", receipt, kwargs, gate.active_action_ids))
+            await asyncio.sleep(0)
+            return "selected-attack-finished"
+
+        monkeypatch.setattr(er, "issue_eat_from_selected_l1_dev", selected_eat)
+        monkeypatch.setattr(ar, "issue_attack_from_selected_l1_dev", selected_attack)
+        assert await gate.run_l1_eat(
+            session, "selected-eat", self_id="A", admission_ref="l1-eat-epoch-1",
+        ) == "selected-eat-finished"
+        assert await gate.run_l1_attack(
+            session, "selected-attack", self_id="A", admission_ref="l1-attack-epoch-1",
+        ) == "selected-attack-finished"
+        assert [x[0] for x in calls] == ["EAT", "ATTACK"]
+        assert [x[-1] for x in calls] == [
+            ("l1-eat-epoch-1",), ("l1-attack-epoch-1",),
+        ]
+        assert gate.active_action_ids == ()
+        fence = gate.close()
+        with pytest.raises(PhysicalIssueFenceError, match="closed"):
+            await gate.run_l1_eat(
+                session, "blocked", self_id="A", admission_ref="l1-eat-epoch-2",
+            )
+        assert len(calls) == 2
+        gate.rotate_native_session(
+            fence_ref=fence.fence_ref, self_id="A",
+            old_session_id="session-A", new_session_id="session-B",
+        )
+        gate.release(fence.fence_ref)
+        with pytest.raises(PhysicalIssueFenceError, match="stale"):
+            await gate.run_l1_attack(
+                session, "stale", self_id="A", admission_ref="l1-attack-old",
+            )
+        assert len(calls) == 2
+
+    asyncio.run(run())
