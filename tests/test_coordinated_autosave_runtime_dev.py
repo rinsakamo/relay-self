@@ -354,3 +354,20 @@ def test_async_native_rejoin_cancellation_holds_without_implicit_retry(tmp_path:
     assert runner.held_after_failure
     assert runner.timer.last_success_monotonic is None
     assert "release" not in runtime.events
+
+
+def test_async_native_rejoin_timeout_holds_without_release(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+
+    async def stalled(sid: str, paper: str, old: str) -> str:
+        await asyncio.Event().wait()
+        return "never"
+
+    with pytest.raises(AutosaveBarrierError, match="rejoin failed"):
+        asyncio.run(runner.run_if_due_async(
+            0.0, prepare_rejoin=stalled, native_rejoin_timeout_s=0.02,
+        ))
+    assert runner.held_after_failure
+    assert runner.timer.last_success_monotonic is None
+    assert "release" not in runtime.events
