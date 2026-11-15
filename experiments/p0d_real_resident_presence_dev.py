@@ -58,7 +58,6 @@ from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.resident_paper_presence_join_dev import (
-    ResidentPaperVerdict,
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
 )
