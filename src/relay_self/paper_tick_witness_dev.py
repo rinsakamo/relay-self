@@ -138,8 +138,21 @@ class PaperMainThreadTickReader:
             + "world_uuid=" + self.expected_world_uuid + "\n"
         ).encode()
         request = self.requests / (nonce + ".request")
+        staging = self.requests / (nonce + ".tmp")
         reply = self.acks / (nonce + ".ack")
-        _write_request(request, fields)
+        # Never expose half-written .request to Paper's main-thread poller.
+        # Hard-link publication fails closed if a matching nonce already exists.
+        _write_request(staging, fields)
+        try:
+            os.link(staging, request, follow_symlinks=False)
+            staging.unlink()
+            dir_fd = os.open(self.requests, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except OSError as exc:
+            raise PaperTickWitnessError("atomic Paper witness request publication failed") from exc
         deadline = self.monotonic() + self.timeout_seconds
         while self.monotonic() < deadline:
             if reply.is_symlink():
