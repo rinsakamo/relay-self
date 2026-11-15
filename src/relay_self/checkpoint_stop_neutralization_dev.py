@@ -129,7 +129,7 @@ async def _stop_one(
     session = participant.session
     native = session.started.session_id
     action_id = f"checkpoint-stop-{uuid.uuid4().hex}"
-    audit_stem = f"stop-{sid}-{fence_ref}"
+    audit_stem = f"stop-{sid}-{fence_ref}-{action_id}"
     prepared_path = audit_dir / (audit_stem + ".prepared.json")
     completed_path = audit_dir / (audit_stem + ".verified.json")
     try:
@@ -282,6 +282,19 @@ async def prepare_stop_before_autosave(
     fence_ref = admission.begin_neutralization()
     files: list[Path] = []
     try:
+        # Crash-safe STOP audit check. Any earlier PREPARED without the
+        # corresponding verified receipt can mean native STOP was applied
+        # while the host lost its evidence. Never silently erase/retry it.
+        for prepared in Path(audit_dir).glob("stop-*.prepared.json"):
+            if (
+                prepared.is_symlink()
+                or not prepared.with_name(
+                    prepared.name.removesuffix(".prepared.json") + ".verified.json"
+                ).is_file()
+            ):
+                raise StopNeutralizationError(
+                    "earlier STOP PREPARED_UNRESOLVED requires operator recovery"
+                )
         for p in ordered:
             files.append(await _stop_one(
                 admission, p, fence_ref, Path(audit_dir), timeout_s,
