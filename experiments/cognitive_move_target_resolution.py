@@ -37,9 +37,9 @@ from relay_self.provenance import Provenance
 from relay_self.target_contract import (
     ArrivalCondition,
     ReferenceFrame,
+    TargetBodyObservation,
     TargetContract,
     TargetContractRefusal,
-    TargetBodyObservation,
     TargetKind,
 )
 
