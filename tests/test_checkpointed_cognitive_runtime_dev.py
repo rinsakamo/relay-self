@@ -1,6 +1,7 @@
 """#860: actual existing cognition owners behind an offline multi-Self cut."""
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
