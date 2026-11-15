@@ -173,3 +173,29 @@ def test_config_refuses_wrong_world_or_duplicate_actor():
     physical = PhysicalIssueAdmission({sid: s.started.session_id for sid, s in existing.items()})
     with pytest.raises(NativeCohortRejoinError, match="distinct"):
         OwnedNativeRejoinCohort(sessions=existing, configs=configs, physical=physical)
+
+
+
+def test_real_initial_owned_native_cohort_two_spawns_and_probes():
+    manager, previous, physical, launched = _cohort()
+    proofs = asyncio.run(manager.verify_initial_cohort())
+    assert set(proofs) == {"A", "B"}
+    assert all(seq == 1 and later > seq and request.startswith("p0d-rejoin-")
+               for seq, later, request in proofs.values())
+    assert not physical.closed
+    assert len(launched) == 0
+    assert all(previous[sid].receives == 2 for sid in ("A", "B"))
+    with pytest.raises(NativeCohortRejoinError, match="already read"):
+        asyncio.run(manager.verify_initial_cohort())
+
+
+def test_real_initial_b_failure_holds_both_native_issuers():
+    manager, previous, physical, launched = _cohort()
+    previous["B"].fault = "connection"
+    with pytest.raises(ConnectionError):
+        asyncio.run(manager.verify_initial_cohort())
+    assert previous["A"].receives == 2
+    assert physical.closed
+    assert not launched
+    with pytest.raises(PhysicalIssueFenceError, match="blocked"):
+        previous["A"].admission("old-A", "attack_entity", "any")
