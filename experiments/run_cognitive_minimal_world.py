@@ -48,6 +48,7 @@ from relay_self.cognitive_minimal_dev import (
 )
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.relay_engine import RelayEngine
 
 
@@ -116,6 +117,9 @@ def parser() -> argparse.ArgumentParser:
                         "completion through existing owners; requires semantic evaluation")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
+    p.add_argument("--require-coordinated-physical-fence", action="store_true",
+                   help="fail-closed checkpoint-mode EAT/ATTACK; requires an externally "
+                        "injected shared PhysicalIssueAdmission (CLI alone cannot qualify)")
     p.add_argument("--physical-create-journal", action="store_true",
                    help="explicitly create a NEW journal in an existing directory; "
                         "never reset an existing WAL")
@@ -185,10 +189,33 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
             )
 
 
-async def run(args: argparse.Namespace) -> dict[str, object]:
+async def run(
+    args: argparse.Namespace,
+    *,
+    physical_issue_admission: PhysicalIssueAdmission | None = None,
+) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
     physical_mode = args.physical_eat_dev or args.physical_attack_dev
+    coordinated_fence = args.require_coordinated_physical_fence
+    if type(coordinated_fence) is not bool:
+        raise MinimalCognitionError("coordinated physical fence flag invalid")
+    if coordinated_fence and (
+        not physical_mode or args.execute_native
+        or not isinstance(physical_issue_admission, PhysicalIssueAdmission)
+    ):
+        raise MinimalCognitionError(
+            "coordinated checkpoint physical mode requires existing shared issuer "
+            "admission and exclusive EAT/ATTACK physical DEV path"
+        )
+    if physical_issue_admission is not None and not coordinated_fence:
+        raise MinimalCognitionError(
+            "injected physical fence requires explicit coordinated checkpoint mode"
+        )
+    if coordinated_fence and physical_issue_admission.closed:
+        raise MinimalCognitionError(
+            "coordinated physical issuer held before World/LLM launch"
+        )
     if args.semantic_eval_dev and (not physical_mode or not args.l0_skill_ir_dev):
         raise MinimalCognitionError(
             "semantic evaluation requires WAL-owned L0 physical DEV mode"
@@ -396,8 +423,14 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             and receipt.selection.option.skill_id == "EAT"
         ):
             assert physical_journal is not None
-            physical_eat = await issue_eat_from_selected_l1_dev(
+            physical_eat_runner = (
+                physical_issue_admission.run_l1_eat if coordinated_fence
+                else issue_eat_from_selected_l1_dev
+            )
+            physical_eat = await physical_eat_runner(
                 session, receipt,
+                **({"admission_ref": f"l1-eat:{args.self_id}:{session.started.session_id}:{args.intent_id}"}
+                   if coordinated_fence else {}),
                 intent_owner=owner, supervisor=supervisor,
                 journal=physical_journal, self_id=args.self_id,
                 intent_id=args.intent_id,
@@ -416,8 +449,15 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             and receipt.selection.option.skill_id == "ATTACK"
         ):
             assert physical_journal is not None
-            physical_attack = await issue_attack_from_selected_l1_dev(
-                session, receipt, intent_owner=owner, supervisor=supervisor,
+            physical_attack_runner = (
+                physical_issue_admission.run_l1_attack if coordinated_fence
+                else issue_attack_from_selected_l1_dev
+            )
+            physical_attack = await physical_attack_runner(
+                session, receipt,
+                **({"admission_ref": f"l1-attack:{args.self_id}:{session.started.session_id}:{args.intent_id}"}
+                   if coordinated_fence else {}),
+                intent_owner=owner, supervisor=supervisor,
                 journal=physical_journal, self_id=args.self_id,
                 intent_id=args.intent_id,
                 propose_authority_id=args.physical_propose_authority,
@@ -477,12 +517,21 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "qualification": "NOT_CLAIMED",
             "original_s49_full_runtime": "NOT_CONNECTED",
             "existing_issuer": (
+                "PhysicalIssueAdmission.run_l1_eat"
+                if coordinated_fence and args.physical_eat_dev else
+                "PhysicalIssueAdmission.run_l1_attack"
+                if coordinated_fence and args.physical_attack_dev else
                 "cognitive_physical_eat_runner.issue_eat_from_selected_l1_dev"
                 if args.physical_eat_dev else
                 "cognitive_physical_attack_runner.issue_attack_from_selected_l1_dev"
                 if args.physical_attack_dev else
                 "controlled_minecraft_vertical.execute_decision"
             ),
+            "coordinated_physical_issuer_fence": (
+                "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
+                if coordinated_fence else "NOT_CONNECTED"
+            ),
+            "coordinated_checkpoint_committed": False,
             "model_declared": args.model,
             "systemone_backend": bool(args.systemone_endpoint),
             "world_session": first.session_id,
@@ -680,6 +729,11 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
+            "coordinated_physical_issuer_fence": (
+                "IN_PROCESS_SHARED_ISSUE_LEASE_DEV"
+                if coordinated_fence else "NOT_CONNECTED"
+            ),
+            "coordinated_checkpoint_committed": False,
             "physical_eat_dev_selected": args.physical_eat_dev,
             "physical_attack_dev_selected": args.physical_attack_dev,
             "l0_skill_ir_dev_selected": args.l0_skill_ir_dev,
