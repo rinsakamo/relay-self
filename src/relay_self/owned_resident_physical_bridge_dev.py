@@ -19,12 +19,12 @@ from relay_self.persistent_cognition import (
     save_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.resident_cognitive_work_owner_dev import (
-    ResidentCognitiveWorkOwner,
-)
 from relay_self.physical_issue_admission_dev import (
     PhysicalIssueAdmission,
     ResidentIssuerRetired,
+)
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkOwner,
 )
 from relay_self.world_resident_lifecycle_dev import (
     LoginTicket,
