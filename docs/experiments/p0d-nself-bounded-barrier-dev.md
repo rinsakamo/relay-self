@@ -16,11 +16,13 @@ Stacked on Stage 16 #880 and its native/physical/cognitive source gates.
   for the operator. Maximum entire STOP phase: 60 seconds.
 - Freeze: bounded threads (`freeze_workers`, default 1, max 64) execute
   the existing typed per-Self owner `freeze_and_flush` hooks. All workers
-  are joined before Paper can save/stop. Since the currently installed
-  `CognitionOwnerCohort.freeze` still uses one coarse RLock, this mode
-  **does not yet establish physical parallel speedup** for its IO.
-  It establishes a complete synchronous full-roster barrier and lets
-  different owner implementations parallelize disjoint writes.
+  are joined before Paper can save/stop. The actual
+  `CognitionOwnerCohort.freeze` takes a coherent immutable owner cut
+  and checks the physical WAL under its coarse RLock, then releases
+  that lock for **independent per-Self fsynced IO**. Rebind/release reject
+  active, failed or incomplete generation freezes. Injected delayed-write
+  tests prove overlap of independent file writes under one globally closed
+  checkpoint gate; failed owner IO prohibits a World save.
 - Rejoin: `CoordinatedAutosaveRuntime.run_if_due_async` now prepares
   native sessions via a bounded async group (`rejoin_parallel_workers`,
   default 1, max 64), with 15-second per-Self and 180-second total
@@ -51,7 +53,8 @@ CheckpointedCognitiveOwner/PersistentCognition/Intent/Skill/WAL owners,
 typed N-Self generation manifests, full all-or-nothing STOP/rejoin and
 two scheduled 60s generations. Fault injection covers missing last Self,
 wrong request ID in STOP, last native rejoin timeout/error, duplicate
-new session IDs, and one failed freeze callback. The synthetic World
+new session IDs, and one failed freeze callback, actual concurrent owner IO, and a
+  simulated fsync failure. The synthetic World
 uses an in-process `WorldRuntimeHooks` fake; there is no real Paper,
 Mineflayer, network, native GPU task cancellation, or physical delay
 benchmark in these tests. CI result and HEAD must be attached after run.
