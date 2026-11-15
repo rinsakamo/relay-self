@@ -1443,12 +1443,10 @@ def test_checkpoint_mode_closed_fence_refuses_physical_dispatch_and_wal_issue(
     _inject_physical_transport(monkeypatch, session)
     gate = PhysicalIssueAdmission({args.self_id: "session-1"})
     gate.close()
-    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+    with pytest.raises(MinimalCognitionError, match="held before World/LLM launch"):
         asyncio.run(run(args, physical_issue_admission=gate))
-    assert "checkpoint fence closed" in exc.value.audit["error"]
-    assert exc.value.audit["physical_journal_unresolved"] is False
-    assert exc.value.audit["physical_journal_records"] == []
-    assert not any(x[0] in ("equip_item", "consume_held") for x in session.sent)
+    assert not Path(args.physical_journal_path).exists()
+    assert not session.sent
     assert gate.closed
 
 
