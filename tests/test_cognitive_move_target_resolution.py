@@ -23,6 +23,7 @@ from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
 )
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.common_io import ScopeRef
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
     Predicate,
@@ -414,3 +415,122 @@ def test_one_turn_without_destination_escapes_to_l2_not_random_walk():
     assert session.sent == []
     assert owner.current_intent is None
     assert supervisor.recorded_actions == ()
+
+
+def test_l1_selects_exact_arrival_contract_and_recheck_cannot_replace_precision():
+    from relay_self.target_contract import ArrivalCondition
+    from experiments.cognitive_minimal_minecraft_dev import native_schema_percept
+
+    original = configured()
+    d0 = original.destinations[0]
+    specified = replace(original, destinations=(
+        replace(d0, arrival_condition=ArrivalCondition(
+            0, .15, .25, still_ticks=8, max_still_drift_m=.05,
+            max_speed_mps=.03,
+        )),
+        *original.destinations[1:],
+    ))
+    native, _, percept, frame = prepare(scenario=specified)
+    original_option = next(x for x in frame.options
+                           if x.target_ref.startswith("destination:waypoint-1@"))
+    assert original_option.arrival_contract is not None
+    assert original_option.arrival_contract.condition.max_horizontal_m == .15
+
+    round_ = assemble_l1_select(frame, intent_owner=IntentCommitment())
+    descriptions = [choice.description for choice in round_.request.choices]
+    assert any(
+        original_option.arrival_contract.contract_ref in description
+        and "horizontal=0..0.15m" in description and "still_ticks=8" in description
+        for description in descriptions
+    )
+    choice = select(frame)
+    bound = resolve_selected_move_target(
+        choice, frame=frame, percept=percept,
+        current_probe=native, scenario=specified,
+    )
+    assert bound.arrival_contract == choice.option.arrival_contract
+
+    # Precision changed by the environment/model after L1 chose its ID:
+    # fresh Frame MUST NOT silently promote the old choice to new tolerance.
+    altered = replace(specified, destinations=(
+        replace(d0, arrival_condition=ArrivalCondition(0, 1.5, .25)),
+        *original.destinations[1:],
+    ))
+    altered_percept = native_schema_percept(
+        native, altered, self_id="self-A", exploration_need=True,
+    )
+    altered_frame = cpu_schema_epoch(
+        altered_percept, initial_patterns_with_move(),
+        allowed_skills=MOVE_ONLY, epoch=2,
+    )
+    assert choice.option not in altered_frame.options
+    with pytest.raises(MoveTargetRefusal):
+        resolve_selected_move_target(
+            choice, frame=altered_frame, percept=altered_percept,
+            current_probe=native, scenario=altered,
+        )
+
+
+def test_selected_precise_move_can_get_cpu_gait_preview_but_not_motor_grant():
+    from relay_self.approach_controller import (
+        ApproachPhase,
+        BodyApproachCapabilities,
+        GaitCalibration,
+        GaitMode,
+    )
+    from relay_self.target_contract import ArrivalCondition, TargetBodyObservation
+    from experiments.cognitive_move_target_resolution import (
+        assess_l1_selected_move_approach,
+    )
+    from relay_self.target_contract import TargetContractRefusal
+
+    original = configured()
+    selected_dest = replace(
+        original.destinations[0],
+        arrival_condition=ArrivalCondition(
+            0, .08, .25, still_ticks=8,
+            max_still_drift_m=.05, max_speed_mps=.03,
+        ),
+    )
+    source_scenario = replace(original, destinations=(
+        selected_dest, *original.destinations[1:],
+    ))
+    native, _, percept, frame = prepare(scenario=source_scenario)
+    selection = select(frame)
+    bound = resolve_selected_move_target(
+        selection, frame=frame, percept=percept,
+        current_probe=native, scenario=source_scenario,
+    )
+    cal = Provenance("body-calibration-fixture", "no-real-World-claim")
+    capabilities = BodyApproachCapabilities(
+        bound.scope, native.seq, 3, .005, (
+            GaitCalibration(GaitMode.RUN, 4, 1, cal),
+            GaitCalibration(GaitMode.WALK, 1.5, .3, cal),
+            GaitCalibration(GaitMode.SNEAK, .3, .02, cal),
+        ), cal,
+    )
+    observed = TargetBodyObservation(
+        bound.scope, native.seq,
+        native.provenance, MineflayerPosition(2.82, 64, 0), speed_mps=.1,
+    )
+    preview = assess_l1_selected_move_approach(
+        selection, bound, observed, capabilities,
+        current_gait=GaitMode.WALK, route_clear=True,
+    )
+    assert preview.phase is ApproachPhase.DECELERATE
+    assert preview.requested_gait is GaitMode.SNEAK
+    assert not preview.physical_issued
+    assert not preview.action_authorized
+    assert not preview.goal_succeeded
+
+    with pytest.raises(TargetContractRefusal):
+        assess_l1_selected_move_approach(
+            selection, replace(bound, arrival_contract=None),
+            observed, capabilities, route_clear=True,
+        )
+    with pytest.raises(TargetContractRefusal):
+        assess_l1_selected_move_approach(
+            selection, bound, replace(
+                observed, scope=ScopeRef("self-B", "world-A"),
+            ), capabilities, route_clear=True,
+        )
