@@ -222,7 +222,7 @@ def test_reject_before_journal_and_native_send(tmp_path, change):
 
 def test_same_self_eat_history_and_attack_share_wal_and_restart_ledger(tmp_path):
     kw, session = setup(tmp_path)
-    receipt = run(kw, session)
+    run(kw, session)
     restored = PhysicalActionJournal.restore(kw["journal"].path, self_id="self-A")
     assert len(restored.records) == 1
     assert restored.records[0]["capability"] == "attack_entity"
