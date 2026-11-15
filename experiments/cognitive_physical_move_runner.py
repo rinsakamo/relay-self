@@ -67,6 +67,7 @@ async def issue_move_from_selected_l1_dev(
     issue_authority_id: str,
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
+    expected_username: str = "RelaySelf",
     paper_move_spool: Path | None = None,
     paper_move_owned_log: Path | None = None,
     paper_world_uuid: str | None = None,
@@ -190,6 +191,7 @@ async def issue_move_from_selected_l1_dev(
             native_start=receipt.move_target.native_position,
             native_target=receipt.move_target.destination_position,
             read_owned_log=paper_move_owned_log.read_bytes,
+            expected_username=expected_username,
         )
     effect = await issue_selected_move_dev(
         session, proposal=proposed.proposal,
