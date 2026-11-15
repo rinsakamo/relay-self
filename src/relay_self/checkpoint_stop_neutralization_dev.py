@@ -166,6 +166,7 @@ async def _stop_one(
             # >=8-tick settling window. Shift the reference forward on drift;
             # a perpetually moving body may NEVER be checkpoint-committed.
             deadline = asyncio.get_running_loop().time() + timeout_s
+            initial = first
             initial_time = (
                 first.snapshot.time.day * 24000
                 + first.snapshot.time.time_of_day
@@ -215,7 +216,7 @@ async def _stop_one(
             then = (
                 first.snapshot.time.day * 24000 + first.snapshot.time.time_of_day
             )
-            proof = NeutralStopProof(action_id, ack, first, last)
+            proof = NeutralStopProof(action_id, ack, initial, first, last)
             admission.confirm_neutral_stop(
                 fence_ref=fence_ref, self_id=sid, proof=proof,
             )
@@ -223,10 +224,13 @@ async def _stop_one(
                 "schema": 1, "state": "NEUTRAL_SETTLED_DEV",
                 "self_id": sid, "fence_ref": fence_ref,
                 "native_session_id": native, "stop_action_id": action_id,
-                "ack_seq": ack.seq, "first_probe_seq": first.seq,
+                "ack_seq": ack.seq, "initial_probe_seq": initial.seq,
+                "first_probe_seq": first.seq,
                 "settled_probe_seq": last.seq,
+                "initial_request_id": initial.request_id,
                 "first_request_id": first.request_id,
                 "settled_request_id": last.request_id,
+                "initial_world_tick": initial_time,
                 "first_world_tick": then, "settled_world_tick": now,
                 "first_position": {
                     "x": first.snapshot.position.x,
