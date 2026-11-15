@@ -7,13 +7,11 @@ Actual fresh WorldBody facts must be supplied after loading the new fork.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from relay_self.attack_world_join_dev import (
     AttackWalEvidence,
@@ -267,6 +265,9 @@ class ForkRecoveryDevDecision:
     world_id: str
     source_branch_id: str
     new_branch_id: str
+    target_uuid: str
+    source_target_alive: bool | None
+    historical_native_sessions: tuple[str, ...]
     included_action_ids: tuple[str, ...]
     remembered_postcut_action_ids: tuple[str, ...]
     retained_beliefs: tuple[str, ...]
@@ -406,7 +407,10 @@ def prepare_forked_recovery_dev(
     return ForkRecoveryDevDecision(
         status=status, source_checkpoint_id=source_id,
         world_id=world_id, source_branch_id=source_branch,
-        new_branch_id=fork, included_action_ids=included,
+        new_branch_id=fork, target_uuid=cut.target_uuid,
+        source_target_alive=cut.target_alive_at_capture,
+        historical_native_sessions=tuple(sorted(set(row.native_session_id for row in wal))),
+        included_action_ids=included,
         remembered_postcut_action_ids=tuple(sorted(set(remembered))),
         retained_beliefs=beliefs, blockers=tuple(sorted(set(reject + hold))),
         next_steps=steps,
@@ -416,29 +420,23 @@ def prepare_forked_recovery_dev(
 def reproject_present_from_fresh_world_dev(
     prepared: ForkRecoveryDevDecision,
     fresh: FreshForkObservation,
-    *,
-    expected_target_uuid: str,
-    source_world_cut_alive: bool | None,
-    old_native_sessions: tuple[str, ...],
 ) -> ForkRecoveryDevDecision:
     """Pure post-launch re-projection; never unfreezes an old action/target."""
     if not isinstance(prepared, ForkRecoveryDevDecision) or not isinstance(
         fresh, FreshForkObservation
     ):
         raise ForkRecoveryDevError("typed fork plan and fresh WorldBody required")
-    _name(expected_target_uuid, "expected target UUID")
-    _names(old_native_sessions, "old native sessions")
     if prepared.status is not ForkRecoveryDevStatus.NEEDS_FRESH_WORLD_BODY:
         return prepared  # never override prior hold/reject through an observation
     if (fresh.world_id != prepared.world_id
             or fresh.new_branch_id != prepared.new_branch_id
-            or fresh.target_uuid != expected_target_uuid
-            or fresh.native_session_id in old_native_sessions):
+            or fresh.target_uuid != prepared.target_uuid
+            or fresh.native_session_id in prepared.historical_native_sessions):
         return _reproject_hold(prepared, "fresh WorldBody branch/session/UUID mismatch")
     if fresh.observed_target_alive is None:
         return prepared  # no new physical truth from absence/unknown coverage
-    if (source_world_cut_alive is not None
-            and fresh.observed_target_alive != source_world_cut_alive):
+    if (prepared.source_target_alive is not None
+            and fresh.observed_target_alive != prepared.source_target_alive):
         return _reproject_hold(prepared, "restored target differs from witnessed cut")
     return ForkRecoveryDevDecision(
         status=ForkRecoveryDevStatus.PRESENT_REPROJECTED_DEV,
@@ -446,6 +444,9 @@ def reproject_present_from_fresh_world_dev(
         world_id=prepared.world_id,
         source_branch_id=prepared.source_branch_id,
         new_branch_id=prepared.new_branch_id,
+        target_uuid=prepared.target_uuid,
+        source_target_alive=prepared.source_target_alive,
+        historical_native_sessions=prepared.historical_native_sessions,
         included_action_ids=prepared.included_action_ids,
         remembered_postcut_action_ids=prepared.remembered_postcut_action_ids,
         retained_beliefs=prepared.retained_beliefs,
@@ -467,6 +468,9 @@ def _reproject_hold(prepared: ForkRecoveryDevDecision, blocker: str) -> ForkReco
         world_id=prepared.world_id,
         source_branch_id=prepared.source_branch_id,
         new_branch_id=prepared.new_branch_id,
+        target_uuid=prepared.target_uuid,
+        source_target_alive=prepared.source_target_alive,
+        historical_native_sessions=prepared.historical_native_sessions,
         included_action_ids=prepared.included_action_ids,
         remembered_postcut_action_ids=prepared.remembered_postcut_action_ids,
         retained_beliefs=prepared.retained_beliefs,
