@@ -147,7 +147,7 @@ def initial_patterns_with_move() -> PatternRegistry:
     This is *not* the default initial registry until STOP/settling is qualified.
     """
     base = initial_patterns()
-    return PatternRegistry(base.revision, base.patterns + (initial_move_pattern(),))
+    return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
 
 
 def accept_learned_pattern(
