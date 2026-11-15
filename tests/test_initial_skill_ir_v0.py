@@ -118,6 +118,9 @@ def witness(binding, *, closed=True, correlated=True):
 def test_catalog_has_four_but_move_and_rest_are_not_mapped():
     catalog = initial_skill_descriptors()
     assert tuple(x.skill_id for x in catalog) == ("MOVE", "EAT", "ATTACK", "REST")
+    assert next(x for x in catalog if x.skill_id == "ATTACK").status == (
+        "NATIVE_ACK_HURT_DEV_ISSUER_EXISTS"
+    )
     assert [x.status for x in catalog if x.skill_id in ("MOVE", "REST")] == [
         "UNMAPPED", "UNMAPPED",
     ]
