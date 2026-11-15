@@ -126,7 +126,7 @@ def test_b_heartbeat_is_world_continuity_not_a_physical_move():
         (_events(wrong_rejoin=True), "collision"),
         (_events(changed_world=True), "stream"),
         (_events().replace(b"source=PAPER_MAIN_THREAD", b"source=NATIVE_STREAM"),
-         "boot marker"),
+         "schema"),
         (_events().replace(b"tick=108", b"tick=90"), "inconsistent"),
         (_events().replace(b"x=0.8", b"x=nan"), "nonfinite"),
         (_events().replace(b"event=MOVE", b"event=JUMP"), "schema"),
