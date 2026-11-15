@@ -448,6 +448,15 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "physical_eat_parent_action_id": (
                 None if physical_eat is None else physical_eat.action_id
             ),
+            "initial_skill_ir": (
+                None if physical_eat is None else physical_eat.initial_skill_ir
+            ),
+            "initial_skill_step_status": (
+                None if physical_eat is None else physical_eat.initial_skill_step_status
+            ),
+            "initial_skill_evaluation_status": (
+                None if physical_eat is None else physical_eat.initial_skill_evaluation_status
+            ),
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
                 None if physical_journal is None else physical_journal.unresolved
