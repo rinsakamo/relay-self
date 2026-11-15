@@ -54,7 +54,11 @@ def _run_witness(
                     f"P0D_TICK_ACK nonce={nonce} boot={boot} session={session}"
                     f" world={world} tick={tick} source={source}"
                 )
-                log["value"] = ("[P0BRecorder] " + marker + "\n").encode()
+                log["value"] = (
+                    "[P0BRecorder] P0D_TICK_READY boot=" + boot
+                    + " source=PAPER_MAIN_THREAD\n"
+                    + "[P0BRecorder] " + marker + "\n"
+                ).encode()
             return
         time.sleep(0.01)
     raise AssertionError("Paper witness request not created")
@@ -186,6 +190,7 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
         "root=Path(sys.argv[1]); world=sys.argv[2]\n"
         "boot=str(uuid.uuid4()); tick=110\n"
         "print('Done (0.8s)',flush=True)\n"
+        "print(f'P0D_TICK_READY boot={boot} source=PAPER_MAIN_THREAD',flush=True)\n"
         "while True:\n"
         "    for request in (root/'requests').glob('*.request'):\n"
         "        d=dict(x.split('=',1) for x in request.read_text().splitlines())\n"
