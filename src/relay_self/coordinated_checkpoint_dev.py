@@ -149,7 +149,11 @@ def capture_generation(
     for item in sorted(selves, key=lambda s: s.self_id):
         if load_persistent_cognition(item.cognition_file).identity.self_id != item.self_id:
             raise CoordinatedCheckpointError("foreign Self cognition identity")
-        PhysicalActionJournal.restore(item.physical_wal_file, self_id=item.self_id)
+        journal = PhysicalActionJournal.restore(
+            item.physical_wal_file, self_id=item.self_id,
+        )
+        if any(row["status"] == "PREPARED_UNRESOLVED" for row in journal.records):
+            raise CoordinatedCheckpointError("in-flight physical Action at checkpoint cut")
         target = self_dir / item.self_id
         target.mkdir(mode=0o700)
         files = {
@@ -217,6 +221,8 @@ def verify_generation(generation: Path) -> dict:
             or body["world_manifest_sha256"] != _hash(root / "world" / "manifest.json")):
         raise CoordinatedCheckpointError("World does not belong to generation")
     roster = body["roster"]
+    if type(body["selves"]) is not dict:
+        raise CoordinatedCheckpointError("invalid Self manifest")
     if (type(roster) is not list or not roster or roster != sorted(set(roster))
             or not all(type(x) is str for x in roster)
             or set(body["selves"]) != set(roster)):
