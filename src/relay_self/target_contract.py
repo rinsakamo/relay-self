@@ -59,8 +59,11 @@ def _point(name: str, point: MineflayerPosition | None) -> None:
         raise TargetContractRefusal(f"{name} requires a finite world position")
 
 
-def _id(name: str, value: str) -> None:
-    if type(value) is not str or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value):
+def _id(name: str, value: str, *, target_ref: bool = False) -> None:
+    permitted = r"[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}" if target_ref else (
+        r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}"
+    )
+    if type(value) is not str or re.fullmatch(permitted, value) is None:
         raise TargetContractRefusal(f"invalid {name}")
 
 
@@ -130,7 +133,7 @@ class TargetContract:
         if not isinstance(self.scope, ScopeRef) or not self.scope.world_session_id:
             raise TargetContractRefusal("Self and World session scope required")
         _id("goal ID", self.goal_id)
-        _id("selected target reference", self.target_ref)
+        _id("selected target reference", self.target_ref, target_ref=True)
         if not isinstance(self.kind, TargetKind) or not isinstance(
             self.reference_frame, ReferenceFrame
         ):
