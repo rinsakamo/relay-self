@@ -178,7 +178,7 @@ def test_paper_full_dimension_generation_rollback_same_branch(tmp_path):
     for name in ("world_nether", "world_the_end"):
         dimension = paper_world.parent / name
         dimension.mkdir()
-        (dimension / "level.dat").write_bytes(name.encode())
+        # Real Paper companions may have region/ files without level.dat.
         (dimension / "region").mkdir()
         (dimension / "region" / "r.0.0.mca").write_bytes(
             b"checkpoint-" + name.encode()
