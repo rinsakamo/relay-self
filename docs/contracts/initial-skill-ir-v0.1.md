@@ -8,9 +8,9 @@ Common I/O #829, Schema #831, physical Skill/Action #843.
 
 | Initial Skill | Existing input | Actual bridge ability | v0 status |
 |---|---|---|---|
-| EAT | `initial_patterns()` HUNGER_RELIEF / FOOD; L1 Option | Mineflayer `equip_item` + `consume_held` already ordered as the **single parent EAT@1** by #844's WAL-owning DEV issuer | finite IR compiles **only** when actual `PhysicalCapability("EAT", 1, "hand", "FOOD", True)` is supplied; proposal possible; physical path exists in #844 but not invoked here |
+| EAT | `initial_patterns()` HUNGER_RELIEF / FOOD; L1 Option | Mineflayer `equip_item` + `consume_held` already ordered as the **single parent EAT@1** by #844's WAL-owning DEV issuer | L0 Interpreter → opt-in single EAT parent WAL issuer; physical food/inventory observation verified only in scripted DEV |
 | ATTACK | `initial_patterns()` DEFEND_SELF / ZOMBIE; L1 Option | `attack_entity(entity_id)` in Mineflayer bridge | proposal plus opt-in one-shot ATTACK WAL issuer for native ACK/hurt correlation; no independent damage attestation |
-| MOVE | optional `EXPLORE_WORLD / MOVE@1` Goal (explicit Need), configured destination selected by L1 | `look` + `set_control` + `clear_controls` exist but no qualified motor/STOP/settling owner | **TARGET BINDING DEV only**; physical `UNMAPPED` / no issue |
+| MOVE | optional `EXPLORE_WORLD / MOVE@1` Goal, explicit exploration Need and hash-bound configured L1 target | Mineflayer `look → set_control(forward) → clear_controls`, native position/probe | **opt-in bounded motor WAL issuer**, positive motion + two post-STOP native probes; **Paper tick settling/arrival NOT attested** |
 | REST | fatigue is a **constraint-only** Schema signal | `clear_controls` does not attest stamina recovery / REST success | **UNMAPPED**, no compiled IR/physical issue |
 
 The above bridge methods are protocol entry points, **not** proof of native
@@ -19,7 +19,8 @@ succeeded in a real World as a result of this PR. A known action name does not
 make a target valid. `PhysicalCapability.available` is an adapter claim, not
 a permission grant; the trusted gateway/issuer must ground it at runtime.
 The native `attack_entity` target uses a process-local entity ID, not a
-cross-restart UUID. MOVE/REST cannot be enabled by swapping strings.
+cross-restart UUID. MOVE is a strictly bounded, guarded DEV motor action;
+REST remains unmapped. Neither is enabled by swapping strings.
 
 ## Data flow (no hidden chooser)
 
@@ -34,8 +35,8 @@ WorldBody/source-qualified Percept
     -> CHECK_TARGET on typed readback (missing/foreign=UNKNOWN)
     -> propose(binding, capability, readback, owners, supervisor)
        -> original PhysicalActionPort -> ActionLifecycle.PROPOSED
-    -> external single issuer alone: auth, durable PRE-ISSUE WAL,
-       Native Action ACK/Outcome / unresolved STOP [NOT IMPLEMENTED HERE]
+    -> external one-shot DEV issuer alone: auth, durable PRE-ISSUE WAL,
+       Native Action ACK/Outcome / unresolved STOP; NO default permissions
     -> observe_action(ActionLifecycle, authenticated issuer witness)
        -> NEXT_STEP / YIELD_EVALUATION / NOT_EXECUTED / STOP_UNKNOWN
     -> original SkillExecution/Intent/Experience owners evaluate [CALLER]
@@ -46,6 +47,72 @@ journal writes**, and does not mutate the Intent/Skill/Action owner. It never
 calls `authorize`, `issue`, `succeed`, `complete`, or an automatic restart.
 `YIELD_EVALUATION` means at most qualified physical *step progress*; it is
 **not Skill/Goal success, C1 evidence or World-side consequence**.
+
+## Latest continuation — one-shot MOVE native control and two STOP probes (OFFLINE DEV)
+
+This stage **supersedes the earlier MOVE-mapping-only status** in historical
+sections below. The default Cognitive/Schema runtime remains unchanged;
+actual MOVE is opt-in via `--physical-move-dev` with explicit
+`--exploration-need` and `--move-destination ID,X,Y,Z`. Without the Need,
+L1 has no MOVE candidate; without any configured destination its unresolved
+exploration Goal may escalate to L2. Operator-configured coordinates are
+non-native claims, and their source/XYZ data are SHA256-bound to the
+selected L1 `destination:<id>@<digest>` reference. They are **not** claims
+of a navigable route, safe terrain, nearby blocks or actual goal arrival.
+
+The already-selected target is checked against a fresh native probe and
+bounded `ResolvedMoveTarget` (0.4–4.0m horizontal, ≤0.25m vertical).
+The existing `IntentCommitment`, `SkillExecution`,
+`PhysicalActionPort.PROPOSED`, `FiniteSkillInterpreter`, and
+`ActionSupervisor` provide the **single** lifecycle. Only the separate
+`issue_selected_move_dev` may emit native effects, after independently
+checking two distinct native probes, Body viability, exact Option/Goal,
+target digest, current position, computed yaw/distance, scope, non-busy
+movement channel and separately labelled DEV PROPOSE/ISSUE grants.
+Those operator labels are **not independently authenticated principals**.
+
+The existing shared Self `PhysicalActionJournal` now accepts a MOVE parent
+with `PREPARED_UNRESOLVED` fsynced **before the first LOOK or motor command**.
+Unlike EAT/ATTACK rows, a MOVE row carries a dedicated `motion` block:
+configuration source/destination ID, exact start/target XYZ, and (only
+upon terminal closure) progress sample plus two STOP probe seqs/positions.
+The schema-1 journal validates these MOVE-specific fields without changing
+the exact persisted shape of earlier EAT/ATTACK records. Cross-action
+CAS/lock/source monotonicity and restart STOP/UNKNOWN are shared.
+
+One forward burst consists of one applied `look` ACK, one applied
+`set_control(forward=true)` ACK, a **native `move` observation**
+showing ≥0.25m progress *toward the selected target*, one applied
+`clear_controls` ACK, and two distinct request-correlated probes after
+STOP separated by ≥0.15 seconds of host elapsed time. The second
+probe must be within ≤0.05m of the first **in 3D**. A foreign session,
+changed target, `forcedMove`/teleport-like observation, missing/rejected
+ACK, insufficient progress, drift, cancellation or unavailable sensor
+leaves the parent `PREPARED_UNRESOLVED`, Action `UNKNOWN`, no auto replay.
+If forward might have been issued, the issuer attempts **one** best-effort
+`clear_controls` on its failure path, without treating sending as evidence
+of STOP ACK or reconciling the WAL. In-memory Action OUTCOME alone does
+not suffice: the runner reopens the WAL and compares source, Scope, exact
+Action/Intent/Skill, target, command ACK seqs and STOP probe seqs before
+yielding `YIELD_EVALUATION` (never Skill/Goal completion).
+
+The resulting terminal label is
+`NATIVE_MOVE_PROGRESS_STOP_READBACK_DEV_ONLY`, not a universal
+`MOVE(target)` arrival success. Two host-time-spaced native probes are
+**not** an independent Paper tick check; they do not establish global
+physics settling, obstacle clearance, no later displacement, death
+immunity, or a multi-Self movement channel arbiter. Exact Minecraft
+movement distances/STOP qualification require a separate real Paper
+admission experiment and safe operator grant. Recovered cursors or this
+terminal record must never confer new motor permission across a changed
+World session/checkpoint.
+
+CLI rejects simultaneous EAT/ATTACK/MOVE, legacy unfenced native issuance,
+and explicit shadow-only mode. Tests cover the complete scripted L1→L0
+MOVE sequence, preissue WAL readback before LOOK, short progress and STOP,
+drift/missing ACK/forcedMove/foreign source/cancel→UNKNOWN with restart
+STOP, geometry/yaw tampering and prior Skill regressions. **No real
+Minecraft, local GPU or QUAL/SCIENCE run was performed.**
 
 ## v0.1 continuation — one-shot L1 EAT → L0 → WAL issuer (offline DEV)
 
