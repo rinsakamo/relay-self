@@ -24,10 +24,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerTime,
 )
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.checkpoint_stop_neutralization_dev import (
-    StopParticipant,
-    prepare_stop_before_autosave,
-)
+from relay_self.checkpoint_stop_neutralization_dev import StopParticipant
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitionOwnerCohort,
