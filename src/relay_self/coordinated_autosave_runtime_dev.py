@@ -14,6 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from relay_self.cohort_parallel_barrier_dev import (
+    require_bounded_workers,
+    run_async_cohort_barrier,
+    run_sync_freeze_barrier,
+)
 from relay_self.coordinated_checkpoint_dev import (
     AutosaveGate,
     SelfSnapshotSource,
@@ -165,7 +170,9 @@ class CoordinatedAutosaveRuntime:
         world: WorldRuntimeHooks, admission: AdmissionHooks,
         strict_typed_owner_cut: bool = False,
         paper_layout: bool = False,
+        freeze_workers: int = 1,
     ) -> None:
+        self.freeze_workers = require_bounded_workers(freeze_workers)
         if type(strict_typed_owner_cut) is not bool:
             raise AutosaveBarrierError("typed owner checkpoint flag must be bool")
         if type(paper_layout) is not bool:
@@ -236,6 +243,8 @@ class CoordinatedAutosaveRuntime:
         self, now_monotonic: float, *,
         prepare_rejoin: Callable[[str, str, str], Awaitable[str]],
         native_rejoin_timeout_s: float = 15.0,
+        rejoin_workers: int = 1,
+        total_rejoin_timeout_s: float = 180.0,
     ) -> AutosaveCycleResult | None:
         """Await native A/B rejoin while the existing physical/cognitive gate stays closed.
 
@@ -246,6 +255,13 @@ class CoordinatedAutosaveRuntime:
         """
         if not callable(prepare_rejoin):
             raise AutosaveBarrierError("async native rejoin preparer required")
+        require_bounded_workers(rejoin_workers)
+        if (
+            type(total_rejoin_timeout_s) not in (float, int)
+            or not math.isfinite(total_rejoin_timeout_s)
+            or not 0 < total_rejoin_timeout_s <= 300
+        ):
+            raise AutosaveBarrierError("bounded full-cohort rejoin timeout required")
         if (
             type(native_rejoin_timeout_s) not in (float, int)
             or not math.isfinite(native_rejoin_timeout_s)
@@ -259,8 +275,7 @@ class CoordinatedAutosaveRuntime:
         self._cycle_active = True
         try:
             pending = self._cut_and_restart()
-            ready: dict[str, str] = {}
-            for frozen in pending.cohort:
+            async def prepare_member(frozen: SelfFrozenReceipt) -> str:
                 new_id = await asyncio.wait_for(
                     prepare_rejoin(
                         frozen.self_id, pending.restarted.new_server_session_id,
@@ -269,9 +284,24 @@ class CoordinatedAutosaveRuntime:
                 )
                 if type(new_id) is not str or not new_id.strip():
                     raise AutosaveBarrierError("native process rejoin unverified")
-                if new_id == frozen.old_native_session_id or new_id in ready.values():
-                    raise AutosaveBarrierError("native rejoin reused session identity")
-                ready[frozen.self_id] = new_id
+                if new_id == frozen.old_native_session_id:
+                    raise AutosaveBarrierError("native rejoin reused old session")
+                return new_id
+
+            # Rejoin children may run concurrently, but no rebind/physical
+            # release occurs until all N native sources are independently
+            # verified and their new session IDs are unique.
+            prepared = await run_async_cohort_barrier(
+                pending.cohort, prepare_member,
+                workers=rejoin_workers,
+                total_timeout_s=total_rejoin_timeout_s,
+            )
+            if len(set(prepared)) != len(prepared):
+                raise AutosaveBarrierError("native rejoin reused session identity")
+            ready = {
+                frozen.self_id: fresh
+                for frozen, fresh in zip(pending.cohort, prepared, strict=True)
+            }
             result = self._finish_rebind(pending, ready)
             verify_generation(result.generation)
             # No timer advancement until *every* owner rebind and admission release.
@@ -301,9 +331,15 @@ class CoordinatedAutosaveRuntime:
         token = _ref(close.token)
         sequence = next_generation_sequence(self.store)
         generation_id = f"g-{sequence:012d}"
-        cohort: list[SelfFrozenReceipt] = []
-        for participant in self.participants:
-            frozen = participant.freeze_and_flush(generation_id)
+        # Every owner is already under the same physical/cognitive fence.
+        # Bounded synchronous threads may overlap distinct owner IO; none
+        # can resume the event loop, save Paper, or commit a partial World.
+        cohort = run_sync_freeze_barrier(
+            self.participants,
+            lambda participant: participant.freeze_and_flush(generation_id),
+            workers=self.freeze_workers,
+        )
+        for participant, frozen in zip(self.participants, cohort, strict=True):
             if (
                 not isinstance(frozen, SelfFrozenReceipt)
                 or frozen.self_id != participant.self_id
@@ -320,8 +356,6 @@ class CoordinatedAutosaveRuntime:
             previous = self._last_native_sessions.get(participant.self_id)
             if previous is not None and frozen.old_native_session_id != previous:
                 raise AutosaveBarrierError("Self session changed without owner fencing")
-            cohort.append(frozen)
-
         stopped = self.world.stop_and_save()
         if (
             not isinstance(stopped, StoppedWorldReceipt)
