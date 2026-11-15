@@ -29,6 +29,7 @@ from relay_self.cognitive_minimal_dev import (
     resolve_l1_choice,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.move_destination_ref import move_destination_ref
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.initial_skill_ir import (
     SkillIRRefusal,
@@ -87,7 +88,7 @@ def select(frame, *, skill="MOVE", target="waypoint-1"):
         number = next(
             n for n, option in round_.numbered
             if getattr(option, "skill_id", None) == skill
-            and option.target_ref == f"destination:{target}"
+            and option.target_ref.startswith(f"destination:{target}@")
         )
     calls = []
 
@@ -166,7 +167,8 @@ def test_existing_l1_option_resolves_exact_configured_move_target_without_issue(
     native, config, percept, frame = prepare()
     assert len(frame.options) == 2
     assert {x.target_ref for x in frame.options} == {
-        "destination:waypoint-1", "destination:waypoint-2",
+        move_destination_ref(d.destination_id, d.position, d.provenance)
+        for d in config.destinations
     }
     assert all(
         t.provenance.source == "configured-destination"
@@ -178,7 +180,11 @@ def test_existing_l1_option_resolves_exact_configured_move_target_without_issue(
         decision, frame=frame, percept=percept,
         current_probe=native, scenario=config,
     )
-    assert bound.target_ref == f"destination:{selected_id}"
+    assert bound.target_ref == move_destination_ref(
+        next(d.destination_id for d in config.destinations if d.destination_id == selected_id),
+        next(d.position for d in config.destinations if d.destination_id == selected_id),
+        next(d.provenance for d in config.destinations if d.destination_id == selected_id),
+    )
     assert bound.horizontal_distance == pytest.approx(expected_distance)
     assert bound.vertical_delta == 0
     assert bound.native_position == native.snapshot.position
@@ -218,7 +224,7 @@ def test_move_target_recheck_rejects_stale_retargeted_or_unqualified_claims(chan
         native = replace(native, snapshot=replace(native.snapshot, health=0))
     elif change == "expired_target":
         percept = replace(percept, targets=tuple(
-            replace(t, live=False) if t.ref == "destination:waypoint-1" else t
+            replace(t, live=False) if t.ref.startswith("destination:waypoint-1@") else t
             for t in percept.targets
         ))
     elif change == "other_destination":
@@ -227,12 +233,8 @@ def test_move_target_recheck_rejects_stale_retargeted_or_unqualified_claims(chan
             replace(dest, position=MineflayerPosition(4, 64, 0)),
             config.destinations[1],
         ))
-        # Position cannot be independently proven by this projection: a
-        # changed coordinate requires trusted registry revision/provenance.
-        config = replace(config, destinations=(
-            replace(config.destinations[0], provenance=Provenance("configured-destination", "changed-point")),
-            config.destinations[1],
-        ))
+        # Geometry is bound to the ref digest even if the provenance
+        # revision label itself was not updated.
     elif change == "hijacked_l1_target":
         choice = replace(choice, option=replace(choice.option, target_ref="destination:bogus"))
     elif change == "misreported_position":
@@ -274,4 +276,31 @@ def test_forged_exploration_signal_and_schema_kind_rejected():
         native_schema_percept(
             observation(5), config, self_id="self-A",
             exploration_need="yes",
+        )
+
+
+def test_target_digest_binds_exact_geometry_without_changing_config_id():
+    d = configured().destinations[0]
+    original = move_destination_ref(d.destination_id, d.position, d.provenance)
+    moved = move_destination_ref(
+        d.destination_id, MineflayerPosition(3.5, 64, 0), d.provenance,
+    )
+    from_new_source = move_destination_ref(
+        d.destination_id, d.position,
+        Provenance("configured-destination", "another-version"),
+    )
+    assert original != moved and original != from_new_source
+    assert original == move_destination_ref(d.destination_id, d.position, d.provenance)
+
+
+@pytest.mark.parametrize("id_value", [
+    "space name", "../up", "", "unicode-日本語", "line\\nbreak",
+])
+def test_unsafe_move_destination_ids_refused_before_option(id_value):
+    from relay_self.move_destination_ref import MoveDestinationRefusal
+
+    with pytest.raises(MoveDestinationRefusal):
+        move_destination_ref(
+            id_value, MineflayerPosition(3, 64, 0),
+            Provenance("configured-destination", "ref-1"),
         )
