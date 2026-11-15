@@ -49,6 +49,7 @@ from relay_self.cognitive_minimal_dev import (
 )
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
+from relay_self.move_destination_ref import move_destination_ref
 from relay_self.relay_engine import RelayEngine, RelayEngineResult
 
 # This is a one-turn integration for the existing main branch's bounded MVP
@@ -188,7 +189,11 @@ def native_schema_percept(
             if len(targets) >= 16:
                 break
             targets.append(Target(
-                f"destination:{destination.destination_id}",
+                move_destination_ref(
+                    destination.destination_id,
+                    destination.position,
+                    destination.provenance,
+                ),
                 "DESTINATION", destination.provenance,
                 observation.session_id, observation.seq,
             ))
