@@ -375,7 +375,10 @@ class ResidentLlamaInferenceLane:
                              if j.future is not None and not j.future.cancelled())),
                 tuple(sorted(ref for ref, j in relevant.items()
                              if j.future is not None and j.future.cancelled())),
-                True,
+                # If only queued B tasks were cancelled while A executes,
+                # B is retired but the SHARED slot is not idle. No global
+                # idle claim is allowed until require_world_idle().
+                any(j.terminal_slot_idle for j in relevant.values()),
             )
             self._retired[self_id] = result
             return result
