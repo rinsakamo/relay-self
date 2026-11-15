@@ -766,3 +766,172 @@ def test_host_polls_without_premature_stop_between_60s_windows(tmp_path):
     finally:
         if owned.owned_session_id is not None:
             owned.stop_and_save()
+
+
+
+class _OwnedNativeCohortForCognitionTest:
+    """Injected native process-shaped adapter; no real Node/Paper/GPU here."""
+
+    def __init__(self, sessions, physical, *, fail_self=None, mismatch=False):
+        from relay_self.owned_native_rejoin_cohort_dev import NativePreparedRejoin
+
+        self.receipt_type = NativePreparedRejoin
+        self.sessions = sessions
+        self.physical = physical
+        self.fail_self = fail_self
+        self.mismatch = mismatch
+        self.prepared = {}
+        self.epoch = 0
+
+    def participants_now(self):
+        return tuple(
+            StopParticipant(sid, self.sessions[sid])
+            for sid in sorted(self.sessions)
+        )
+
+    async def prepare_rejoin(self, sid, paper, old):
+        if sid == self.fail_self:
+            raise ConnectionError("simulated missing owned native process " + sid)
+        assert self.sessions[sid].started.session_id == old
+        assert self.physical.closed
+        self.epoch += 1
+        new = f"owned-native-{sid}-{paper}-{self.epoch}"
+        self.sessions[sid] = HostNativeStopSession(sid, new, self.physical)
+        self.prepared[sid] = self.receipt_type(
+            sid, paper, old, new, 1, 2, "native-probe-" + sid,
+            probe_world_tick=100 + self.epoch * 50,
+        )
+        return ("swapped-native" if self.mismatch and sid == "B" else new)
+
+    def prepared_receipt(self, sid, paper, old):
+        row = self.prepared[sid]
+        assert row.paper_session_id == paper and row.old_native_session_id == old
+        return row
+
+
+def _owned_native_cognitive_bridge_fixture(
+    tmp_path, *, failure_b=False, mismatch=False,
+):
+    from relay_self.owned_cognitive_native_rejoin_dev import (
+        InertScopedWorkEpoch,
+        OwnedCognitiveNativeBridge,
+    )
+
+    f, host, physical, sessions, paper, clock = _owned_host_fixture(tmp_path)
+    native = _OwnedNativeCohortForCognitionTest(
+        sessions, physical,
+        fail_self="B" if failure_b else None,
+        mismatch=mismatch,
+    )
+    work = InertScopedWorkEpoch(physical.current_native_sessions)
+    bridge = OwnedCognitiveNativeBridge(
+        native=native, physical=physical, work=work,
+    )
+    f.cohort.external_close_physical = bridge.close
+    f.cohort.external_release_physical = bridge.release
+    f.cohort.external_native_rejoin = bridge.external_native_rejoin
+    host.participants_now = native.participants_now
+    host.prepare_native_rejoin = bridge.prepare_native_rejoin
+    return f, host, physical, native, work, bridge, paper, clock
+
+
+def test_async_native_work_bridge_two_real_owner_generations_without_replay(tmp_path):
+    """Actual cognition owners + work epoch + OS fake Paper and native test IO."""
+    f, host, physical, native, work, bridge, paper, clock = (
+        _owned_native_cognitive_bridge_fixture(tmp_path)
+    )
+
+    async def scenario():
+        first = await host.cycle_if_due(0.0)
+        assert first is not None
+        assert first.saved.typed_owner_cut_validated
+        assert first.stop.verified_self_ids == ("A", "B")
+        assert not physical.closed and not work.closed
+        assert all(o.fresh_native_observation_required for o in f.owners)
+        with pytest.raises(Exception, match="stale or foreign"):
+            with physical.lease(
+                self_id="A", native_session_id="native-before-A",
+                action_id="replayed-A",
+            ):
+                pytest.fail("stale owner gained physical authority")
+        bridge.admit_worldbody(f.cohort)
+        assert all(not o.fresh_native_observation_required for o in f.owners)
+        assert await host.cycle_if_due(59.99) is None
+        second = await host.cycle_if_due(60.0)
+        assert second is not None and second.saved.sequence == 1
+        assert second.previous_paper_session == first.next_paper_session
+        assert second.stop.verified_self_ids == ("A", "B")
+        assert first.saved.sequence == 0
+        assert not work.closed and not physical.closed
+        assert f.runtime.timer.last_success_monotonic == 60.0
+        assert len(verify_typed_generation(first.saved.generation)) == 2
+        assert len(verify_typed_generation(second.saved.generation)) == 2
+        assert not first.saved.historical_replay_performed
+        assert not second.saved.historical_replay_performed
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        if paper.owned_session_id is not None:
+            paper.stop_and_save()
+
+
+@pytest.mark.parametrize(("fault", "match"), [
+    ("missing-b", "async native rejoin failed"),
+    ("mismatched-receipt", "native process receipt mismatch"),
+    ("gpu-work", "external GPU work attempted"),
+    ("peer-message", "external transport attempted"),
+])
+def test_native_work_bridge_faults_never_release_physical(
+    tmp_path, fault, match,
+):
+    from relay_self.owned_cognitive_native_rejoin_dev import OwnedWorkRejoinError
+
+    f, host, physical, native, work, bridge, paper, clock = (
+        _owned_native_cognitive_bridge_fixture(
+            tmp_path, failure_b=fault == "missing-b",
+            mismatch=fault == "mismatched-receipt",
+        )
+    )
+    if fault == "gpu-work":
+        with pytest.raises(OwnedWorkRejoinError, match="GPU"):
+            work.register_external_gpu_task("A", "native-before-A", "unfenced-gpu")
+    if fault == "peer-message":
+        with pytest.raises(OwnedWorkRejoinError, match="peer"):
+            work.queue_peer_message("B", "native-before-B", "unfenced-peer")
+    try:
+        with pytest.raises(Exception, match=match):
+            asyncio.run(host.cycle_if_due(0.0))
+        assert physical.closed and host.held_after_failure
+        assert f.cohort.closed
+        assert not f.gate_open is False or f.cohort.closed
+        if fault in {"gpu-work", "peer-message"}:
+            assert f.runtime.last_verified() is None
+        else:
+            assert f.runtime.last_verified() is not None
+            assert not f.runtime.timer.last_success_monotonic == 0.0
+        with pytest.raises(Exception):
+            asyncio.run(host.cycle_if_due(60.0))
+    finally:
+        if paper.owned_session_id is not None:
+            paper.stop_and_save()
+
+
+def test_native_work_bridge_rejects_missing_verified_worldbody(tmp_path):
+    from relay_self.owned_cognitive_native_rejoin_dev import OwnedWorkRejoinError
+
+    f, host, physical, native, work, bridge, paper, clock = (
+        _owned_native_cognitive_bridge_fixture(tmp_path)
+    )
+    try:
+        assert asyncio.run(host.cycle_if_due(0.0))
+        # A fresh session alone cannot satisfy the owner until its real
+        # correlated source-time observation has passed back into the facade.
+        with pytest.raises(CheckpointHostError, match="current WorldBody"):
+            asyncio.run(host.cycle_if_due(60.0))
+        assert host.held_after_failure and physical.closed
+        with pytest.raises(OwnedWorkRejoinError, match="freshly rebound"):
+            bridge.admit_worldbody(f.cohort)
+    finally:
+        if paper.owned_session_id is not None:
+            paper.stop_and_save()
