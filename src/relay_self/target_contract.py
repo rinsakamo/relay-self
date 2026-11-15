@@ -185,18 +185,18 @@ class TargetContract:
             self.reference_frame.value, self.provenance.source,
             self.provenance.reference, self.bound_seq,
             None if self.anchor is None else (
-                self.anchor.x.hex(), self.anchor.y.hex(), self.anchor.z.hex(),
+                float(self.anchor.x).hex(), float(self.anchor.y).hex(), float(self.anchor.z).hex(),
             ),
             None if self.bound_origin is None else (
-                self.bound_origin.x.hex(), self.bound_origin.y.hex(),
-                self.bound_origin.z.hex(),
+                float(self.bound_origin.x).hex(), float(self.bound_origin.y).hex(),
+                float(self.bound_origin.z).hex(),
             ),
             self.entity_id, self.max_entity_age_seq,
-            c.min_horizontal_m.hex(), c.max_horizontal_m.hex(),
-            c.max_vertical_error_m.hex(), c.still_ticks,
-            None if c.max_still_drift_m is None else c.max_still_drift_m.hex(),
-            None if c.max_speed_mps is None else c.max_speed_mps.hex(),
-            None if c.max_facing_error_rad is None else c.max_facing_error_rad.hex(),
+            float(c.min_horizontal_m).hex(), float(c.max_horizontal_m).hex(),
+            float(c.max_vertical_error_m).hex(), c.still_ticks,
+            None if c.max_still_drift_m is None else float(c.max_still_drift_m).hex(),
+            None if c.max_speed_mps is None else float(c.max_speed_mps).hex(),
+            None if c.max_facing_error_rad is None else float(c.max_facing_error_rad).hex(),
             c.require_line_of_sight,
         )
         payload = json.dumps(values, ensure_ascii=True, separators=(",", ":")).encode()
