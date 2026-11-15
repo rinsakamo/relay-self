@@ -59,6 +59,7 @@ class ResolvedMoveTarget:
     native_probe_provenance: Provenance
     native_seq: int
     native_request_id: str
+    arrival_contract: TargetContract | None = None
     status: str = "TARGET_BOUND_NO_PHYSICAL_MOVE_CAPABILITY"
     physical_issued: bool = False
     reached: bool = False
@@ -141,6 +142,7 @@ def resolve_selected_move_target(
             and t.provenance == destination.provenance
             and t.world_session_id == frame.scope.world_session_id
             and t.observed_sequence == current_probe.seq
+            and t.arrival_contract == chosen.arrival_contract
             and t.live
             for t in percept.targets
         )
@@ -168,6 +170,7 @@ def resolve_selected_move_target(
         native_probe_provenance=current_probe.provenance,
         native_seq=current_probe.seq,
         native_request_id=current_probe.request_id,
+        arrival_contract=chosen.arrival_contract,
     )
 
 
@@ -183,6 +186,7 @@ def propose_arrival_contract_for_selected_move(
     """
     if (
         not isinstance(target, ResolvedMoveTarget)
+        or target.arrival_contract is not None
         or target.status != "TARGET_BOUND_NO_PHYSICAL_MOVE_CAPABILITY"
         or target.physical_issued or target.reached or target.stop_settled_attested
         or target.skill_id != "MOVE" or target.skill_version != 1
