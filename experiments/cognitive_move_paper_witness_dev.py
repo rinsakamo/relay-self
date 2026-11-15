@@ -199,7 +199,7 @@ def _write_request(path: Path, fields: dict[str, str]) -> None:
     """Publish a complete fsynced request, never half-written .arm/.mark."""
     if path.is_symlink() or path.parent.is_symlink() or not path.parent.is_dir():
         raise PaperMoveWitnessError("Paper request directory unavailable")
-    data = "".join(f"{k}={fields[k]}\\n" for k in sorted(fields)).encode()
+    data = "".join(f"{k}={fields[k]}\n" for k in sorted(fields)).encode()
     staging = path.with_name(path.name + ".tmp")
     fd = os.open(
         staging, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600,
