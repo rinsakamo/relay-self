@@ -7,6 +7,8 @@ strict per-cycle receipts. Failure leaves admission closed (manual recovery).
 """
 from __future__ import annotations
 
+import asyncio
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -233,6 +235,7 @@ class CoordinatedAutosaveRuntime:
     async def run_if_due_async(
         self, now_monotonic: float, *,
         prepare_rejoin: Callable[[str, str, str], Awaitable[str]],
+        native_rejoin_timeout_s: float = 15.0,
     ) -> AutosaveCycleResult | None:
         """Await native A/B rejoin while the existing physical/cognitive gate stays closed.
 
@@ -243,6 +246,12 @@ class CoordinatedAutosaveRuntime:
         """
         if not callable(prepare_rejoin):
             raise AutosaveBarrierError("async native rejoin preparer required")
+        if (
+            type(native_rejoin_timeout_s) not in (float, int)
+            or not math.isfinite(native_rejoin_timeout_s)
+            or not 0 < native_rejoin_timeout_s <= 180
+        ):
+            raise AutosaveBarrierError("bounded native rejoin timeout required")
         if self._held_after_failure or self._cycle_active:
             raise AutosaveBarrierError("autosave held or already in progress")
         if not self.timer.due(now_monotonic):
@@ -252,9 +261,11 @@ class CoordinatedAutosaveRuntime:
             pending = self._cut_and_restart()
             ready: dict[str, str] = {}
             for frozen in pending.cohort:
-                new_id = await prepare_rejoin(
-                    frozen.self_id, pending.restarted.new_server_session_id,
-                    frozen.old_native_session_id,
+                new_id = await asyncio.wait_for(
+                    prepare_rejoin(
+                        frozen.self_id, pending.restarted.new_server_session_id,
+                        frozen.old_native_session_id,
+                    ), timeout=float(native_rejoin_timeout_s),
                 )
                 if type(new_id) is not str or not new_id.strip():
                     raise AutosaveBarrierError("native process rejoin unverified")
