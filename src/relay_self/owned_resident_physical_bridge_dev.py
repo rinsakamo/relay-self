@@ -154,6 +154,9 @@ class OwnedResidentPhysicalBridge:
         self.inference_lane = inference_lane
         self.sessions: dict[str, MineflayerProcessSession] = {}
         self.retired: dict[str, ResidentIssuerRetired] = {}
+        # Preserve the ORIGINAL verified native/Paper source claim so an
+        # independent Paper log join can use it without inventing evidence.
+        self.last_login_evidence: dict[str, NativeLoginEvidence] = {}
         self._pending_login: set[str] = set()
 
     def _check_world(self) -> None:
@@ -241,9 +244,11 @@ class OwnedResidentPhysicalBridge:
                 owner.last_observed_tick = observed_tick
                 owner.fresh_native_observation_required = False
             self.sessions[self_id] = launched
+            self.last_login_evidence[self_id] = evidence
             self.retired.pop(self_id, None)
             return ticket
         except BaseException:
+            self.last_login_evidence.pop(self_id, None)
             # If source verification fails, NEVER grant a new issuer lease.
             # If admit succeeded before an unexpected failure, quarantine it.
             current = self.physical.current_native_sessions[self_id]
