@@ -126,7 +126,7 @@ class FakeRuntime:
             return replace(receipt, old_session_invalidated=False)
         return receipt
 
-    def runner(self) -> CoordinatedAutosaveRuntime:
+    def runner(self, *, paper_layout: bool = False) -> CoordinatedAutosaveRuntime:
         cohort = tuple(
             SelfRuntimeHooks(
                 sid,
@@ -141,6 +141,7 @@ class FakeRuntime:
             participants=cohort,
             world=WorldRuntimeHooks(self.stop, self.restart),
             admission=AdmissionHooks(self.close, self.release),
+            paper_layout=paper_layout,
         )
 
 
@@ -256,3 +257,35 @@ def test_previous_self_session_is_required_at_next_generation(tmp_path: Path):
     assert runner.held_after_failure
     assert "release" not in runtime.events[8:]
     assert next_generation_sequence(runtime.store) == 1
+
+
+def test_paper_two_generation_dimension_roster_is_pinned_before_commit(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    paper = tmp_path / "world"
+    runtime.world.rename(paper)
+    runtime.world = paper
+    for name in ("world_nether", "world_the_end"):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "level.dat").write_bytes(("first-" + name).encode())
+    runner = runtime.runner(paper_layout=True)
+    first = runner.run_if_due(0.0)
+    assert first is not None
+    assert verify_generation(first.generation)["schema"] == 2
+    assert runner.run_if_due(30.0) is None
+    (tmp_path / "world_the_end" / "level.dat").write_bytes(b"second-end")
+    second = runner.run_if_due(60.0)
+    assert second is not None
+    assert verify_generation(second.generation)["schema"] == 2
+    assert set(verify_generation(second.generation)["paper_dimensions"]) == {
+        "world_nether", "world_the_end"
+    }
+    # A disappearing dimension must not become a newer committed cut.
+    import shutil
+
+    shutil.rmtree(tmp_path / "world_nether")
+    with pytest.raises(AutosaveBarrierError, match="dimension roster changed"):
+        runner.run_if_due(120.0)
+    assert runner.held_after_failure
+    assert runner.last_verified() == second.generation
+    assert not (runtime.store / "g-000000000002" / "COMMITTED.json").exists()

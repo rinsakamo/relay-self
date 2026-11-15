@@ -180,6 +180,7 @@ class CoordinatedAutosaveRuntime:
         self._held_after_failure = False
         self._last_server_session_id: str | None = None
         self._last_native_sessions: dict[str, str] = {}
+        self._last_paper_dimensions: tuple[str, ...] | None = None
 
     @property
     def held_after_failure(self) -> bool:
@@ -266,6 +267,21 @@ class CoordinatedAutosaveRuntime:
         _ref(stopped.tick_source_ref)
         _ref(stopped.stopped_server_ref)
 
+        paper_dimensions: tuple[str, ...] | None = None
+        if self.paper_layout:
+            from relay_self.coordinated_checkpoint_dev import _paper_siblings
+
+            paper_dimensions = tuple(
+                name for name, _ in _paper_siblings(self.source_world)
+            )
+            if (
+                self._last_paper_dimensions is not None
+                and paper_dimensions != self._last_paper_dimensions
+            ):
+                raise AutosaveBarrierError(
+                    "Paper dimension roster changed between generations; HOLD"
+                )
+
         if self.strict_typed_owner_cut:
             from relay_self.self_owner_checkpoint_dev import (
                 capture_typed_generation,
@@ -326,6 +342,7 @@ class CoordinatedAutosaveRuntime:
         self.admission.release(token)
         self._last_server_session_id = restarted.new_server_session_id
         self._last_native_sessions = new_native_sessions
+        self._last_paper_dimensions = paper_dimensions
         return AutosaveCycleResult(
             generation=generation, sequence=sequence,
             saved_self_ids=tuple(p.self_id for p in self.participants),

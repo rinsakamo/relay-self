@@ -1,6 +1,8 @@
 """#860 DEV generation tests. Filesystem fixtures; not a real running server."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from relay_self.coordinated_checkpoint_dev import (
@@ -198,8 +200,6 @@ def test_paper_full_dimension_generation_rollback_same_branch(tmp_path):
         assert (recovered / name / "region" / "r.0.0.mca").read_bytes() == (
             b"checkpoint-" + name.encode()
         )
-        import json
-
         sidecar = json.loads((recovered / f"{name}.restore.json").read_bytes())
         assert sidecar["new_branch_id"] == receipt["fork_branch_id"]
     assert latest_verified_generation(store) == saved
