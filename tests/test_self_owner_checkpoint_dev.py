@@ -140,9 +140,16 @@ def test_typed_two_self_generation_and_inert_restore(tmp_path: Path):
 
     (world / "entities" / "r.0.0.mca").write_bytes(b"future-zombie-dead")
     # Mutate only the LIVE Source Self A owner after a committed generation.
-    new_owner = IntentCommitment()
+    new_owner = rehydrate_self_owner(cuts[0]).intent
     prov = Provenance("future-owner", "A")
-    new_owner.commit("future-intent", objective="EXPLORE", at_ns=9999, provenance=prov)
+    new_owner.complete(
+        "intent-A", reason="completed after checkpoint",
+        at_ns=9999, provenance=prov,
+    )
+    new_owner.commit(
+        "future-intent", objective="EXPLORE",
+        at_ns=10000, provenance=prov,
+    )
     altered = replace(cuts[0], intent_events=new_owner.events, peer_deliveries=())
     specs[0].owner_state_file.unlink()
     save_self_owner_cut(specs[0].owner_state_file, altered)
