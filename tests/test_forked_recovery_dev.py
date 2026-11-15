@@ -353,3 +353,79 @@ def test_unproven_source_death_cannot_be_generated_from_damage_only():
     ))
     assert out.target_alive_after is None
     assert out.event_id == "damage-1"
+
+
+
+def test_two_phase_cli_postlaunch_only_needs_saved_plan_and_fresh_source(tmp_path):
+    """Postlaunch never re-verifies a World directory that Minecraft may mutate."""
+    from dataclasses import asdict
+
+    from experiments.audit_forked_recovery_dev import _write_new, postlaunch
+
+    plan = _prepare(_inputs(tmp_path, "W100"))
+    saved = tmp_path / "prelaunch.json"
+    _write_new(saved, plan)
+    fresh = _fresh(plan, True, session="new-live-world-session", native_id=2)
+    source = tmp_path / "fresh.json"
+    source.write_text(json.dumps(asdict(fresh)))
+    target = tmp_path / "postlaunch.json"
+    outcome = postlaunch(saved, source, target)
+    assert outcome.status is ForkRecoveryDevStatus.PRESENT_REPROJECTED_DEV
+    assert target.is_file()
+    assert outcome.physical_action_issue_authorized is False
+    assert outcome.remembered_postcut_action_ids == (ACTION,)
+    assert json.loads(target.read_text())["decision"]["self_owner_restored"] is False
+
+
+def test_cli_prelaunch_real_empty_owned_wal_does_not_fabricate_action_effect(tmp_path):
+    """An absent actual WAL Action must HOLD even with a narrative ticket record."""
+    from dataclasses import asdict
+
+    from experiments.audit_forked_recovery_dev import prelaunch
+    from relay_self.physical_action_journal import PhysicalActionJournal
+
+    archive, restored, _receipt, cut, selves, _wal, _effects = _inputs(tmp_path, "W110")
+    cutfile = tmp_path / "source-cut.json"
+    cutfile.write_text(json.dumps(asdict(cut)))
+    selfpaths = []
+    for c in selves:
+        path = tmp_path / f"{c.checkpoint.self_id}-cut.json"
+        write_derived_cognitive_cut_dev(path, c)
+        selfpaths.append(path)
+    walfile = tmp_path / "fresh-empty-real-wal.json"
+    PhysicalActionJournal.create(walfile, self_id="A")
+    eventfile = tmp_path / "ticket-events.json"
+    eventfile.write_text(json.dumps({
+        "self_id": "A", "action_id": ACTION, "world_id": WORLD,
+        "branch_id": BRANCH, "native_identity": None,
+        "server_attack_ticket": None, "server_damage_events": [],
+        "server_death_events": [],
+    }))
+    outfile = tmp_path / "prelaunch-result.json"
+    result = prelaunch(
+        archive, restored, cutfile, selfpaths, walfile, eventfile, outfile,
+    )
+    assert result.status is ForkRecoveryDevStatus.HOLD_PHYSICAL_RECONCILIATION
+    assert result.physical_action_issue_authorized is False
+    assert outfile.exists()
+
+
+def test_postlaunch_refuses_forged_authority_in_stored_prelaunch_plan(tmp_path):
+    from experiments.audit_forked_recovery_dev import _write_new, postlaunch
+
+    plan = _prepare(_inputs(tmp_path, "W100"))
+    source = tmp_path / "prelaunch.json"
+    _write_new(source, plan)
+    body = json.loads(source.read_text())
+    body["decision"]["physical_action_issue_authorized"] = True
+    source.write_text(json.dumps(body))
+    fresh = tmp_path / "fresh.json"
+    fresh.write_text(json.dumps({
+        "world_id": WORLD, "new_branch_id": plan.new_branch_id,
+        "native_session_id": "new", "target_uuid": ZOMBIE,
+        "observed_target_alive": True, "source_ref": "mineflayer:new",
+        "runtime_target_entity_id": 2,
+    }))
+    with pytest.raises(ForkRecoveryDevError, match="cannot assert physical authority"):
+        postlaunch(source, fresh, tmp_path / "should-not-exist.json")
+    assert not (tmp_path / "should-not-exist.json").exists()
