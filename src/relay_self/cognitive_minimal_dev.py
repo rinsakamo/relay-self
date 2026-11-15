@@ -353,6 +353,14 @@ def cpu_schema_epoch(
                 checks += 1
                 if len(options) >= 8:
                     break
+                if t.arrival_contract is not None and (
+                    t.kind != "DESTINATION"
+                    or pattern.skill_id != "MOVE"
+                    or t.arrival_contract.goal_id != pattern.goal_id
+                ):
+                    # Reject mismatched Goal/Target semantics rather than
+                    # laundering a foreign acceptance condition into L1.
+                    raise MinimalCognitionError("Goal and Target contract disagree")
                 options.append(Option(
                     pattern.goal_id or "", pattern.skill_id or "",
                     pattern.skill_version or 0, t.ref, t.kind,
