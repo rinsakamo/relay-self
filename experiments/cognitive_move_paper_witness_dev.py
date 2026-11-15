@@ -119,13 +119,28 @@ class PaperMoveStopProof:
     paper_position_stable_8_ticks: bool = True
     physical_arrival_attested: bool = False
     native_stop_ack_attributed: bool = False  # host callback is a causal bridge, not server receipt
+    actor_name_joined: bool = False  # Paper join name == requested Mineflayer login; DEV
+
+
+def _actor_join_line(
+    boot_id: str, world_uuid: str, actor_uuid: str, expected_username: str,
+) -> str:
+    if (
+        type(expected_username) is not str
+        or re.fullmatch(r"[A-Za-z0-9_]{3,16}", expected_username) is None
+    ):
+        raise PaperMoveWitnessError("noncanonical native actor login name")
+    return (
+        f"P0M_PLAYER boot={boot_id} world={world_uuid}"
+        f" actor={actor_uuid} name={expected_username} tick="
+    )
 
 
 def qualify_paper_move_trace(
     raw: bytes, *, nonce: str, world_uuid: str, actor_uuid: str,
     action_id: str, native_session_id: str, native_start: MineflayerPosition,
     native_target: MineflayerPosition,
-    paper_owned_log: bytes,
+    paper_owned_log: bytes, expected_username: str | None = None,
 ) -> PaperMoveStopProof:
     """Independently check Paper arm/marker/position across >=16 ticks.
 
@@ -182,9 +197,15 @@ def qualify_paper_move_trace(
         f" tick={samples[-1][0]} source=PAPER_MAIN_THREAD"
     )
     log = paper_owned_log.decode("utf-8", errors="replace").splitlines()
+    markers = [ready]
+    if expected_username is not None:
+        markers.append(_actor_join_line(
+            f["boot_id"], world_uuid, actor_uuid, expected_username,
+        ))
+    markers.extend((armed, marker, done))
     indices = [
         next((i for i, line in enumerate(log) if value in line), None)
-        for value in (ready, armed, marker, done)
+        for value in markers
     ]
     if None in indices or indices != sorted(indices):
         raise PaperMoveWitnessError("Paper positions not joined to same owned log")
@@ -192,6 +213,7 @@ def qualify_paper_move_trace(
         f["boot_id"], world_uuid, actor_uuid, action_id, native_session_id,
         arm, stop, stop + 8, stop + 16, p0, marked, indexed[stop + 16],
         progress, residual, hashlib.sha256(raw).hexdigest(),
+        actor_name_joined=(expected_username is not None),
     )
 
 
@@ -227,7 +249,7 @@ class PaperMoveWitnessSession:
         self, spool: Path, *, world_uuid: str, actor_uuid: str,
         action_id: str, native_session_id: str,
         native_start: MineflayerPosition, native_target: MineflayerPosition,
-        read_owned_log,
+        read_owned_log, expected_username: str,
     ) -> None:
         self.spool = Path(spool)
         self.world_uuid = _uuid("world UUID", world_uuid)
@@ -237,6 +259,11 @@ class PaperMoveWitnessSession:
         self.native_start = native_start
         self.native_target = native_target
         self.read_owned_log = read_owned_log
+        _actor_join_line(
+            "00000000-0000-4000-8000-000000000000",
+            self.world_uuid, self.actor_uuid, expected_username,
+        )
+        self.expected_username = expected_username
         self.nonce = str(uuid.uuid4())
         self.armed = False
         self.marked = False
@@ -278,6 +305,23 @@ class PaperMoveWitnessSession:
             f["native_session_id"] != self.native_session_id,
         )):
             raise PaperMoveWitnessError("foreign Paper arm receipt")
+        log = self.read_owned_log()
+        if type(log) is not bytes:
+            raise PaperMoveWitnessError("Paper actor join needs owned log bytes")
+        expected_join = _actor_join_line(
+            f["boot_id"], self.world_uuid, self.actor_uuid,
+            self.expected_username,
+        )
+        ready = f"P0M_READY boot={f['boot_id']} source=PAPER_MAIN_THREAD"
+        lines = log.decode("utf-8", errors="replace").splitlines()
+        start = next((i for i, line in enumerate(lines) if ready in line), None)
+        joined = next(
+            (i for i, line in enumerate(lines) if expected_join in line), None,
+        )
+        if start is None or joined is None or start >= joined:
+            raise PaperMoveWitnessError(
+                "Paper player UUID/World/login not joined BEFORE native LOOK"
+            )
         self.armed = True
 
     async def mark_stop_after_ack(self, seconds: float = 3.0) -> None:
@@ -305,6 +349,7 @@ class PaperMoveWitnessSession:
                     native_session_id=self.native_session_id,
                     native_start=self.native_start, native_target=self.native_target,
                     paper_owned_log=self.read_owned_log(),
+                    expected_username=self.expected_username,
                 )
                 self.proof = proof
                 return proof
