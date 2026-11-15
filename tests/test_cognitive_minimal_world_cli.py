@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerAdapterStarted,
     MineflayerEffectResult,
+    MineflayerEntityHurt,
     MineflayerEntityFact,
     MineflayerInventoryItem,
     MineflayerLaunchConfig,
@@ -1102,3 +1103,131 @@ def test_cli_post_issue_wal_readback_mismatch_does_not_claim_skill_progress(
     assert len([x for x in session.sent if x[0] == "equip_item"]) == 1
     assert len([x for x in session.sent if x[0] == "consume_held"]) == 1
     assert session.closed
+
+
+class FakePhysicalAttackSession(FakePhysicalProcessSession):
+    """Scripted zombie and source-qualified hurt; no actual World/damage."""
+
+    def __init__(self, *, fail_at=None):
+        super().__init__()
+        self.fail_at = fail_at
+
+    def _zombie_probe(self, seq, request_id):
+        mob = MineflayerEntityFact(
+            7, "zombie", "mob", 2.0, MineflayerPosition(2, 64, 0),
+        )
+        native = _observation(seq, kind="probe", food=20, bread_count=0)
+        return replace(native, request_id=request_id, snapshot=replace(
+            native.snapshot, inventory=(), nearby_entities=(mob,),
+            nearby_entities_coverage=replace(
+                native.snapshot.nearby_entities_coverage, candidate_count=1,
+            ),
+        ))
+
+    async def send_observe(self, request_id=None):
+        self.observation_no += 1
+        self.sent.append(("observe", request_id))
+        if self.observation_no <= 3:
+            self.messages.append(self._zombie_probe(
+                self.observation_no + 1, request_id,
+            ))
+        elif self.fail_at != "after_probe":
+            self.messages.append(self._zombie_probe(7, request_id))
+
+    async def send_attack_entity(self, action_id, *, entity_id):
+        assert self.wal_path is not None
+        raw = json.loads(self.wal_path.read_text())
+        self.first_wal_status = raw["body"]["actions"][-1]["status"]
+        self.sent.append(("attack_entity", action_id, entity_id))
+        if self.fail_at == "missing_ack":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 5, action_id, "attack_entity", "applied", None,
+        ))
+        if self.fail_at != "missing_hurt":
+            self.messages.append(MineflayerEntityHurt(
+                "session-1", 6, entity_id,
+                None if self.fail_at == "unknown_actor" else 4, 4,
+            ))
+
+
+def _physical_attack_args(tmp_path, *, create=True):
+    args = _physical_args(tmp_path, create=create)
+    args.physical_eat_dev = False
+    args.physical_attack_dev = True
+    args.edible_item = []
+    args.hazard_name = ["zombie"]
+    args.fight_max_distance = 4
+    return args
+
+
+def test_cli_l1_attack_l0_ir_wal_and_native_hurt_without_damage_proof(
+    monkeypatch, tmp_path,
+):
+    session = FakePhysicalAttackSession()
+    args = _physical_attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["status"] == "NATIVE_ATTACK_HURT_CORRELATED_DEV_ONLY"
+    assert result["selected"]["skill_id"] == "ATTACK"
+    assert result["selected"]["target_ref"] == "entity:7"
+    assert result["physical_attack_dev_selected"] is True
+    assert result["physical_eat_dev_selected"] is False
+    assert result["initial_skill_ir"] == "ATTACK@1"
+    assert result["initial_skill_step_status"] == "PROPOSED_NOT_ISSUED"
+    assert result["initial_skill_evaluation_status"] == "YIELD_EVALUATION"
+    assert result["native_attack_damage_attested"] is False
+    assert result["skill_final_state"] == "started"
+    assert result["action_outcome_count"] == 1
+    assert result["physical_journal_records"][-1]["status"] == (
+        "NATIVE_ATTACK_HURT_CORRELATED"
+    )
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert len([x for x in session.sent if x[0] == "attack_entity"]) == 1
+    assert result["native_effect_receipts"][0]["effect"] == "attack_entity"
+    assert result["native_attack_hurt"]["source_entity_id"] == 4
+    assert session.closed
+
+
+@pytest.mark.parametrize("failure", [
+    "missing_ack", "missing_hurt", "unknown_actor", "after_probe",
+])
+def test_cli_attack_ambiguous_effect_stays_unresolved_and_restart_stops(
+    monkeypatch, tmp_path, failure,
+):
+    session = FakePhysicalAttackSession(fail_at=failure)
+    args = _physical_attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert audit["physical_attack_dev_selected"] is True
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][-1]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["recorded_actions"][0]["state"] == "unknown"
+    assert len([x for x in session.sent if x[0] == "attack_entity"]) == 1
+    assert session.closed
+
+    replay = FakePhysicalAttackSession()
+    _inject_physical_transport(monkeypatch, replay)
+    with pytest.raises(cli.CognitiveWorldRunError) as second:
+        asyncio.run(run(_physical_attack_args(tmp_path, create=False)))
+    assert "STOP/UNKNOWN" in second.value.audit["error"]
+    assert replay.sent == []
+
+
+def test_cli_attack_eat_legacy_and_shadow_modes_are_mutually_exclusive():
+    def args(*options):
+        return parser().parse_args(["--model", "x",
+                                    "--grant-real-world", "--grant-real-llm",
+                                    *options])
+
+    for flags in (
+        ("--physical-eat-dev", "--physical-attack-dev"),
+        ("--physical-attack-dev", "--execute-native"),
+        ("--physical-attack-dev", "--s49-readonly-shadow"),
+    ):
+        with pytest.raises(MinimalCognitionError):
+            asyncio.run(run(args(*flags)))
