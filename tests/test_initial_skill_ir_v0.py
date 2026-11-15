@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from relay_self.action import ActionState
+from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
     Option,
@@ -29,6 +29,7 @@ from relay_self.initial_skill_ir import (
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_port import (
     PhysicalActionBinding,
+    PhysicalActionPortRefusal,
     PhysicalCapability,
     PhysicalReadback,
 )
@@ -389,3 +390,96 @@ def test_stale_skill_snapshot_rejected():
             selection, ir=ir, intent_owner=owner, skill_execution=skill,
             registered_versions=frozenset({("EAT", 1)}), deadline_ns=100,
         )
+
+
+def test_busy_physical_supervisor_blocks_l0_even_with_selected_skill():
+    interpreter, cursor, _, _, owner, skill, binding, cap, readback, source = started()
+    supervisor = ActionSupervisor()
+    other = ActionLifecycle.propose(
+        "other-physical", skill_execution=skill, intent_commitment=owner,
+        at_ns=4, provenance=source,
+    ).authorize(
+        at_ns=5, provenance=source, authority="offline-fake",
+    )
+    supervisor.issue(other, at_ns=6, deadline_ns=80, provenance=source)
+    with pytest.raises(PhysicalActionPortRefusal, match="issued Action"):
+        interpreter.propose(
+            cursor, binding=binding, capability=cap, readback=readback,
+            intent_owner=owner, skill_execution=skill,
+            supervisor=supervisor, at_ns=7, provenance=source,
+        )
+    assert cursor.index == 1
+    assert cursor.pending_action_id is None
+
+
+def test_learned_two_action_finite_progress_requires_new_native_source():
+    selection, ir, owner, skill, binding, cap, readback, source = fixture()
+    ir = replace(
+        ir, origin=SkillOrigin.LEARNED,
+        steps=(
+            SkillStep(StepKind.CHECK_TARGET),
+            SkillStep(StepKind.ACTION, "EAT", 1),
+            SkillStep(StepKind.CHECK_TARGET),
+            SkillStep(StepKind.ACTION, "EAT", 1),
+        ),
+    )
+    engine = FiniteSkillInterpreter()
+    cursor = engine.begin(
+        selection, ir=ir, intent_owner=owner, skill_execution=skill,
+        registered_versions=frozenset({("EAT", 1)}), deadline_ns=100,
+    )
+    cursor = engine.check_target(
+        cursor, readback=readback, intent_owner=owner,
+        skill_execution=skill, at_ns=4,
+    ).cursor
+    first = engine.propose(
+        cursor, binding=binding, capability=cap, readback=readback,
+        intent_owner=owner, skill_execution=skill,
+        supervisor=ActionSupervisor(), at_ns=5, provenance=source,
+    )
+    result = engine.observe_action(
+        first.cursor, action=issued_outcome(first, source),
+        witness=witness(binding), intent_owner=owner,
+        skill_execution=skill, at_ns=9,
+    )
+    assert result.status == "NEXT_STEP"
+    readback2 = replace(
+        readback, source=Provenance("mineflayer", "world-A:20"),
+        seq=20, request_id="probe-B",
+    )
+    cursor = engine.check_target(
+        result.cursor, readback=readback2, intent_owner=owner,
+        skill_execution=skill, at_ns=10,
+    ).cursor
+    new_binding = replace(
+        binding, action_id="action-B", native_seq=20,
+        native_request_id="probe-B", native_source=readback2.source,
+    )
+    second = engine.propose(
+        cursor, binding=new_binding, capability=cap, readback=readback2,
+        intent_owner=owner, skill_execution=skill,
+        supervisor=ActionSupervisor(), at_ns=11, provenance=source,
+    )
+    assert second.status == "PROPOSED_NOT_ISSUED"
+    assert second.cursor.action_count == 2
+    assert second.cursor.pending_native_source == readback2.source
+    assert owner.current_intent is not None
+
+
+def test_world_source_and_typed_outcome_witness_reject_forgery():
+    x, _, proposal = proposed()
+    engine, _, _, _, owner, skill, binding, _, _, source = x
+    action = issued_outcome(proposal, source)
+    with pytest.raises(SkillIRRefusal, match="malformed"):
+        replace(witness(binding), journal_closed="yes")
+    with pytest.raises(SkillIRRefusal, match="malformed"):
+        replace(witness(binding), effect_correlated=1)
+    result = engine.observe_action(
+        proposal.cursor, action=action,
+        witness=replace(
+            witness(binding), native_source=Provenance("mineflayer", "world-A:99"),
+        ),
+        intent_owner=owner, skill_execution=skill, at_ns=9,
+    )
+    assert result.status == "STOP_UNKNOWN"
+    assert result.cursor.blocked
