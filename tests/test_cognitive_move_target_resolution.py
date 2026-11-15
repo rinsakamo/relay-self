@@ -464,6 +464,13 @@ def test_l1_selects_exact_arrival_contract_and_recheck_cannot_replace_precision(
         allowed_skills=MOVE_ONLY, epoch=2,
     )
     assert choice.option not in altered_frame.options
+    # Also reject a swapped scenario when a caller presents the *old*
+    # frame/percept as though no update happened.
+    with pytest.raises(MoveTargetRefusal):
+        resolve_selected_move_target(
+            choice, frame=frame, percept=percept,
+            current_probe=native, scenario=altered,
+        )
     with pytest.raises(MoveTargetRefusal):
         resolve_selected_move_target(
             choice, frame=altered_frame, percept=altered_percept,
@@ -537,3 +544,35 @@ def test_selected_precise_move_can_get_cpu_gait_preview_but_not_motor_grant():
                 observed, scope=ScopeRef("self-B", "world-A"),
             ), capabilities, route_clear=True,
         )
+
+
+def test_actual_one_turn_l1_selects_precision_across_native_probe_refresh():
+    from relay_self.target_contract import ArrivalCondition
+
+    original = configured()
+    d0 = replace(
+        original.destinations[0],
+        arrival_condition=ArrivalCondition(
+            0, .08, .25, still_ticks=8, max_still_drift_m=.05,
+        ),
+    )
+    scene = replace(
+        original, destinations=(d0, *original.destinations[1:]),
+    )
+    out, session, owner, supervisor = one_turn(scenario=scene)
+    assert out.status == "MOVE_TARGET_BOUND_NO_ISSUE"
+    assert out.l1_result.choice_id == "1"
+    assert out.move_target is not None
+    assert out.move_target.arrival_contract is not None
+    assert out.selection.option.arrival_contract == out.move_target.arrival_contract
+    assert out.selection.option.arrival_contract.contract_ref == (
+        out.initial_frame.options[0].arrival_contract.contract_ref
+    )
+    assert out.current_frame.options[0].arrival_contract == (
+        out.initial_frame.options[0].arrival_contract
+    )
+    assert out.move_target.native_seq == 13
+    assert out.native_probe_trace[-1].seq == 13
+    assert session.sent == [("observe", out.probe_request_id)]
+    assert owner.current_intent is None
+    assert supervisor.recorded_actions == ()
