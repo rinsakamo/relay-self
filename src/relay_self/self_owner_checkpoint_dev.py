@@ -14,17 +14,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from relay_self.coordinated_checkpoint_dev import (
-    SelfSnapshotSource,
-    capture_generation,
-    verify_generation,
-)
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
     PatternRegistry,
     Predicate,
     SchemaPattern,
+)
+from relay_self.coordinated_checkpoint_dev import (
+    SelfSnapshotSource,
+    capture_generation,
+    verify_generation,
 )
 from relay_self.intent import (
     IntentCommitment,
