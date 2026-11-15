@@ -6,8 +6,18 @@ import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
   entityHurtPayload,
+  probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+
+test('probe identity witness uses the same snapshot IDs and retains missing UUID', () => {
+  const bot = { entity: { id: 7 }, player: { uuid: 'actor' }, entities: { 12: { uuid: 'target' }, 13: {} } }
+  const snapshot = { nearby_entities: [{ id: 12 }, { id: 13 }] }
+  assert.deepEqual(probeIdentityWitness(bot, snapshot, 'session', 42), {
+    session_id: 'session', probe_seq: 42, actor: { id: 7, uuid: 'actor' },
+    targets: [{ id: 12, uuid: 'target' }, { id: 13, uuid: null }]
+  })
+})
 
 test('inventory listener waits for Mineflayer plugin injection', () => {
   const bot = new EventEmitter()
