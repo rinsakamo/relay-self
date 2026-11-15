@@ -93,6 +93,17 @@ class OwnedPaperWorld:
             raise OwnedPaperError("owned process log unavailable")
         return self._log_path.read_bytes()
 
+    def read_owned_log(self, session_id: str) -> bytes:
+        """Read only the log attached to THIS explicitly running Paper Popen.
+
+        This supports matching the Paper main-thread tick ACK to the owning
+        process, rather than accepting a foreign/global server.log claim.
+        """
+        self._assert_owned()
+        if session_id != self._session_id:
+            raise OwnedPaperError("foreign Paper process session log")
+        return self._read_log()
+
     def start_owned(self) -> str:
         """Launch only the explicitly configured executable in a NEW process."""
         if self._uncertain or self._process is not None:
