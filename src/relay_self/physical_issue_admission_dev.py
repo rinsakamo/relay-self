@@ -167,6 +167,36 @@ class PhysicalIssueAdmission:
         ):
             return await issue_selected_attack_dev(session, **kwargs)
 
+    async def run_l1_eat(
+        self, session: Any, receipt: Any, *, admission_ref: str, **kwargs: Any,
+    ) -> Any:
+        """Fenced existing L1 EAT runner, including Intent/Skill setup and native IO.
+
+        admission_ref is a coordinator call identity, NOT a physical Action ID,
+        and cannot substitute for the Action/WAL receipts inside the runner.
+        """
+        from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
+
+        with self.lease(
+            self_id=kwargs["self_id"],
+            native_session_id=session.started.session_id,
+            action_id=admission_ref,
+        ):
+            return await issue_eat_from_selected_l1_dev(session, receipt, **kwargs)
+
+    async def run_l1_attack(
+        self, session: Any, receipt: Any, *, admission_ref: str, **kwargs: Any,
+    ) -> Any:
+        """Fenced existing L1 ATTACK runner from selected Intent through readback."""
+        from experiments.cognitive_physical_attack_runner import issue_attack_from_selected_l1_dev
+
+        with self.lease(
+            self_id=kwargs["self_id"],
+            native_session_id=session.started.session_id,
+            action_id=admission_ref,
+        ):
+            return await issue_attack_from_selected_l1_dev(session, receipt, **kwargs)
+
     async def run_guarded(
         self, *, self_id: str, native_session_id: str,
         action_id: str, perform: Callable[[], Any],
