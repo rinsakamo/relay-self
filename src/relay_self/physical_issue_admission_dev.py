@@ -59,7 +59,13 @@ class PhysicalIssueAdmission:
     rather than falsely reporting a clean World/Self checkpoint.
     """
 
-    def __init__(self, current_sessions: dict[str, str]) -> None:
+    def __init__(
+        self, current_sessions: dict[str, str], *,
+        require_neutral_stop: bool = False,
+    ) -> None:
+        if type(require_neutral_stop) is not bool:
+            raise PhysicalIssueFenceError("neutral STOP policy must be bool")
+        self._require_neutral_stop = require_neutral_stop
         if (
             type(current_sessions) is not dict
             or not current_sessions
@@ -80,6 +86,10 @@ class PhysicalIssueAdmission:
         self._stop_required: set[str] = set()
         self._stop_active: dict[str, tuple[str, str]] = {}
         self._stop_proofs: dict[str, NeutralStopProof] = {}
+
+    @property
+    def requires_neutral_stop(self) -> bool:
+        return self._require_neutral_stop
 
     @property
     def self_roster(self) -> tuple[str, ...]:
@@ -276,6 +286,12 @@ class PhysicalIssueAdmission:
     def close(self) -> ExternalPhysicalFence:
         """Fences new issues; rejects if an in-flight async action has not drained."""
         with self._lock:
+            if not self._closed and self._require_neutral_stop:
+                self._closed = True
+                self._poisoned = True
+                raise PhysicalIssueFenceError(
+                    "full-cohort STOP required before physical checkpoint"
+                )
             if self._closed:
                 if self._neutralizing:
                     if self._poisoned or not self.neutralization_complete:
