@@ -167,10 +167,10 @@ def _with_actor_join(
 ) -> bytes:
     line = (
         f"[P0MMoveWitness] P0M_PLAYER boot={boot}"
-        f" world={world} actor={actor} name={name} tick=98\\n"
+        f" world={world} actor={actor} name={name} tick=98\n"
     ).encode()
     ready = (
-        f"[P0M] P0M_READY boot={BOOT} source=PAPER_MAIN_THREAD\\n"
+        f"[P0M] P0M_READY boot={BOOT} source=PAPER_MAIN_THREAD\n"
     ).encode()
     assert ready in log
     return log.replace(ready, ready + line)
@@ -202,14 +202,7 @@ def test_wrong_player_name_uuid_or_world_cannot_be_attributed_to_self(change):
         "wrong_boot": _with_actor_join(
             log, boot="a7a257b5-3237-44f3-b7da-2b2ef1579a19",
         ),
-        "join_after_arm": (
-            log + _with_actor_join(log).split(b"P0M_PLAYER")[1]
-            if False else _with_actor_join(log).replace(
-                b"P0M_PLAYER", b"P0M_OTHER",
-            ) + b"[P0M] P0M_PLAYER boot=" + BOOT.encode()
-            + b" world=" + WORLD.encode() + b" actor=" + ACTOR.encode()
-            + b" name=RelaySelf tick=125\\n"
-        ),
+        "join_after_arm": log,
         "no_join": log,
         "bad_username": _with_actor_join(log),
     }
@@ -218,7 +211,7 @@ def test_wrong_player_name_uuid_or_world_cannot_be_attributed_to_self(change):
         # actor event preceding the original arm/STOP Action.
         variants[change] = log + (
             f"P0M_PLAYER boot={BOOT} world={WORLD} actor={ACTOR}"
-            " name=RelaySelf tick=130\\n"
+            " name=RelaySelf tick=130\n"
         ).encode()
     with pytest.raises(PaperMoveWitnessError):
         _qualified(
@@ -229,15 +222,13 @@ def test_wrong_player_name_uuid_or_world_cannot_be_attributed_to_self(change):
 
 
 def test_p0m_spool_arm_rejects_wrong_name_before_any_motor(tmp_path):
-    from pathlib import Path
-
     for name in ("RelaySelf", "OtherSelf"):
         root = tmp_path / name
         for dirname in ("requests", "acks", "complete"):
             (root / dirname).mkdir(parents=True)
         log = _with_actor_join(_data()[1], name=name)
         session = PaperMoveWitnessSession(
-            Path(root), world_uuid=WORLD, actor_uuid=ACTOR,
+            root, world_uuid=WORLD, actor_uuid=ACTOR,
             action_id=ACTION, native_session_id=SESSION,
             native_start=MineflayerPosition(0, 64, 0),
             native_target=MineflayerPosition(3, 64, 0),
@@ -245,10 +236,10 @@ def test_p0m_spool_arm_rejects_wrong_name_before_any_motor(tmp_path):
             expected_username="RelaySelf",
         )
         armed = "".join((
-            f"boot_id={BOOT}\\n", f"nonce={session.nonce}\\n",
-            f"world_uuid={WORLD}\\n", f"actor_uuid={ACTOR}\\n",
-            f"action_id={ACTION}\\n", f"native_session_id={SESSION}\\n",
-            "arm_tick=100\\n", "source=PAPER_MAIN_THREAD\\n",
+            f"boot_id={BOOT}\n", f"nonce={session.nonce}\n",
+            f"world_uuid={WORLD}\n", f"actor_uuid={ACTOR}\n",
+            f"action_id={ACTION}\n", f"native_session_id={SESSION}\n",
+            "arm_tick=100\n", "source=PAPER_MAIN_THREAD\n",
         ))
         (root / "acks" / (session.nonce + ".armed")).write_text(armed)
         if name == "RelaySelf":
