@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -48,7 +49,12 @@ from relay_self.coordinated_autosave_runtime_dev import (
 from relay_self.coordinated_checkpoint_dev import (
     restore_generation,
 )
+from relay_self.coordinated_checkpoint_host_dev import (
+    CheckpointHostError,
+    CoordinatedCheckpointHost,
+)
 from relay_self.intent import IntentCommitment
+from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     Memory,
@@ -513,3 +519,249 @@ def test_actual_a_b_cognition_cut_only_after_both_neutral_stop_proofs(tmp_path):
     assert f.events.index("stop-complete-physical-close") < f.events.index("stop-world")
     assert f.events.index("stop-world") < f.events.index("start-world")
     assert f.events.index("start-world") < f.events.index("all-rebound-physical-release")
+
+
+
+class HostNativeStopSession:
+    """Fake native per-Self session; STOP readbacks are synthetic typed events."""
+
+    def __init__(self, self_id, session_id, gate, *, fault=None):
+        from types import SimpleNamespace
+
+        self.self_id = self_id
+        self.started = SimpleNamespace(session_id=session_id)
+        self.gate = gate
+        self.fault = fault
+        self.seq = 0
+        self.probes = 0
+        self.writes = []
+        self.messages = []
+
+    async def send_clear_controls(self, action_id):
+        self.gate.require_native_effect(
+            self_id=self.self_id, native_session_id=self.started.session_id,
+            effect="clear_controls", action_id=action_id,
+        )
+        self.writes.append(action_id)
+        self.seq += 1
+        self.messages.append(MineflayerEffectResult(
+            self.started.session_id, self.seq, action_id, "clear_controls",
+            "applied", None,
+        ))
+
+    async def send_observe(self, request_id=None):
+        self.seq += 1
+        self.probes += 1
+        x = 3.0 if self.fault != "drift" else 3.0 + self.probes / 4
+        self.messages.append(MineflayerObservation(
+            self.started.session_id, self.seq, "probe",
+            MineflayerSnapshot(
+                20, 12, 4, 20,
+                MineflayerPosition(x, 64, 2),
+                MineflayerTime(100 + 10 * (self.probes - 1), 0, True),
+                (), (),
+                MineflayerNearbyEntitiesCoverage(
+                    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                    0, False,
+                ),
+            ),
+            request_id,
+        ))
+
+    async def receive(self):
+        return self.messages.pop(0)
+
+
+def _owned_host_fixture(tmp_path, *, failure_b=None, paper=True):
+    """Actual existing owner/typed generation and real Python child OS process.
+
+    The child only *mimics* Paper's console. This is not Minecraft.
+    """
+    f = RuntimeFixture(tmp_path)
+    f.baseline()
+    physical = PhysicalIssueAdmission(
+        {o.self_id: o.native_session_id for o in f.owners},
+        require_neutral_stop=True,
+    )
+    sessions = {
+        o.self_id: HostNativeStopSession(
+            o.self_id, o.native_session_id, physical,
+            fault=failure_b if o.self_id == "B" else None,
+        ) for o in f.owners
+    }
+
+    def close():
+        f.events.append("physical-close")
+        f.gate_open = False
+        return physical.close()
+
+    def release(token):
+        physical.release(token)
+        f.events.append("physical-release")
+        f.gate_open = True
+
+    def rejoin(sid, paper_session, old):
+        new = f"native-{sid}-after-{paper_session}"
+        physical.rotate_native_session(
+            fence_ref=f.cohort.fence.fence_ref,
+            self_id=sid, old_session_id=old, new_session_id=new,
+        )
+        sessions[sid] = HostNativeStopSession(sid, new, physical)
+        f.events.append("rebind-real-cohort:" + sid)
+        return ExternalRejoin(new, True, True, True)
+
+    f.cohort.external_close_physical = close
+    f.cohort.external_release_physical = release
+    f.cohort.external_native_rejoin = rejoin
+    owned = None
+    if paper:
+        script = tmp_path / "fake_paper_console.py"
+        script.write_text(
+            "import sys\n"
+            "print('Done (0.1s)', flush=True)\n"
+            "for line in sys.stdin:\n"
+            "    if line.strip() == 'save-all flush':\n"
+            "        print('Saving worlds', flush=True)\n"
+            "    if line.strip() == 'stop':\n"
+            "        print('Stopping server', flush=True)\n"
+            "        sys.exit(0)\n",
+            encoding="utf-8",
+        )
+        evidence = tmp_path / "evidence"
+        evidence.mkdir()
+        ticks = {"count": 0}
+
+        def tick_readback(current_session):
+            ticks["count"] += 1
+            return PaperTickReceipt(
+                current_session, 110 + 60 * ticks["count"], "fake:server-tick",
+            )
+
+        owned = OwnedPaperWorld(
+            server_dir=tmp_path, world_dir=f.world_dir,
+            evidence_dir=evidence,
+            command=(sys.executable, "-u", str(script)),
+            world_id="world-1", branch_id="source",
+            tick_readback=tick_readback, timeout_seconds=3.0,
+        )
+        owned.start_owned()
+        f.runtime.world = owned.runtime_hooks()
+    clock = {"value": 0.0}
+
+    async def fake_sleep(_seconds):
+        clock["value"] += 30.0
+        for owner in f.owners:
+            if owner.fresh_native_observation_required:
+                owner.observe_world_tick(
+                    session_id=owner.native_session_id,
+                    world_tick=owner.last_observed_tick + 1,
+                )
+
+    host = CoordinatedCheckpointHost(
+        runtime=f.runtime, physical=physical, cognitive_cohort=f.cohort,
+        participants_now=lambda: tuple(
+            StopParticipant(sid, sessions[sid]) for sid in sorted(sessions)
+        ),
+        stop_audit_dir=tmp_path, owned_paper=owned,
+        stop_timeout_s=0.5,
+        monotonic_clock=lambda: clock["value"],
+        sleep=fake_sleep,
+    )
+    return f, host, physical, sessions, owned, clock
+
+
+def test_bounded_host_two_60s_generations_with_owned_process_and_fresh_a_b(tmp_path):
+    f, host, physical, sessions, owned, clock = _owned_host_fixture(tmp_path)
+    assert owned is not None
+    first_paper = owned.owned_session_id
+    try:
+        cycles = asyncio.run(host.run_bounded(
+            max_cycles=2, max_polls=3, poll_seconds=1.0,
+        ))
+        assert len(cycles) == 2
+        assert [c.saved.sequence for c in cycles] == [0, 1]
+        assert all(c.saved.typed_owner_cut_validated for c in cycles)
+        assert all(c.stop.verified_self_ids == ("A", "B") for c in cycles)
+        assert cycles[0].previous_paper_session == first_paper
+        assert cycles[0].next_paper_session != first_paper
+        assert cycles[1].previous_paper_session == cycles[0].next_paper_session
+        assert cycles[1].next_paper_session == owned.owned_session_id
+        assert cycles[1].next_paper_session != cycles[1].previous_paper_session
+        assert host.runtime.timer.last_success_monotonic == 60.0
+        assert clock["value"] == 60.0
+        assert not host.held_after_failure and not physical.closed
+        assert not f.cohort.closed
+        for cycle in cycles:
+            assert len(verify_typed_generation(cycle.saved.generation)) == 2
+            assert not cycle.historical_replay_performed
+            assert cycle.stop.receipt_files
+        assert f.events.count("physical-release") == 2
+    finally:
+        if owned.owned_session_id is not None:
+            owned.stop_and_save()
+
+
+def test_host_rejects_unobserved_new_worldbody_before_next_save(tmp_path):
+    f, host, physical, sessions, owned, clock = _owned_host_fixture(tmp_path)
+    try:
+        assert asyncio.run(host.cycle_if_due(0.0)) is not None
+        assert asyncio.run(host.cycle_if_due(59.99)) is None
+        # A/B were rebound but the new native WorldBody has not been observed.
+        with pytest.raises(CheckpointHostError, match="current WorldBody"):
+            asyncio.run(host.cycle_if_due(60.0))
+        assert host.held_after_failure
+        assert physical.closed
+        assert f.runtime.last_verified() is not None
+        assert len(list(f.store.glob("g-*/COMMITTED.json"))) == 1
+        assert owned.owned_session_id is not None
+    finally:
+        if owned.owned_session_id is not None:
+            owned.stop_and_save()
+
+
+def test_host_missing_b_held_before_stop_or_world_save(tmp_path):
+    f, host, physical, sessions, owned, clock = _owned_host_fixture(tmp_path)
+    host.participants_now = lambda: (StopParticipant("A", sessions["A"]),)
+    try:
+        with pytest.raises(CheckpointHostError, match="roster"):
+            asyncio.run(host.cycle_if_due(0.0))
+        assert host.held_after_failure and physical.closed
+        assert not sessions["A"].writes
+        assert not f.runtime.last_verified()
+        assert owned.owned_session_id is not None
+    finally:
+        if owned.owned_session_id is not None:
+            owned.stop_and_save()
+
+
+def test_host_b_drifts_so_no_partial_generation_and_global_hold(tmp_path):
+    f, host, physical, sessions, owned, clock = _owned_host_fixture(
+        tmp_path, failure_b="drift",
+    )
+    try:
+        with pytest.raises(Exception, match="settled|STOP"):
+            asyncio.run(host.cycle_if_due(0.0))
+        assert host.held_after_failure and physical.closed
+        assert sessions["A"].writes and sessions["B"].writes
+        assert f.runtime.last_verified() is None
+        assert owned.owned_session_id is not None
+    finally:
+        if owned.owned_session_id is not None:
+            owned.stop_and_save()
+
+
+def test_host_polls_without_premature_stop_between_60s_windows(tmp_path):
+    f, host, physical, sessions, owned, clock = _owned_host_fixture(tmp_path)
+    try:
+        assert asyncio.run(host.cycle_if_due(0.0))
+        old_b = sessions["B"]
+        assert asyncio.run(host.cycle_if_due(10.0)) is None
+        assert asyncio.run(host.cycle_if_due(59.5)) is None
+        assert sessions["B"] is old_b
+        assert not sessions["B"].writes
+        assert len(list(f.store.glob("g-*/COMMITTED.json"))) == 1
+    finally:
+        if owned.owned_session_id is not None:
+            owned.stop_and_save()
