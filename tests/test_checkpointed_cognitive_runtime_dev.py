@@ -39,6 +39,7 @@ from relay_self.persistent_cognition import (
     PersistentCognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.self_owner_checkpoint_dev import PeerDelivery, verify_typed_generation
 
@@ -328,3 +329,77 @@ def test_peer_messages_wait_for_both_fresh_sessions(tmp_path):
     ))
     assert "post-restart-peer" in f.owners[0].peer_deliveries
     assert "post-restart-peer" in f.owners[1].peer_deliveries
+
+
+
+def _connect_actual_physical_issue_admission(f):
+    """One shared cohort gate; external native authenticity remains a fixture."""
+    physical = PhysicalIssueAdmission({
+        owner.self_id: owner.native_session_id for owner in f.owners
+    })
+
+    def close():
+        f.gate_open = False
+        f.events.append("physical-lease-stop")
+        return physical.close()
+
+    def release(token):
+        physical.release(token)
+        f.events.append("physical-lease-release")
+        f.gate_open = True
+
+    def rejoin(sid, paper_session, previous_session):
+        assert f.cohort.fence is not None
+        new = f"new-{sid}-{paper_session}"
+        physical.rotate_native_session(
+            fence_ref=f.cohort.fence.fence_ref,
+            self_id=sid, old_session_id=previous_session,
+            new_session_id=new,
+        )
+        return ExternalRejoin(new, True, True, True)
+
+    f.cohort.external_close_physical = close
+    f.cohort.external_release_physical = release
+    f.cohort.external_native_rejoin = rejoin
+    return physical
+
+
+def test_actual_issuer_lease_fences_cognition_cut_and_new_session(tmp_path):
+    f = RuntimeFixture(tmp_path)
+    f.baseline()
+    physical = _connect_actual_physical_issue_admission(f)
+    first = f.runtime.run_if_due(0.0)
+    assert first is not None
+    assert first.typed_owner_cut_validated
+    assert not physical.closed
+    assert f.gate_open
+    assert f.owners[0].native_session_id == f"new-A-{f.session_id}"
+    # First session cannot issue a new physical action after Paper rejoin.
+    with pytest.raises(Exception, match="stale or foreign"):
+        with physical.lease(
+            self_id="A", native_session_id="native-before-A",
+            action_id="stale-attack",
+        ):
+            pytest.fail("old physical epoch entered")
+    with physical.lease(
+        self_id="A", native_session_id=f.owners[0].native_session_id,
+        action_id="fresh-eat",
+    ):
+        assert physical.active_action_ids == ("fresh-eat",)
+
+
+def test_active_physical_action_prevents_world_and_all_self_save(tmp_path):
+    f = RuntimeFixture(tmp_path)
+    f.baseline()
+    physical = _connect_actual_physical_issue_admission(f)
+    with physical.lease(
+        self_id="A", native_session_id="native-before-A",
+        action_id="native-attack-inflight",
+    ):
+        with pytest.raises(AutosaveBarrierError, match="admission must remain held"):
+            f.runtime.run_if_due(0.0)
+    assert f.runtime.held_after_failure
+    assert physical.closed
+    assert f.cohort.closed
+    assert not (f.store / "g-000000000000" / "COMMITTED.json").exists()
+    assert "stop-world" not in f.events
