@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 import uuid
@@ -160,10 +161,19 @@ async def _stop_one(
             if first.snapshot.time is None:
                 raise StopNeutralizationError("World clock missing from first STOP probe")
 
-            # Repeated readbacks are bounded; a very fast mock probe does not
-            # stand in for 8 World ticks of physical settling.
+            # Allow real Minecraft residual displacement after STOP ACK.
+            # Demand one additional stable >=8-tick interval after an initial
+            # >=8-tick settling window. Shift the reference forward on drift;
+            # a perpetually moving body may NEVER be checkpoint-committed.
             deadline = asyncio.get_running_loop().time() + timeout_s
+            initial_time = (
+                first.snapshot.time.day * 24000
+                + first.snapshot.time.time_of_day
+            )
+            baseline = first
+            baseline_tick = initial_time
             last: MineflayerObservation | None = None
+            initial_window_elapsed = False
             while asyncio.get_running_loop().time() < deadline:
                 await asyncio.sleep(0.05)
                 later_id = f"checkpoint-settle-{uuid.uuid4().hex}"
@@ -178,14 +188,30 @@ async def _stop_one(
                 if row.snapshot.time is None:
                     raise StopNeutralizationError("World clock missing during settling")
                 now = row.snapshot.time.day * 24000 + row.snapshot.time.time_of_day
-                then = first.snapshot.time.day * 24000 + first.snapshot.time.time_of_day
-                if now < then or now - then > 200:
+                if now < baseline_tick or now - initial_time > 200:
                     raise StopNeutralizationError("STOP World clock regressed/jumped")
-                if now - then >= 8:
+                if not initial_window_elapsed:
+                    if now - initial_time >= 8:
+                        initial_window_elapsed = True
+                        baseline = row
+                        baseline_tick = now
+                    continue
+                if now - baseline_tick < 8:
+                    continue
+                p0, p1 = baseline.snapshot.position, row.snapshot.position
+                displacement = math.dist(
+                    (p0.x, p0.y, p0.z), (p1.x, p1.y, p1.z),
+                )
+                if math.isfinite(displacement) and displacement <= 0.06:
+                    first = baseline
                     last = row
                     break
+                baseline = row
+                baseline_tick = now
             if last is None:
-                raise StopNeutralizationError("8 World ticks of settling not observed")
+                raise StopNeutralizationError(
+                    "STOP body never settled for 8 World ticks after initial wait"
+                )
             proof = NeutralStopProof(action_id, ack, first, last)
             admission.confirm_neutral_stop(
                 fence_ref=fence_ref, self_id=sid, proof=proof,
