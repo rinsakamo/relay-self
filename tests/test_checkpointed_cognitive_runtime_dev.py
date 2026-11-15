@@ -877,7 +877,7 @@ def test_async_native_work_bridge_two_real_owner_generations_without_replay(tmp_
 
 
 @pytest.mark.parametrize(("fault", "match"), [
-    ("missing-b", "async native rejoin failed"),
+    ("missing-b", "simulated missing owned native process"),
     ("mismatched-receipt", "native process receipt mismatch"),
     ("gpu-work", "external GPU work attempted"),
     ("peer-message", "external transport attempted"),
@@ -900,16 +900,17 @@ def test_native_work_bridge_faults_never_release_physical(
         with pytest.raises(OwnedWorkRejoinError, match="peer"):
             work.queue_peer_message("B", "native-before-B", "unfenced-peer")
     try:
-        with pytest.raises(Exception, match=match):
+        with pytest.raises(AutosaveBarrierError, match="async native rejoin failed") as err:
             asyncio.run(host.cycle_if_due(0.0))
+        assert err.value.__cause__ is not None
+        assert match in str(err.value.__cause__)
         assert physical.closed and host.held_after_failure
         assert f.cohort.closed
-        assert not f.gate_open is False or f.cohort.closed
         if fault in {"gpu-work", "peer-message"}:
             assert f.runtime.last_verified() is None
         else:
             assert f.runtime.last_verified() is not None
-            assert not f.runtime.timer.last_success_monotonic == 0.0
+            assert f.runtime.timer.last_success_monotonic is None
         with pytest.raises(Exception):
             asyncio.run(host.cycle_if_due(60.0))
     finally:
