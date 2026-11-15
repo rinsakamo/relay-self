@@ -143,6 +143,20 @@ def resolve_selected_move_target(
             destination.destination_id, destination.position,
             destination.provenance,
         ) != chosen.target_ref
+        or (
+            chosen.arrival_contract is None
+            and destination.arrival_condition is not None
+        )
+        or (
+            chosen.arrival_contract is not None
+            and (
+                chosen.arrival_contract.condition != destination.arrival_condition
+                or chosen.arrival_contract.scope != frame.scope
+                or chosen.arrival_contract.provenance != destination.provenance
+                or chosen.arrival_contract.goal_id != chosen.goal_id
+                or chosen.arrival_contract.anchor != destination.position
+            )
+        )
         or not any(
             t.ref == chosen.target_ref
             and t.kind == "DESTINATION"
