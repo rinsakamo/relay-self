@@ -166,9 +166,8 @@ class WorldResidentLifecycle:
         if (
             not isinstance(world, WorldLifetime)
             or type(persisted_self_refs) is not dict
-            or not persisted_self_refs
         ):
-            raise ResidentLifecycleError("one World and nonempty Self registry required")
+            raise ResidentLifecycleError("one World and explicit Self registry required")
         for sid, ref in persisted_self_refs.items():
             _identity(sid)
             _ref("persisted cognition source", ref)
@@ -279,7 +278,7 @@ class WorldResidentLifecycle:
                 or evidence.paper_session_id != self._world.paper_session_id
                 or evidence.world_epoch != self._world.epoch
                 or type(evidence.observed_world_tick) is not int
-                or evidence.observed_world_tick < ticket.world.world_tick
+                or evidence.observed_world_tick < self._world.world_tick
                 or evidence.native_session_id in {
                     a.native_session_id for a in self._self.values()
                     if a.status is Presence.ONLINE
