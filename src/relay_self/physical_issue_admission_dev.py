@@ -39,6 +39,7 @@ class NeutralStopProof:
 
     stop_action_id: str
     ack: MineflayerEffectResult
+    initial_probe: MineflayerObservation
     first_probe: MineflayerObservation
     settled_probe: MineflayerObservation
 
@@ -252,28 +253,37 @@ class PhysicalIssueAdmission:
             ):
                 raise PhysicalIssueFenceError("STOP proof has no active generation lease")
             sid = active[0]
-            ack, first, last = proof.ack, proof.first_probe, proof.settled_probe
+            ack = proof.ack
+            initial, first, last = (
+                proof.initial_probe, proof.first_probe, proof.settled_probe
+            )
             if (
                 not isinstance(ack, MineflayerEffectResult)
-                or not isinstance(first, MineflayerObservation)
-                or not isinstance(last, MineflayerObservation)
-                or any(e.session_id != sid for e in (ack, first, last))
+                or any(not isinstance(p, MineflayerObservation)
+                       for p in (initial, first, last))
+                or any(e.session_id != sid for e in (ack, initial, first, last))
                 or ack.action_id != proof.stop_action_id
                 or ack.effect != "clear_controls" or ack.result != "applied"
-                or not ack.seq < first.seq < last.seq
-                or first.kind != "probe" or last.kind != "probe"
-                or not first.request_id or not last.request_id
-                or first.request_id == last.request_id
-                or first.snapshot.time is None or last.snapshot.time is None
-                or first.snapshot.health <= 0 or last.snapshot.health <= 0
+                or not ack.seq < initial.seq < first.seq < last.seq
+                or any(p.kind != "probe" or not p.request_id
+                       or p.snapshot.time is None or p.snapshot.health <= 0
+                       for p in (initial, first, last))
+                or len({p.request_id for p in (initial, first, last)}) != 3
             ):
                 raise PhysicalIssueFenceError("STOP ACK and correlated probe lineage absent")
+            pre_time = initial.snapshot.time
             before_time = first.snapshot.time
             after_time = last.snapshot.time
+            pre_tick = pre_time.day * 24000 + pre_time.time_of_day
             before_tick = before_time.day * 24000 + before_time.time_of_day
             after_tick = after_time.day * 24000 + after_time.time_of_day
-            if not 8 <= after_tick - before_tick <= 200:
-                raise PhysicalIssueFenceError("STOP probe interval lacks 8..200 World ticks")
+            if not (
+                8 <= before_tick - pre_tick <= 200
+                and 8 <= after_tick - before_tick <= 200
+            ):
+                raise PhysicalIssueFenceError(
+                    "STOP lacks initial 8-tick settle and subsequent 8-tick stable windows"
+                )
             pos0, pos1 = first.snapshot.position, last.snapshot.position
             displacement = math.dist(
                 (pos0.x, pos0.y, pos0.z), (pos1.x, pos1.y, pos1.z),
