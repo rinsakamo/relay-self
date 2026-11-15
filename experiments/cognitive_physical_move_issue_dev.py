@@ -18,6 +18,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     mineflayer_yaw_to_target,
 )
+from experiments.cognitive_move_paper_witness_dev import (
+    PaperMoveStopProof,
+    PaperMoveWitnessSession,
+)
 from experiments.cognitive_move_target_resolution import ResolvedMoveTarget
 from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalEatGrant,
@@ -51,6 +55,7 @@ class PhysicalMoveDevReceipt:
     arrived_at_destination: bool = False
     paper_stop_settled_attested: bool = False
     qualifying_real_world: bool = False
+    paper_proof: PaperMoveStopProof | None = None
 
 
 def _horizontal(a, b) -> float:
@@ -221,6 +226,7 @@ async def issue_selected_move_dev(
     acknowledge_dev_unverified_principal: bool,
     evidence_timeout_s: float = 2.0,
     stop_probe_interval_s: float = .2,
+    paper_witness: PaperMoveWitnessSession | None = None,
 ) -> PhysicalMoveDevReceipt:
     """Guarded short forward burst with exactly one preissue WAL reservation.
 
@@ -244,12 +250,22 @@ async def issue_selected_move_dev(
         or not .1 <= evidence_timeout_s <= 10
         or type(stop_probe_interval_s) not in (int, float)
         or not .15 <= stop_probe_interval_s <= 1
+        or (paper_witness is not None
+            and not isinstance(paper_witness, PaperMoveWitnessSession))
     ):
         raise PhysicalMoveRefusal("exclusive finite MOVE DEV authority required")
     journal.require_clear()
     _check_admission(proposal, target, previous_probe, current_probe)
     binding = proposal.binding
     _check_grants(binding, propose_grant, issue_grant)
+    if paper_witness is not None and (
+        paper_witness.action_id != binding.action_id
+        or paper_witness.native_session_id != binding.scope.world_session_id
+        or paper_witness.native_start != target.native_position
+        or paper_witness.native_target != target.destination_position
+        or paper_witness.armed or paper_witness.marked
+    ):
+        raise PhysicalMoveRefusal("foreign/pre-used Paper observer cannot attest MOVE")
     if (
         session.started.session_id != binding.scope.world_session_id
         or journal._body["self_id"] != binding.scope.self_id
@@ -289,6 +305,10 @@ async def issue_selected_move_dev(
     stop_attempted = False
     stop_id = binding.action_id + "-stop"
     try:
+        if paper_witness is not None:
+            # Paper observer arm happens after fsync PREPARED but BEFORE LOOK.
+            # Failure leaves the original parent unresolved, never retryable.
+            await paper_witness.arm()
         look_id = binding.action_id + "-look"
         await session.send_look(look_id, yaw=target.yaw_rad, pitch=0)
         look = await _ack(
@@ -313,6 +333,10 @@ async def issue_selected_move_dev(
             session, stop_id, "clear_controls",
             after_seq=progress.seq, timeout_s=evidence_timeout_s,
         )
+        if paper_witness is not None:
+            # Observational marker is causally *sent by host* AFTER this
+            # exact native STOP ACK. It is NOT a Paper Action ACK.
+            await paper_witness.mark_stop_after_ack()
         first_stop = await _probe(
             session, binding.action_id + "-after-stop-00",
             after_seq=stop.seq, timeout_s=evidence_timeout_s,
@@ -332,6 +356,9 @@ async def issue_selected_move_dev(
         )
         if advanced < .25 or residual > .05:
             raise PhysicalMoveRefusal("MOVE progress or STOP native stability unverified")
+        paper_proof = (
+            None if paper_witness is None else await paper_witness.finish()
+        )
         terminal = supervisor.record_outcome(
             binding.action_id, at_ns=at_ns + 2, provenance=final_stop.provenance,
         )
@@ -341,7 +368,7 @@ async def issue_selected_move_dev(
         )
         return PhysicalMoveDevReceipt(
             terminal, look, forward, progress, stop, first_stop,
-            final_stop, advanced, residual,
+            final_stop, advanced, residual, paper_proof=paper_proof,
         )
     except BaseException:
         if forward_attempted and not stop_attempted:
