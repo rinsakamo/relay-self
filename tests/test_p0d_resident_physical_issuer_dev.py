@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerInventoryItem,
     MineflayerLaunchConfig,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
@@ -29,6 +30,7 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CognitiveOwnerFiles,
 )
 from relay_self.cognitive_minimal_dev import initial_patterns
+from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.owned_resident_physical_bridge_dev import (
@@ -39,7 +41,11 @@ from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
 )
-from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_journal import (
+    PhysicalActionJournal,
+    PhysicalJournalUnresolved,
+)
+from relay_self.physical_action_port import PhysicalActionBinding
 from relay_self.physical_issue_admission_dev import (
     PhysicalIssueAdmission,
     PhysicalIssueFenceError,
@@ -428,6 +434,77 @@ def test_no_compute_scope_fails_closed_per_self_without_disrupting_peer(tmp_path
             action_id="peer-scope-still-active",
         ):
             pass
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+
+
+
+def test_original_wal_prepared_unresolved_blocks_individual_logout(tmp_path):
+    """Actual CAS journal PREPARED, not a missing-file or mocked boolean."""
+    f = ResidentFixture(tmp_path, 2)
+
+    async def scenario():
+        for sid in f.names:
+            await f.bridge.login(sid)
+        sid = f.names[0]
+        native = f.bridge.sessions[sid].started.session_id
+        snapshot = MineflayerSnapshot(
+            health=20, food=14, food_saturation=5, oxygen_level=20,
+            position=MineflayerPosition(1, 64, 2),
+            time=MineflayerTime(181, 0, True),
+            inventory=(MineflayerInventoryItem("bread", 1, 9),),
+            nearby_entities=(),
+            nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+                MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                0, False,
+            ),
+        )
+        probe = MineflayerObservation(
+            native, 88, "probe", snapshot, "prepare-eat-1",
+        )
+        binding = PhysicalActionBinding(
+            ScopeRef(sid, native),
+            intent_id="intent-eat",
+            goal_id="hunger-relief",
+            skill_id="EAT", skill_version=1,
+            skill_execution_id="skill-exec-eat",
+            action_id="eat-prepared-only",
+            capability_ref="EAT", capability_version=1,
+            body_channel="hand",
+            target_kind="FOOD", target_ref="inventory:bread",
+            native_seq=88, native_request_id="prepare-eat-1",
+            native_source=probe.provenance,
+        )
+        wal = f.owners[sid].files.physical_wal_file
+        original = PhysicalActionJournal.restore(wal, self_id=sid)
+        original.prepare_eat(binding, probe)
+        assert PhysicalActionJournal.restore(
+            wal, self_id=sid,
+        ).unresolved
+        with pytest.raises(PhysicalJournalUnresolved, match="possible physical"):
+            await f.bridge.logout(sid)
+        assert f.lifecycle.view(sid).status is Presence.QUARANTINED
+        assert f.physical.resident_states[sid] == "QUARANTINED"
+        assert f.lifecycle.view(f.names[1]).status is Presence.ONLINE
+        assert not f.physical.closed
+        with f.physical.lease(
+            self_id=f.names[1],
+            native_session_id=f.bridge.sessions[f.names[1]].started.session_id,
+            action_id="unrelated-peer-still-allowed", effect_family="EAT",
+        ):
+            f.bridge.sessions[f.names[1]].send_test_effect(
+                "consume_held", "unrelated-peer-still-allowed",
+            )
+        with pytest.raises(Exception):
+            f.bridge.world_only_quiescence()
+        assert PhysicalActionJournal.restore(
+            wal, self_id=sid,
+        ).records[-1]["status"] == "PREPARED_UNRESOLVED"
 
     try:
         asyncio.run(scenario())
