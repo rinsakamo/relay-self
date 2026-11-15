@@ -203,11 +203,17 @@ class OwnedCognitiveNativeBridge:
 
     def __init__(
         self, *, native: object, physical: PhysicalIssueAdmission,
-        work: InertScopedWorkEpoch,
+        work: InertScopedWorkEpoch, cognition: CognitionOwnerCohort,
     ) -> None:
         if (
             not isinstance(physical, PhysicalIssueAdmission)
             or not isinstance(work, InertScopedWorkEpoch)
+            or not isinstance(cognition, CognitionOwnerCohort)
+            or tuple(o.self_id for o in cognition.owners) != physical.self_roster
+            or any(
+                o.native_session_id != physical.current_native_sessions[o.self_id]
+                for o in cognition.owners
+            )
             or work.sessions != physical.current_native_sessions
             or set(getattr(native, "sessions", {})) != set(work.sessions)
         ):
@@ -215,8 +221,8 @@ class OwnedCognitiveNativeBridge:
         self.native = native
         self.physical = physical
         self.work = work
+        self.cognition = cognition
         self._verified: dict[str, NativePreparedRejoin] = {}
-        self._observed: set[str] = set()
         self._fence_ref: str | None = None
 
     def close_physical(self) -> ExternalPhysicalFence:
@@ -225,7 +231,6 @@ class OwnedCognitiveNativeBridge:
         # HOLD. It must not be released on failure.
         self.work.close_after_physical_stop(self.physical)
         self._verified.clear()
-        self._observed.clear()
         return receipt
 
     async def prepare_native_rejoin(
@@ -301,50 +306,48 @@ class OwnedCognitiveNativeBridge:
         return result
 
     def release(self, fence_ref: str) -> None:
-        if fence_ref != self._fence_ref or self._fence_ref is None:
-            raise OwnedWorkRejoinError("foreign/stale full-cohort release")
-        if set(self._verified) != set(self.work.sessions):
-            raise OwnedWorkRejoinError("one native Self missing at cohort release")
-        self.work.release_after_physical_rebind(self.physical.current_native_sessions)
-        self.physical.release(fence_ref)
-        self._fence_ref = None
+        """Admit A+B source clocks WHILE HELD, then release the physical gate.
 
-    def admit_worldbody(self, cognition: CognitionOwnerCohort) -> None:
-        """Admit only post-rejoin SOURCE clock facts into existing owners.
-
-        May be called AFTER the checkpoint host reports a success, and BEFORE
-        the next due 60s cut. This is not a replay of Action or queued messages.
+        This closes the dangerous interval in which new native sessions
+        could acquire a physical lease before their new WorldBody was known.
         """
-        if (
-            not isinstance(cognition, CognitionOwnerCohort)
-            or cognition.closed or self.physical.closed or self.work.closed
-            or set(self._verified) != set(self.work.sessions)
-            or self._observed
-        ):
-            raise OwnedWorkRejoinError("cohort must be freshly rebound and released")
         try:
-            for owner in cognition.owners:
+            if fence_ref != self._fence_ref or self._fence_ref is None:
+                raise OwnedWorkRejoinError("foreign/stale full-cohort release")
+            if (
+                set(self._verified) != set(self.work.sessions)
+                or not self.cognition.closed
+                or not self.physical.closed
+                or not self.work.closed
+            ):
+                raise OwnedWorkRejoinError("one native Self missing at cohort release")
+            for owner in self.cognition.owners:
                 proof = self._verified[owner.self_id]
                 current = self.native.sessions[owner.self_id]
                 if (
                     owner.native_session_id != proof.new_native_session_id
+                    or self.physical.current_native_sessions.get(owner.self_id)
+                    != proof.new_native_session_id
                     or current.started.session_id != proof.new_native_session_id
                     or getattr(current, "process_returncode", None) is not None
                     or proof.probe_world_tick < owner.last_observed_tick
                     or not owner.fresh_native_observation_required
                 ):
                     raise OwnedWorkRejoinError(
-                        "native probe is stale for cognitive owner"
+                        "fenced new WorldBody proof stale or native process ended"
                     )
-            for owner in cognition.owners:
+            for owner in self.cognition.owners:
                 proof = self._verified[owner.self_id]
-                owner.observe_world_tick(
-                    session_id=proof.new_native_session_id,
+                self.cognition.observe_fenced_rejoin_world_tick(
+                    self_id=owner.self_id,
+                    native_session_id=proof.new_native_session_id,
                     world_tick=proof.probe_world_tick,
                 )
-                self._observed.add(owner.self_id)
+            self.work.release_after_physical_rebind(
+                self.physical.current_native_sessions,
+            )
+            self.physical.release(fence_ref)
+            self._fence_ref = None
         except BaseException:
-            # A stale WorldBody probe after release is not permission to keep
-            # any native effect path open. Poison the physical gate globally.
             self.physical.hold_for_operator()
             raise
