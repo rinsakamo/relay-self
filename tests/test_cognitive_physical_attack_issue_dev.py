@@ -19,16 +19,25 @@ from experiments.cognitive_physical_eat_issue_dev import (
     PhysicalGrantStage,
 )
 from relay_self.action import ActionState
+from relay_self.action_supervision import ActionSupervisor
 from relay_self.physical_action_journal import (
     PhysicalActionJournal,
     PhysicalJournalError,
     PhysicalJournalReplay,
     PhysicalJournalUnresolved,
 )
-from relay_self.physical_action_port import propose_bound_physical_action
+from relay_self.physical_action_port import (
+    PhysicalCapability,
+    PhysicalReadback,
+    propose_bound_physical_action,
+)
 from relay_self.provenance import Provenance
 from test_cognitive_minimal_minecraft_dev import observation, zombie
-from test_cognitive_physical_eat_issue_dev import OwnedFakeNative
+from test_cognitive_physical_eat_issue_dev import (
+    OwnedFakeNative,
+    run as eat_run,
+    setup as eat_setup,
+)
 from test_initial_skill_ir_v0 import fixture as initial_fixture
 
 
@@ -55,18 +64,12 @@ def setup(tmp_path, *, event_kind="good"):
         12, session_id="world-A", request_id="probe-A", food=20,
         entities=(zombie(entity_id=31),),
     )
+    supervisor = ActionSupervisor()
     proposal = propose_bound_physical_action(
         binding, capability=cap, readback=readback,
-        intent_owner=owner, skill_execution=skill, supervisor=__import__(
-            "relay_self.action_supervision", fromlist=["ActionSupervisor"]
-        ).ActionSupervisor(),
+        intent_owner=owner, skill_execution=skill, supervisor=supervisor,
         at_ns=4, provenance=source,
     )
-    # Use the same original supervisor that received the proposal.
-    supervisor = __import__(
-        "relay_self.action_supervision", fromlist=["ActionSupervisor"]
-    ).ActionSupervisor()
-    # PROPOSED is not recorded; a fresh supervisor can legitimately admit it.
     journal = PhysicalActionJournal.create(
         tmp_path / "physical-shared.json", self_id="self-A",
     )
@@ -220,7 +223,7 @@ def test_reject_before_journal_and_native_send(tmp_path, change):
     assert kw["supervisor"].recorded_actions == ()
 
 
-def test_same_self_eat_history_and_attack_share_wal_and_restart_ledger(tmp_path):
+def test_reopen_shared_attack_wal_rejects_foreign_self(tmp_path):
     kw, session = setup(tmp_path)
     run(kw, session)
     restored = PhysicalActionJournal.restore(kw["journal"].path, self_id="self-A")
@@ -229,3 +232,80 @@ def test_same_self_eat_history_and_attack_share_wal_and_restart_ledger(tmp_path)
     assert restored.digest == kw["journal"].digest
     with pytest.raises(PhysicalJournalError):
         PhysicalActionJournal.restore(kw["journal"].path, self_id="other")
+
+
+def test_one_shared_self_wal_carries_eat_then_attack_in_one_native_session(tmp_path):
+    """Cross-type records share the original one Self-owned checksum/CAS ledger."""
+    eat_kw, eat_session, _, _ = eat_setup(tmp_path)
+    eat = eat_run(eat_kw, eat_session)
+    assert eat.terminal.state is ActionState.OUTCOME
+    kw, session = setup(tmp_path)
+    journal = PhysicalActionJournal.restore(
+        eat_kw["journal"].path, self_id="self-A",
+    )
+    kw["journal"] = journal
+    session.journal = journal
+    # New source must be strictly after the prior terminal barrier seq=15.
+    old = kw["proposal"].binding
+    new_src = Provenance("mineflayer", "world-A:22")
+    binding = replace(
+        old, native_seq=22, native_request_id="probe-next",
+        native_source=new_src,
+    )
+    kw["previous_probe"] = observation(
+        21, session_id="world-A", request_id="probe-prev-next",
+        food=20, entities=(zombie(entity_id=31),),
+    )
+    kw["current_probe"] = observation(
+        22, session_id="world-A", request_id="probe-next",
+        food=20, entities=(zombie(entity_id=31),),
+    )
+    for k in ("propose_grant", "issue_grant"):
+        kw[k] = replace(kw[k], probe_seq=22, probe_request_id="probe-next")
+    cap = PhysicalCapability("attack_entity", 1, "hand", "ZOMBIE", True)
+    readback = PhysicalReadback(
+        binding.scope, new_src, 22, "probe-next", ("entity:31",), True,
+    )
+    kw["proposal"] = propose_bound_physical_action(
+        binding, capability=cap, readback=readback,
+        intent_owner=kw["intent_owner"], skill_execution=kw["skill_execution"],
+        supervisor=kw["supervisor"], at_ns=4, provenance=kw["provenance"],
+    )
+    session.events = [
+        MineflayerEffectResult(
+            "world-A", 23, "action-A-attack", "attack_entity", "applied", None,
+        ),
+        MineflayerEntityHurt("world-A", 24, 31, 5, 5),
+        observation(
+            25, session_id="world-A",
+            request_id="action-A-after-attack-00",
+            food=20, entities=(zombie(entity_id=31),),
+        ),
+    ]
+    attack = run(kw, session)
+    assert attack.terminal.state is ActionState.OUTCOME
+    reopened = PhysicalActionJournal.restore(journal.path, self_id="self-A")
+    assert [row["capability"] for row in reopened.records] == [
+        "EAT", "attack_entity",
+    ]
+    assert [row["status"] for row in reopened.records] == [
+        "NATIVE_EAT_OUTCOME", "NATIVE_ATTACK_HURT_CORRELATED",
+    ]
+    assert reopened.records[1]["probe_seq"] > reopened.records[0]["after_seq"]
+    assert reopened.digest == journal.digest
+
+
+def test_unresolved_eat_reservation_blocks_attack_across_restart(tmp_path):
+    eat_kw, _, _, _ = eat_setup(tmp_path)
+    eat_kw["journal"].prepare_eat(
+        eat_kw["proposal"].binding, eat_kw["current_probe"],
+    )
+    kw, session = setup(tmp_path)
+    kw["journal"] = PhysicalActionJournal.restore(
+        eat_kw["journal"].path, self_id="self-A",
+    )
+    session.journal = kw["journal"]
+    with pytest.raises(PhysicalJournalUnresolved):
+        run(kw, session)
+    assert session.sent == []
+    assert kw["supervisor"].recorded_actions == ()
