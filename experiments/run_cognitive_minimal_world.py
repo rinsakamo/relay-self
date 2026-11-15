@@ -114,6 +114,14 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--move-destination", action="append", default=[],
                    help="explicit configured ID,X,Y,Z; NOT World-observed route "
                         "(repeatable; bounded short near-level motion only)")
+    p.add_argument("--paper-move-spool",
+                   help="P0M enabled Paper plugin p0m folder; optional strict main-thread tick/XYZ evidence")
+    p.add_argument("--paper-move-owned-log",
+                   help="raw log of operator-owned Paper process; no independent ownership authentication")
+    p.add_argument("--paper-move-world-uuid",
+                   help="canonical server World UUID, independently supplied")
+    p.add_argument("--paper-move-actor-uuid",
+                   help="canonical native player Paper UUID, independently supplied")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
     p.add_argument("--physical-create-journal", action="store_true",
@@ -208,6 +216,16 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     ):
         raise MinimalCognitionError(
             "pre-L1 native probe requires read-only shadow or durable physical DEV"
+        )
+    paper_move_options = (
+        args.paper_move_spool, args.paper_move_owned_log,
+        args.paper_move_world_uuid, args.paper_move_actor_uuid,
+    )
+    if any(x is not None for x in paper_move_options) and (
+        not args.physical_move_dev or not all(paper_move_options)
+    ):
+        raise MinimalCognitionError(
+            "all Paper MOVE witness flags require exclusive physical MOVE DEV"
         )
     if args.exploration_need and not args.physical_move_dev:
         raise MinimalCognitionError("explicit exploration Need requires MOVE DEV mode")
@@ -462,6 +480,15 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 acknowledge_unverified_principal=(
                     args.acknowledge_physical_dev_unverified_grants
                 ),
+                paper_move_spool=(
+                    Path(args.paper_move_spool) if args.paper_move_spool else None
+                ),
+                paper_move_owned_log=(
+                    Path(args.paper_move_owned_log)
+                    if args.paper_move_owned_log else None
+                ),
+                paper_world_uuid=args.paper_move_world_uuid,
+                paper_actor_uuid=args.paper_move_actor_uuid,
             )
         physical_result = (
             physical_eat if physical_eat is not None else
@@ -561,6 +588,16 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 None if physical_move is None else physical_move.action_id
             ),
             "native_move_paper_settled_attested": False,
+            "paper_move_position_stable_8_ticks": (
+                physical_move is not None
+                and physical_move.action.paper_proof is not None
+                and physical_move.action.paper_proof.paper_position_stable_8_ticks
+            ),
+            "paper_move_tick_proof": (
+                None if physical_move is None
+                or physical_move.action.paper_proof is None
+                else asdict(physical_move.action.paper_proof)
+            ),
             "native_move_arrival_attested": False,
             "native_move_progress_m": (
                 None if physical_move is None
@@ -699,6 +736,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "physical_eat_dev_selected": args.physical_eat_dev,
             "physical_attack_dev_selected": args.physical_attack_dev,
             "physical_move_dev_selected": args.physical_move_dev,
+            "paper_move_witness_requested": bool(args.paper_move_spool),
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
                 None if physical_journal is None else physical_journal.unresolved
