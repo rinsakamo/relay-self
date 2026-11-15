@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -27,6 +28,7 @@ from relay_self.checkpoint_stop_neutralization_dev import (
 from relay_self.physical_issue_admission_dev import (
     PhysicalIssueAdmission,
     PhysicalIssueFenceError,
+    NeutralStopProof,
 )
 
 
@@ -236,3 +238,55 @@ def test_initial_post_stop_residual_motion_then_8_tick_stillness_is_accepted(tmp
     assert receipt_b["first_position"]["x"] == 10.23
     assert receipt_b["settled_position"]["x"] == 10.23
     assert receipt_b["settled_world_tick"] - receipt_b["first_world_tick"] >= 8
+
+
+
+def test_stale_prepared_stop_audit_blocks_next_world_cut(tmp_path):
+    # PREPARED evidence without a completed same-identity receipt cannot be skipped.
+    old = tmp_path / "stop-A-oldsession.prepared.json"
+    old.write_text('{"state":"PREPARED_UNRESOLVED"}')
+    gate, cohort, a, b = _cohort(tmp_path)
+    with pytest.raises(StopNeutralizationError, match="earlier STOP PREPARED_UNRESOLVED"):
+        asyncio.run(prepare_stop_before_autosave(
+            gate, participants=cohort, audit_dir=tmp_path,
+        ))
+    assert gate.closed
+    assert not a.action_ids and not b.action_ids
+    with pytest.raises(PhysicalIssueFenceError, match="HOLD"):
+        gate.close()
+
+
+def test_physical_owner_independently_rejects_forged_one_window_proof(tmp_path):
+    gate = PhysicalIssueAdmission(
+        {"A": "native-a"}, require_neutral_stop=True,
+    )
+    fake = StopSessionFake("native-a", gate, "A")
+
+    async def forged_one_window():
+        token = gate.begin_neutralization()
+        with gate.stop_lease(
+            fence_ref=token, self_id="A", native_session_id="native-a",
+            stop_action_id="stop-A",
+        ):
+            await fake.send_clear_controls("stop-A")
+            ack = await fake.receive()
+            records = []
+            for label in ("initial", "early", "later"):
+                await fake.send_observe(label)
+                records.append(await fake.receive())
+            initial, early, later = records
+            # There is enough time between early and later, but initial to
+            # early was only three World ticks; that cannot bypass stage 1.
+            later = replace(later, snapshot=replace(
+                later.snapshot, time=MineflayerTime(112, 0, True),
+            ))
+            with pytest.raises(PhysicalIssueFenceError, match="initial 8-tick"):
+                gate.confirm_neutral_stop(
+                    fence_ref=token, self_id="A",
+                    proof=NeutralStopProof("stop-A", ack, initial, early, later),
+                )
+        assert gate.closed
+        with pytest.raises(PhysicalIssueFenceError, match="HOLD"):
+            gate.close()
+
+    asyncio.run(forged_one_window())
