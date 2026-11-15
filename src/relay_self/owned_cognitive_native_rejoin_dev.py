@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CognitionOwnerCohort,
