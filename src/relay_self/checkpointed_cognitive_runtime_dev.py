@@ -234,6 +234,32 @@ class CognitionOwnerCohort:
                 True, True, True, True,
             )
 
+    def observe_fenced_rejoin_world_tick(
+        self, *, self_id: str, native_session_id: str, world_tick: int,
+    ) -> None:
+        """Accept a new-source WorldBody tick while checkpoint admission is HELD.
+
+        This narrow operation is only for the *already rebound* native session
+        before the existing external physical release. Ordinary cognition and
+        physical Action mutations remain forbidden throughout this call.
+        Callers must independently verify the real native probe source.
+        """
+        with self.lock:
+            if not (self.closed and self.hold and self.fence is not None):
+                raise LiveCognitionCheckpointError("fenced WorldBody handoff required")
+            owner = self._owner(self_id)
+            if (
+                not owner.fresh_native_observation_required
+                or native_session_id != owner.native_session_id
+                or type(world_tick) is not int
+                or world_tick < owner.last_observed_tick
+            ):
+                raise LiveCognitionCheckpointError(
+                    "fenced native WorldBody clock stale or foreign"
+                )
+            owner.last_observed_tick = world_tick
+            owner.fresh_native_observation_required = False
+
     def release(self, token: str) -> None:
         with self.lock:
             if (
