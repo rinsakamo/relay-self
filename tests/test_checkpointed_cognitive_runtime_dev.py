@@ -5,7 +5,22 @@ from pathlib import Path
 
 import pytest
 
+from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerEffectResult,
+    MineflayerNearbyEntitiesCoverage,
+    MineflayerObservation,
+    MineflayerPosition,
+    MineflayerSnapshot,
+    MineflayerTime,
+)
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.checkpoint_stop_neutralization_dev import (
+    StopParticipant,
+    prepare_stop_before_autosave,
+)
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitionOwnerCohort,
@@ -403,3 +418,97 @@ def test_active_physical_action_prevents_world_and_all_self_save(tmp_path):
     assert f.cohort.closed
     assert not (f.store / "g-000000000000" / "COMMITTED.json").exists()
     assert "stop-world" not in f.events
+
+
+
+def test_actual_a_b_cognition_cut_only_after_both_neutral_stop_proofs(tmp_path):
+    """Old physical Action owners and actual cognition facade use one gate."""
+    from types import SimpleNamespace
+
+    f = RuntimeFixture(tmp_path)
+    f.baseline()
+    gate = PhysicalIssueAdmission({
+        owner.self_id: owner.native_session_id for owner in f.owners
+    }, require_neutral_stop=True)
+
+    def physical_close():
+        f.gate_open = False
+        f.events.append("stop-complete-physical-close")
+        return gate.close()
+
+    def physical_release(token):
+        gate.release(token)
+        f.gate_open = True
+        f.events.append("all-rebound-physical-release")
+
+    def native_rejoin(sid, paper_sid, old_sid):
+        new = f"native-new-{sid}-{paper_sid}"
+        gate.rotate_native_session(
+            fence_ref=f.cohort.fence.fence_ref,
+            self_id=sid, old_session_id=old_sid, new_session_id=new,
+        )
+        return ExternalRejoin(new, True, True, True)
+
+    f.cohort.external_close_physical = physical_close
+    f.cohort.external_release_physical = physical_release
+    f.cohort.external_native_rejoin = native_rejoin
+
+    class LocalStopSession:
+        def __init__(self, self_id, native_id):
+            self.self_id = self_id
+            self.started = SimpleNamespace(session_id=native_id)
+            self.seq = 0
+            self.count = 0
+            self.queued = []
+
+        async def send_clear_controls(self, action_id):
+            gate.require_native_effect(
+                self_id=self.self_id, native_session_id=self.started.session_id,
+                effect="clear_controls", action_id=action_id,
+            )
+            self.seq += 1
+            self.queued.append(MineflayerEffectResult(
+                self.started.session_id, self.seq, action_id,
+                "clear_controls", "applied", None,
+            ))
+
+        async def send_observe(self, request_id=None):
+            self.count += 1
+            self.seq += 1
+            self.queued.append(MineflayerObservation(
+                self.started.session_id, self.seq, "probe",
+                MineflayerSnapshot(
+                    20, 12, 5, 20, MineflayerPosition(1.0, 64.0, 2.0),
+                    MineflayerTime(100 + 10 * (self.count - 1), 0, True),
+                    (), (),
+                    MineflayerNearbyEntitiesCoverage(
+                        MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                        MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                        MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                        0, False,
+                    ),
+                ),
+                request_id,
+            ))
+
+        async def receive(self):
+            return self.queued.pop(0)
+
+    participants = tuple(StopParticipant(
+        owner.self_id, LocalStopSession(owner.self_id, owner.native_session_id),
+    ) for owner in f.owners)
+    ready = asyncio.run(prepare_stop_before_autosave(
+        gate, participants=participants, audit_dir=tmp_path,
+    ))
+    assert ready.verified_self_ids == ("A", "B")
+    assert gate.neutralization_complete
+
+    result = f.runtime.run_if_due(0.0)
+    assert result is not None and result.typed_owner_cut_validated
+    assert len(verify_typed_generation(result.generation)) == 2
+    assert not f.runtime.held_after_failure
+    assert not gate.closed
+    assert f.gate_open
+    assert f.events.index("stop-complete-physical-close") < f.events.index("stop-world")
+    assert f.events.index("stop-world") < f.events.index("start-world")
+    assert f.events.index("start-world") < f.events.index("all-rebound-physical-release")
