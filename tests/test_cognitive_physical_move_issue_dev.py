@@ -445,6 +445,7 @@ class FakeQualifiedPaper(PaperMoveWitnessSession):
         self.actor_uuid = sample.actor_uuid
         self.proof = replace(
             sample, action_id=self.action_id, native_session_id=self.native_session_id,
+            actor_name_joined=True,
         )
         self.bad = bad
         self.events = []
