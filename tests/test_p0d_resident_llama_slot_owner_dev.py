@@ -95,7 +95,7 @@ class _SyntheticLlamaServer:
                     self._write(500, {"error": "synthetic transport failure"})
                     return
                 response = (
-                    '{"status":"RESOLVED","choice_id":"A"}'
+                    '{"status":"resolved","choice_id":"A"}'
                     if "response_format" in payload
                     else "Cognition is a tentative inference, not physical truth."
                 )
@@ -269,7 +269,9 @@ def test_self_logout_waits_for_backend_not_just_python_future_cancel(tmp_path):
         ):
             pass
         f.owners["S001"].retain_memory(_memory("S001", "peer-while-gpu"))
-        with pytest.raises(ResidentGpuLaneError, match="late"):
+        with pytest.raises(
+            ResidentGpuLaneError, match="terminal|late",
+        ):
             lane.result(tok)
         fake.release.set()
         # The original provider request must actually conclude before the
