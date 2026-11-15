@@ -59,7 +59,8 @@ def _properties(raw: bytes, *, trace: bool) -> tuple[dict[str, str], tuple[tuple
             raise PaperMoveWitnessError("non-field Paper proof line")
         if k == "sample" and trace:
             parts = v.split(",")
-            if len(parts) != 4 or not parts[0].isdecimal():
+            if (len(parts) != 4 or not parts[0].isdecimal()
+                    or len(parts[0]) > 10):
                 raise PaperMoveWitnessError("malformed Paper sample")
             try:
                 n = int(parts[0])
@@ -84,7 +85,7 @@ def _properties(raw: bytes, *, trace: bool) -> tuple[dict[str, str], tuple[tuple
         raise PaperMoveWitnessError("not main-thread Paper evidence")
     for k in ("arm_tick", "stop_mark_tick") if trace else ("arm_tick",):
         v = values[k]
-        if not v.isdecimal() or str(int(v)) != v:
+        if not v.isdecimal() or len(v) > 10 or str(int(v)) != v:
             raise PaperMoveWitnessError("invalid Paper tick")
     return values, tuple(samples)
 
@@ -150,7 +151,7 @@ def qualify_paper_move_trace(
     if (
         len(samples) < 17
         or samples[0][0] != arm
-        or samples[-1][0] < stop + 16
+        or samples[-1][0] != stop + 16
         or any(b[0] != a[0] + 1 for a, b in zip(samples, samples[1:]))
     ):
         raise PaperMoveWitnessError("missing consecutive Paper tick/position samples")
@@ -195,23 +196,28 @@ def qualify_paper_move_trace(
 
 
 def _write_request(path: Path, fields: dict[str, str]) -> None:
+    """Publish a complete fsynced request, never half-written .arm/.mark."""
     if path.is_symlink() or path.parent.is_symlink() or not path.parent.is_dir():
         raise PaperMoveWitnessError("Paper request directory unavailable")
-    data = "".join(f"{k}={fields[k]}\n" for k in sorted(fields)).encode()
-    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    data = "".join(f"{k}={fields[k]}\\n" for k in sorted(fields)).encode()
+    staging = path.with_name(path.name + ".tmp")
+    fd = os.open(
+        staging, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600,
+    )
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-    except BaseException:
-        path.unlink(missing_ok=True)
-        raise
-    parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(parent)
+        # Atomic publication with no overwrite; Java polls only .arm/.mark.
+        os.link(staging, path, follow_symlinks=False)
+        parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(parent)
+        finally:
+            os.close(parent)
     finally:
-        os.close(parent)
+        staging.unlink(missing_ok=True)
 
 
 class PaperMoveWitnessSession:
