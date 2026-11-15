@@ -83,19 +83,26 @@ class FakeRuntime:
     def freeze(self, sid: str, generation: str) -> SelfFrozenReceipt:
         self.events.append("freeze:" + sid)
         assert generation.startswith("g-")
+        old_native = (
+            f"native-before-{sid}" if self.session_no == 0
+            else f"native-after-{sid}-{self.session_no}"
+        )
         receipt = SelfFrozenReceipt(
-            sid, self.snapshots[sid], f"native-before-{sid}",
+            sid, self.snapshots[sid], old_native,
             f"frozen:{sid}:{generation}", (), (), True, True, True,
         )
         if self.bad_frozen == sid:
             return replace(receipt, undelivered_message_ids=("msg-undelivered",))
+        if self.bad_frozen == "stale_" + sid:
+            return replace(receipt, old_native_session_id="stale-unqualified-session")
         return receipt
 
     def stop(self) -> StoppedWorldReceipt:
         self.events.append("world-stop")
         assert self.events[-3:-1] == ["freeze:A", "freeze:B"]
+        old_server = "paper-old" if self.session_no == 0 else f"paper-new-{self.session_no}"
         return StoppedWorldReceipt(
-            "world-1", "source", "paper-old", 100,
+            "world-1", "source", old_server, 100 + self.session_no,
             "paper:tick-100", "paper:clean-stop", 0, True,
         )
 
@@ -103,13 +110,16 @@ class FakeRuntime:
         self.events.append("world-restart")
         if self.fail_restart:
             raise RuntimeError("Paper did not return")
-        return RestartedWorldReceipt("world-1", "source", "paper-new", True)
+        self.session_no += 1
+        return RestartedWorldReceipt(
+            "world-1", "source", f"paper-new-{self.session_no}", True,
+        )
 
     def rebind(self, sid: str, session: str) -> ReboundSelfReceipt:
         self.events.append("rebind:" + sid)
-        assert session == "paper-new"
+        assert session == f"paper-new-{self.session_no}"
         receipt = ReboundSelfReceipt(
-            sid, f"native-after-{sid}", "world-1", "source",
+            sid, f"native-after-{sid}-{self.session_no}", "world-1", "source",
             True, True, True, True,
         )
         if self.bad_rebind == sid:
@@ -234,3 +244,15 @@ def test_wrong_world_and_stale_session_fail_closed(tmp_path: Path):
         runner.run_if_due(0.0)
     assert latest_verified_generation(runtime.store) is None
     assert runner.held_after_failure
+
+
+def test_previous_self_session_is_required_at_next_generation(tmp_path: Path):
+    runtime = FakeRuntime(tmp_path)
+    runner = runtime.runner()
+    assert runner.run_if_due(0.0) is not None
+    runtime.bad_frozen = "stale_B"
+    with pytest.raises(AutosaveBarrierError, match="session changed"):
+        runner.run_if_due(60.0)
+    assert runner.held_after_failure
+    assert "release" not in runtime.events[8:]
+    assert next_generation_sequence(runtime.store) == 1
