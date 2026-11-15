@@ -1,6 +1,7 @@
 """#860 DEV World resident Self / World-only source invariants, no real Minecraft."""
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -8,6 +9,10 @@ from pathlib import Path
 import pytest
 
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
+from relay_self.owned_paper_world_switch_dev import (
+    OwnedPaperWorldSwitcher,
+    WorldOwnershipSwitchError,
+)
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyCheckpointError,
     WorldOnlyOwnedPaperCheckpoint,
@@ -208,7 +213,10 @@ def test_wrong_world_swap_sources_poison_world_but_preserve_self_history():
         life.begin_login(names[0])
 
 
-def _fake_paper(root: Path, *, good_save=True, companions=False):
+def _fake_paper(
+    root: Path, *, good_save=True, companions=False,
+    world_id="world-alpha", branch_id="source",
+):
     server = root / "server"
     server.mkdir()
     world = server / "world"
@@ -249,7 +257,7 @@ def _fake_paper(root: Path, *, good_save=True, companions=False):
     adapter = OwnedPaperWorld(
         server_dir=server, world_dir=world, evidence_dir=evidence,
         command=(sys.executable, "-u", str(script)),
-        world_id="world-alpha", branch_id="source",
+        world_id=world_id, branch_id=branch_id,
         tick_readback=tick_source, timeout_seconds=2.0,
     )
     return adapter
@@ -375,3 +383,131 @@ def test_old_paper_tick_after_world_swap_is_not_a_new_world_event():
         life.world_tick(paper_session_id="paper-A", tick=99999,
                         source_ref="stale-session")
     assert life.world.world_tick == 0
+
+
+
+def _prepared_world_swap(tmp_path: Path, *, candidate_companions=True):
+    """Two separately owned OS fake-Paper roots; NEW must be stopped & pinned."""
+    old_dir = tmp_path / "old"
+    new_dir = tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    old = _fake_paper(old_dir)
+    old_session = old.start_owned()
+    candidate = _fake_paper(
+        new_dir, world_id="world-beta", branch_id="new-branch",
+        companions=candidate_companions,
+    )
+    candidate_session = candidate.start_owned()
+    candidate_life = WorldResidentLifecycle(
+        world=WorldLifetime(
+            "world-beta", "new-branch", candidate_session, 0, 0,
+        ),
+        persisted_self_refs={},
+    )
+    store = new_dir / "candidate-store"
+    store.mkdir()
+    checkpoint = WorldOnlyOwnedPaperCheckpoint(
+        lifecycle=candidate_life, owned_paper=candidate, store=store,
+    ).cycle()
+    candidate.stop_and_save()  # Re-check candidate source as STOPPED bytes.
+    pin = hashlib.sha256(
+        (checkpoint.checkpoint_dir / "WORLD_ONLY_COMMITTED.json").read_bytes()
+    ).hexdigest()
+    old_life = WorldResidentLifecycle(
+        world=WorldLifetime(
+            "world-alpha", "source", old_session, 0, 0,
+        ),
+        persisted_self_refs={"A": "retained:A", "B": "retained:B"},
+    )
+    switcher = OwnedPaperWorldSwitcher(
+        lifecycle=old_life, previous_paper=old,
+        candidate_paper=candidate,
+    )
+    return old_life, switcher, old, candidate, checkpoint.checkpoint_dir, pin
+
+
+@pytest.mark.parametrize("companions", [False, True])
+def test_switch_from_owned_old_paper_to_pinned_different_world(
+    tmp_path, companions,
+):
+    life, switcher, old, new, candidate_archive, pin = _prepared_world_swap(
+        tmp_path, candidate_companions=companions,
+    )
+    first_session = life.world.paper_session_id
+    result = switcher.switch_to_preverified_world(
+        candidate_generation=candidate_archive,
+        expected_commit_sha256=pin,
+    )
+    try:
+        assert result.from_world.world_id == "world-alpha"
+        assert result.to_world.world_id == "world-beta"
+        assert result.to_world.branch_id == "new-branch"
+        assert result.to_world.epoch == 1
+        assert result.to_world.paper_session_id != first_session
+        assert result.to_world.paper_session_id == new.owned_session_id
+        assert old.owned_session_id is None
+        assert result.new_paper_readback_ref.startswith("fake-paper")
+        assert not result.previous_self_issued_actions_replayed
+        assert not result.body_state_transferred
+        assert not result.self_cognition_rewritten
+        for sid in ("A", "B"):
+            assert life.view(sid).persisted_cognition_ref == f"retained:{sid}"
+            assert life.view(sid).status is Presence.OFFLINE
+            assert life.view(sid).worldbody_reobservation_required
+        # Different World tick baseline is not an old self's observation.
+        with pytest.raises(ResidentLifecycleError, match="foreign"):
+            life.world_tick(paper_session_id=first_session, tick=99999,
+                            source_ref="old-paper")
+        _, login = _login(life, "A")
+        assert login.status is Presence.ONLINE
+        assert login.last_observed_world is not None
+        assert login.last_observed_world.world_id == "world-beta"
+    finally:
+        if new.owned_session_id is not None:
+            new.stop_and_save()
+
+
+def test_world_candidate_wrong_external_pin_cannot_stop_previous_world(tmp_path):
+    life, switcher, old, new, archive, pin = _prepared_world_swap(tmp_path)
+    try:
+        with pytest.raises(WorldOwnershipSwitchError, match="pin mismatch"):
+            switcher.switch_to_preverified_world(
+                candidate_generation=archive,
+                expected_commit_sha256="0" * 64 if pin != "0" * 64 else "1" * 64,
+            )
+        assert old.owned_session_id == life.world.paper_session_id
+        assert not life.world_held
+        assert not switcher.held_after_failure
+    finally:
+        old.stop_and_save()
+
+
+def test_world_candidate_mutated_region_refused_before_old_paper_stop(tmp_path):
+    life, switcher, old, new, archive, pin = _prepared_world_swap(tmp_path)
+    try:
+        (new.world_dir / "region" / "r.0.0.mca").write_bytes(b"tampered")
+        with pytest.raises(WorldOwnershipSwitchError, match="files differ"):
+            switcher.switch_to_preverified_world(
+                candidate_generation=archive, expected_commit_sha256=pin,
+            )
+        assert old.owned_session_id == life.world.paper_session_id
+        assert not life.world_held
+    finally:
+        old.stop_and_save()
+
+
+@pytest.mark.parametrize("state", ["online", "quarantine"])
+def test_world_swap_refused_with_active_or_unresolved_self(tmp_path, state):
+    life, switcher, old, new, archive, pin = _prepared_world_swap(tmp_path)
+    _login(life, "A")
+    if state == "quarantine":
+        life.fail_self("A")
+    try:
+        with pytest.raises(WorldOwnershipSwitchError, match="online roster"):
+            switcher.switch_to_preverified_world(
+                candidate_generation=archive, expected_commit_sha256=pin,
+            )
+        assert old.owned_session_id == life.world.paper_session_id
+    finally:
+        old.stop_and_save()
