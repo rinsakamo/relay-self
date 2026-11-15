@@ -165,6 +165,7 @@ For a successful DEV attempt only, re-audit the immutable bundle with:
 python -m experiments.audit_cognitive_move_paper_dev \
   --evidence "$AUDIT_JSON" \
   --wal "$SELF_WAL" \
+  --prepared-wal "${SELF_WAL}.move-prepared" \
   --paper-trace "$PAPER_PLUGINS/P0MMoveWitness/p0m/complete/$NONCE.trace" \
   --paper-owned-log "$OWNED_PAPER_PROCESS_LOG" \
   --self-id "$SELF_ID" \
@@ -174,7 +175,13 @@ python -m experiments.audit_cognitive_move_paper_dev \
   --output "$NEW_AUDIT_RESULT"
 ```
 
-The auditor restores the WAL with schema/digest/owner validation, checks
+The issuer creates `${SELF_WAL}.move-prepared` exclusively and fsyncs its exact
+PREPARED bytes and parent directory before any native LOOK. A preexisting copy
+or capture failure blocks all native sends and leaves the WAL unresolved. The
+audit requires this separate original and checks its identity and immutable
+fields against the terminal WAL; it cannot independently prove wall-clock order.
+
+The auditor restores both WALs with schema/digest/owner validation, checks
 L1-selected Goal/Skill/Target and native source/seq, **all three** original
 native effect receipts with action ID+session+seq, native progress/STOP
 typed probe positions against the persisted `motion` row, and independently

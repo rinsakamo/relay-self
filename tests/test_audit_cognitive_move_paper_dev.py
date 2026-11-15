@@ -97,7 +97,9 @@ def bundle(tmp_path):
 
 def replay(data, journal, raw, log):
     return audit_move_paper_bundle(
-        data, journal=journal, raw_trace=raw, raw_paper_log=log,
+        data, journal=journal, prepared_journal=PhysicalActionJournal.restore(
+            journal.path.with_name(journal.path.name + ".move-prepared"), self_id="self-A"),
+        raw_trace=raw, raw_paper_log=log,
         expected_self_id="self-A", expected_actor_uuid=ACTOR,
         expected_world_uuid=WORLD, expected_username="RelaySelf",
     )
@@ -176,7 +178,9 @@ def test_cross_source_tampering_or_claim_inflation_never_passes(tmp_path, tamper
         data["paper_move_tick_proof"] = None
     with pytest.raises(ValueError):
         audit_move_paper_bundle(
-            data, journal=journal, raw_trace=raw, raw_paper_log=log,
+            data, journal=journal, prepared_journal=PhysicalActionJournal.restore(
+            journal.path.with_name(journal.path.name + ".move-prepared"), self_id="self-A"),
+        raw_trace=raw, raw_paper_log=log,
             expected_self_id=expected_self, expected_actor_uuid=ACTOR,
             expected_world_uuid=expected_world, expected_username="RelaySelf",
         )
@@ -193,6 +197,7 @@ def test_readonly_audit_cli_checks_original_hashes_and_never_overwrites(tmp_path
     paper_log.write_bytes(log)
     arguments = [
         "audit", "--evidence", str(evidence), "--wal", str(journal.path),
+        "--prepared-wal", str(journal.path.with_name(journal.path.name + ".move-prepared")),
         "--paper-trace", str(paper_trace), "--paper-owned-log", str(paper_log),
         "--self-id", "self-A", "--actor-uuid", ACTOR, "--world-uuid", WORLD,
         "--mc-username", "RelaySelf", "--output", str(manifest),
@@ -205,3 +210,13 @@ def test_readonly_audit_cli_checks_original_hashes_and_never_overwrites(tmp_path
     assert len(result["evidence_json_sha256"]) == 64
     assert main() == 1
     assert json.loads(manifest.read_text()) == result
+
+
+def test_audit_rejects_terminal_wal_as_prepared_original(tmp_path):
+    data, journal, raw, log = bundle(tmp_path)
+    with pytest.raises(ValueError):
+        audit_move_paper_bundle(
+            data, journal=journal, prepared_journal=journal, raw_trace=raw,
+            raw_paper_log=log, expected_self_id="self-A", expected_actor_uuid=ACTOR,
+            expected_world_uuid=WORLD, expected_username="RelaySelf",
+        )

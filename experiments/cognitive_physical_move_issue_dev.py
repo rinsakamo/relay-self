@@ -296,6 +296,7 @@ async def issue_selected_move_dev(
         destination=target.destination_position,
         destination_source=target.destination_provenance,
     )
+    journal.preserve_prepared_move()
     issued = supervisor.issue(
         authorized, at_ns=at_ns + 1, deadline_ns=at_ns + 1000,
         provenance=issue_grant.provenance,

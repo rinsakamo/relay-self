@@ -361,6 +361,31 @@ class PhysicalActionJournal:
             new_digest = _write(self.path, updated)
         self._body, self.digest = updated, new_digest
 
+    def preserve_prepared_move(self) -> Path:
+        """Durably retain exact PREPARED bytes before any MOVE motor operation."""
+        snapshot = self.path.with_name(self.path.name + ".move-prepared")
+        with _exclusive(self.path):
+            body, digest = _read(self.path)
+            if (digest != self.digest or body != self._body or not self.unresolved
+                    or self.records[-1]["capability"] != "MOVE"):
+                raise PhysicalJournalReplay("current PREPARED MOVE required")
+            data = self.path.read_bytes()
+            fd = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            try:
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                dfd = os.open(snapshot.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(dfd)
+                finally:
+                    os.close(dfd)
+            except BaseException:
+                # Retain any partial original; it must never be reused silently.
+                raise
+        return snapshot
+
     def prepare_eat(
         self, binding: PhysicalActionBinding, probe: MineflayerObservation,
     ) -> None:

@@ -57,6 +57,7 @@ def audit_move_paper_bundle(
     evidence: dict[str, object],
     *,
     journal: PhysicalActionJournal,
+    prepared_journal: PhysicalActionJournal,
     raw_trace: bytes,
     raw_paper_log: bytes,
     expected_self_id: str,
@@ -104,6 +105,18 @@ def audit_move_paper_bundle(
         and row["capability"] == "MOVE",
         "last physical event is not closed bounded MOVE",
     )
+    prepared_rows = list(prepared_journal.records)
+    _expect(prepared_journal._body["self_id"] == expected_self_id
+            and prepared_journal.unresolved and len(prepared_rows) == len(rows)
+            and prepared_rows[:-1] == rows[:-1],
+            "independent PREPARED history missing or foreign")
+    prepared = prepared_rows[-1]
+    unchanged = ("session_id", "intent_id", "skill_execution_id", "action_id",
+                 "capability", "target_ref", "probe_seq", "probe_request_id", "source_ref")
+    _expect(all(prepared[k] == row[k] for k in unchanged)
+            and all(prepared["motion"][k] == row["motion"][k] for k in (
+                "destination_id", "destination_source", "destination_reference", "start", "target")),
+            "PREPARED and terminal MOVE do not match")
     action_id = row["action_id"]
     _expect(
         evidence.get("physical_move_parent_action_id") == action_id
@@ -247,7 +260,7 @@ def audit_move_paper_bundle(
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Read-only MOVE/Paper DEV artifact re-audit")
-    for flag in ("evidence", "wal", "paper-trace", "paper-owned-log",
+    for flag in ("evidence", "wal", "prepared-wal", "paper-trace", "paper-owned-log",
                  "self-id", "actor-uuid", "world-uuid", "mc-username"):
         p.add_argument("--" + flag, required=True)
     p.add_argument("--output", help="write immutable JSON audit result")
@@ -257,8 +270,10 @@ def main() -> int:
         evidence = json.loads(source)
         wal_raw = _read(Path(args.wal), 2_000_000)
         journal = PhysicalActionJournal.restore(Path(args.wal), self_id=args.self_id)
+        prepared_raw = _read(Path(args.prepared_wal), 2_000_000)
+        prepared_journal = PhysicalActionJournal.restore(Path(args.prepared_wal), self_id=args.self_id)
         result = audit_move_paper_bundle(
-            evidence, journal=journal,
+            evidence, journal=journal, prepared_journal=prepared_journal,
             raw_trace=_read(Path(args.paper_trace), 16384),
             raw_paper_log=_read(Path(args.paper_owned_log), 8_000_000),
             expected_self_id=args.self_id,
@@ -267,6 +282,7 @@ def main() -> int:
             expected_username=args.mc_username,
         )
         result["evidence_json_sha256"] = hashlib.sha256(source).hexdigest()
+        result["prepared_wal_json_sha256"] = hashlib.sha256(prepared_raw).hexdigest()
         result["wal_json_sha256"] = hashlib.sha256(wal_raw).hexdigest()
         if args.output:
             output = Path(args.output)

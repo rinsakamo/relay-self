@@ -235,6 +235,35 @@ def test_bounded_native_move_fsyncs_one_parent_before_look_and_checks_two_stop_p
     assert len([x for x in session.sent if x[0] == "set_control"]) == 1
 
 
+def test_prepared_copy_exists_before_first_native_send_and_survives_close(tmp_path):
+    kw, session = setup(tmp_path)
+    snapshot = kw["journal"].path.with_name(kw["journal"].path.name + ".move-prepared")
+    original_send = session.send_look
+
+    async def checked_send(*args, **kwargs):
+        saved = PhysicalActionJournal.restore(snapshot, self_id="self-A")
+        assert saved.unresolved
+        assert saved.records[-1]["action_id"] == "action-M"
+        assert snapshot.read_bytes() == kw["journal"].path.read_bytes()
+        return await original_send(*args, **kwargs)
+
+    session.send_look = checked_send
+    run(kw, session)
+    assert PhysicalActionJournal.restore(snapshot, self_id="self-A").unresolved
+    assert not PhysicalActionJournal.restore(kw["journal"].path, self_id="self-A").unresolved
+
+
+def test_existing_prepared_copy_blocks_all_native_sends(tmp_path):
+    kw, session = setup(tmp_path)
+    snapshot = kw["journal"].path.with_name(kw["journal"].path.name + ".move-prepared")
+    snapshot.write_bytes(b"original evidence")
+    with pytest.raises(FileExistsError):
+        run(kw, session)
+    assert snapshot.read_bytes() == b"original evidence"
+    assert session.sent == []
+    assert PhysicalActionJournal.restore(kw["journal"].path, self_id="self-A").unresolved
+
+
 @pytest.mark.parametrize("bad", [
     "look_rejected", "forward_absent", "progress_wrong_direction",
     "stop_rejected", "stop_probe_wrong_id", "unstable_stop",
