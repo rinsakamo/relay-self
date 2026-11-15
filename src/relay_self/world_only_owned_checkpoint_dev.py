@@ -90,11 +90,8 @@ def verify_world_only_generation(path: Path) -> dict:
         raise WorldOnlyCheckpointError("World-only main dimension mismatch")
     pins = body["paper_dimensions"]
     if pins:
-        if set(pins) != set(n for n, _ in _paper_siblings(root / "world")):
-            # The archive's Paper siblings live under paper-dimensions, not
-            # beside the "world" archive; verify the actual archive below.
-            if not (root / "paper-dimensions").is_dir():
-                raise WorldOnlyCheckpointError("Paper dimension archive missing")
+        if not (root / "paper-dimensions").is_dir():
+            raise WorldOnlyCheckpointError("Paper dimension archive missing")
         if set(p.name for p in (root / "paper-dimensions").iterdir()) != set(pins):
             raise WorldOnlyCheckpointError("Paper companion roster mismatch")
         for name, digest in pins.items():
