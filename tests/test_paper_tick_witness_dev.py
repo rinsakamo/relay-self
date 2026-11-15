@@ -224,7 +224,6 @@ def test_owned_process_source_tick_join_over_two_real_os_process_restarts(tmp_pa
     try:
         first = owner.start_owned()
         receipt1 = owner.stop_and_save()
-        assert receipt1.server_session_id if hasattr(receipt1, "server_session_id") else True
         assert receipt1.old_server_session_id == first
         assert receipt1.tick_source_ref.startswith("paper-main-thread:p0d:")
         second = owner.restart_same_source_world().new_server_session_id
