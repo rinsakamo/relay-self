@@ -445,3 +445,26 @@ def test_postlaunch_refuses_forged_authority_in_stored_prelaunch_plan(tmp_path):
     with pytest.raises(ForkRecoveryDevError, match="cannot assert physical authority"):
         postlaunch(source, fresh, tmp_path / "should-not-exist.json")
     assert not (tmp_path / "should-not-exist.json").exists()
+
+
+
+def test_mixing_world_checkpoint_from_another_world_with_p0b_event_rejected(tmp_path):
+    """Prior P0-A and P0-B evidence from different Minecraft Worlds cannot be joined."""
+    case = list(_inputs(tmp_path, "W110"))
+    case[6] = (replace(
+        case[6][0], world_id="a-different-real-world-uuid",
+    ),)
+    result = _prepare(case)
+    assert result.status is ForkRecoveryDevStatus.REJECT_WORLD_CUT
+    assert result.physical_action_issue_authorized is False
+
+
+def test_mixing_self_b_from_foreign_world_rejected_even_if_belief_agrees(tmp_path):
+    case = list(_inputs(tmp_path, "W100"))
+    a, b = case[4]
+    b = replace(b, checkpoint=replace(
+        b.checkpoint, world_id="other-independent-world",
+    ))
+    case[4] = (a, b)
+    out = _prepare(case)
+    assert out.status is ForkRecoveryDevStatus.REJECT_WORLD_CUT
