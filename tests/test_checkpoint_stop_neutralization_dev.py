@@ -26,9 +26,9 @@ from relay_self.checkpoint_stop_neutralization_dev import (
     prepare_stop_before_autosave,
 )
 from relay_self.physical_issue_admission_dev import (
+    NeutralStopProof,
     PhysicalIssueAdmission,
     PhysicalIssueFenceError,
-    NeutralStopProof,
 )
 
 
