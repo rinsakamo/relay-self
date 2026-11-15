@@ -119,12 +119,12 @@ def test_move_pattern_is_optional_and_no_unqualified_motor_mapping():
     assert len(initial_patterns().patterns) == 3
     assert len(initial_patterns_with_move().patterns) == 4
     descriptor = next(x for x in initial_skill_descriptors() if x.skill_id == "MOVE")
-    assert descriptor.status == "UNMAPPED"
-    assert descriptor.capability_ref is None
+    assert descriptor.status == "NATIVE_BOUNDED_MOVE_DEV_ISSUER_EXISTS"
+    assert descriptor.capability_ref == "MOVE"
     native, scenario, percept, frame = prepare()
     selected = select(frame)
     assert selected.status == "READY"
-    with pytest.raises(SkillIRRefusal, match="no grounded"):
+    with pytest.raises(SkillIRRefusal, match="WorldBody did not attest"):
         compile_initial_skill(
             selected.option,
             capability=PhysicalCapability("set_control", 1, "movement", "DESTINATION", True),
