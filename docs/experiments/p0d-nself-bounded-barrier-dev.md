@@ -23,6 +23,8 @@ Stacked on Stage 16 #880 and its native/physical/cognitive source gates.
   active, failed or incomplete generation freezes. Injected delayed-write
   tests prove overlap of independent file writes under one globally closed
   checkpoint gate; failed owner IO prohibits a World save.
+  The owning cohort refuses aliasing/nested canonical per-Self roots and
+  uses an indexed Self-ID lookup instead of a linear scan.
 - Rejoin: `CoordinatedAutosaveRuntime.run_if_due_async` now prepares
   native sessions via a bounded async group (`rejoin_parallel_workers`,
   default 1, max 64), with 15-second per-Self and 180-second total
