@@ -21,6 +21,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
 )
 from relay_self.checkpoint_stop_neutralization_dev import StopParticipant
+from relay_self.cohort_parallel_barrier_dev import (
+    require_bounded_workers,
+    run_async_cohort_barrier,
+)
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 
 
@@ -62,6 +66,7 @@ class OwnedNativeRejoinCohort:
             [MineflayerLaunchConfig], Awaitable[MineflayerProcessSession]
         ] | None = None,
         probe_timeout_s: float = 12.0,
+        initial_probe_workers: int = 1,
     ) -> None:
         if not isinstance(physical, PhysicalIssueAdmission):
             raise NativeCohortRejoinError("physical owner required")
@@ -104,6 +109,7 @@ class OwnedNativeRejoinCohort:
         self.sessions = dict(sessions)
         self.launch = launch or MineflayerProcessSession.launch
         self.probe_timeout_s = float(probe_timeout_s)
+        self.initial_probe_workers = require_bounded_workers(initial_probe_workers)
         self._prepared: dict[str, NativePreparedRejoin] = {}
         self._initial_verified: dict[str, tuple[int, int, str]] = {}
         self._verified_probe_ticks: dict[str, int] = {}
@@ -208,17 +214,27 @@ class OwnedNativeRejoinCohort:
         """
         if self._initial_verified or self.physical.closed:
             raise NativeCohortRejoinError("initial native cohort already read/held")
-        proofs: dict[str, tuple[int, int, str]] = {}
         try:
-            for sid in sorted(self.sessions):
-                proof = await self._spawn_and_probe(self.sessions[sid])
+            ordered = tuple(sorted(self.sessions))
+
+            async def verified_initial(sid: str) -> tuple[int, int, str]:
+                current = self.sessions[sid]
+                proof = await self._spawn_and_probe(current)
                 if (
-                    self.sessions[sid].process_returncode is not None
-                    or self.sessions[sid].started.session_id
+                    self.sessions[sid] is not current
+                    or current.process_returncode is not None
+                    or current.started.session_id
                     != self.physical.current_native_sessions[sid]
                 ):
                     raise NativeCohortRejoinError("initial source changed during probe")
-                proofs[sid] = proof
+                return proof
+
+            results = await run_async_cohort_barrier(
+                ordered, verified_initial,
+                workers=self.initial_probe_workers,
+                total_timeout_s=180.0,
+            )
+            proofs = dict(zip(ordered, results, strict=True))
             self._initial_verified = proofs
             return dict(proofs)
         except BaseException:

@@ -107,10 +107,26 @@ class CognitionOwnerCohort:
             raise LiveCognitionCheckpointError("full unique Self roster required")
         if any(o.cohort is not None for o in owners):
             raise LiveCognitionCheckpointError("Self is already attached to a cohort")
+        # Parallel durable writes must never alias another enrolled Self's
+        # canonical owner subtree, even if Self IDs are distinct.
+        roots = {o.files.self_root.resolve() for o in owners}
+        if (
+            len(roots) != len(owners)
+            or any(
+                parent in roots
+                for root in roots
+                for parent in root.parents
+            )
+            or any(o.files.self_root.is_symlink() for o in owners)
+        ):
+            raise LiveCognitionCheckpointError(
+                "parallel Self owner roots overlap or are symlinked"
+            )
         if not world_id or not branch_id:
             raise LiveCognitionCheckpointError("World identity required")
         self.lock = threading.RLock()
         self.owners = tuple(sorted(owners, key=lambda o: o.self_id))
+        self._owners_by_id = {owner.self_id: owner for owner in self.owners}
         self.world_id = world_id
         self.branch_id = branch_id
         self.external_close_physical = external_close_physical
@@ -119,6 +135,10 @@ class CognitionOwnerCohort:
         self.closed = False
         self.hold = False
         self.fence: ExternalPhysicalFence | None = None
+        self._freeze_active: set[str] = set()
+        self._freeze_completed: set[str] = set()
+        self._freeze_generation: str | None = None
+        self._freeze_failed = False
         self.token = 0
         for owner in self.owners:
             owner.cohort = self
@@ -128,10 +148,12 @@ class CognitionOwnerCohort:
             raise LiveCognitionCheckpointError("cognitive epoch fenced by checkpoint")
 
     def _owner(self, self_id: str) -> "CheckpointedCognitiveOwner":
-        for owner in self.owners:
-            if owner.self_id == self_id:
-                return owner
-        raise LiveCognitionCheckpointError("unregistered Self identity")
+        try:
+            return self._owners_by_id[self_id]
+        except (KeyError, TypeError) as exc:
+            raise LiveCognitionCheckpointError(
+                "unregistered Self identity"
+            ) from exc
 
     def admission_hooks(self) -> AdmissionHooks:
         return AdmissionHooks(self.close, self.release)
@@ -150,6 +172,10 @@ class CognitionOwnerCohort:
             # Close in-memory cognition/peer admission BEFORE external fence.
             self.closed = True
             self.hold = True
+            self._freeze_active.clear()
+            self._freeze_completed.clear()
+            self._freeze_generation = None
+            self._freeze_failed = False
             receipt = self.external_close_physical()
             if (not isinstance(receipt, ExternalPhysicalFence)
                     or not receipt.physically_blocked
@@ -163,58 +189,115 @@ class CognitionOwnerCohort:
             )
 
     def freeze(self, self_id: str, generation_id: str) -> SelfFrozenReceipt:
+        """Snapshot each disjoint owner under the already-closed N-Self epoch.
+
+        The coarse lock protects the *immutable cut* and WAL check. Durable
+        per-Self fsyncs then run outside that lock, so a bounded thread pool
+        can actually overlap independent owner files without allowing any
+        normal cognition mutation. Rebind/release reject active or failed
+        freezes; the complete generation is still one global COMMIT.
+        """
         with self.lock:
             if not (self.closed and self.hold and self.fence is not None):
                 raise LiveCognitionCheckpointError("freeze requires external physical fence")
             if re.fullmatch(r"g-[0-9]{12}", generation_id) is None:
                 raise LiveCognitionCheckpointError("invalid generation")
+            if (
+                self._freeze_failed
+                or self_id in self._freeze_active
+                or self_id in self._freeze_completed
+                or (
+                    self._freeze_generation is not None
+                    and self._freeze_generation != generation_id
+                )
+            ):
+                raise LiveCognitionCheckpointError("duplicate/failed/foreign freeze generation")
             owner = self._owner(self_id)
-            if owner.supervisor.open_actions:
-                raise LiveCognitionCheckpointError("in-flight original Action supervisor")
-            journal = PhysicalActionJournal.restore(
-                owner.files.physical_wal_file, self_id=owner.self_id,
-            )
-            journal.require_clear()
-            # Serialize current actual owner objects, not synthetic claims.
-            cut = SelfOwnerCut(
-                generation_id=generation_id, self_id=self_id,
-                world_id=self.world_id, branch_id=self.branch_id,
-                former_native_session_id=owner.native_session_id,
-                last_observed_world_tick=owner.last_observed_tick,
-                intent_events=owner.intent.events,
-                skill_executions=tuple(owner.skills[k] for k in sorted(owner.skills)),
-                pattern_registry=owner.pattern_registry,
-                peer_deliveries=tuple(owner.peer_deliveries[k] for k in sorted(owner.peer_deliveries)),
-                pending_question_refs=tuple(sorted(owner.pending_questions)),
-            )
+            self._freeze_active.add(self_id)
+            self._freeze_generation = generation_id
+            try:
+                if owner.supervisor.open_actions:
+                    raise LiveCognitionCheckpointError(
+                        "in-flight original Action supervisor"
+                    )
+                journal = PhysicalActionJournal.restore(
+                    owner.files.physical_wal_file, self_id=owner.self_id,
+                )
+                journal.require_clear()
+                # These owner values are stable: close() blocked every facade
+                # mutation and each Self has a different persistence directory.
+                cut = SelfOwnerCut(
+                    generation_id=generation_id, self_id=self_id,
+                    world_id=self.world_id, branch_id=self.branch_id,
+                    former_native_session_id=owner.native_session_id,
+                    last_observed_world_tick=owner.last_observed_tick,
+                    intent_events=owner.intent.events,
+                    skill_executions=tuple(
+                        owner.skills[k] for k in sorted(owner.skills)
+                    ),
+                    pattern_registry=owner.pattern_registry,
+                    peer_deliveries=tuple(
+                        owner.peer_deliveries[k]
+                        for k in sorted(owner.peer_deliveries)
+                    ),
+                    pending_question_refs=tuple(sorted(owner.pending_questions)),
+                )
+                retained = owner.retained
+                fence_ref = self.fence.fence_ref
+            except BaseException:
+                self._freeze_failed = True
+                self._freeze_active.remove(self_id)
+                raise
+
+        try:
             checkpoint_dir = owner.files.self_root / "checkpoint-cuts"
             checkpoint_dir.mkdir(mode=0o700, exist_ok=True)
             folder = checkpoint_dir / generation_id
             folder.mkdir(mode=0o700)
             owner_path = folder / "owner-state.json"
             save_self_owner_cut(owner_path, cut)
-            # Existing canonical owner persists without a shadow copy authority.
-            save_persistent_cognition(owner.files.cognition_file, owner.retained)
-            if load_persistent_cognition(owner.files.cognition_file) != owner.retained:
+            # Canonical original owner persists, not a forked authority.
+            save_persistent_cognition(owner.files.cognition_file, retained)
+            if load_persistent_cognition(owner.files.cognition_file) != retained:
                 raise LiveCognitionCheckpointError("cognition write/readback mismatch")
-            return SelfFrozenReceipt(
+            receipt = SelfFrozenReceipt(
                 self_id=self_id,
                 snapshot=SelfSnapshotSource(
                     self_id, owner.files.cognition_file,
                     owner.files.physical_wal_file, owner_path,
                 ),
                 old_native_session_id=owner.native_session_id,
-                freeze_ref=self.fence.fence_ref + ":" + generation_id + ":" + self_id,
+                freeze_ref=fence_ref + ":" + generation_id + ":" + self_id,
                 physical_inflight_action_ids=(),
                 undelivered_message_ids=(),
                 writers_quiesced=True, issue_admission_closed=True,
                 communication_quiesced=True,
             )
+        except BaseException:
+            with self.lock:
+                self._freeze_failed = True
+                self._freeze_active.discard(self_id)
+            raise
+        with self.lock:
+            self._freeze_active.remove(self_id)
+            self._freeze_completed.add(self_id)
+        return receipt
 
     def rebind(self, self_id: str, new_server_session_id: str) -> ReboundSelfReceipt:
         with self.lock:
             if not (self.closed and self.hold and self.fence is not None):
                 raise LiveCognitionCheckpointError("no verified generation fence")
+            if (
+                self._freeze_failed or self._freeze_active
+                or (
+                    self._freeze_generation is not None
+                    and self._freeze_completed
+                    != {owner.self_id for owner in self.owners}
+                )
+            ):
+                raise LiveCognitionCheckpointError(
+                    "incomplete or failed owner freeze; rebind forbidden"
+                )
             owner = self._owner(self_id)
             prior = owner.native_session_id
             evidence = self.external_native_rejoin(self_id, new_server_session_id, prior)
@@ -265,8 +348,16 @@ class CognitionOwnerCohort:
             if (
                 not self.closed or not self.hold or self.fence is None
                 or token != f"cognition-gate-{self.token}"
+                or self._freeze_failed or self._freeze_active
+                or (
+                    self._freeze_generation is not None
+                    and self._freeze_completed
+                    != {owner.self_id for owner in self.owners}
+                )
             ):
-                raise LiveCognitionCheckpointError("stale/foreign cohort release")
+                raise LiveCognitionCheckpointError(
+                    "stale/foreign/incomplete owner cohort release"
+                )
             # External physical owner must finish its own fenced release.
             self.external_release_physical(self.fence.fence_ref)
             self.fence = None
