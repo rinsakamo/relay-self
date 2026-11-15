@@ -22,6 +22,7 @@ from experiments.controlled_minecraft_vertical import (
     ControlledDestination,
     ControlledScenario,
 )
+from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
     Predicate,
@@ -37,7 +38,6 @@ from relay_self.initial_skill_ir import (
     compile_initial_skill,
     initial_skill_descriptors,
 )
-from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
 from relay_self.move_destination_ref import move_destination_ref
 from relay_self.physical_action_port import PhysicalCapability
