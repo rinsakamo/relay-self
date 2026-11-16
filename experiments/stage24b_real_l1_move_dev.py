@@ -311,6 +311,7 @@ async def run_stage24b_selected_b_move(
         provenance = Provenance(
             "stage24b-systemone-chosen-dev", "sha256:" + decision_sha,
         )
+        intent_commit_monotonic_ns = time.monotonic_ns()
         owner.commit_intent(
             intent_id, candidate.option.goal_id, at_ns=1, provenance=provenance,
         )
@@ -425,6 +426,11 @@ async def run_stage24b_selected_b_move(
             "model_choice_preset_ref": candidate.preset_ref,
             "model_choice_candidates_sha256": turn.candidate_set_sha256,
             "model_elapsed_ns": elapsed_ns,
+            "intent_commit_monotonic_ns": intent_commit_monotonic_ns,
+            "native_start_dispatch_monotonic_ns": receipt.native_start_dispatch_monotonic_ns,
+            "intent_to_native_start_dispatch_ns": (
+                receipt.native_start_dispatch_monotonic_ns - intent_commit_monotonic_ns
+            ),
         }
     finally:
         # A HOLD still keeps the exact captured original stdout bytes frozen.
