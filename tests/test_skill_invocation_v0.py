@@ -336,11 +336,12 @@ def test_invalid_extra_arg_or_definition_revision_never_binds():
         )
     with pytest.raises(SkillInvocationRefusal, match="ABI"):
         bind_skill_invocation(d, replace(x, definition_ref="changed"))
-    with pytest.raises(SkillInvocationRefusal):
-        replace(
-            x, arguments=(SkillArgument("position", ArgumentKind.POSITION,
-                                       Position(float("inf"), 64, 0)),),
-        )
+    # Position decoder rejects invalid Minecraft coordinates even before
+    # the generic invocation can be constructed.
+    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
+
+    with pytest.raises(MineflayerAdapterProtocolError):
+        Position(float("inf"), 64, 0)
 
 
 @pytest.mark.parametrize("steps", [
@@ -350,7 +351,8 @@ def test_invalid_extra_arg_or_definition_revision_never_binds():
                                    ("constraints", "constraints"),
                                    ("budget", "budget"))),),
     (SkillCallTemplate("MOVE", 1, (("target", "target"),
-                                   ("budget", "budget"))),),
+                                   ("constraints", "budget"),
+                                   ("budget", "constraints"))),),
 ])
 def test_l2_composition_rejects_unknown_recursive_or_bad_arg_mapping(steps):
     d = SkillDefinition("APPROACH_AND_ATTACK", 1, "LEARNED", PARAM_SOURCE)
@@ -372,3 +374,11 @@ def test_missing_extra_learned_parameter_blocks_invocation():
     )
     with pytest.raises(SkillInvocationRefusal, match="missing"):
         bind_skill_invocation(d, prototype)
+
+
+def test_partial_child_map_is_rejected_before_any_program_validation():
+    with pytest.raises(SkillInvocationRefusal, match="finite typed"):
+        SkillCallTemplate(
+            "MOVE", 1,
+            (("target", "target"), ("budget", "budget")),
+        )
