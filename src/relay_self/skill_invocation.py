@@ -366,15 +366,28 @@ def bind_skill_invocation(
             or invocation.skill_version != definition.version
             or invocation.definition_ref != definition.definition_ref):
         raise SkillInvocationRefusal("stale/foreign Skill version or parameter ABI")
+    validate_preset_arguments(definition, invocation.arguments)
+    return invocation
+
+
+def validate_preset_arguments(
+    definition: SkillDefinition, arguments: tuple[SkillArgument, ...],
+) -> None:
+    """Check the declared ABI before admission; does not create any Target."""
+    if (not isinstance(definition, SkillDefinition)
+            or type(arguments) is not tuple
+            or len(arguments) > 9
+            or any(not isinstance(a, SkillArgument) for a in arguments)
+            or len({a.name for a in arguments}) != len(arguments)):
+        raise SkillInvocationRefusal("invalid typed preset arguments")
     declared = {p.name: p for p in definition.parameters[3:]}
-    provided = {p.name: p for p in invocation.arguments}
+    provided = {p.name: p for p in arguments}
     if (set(provided) - set(declared)
             or any(name not in provided and p.required
                    for name, p in declared.items())
             or any(declared[name].kind is not p.kind
                    for name, p in provided.items())):
         raise SkillInvocationRefusal("undeclared, missing or mis-typed Skill argument")
-    return invocation
 
 
 def bind_preset_invocation(

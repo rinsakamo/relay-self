@@ -32,6 +32,7 @@ from relay_self.skill_invocation import (
     SkillParameterPreset,
     SkillTarget,
     bind_preset_invocation,
+    validate_preset_arguments,
 )
 from relay_self.target_contract import TargetContract
 
@@ -107,9 +108,44 @@ class SchemaPattern:
 
 
 @dataclass(frozen=True, slots=True)
+class PresetAcceptanceReceipt:
+    """Caller-provided record of Self's choice; not cryptographic authority."""
+
+    self_id: str
+    event_id: str
+    preset_ref: str
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.self_id, str) or not self.self_id.strip()
+                or not isinstance(self.event_id, str) or not self.event_id.strip()
+                or not isinstance(self.preset_ref, str)
+                or not self.preset_ref.startswith("skill-preset:v1@")
+                or not isinstance(self.provenance, Provenance)):
+            raise MinimalCognitionError("invalid Self preset acceptance receipt")
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptedSkillPreset:
+    """One Self-owned published preset, bound to exact Schema pattern revision."""
+
+    pattern_version: int
+    preset: SkillParameterPreset
+    receipt: PresetAcceptanceReceipt
+
+    def __post_init__(self) -> None:
+        if (type(self.pattern_version) is not int or self.pattern_version < 1
+                or not isinstance(self.preset, SkillParameterPreset)
+                or not isinstance(self.receipt, PresetAcceptanceReceipt)
+                or self.receipt.preset_ref != self.preset.preset_ref):
+            raise MinimalCognitionError("unqualified accepted Skill preset")
+
+
+@dataclass(frozen=True, slots=True)
 class PatternRegistry:
     revision: int
     patterns: tuple[SchemaPattern, ...]
+    accepted_presets: tuple[AcceptedSkillPreset, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.revision) is not int or self.revision < 0:
@@ -120,6 +156,25 @@ class PatternRegistry:
             raise MinimalCognitionError("duplicate pattern version")
         if any(not isinstance(p, SchemaPattern) for p in self.patterns):
             raise MinimalCognitionError("invalid CPU pattern")
+        if (type(self.accepted_presets) is not tuple
+                or len(self.accepted_presets) > 64
+                or any(not isinstance(e, AcceptedSkillPreset)
+                       for e in self.accepted_presets)):
+            raise MinimalCognitionError("bounded accepted preset snapshot required")
+        keys = [(e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                for e in self.accepted_presets]
+        events = [(e.receipt.self_id, e.receipt.event_id)
+                  for e in self.accepted_presets]
+        if len(set(keys)) != len(keys) or len(set(events)) != len(events):
+            raise MinimalCognitionError("duplicate accepted preset or owner event")
+        for e in self.accepted_presets:
+            if not any(
+                p.pattern_id == e.preset.pattern_id
+                and p.version == e.pattern_version
+                and p.kind is PatternKind.GOAL
+                for p in self.patterns
+            ):
+                raise MinimalCognitionError("accepted preset lacks exact owning pattern")
 
 
 def initial_patterns() -> PatternRegistry:
@@ -189,7 +244,89 @@ def accept_learned_pattern(
         raise MinimalCognitionError("unavailable physical skill capability")
     if any(p.pattern_id == proposed.pattern_id for p in registry.patterns):
         raise MinimalCognitionError("pattern ID already registered; retain old versions")
-    return PatternRegistry(registry.revision + 1, registry.patterns + (proposed,))
+    return PatternRegistry(registry.revision + 1, registry.patterns + (proposed,),
+                           registry.accepted_presets)
+
+
+def accept_skill_parameter_preset(
+    registry: PatternRegistry,
+    proposed: SkillParameterPreset,
+    *,
+    definition: SkillDefinition,
+    receipt: PresetAcceptanceReceipt,
+    accepted_by_self: bool,
+    expected_revision: int,
+    available_skills: frozenset[tuple[str, int]],
+) -> PatternRegistry:
+    """CAS-publish Self-accepted params; never a physical Action authorization.
+
+    The acceptance receipt is supplied by the existing Self owner. This pure
+    function validates it but cannot authenticate that owner; callers must
+    journal the decision separately and persist the returned revision.
+    """
+    if not isinstance(registry, PatternRegistry) or (
+        type(expected_revision) is not int
+        or expected_revision != registry.revision
+    ):
+        raise MinimalCognitionError("stale Schema preset registry revision")
+    if accepted_by_self is not True:
+        raise MinimalCognitionError("unaccepted L2/Schema preset cannot publish")
+    if (not isinstance(proposed, SkillParameterPreset)
+            or not isinstance(definition, SkillDefinition)
+            or not isinstance(receipt, PresetAcceptanceReceipt)
+            or receipt.preset_ref != proposed.preset_ref):
+        raise MinimalCognitionError("Self receipt and proposed preset differ")
+    matching = [p for p in registry.patterns if p.pattern_id == proposed.pattern_id
+                and p.kind is PatternKind.GOAL]
+    if len(matching) != 1:
+        raise MinimalCognitionError("registered Goal pattern required")
+    pattern = matching[0]
+    if (pattern.skill_id != definition.skill_id
+            or pattern.skill_version != definition.version
+            or proposed.definition_ref != definition.definition_ref
+            or (definition.skill_id, definition.version) not in available_skills):
+        raise MinimalCognitionError("preset does not match registered Skill capability")
+    try:
+        validate_preset_arguments(definition, proposed.arguments)
+    except SkillInvocationRefusal as exc:
+        raise MinimalCognitionError("preset ABI validation failed") from exc
+    key = (receipt.self_id, proposed.pattern_id, proposed.preset_id)
+    found = next((e for e in registry.accepted_presets
+                  if (e.receipt.self_id, e.preset.pattern_id,
+                      e.preset.preset_id) == key), None)
+    if (found is not None and proposed.version != found.preset.version + 1
+            or found is None and proposed.version != 1):
+        raise MinimalCognitionError("preset version must advance by exactly one")
+    if any(e.receipt.self_id == receipt.self_id
+           and e.receipt.event_id == receipt.event_id
+           for e in registry.accepted_presets):
+        raise MinimalCognitionError("replayed Self acceptance event")
+    updated = tuple(e for e in registry.accepted_presets if e is not found) + (
+        AcceptedSkillPreset(pattern.version, proposed, receipt),
+    )
+    return PatternRegistry(registry.revision + 1, registry.patterns, updated)
+
+
+def retire_skill_parameter_preset(
+    registry: PatternRegistry,
+    *, self_id: str, pattern_id: str, preset_id: str,
+    accepted_by_self: bool, expected_revision: int,
+) -> PatternRegistry:
+    """Self can revoke future presentation, never cancel in-flight physical IO."""
+    if (not isinstance(registry, PatternRegistry)
+            or type(expected_revision) is not int
+            or expected_revision != registry.revision
+            or accepted_by_self is not True):
+        raise MinimalCognitionError("stale or unaccepted preset retirement")
+    old = tuple(e for e in registry.accepted_presets
+                if (e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                == (self_id, pattern_id, preset_id))
+    if len(old) != 1:
+        raise MinimalCognitionError("no registered Self preset to retire")
+    return PatternRegistry(
+        registry.revision + 1, registry.patterns,
+        tuple(e for e in registry.accepted_presets if e not in old),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,8 +419,14 @@ class Option:
     pattern_id: str
     arrival_contract: TargetContract | None = None
     invocation: SkillInvocation | None = None
+    target_source_family: str | None = None
 
     def __post_init__(self) -> None:
+        if self.target_source_family is not None and (
+            not isinstance(self.target_source_family, str)
+            or not self.target_source_family.strip()
+        ):
+            raise MinimalCognitionError("invalid target source family")
         if self.invocation is not None and (
             not isinstance(self.invocation, SkillInvocation)
             or self.invocation.goal_id != self.goal_id
@@ -318,6 +461,142 @@ class SchemaFrame:
     fast_cues: tuple[str, ...]
     pattern_checks: int
     elapsed_ns: int
+    # Full currently eligible membership, distinct from bounded L1 presentation.
+    # None keeps original legacy exact-options-only revalidation behavior.
+    eligible_options: tuple[Option, ...] | None = None
+
+
+def _registered_preset_shortlist(
+    eligible: tuple[Option, ...],
+    goals: tuple[Goal, ...],
+    *,
+    epoch: int,
+    fast_crisis: bool,
+    max_choices: int = 8,
+) -> tuple[Option, ...]:
+    """CPU-only bounded presentation; independent from current eligibility.
+
+    A source-qualified emergency can suppress exploration. Otherwise reserve
+    one exploration exposure while rotating Goal/Target/Preset opportunities.
+    This only chooses which options SystemOne can see; it never chooses an
+    Intent or grants native Actions.
+    """
+    allowed = tuple(o for o in eligible if
+                    not fast_crisis or o.schema_id != "exploration")
+    urgency = {g.goal_id: g.strength == "URGENT" for g in goals}
+    groups: dict[tuple[str, str, str, int], list[Option]] = {}
+    for option in allowed:
+        key = (option.goal_id, option.schema_id,
+               option.skill_id, option.skill_version)
+        groups.setdefault(key, []).append(option)
+
+    def rotate(xs: list, turn: int) -> list:
+        if not xs:
+            return []
+        k = turn % len(xs)
+        return xs[k:] + xs[:k]
+
+    def ordered_group(key: tuple[str, str, str, int]) -> list[Option]:
+        by_target: dict[str, list[Option]] = {}
+        for o in groups[key]:
+            by_target.setdefault(o.target_ref, []).append(o)
+        targets = rotate(sorted(by_target), epoch)
+        # Two Presets per Goal+Target maximum per epoch, without fixing one
+        # winner forever. A target cannot use all eight slots by itself.
+        streams = [rotate(sorted(by_target[t], key=lambda x:
+                                 x.invocation.parameter_preset_ref
+                                 if x.invocation else ""), epoch)[:2]
+                   for t in targets]
+        return [item for j in range(2) for stream in streams
+                for item in stream[j:j + 1]]
+
+    urgent_keys = sorted(k for k in groups if urgency.get(k[0], False))
+    active_keys = sorted(k for k in groups if not urgency.get(k[0], False))
+    urgent_keys = rotate(urgent_keys, (epoch - 1) * max_choices)
+    active_keys = rotate(active_keys, (epoch - 1) * max_choices)
+
+    shown: list[Option] = []
+    reserve = None
+    if not fast_crisis:
+        exploratory = [k for k in active_keys if k[1] == "exploration"]
+        if exploratory:
+            reserve = ordered_group(exploratory[epoch % len(exploratory)])[0]
+    if reserve is not None:
+        shown.append(reserve)
+
+    # Distinct Goals get first exposure before repeated alternatives; when
+    # urgent overload occurs, no low-priority candidate steals a slot apart
+    # from the explicitly reserved non-crisis exploration opportunity.
+    for keys in (urgent_keys, active_keys):
+        streams = [ordered_group(k) for k in keys]
+        for depth in range(max((len(x) for x in streams), default=0)):
+            for stream in streams:
+                if len(shown) == max_choices:
+                    return tuple(shown)
+                if depth < len(stream) and stream[depth] not in shown:
+                    shown.append(stream[depth])
+    return tuple(shown)
+
+
+def bind_registered_skill_invocations(
+    frame: SchemaFrame,
+    registry: PatternRegistry,
+    *,
+    definitions: Mapping[tuple[str, int], SkillDefinition],
+    fast_crisis: bool,
+) -> SchemaFrame:
+    """Expand only Self-adopted Presets; prune *presentation*, not eligibility."""
+    if frame.registry_revision != registry.revision:
+        raise MinimalCognitionError("stale accepted Schema registry")
+    by_pattern = {p.pattern_id: p for p in registry.patterns}
+    eligible: list[Option] = []
+    for o in frame.options:
+        p = by_pattern.get(o.pattern_id)
+        if p is None or (p.goal_id, p.skill_id, p.skill_version,
+                         p.target_kind, p.schema_id) != (
+                o.goal_id, o.skill_id, o.skill_version,
+                o.target_kind, o.schema_id):
+            raise MinimalCognitionError("Option not registered in Schema")
+        definition = definitions.get((o.skill_id, o.skill_version))
+        if definition is None:
+            continue
+        for entry in registry.accepted_presets:
+            if (entry.receipt.self_id != frame.scope.self_id
+                    or entry.preset.pattern_id != o.pattern_id
+                    or entry.pattern_version != p.version):
+                continue
+            try:
+                bound = bind_preset_invocation(
+                    definition, entry.preset, scope=frame.scope,
+                    goal_id=o.goal_id,
+                    target=SkillTarget(o.target_ref, o.target_kind,
+                                       o.arrival_contract),
+                    # Stable definition/preset source; live Percept seq is a
+                    # separate observation and necessarily changes at recheck.
+                    provenance=entry.preset.provenance,
+                )
+            except SkillInvocationRefusal as exc:
+                raise MinimalCognitionError("accepted preset binding changed") from exc
+            eligible.append(replace(
+                o, invocation=bound,
+                target_source_family=frame.source.source,
+            ))
+    if len(eligible) > 1024:
+        raise MinimalCognitionError("registered candidate expansion exceeded bound")
+    current_eligible = tuple(o for o in eligible if
+                             not fast_crisis or o.schema_id != "exploration")
+    shortlisted = _registered_preset_shortlist(
+        current_eligible, frame.goals, epoch=frame.epoch,
+        fast_crisis=fast_crisis,
+    )
+    active = {(o.goal_id, o.skill_id, o.skill_version)
+              for o in current_eligible}
+    return replace(
+        frame, options=shortlisted, eligible_options=current_eligible,
+        goals=tuple(replace(g, unresolved=True) if
+                    (g.goal_id, g.skill_id, g.skill_version) not in active
+                    else g for g in frame.goals),
+    )
 
 
 def bind_frame_skill_invocations(
@@ -389,6 +668,8 @@ def cpu_schema_epoch(
     hunger_threshold: float = 17,
     skill_definitions: Mapping[tuple[str, int], SkillDefinition] | None = None,
     parameter_presets: Mapping[str, SkillParameterPreset] | None = None,
+    use_registered_presets: bool = False,
+    fast_crisis: bool = False,
 ) -> SchemaFrame:
     """Synchronous finite CPU-only step; caller controls event-loop cadence.
 
@@ -397,6 +678,14 @@ def cpu_schema_epoch(
     t0 = time.perf_counter_ns()
     if type(epoch) is not int or epoch < 0:
         raise MinimalCognitionError("invalid epoch")
+    if type(use_registered_presets) is not bool or type(fast_crisis) is not bool:
+        raise MinimalCognitionError("registered Preset and FAST crisis flags must be bool")
+    if use_registered_presets and (
+        skill_definitions is None or parameter_presets is not None
+    ):
+        raise MinimalCognitionError(
+            "Self-registered mode requires definitions, not external preset map"
+        )
     if (isinstance(hunger_threshold, bool)
             or not isinstance(hunger_threshold, (int, float))
             or not 0 <= hunger_threshold <= 20):
@@ -438,7 +727,7 @@ def cpu_schema_epoch(
         if available:
             for t in matching:
                 checks += 1
-                if len(options) >= 8:
+                if len(options) >= 8 and not use_registered_presets:
                     break
                 if t.arrival_contract is not None and (
                     t.kind != "DESTINATION"
@@ -460,6 +749,11 @@ def cpu_schema_epoch(
         ("ZOMBIE_NEAR",) if threats else (), checks,
         time.perf_counter_ns() - t0,
     )
+    if use_registered_presets:
+        return bind_registered_skill_invocations(
+            frame, registry, definitions=skill_definitions,
+            fast_crisis=fast_crisis,
+        )
     if (skill_definitions is None) != (parameter_presets is None):
         raise MinimalCognitionError("definition and accepted preset maps must be paired")
     if skill_definitions is not None and parameter_presets is not None:
@@ -581,7 +875,9 @@ def resolve_l1_choice(
         return Selection("REJECTED", None, "World/Self session changed")
     if (chosen.skill_id, chosen.skill_version) not in available_skills:
         return Selection("REJECTED", None, "Skill version unavailable")
-    if chosen not in current_frame.options:
+    eligible = (current_frame.options if current_frame.eligible_options is None
+                else current_frame.eligible_options)
+    if chosen not in eligible:
         return Selection("REJECTED", None, "Goal/Target/Skill dependencies stale")
     if intent_owner.current_intent is not None:
         return Selection("DEFER", None, "legacy single CurrentIntent is busy")
