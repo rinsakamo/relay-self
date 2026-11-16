@@ -29,7 +29,7 @@ from relay_self.resident_move_raw_audit_dev import (
     ResidentMoveRawAuditError,
     readback_owned_move_native_source,
 )
-from test_mineflayer_process_session import FakeProcess, started_line, observation_line
+from test_mineflayer_process_session import FakeProcess, observation_line, started_line
 from test_p0d_resident_move_issuer_dev import ScriptedNative, _selected
 
 
