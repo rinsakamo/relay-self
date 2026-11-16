@@ -25,22 +25,30 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerLaunchConfig,
     MineflayerObservation,
+    MineflayerPosition,
 )
 from experiments.cognitive_minimal_minecraft_dev import (
     execute_one_cognitive_world_turn,
     read_correlated_native_probe,
 )
+from experiments.cognitive_physical_attack_runner import issue_attack_from_selected_l1_dev
 from experiments.cognitive_physical_eat_runner import issue_eat_from_selected_l1_dev
-from experiments.controlled_minecraft_vertical import ControlledScenario
+from experiments.cognitive_physical_move_runner import issue_move_from_selected_l1_dev
+from experiments.controlled_minecraft_vertical import (
+    ControlledDestination,
+    ControlledScenario,
+)
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
     initial_patterns,
+    initial_patterns_with_move,
     parse_l2_pattern_proposal,
     prepare_l2_pattern_request,
 )
 from relay_self.intent import IntentCommitment
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.provenance import Provenance
 from relay_self.relay_engine import RelayEngine
 
 
@@ -95,6 +103,25 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--physical-eat-dev", action="store_true",
                    help="explicit single EAT parent Action via durable Physical ActionPort; "
                         "mutually exclusive with old physical issuer and shadow-only mode")
+    p.add_argument("--physical-attack-dev", action="store_true",
+                   help="one WAL-fenced ATTACK with ACK + source-attributed hurt, "
+                        "NOT damage proof; exclusive physical issuer")
+    p.add_argument("--physical-move-dev", action="store_true",
+                   help="one WAL-fenced bounded MOVE forward burst/STOP; "
+                        "NOT Paper tick-settled or arrival proof")
+    p.add_argument("--exploration-need", action="store_true",
+                   help="explicit cognitive EXPLORE signal, not an automatic world trigger")
+    p.add_argument("--move-destination", action="append", default=[],
+                   help="explicit configured ID,X,Y,Z; NOT World-observed route "
+                        "(repeatable; bounded short near-level motion only)")
+    p.add_argument("--paper-move-spool",
+                   help="P0M enabled Paper plugin p0m folder; optional strict main-thread tick/XYZ evidence")
+    p.add_argument("--paper-move-owned-log",
+                   help="raw log of operator-owned Paper process; no independent ownership authentication")
+    p.add_argument("--paper-move-world-uuid",
+                   help="canonical server World UUID, independently supplied")
+    p.add_argument("--paper-move-actor-uuid",
+                   help="canonical native player Paper UUID, independently supplied")
     p.add_argument("--physical-journal-path",
                    help="persistent, owned journal path; REQUIRED for physical EAT DEV")
     p.add_argument("--physical-create-journal", action="store_true",
@@ -169,22 +196,64 @@ async def _initial_spawn(session: MineflayerProcessSession, timeout_s: float) ->
 async def run(args: argparse.Namespace) -> dict[str, object]:
     if not args.grant_real_world or not args.grant_real_llm:
         raise MinimalCognitionError("both explicit real-world and real-LLM grants required")
-    if args.s49_readonly_shadow and (args.execute_native or args.physical_eat_dev):
+    physical_dev = (
+        args.physical_eat_dev or args.physical_attack_dev or args.physical_move_dev
+    )
+    if sum((args.physical_eat_dev, args.physical_attack_dev,
+            args.physical_move_dev)) > 1:
+        raise MinimalCognitionError("only one physical parent Action issuer allowed")
+    if args.s49_readonly_shadow and (args.execute_native or physical_dev):
         raise MinimalCognitionError(
             "explicit S49 shadow-only mode cannot issue any physical Action"
         )
-    if args.physical_eat_dev and args.execute_native:
+    if physical_dev and args.execute_native:
         raise MinimalCognitionError(
-            "two physical issuers cannot coexist: legacy unfenced vs durable EAT"
+            "two physical issuers cannot coexist: legacy vs durable ActionPort"
         )
     if args.pre_l1_native_probe and (
-        not (args.s49_readonly_shadow or args.physical_eat_dev)
+        not (args.s49_readonly_shadow or physical_dev)
         or args.execute_native
     ):
         raise MinimalCognitionError(
-            "pre-L1 native probe requires read-only shadow or durable EAT DEV"
+            "pre-L1 native probe requires read-only shadow or durable physical DEV"
         )
-    if args.physical_eat_dev:
+    paper_move_options = (
+        args.paper_move_spool, args.paper_move_owned_log,
+        args.paper_move_world_uuid, args.paper_move_actor_uuid,
+    )
+    if any(x is not None for x in paper_move_options) and (
+        not args.physical_move_dev or not all(paper_move_options)
+    ):
+        raise MinimalCognitionError(
+            "all Paper MOVE witness flags require exclusive physical MOVE DEV"
+        )
+    if args.exploration_need and not args.physical_move_dev:
+        raise MinimalCognitionError("explicit exploration Need requires MOVE DEV mode")
+    if args.move_destination and not args.physical_move_dev:
+        raise MinimalCognitionError("configured MOVE destinations require MOVE DEV mode")
+    if len(args.move_destination) > 8:
+        raise MinimalCognitionError("at most eight declared MOVE targets")
+    move_destinations = []
+    for idx, raw in enumerate(args.move_destination):
+        parts = raw.split(",")
+        if len(parts) != 4:
+            raise MinimalCognitionError("MOVE destination requires ID,X,Y,Z")
+        ident, *values = parts
+        try:
+            coords = [float(value) for value in values]
+            if not all(math.isfinite(x) for x in coords):
+                raise ValueError("nonfinite destination")
+            position = MineflayerPosition(*coords)
+            move_destinations.append(ControlledDestination(
+                ident, position, "externally supplied point",
+                Provenance(
+                    "operator-config-unverified",
+                    f"move-{idx}:{ident}:{':'.join(v.hex() for v in coords)}",
+                ),
+            ))
+        except (TypeError, ValueError) as exc:
+            raise MinimalCognitionError("invalid configured MOVE position/ID") from exc
+    if physical_dev:
         if (
             not args.physical_journal_path
             or not args.acknowledge_physical_dev_unverified_grants
@@ -194,7 +263,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             or args.acknowledge_unfenced_dev
         ):
             raise MinimalCognitionError(
-                "physical EAT DEV requires durable WAL, two distinct external "
+                "physical DEV requires durable WAL, two distinct external "
                 "authority labels and explicit unauthenticated-grants acknowledgement"
             )
     elif (
@@ -205,7 +274,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         or args.physical_issue_authority is not None
     ):
         raise MinimalCognitionError(
-            "physical EAT journal and authority options require --physical-eat-dev"
+            "physical journal and authority options require a physical DEV mode"
         )
     if (not math.isfinite(args.pre_l1_wait_s)
             or not 0 <= args.pre_l1_wait_s <= 60
@@ -224,7 +293,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         hazard_entity_names=frozenset(args.hazard_name),
         food_threshold=args.hunger_threshold,
         edible_item_names=tuple(args.edible_item),
-        destinations=(),
+        destinations=tuple(move_destinations),
         fight_max_distance=args.fight_max_distance,
         evidence_timeout_s=args.evidence_timeout_s,
         max_evidence_messages=32,
@@ -237,13 +306,15 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     session: MineflayerProcessSession | None = None
     physical_journal: PhysicalActionJournal | None = None
     physical_eat = None
+    physical_attack = None
+    physical_move = None
     first: MineflayerObservation | None = None
     spawn: MineflayerObservation | None = None
     pre_l1_probe_diagnostics: dict[str, object] | None = None
     owner = IntentCommitment()
     supervisor = ActionSupervisor()
     try:
-        if args.physical_eat_dev:
+        if physical_dev:
             # A journal from a previous session is never silently reseeded.
             # Check STOP/UNKNOWN before World connect or GPU inference.
             physical_journal = (
@@ -337,13 +408,20 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         receipt = await execute_one_cognitive_world_turn(
             session, first, scenario,
             self_id=args.self_id, intent_id=args.intent_id,
-            registry=initial_patterns(), relay_engine=engine, intent_owner=owner,
+            registry=(
+                initial_patterns_with_move() if args.physical_move_dev
+                else initial_patterns()
+            ), relay_engine=engine, intent_owner=owner,
             supervisor=supervisor, grant_real_world=True,
             issue_native=args.execute_native,
             acknowledge_unfenced_dev=args.acknowledge_unfenced_dev,
-            # Pre-issue two-probe evidence is read-only; the physical EAT
-            # route is a separate, explicitly granted single ActionPort.
-            s49_readonly_shadow=(args.s49_readonly_shadow or args.physical_eat_dev),
+            # Two correlated post-L1 probes are observation only, never S49 authority.
+            s49_readonly_shadow=(args.s49_readonly_shadow or physical_dev),
+            allowed_skills=(
+                frozenset({("MOVE", 1)}) if args.physical_move_dev
+                else frozenset({("EAT", 1), ("ATTACK", 1)})
+            ),
+            exploration_need=args.exploration_need,
         )
         if (
             args.physical_eat_dev
@@ -364,8 +442,61 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                     args.acknowledge_physical_dev_unverified_grants
                 ),
             )
+        if (
+            args.physical_attack_dev
+            and receipt.status == "S49_SHADOW_READY"
+            and receipt.selection.option is not None
+            and receipt.selection.option.skill_id == "ATTACK"
+        ):
+            assert physical_journal is not None
+            physical_attack = await issue_attack_from_selected_l1_dev(
+                session, receipt,
+                intent_owner=owner, supervisor=supervisor,
+                journal=physical_journal, self_id=args.self_id,
+                intent_id=args.intent_id,
+                propose_authority_id=args.physical_propose_authority,
+                issue_authority_id=args.physical_issue_authority,
+                dev_physical_grant=True,
+                acknowledge_unverified_principal=(
+                    args.acknowledge_physical_dev_unverified_grants
+                ),
+            )
+        if (
+            args.physical_move_dev
+            and receipt.status == "MOVE_TARGET_BOUND_NO_ISSUE"
+            and receipt.move_target is not None
+            and receipt.selection.option is not None
+            and receipt.selection.option.skill_id == "MOVE"
+        ):
+            assert physical_journal is not None
+            physical_move = await issue_move_from_selected_l1_dev(
+                session, receipt,
+                intent_owner=owner, supervisor=supervisor,
+                journal=physical_journal, self_id=args.self_id,
+                intent_id=args.intent_id,
+                propose_authority_id=args.physical_propose_authority,
+                issue_authority_id=args.physical_issue_authority,
+                dev_physical_grant=True,
+                acknowledge_unverified_principal=(
+                    args.acknowledge_physical_dev_unverified_grants
+                ),
+                expected_username=args.mc_username,
+                paper_move_spool=(
+                    Path(args.paper_move_spool) if args.paper_move_spool else None
+                ),
+                paper_move_owned_log=(
+                    Path(args.paper_move_owned_log)
+                    if args.paper_move_owned_log else None
+                ),
+                paper_world_uuid=args.paper_move_world_uuid,
+                paper_actor_uuid=args.paper_move_actor_uuid,
+            )
+        physical_result = (
+            physical_eat if physical_eat is not None else
+            physical_attack if physical_attack is not None else physical_move
+        )
         supervised_actions = (
-            supervisor.recorded_actions if args.physical_eat_dev
+            supervisor.recorded_actions if physical_dev
             else (() if receipt.run is None else receipt.run.actions)
         )
         issued_at = next(
@@ -384,6 +515,10 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "existing_issuer": (
                 "cognitive_physical_eat_runner.issue_eat_from_selected_l1_dev"
                 if args.physical_eat_dev else
+                "cognitive_physical_attack_runner.issue_attack_from_selected_l1_dev"
+                if args.physical_attack_dev else
+                "cognitive_physical_move_runner.issue_move_from_selected_l1_dev"
+                if args.physical_move_dev else
                 "controlled_minecraft_vertical.execute_decision"
             ),
             "model_declared": args.model,
@@ -410,17 +545,20 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             },
             "status": (
                 "NATIVE_EAT_OUTCOME_DEV_ONLY" if physical_eat is not None
-                else receipt.status
+                else "NATIVE_ATTACK_HURT_CORRELATED_DEV_ONLY"
+                if physical_attack is not None else
+                "NATIVE_MOVE_PROGRESS_STOP_READBACK_DEV_ONLY"
+                if physical_move is not None else receipt.status
             ),
             "l1_choice_id": receipt.l1_result.choice_id,
             "l1_latency_ns": receipt.l1_elapsed_ns,
             "intent_to_action_issued_ns": (
-                None if args.physical_eat_dev
+                None if physical_dev
                 or issued_at is None or committed_at is None
                 else issued_at - committed_at
             ),
             "intent_to_action_timing_note": (
-                "NOT_MEASURED_LOGICAL_CLOCK_ONLY" if args.physical_eat_dev
+                "NOT_MEASURED_LOGICAL_CLOCK_ONLY" if physical_dev
                 else "ACTION_LIFECYCLE_TIME_DELTA"
             ),
             "schema_cpu_epoch_ns": receipt.initial_frame.elapsed_ns,
@@ -438,15 +576,63 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                          else asdict(receipt.selection.option)),
             "selection_reason": receipt.selection.reason,
             "action_outcome_count": (
-                1 if physical_eat is not None else receipt.actual_action_outcomes
+                1 if physical_result is not None else receipt.actual_action_outcomes
             ),
             "native_eat_consequence_attested": (
                 True if physical_eat is not None
                 else receipt.native_eat_consequence_attested
             ),
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_attack_dev_selected": args.physical_attack_dev,
+            "physical_move_dev_selected": args.physical_move_dev,
+            "physical_move_parent_action_id": (
+                None if physical_move is None else physical_move.action_id
+            ),
+            "native_move_paper_settled_attested": False,
+            "paper_move_position_stable_8_ticks": (
+                physical_move is not None
+                and physical_move.action.paper_proof is not None
+                and physical_move.action.paper_proof.paper_position_stable_8_ticks
+            ),
+            "paper_move_tick_proof": (
+                None if physical_move is None
+                or physical_move.action.paper_proof is None
+                else asdict(physical_move.action.paper_proof)
+            ),
+            "native_move_arrival_attested": False,
+            "native_move_progress_m": (
+                None if physical_move is None
+                else physical_move.action.distance_advanced
+            ),
+            "native_move_stop_residual_m": (
+                None if physical_move is None
+                else physical_move.action.residual_motion
+            ),
+            "native_move_progress_observation": (
+                None if physical_move is None
+                else _native_observation_record(physical_move.action.progress)
+            ),
+            "native_move_stop_probes": (
+                [] if physical_move is None else [
+                    _native_observation_record(physical_move.action.first_stop),
+                    _native_observation_record(physical_move.action.final_stop),
+                ]
+            ),
+            "physical_attack_parent_action_id": (
+                None if physical_attack is None else physical_attack.action_id
+            ),
+            "native_attack_damage_attested": False,
             "physical_eat_parent_action_id": (
                 None if physical_eat is None else physical_eat.action_id
+            ),
+            "initial_skill_ir": (
+                None if physical_result is None else physical_result.initial_skill_ir
+            ),
+            "initial_skill_step_status": (
+                None if physical_result is None else physical_result.initial_skill_step_status
+            ),
+            "initial_skill_evaluation_status": (
+                None if physical_result is None else physical_result.initial_skill_evaluation_status
             ),
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
@@ -465,6 +651,20 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                      "effect": m.effect, "source_ref": m.provenance.reference}
                     for m in (physical_eat.action.equip, physical_eat.action.consume)
                 ] if physical_eat is not None else
+                [{
+                    "action_id": physical_attack.action.ack.action_id,
+                    "result": physical_attack.action.ack.result,
+                    "effect": physical_attack.action.ack.effect,
+                    "source_ref": physical_attack.action.ack.provenance.reference,
+                }] if physical_attack is not None else
+                [{
+                    "action_id": m.action_id, "result": m.result,
+                    "effect": m.effect, "source_ref": m.provenance.reference,
+                    "session_id": m.session_id, "native_seq": m.seq,
+                } for m in (
+                    physical_move.action.look, physical_move.action.forward,
+                    physical_move.action.stop,
+                )] if physical_move is not None else
                 [] if receipt.run is None else [
                     {"action_id": message.action_id, "result": message.result,
                      "effect": message.effect, "source_ref": message.provenance.reference}
@@ -472,8 +672,20 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                     if isinstance(message, MineflayerEffectResult)
                 ])
             ),
+            "move_target": (
+                None if receipt.move_target is None
+                else asdict(receipt.move_target)
+            ),
+            "native_attack_hurt": (
+                None if physical_attack is None else {
+                    "entity_id": physical_attack.action.hurt.entity_id,
+                    "source_entity_id": physical_attack.action.hurt.source_entity_id,
+                    "actor_entity_id": physical_attack.action.hurt.actor_entity_id,
+                    "source_ref": physical_attack.action.hurt.provenance.reference,
+                }
+            ),
             "skill_final_state": (
-                "started" if physical_eat is not None else
+                "started" if physical_result is not None else
                 None if receipt.run is None else
                 receipt.run.skill_execution.state.value
             ),
@@ -484,12 +696,17 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "self_grant_execute_native": args.execute_native,
             "physical_fence": (
                 "PREISSUE_WAL_EAT_DEV" if physical_eat is not None else
-                "WAL_READY_NO_ISSUE" if args.physical_eat_dev else
+                "PREISSUE_WAL_ATTACK_DEV" if physical_attack is not None else
+                "PREISSUE_WAL_MOVE_DEV" if physical_move is not None else
+                "WAL_READY_NO_ISSUE" if physical_dev else
                 "UNFENCED_DEV_ONLY" if args.execute_native else "NOT_ISSUED"
             ),
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "physical_actionport_preissue_wal": (
-                "FSYNC_CAS_EAT_DEV" if args.physical_eat_dev else "NOT_CONNECTED"
+                "FSYNC_CAS_EAT_DEV" if args.physical_eat_dev else
+                "FSYNC_CAS_ATTACK_DEV" if args.physical_attack_dev else
+                "FSYNC_CAS_MOVE_DEV" if args.physical_move_dev else
+                "NOT_CONNECTED"
             ),
         }
         if args.enable_l2_proposal and receipt.status == "ESCALATE_L2":
@@ -529,6 +746,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "pre_l1_probe_requested": args.pre_l1_native_probe,
             "pre_l1_probe_diagnostics": pre_l1_probe_diagnostics,
             "physical_eat_dev_selected": args.physical_eat_dev,
+            "physical_attack_dev_selected": args.physical_attack_dev,
+            "physical_move_dev_selected": args.physical_move_dev,
+            "paper_move_witness_requested": bool(args.paper_move_spool),
             "physical_journal_path": args.physical_journal_path,
             "physical_journal_unresolved": (
                 None if physical_journal is None else physical_journal.unresolved
@@ -557,7 +777,9 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
             "native_success_claim": False,
             "original_s49_preissue_wal": "NOT_CONNECTED",
             "physical_actionport_preissue_wal": (
-                "FSYNC_CAS_EAT_DEV" if physical_journal is not None
+                ("FSYNC_CAS_MOVE_DEV" if args.physical_move_dev else
+                 "FSYNC_CAS_ATTACK_DEV" if args.physical_attack_dev else
+                 "FSYNC_CAS_EAT_DEV") if physical_journal is not None
                 else "NOT_CONNECTED"
             ),
         }

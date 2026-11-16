@@ -34,6 +34,7 @@ from relay_self.relay_engine import (
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
+from relay_self.target_contract import ArrivalCondition
 
 
 class ControlledScenarioError(RuntimeError):
@@ -53,6 +54,7 @@ class ControlledDestination:
     position: MineflayerPosition
     description: str
     provenance: Provenance
+    arrival_condition: ArrivalCondition | None = None
 
     def __post_init__(self) -> None:
         _require_text("destination_id", self.destination_id)
@@ -65,6 +67,9 @@ class ControlledDestination:
             raise ControlledScenarioError(
                 "destination provenance must be Provenance"
             )
+        if (self.arrival_condition is not None
+                and not isinstance(self.arrival_condition, ArrivalCondition)):
+            raise ControlledScenarioError("destination acceptance contract malformed")
 
 
 @dataclass(frozen=True, slots=True)

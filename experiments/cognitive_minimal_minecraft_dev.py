@@ -20,6 +20,11 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
+from experiments.cognitive_move_target_resolution import (
+    MoveTargetRefusal,
+    ResolvedMoveTarget,
+    resolve_selected_move_target,
+)
 from experiments.cognitive_s49_readonly_handoff import (
     S49ReadOnlyHandoff,
     S49ShadowRefusal,
@@ -49,7 +54,9 @@ from relay_self.cognitive_minimal_dev import (
 )
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
+from relay_self.move_destination_ref import move_destination_ref
 from relay_self.relay_engine import RelayEngine, RelayEngineResult
+from relay_self.target_contract import ReferenceFrame, TargetContract, TargetKind
 
 # This is a one-turn integration for the existing main branch's bounded MVP
 # executor, NOT an implementation of unmerged S49's full optional adapter.
@@ -73,6 +80,7 @@ class WorldStepReceipt:
     s49_readonly_handoff: S49ReadOnlyHandoff | None = None
     s49_shadow_refusal: str | None = None
     native_probe_trace: tuple[MineflayerObservation, ...] = ()
+    move_target: ResolvedMoveTarget | None = None
 
     @property
     def actual_action_outcomes(self) -> int:
@@ -128,6 +136,7 @@ def native_schema_percept(
     scenario: ControlledScenario,
     *,
     self_id: str,
+    exploration_need: bool = False,
 ) -> WorldPercept:
     """Source-qualified native projection; no Minecraft-native threat classifier.
 
@@ -142,6 +151,8 @@ def native_schema_percept(
         raise MinimalCognitionError("existing ControlledScenario required")
     if not isinstance(self_id, str) or not self_id.strip():
         raise MinimalCognitionError("Self identity required")
+    if type(exploration_need) is not bool:
+        raise MinimalCognitionError("exploration Need must be a typed Self signal")
     if observation.kind == "death" or observation.snapshot.health <= 0:
         raise MinimalCognitionError("dead WorldBody is not actionable")
 
@@ -177,6 +188,40 @@ def native_schema_percept(
             observation.session_id, observation.seq,
         ))
 
+    # Destinations are explicit configuration/WorldBody Target *claims*, not
+    # observations of reachable ground. Preserve their OWN provenance, never
+    # mislabel them as Mineflayer/Paper facts. No native issue from this list.
+    if exploration_need:
+        for destination in scenario.destinations:
+            if len(targets) >= 16:
+                break
+            ref = move_destination_ref(
+                destination.destination_id, destination.position,
+                destination.provenance,
+            )
+            # The contract source revision belongs to the configured Target;
+            # native Percept seq is separately refreshed after L1. Do not
+            # silently mint a new precision revision during probe refresh.
+            arrival = (
+                None if destination.arrival_condition is None
+                else TargetContract(
+                    scope=ScopeRef(self_id, observation.session_id),
+                    goal_id="EXPLORE_WORLD",
+                    target_ref=ref,
+                    kind=TargetKind.PLACE,
+                    reference_frame=ReferenceFrame.WORLD,
+                    provenance=destination.provenance,
+                    condition=destination.arrival_condition,
+                    bound_seq=0,
+                    anchor=destination.position,
+                )
+            )
+            targets.append(Target(
+                ref, "DESTINATION", destination.provenance,
+                observation.session_id, observation.seq,
+                arrival_contract=arrival,
+            ))
+
     return WorldPercept(
         scope=ScopeRef(self_id, observation.session_id),
         source=observation.provenance,
@@ -185,6 +230,7 @@ def native_schema_percept(
         fatigue_high=None,  # No native fatigue sensor in this adapter.
         targets=tuple(targets),
         threat_cue=bool(observed_threats),
+        exploration_need=exploration_need,
     )
 
 
@@ -398,6 +444,7 @@ async def execute_one_cognitive_world_turn(
     recent_3self: tuple[str, ...] = (),
     probe_request_id: str | None = None,
     s49_readonly_shadow: bool = False,
+    exploration_need: bool = False,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -413,7 +460,8 @@ async def execute_one_cognitive_world_turn(
     if grant_real_world is not True:
         raise MinimalCognitionError("real World DEV requires explicit grant")
     if (type(issue_native) is not bool or type(acknowledge_unfenced_dev) is not bool
-            or type(s49_readonly_shadow) is not bool):
+            or type(s49_readonly_shadow) is not bool
+            or type(exploration_need) is not bool):
         raise MinimalCognitionError("native issuance/shadow flags must be bool")
     if s49_readonly_shadow and issue_native:
         raise MinimalCognitionError(
@@ -432,7 +480,10 @@ async def execute_one_cognitive_world_turn(
         raise MinimalCognitionError("existing IntentCommitment required")
     if supervisor.open_actions:
         raise MinimalCognitionError("existing ActionSupervisor still owns Actions")
-    first = native_schema_percept(initial_observation, scenario, self_id=self_id)
+    first = native_schema_percept(
+        initial_observation, scenario, self_id=self_id,
+        exploration_need=exploration_need,
+    )
     original_frame = cpu_schema_epoch(
         first, registry, epoch=epoch, allowed_skills=allowed_skills,
         hunger_threshold=scenario.food_threshold,
@@ -484,6 +535,7 @@ async def execute_one_cognitive_world_turn(
     probe_elapsed_ns = time.perf_counter_ns() - probe_started
     current_percept = native_schema_percept(
         current_observation, scenario, self_id=self_id,
+        exploration_need=exploration_need,
     )
     current_frame = cpu_schema_epoch(
         current_percept, registry, epoch=epoch + 1,
@@ -520,6 +572,38 @@ async def execute_one_cognitive_world_turn(
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
             native_probe_trace=probe_trace,
+        )
+    if selection.option.skill_id == "MOVE":
+        # Target geometry only. Old FLEE is not a qualified MOVE issuer and
+        # STOP/settling cannot be inferred from clear_controls ACK. This
+        # branch always abstains from native Action, even if the caller
+        # requested legacy unfenced issuance.
+        if issue_native:
+            raise MinimalCognitionError(
+                "no qualified physical MOVE/STOP issuer: native issue refused"
+            )
+        try:
+            bound_move = resolve_selected_move_target(
+                selection, frame=current_frame, percept=current_percept,
+                current_probe=current_observation, scenario=scenario,
+            )
+        except MoveTargetRefusal as exc:
+            return WorldStepReceipt(
+                "MOVE_TARGET_REFUSED",
+                Selection("REJECTED", None, str(exc)),
+                original_frame, current_frame, l1_result, l1_elapsed_ns,
+                probe_elapsed_ns, None,
+                probe_request_id=unique_probe_request_id,
+                probe_sequence=current_observation.seq,
+                native_probe_trace=probe_trace,
+            )
+        return WorldStepReceipt(
+            "MOVE_TARGET_BOUND_NO_ISSUE", selection, original_frame, current_frame,
+            l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
+            move_target=bound_move,
         )
     if s49_readonly_shadow:
         try:

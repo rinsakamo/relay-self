@@ -24,6 +24,7 @@ from relay_self.relay_engine import (
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
+from relay_self.target_contract import TargetContract
 
 
 class MinimalCognitionError(ValueError):
@@ -34,6 +35,7 @@ class Predicate(str, Enum):
     HUNGRY = "HUNGRY"
     ZOMBIE_NEAR = "ZOMBIE_NEAR"
     FATIGUE_HIGH = "FATIGUE_HIGH"
+    EXPLORE = "EXPLORE"
 
 
 class PatternKind(str, Enum):
@@ -87,6 +89,8 @@ class SchemaPattern:
                 raise MinimalCognitionError("HUNGRY must match FOOD")
             if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
                 raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
+            if self.predicate is Predicate.EXPLORE and self.target_kind != "DESTINATION":
+                raise MinimalCognitionError("EXPLORE must match DESTINATION")
         elif any(x is not None for x in (
             self.goal_id, self.skill_id, self.skill_version, self.target_kind
         )) or self.predicate is not Predicate.FATIGUE_HIGH:
@@ -123,6 +127,30 @@ def initial_patterns() -> PatternRegistry:
                       Predicate.FATIGUE_HIGH, None, None, None, None,
                       Origin.INNATE, provenance),
     ))
+
+
+def initial_move_pattern() -> SchemaPattern:
+    """Innate exploration Goal, opt-in until a real MOVE/STOP issuer is qualified.
+
+    Missing destinations still produce an unresolved Goal so L1 may ask L2
+    instead of fabricating coordinates or using S49's old chooser.
+    """
+    return SchemaPattern(
+        "exploration-move", 1, "exploration", PatternKind.GOAL,
+        Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "DESTINATION",
+        Origin.INNATE, Provenance("innate-schema", "cognitive-v0.1"),
+    )
+
+
+def initial_patterns_with_move() -> PatternRegistry:
+    """Opt-in MOVE Schema for read-only target resolution and future admission.
+
+    The caller may observe Goal/Target candidates while physical MOVE remains
+    unqualified. Do not include MOVE in issuer-approved skills until STOP and
+    settling are independently qualified; default registry stays unchanged.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
 
 
 def accept_learned_pattern(
@@ -163,6 +191,7 @@ class Target:
     world_session_id: str
     observed_sequence: int
     live: bool = True
+    arrival_contract: TargetContract | None = None
 
     def __post_init__(self) -> None:
         if not self.ref or not self.kind or not self.world_session_id:
@@ -171,6 +200,14 @@ class Target:
             raise MinimalCognitionError("invalid target sequence")
         if not isinstance(self.provenance, Provenance) or type(self.live) is not bool:
             raise MinimalCognitionError("invalid target evidence")
+        if self.arrival_contract is not None and (
+            not isinstance(self.arrival_contract, TargetContract)
+            or self.arrival_contract.target_ref != self.ref
+            or self.arrival_contract.provenance != self.provenance
+            or self.arrival_contract.scope.world_session_id != self.world_session_id
+            or self.arrival_contract.bound_seq > self.observed_sequence
+        ):
+            raise MinimalCognitionError("foreign or future target arrival contract")
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +219,7 @@ class WorldPercept:
     fatigue_high: bool | None
     targets: tuple[Target, ...]
     threat_cue: bool = False
+    exploration_need: bool = False
 
     def __post_init__(self) -> None:
         if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
@@ -194,15 +232,24 @@ class WorldPercept:
             raise MinimalCognitionError("invalid observed hunger")
         if self.fatigue_high is not None and type(self.fatigue_high) is not bool:
             raise MinimalCognitionError("invalid fatigue")
-        if type(self.threat_cue) is not bool:
-            raise MinimalCognitionError("invalid threat cue")
+        if type(self.threat_cue) is not bool or type(self.exploration_need) is not bool:
+            raise MinimalCognitionError("invalid threat/exploration cue")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
             raise MinimalCognitionError("duplicate target identity")
-        if any(not isinstance(t, Target) or t.world_session_id != self.scope.world_session_id
-               or t.observed_sequence > self.sequence for t in self.targets):
-            raise MinimalCognitionError("foreign/future/unqualified target")
+        if any(
+            not isinstance(t, Target)
+            or t.world_session_id != self.scope.world_session_id
+            or t.observed_sequence > self.sequence
+            or (t.arrival_contract is not None and (
+                t.kind != "DESTINATION"
+                or t.arrival_contract.scope != self.scope
+                or t.arrival_contract.bound_seq > self.sequence
+            ))
+            for t in self.targets
+        ):
+            raise MinimalCognitionError("foreign/future/unqualified target contract")
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +271,7 @@ class Option:
     target_kind: str
     schema_id: str
     pattern_id: str
+    arrival_contract: TargetContract | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +330,9 @@ def cpu_schema_epoch(
         ) or (
             pattern.predicate is Predicate.FATIGUE_HIGH
             and percept.fatigue_high is True
+        ) or (
+            pattern.predicate is Predicate.EXPLORE
+            and percept.exploration_need is True
         )
         if not triggered:
             continue
@@ -302,9 +353,20 @@ def cpu_schema_epoch(
                 checks += 1
                 if len(options) >= 8:
                     break
-                options.append(Option(pattern.goal_id or "", pattern.skill_id or "",
-                                      pattern.skill_version or 0, t.ref, t.kind,
-                                      pattern.schema_id, pattern.pattern_id))
+                if t.arrival_contract is not None and (
+                    t.kind != "DESTINATION"
+                    or pattern.skill_id != "MOVE"
+                    or t.arrival_contract.goal_id != pattern.goal_id
+                ):
+                    # Reject mismatched Goal/Target semantics rather than
+                    # laundering a foreign acceptance condition into L1.
+                    raise MinimalCognitionError("Goal and Target contract disagree")
+                options.append(Option(
+                    pattern.goal_id or "", pattern.skill_id or "",
+                    pattern.skill_version or 0, t.ref, t.kind,
+                    pattern.schema_id, pattern.pattern_id,
+                    t.arrival_contract,
+                ))
     return SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
@@ -356,6 +418,16 @@ def assemble_l1_select(
         else:
             desc = (f"{entry.goal_id}: {entry.skill_id}@{entry.skill_version}"
                     f"({entry.target_ref}) [schema={entry.schema_id}]")
+            if entry.arrival_contract is not None:
+                c = entry.arrival_contract
+                req = c.condition
+                desc += (
+                    f" [target={c.kind.value},"
+                    f" horizontal={req.min_horizontal_m:g}..{req.max_horizontal_m:g}m,"
+                    f" max_y_error={req.max_vertical_error_m:g}m,"
+                    f" still_ticks={req.still_ticks},"
+                    f" condition_ref={c.contract_ref}]"
+                )
         choices.append(BoundedChoice(choice_id, desc))
     request = BoundedChoiceRequest(
         request_id=f"schema-l1-{frame.scope.self_id}-{frame.epoch}",

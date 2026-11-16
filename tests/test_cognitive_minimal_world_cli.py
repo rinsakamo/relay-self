@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerEffectResult,
     MineflayerEntityFact,
+    MineflayerEntityHurt,
     MineflayerInventoryItem,
     MineflayerLaunchConfig,
     MineflayerNearbyEntitiesCoverage,
@@ -914,6 +915,9 @@ def test_cli_real_shaped_l1_eat_to_exact_one_fsynced_physical_parent(
     assert result["action_outcome_count"] == 1
     assert result["native_eat_consequence_attested"] is True
     assert result["skill_final_state"] == "started"  # Not semantic Skill success.
+    assert result["initial_skill_ir"] == "EAT@1"
+    assert result["initial_skill_step_status"] == "PROPOSED_NOT_ISSUED"
+    assert result["initial_skill_evaluation_status"] == "YIELD_EVALUATION"
     assert session.first_wal_status == "PREPARED_UNRESOLVED"
     assert len(result["native_actions"]) == 1
     assert result["native_actions"][0]["state"] == "outcome"
@@ -1034,6 +1038,8 @@ def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
     result = asyncio.run(run(args))
     assert result["status"] in ("ESCALATE_L2", "S49_SHADOW_REJECTED", "REJECTED")
     assert result["physical_eat_parent_action_id"] is None
+    assert result["initial_skill_ir"] is None
+    assert result["initial_skill_evaluation_status"] is None
     assert result["physical_fence"] == "WAL_READY_NO_ISSUE"
     assert result["physical_journal_unresolved"] is False
     assert result["physical_journal_records"] == []
@@ -1043,3 +1049,352 @@ def test_cli_l1_no_target_or_stale_eat_does_not_create_physical_reservation(
     assert not any(x[0] == "equip_item" for x in session.sent)
     assert not any(x[0] == "consume_held" for x in session.sent)
     assert session.closed
+
+
+def test_cli_initial_skill_ir_rejection_prevents_eat_wal_and_native_issue(
+    monkeypatch, tmp_path,
+):
+    """An Interpreter CHECK refusal cannot be bypassed by EAT's old runner."""
+    from relay_self.initial_skill_ir import FiniteSkillInterpreter, SkillIRRefusal
+
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+
+    def reject(*_args, **_kwargs):
+        raise SkillIRRefusal("simulated CPU L0 target no longer current")
+
+    monkeypatch.setattr(FiniteSkillInterpreter, "check_target", reject)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert "simulated CPU L0" in audit["error"]
+    assert audit["physical_journal_records"] == []
+    assert audit["recorded_actions"] == []
+    assert not any(x[0] in {"equip_item", "consume_held"} for x in session.sent)
+    assert session.closed
+
+
+def test_cli_post_issue_wal_readback_mismatch_does_not_claim_skill_progress(
+    monkeypatch, tmp_path,
+):
+    """Even a terminal native result needs a matching persisted WAL readback."""
+    session = FakePhysicalProcessSession()
+    args = _physical_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+
+    real_restore = PhysicalActionJournal.restore
+
+    def mismatched_restore(path, *, self_id):
+        reopened = real_restore(path, self_id=self_id)
+        reopened.digest = "0" * 64  # Simulate an untrusted/stale readback identity.
+        return reopened
+
+    monkeypatch.setattr(
+        PhysicalActionJournal, "restore", staticmethod(mismatched_restore),
+    )
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    assert "terminal EAT does not match restored physical WAL" in exc.value.audit["error"]
+    assert exc.value.audit["recorded_actions"][0]["state"] == "outcome"
+    assert exc.value.audit["physical_journal_records"][0]["status"] == "NATIVE_EAT_OUTCOME"
+    assert len([x for x in session.sent if x[0] == "equip_item"]) == 1
+    assert len([x for x in session.sent if x[0] == "consume_held"]) == 1
+    assert session.closed
+
+
+class FakePhysicalAttackSession(FakePhysicalProcessSession):
+    """Scripted zombie and source-qualified hurt; no actual World/damage."""
+
+    def __init__(self, *, fail_at=None):
+        super().__init__()
+        self.fail_at = fail_at
+
+    def _zombie_probe(self, seq, request_id):
+        mob = MineflayerEntityFact(
+            7, "zombie", "mob", 2.0, MineflayerPosition(2, 64, 0),
+        )
+        native = _observation(seq, kind="probe", food=20, bread_count=0)
+        return replace(native, request_id=request_id, snapshot=replace(
+            native.snapshot, inventory=(), nearby_entities=(mob,),
+            nearby_entities_coverage=replace(
+                native.snapshot.nearby_entities_coverage, candidate_count=1,
+            ),
+        ))
+
+    async def send_observe(self, request_id=None):
+        self.observation_no += 1
+        self.sent.append(("observe", request_id))
+        if self.observation_no <= 3:
+            self.messages.append(self._zombie_probe(
+                self.observation_no + 1, request_id,
+            ))
+        elif self.fail_at != "after_probe":
+            self.messages.append(self._zombie_probe(7, request_id))
+
+    async def send_attack_entity(self, action_id, *, entity_id):
+        assert self.wal_path is not None
+        raw = json.loads(self.wal_path.read_text())
+        self.first_wal_status = raw["body"]["actions"][-1]["status"]
+        self.sent.append(("attack_entity", action_id, entity_id))
+        if self.fail_at == "missing_ack":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 5, action_id, "attack_entity", "applied", None,
+        ))
+        if self.fail_at != "missing_hurt":
+            self.messages.append(MineflayerEntityHurt(
+                "session-1", 6, entity_id,
+                None if self.fail_at == "unknown_actor" else 4, 4,
+            ))
+
+
+def _physical_attack_args(tmp_path, *, create=True):
+    args = _physical_args(tmp_path, create=create)
+    args.physical_eat_dev = False
+    args.physical_attack_dev = True
+    args.edible_item = []
+    args.hazard_name = ["zombie"]
+    args.fight_max_distance = 4
+    return args
+
+
+def test_cli_l1_attack_l0_ir_wal_and_native_hurt_without_damage_proof(
+    monkeypatch, tmp_path,
+):
+    session = FakePhysicalAttackSession()
+    args = _physical_attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["status"] == "NATIVE_ATTACK_HURT_CORRELATED_DEV_ONLY"
+    assert result["selected"]["skill_id"] == "ATTACK"
+    assert result["selected"]["target_ref"] == "entity:7"
+    assert result["physical_attack_dev_selected"] is True
+    assert result["physical_eat_dev_selected"] is False
+    assert result["initial_skill_ir"] == "ATTACK@1"
+    assert result["initial_skill_step_status"] == "PROPOSED_NOT_ISSUED"
+    assert result["initial_skill_evaluation_status"] == "YIELD_EVALUATION"
+    assert result["native_attack_damage_attested"] is False
+    assert result["skill_final_state"] == "started"
+    assert result["action_outcome_count"] == 1
+    assert result["physical_journal_records"][-1]["status"] == (
+        "NATIVE_ATTACK_HURT_CORRELATED"
+    )
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert len([x for x in session.sent if x[0] == "attack_entity"]) == 1
+    assert result["native_effect_receipts"][0]["effect"] == "attack_entity"
+    assert result["native_attack_hurt"]["source_entity_id"] == 4
+    assert session.closed
+
+
+@pytest.mark.parametrize("failure", [
+    "missing_ack", "missing_hurt", "unknown_actor", "after_probe",
+])
+def test_cli_attack_ambiguous_effect_stays_unresolved_and_restart_stops(
+    monkeypatch, tmp_path, failure,
+):
+    session = FakePhysicalAttackSession(fail_at=failure)
+    args = _physical_attack_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as exc:
+        asyncio.run(run(args))
+    audit = exc.value.audit
+    assert audit["physical_attack_dev_selected"] is True
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][-1]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["recorded_actions"][0]["state"] == "unknown"
+    assert len([x for x in session.sent if x[0] == "attack_entity"]) == 1
+    assert session.closed
+
+    replay = FakePhysicalAttackSession()
+    _inject_physical_transport(monkeypatch, replay)
+    with pytest.raises(cli.CognitiveWorldRunError) as second:
+        asyncio.run(run(_physical_attack_args(tmp_path, create=False)))
+    assert "STOP/UNKNOWN" in second.value.audit["error"]
+    assert replay.sent == []
+
+
+def test_cli_attack_eat_legacy_and_shadow_modes_are_mutually_exclusive():
+    def args(*options):
+        return parser().parse_args(["--model", "x",
+                                    "--grant-real-world", "--grant-real-llm",
+                                    *options])
+
+    for flags in (
+        ("--physical-eat-dev", "--physical-attack-dev"),
+        ("--physical-attack-dev", "--execute-native"),
+        ("--physical-attack-dev", "--s49-readonly-shadow"),
+    ):
+        with pytest.raises(MinimalCognitionError):
+            asyncio.run(run(args(*flags)))
+
+
+class FakePhysicalMoveSession(FakePhysicalProcessSession):
+    """Existing scripted one-turn provider + strictly simulated native controls."""
+
+    def __init__(self, *, fail_at=None):
+        super().__init__()
+        self.fail_at = fail_at
+
+    async def send_observe(self, request_id=None):
+        if self.observation_no < 3:
+            await super().send_observe(request_id)
+            return
+        self.observation_no += 1
+        self.sent.append(("observe", request_id))
+        if self.fail_at == "no_second_stop_probe" and self.observation_no == 5:
+            return
+        position = (.6 if self.observation_no == 4 else
+                    .9 if self.fail_at == "drifting" else .61)
+        native = _observation(
+            8 + self.observation_no - 3, kind="probe",
+            food=20, bread_count=0,
+        )
+        self.messages.append(replace(
+            native, request_id=request_id,
+            snapshot=replace(
+                native.snapshot,
+                position=MineflayerPosition(position, 64, 0),
+            ),
+        ))
+
+    async def send_look(self, action_id, *, yaw, pitch):
+        assert self.wal_path is not None
+        self.first_wal_status = json.loads(
+            self.wal_path.read_text()
+        )["body"]["actions"][-1]["status"]
+        self.sent.append(("look", action_id, yaw, pitch))
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 5, action_id, "look", "applied", None,
+        ))
+
+    async def send_set_control(self, action_id, *, control, state):
+        self.sent.append(("set_control", action_id, control, state))
+        if self.fail_at == "no_forward_ack":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 6, action_id, "set_control", "applied", None,
+        ))
+        if self.fail_at != "no_progress":
+            native = _observation(7, kind="move", food=20, bread_count=0)
+            self.messages.append(replace(
+                native, snapshot=replace(
+                    native.snapshot,
+                    position=MineflayerPosition(.5, 64, 0),
+                ),
+            ))
+
+    async def send_clear_controls(self, action_id):
+        self.sent.append(("clear_controls", action_id))
+        if self.fail_at == "no_stop_ack":
+            return
+        self.messages.append(MineflayerEffectResult(
+            "session-1", 8, action_id, "clear_controls", "applied", None,
+        ))
+
+
+def _physical_move_args(tmp_path, *, create=True, need=True):
+    args = _physical_args(tmp_path, create=create)
+    args.physical_eat_dev = False
+    args.physical_move_dev = True
+    args.move_destination = ["point-1,3,64,0"]
+    args.exploration_need = need
+    args.edible_item = []
+    return args
+
+
+def test_cli_l1_selected_move_l0_ir_shared_wal_and_native_stop_probes(
+    monkeypatch, tmp_path,
+):
+    session = FakePhysicalMoveSession()
+    args = _physical_move_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    receipt = asyncio.run(run(args))
+    assert receipt["status"] == "NATIVE_MOVE_PROGRESS_STOP_READBACK_DEV_ONLY"
+    assert receipt["physical_move_dev_selected"] is True
+    assert receipt["physical_eat_dev_selected"] is False
+    assert receipt["initial_skill_ir"] == "MOVE@1"
+    assert receipt["initial_skill_step_status"] == "PROPOSED_NOT_ISSUED"
+    assert receipt["initial_skill_evaluation_status"] == "YIELD_EVALUATION"
+    assert receipt["native_move_paper_settled_attested"] is False
+    assert receipt["native_move_arrival_attested"] is False
+    assert receipt["native_move_progress_m"] == pytest.approx(.5)
+    assert receipt["native_move_stop_residual_m"] == pytest.approx(.01)
+    assert receipt["selected"]["target_ref"].startswith("destination:point-1@")
+    assert receipt["physical_journal_records"][-1]["capability"] == "MOVE"
+    assert receipt["physical_journal_records"][-1]["status"] == (
+        "NATIVE_MOVE_PROGRESS_STOP_READBACK"
+    )
+    assert receipt["physical_journal_unresolved"] is False
+    assert receipt["action_outcome_count"] == 1
+    assert receipt["skill_final_state"] == "started"
+    assert session.first_wal_status == "PREPARED_UNRESOLVED"
+    assert [x[0] for x in session.sent].count("set_control") == 1
+    assert [x[0] for x in session.sent].count("clear_controls") == 1
+    assert [x["effect"] for x in receipt["native_effect_receipts"]] == [
+        "look", "set_control", "clear_controls",
+    ]
+    assert session.closed
+
+
+@pytest.mark.parametrize("failure", [
+    "no_forward_ack", "no_progress", "no_stop_ack",
+    "drifting", "no_second_stop_probe",
+])
+def test_cli_move_inconclusive_control_blocks_restart_without_automatic_retry(
+    monkeypatch, tmp_path, failure,
+):
+    session = FakePhysicalMoveSession(fail_at=failure)
+    args = _physical_move_args(tmp_path)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    with pytest.raises(cli.CognitiveWorldRunError) as error:
+        asyncio.run(run(args))
+    audit = error.value.audit
+    assert audit["physical_move_dev_selected"] is True
+    assert audit["physical_journal_unresolved"] is True
+    assert audit["physical_journal_records"][-1]["status"] == "PREPARED_UNRESOLVED"
+    assert audit["recorded_actions"][0]["state"] == "unknown"
+    assert len([x for x in session.sent if x[0] == "set_control"]) == 1
+    assert len([x for x in session.sent if x[0] == "clear_controls"]) == 1
+    restored = FakePhysicalMoveSession()
+    _inject_physical_transport(monkeypatch, restored)
+    with pytest.raises(cli.CognitiveWorldRunError) as second:
+        asyncio.run(run(_physical_move_args(tmp_path, create=False)))
+    assert "STOP/UNKNOWN" in second.value.audit["error"]
+    assert restored.sent == []
+
+
+def test_cli_missing_exploration_need_does_not_issue_move(monkeypatch, tmp_path):
+    session = FakePhysicalMoveSession()
+    args = _physical_move_args(tmp_path, need=False)
+    session.wal_path = Path(args.physical_journal_path)
+    _inject_physical_transport(monkeypatch, session)
+    result = asyncio.run(run(args))
+    assert result["status"] == "ESCALATE_L2"
+    assert result["physical_move_parent_action_id"] is None
+    assert result["physical_journal_records"] == []
+    assert not any(x[0] in {"look", "set_control", "clear_controls"} for x in session.sent)
+
+
+def test_cli_move_eat_attack_legacy_shadow_modes_are_exclusive():
+    def args(*options):
+        return parser().parse_args([
+            "--model", "x", "--grant-real-world", "--grant-real-llm", *options,
+        ])
+
+    for flags in (
+        ("--physical-eat-dev", "--physical-move-dev"),
+        ("--physical-attack-dev", "--physical-move-dev"),
+        ("--physical-move-dev", "--execute-native"),
+        ("--physical-move-dev", "--s49-readonly-shadow"),
+        ("--exploration-need",),
+        ("--move-destination", "point-1,3,64,0"),
+    ):
+        with pytest.raises(MinimalCognitionError):
+            asyncio.run(run(args(*flags)))

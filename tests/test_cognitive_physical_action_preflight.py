@@ -10,10 +10,12 @@ import pytest
 
 from experiments.cognitive_physical_action_preflight import (
     propose_from_cognitive_readonly_evidence,
+    propose_initial_skill_from_cognitive_readonly_evidence,
 )
 from experiments.cognitive_s49_readonly_handoff import S49ShadowRefusal
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.initial_skill_ir import SkillIRRefusal
 from relay_self.physical_action_port import (
     PhysicalActionPortRefusal,
     PhysicalCapability,
@@ -139,3 +141,69 @@ def test_attack_selected_target_can_be_proposed_without_issuing_attack():
     assert receipt.port_proposal.proposal.state is ActionState.PROPOSED
     assert receipt.port_proposal.physical_issued is False
     assert supervisor.recorded_actions == ()
+
+
+@pytest.mark.parametrize("kind", ["EAT", "ATTACK"])
+def test_l0_initial_skill_routes_existing_l1_to_only_one_actionport_proposal(kind):
+    """Existing Schema/L1 chooses. CPU IR does not generate an Action issuer."""
+    if kind == "EAT":
+        first, now, selected, owner, previous, current = original_selected_eat()
+        cap = PhysicalCapability("EAT", 1, "hand", "FOOD", True)
+    else:
+        start = observation(1, kind="entities", food=20, entities=(zombie(),))
+        previous = observation(2, food=20, entities=(zombie(),),
+                               request_id="attack-A")
+        current = observation(3, food=20, entities=(zombie(),),
+                              request_id="attack-B")
+        first, now, selected, owner = select(start, current)
+        cap = PhysicalCapability("attack_entity", 1, "hand", "ZOMBIE", True)
+
+    source = Provenance("test-owner", "selected-L1")
+    owner.commit("intent-A", objective=selected.option.goal_id,
+                 at_ns=1, provenance=source)
+    skill = SkillExecution.start(
+        "skill-ir-1", skill_id=selected.option.skill_id,
+        intent_commitment=owner, at_ns=2, provenance=source,
+    )
+    supervisor = ActionSupervisor()
+    receipt = propose_initial_skill_from_cognitive_readonly_evidence(
+        selected, original_frame=first, current_frame=now,
+        previous_probe=previous, current_probe=current,
+        selected_intent_id="intent-A", capability=cap,
+        action_id="physical-ir-1", intent_owner=owner,
+        skill_execution=skill, supervisor=supervisor,
+        registered_versions=frozenset({(kind, 1)}),
+        at_ns=3, deadline_ns=100, provenance=source,
+    )
+    assert receipt.status == "PROPOSED_NOT_ISSUED"
+    assert receipt.ir.skill_id == kind
+    assert receipt.cursor.pending_action_id == "physical-ir-1"
+    assert receipt.cursor.action_count == 1
+    assert receipt.port_proposal.proposal.state is ActionState.PROPOSED
+    assert not receipt.port_proposal.physical_issued
+    assert supervisor.recorded_actions == ()
+    assert owner.current_intent.intent_id == "intent-A"
+
+
+def test_unregistered_initial_skill_does_not_propose_physical_action():
+    first, now, selected, owner, previous, current = original_selected_eat()
+    source = Provenance("test-owner", "selected-L1")
+    owner.commit("intent-A", objective=selected.option.goal_id,
+                 at_ns=1, provenance=source)
+    skill = SkillExecution.start(
+        "skill-ir-1", skill_id="EAT", intent_commitment=owner,
+        at_ns=2, provenance=source,
+    )
+    sup = ActionSupervisor()
+    with pytest.raises(SkillIRRefusal, match="registered"):
+        propose_initial_skill_from_cognitive_readonly_evidence(
+            selected, original_frame=first, current_frame=now,
+            previous_probe=previous, current_probe=current,
+            selected_intent_id="intent-A",
+            capability=PhysicalCapability("EAT", 1, "hand", "FOOD", True),
+            action_id="physical-ir-1", intent_owner=owner,
+            skill_execution=skill, supervisor=sup,
+            registered_versions=frozenset(),
+            at_ns=3, deadline_ns=100, provenance=source,
+        )
+    assert sup.recorded_actions == ()
