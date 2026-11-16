@@ -512,8 +512,8 @@ def _registered_preset_shortlist(
 
     urgent_keys = sorted(k for k in groups if urgency.get(k[0], False))
     active_keys = sorted(k for k in groups if not urgency.get(k[0], False))
-    urgent_keys = rotate(urgent_keys, epoch)
-    active_keys = rotate(active_keys, epoch)
+    urgent_keys = rotate(urgent_keys, (epoch - 1) * max_choices)
+    active_keys = rotate(active_keys, (epoch - 1) * max_choices)
 
     shown: list[Option] = []
     reserve = None
