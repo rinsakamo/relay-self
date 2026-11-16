@@ -9,6 +9,7 @@ import json
 import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -92,6 +93,7 @@ async def issue_attack_from_selected_l1_dev(
     issue_authority_id: str,
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
+    bind_native_children: Callable[[str], None] | None = None,
 ) -> CognitivePhysicalAttackResult:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -260,6 +262,7 @@ async def issue_attack_from_selected_l1_dev(
         supervisor=supervisor, journal=journal, at_ns=4,
         provenance=provenance, grant_real_world=dev_physical_grant,
         acknowledge_dev_unverified_principal=acknowledge_unverified_principal,
+        bind_native_children=bind_native_children,
     )
     advanced = l0.tick(now_ns=time.monotonic_ns())
     steps.append(advanced)
