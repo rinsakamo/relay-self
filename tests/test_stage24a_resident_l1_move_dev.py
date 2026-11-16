@@ -28,7 +28,6 @@ from relay_self.resident_l1_move_options_dev import (
 )
 from relay_self.skill import SkillExecution
 
-
 CAP = PhysicalCapability("MOVE", 1, "locomotion", "RELATIVE", True)
 
 
