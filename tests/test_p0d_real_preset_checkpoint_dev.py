@@ -66,7 +66,7 @@ def source_recovered(self_id="A", *, accepted=True):
                 self_id, "accept-operator", preset.preset_ref,
                 Provenance("self-owner", "typed-owner"),
             ),
-            accepted_by_self=True, expected_revision=0,
+            accepted_by_self=True, expected_revision=initial.revision,
             available_skills=frozenset({("MOVE", 1)}),
         )
     retained = PersistentCognition(
