@@ -66,6 +66,8 @@ def reselect_restored_move_preset(
     first: MineflayerObservation,
     refreshed: MineflayerObservation,
     *,
+    source_self_id: str,
+    expected_native_session_id: str,
     definition: SkillDefinition | None = None,
 ) -> RestoredPresetProbeWitness:
     """Read-only CURRENT->number SELECT->new CURRENT; no effect commands.
@@ -76,6 +78,10 @@ def reselect_restored_move_preset(
     """
     if (
         not isinstance(restored, StagedRecoveredCognition)
+        or type(source_self_id) is not str
+        or restored.self_id != source_self_id
+        or type(expected_native_session_id) is not str
+        or not expected_native_session_id
         or not isinstance(first, MineflayerObservation)
         or not isinstance(refreshed, MineflayerObservation)
         or first.kind != "probe" or refreshed.kind != "probe"
@@ -87,6 +93,7 @@ def reselect_restored_move_preset(
                 and not restored.semantic.old_skill_resume_authorized
                 and not restored.semantic.new_physical_action_issue_authorized)
         or first.session_id != refreshed.session_id
+        or first.session_id != expected_native_session_id
         or first.session_id == restored.semantic.cut.former_native_session_id
         or not 0 <= first.seq < refreshed.seq
         or first.snapshot.health <= 0 or refreshed.snapshot.health <= 0
