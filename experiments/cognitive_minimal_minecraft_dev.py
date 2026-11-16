@@ -445,6 +445,7 @@ async def execute_one_cognitive_world_turn(
     probe_request_id: str | None = None,
     s49_readonly_shadow: bool = False,
     exploration_need: bool = False,
+    use_registered_presets: bool = False,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -463,6 +464,12 @@ async def execute_one_cognitive_world_turn(
             or type(s49_readonly_shadow) is not bool
             or type(exploration_need) is not bool):
         raise MinimalCognitionError("native issuance/shadow flags must be bool")
+    if type(use_registered_presets) is not bool:
+        raise MinimalCognitionError("registered Preset mode must be bool")
+    if use_registered_presets and issue_native:
+        raise MinimalCognitionError(
+            "registered parameterized Skill cannot issue through legacy executor"
+        )
     if s49_readonly_shadow and issue_native:
         raise MinimalCognitionError(
             "S49 read-only two-probe handoff never permits a native Action"
@@ -480,6 +487,18 @@ async def execute_one_cognitive_world_turn(
         raise MinimalCognitionError("existing IntentCommitment required")
     if supervisor.open_actions:
         raise MinimalCognitionError("existing ActionSupervisor still owns Actions")
+    schema_preset_kwargs = {}
+    if use_registered_presets:
+        # Normal CURRENT Schema/L1 path with explicitly Self-accepted Presets.
+        # Local import avoids the SkillIR -> Option dependency cycle.
+        from relay_self.initial_skill_ir import initial_skill_definitions
+
+        schema_preset_kwargs = {
+            "use_registered_presets": True,
+            "skill_definitions": {
+                (d.skill_id, d.version): d for d in initial_skill_definitions()
+            },
+        }
     first = native_schema_percept(
         initial_observation, scenario, self_id=self_id,
         exploration_need=exploration_need,
@@ -487,6 +506,7 @@ async def execute_one_cognitive_world_turn(
     original_frame = cpu_schema_epoch(
         first, registry, epoch=epoch, allowed_skills=allowed_skills,
         hunger_threshold=scenario.food_threshold,
+        **schema_preset_kwargs,
     )
     round_: L1Round = assemble_l1_select(
         original_frame, intent_owner=intent_owner, recent_3self=recent_3self,
@@ -540,6 +560,7 @@ async def execute_one_cognitive_world_turn(
     current_frame = cpu_schema_epoch(
         current_percept, registry, epoch=epoch + 1,
         allowed_skills=allowed_skills, hunger_threshold=scenario.food_threshold,
+        **schema_preset_kwargs,
     )
     selection = resolve_l1_choice(
         round_, l1_result, current_frame=current_frame,
@@ -569,6 +590,17 @@ async def execute_one_cognitive_world_turn(
             "DEFER", Selection("DEFER", None, "ActionSupervisor became busy"),
             original_frame, current_frame, l1_result,
             l1_elapsed_ns, probe_elapsed_ns, None,
+            probe_request_id=unique_probe_request_id,
+            probe_sequence=current_observation.seq,
+            native_probe_trace=probe_trace,
+        )
+    if use_registered_presets:
+        # This branch is read-only until the original one-parent physical
+        # ActionPort admits the completed constraints and Budget. No legacy
+        # EAT/ATTACK/MOVE native path is eligible for parameterized calls.
+        return WorldStepReceipt(
+            "INVOCATION_BOUND_NO_ISSUE", selection, original_frame,
+            current_frame, l1_result, l1_elapsed_ns, probe_elapsed_ns, None,
             probe_request_id=unique_probe_request_id,
             probe_sequence=current_observation.seq,
             native_probe_trace=probe_trace,
