@@ -269,7 +269,7 @@ class PhysicalIssueAdmission:
             # literal Action ID. Real selected issuers explicitly bind their
             # parent-child IDs after original PREPARED WAL reservation.
             self._native_child_ids[self_id] = (
-                {} if defer_selected_children else
+                {} if defer_selected_children or effect_family == "MOVE" else
                 {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
             )
         try:
@@ -313,6 +313,9 @@ class PhysicalIssueAdmission:
                 or lease.action_id != lease_action_id
                 or lease.effect_family != family
                 or self._native_child_ids.get(self_id) is None
+                or (
+                    family == "MOVE" and lease.action_id != parent_action_id
+                )
             ):
                 raise PhysicalIssueFenceError("original selected lease no longer current")
             self._native_child_ids[self_id] = _native_children(family, parent_action_id)
@@ -330,7 +333,19 @@ class PhysicalIssueAdmission:
         with self._lock:
             if self._poisoned:
                 raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
-            if self._resident_states.get(self_id) != "ONLINE":
+            resident_state = self._resident_states.get(self_id)
+            # A quarantined MOVE may still need one *exact* STOP to prevent
+            # continued walking. No other motion/effect can follow quarantine.
+            active_motion = self._active.get(self_id)
+            quarantine_stop = (
+                resident_state == "QUARANTINED"
+                and not self._closed and not self._poisoned
+                and active_motion is not None
+                and active_motion.effect_family == "MOVE"
+                and effect == "clear_controls"
+                and self._native_child_ids.get(self_id, {}).get(effect) == action_id
+            )
+            if resident_state != "ONLINE" and not quarantine_stop:
                 raise PhysicalIssueFenceError("Self resident native effect blocked")
             if self._sessions.get(self_id) != native_session_id:
                 raise PhysicalIssueFenceError("stale/foreign native effect session")
@@ -676,6 +691,33 @@ class PhysicalIssueAdmission:
             self._resident_states[self_id] = "ONLINE"
             self._resident_epochs[self_id] += 1
             self._resident_fence_refs.pop(self_id, None)
+
+    async def issue_move(self, session: Any, **kwargs: Any) -> Any:
+        """Same original PhysicalIssueAdmission, WAL and actor lease as EAT.
+
+        Only after a Self has selected its own existing PhysicalActionPort
+        proposal. No new Skill/Goal chooser, source author or native sender.
+        """
+        from experiments.cognitive_physical_move_issue_dev import issue_selected_move_dev
+
+        proposal = kwargs["proposal"]
+        parent = proposal.binding.action_id
+        with self.lease(
+            self_id=proposal.binding.scope.self_id,
+            native_session_id=session.started.session_id,
+            action_id=parent,
+            effect_family="MOVE",
+        ):
+            def register(selected: str) -> None:
+                self.bind_native_children(
+                    self_id=proposal.binding.scope.self_id,
+                    native_session_id=session.started.session_id,
+                    lease_action_id=parent, parent_action_id=selected,
+                    family="MOVE", journal=kwargs["journal"],
+                )
+            return await issue_selected_move_dev(
+                session, **kwargs, bind_native_children=register,
+            )
 
     async def issue_eat(self, session: Any, **kwargs: Any) -> Any:
         """Wrap existing native issuer, WAL and async ACK+consequence readback."""
