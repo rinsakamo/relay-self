@@ -84,9 +84,13 @@ Arguments are strictly tagged `TARGET`, `NUMBER`, `FLAG`, `SYMBOL`,
 separate. No arbitrary JSON, Python, unbounded loops or nested expression
 evaluator. Numeric values must be finite. Arguments and constraint names
 are unique, and the definition's parameter schema rejects missing/foreign
-arguments. `max_actions` is bounded by the currently existing interpreter
-limit of 4; `max_duration_ms` and distance/observation limits are explicitly
-caller requested **ceilings**, not additional authorizations. Arbitrary
+arguments. The typed requested `SkillBudget` may describe a larger future
+learned/composite Skill (up to 64 requested Actions, 1 hour, 100 km and
+4,096 observations), but the current physical interpreter and native issuer
+**still enforce their own stricter four-Action/one-parent limits**. Budget
+fields are explicitly caller requested **ceilings**, never extra grants.
+The future composite executor must split/reconcile parent/child budgets
+without multiplying Action authority. Arbitrary
 constraint names do not magically acquire a WorldBody enforcement
 implementation. An unrecognized requirement is a reason to DEFER/HOLD
 once the physical admission bridge is built.
