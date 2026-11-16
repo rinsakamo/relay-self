@@ -129,14 +129,14 @@ class SkillBudget:
     max_observations: int = 32
 
     def __post_init__(self) -> None:
-        if (type(self.max_actions) is not int or not 1 <= self.max_actions <= 4
+        if (type(self.max_actions) is not int or not 1 <= self.max_actions <= 64
                 or type(self.max_duration_ms) is not int
-                or not 1 <= self.max_duration_ms <= 60000
+                or not 1 <= self.max_duration_ms <= 3600000
                 or type(self.max_observations) is not int
-                or not 1 <= self.max_observations <= 256):
+                or not 1 <= self.max_observations <= 4096):
             raise SkillInvocationRefusal("bounded positive Skill resource budget required")
         if self.max_distance_m is not None:
-            _number("travel budget", self.max_distance_m, maximum=1000)
+            _number("travel budget", self.max_distance_m, maximum=100000)
             if self.max_distance_m <= 0:
                 raise SkillInvocationRefusal("travel budget must be positive")
 
