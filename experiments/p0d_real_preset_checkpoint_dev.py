@@ -21,7 +21,6 @@ import os
 import shutil
 import sys
 import tempfile
-import uuid
 from dataclasses import asdict
 from pathlib import Path
 
@@ -281,11 +280,6 @@ async def _real_preset_trial(
         original.pattern_registry = source.semantic.pattern_registry
         original.fresh_native_observation_required = True
     restarted = paper.restart_same_source_world()
-    if (
-        restarted.old_server_session_id
-        if hasattr(restarted, "old_server_session_id") else False
-    ):
-        raise RealPresetCheckpointRefusal("unexpected reused Paper process")
     if (
         restarted.new_server_session_id == first_paper_session
         or restarted.new_server_session_id != paper.owned_session_id
