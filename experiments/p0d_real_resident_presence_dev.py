@@ -34,10 +34,6 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalGrantStage,
 )
 from experiments.cognitive_physical_move_issue_dev import ResidentMoveDevReceipt
-from experiments.stage24b_real_l1_move_dev import (
-    require_frozen_stage24b_choice,
-    run_stage24b_selected_b_move,
-)
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
@@ -48,6 +44,10 @@ from experiments.p0d_real_paper_smoke_dev import (
 from experiments.p0d_real_two_native_smoke_dev import (
     preflight_two_native,
     two_native_server_properties,
+)
+from experiments.stage24b_real_l1_move_dev import (
+    require_frozen_stage24b_choice,
+    run_stage24b_selected_b_move,
 )
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
