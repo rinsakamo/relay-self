@@ -155,6 +155,44 @@ def require_frozen_stage24b_choice(
     return result
 
 
+def require_frozen_stage24b_binding(
+    path: Path, sha256: str, *,
+    model_choice_sha256: str, action_id: str, intent_id: str,
+    skill_execution_id: str, target_ref: str, chosen_number: str,
+    native_probe_seq: int, native_request_id: str,
+) -> dict[str, object]:
+    """Independent disk readback of the typed original pre-ISSUE binding."""
+    if file_sha256(path) != sha256:
+        raise Stage24bMoveRefusal("frozen Stage24b Intent/Skill/Action binding digest changed")
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise Stage24bMoveRefusal("frozen Stage24b original binding unreadable") from exc
+    binding = record.get("physical_binding") if type(record) is dict else None
+    if (
+        type(record) is not dict
+        or record.get("classification") != "STAGE24B_PREISSUE_L1_OPTION_BINDING_DEV"
+        or record.get("actual_model_choice_sha256") != model_choice_sha256
+        or record.get("selected_number") != chosen_number
+        or record.get("physical_authorized") is not False
+        or record.get("physical_issued") is not False
+        or type(binding) is not dict
+        or binding.get("action_id") != action_id
+        or binding.get("intent_id") != intent_id
+        or binding.get("skill_execution_id") != skill_execution_id
+        or binding.get("target_ref") != target_ref
+        or binding.get("native_seq") != native_probe_seq
+        or binding.get("native_request_id") != native_request_id
+        or binding.get("goal_id") != "EXPLORE_WORLD"
+        or binding.get("skill_id") != "MOVE"
+        or binding.get("skill_version") != 1
+        or binding.get("target_kind") != "RELATIVE"
+        or binding.get("capability_ref") != "MOVE"
+    ):
+        raise Stage24bMoveRefusal("frozen L1 option and original Action binding diverged")
+    return record
+
+
 async def run_stage24b_selected_b_move(
     *, session: MineflayerProcessSession,
     owner: CheckpointedCognitiveOwner,
@@ -291,6 +329,33 @@ async def run_stage24b_selected_b_move(
             or proposal.binding.goal_id != candidate.option.goal_id
         ):
             raise Stage24bMoveRefusal("selected L1 option changed before issue")
+        # Immutable link created *before* any native issuance and before the
+        # original canonical WAL PREPARED, not a second Action authority.
+        binding_file = evidence_dir / "B-stage24b-preissue-binding.json"
+        binding_record = {
+            "schema": 1,
+            "classification": "STAGE24B_PREISSUE_L1_OPTION_BINDING_DEV",
+            "actual_model_choice_sha256": decision_sha,
+            "selected_number": candidate.choice_id,
+            "physical_binding": asdict(proposal.binding),
+            "physical_authorized": False,
+            "physical_issued": False,
+        }
+        _write_bytes_new(
+            binding_file,
+            (json.dumps(binding_record, sort_keys=True, indent=2) + "\n").encode(),
+        )
+        binding_sha = file_sha256(binding_file)
+        require_frozen_stage24b_binding(
+            binding_file, binding_sha, model_choice_sha256=decision_sha,
+            action_id=action_id, intent_id=intent_id,
+            skill_execution_id=skill.execution_id,
+            target_ref=candidate.option.target_ref,
+            chosen_number=candidate.choice_id,
+            native_probe_seq=current.seq,
+            native_request_id=current.request_id,
+        )
+
         def grant(stage: PhysicalGrantStage) -> PhysicalDevGrant:
             return PhysicalDevGrant(
                 stage=stage,
@@ -352,6 +417,8 @@ async def run_stage24b_selected_b_move(
             "paper_action_causation": False,
             "gpu_inference_ran": True,
             "model_choice_file": str(decision_file),
+            "model_binding_file": str(binding_file),
+            "model_binding_sha256": binding_sha,
             "model_choice_sha256": decision_sha,
             "model_choice_id": candidate.choice_id,
             "model_choice_target_ref": candidate.option.target_ref,
