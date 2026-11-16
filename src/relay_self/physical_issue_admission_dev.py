@@ -270,8 +270,10 @@ class PhysicalIssueAdmission:
             # literal Action ID. Real selected issuers explicitly bind their
             # parent-child IDs after original PREPARED WAL reservation.
             self._native_child_ids[self_id] = (
-                {} if defer_selected_children or effect_family == "MOVE" else
-                {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
+                {} if defer_selected_children or effect_family == "MOVE"
+                else _native_children(effect_family, action_id)
+                if not self._resident_mode and effect_family in ("EAT", "ATTACK")
+                else {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
             )
             self._used_native_children[self_id] = set()
         try:
@@ -739,7 +741,7 @@ class PhysicalIssueAdmission:
             action_id=proposal.binding.action_id,
             effect_family="EAT", defer_selected_children=True,
         ):
-            original = kwargs["journal"]
+            original = kwargs.get("journal")
             # The physical issuer performs the canonical PREPARED reservation;
             # it supplies the one-time callback before ANY effect is written.
             def register(parent: str) -> None:
