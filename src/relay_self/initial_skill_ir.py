@@ -25,6 +25,15 @@ from relay_self.physical_action_port import (
 )
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill_invocation import (
+    SkillBudget,
+    SkillConstraints,
+    SkillDefinition,
+    SkillInvocation,
+    SkillInvocationRefusal,
+    SkillTarget,
+    bind_skill_invocation,
+)
 
 
 class SkillIRRefusal(ValueError):
@@ -75,6 +84,7 @@ class PhysicalSkillIR:
     steps: tuple[SkillStep, ...]
     origin: SkillOrigin
     provenance: Provenance
+    invocation: SkillInvocation | None = None
 
     def __post_init__(self) -> None:
         if not all(_text(s) for s in (self.skill_id, self.goal_id, self.target_kind)):
@@ -91,6 +101,14 @@ class PhysicalSkillIR:
             raise SkillIRRefusal("bounded nonempty executable Skill steps required")
         if sum(s.kind is StepKind.ACTION for s in self.steps) > 4:
             raise SkillIRRefusal("at most four physical Actions per Skill")
+        if self.invocation is not None and (
+            not isinstance(self.invocation, SkillInvocation)
+            or self.invocation.skill_id != self.skill_id
+            or self.invocation.skill_version != self.version
+            or self.invocation.goal_id != self.goal_id
+            or self.invocation.target.kind != self.target_kind
+        ):
+            raise SkillIRRefusal("bound invocation differs from compiled Skill")
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +167,98 @@ def compile_initial_skill(
     )
 
 
+
+def initial_skill_definitions() -> tuple[SkillDefinition, ...]:
+    """Ability ABI, not an innate Goal mapping or an Action authorization.
+
+    The same MOVE@1 supports Goal-specific PLACE, relative step or entity
+    range *arguments*. Existing WorldBody/physical issuer still determines
+    which calls are executable. REST remains physically unmapped.
+    """
+    source = Provenance("innate-skill-definition", "cognitive-v0.1")
+    return (
+        SkillDefinition("MOVE", 1, "INNATE", source,
+                        capability_ref="MOVE", capability_version=1),
+        SkillDefinition("EAT", 1, "INNATE", source,
+                        capability_ref="EAT", capability_version=1),
+        SkillDefinition("ATTACK", 1, "INNATE", source,
+                        capability_ref="attack_entity", capability_version=1),
+        SkillDefinition("REST", 1, "INNATE", source),
+    )
+
+
+def compile_invoked_skill(
+    selection: Selection,
+    *,
+    definition: SkillDefinition,
+    target: SkillTarget,
+    constraints: SkillConstraints,
+    budget: SkillBudget,
+    provenance: Provenance,
+    capability: PhysicalCapability,
+    arguments: tuple = (),
+) -> PhysicalSkillIR:
+    """Bind a Goal-independent innate/registered learned ability to L1 args.
+
+    Generates the *same finite CHECK_TARGET/ACTION IR*, with a source-bound
+    typed Invocation attached. It CANNOT issue an Action, register an L2
+    definition, or let new Goals/TargetKinds bypass a physical issuer.
+    """
+    if (not isinstance(selection, Selection) or selection.status != "READY"
+            or not isinstance(selection.option, Option)
+            or not isinstance(selection.world_scope, ScopeRef)
+            or not isinstance(definition, SkillDefinition)
+            or not isinstance(capability, PhysicalCapability)
+            or not isinstance(target, SkillTarget)
+            or not isinstance(constraints, SkillConstraints)
+            or not isinstance(budget, SkillBudget)
+            or not isinstance(provenance, Provenance)):
+        raise SkillIRRefusal("selected typed Skill Invocation and capability required")
+    option = selection.option
+    if (option.skill_id != definition.skill_id
+            or option.skill_version != definition.version
+            or option.target_ref != target.ref
+            or option.target_kind != target.kind
+            or option.arrival_contract != target.contract
+            or definition.capability_ref is None
+            or definition.capability_ref != capability.capability_ref
+            or definition.capability_version != capability.version
+            or not capability.available
+            or capability.target_kind != target.kind):
+        raise SkillIRRefusal("selected Skill/Target/capability do not match definition")
+    try:
+        invocation = bind_skill_invocation(
+            definition,
+            SkillInvocation(
+                scope=selection.world_scope,
+                skill_id=definition.skill_id,
+                skill_version=definition.version,
+                definition_ref=definition.definition_ref,
+                goal_id=option.goal_id,
+                target=target,
+                constraints=constraints,
+                budget=budget,
+                provenance=provenance,
+                arguments=arguments,
+            ),
+        )
+    except SkillInvocationRefusal as exc:
+        raise SkillIRRefusal("typed Skill Invocation arguments invalid") from exc
+    return PhysicalSkillIR(
+        skill_id=definition.skill_id,
+        version=definition.version,
+        goal_id=invocation.goal_id,
+        target_kind=invocation.target.kind,
+        steps=(
+            SkillStep(StepKind.CHECK_TARGET),
+            SkillStep(StepKind.ACTION, capability.capability_ref, capability.version),
+        ),
+        origin=SkillOrigin(definition.origin),
+        provenance=definition.provenance,
+        invocation=invocation,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SkillCursor:
     """Ephemeral execution index, NOT a replacement SkillExecution owner.
@@ -172,6 +282,7 @@ class SkillCursor:
     blocked: bool
     deadline_ns: int
     _lease: object = field(repr=False, compare=False)
+    invocation_ref: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,6 +352,12 @@ class FiniteSkillInterpreter:
                 or ir.target_kind != option.target_kind
                 or not _text(option.target_ref)):
             raise SkillIRRefusal("IR differs from selected Goal/Skill/Target")
+        if ir.invocation is not None and (
+            ir.invocation.scope != selection.world_scope
+            or ir.invocation.target.ref != option.target_ref
+            or ir.invocation.target.contract != option.arrival_contract
+        ):
+            raise SkillIRRefusal("selected Target/condition differs from Skill invocation")
         if not isinstance(intent_owner, IntentCommitment) or not isinstance(
             skill_execution, SkillExecution
         ):
@@ -261,6 +378,8 @@ class FiniteSkillInterpreter:
             ir.skill_id, ir.version, ir.goal_id, option.target_ref,
             option.target_kind, 0, 0, None, None, False, deadline_ns, self._lease,
         )
+        if ir.invocation is not None:
+            cursor = replace(cursor, invocation_ref=ir.invocation.invocation_ref)
         self._current, self._ir = cursor, ir
         return cursor
 
@@ -270,7 +389,11 @@ class FiniteSkillInterpreter:
     ) -> PhysicalSkillIR:
         if (not isinstance(cursor, SkillCursor) or cursor is not self._current
                 or cursor._lease is not self._lease
-                or self._ir is None or cursor.blocked):
+                or self._ir is None or cursor.blocked
+                or cursor.invocation_ref != (
+                    None if self._ir.invocation is None
+                    else self._ir.invocation.invocation_ref
+                )):
             raise SkillIRRefusal("stale, restarted, blocked or absent Skill cursor")
         if type(at_ns) is not int or not 0 <= at_ns < cursor.deadline_ns:
             raise SkillIRRefusal("Skill deadline expired")
