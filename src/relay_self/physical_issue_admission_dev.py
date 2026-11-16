@@ -150,6 +150,7 @@ class PhysicalIssueAdmission:
         # Admission is not a second Action owner: this map only gates exact
         # native child IDs belonging to the already-selected original Action.
         self._native_child_ids: dict[str, dict[str, str]] = {}
+        self._used_native_children: dict[str, set[str]] = {}
         self._closed = False
         self._poisoned = False
         self._fence_token: str | None = None
@@ -272,6 +273,7 @@ class PhysicalIssueAdmission:
                 {} if defer_selected_children or effect_family == "MOVE" else
                 {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
             )
+            self._used_native_children[self_id] = set()
         try:
             yield record
         finally:
@@ -279,6 +281,7 @@ class PhysicalIssueAdmission:
                 if self._active.get(self_id) == record:
                     del self._active[self_id]
                     self._native_child_ids.pop(self_id, None)
+                    self._used_native_children.pop(self_id, None)
 
     def bind_native_children(
         self, *, self_id: str, native_session_id: str,
@@ -318,6 +321,8 @@ class PhysicalIssueAdmission:
                 )
             ):
                 raise PhysicalIssueFenceError("original selected lease no longer current")
+            if self._used_native_children.get(self_id):
+                raise PhysicalIssueFenceError("cannot rebind already issued native effects")
             self._native_child_ids[self_id] = _native_children(family, parent_action_id)
 
     def require_native_effect(
@@ -364,10 +369,14 @@ class PhysicalIssueAdmission:
                 lease is None or lease.native_session_id != native_session_id
                 or effect not in _EFFECT_FAMILIES[lease.effect_family]
                 or self._native_child_ids.get(self_id, {}).get(effect) != action_id
+                or action_id in self._used_native_children.get(self_id, set())
             ):
                 raise PhysicalIssueFenceError(
                     "native effect requires active capability-scoped issuer lease"
                 )
+            # One-shot final-stdin admission, consumed before native IO.
+            # Write failures retain PREPARED WAL; no replay of the child.
+            self._used_native_children[self_id].add(action_id)
 
     def begin_neutralization(self) -> str:
         """Lock normal physical effects before one supervised STOP per Self.
