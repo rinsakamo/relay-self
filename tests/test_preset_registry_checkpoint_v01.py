@@ -61,9 +61,6 @@ def registry_for_self(self_id="self-A"):
         "hunger-eat", "BreadV1", 1, d.definition_ref,
         SkillConstraints((SkillArgument("item_available", ArgumentKind.FLAG, True),)),
         SkillBudget(2, 1800, 3.0, 12), SOURCE,
-        arguments=(
-            SkillArgument("note", ArgumentKind.SYMBOL, "bread"),
-        ) if False else (),
         expected_cost=SkillCostEstimate(1, 700, 1.5),
     )
     return accept_skill_parameter_preset(
