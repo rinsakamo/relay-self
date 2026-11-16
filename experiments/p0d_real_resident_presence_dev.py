@@ -46,6 +46,7 @@ from experiments.p0d_real_two_native_smoke_dev import (
     two_native_server_properties,
 )
 from experiments.stage24b_real_l1_move_dev import (
+    require_frozen_stage24b_binding,
     require_frozen_stage24b_choice,
     run_stage24b_selected_b_move,
 )
@@ -646,6 +647,35 @@ def _adopt_verified_trial_report(
                 != detail.get("model_choice_preset_ref")
             ):
                 raise RealResidentPresenceRefusal("model-selected parameter digest changed")
+            binding_path = detail.get("model_binding_file")
+            binding_sha = detail.get("model_binding_sha256")
+            if type(binding_path) is not str or type(binding_sha) is not str:
+                raise RealResidentPresenceRefusal("original L1 pre-ISSUE binding missing")
+            try:
+                read_binding = require_frozen_stage24b_binding(
+                    Path(binding_path), binding_sha,
+                    model_choice_sha256=model_sha,
+                    action_id=detail["original_action_id"],
+                    intent_id=detail["original_intent_id"],
+                    skill_execution_id=detail["original_skill_execution_id"],
+                    target_ref=detail["model_choice_target_ref"],
+                    chosen_number=detail["model_choice_id"],
+                    native_probe_seq=actual_choice["after_native_seq"],
+                    native_request_id=actual_choice["after_request_id"],
+                )
+            except (ValueError, OSError, RuntimeError) as exc:
+                raise RealResidentPresenceRefusal(
+                    "original L1-selected pre-ISSUE binding not verified"
+                ) from exc
+            if (
+                read_binding["physical_binding"]["native_seq"]
+                != sidecar["selected_probe"]["seq"]
+                or read_binding["physical_binding"]["native_request_id"]
+                != sidecar["selected_probe"]["request_id"]
+            ):
+                raise RealResidentPresenceRefusal(
+                    "actual L1 selected Action and native issuer probe diverged"
+                )
     elif detail is not None:
         raise RealResidentPresenceRefusal("unrequested B MOVE detail in presence-only trial")
 
