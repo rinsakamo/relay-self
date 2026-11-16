@@ -233,9 +233,8 @@ def test_missing_capability_yields_unresolved_goal_not_fake_move():
 def test_frozen_candidate_tamper_and_repeated_probe_fail_closed():
     turn, owner = make_turn()
     selected = choose(turn, choice_id=turn.prebound_moves[0].choice_id)
-    changed = replace(turn.prebound_moves[0], pulse_seconds=0.36)
     with pytest.raises(ResidentL1MoveRefusal):
-        replace(turn, prebound_moves=(changed, *turn.prebound_moves[1:]))
+        replace(turn.prebound_moves[0], pulse_seconds=0.36)
     with pytest.raises(ResidentL1MoveRefusal, match="replayed"):
         resolve_resident_l1_move(
             turn, selected, current_probe=probe(10),
