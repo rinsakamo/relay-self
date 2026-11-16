@@ -486,3 +486,51 @@ def test_world_source_and_typed_outcome_witness_reject_forgery():
     )
     assert result.status == "STOP_UNKNOWN"
     assert result.cursor.blocked
+
+
+def test_parameterized_skill_is_readable_by_l0_but_cannot_propose_unadmitted_action():
+    from relay_self.initial_skill_ir import (
+        compile_invoked_skill,
+        initial_skill_definitions,
+    )
+    from relay_self.skill_invocation import (
+        SkillBudget,
+        SkillConstraints,
+        SkillTarget,
+    )
+
+    selection, _, owner, skill, binding, cap, readback, source = fixture("EAT")
+    definition = next(
+        d for d in initial_skill_definitions() if d.skill_id == "EAT"
+    )
+    ir = compile_invoked_skill(
+        selection, definition=definition,
+        target=SkillTarget(selection.option.target_ref, selection.option.target_kind),
+        constraints=SkillConstraints(),
+        budget=SkillBudget(1, 1000),
+        provenance=source, capability=cap,
+    )
+    interpreter = FiniteSkillInterpreter()
+    cursor = interpreter.begin(
+        selection, ir=ir, intent_owner=owner,
+        skill_execution=skill, registered_versions=frozenset({("EAT", 1)}),
+        deadline_ns=100,
+    )
+    assert cursor.invocation_ref == ir.invocation.invocation_ref
+    checked = interpreter.check_target(
+        cursor, readback=readback, intent_owner=owner,
+        skill_execution=skill, at_ns=4,
+    )
+    assert checked.status == "CHECK_PASSED_NOT_AUTHORIZED"
+    supervisor = ActionSupervisor()
+    with pytest.raises(SkillIRRefusal, match="parameterized physical issuer"):
+        interpreter.propose(
+            checked.cursor, binding=binding, capability=cap,
+            readback=readback, intent_owner=owner,
+            skill_execution=skill, supervisor=supervisor,
+            at_ns=5, provenance=source,
+        )
+    assert supervisor.recorded_actions == ()
+    assert supervisor.open_actions == ()
+    assert interpreter._current is checked.cursor
+    assert owner.current_intent is not None
