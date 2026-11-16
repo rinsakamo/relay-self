@@ -9,6 +9,7 @@ import asyncio
 import hashlib
 import json
 from dataclasses import asdict
+from pathlib import Path
 
 import pytest
 
@@ -122,15 +123,33 @@ def test_original_move_raw_source_forgery_never_attests(tmp_path, fault):
         )
 
 
+def _sidecar(original_file: Path, digest: str) -> str:
+    source_sha = hashlib.sha256(Path(original_file).read_bytes()).hexdigest()
+    return json.dumps({
+        "classification": "OWNED_NATIVE_MOVE_RAW_SOURCE_READBACK_DEV",
+        "original_self_id": "B",
+        "original_native_session": "native-B",
+        "original_action_id": "original-move",
+        "canonical_wal_digest": digest,
+        "source_sha256": source_sha,
+        "all_stop_probes": [{}, {}, {}],
+        "native_start_ack": {"action_id": "original-move-start"},
+        "native_stop_ack": {"action_id": "original-move-stop"},
+        "paper_action_id_causal_ticket": False,
+        "autonomous_l1_skill_selection": False,
+    }, sort_keys=True) + "\n"
+
+
 def test_real_report_true_is_derived_from_original_terminal_plus_raw_and_paper(tmp_path):
     raw = tmp_path / "raw.jsonl"
     raw.write_bytes(b"source-fixture\n")
     checked = tmp_path / "audit.json"
-    checked.write_text('{"source_fixture":true}\n')
+    checked.write_text(_sidecar(raw, "a" * 64))
     info = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
         "original_action_id": "original-move",
         "original_canonical_wal_sha256": "a" * 64,
+        "b_native_session": "native-B",
         "autonomous_l1_skill_selection": False,
         "paper_action_causation": False,
         "independent_native_source": {
@@ -176,11 +195,12 @@ def test_report_never_claims_real_b_move_on_unverified_or_conflicting_source(
     raw = tmp_path / "raw"
     raw.write_bytes(b"correct-original-source")
     audit = tmp_path / "checked"
-    audit.write_bytes(b"source-verified")
+    audit.write_text(_sidecar(raw, "d" * 64))
     move = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
         "original_action_id": "original-move",
         "original_canonical_wal_sha256": "d" * 64,
+        "b_native_session": "native-B",
         "autonomous_l1_skill_selection": False,
         "paper_action_causation": False,
         "independent_native_source": {
