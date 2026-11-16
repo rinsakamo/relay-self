@@ -127,6 +127,48 @@ def _paper_join_witness(
     }
 
 
+def _readback_native_probe_source(
+    native_raw: Path, *, first_request: str, second_request: str,
+    native_session: str, first_seq: int, second_seq: int,
+) -> str:
+    """Compare exact frozen stdout with BOTH parsed source-qualified replies."""
+    if (
+        not first_request or not second_request
+        or first_request == second_request
+        or not native_session
+        or type(first_seq) is not int or type(second_seq) is not int
+        or not 0 <= first_seq < second_seq
+        or native_raw.is_symlink() or not native_raw.is_file()
+    ):
+        raise RealPresetCheckpointRefusal("native source transcript inputs stale")
+    try:
+        raw = native_raw.read_bytes()
+        observed_pairs: list[tuple[str, int, str]] = []
+        for line in raw.splitlines():
+            row = json.loads(line)
+            if type(row) is not dict:
+                raise RealPresetCheckpointRefusal("native JSONL non-object")
+            if row.get("type") == "observation" and row.get("kind") == "probe":
+                observed_pairs.append((
+                    row.get("session_id"), row.get("seq"), row.get("request_id"),
+                ))
+    except (OSError, ValueError, UnicodeError) as exc:
+        if isinstance(exc, RealPresetCheckpointRefusal):
+            raise
+        raise RealPresetCheckpointRefusal(
+            "native original source transcript not readable JSONL"
+        ) from exc
+    expected = (
+        (native_session, first_seq, first_request),
+        (native_session, second_seq, second_request),
+    )
+    if any(observed_pairs.count(entry) != 1 for entry in expected):
+        raise RealPresetCheckpointRefusal(
+            "new native source probe missing/duplicated in exact stdout"
+        )
+    return file_sha256(native_raw)
+
+
 def _stage_owner_cuts(
     *, owners: dict[str, CheckpointedCognitiveOwner],
     work: ResidentCognitiveWorkOwner,
@@ -362,32 +404,15 @@ async def _real_preset_trial(
         first = await _bounded_b_probe(session)
         refreshed = await _bounded_b_probe(session)
         session.finish_raw_source_audit()
-        # Read ORIGINAL fsynced Mineflayer stdout again. Both correlated
-        # requests must be present with the exact source session + sequence.
-        raw = native_raw.read_bytes()
-        observed_pairs: set[tuple[str, int, str]] = set()
-        for line in raw.splitlines():
-            try:
-                row = json.loads(line)
-            except (ValueError, UnicodeError) as exc:
-                raise RealPresetCheckpointRefusal(
-                    "native source transcript contains invalid JSON"
-                ) from exc
-            if type(row) is not dict:
-                raise RealPresetCheckpointRefusal("native JSONL non-object")
-            if row.get("type") == "observation" and row.get("kind") == "probe":
-                observed_pairs.add((
-                    row.get("session_id"), row.get("seq"),
-                    row.get("request_id"),
-                ))
-        expected_pairs = {
-            (first.session_id, first.seq, first.request_id),
-            (refreshed.session_id, refreshed.seq, refreshed.request_id),
-        }
-        if not expected_pairs.issubset(observed_pairs):
-            raise RealPresetCheckpointRefusal(
-                "new native probe readback differs from exact stdout source"
-            )
+        # Frozen ORIGINAL Mineflayer stdout is independently reread, not
+        # inferred from the parsed Python receipts alone.
+        native_digest = _readback_native_probe_source(
+            native_raw,
+            first_request=first.request_id,
+            second_request=refreshed.request_id,
+            native_session=session.started.session_id,
+            first_seq=first.seq, second_seq=refreshed.seq,
+        )
         source = staged_by_id[sid]
         observed = reselect_restored_move_preset(
             source, first, refreshed,
@@ -412,7 +437,7 @@ async def _real_preset_trial(
             "first_position": asdict(first.snapshot.position),
             "refreshed_position": asdict(refreshed.snapshot.position),
             "exact_native_stdout_path": str(native_raw),
-            "exact_native_stdout_sha256": file_sha256(native_raw),
+            "exact_native_stdout_sha256": native_digest,
             "exact_native_stdout_two_correlated_probes": True,
         }
 
