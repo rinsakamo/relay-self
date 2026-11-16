@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Callable
 
@@ -53,6 +54,8 @@ class MineflayerProcessSession:
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
         self._effect_admission: Callable[[str, str, str], None] | None = None
+        self._raw_source_audit_fd: int | None = None
+        self._raw_source_audit_finished = False
 
     @classmethod
     async def launch(
@@ -138,6 +141,43 @@ class MineflayerProcessSession:
             )
         self._effect_admission = check_effect
 
+    def start_raw_source_audit(self, path: str | Path) -> None:
+        """Capture exact native stdout JSONL bytes from THIS owned Node process.
+
+        This is a source transcript, not independent Minecraft/Paper evidence.
+        Exclusive creation and per-line fsync ensure an ACK or settle sample
+        cannot disappear behind a success-only post-hoc JSON report.
+        """
+        if (
+            self._started is None
+            or self._raw_source_audit_fd is not None
+            or self._raw_source_audit_finished
+        ):
+            raise MineflayerProcessIOError("native source audit already used/not started")
+        location = Path(path)
+        fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.fsync(fd)
+            dir_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_source_audit_fd = fd
+
+    def finish_raw_source_audit(self) -> None:
+        """Freeze a completed source transcript before checksum readback."""
+        fd = self._raw_source_audit_fd
+        if fd is None or self._raw_source_audit_finished:
+            raise MineflayerProcessIOError("native source audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_source_audit_fd = None
+        self._raw_source_audit_finished = True
+
     @property
     def owned_child_pid(self) -> int | None:
         """OS PID of THIS adapter-owned native process (not source authentication)."""
@@ -158,6 +198,19 @@ class MineflayerProcessSession:
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        fd = self._raw_source_audit_fd
+        if fd is not None:
+            # Persist ORIGINAL bytes, including malformed/foreign stream
+            # messages. A failed write is fatal, never silently drops proof.
+            try:
+                written = os.write(fd, line)
+                if written != len(line):
+                    raise OSError("partial native source audit write")
+                os.fsync(fd)
+            except OSError as exc:
+                raise MineflayerProcessIOError(
+                    "native stdout evidence write failed; source held"
+                ) from exc
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError as exc:
