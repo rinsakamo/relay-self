@@ -127,7 +127,10 @@ def test_real_paper_absent_explicit_flags_refuses_before_any_io(
 def test_two_distinct_original_self_presets_rebuild_from_new_native_probes(sid):
     restored = source_recovered(sid)
     first, later = native_probe(sid, 11), native_probe(sid, 12)
-    proof = reselect_restored_move_preset(restored, first, later)
+    proof = reselect_restored_move_preset(
+        restored, first, later, source_self_id=sid,
+        expected_native_session_id=f"new-native-{sid}",
+    )
     assert proof.self_id == sid
     assert proof.new_native_session_id == f"new-native-{sid}"
     assert proof.old_native_session_id == f"old-native-{sid}"
@@ -175,4 +178,7 @@ def test_new_native_admission_fails_closed_on_source_or_owner_change(mutation):
             ),
         )
     with pytest.raises(RestoredPresetRealProbeRefusal):
-        reselect_restored_move_preset(original, first, second)
+        reselect_restored_move_preset(
+            original, first, second, source_self_id="A",
+            expected_native_session_id="new-native-A",
+        )
