@@ -79,7 +79,27 @@ _EFFECT_FAMILIES: dict[str, frozenset[str]] = {
     "NONE": frozenset(),
     "EAT": frozenset({"equip_item", "consume_held"}),
     "ATTACK": frozenset({"attack_entity"}),
+    # MOVE is only opted into resident mode with an original canonical WAL.
+    "MOVE": frozenset({"set_control", "clear_controls"}),
 }
+
+
+def _native_children(family: str, parent_action_id: str) -> dict[str, str]:
+    """ActionPort-selected parent -> exact primitive native child identities."""
+    if family == "EAT":
+        return {
+            "equip_item": parent_action_id + "-equip",
+            "consume_held": parent_action_id + "-consume",
+        }
+    if family == "ATTACK":
+        return {"attack_entity": parent_action_id + "-attack"}
+    if family == "MOVE":
+        return {
+            "set_control": parent_action_id + "-start",
+            "clear_controls": parent_action_id + "-stop",
+        }
+    raise PhysicalIssueFenceError("no native children for unsupported Action")
+
 
 
 class PhysicalIssueAdmission:
@@ -95,11 +115,14 @@ class PhysicalIssueAdmission:
         require_neutral_stop: bool = False,
         resident_mode: bool = False,
         initially_offline: bool = False,
+        allow_resident_move: bool = False,
     ) -> None:
         if type(resident_mode) is not bool or type(initially_offline) is not bool:
             raise PhysicalIssueFenceError("resident ownership mode must be explicit")
         if initially_offline and not resident_mode:
             raise PhysicalIssueFenceError("initially offline requires resident mode")
+        if type(allow_resident_move) is not bool or (allow_resident_move and not resident_mode):
+            raise PhysicalIssueFenceError("resident MOVE requires explicit opt-in")
         if type(require_neutral_stop) is not bool:
             raise PhysicalIssueFenceError("neutral STOP policy must be bool")
         self._require_neutral_stop = require_neutral_stop
@@ -114,6 +137,7 @@ class PhysicalIssueAdmission:
         self._lock = threading.RLock()
         self._sessions = dict(current_sessions)
         self._resident_mode = resident_mode
+        self._allow_resident_move = allow_resident_move
         # Ordinary all-N checkpoint remains unchanged unless opted in.
         # Offline session tokens are stale birth refs, NEVER issue grants.
         self._resident_states = {
@@ -123,6 +147,9 @@ class PhysicalIssueAdmission:
         self._resident_epochs = {sid: 0 for sid in current_sessions}
         self._resident_fence_refs: dict[str, str] = {}
         self._active: dict[str, IssueLease] = {}
+        # Admission is not a second Action owner: this map only gates exact
+        # native child IDs belonging to the already-selected original Action.
+        self._native_child_ids: dict[str, dict[str, str]] = {}
         self._closed = False
         self._poisoned = False
         self._fence_token: str | None = None
@@ -206,6 +233,7 @@ class PhysicalIssueAdmission:
     def lease(
         self, *, self_id: str, native_session_id: str, action_id: str,
         effect_family: str = "NONE",
+        defer_selected_children: bool = False,
     ) -> Iterator[IssueLease]:
         """Synchronous acquire before async await; finally releases on cancel."""
         with self._lock:
@@ -219,6 +247,15 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("physical Action ID required")
             if effect_family not in _EFFECT_FAMILIES:
                 raise PhysicalIssueFenceError("unsupported physical effect family")
+            if effect_family == "MOVE" and not (
+                self._resident_mode and self._allow_resident_move
+            ):
+                raise PhysicalIssueFenceError("MOVE requires original resident opt-in")
+            if type(defer_selected_children) is not bool or (
+                defer_selected_children and effect_family not in ("EAT", "ATTACK")
+            ):
+                raise PhysicalIssueFenceError("deferred child binding only for L1")
+
             if self_id in self._active or any(
                 x.action_id == action_id for x in self._active.values()
             ):
@@ -228,12 +265,57 @@ class PhysicalIssueAdmission:
                 effect_family,
             )
             self._active[self_id] = record
+            # Generic original test/adapter leases allow only their declared
+            # literal Action ID. Real selected issuers explicitly bind their
+            # parent-child IDs after original PREPARED WAL reservation.
+            self._native_child_ids[self_id] = (
+                {} if defer_selected_children else
+                {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
+            )
         try:
             yield record
         finally:
             with self._lock:
                 if self._active.get(self_id) == record:
                     del self._active[self_id]
+                    self._native_child_ids.pop(self_id, None)
+
+    def bind_native_children(
+        self, *, self_id: str, native_session_id: str,
+        lease_action_id: str, parent_action_id: str, family: str,
+        journal: Any,
+    ) -> None:
+        """Bind the selected original Action only AFTER canonical fsynced PREPARED.
+
+        The original L1 root lease is acquired before L1 creates the Action.
+        Hence final native stdin must be DENIED until the L1 runner installs
+        actual EAT/ATTACK parent-child IDs from the original WAL.
+        """
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        if not isinstance(journal, PhysicalActionJournal):
+            raise PhysicalIssueFenceError("original durable WAL required")
+        readback = PhysicalActionJournal.restore(journal.path, self_id=self_id)
+        rows = readback.records
+        if (
+            not rows or not readback.unresolved
+            or rows[-1]["action_id"] != parent_action_id
+            or rows[-1]["capability"] != family
+            or rows[-1]["session_id"] != native_session_id
+        ):
+            raise PhysicalIssueFenceError("selected child does not match PREPARED WAL")
+        with self._lock:
+            lease = self._active.get(self_id)
+            if (
+                self._poisoned or self._closed
+                or self._resident_states.get(self_id) != "ONLINE"
+                or lease is None or lease.native_session_id != native_session_id
+                or lease.action_id != lease_action_id
+                or lease.effect_family != family
+                or self._native_child_ids.get(self_id) is None
+            ):
+                raise PhysicalIssueFenceError("original selected lease no longer current")
+            self._native_child_ids[self_id] = _native_children(family, parent_action_id)
 
     def require_native_effect(
         self, *, self_id: str, native_session_id: str,
@@ -266,6 +348,7 @@ class PhysicalIssueAdmission:
             if (
                 lease is None or lease.native_session_id != native_session_id
                 or effect not in _EFFECT_FAMILIES[lease.effect_family]
+                or self._native_child_ids.get(self_id, {}).get(effect) != action_id
             ):
                 raise PhysicalIssueFenceError(
                     "native effect requires active capability-scoped issuer lease"
@@ -603,9 +686,21 @@ class PhysicalIssueAdmission:
             self_id=proposal.binding.scope.self_id,
             native_session_id=session.started.session_id,
             action_id=proposal.binding.action_id,
-            effect_family="EAT",
+            effect_family="EAT", defer_selected_children=True,
         ):
-            return await issue_selected_eat_dev(session, **kwargs)
+            original = kwargs["journal"]
+            # The physical issuer performs the canonical PREPARED reservation;
+            # it supplies the one-time callback before ANY effect is written.
+            def register(parent: str) -> None:
+                self.bind_native_children(
+                    self_id=proposal.binding.scope.self_id,
+                    native_session_id=session.started.session_id,
+                    lease_action_id=proposal.binding.action_id,
+                    parent_action_id=parent, family="EAT", journal=original,
+                )
+            return await issue_selected_eat_dev(
+                session, **kwargs, bind_native_children=register,
+            )
 
     async def issue_attack(self, session: Any, **kwargs: Any) -> Any:
         """Wrap existing ATTACK issuer including uncertain-outcome handling."""
@@ -616,9 +711,19 @@ class PhysicalIssueAdmission:
             self_id=proposal.binding.scope.self_id,
             native_session_id=session.started.session_id,
             action_id=proposal.binding.action_id,
-            effect_family="ATTACK",
+            effect_family="ATTACK", defer_selected_children=True,
         ):
-            return await issue_selected_attack_dev(session, **kwargs)
+            def register(parent: str) -> None:
+                self.bind_native_children(
+                    self_id=proposal.binding.scope.self_id,
+                    native_session_id=session.started.session_id,
+                    lease_action_id=proposal.binding.action_id,
+                    parent_action_id=parent, family="ATTACK",
+                    journal=kwargs["journal"],
+                )
+            return await issue_selected_attack_dev(
+                session, **kwargs, bind_native_children=register,
+            )
 
     async def run_l1_eat(
         self, session: Any, receipt: Any, *, admission_ref: str, **kwargs: Any,
@@ -634,9 +739,17 @@ class PhysicalIssueAdmission:
             self_id=kwargs["self_id"],
             native_session_id=session.started.session_id,
             action_id=admission_ref,
-            effect_family="EAT",
+            effect_family="EAT", defer_selected_children=True,
         ):
-            return await issue_eat_from_selected_l1_dev(session, receipt, **kwargs)
+            def register(parent: str) -> None:
+                self.bind_native_children(
+                    self_id=kwargs["self_id"], native_session_id=session.started.session_id,
+                    lease_action_id=admission_ref, parent_action_id=parent,
+                    family="EAT", journal=kwargs["journal"],
+                )
+            return await issue_eat_from_selected_l1_dev(
+                session, receipt, **kwargs, bind_native_children=register,
+            )
 
     async def run_l1_attack(
         self, session: Any, receipt: Any, *, admission_ref: str, **kwargs: Any,
@@ -648,9 +761,17 @@ class PhysicalIssueAdmission:
             self_id=kwargs["self_id"],
             native_session_id=session.started.session_id,
             action_id=admission_ref,
-            effect_family="ATTACK",
+            effect_family="ATTACK", defer_selected_children=True,
         ):
-            return await issue_attack_from_selected_l1_dev(session, receipt, **kwargs)
+            def register(parent: str) -> None:
+                self.bind_native_children(
+                    self_id=kwargs["self_id"], native_session_id=session.started.session_id,
+                    lease_action_id=admission_ref, parent_action_id=parent,
+                    family="ATTACK", journal=kwargs["journal"],
+                )
+            return await issue_attack_from_selected_l1_dev(
+                session, receipt, **kwargs, bind_native_children=register,
+            )
 
     async def run_guarded(
         self, *, self_id: str, native_session_id: str,
