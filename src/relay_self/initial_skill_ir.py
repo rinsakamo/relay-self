@@ -150,7 +150,12 @@ def compile_initial_skill(
         raise SkillIRRefusal("selected Option and typed WorldBody capability required")
     descriptor = next((d for d in initial_skill_descriptors()
                        if d.skill_id == option.skill_id), None)
-    if (descriptor is None or descriptor.capability_ref is None
+    definition = next((d for d in initial_skill_definitions()
+                       if d.skill_id == option.skill_id), None)
+    if (descriptor is None or definition is None
+            or descriptor.capability_ref != definition.capability_ref
+            or descriptor.capability_version != definition.capability_version
+            or descriptor.capability_ref is None
             or option.goal_id != descriptor.goal_id
             or option.target_kind != descriptor.target_kind
             or option.skill_version != 1):
@@ -449,6 +454,14 @@ class FiniteSkillInterpreter:
                 or ir.steps[cursor.index].kind is not StepKind.ACTION
                 or cursor.action_count >= 4):
             raise SkillIRRefusal("no executable ACTION step or pending prior Action")
+        # The existing native issuers have not yet gained source-qualified
+        # constraint/budget enforcement or composite-call WAL ownership.
+        # A typed invocation is representable and may enter L0 CHECK_TARGET,
+        # but cannot be silently promoted into a legacy physical proposal.
+        if ir.invocation is not None:
+            raise SkillIRRefusal(
+                "parameterized physical issuer not admitted; no Action proposal"
+            )
         step = ir.steps[cursor.index]
         if (not isinstance(binding, PhysicalActionBinding)
                 or binding.scope != cursor.scope
