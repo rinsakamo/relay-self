@@ -1,9 +1,10 @@
 """#860 Stage22: operator-gated REAL Paper + two resident Self body presence.
 
-Limited to native login/logout, source-correlated B observation and World
-continuity. Does NOT issue MOVE/EAT/ATTACK, use GPU, attach to an existing
-server, or assert B caused a physical Action. The original Stage19 physical
-issuer explicitly denies control effects until a proper MOVE/WAL owner exists.
+Default is native login/logout, B observation and World continuity.
+Stage23 adds explicit operator-selected B MOVE via original ActionPort,
+WAL, capability-bound native START/STOP and Paper motion witness. No GPU,
+autonomous Skill selection or Action-specific Paper causation is claimed.
+Never attaches to an existing server.
 """
 from __future__ import annotations
 
@@ -27,6 +28,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerLaunchConfig,
     MineflayerObservation,
 )
+from experiments.cognitive_physical_executor_dev import (
+    PhysicalDevGrant,
+    PhysicalGrantStage,
+)
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
@@ -38,16 +43,13 @@ from experiments.p0d_real_two_native_smoke_dev import (
     preflight_two_native,
     two_native_server_properties,
 )
-from experiments.cognitive_physical_executor_dev import (
-    PhysicalDevGrant,
-    PhysicalGrantStage,
-)
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitiveOwnerFiles,
 )
 from relay_self.cognitive_minimal_dev import initial_patterns
+from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import (
@@ -58,7 +60,6 @@ from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
 )
-from relay_self.common_io import ScopeRef
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import (
     PhysicalActionBinding,
