@@ -20,6 +20,42 @@ After Self selects the option and the existing owner creates its Intent/Skill/Ac
 
 Only a qualified READY prebound option can call the **original** `CheckpointedCognitiveOwner.commit_intent`, `start_skill`, `propose_resident_l1_move` → original `PhysicalIssueAdmission.issue_move`, with two independent typed physical DEV grants, canonical fsynced PREPARED/WAL and one source-scoped START/STOP. The selected control/preset is forwarded unchanged. Stage23b native stdout and 8+8 tick stillness readback remain the same; the raw-native verifier explicitly cannot attest L1 selection. New finalizer additionally reads original frozen model evidence, checks SHA and Goal/Skill/Target/preset/choice against the physical action report; only then claims `REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV`. It **does not** claim Paper Action-ID causation, destination arrival, learning improvement or forced GPU preemption.
 
+## Second attempt after pre-World SHA transcription HOLD (new provenance, never a replay)
+
+Original HEAD `c3b1347b` **PRE_WORLD_HOLD_JAR_SHA_ARGUMENT_MISMATCH** is preserved under the evidence directory referenced in [PR #925](https://github.com/rinsakamo/relay-self/pull/925#issuecomment-6919173080) and Issue #911. Its exact-HASH failure occurred before any World creation/model call. Do NOT rewrite, erase or recategorize it.
+
+The **separate opt-in DEV launch adapter** `experiments/stage24b_pinned_assets_launch_dev.py` eliminates manually copying any SHA256 argument. It independently hashes the real jar bytes, compares them with these source-grade original archival pins, and passes the *computed* digest to the **unchanged guarded original World runner**, which rehashes the assets itself:
+
+- Official Paper 1.21.8 build60: original trusted `PAPER_1218_60_SHA256`.
+- Archived P0BRecorder jar: `cabf144a275c1582ecbbdcb6fb394b311f0705f5ca7d330bb80659437abe324e` (64 lowercase hex digits).
+
+The known 69-character mistyped plugin value **must fail** before creating any new World. A rebuilt plugin with different bytes is **not silently trusted**: independently check it and update the reviewed pin only if appropriately qualified. The adapter has no model, native, motor or Issue owner.
+
+First run a **read-only** asset check (no GPU, no World and no grant flags):
+
+```bash
+PYTHONPATH=src:. python -m experiments.stage24b_pinned_assets_launch_dev \
+  --paper-jar "$PAPER_JAR" --plugin-jar "$PLUGIN_JAR" \
+  --scratch-parent "$ISOLATED_SCRATCH" --eula-accepted \
+  --inspect-only
+```
+
+Verify the output: `STAGE24B_ASSET_CHECK_OK` with exactly those pinned hashes and an empty scratch folder. Verify actual model PID, binary, GGUF SHA and single owned `/slots` *separately*. A prior empty Jev HTTP 422 validates malformed input rejection **only**, not a real model choice.
+
+After checking the exact HEAD/CI and ensuring that this attempt has a **new** evidence and scratch scope, authorize **one** original trial:
+
+```bash
+PYTHONPATH=src:. python -m experiments.stage24b_pinned_assets_launch_dev \
+  --paper-jar "$PAPER_JAR" --plugin-jar "$PLUGIN_JAR" \
+  --scratch-parent "$ISOLATED_SCRATCH" --eula-accepted \
+  --execute-once --real-world-dev-grant --grant-real-llm \
+  --llama-endpoint "$LLAMA_ENDPOINT" \
+  --systemone-endpoint "$SYSTEMONE_ENDPOINT" \
+  --model "$ACTUAL_SERVED_GEMMA_MODEL"
+```
+
+This delegates `b_autonomous_l1_dev=True`, `b_selected_move_dev=False`, `world_only=True`, `b_pulse_seconds=0.35` to the existing `run_real_resident_presence` function. It does not retry on `DEFER`, `ESCALATE_L2`, provider failure, WAL unresolved, native uncertainty, or Paper HOLD. Do not introduce a second physical owner or switch to the old operator-selected MOVE. The old direct runner CLI below remains supported and unchanged; the pinned launcher is preferred for this exact pre-World recovery.
+
 ## Operator-local real run (one new disposable World)
 
 Preflight: repo / #828 / #843 / #904 / #911 / #919 / this Draft PR; verify exact HEAD and 5/5 CI; existing operator EULA and real World DEV approvals are valid without reasking. Real LLM execution is separately opt-in via `--grant-real-llm`. Verify exclusive local backend and no other clients. Use actual installed Paper 1.21.8 build60 and P0BRecorder jars; resolve their paths and verify SHA256 independently, never invent jar locations. Example placeholders below must be replaced after preflight:
@@ -42,6 +78,9 @@ The real opt-in **does not include** `--b-selected-move-dev`; that is Stage23's 
 Preserve the complete new source archive and SHA256s including model choice, native stdout and sidecar, original WAL/Intent/Skill/Action IDs, Paper quit/movement/join, World-only generation. Record CPU latency, model wall time, selected choice, Model/GPU slot state, Action admission/settling. Validate root/nested consistency. If nonphysical or stale and no MOVE is issued, classify without changing original evidence. Only if one actual model-selected physical Action matches the original WAL/native/Paper sources do we claim bounded DEV success.
 
 ## Offline regression
+
+Include `tests/test_stage24b_pinned_assets_launch_dev.py`, which verifies read-only inspect, real byte pinning, 69-character typo refusal, source tampering/symlink refusal, missing grants, and exact one-call delegation. This regression uses synthetic jars and does not run Minecraft.
+
 
 ```bash
 PYTHONPATH=src:. python -m pytest -q \
