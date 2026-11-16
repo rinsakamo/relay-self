@@ -10,6 +10,7 @@ import pytest
 
 from relay_self.cognitive_minimal_dev import (
     MinimalCognitionError,
+    Option,
     Origin,
     PatternKind,
     PatternRegistry,
@@ -38,10 +39,8 @@ from relay_self.skill_invocation import (
     SkillBudget,
     SkillConstraints,
     SkillCostEstimate,
-    SkillDefinition,
     SkillParameterPreset,
 )
-from relay_self.cognitive_minimal_dev import Option
 
 SCOPE = ScopeRef("self-A", "world-A")
 SOURCE = Provenance("gateway", "native-13")
