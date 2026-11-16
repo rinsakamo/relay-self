@@ -569,6 +569,29 @@ def _adopt_verified_trial_report(
             or file_sha256(Path(raw["readback_file"])) != raw["readback_sha256"]
         ):
             raise RealResidentPresenceRefusal("immutable B raw native source not independently verified")
+        # Read the frozen verification sidecar again, not just its filename
+        # and caller-supplied SHA fields.
+        try:
+            sidecar = json.loads(Path(raw["readback_file"]).read_text())
+        except (OSError, ValueError) as exc:
+            raise RealResidentPresenceRefusal("B raw sidecar unreadable") from exc
+        if (
+            type(sidecar) is not dict
+            or sidecar.get("classification") != raw["readback_classification"]
+            or sidecar.get("original_action_id") != detail["original_action_id"]
+            or sidecar.get("canonical_wal_digest")
+            != detail["original_canonical_wal_sha256"]
+            or sidecar.get("source_sha256") != raw["raw_sha256"]
+            or sidecar.get("original_self_id") != "B"
+            or sidecar.get("original_native_session") != detail.get("b_native_session")
+            or type(sidecar.get("all_stop_probes")) is not list
+            or len(sidecar["all_stop_probes"]) != raw["all_settle_probes"]
+            or not sidecar.get("native_start_ack")
+            or not sidecar.get("native_stop_ack")
+            or sidecar.get("paper_action_id_causal_ticket") is not False
+            or sidecar.get("autonomous_l1_skill_selection") is not False
+        ):
+            raise RealResidentPresenceRefusal("frozen B raw source/WAL identity sidecar inconsistent")
     elif detail is not None:
         raise RealResidentPresenceRefusal("unrequested B MOVE detail in presence-only trial")
 
