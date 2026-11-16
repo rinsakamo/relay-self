@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from relay_self.appraisal import (
     AppraisalAspect,
@@ -11,13 +13,10 @@ from relay_self.appraisal import (
     AppraisalTargetKind,
     InvalidAppraisalData,
 )
-from relay_self.cognitive_minimal_dev import PatternRegistry
-from relay_self.preset_registry_checkpoint import (
-    PresetCheckpointRefusal,
-    decode_pattern_registry,
-    encode_pattern_registry,
-)
 from relay_self.provenance import InvalidProvenanceData, Provenance
+
+if TYPE_CHECKING:
+    from relay_self.cognitive_minimal_dev import PatternRegistry
 
 CURRENT_SCHEMA_VERSION = 3
 APPRAISAL_SCHEMA_VERSION = 2
@@ -139,6 +138,11 @@ class PersistentCognition:
                 )
             appraisal_seen.add(disposition.key)
         if self.pattern_registry is not None:
+            from relay_self.preset_registry_checkpoint import (
+                PresetCheckpointRefusal,
+                encode_pattern_registry,
+            )
+
             try:
                 encode_pattern_registry(
                     self.pattern_registry, self_id=self.identity.self_id,
@@ -157,6 +161,8 @@ class PersistentCognition:
         The existing live owner must serialize mutation with other cognition
         writes. This immutable operation alone does not authenticate acceptance.
         """
+        from relay_self.cognitive_minimal_dev import PatternRegistry
+
         if not isinstance(registry, PatternRegistry):
             raise InvalidPersistentCognitionData("typed Schema registry required")
         if self.pattern_registry is not None and (
@@ -297,6 +303,8 @@ def load_persistent_cognition(
 
 
 def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, Any]:
+    from relay_self.preset_registry_checkpoint import encode_pattern_registry
+
     return {
         "schema_version": CURRENT_SCHEMA_VERSION,
         "identity": {
@@ -329,6 +337,11 @@ def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, An
 
 
 def _decode_persistent_cognition(value: object) -> PersistentCognition:
+    from relay_self.preset_registry_checkpoint import (
+        PresetCheckpointRefusal,
+        decode_pattern_registry,
+    )
+
     payload = _require_mapping("persistent cognition snapshot", value)
 
     version = payload.get("schema_version")
