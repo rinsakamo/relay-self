@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
+from typing import Mapping
 
 from relay_self.action import ActionLifecycle
 from relay_self.common_io import ScopeRef
@@ -24,6 +25,14 @@ from relay_self.relay_engine import (
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
+from relay_self.skill_invocation import (
+    SkillDefinition,
+    SkillInvocation,
+    SkillInvocationRefusal,
+    SkillParameterPreset,
+    SkillTarget,
+    bind_preset_invocation,
+)
 from relay_self.target_contract import TargetContract
 
 
@@ -272,6 +281,22 @@ class Option:
     schema_id: str
     pattern_id: str
     arrival_contract: TargetContract | None = None
+    invocation: SkillInvocation | None = None
+
+    def __post_init__(self) -> None:
+        if self.invocation is not None and (
+            not isinstance(self.invocation, SkillInvocation)
+            or self.invocation.goal_id != self.goal_id
+            or self.invocation.skill_id != self.skill_id
+            or self.invocation.skill_version != self.skill_version
+            or self.invocation.target.ref != self.target_ref
+            or self.invocation.target.kind != self.target_kind
+            or self.invocation.target.contract != self.arrival_contract
+            or self.invocation.parameter_preset_ref is None
+        ):
+            raise MinimalCognitionError(
+                "L1 Option must contain the exact completed, preset-bound invocation"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,6 +320,66 @@ class SchemaFrame:
     elapsed_ns: int
 
 
+def bind_frame_skill_invocations(
+    frame: SchemaFrame,
+    registry: PatternRegistry,
+    *,
+    definitions: Mapping[tuple[str, int], SkillDefinition],
+    presets: Mapping[str, SkillParameterPreset],
+) -> SchemaFrame:
+    """CPU-only Schema-to-L1 admission: bind, don't ask SystemOne to invent.
+
+    Missing definitions/presets leave the Need/Goal unresolved, never a
+    parameterless executable Option. An already-proposed L2 preset cannot
+    participate until the Self-owned caller places it in the accepted map.
+    """
+    if frame.registry_revision != registry.revision:
+        raise MinimalCognitionError("stale Schema registry for parameter binding")
+    patterns = {(p.pattern_id, p.version): p for p in registry.patterns}
+    if len(patterns) != len(registry.patterns):
+        raise MinimalCognitionError("ambiguous registered CPU patterns")
+    eligible: list[Option] = []
+    for option in frame.options:
+        pattern = next((
+            p for p in registry.patterns
+            if p.pattern_id == option.pattern_id
+            and p.kind is PatternKind.GOAL
+            and p.goal_id == option.goal_id
+            and p.skill_id == option.skill_id
+            and p.skill_version == option.skill_version
+            and p.target_kind == option.target_kind
+            and p.schema_id == option.schema_id
+        ), None)
+        if pattern is None:
+            raise MinimalCognitionError("Option does not match current Schema pattern")
+        definition = definitions.get((option.skill_id, option.skill_version))
+        preset = presets.get(option.pattern_id)
+        if definition is None or preset is None:
+            continue
+        if preset.pattern_id != option.pattern_id:
+            raise MinimalCognitionError("foreign parameter preset pattern binding")
+        try:
+            invocation = bind_preset_invocation(
+                definition, preset, scope=frame.scope,
+                goal_id=option.goal_id,
+                target=SkillTarget(
+                    option.target_ref, option.target_kind, option.arrival_contract,
+                ),
+                provenance=frame.source,
+            )
+        except SkillInvocationRefusal as exc:
+            raise MinimalCognitionError("invalid registered Skill parameter binding") from exc
+        eligible.append(replace(option, invocation=invocation))
+    active = {(o.goal_id, o.skill_id, o.skill_version) for o in eligible}
+    return replace(
+        frame,
+        options=tuple(eligible),
+        goals=tuple(replace(g, unresolved=True) if
+                    (g.goal_id, g.skill_id, g.skill_version) not in active
+                    else g for g in frame.goals),
+    )
+
+
 def cpu_schema_epoch(
     percept: WorldPercept,
     registry: PatternRegistry,
@@ -302,6 +387,8 @@ def cpu_schema_epoch(
     allowed_skills: frozenset[tuple[str, int]],
     epoch: int,
     hunger_threshold: float = 17,
+    skill_definitions: Mapping[tuple[str, int], SkillDefinition] | None = None,
+    parameter_presets: Mapping[str, SkillParameterPreset] | None = None,
 ) -> SchemaFrame:
     """Synchronous finite CPU-only step; caller controls event-loop cadence.
 
@@ -367,12 +454,20 @@ def cpu_schema_epoch(
                     pattern.schema_id, pattern.pattern_id,
                     t.arrival_contract,
                 ))
-    return SchemaFrame(
+    frame = SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
         ("ZOMBIE_NEAR",) if threats else (), checks,
         time.perf_counter_ns() - t0,
     )
+    if (skill_definitions is None) != (parameter_presets is None):
+        raise MinimalCognitionError("definition and accepted preset maps must be paired")
+    if skill_definitions is not None and parameter_presets is not None:
+        return bind_frame_skill_invocations(
+            frame, registry, definitions=skill_definitions,
+            presets=parameter_presets,
+        )
+    return frame
 
 
 @dataclass(frozen=True, slots=True)
@@ -418,6 +513,13 @@ def assemble_l1_select(
         else:
             desc = (f"{entry.goal_id}: {entry.skill_id}@{entry.skill_version}"
                     f"({entry.target_ref}) [schema={entry.schema_id}]")
+            if entry.invocation is not None:
+                inv = entry.invocation
+                desc += (
+                    f" [preset={inv.parameter_preset_ref},"
+                    f" budget_actions={inv.budget.max_actions},"
+                    f" budget_ms={inv.budget.max_duration_ms}]"
+                )
             if entry.arrival_contract is not None:
                 c = entry.arrival_contract
                 req = c.condition
