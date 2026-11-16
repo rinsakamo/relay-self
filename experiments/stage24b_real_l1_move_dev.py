@@ -130,7 +130,7 @@ def require_frozen_stage24b_choice(
         or result.get("classification") != "STAGE24B_ACTUAL_L1_CHOICE_SOURCE_DEV"
         or result.get("self_id") != "B"
         or result.get("mode") != CognitionMode.BOUNDED.value
-        or result.get("actual_model_status") != "RESOLVED"
+        or result.get("actual_model_status") != "resolved"
         or result.get("actual_model_choice_id") != model_choice_id
         or result.get("selected_status") != "READY"
         or result.get("selected_target_ref") != target_ref
