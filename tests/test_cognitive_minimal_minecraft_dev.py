@@ -467,3 +467,80 @@ def test_native_stale_or_uncorrelated_probe_must_not_reach_action_port(
         ))
     assert session.sent == [("observe",)]
     assert owner.current_intent is None and supervisor.recorded_actions == ()
+
+
+def test_self_registered_preset_full_native_l1_turn_is_nonissuing() -> None:
+    """Registered mode uses real CURRENT Schema/L1 function with fake native IO.
+
+    It must NOT fall through to the old EAT native issuer just because a valid
+    parameterized Invocation was selected.
+    """
+    from relay_self.cognitive_minimal_dev import (
+        PresetAcceptanceReceipt,
+        accept_skill_parameter_preset,
+    )
+    from relay_self.initial_skill_ir import initial_skill_definitions
+    from relay_self.provenance import Provenance
+    from relay_self.skill_invocation import (
+        SkillBudget,
+        SkillConstraints,
+        SkillParameterPreset,
+    )
+
+    d = next(x for x in initial_skill_definitions() if x.skill_id == "EAT")
+    preset = SkillParameterPreset(
+        "hunger-eat", "ObservedBread", 1, d.definition_ref,
+        SkillConstraints(), SkillBudget(1, 1200),
+        Provenance("self-preset-owner", "accepted-eat"),
+    )
+    registry = accept_skill_parameter_preset(
+        initial_patterns(), preset, definition=d,
+        receipt=PresetAcceptanceReceipt(
+            "self-A", "accepted-eat-event", preset.preset_ref,
+            Provenance("self-owner", "decision-1"),
+        ),
+        accepted_by_self=True, expected_revision=0,
+        available_skills=SKILLS,
+    )
+    initial = observation(1, kind="inventory", inventory=(bread(),))
+    session = FakeNativeSession([observation(2, inventory=(bread(),))])
+    owner = IntentCommitment()
+    supervisor = ActionSupervisor()
+    result = asyncio.run(execute_one_cognitive_world_turn(
+        session, initial, scenario(), self_id="self-A", intent_id="intent-1",
+        registry=registry, relay_engine=engine_with_choice("1"),
+        intent_owner=owner, supervisor=supervisor,
+        grant_real_world=True, issue_native=False,
+        use_registered_presets=True,
+        probe_request_id="cognitive-test-probe",
+    ))
+    assert result.status == "INVOCATION_BOUND_NO_ISSUE"
+    assert result.selection.status == "READY"
+    assert result.selection.option is not None
+    invocation = result.selection.option.invocation
+    assert invocation is not None
+    assert invocation.parameter_preset_ref == preset.preset_ref
+    assert invocation.budget == preset.budget
+    assert result.initial_frame.eligible_options is not None
+    assert result.current_frame.eligible_options is not None
+    assert result.current_frame.source != result.initial_frame.source
+    assert result.actual_action_outcomes == 0
+    assert result.run is None
+    assert owner.current_intent is None
+    assert supervisor.open_actions == ()
+    assert session.sent == [("observe",)]
+
+
+def test_registered_preset_mode_rejects_legacy_native_issue_before_any_io() -> None:
+    session = FakeNativeSession([])
+    with pytest.raises(MinimalCognitionError, match="legacy executor"):
+        asyncio.run(execute_one_cognitive_world_turn(
+            session, observation(1, kind="inventory", inventory=(bread(),)),
+            scenario(), self_id="self-A", intent_id="intent-1",
+            registry=initial_patterns(), relay_engine=engine_with_choice("1"),
+            intent_owner=IntentCommitment(), supervisor=ActionSupervisor(),
+            grant_real_world=True, issue_native=True,
+            acknowledge_unfenced_dev=True, use_registered_presets=True,
+            probe_request_id="cognitive-test-probe",
+        ))
+    assert session.sent == []
