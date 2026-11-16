@@ -90,7 +90,9 @@ jobs:
         run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
 
       - name: Run lint
-        run: ruff check src tests experiments adapters observability
+        run: |
+          ruff check --select I --fix --diff src/relay_self/resident_l1_move_options_dev.py tests/test_stage24a_resident_l1_move_dev.py || true
+          ruff check src tests experiments adapters observability
 
   mineflayer-adapter:
     runs-on: ubuntu-latest
