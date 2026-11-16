@@ -53,6 +53,9 @@ class ResidentMoveDevReceipt:
     settled_probe: MineflayerObservation
     displacement_m: float
     journal_sha256: str
+    # EVERY native STOP verification probe, including intermediate drift
+    # samples, not only the three probes used for terminal admission.
+    all_stop_probes: tuple[MineflayerObservation, ...] = ()
     skill_success_attested: bool = False
     paper_causal_attribution: bool = False
 
@@ -129,7 +132,12 @@ async def _probe(
 async def _settled(
     session: MineflayerProcessSession, *,
     native: str, stop_seq: int, timeout_s: float,
-) -> tuple[MineflayerObservation, MineflayerObservation, MineflayerObservation]:
+) -> tuple[
+    MineflayerObservation,
+    MineflayerObservation,
+    MineflayerObservation,
+    tuple[MineflayerObservation, ...],
+]:
     """First eight World ticks of settling, then eight stable World ticks.
 
     A drifting body shifts only its reference, never commits without a
@@ -142,6 +150,7 @@ async def _settled(
     )
     first = initial
     last = initial
+    all_probes = [initial]
     reached_first = False
     while loop.time() < deadline:
         await asyncio.sleep(0.05)
@@ -150,6 +159,7 @@ async def _settled(
             timeout_s=max(0.001, deadline - loop.time()),
         )
         last = later
+        all_probes.append(later)
         if _tick(later) < _tick(initial) or _tick(later) - _tick(initial) > 200:
             raise PhysicalMoveRefusal("MOVE STOP World clock regression/horizon")
         if not reached_first:
@@ -162,7 +172,7 @@ async def _settled(
         a, b = first.snapshot.position, later.snapshot.position
         movement = math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
         if math.isfinite(movement) and movement <= 0.06:
-            return (initial, first, later)
+            return (initial, first, later, tuple(all_probes))
         first = later
     raise PhysicalMoveRefusal("MOVE STOP not stable after 8+8 World ticks")
 
@@ -252,7 +262,7 @@ async def issue_selected_move_dev(
             timeout_s=evidence_timeout_s,
         )
         assert isinstance(stop, MineflayerEffectResult)
-        initial, first, settled = await _settled(
+        initial, first, settled, all_stop_probes = await _settled(
             session, native=current_probe.session_id,
             stop_seq=stop.seq, timeout_s=evidence_timeout_s,
         )
@@ -271,7 +281,7 @@ async def issue_selected_move_dev(
         )
         return ResidentMoveDevReceipt(
             terminal, start, stop, initial, first, settled,
-            displacement, journal.digest,
+            displacement, journal.digest, all_stop_probes,
         )
     except BaseException:
         if not attempted_stop:

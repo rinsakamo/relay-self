@@ -32,6 +32,7 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
     PhysicalGrantStage,
 )
+from experiments.cognitive_physical_move_issue_dev import ResidentMoveDevReceipt
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
@@ -70,6 +71,7 @@ from relay_self.physical_action_port import (
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_move_raw_audit_dev import readback_owned_move_native_source
 from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
     join_resident_paper_presence,
@@ -148,14 +150,16 @@ async def _bounded_b_probe(
     raise RealResidentPresenceRefusal("B requested probe not received")
 
 
-async def _issue_original_selected_b_move(
+async def _issue_original_selected_b_move_core(
     *,
     session: MineflayerProcessSession,
     owner: CheckpointedCognitiveOwner,
     physical: PhysicalIssueAdmission,
     pulse_seconds: float,
-) -> dict[str, object]:
-    """Opt-in B physical DEV pulse after A quit; NOT an autonomous L1 choice.
+) -> tuple[dict[str, object], ResidentMoveDevReceipt, MineflayerObservation]:
+    """Core original-owner MOVE; result still needs source-independent audit.
+
+    Opt-in B physical DEV pulse after A quit; NOT an autonomous L1 choice.
 
     Uses the exact original Self's Intent/Skill/ActionPort and original WAL.
     The *operator* supplies this preselected relative MOVE DEV objective;
@@ -263,7 +267,7 @@ async def _issue_original_selected_b_move(
         or owner.supervisor.open_actions
     ):
         raise RealResidentPresenceRefusal("B original native MOVE/WAL terminal not verified")
-    return {
+    result = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
         "original_action_id": action_id,
         "original_intent_id": intent_id,
@@ -282,6 +286,68 @@ async def _issue_original_selected_b_move(
         "paper_action_causation": False,
         "gpu_inference_ran": False,
     }
+    return result, receipt, current_probe
+
+
+async def _issue_original_selected_b_move(
+    *,
+    session: MineflayerProcessSession,
+    owner: CheckpointedCognitiveOwner,
+    physical: PhysicalIssueAdmission,
+    pulse_seconds: float,
+    evidence_dir: Path | None = None,
+) -> dict[str, object]:
+    """Use original issuer and, if real, freeze all original source bytes.
+
+    Offline fixtures can omit evidence_dir; an actual real-Paper runner
+    MUST provide the owned evidence directory to enable raw-source audit.
+    """
+    if evidence_dir is None:
+        result, _, _ = await _issue_original_selected_b_move_core(
+            session=session, owner=owner, physical=physical,
+            pulse_seconds=pulse_seconds,
+        )
+        return result
+    if type(evidence_dir) is not Path or not evidence_dir.is_dir():
+        raise RealResidentPresenceRefusal("owned raw native audit directory missing")
+    raw = evidence_dir / "B-original-move-native-source.jsonl"
+    # Fail before native MOVE if the exact owned stream cannot be recorded.
+    session.start_raw_source_audit(raw)
+    try:
+        result, receipt, current = await _issue_original_selected_b_move_core(
+            session=session, owner=owner, physical=physical,
+            pulse_seconds=pulse_seconds,
+        )
+    finally:
+        # Readback of this immutable source is available on a HOLD too:
+        # every received line was fsynced at the original process boundary.
+        session.finish_raw_source_audit()
+
+    independently_checked = readback_owned_move_native_source(
+        raw_path=raw,
+        journal_path=owner.files.physical_wal_file,
+        self_id="B",
+        action_id=str(result["original_action_id"]),
+        current_probe=current,
+        receipt=receipt,
+    )
+    audit_path = evidence_dir / "B-original-move-native-readback.json"
+    _write_bytes_new(
+        audit_path,
+        (json.dumps(independently_checked, sort_keys=True, indent=2) + "\n").encode(),
+    )
+    if json.loads(audit_path.read_text()) != independently_checked:
+        raise RealResidentPresenceRefusal("independent MOVE raw audit write/readback mismatch")
+    result["independent_native_source"] = {
+        "raw_file": str(raw), "raw_sha256": file_sha256(raw),
+        "readback_file": str(audit_path),
+        "readback_sha256": file_sha256(audit_path),
+        "readback_classification": independently_checked["classification"],
+        "all_settle_probes": len(independently_checked["all_stop_probes"]),
+        "native_start_ack": independently_checked["native_start_ack"],
+        "native_stop_ack": independently_checked["native_stop_ack"],
+    }
+    return result
 
 
 async def _owned_resident_trial(
@@ -343,6 +409,7 @@ async def _owned_resident_trial(
             session=bridge.sessions["B"],
             owner=bridge.owners["B"], physical=physical,
             pulse_seconds=b_pulse_seconds,
+            evidence_dir=evidence_dir,
         )
     a_relogin_ticket = await bridge.login("A")
     a_relogin = bridge.last_login_evidence["A"]
@@ -448,6 +515,102 @@ async def _owned_resident_trial(
     return result_data
 
 
+def _adopt_verified_trial_report(
+    report: dict[str, object],
+    trial: dict[str, object],
+    *, b_selected_move_dev: bool, world_only: bool,
+) -> None:
+    """One source of truth for top-level flags, step and classification.
+
+    Never mark a real B MOVE from an operator option alone; the original
+    issuer/WAL, Paper MOVE and frozen raw-native readback must all agree.
+    """
+    if (
+        type(trial) is not dict
+        or type(b_selected_move_dev) is not bool
+        or type(world_only) is not bool
+    ):
+        raise RealResidentPresenceRefusal("unqualified real World trial result")
+    moved = trial.get("b_actual_physical_action") is True
+    terminal = trial.get("b_physical_wal_outcome") is True
+    detail = trial.get("b_original_selected_move")
+    if moved != terminal or moved != b_selected_move_dev:
+        raise RealResidentPresenceRefusal("real B action flag contradicts original WAL")
+    if world_only and (
+        not trial.get("world_only_generation")
+        or not trial.get("world_only_new_session")
+    ):
+        raise RealResidentPresenceRefusal("requested World-only generation not verified")
+    if moved:
+        if (
+            type(detail) is not dict
+            or detail.get("classification") != "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+            or not detail.get("original_action_id")
+            or not detail.get("original_canonical_wal_sha256")
+            or detail.get("autonomous_l1_skill_selection") is not False
+            or detail.get("paper_action_causation") is not False
+            or trial.get("b_move_action_causality") is not False
+            or trial.get("paper_player_continuity")
+            != ResidentPaperVerdict.MOVEMENT_CORRELATED.value
+        ):
+            raise RealResidentPresenceRefusal("original B MOVE and Paper source not correlated")
+        raw = detail.get("independent_native_source")
+        if (
+            type(raw) is not dict
+            or raw.get("readback_classification")
+            != "OWNED_NATIVE_MOVE_RAW_SOURCE_READBACK_DEV"
+            or type(raw.get("all_settle_probes")) is not int
+            or raw["all_settle_probes"] < 3
+            or not all(
+                type(raw.get(k)) is str
+                for k in ("raw_file", "readback_file", "raw_sha256", "readback_sha256")
+            )
+            or file_sha256(Path(raw["raw_file"])) != raw["raw_sha256"]
+            or file_sha256(Path(raw["readback_file"])) != raw["readback_sha256"]
+        ):
+            raise RealResidentPresenceRefusal("immutable B raw native source not independently verified")
+        # Read the frozen verification sidecar again, not just its filename
+        # and caller-supplied SHA fields.
+        try:
+            sidecar = json.loads(Path(raw["readback_file"]).read_text())
+        except (OSError, ValueError) as exc:
+            raise RealResidentPresenceRefusal("B raw sidecar unreadable") from exc
+        if (
+            type(sidecar) is not dict
+            or sidecar.get("classification") != raw["readback_classification"]
+            or sidecar.get("original_action_id") != detail["original_action_id"]
+            or sidecar.get("canonical_wal_digest")
+            != detail["original_canonical_wal_sha256"]
+            or sidecar.get("source_sha256") != raw["raw_sha256"]
+            or sidecar.get("original_self_id") != "B"
+            or sidecar.get("original_native_session") != detail.get("b_native_session")
+            or type(sidecar.get("all_stop_probes")) is not list
+            or len(sidecar["all_stop_probes"]) != raw["all_settle_probes"]
+            or not sidecar.get("native_start_ack")
+            or not sidecar.get("native_stop_ack")
+            or sidecar.get("paper_action_id_causal_ticket") is not False
+            or sidecar.get("autonomous_l1_skill_selection") is not False
+        ):
+            raise RealResidentPresenceRefusal("frozen B raw source/WAL identity sidecar inconsistent")
+    elif detail is not None:
+        raise RealResidentPresenceRefusal("unrequested B MOVE detail in presence-only trial")
+
+    # Only reach success classifications after all nested source evidence
+    # is checked. On any exception the outer report remains HOLD/UNKNOWN.
+    classification = (
+        "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
+        if moved and world_only
+        else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if moved
+        else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
+        if world_only else "REAL_PAPER_RESIDENT_PRESENCE_DEV"
+    )
+    report["steps"] = [trial]
+    report["real_b_physical_action"] = moved
+    report["real_b_physical_wal_outcome"] = terminal
+    report["native_move_raw_source_attested"] = moved
+    report["classification"] = classification
+
+
 async def run_real_resident_presence(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -507,7 +670,11 @@ async def run_real_resident_presence(
         "plugin_sha256": plugin_sha256,
         "scratch": str(root),
         "localhost_port": port,
-        "real_b_physical_action": False,
+        # A selected MOVE is UNKNOWN until original WAL, Paper and exact
+        # native stdout bytes are independently checked, not automatically false.
+        "real_b_physical_action": None if b_selected_move_dev else False,
+        "real_b_physical_wal_outcome": None if b_selected_move_dev else False,
+        "native_move_raw_source_attested": False,
         "real_gpu": False,
         "steps": [],
     }
@@ -592,20 +759,17 @@ async def run_real_resident_presence(
             launch=native_factory, cognitive_work=cognition,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
-        report["steps"] = [await _owned_resident_trial(
+        trial = await _owned_resident_trial(
             paper=owner, bridge=bridge, physical=physical,
             lifecycle=lifecycle, world_uuid=world_uuid,
             evidence_dir=evidence,
             b_heartbeat_s=b_heartbeat_s, world_only=world_only,
             b_selected_move_dev=b_selected_move_dev,
             b_pulse_seconds=b_pulse_seconds,
-        )]
-        report["classification"] = (
-            "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
-            if b_selected_move_dev and world_only
-            else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if b_selected_move_dev
-            else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
-            if world_only else "REAL_PAPER_RESIDENT_PRESENCE_DEV"
+        )
+        _adopt_verified_trial_report(
+            report, trial, b_selected_move_dev=b_selected_move_dev,
+            world_only=world_only,
         )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
