@@ -303,7 +303,7 @@ def test_bad_skill_definition_abi_refused(invalid):
     lambda x: replace(x, arguments=(SkillArgument("target", ArgumentKind.NUMBER, 1),)),
     lambda x: replace(x, arguments=(SkillArgument("extra", ArgumentKind.NUMBER, 1),) * 2),
     lambda x: replace(x, budget=SkillBudget(0, 1)),
-    lambda x: replace(x, budget=SkillBudget(5, 1000)),
+    lambda x: replace(x, budget=SkillBudget(65, 1000)),
     lambda x: replace(x, budget=SkillBudget(1, 0)),
     lambda x: replace(x, budget=SkillBudget(1, 1, float("nan"))),
 ])
@@ -450,3 +450,22 @@ def test_extra_target_contract_must_match_parent_goal_and_world():
                           SkillTarget(foreign_goal_contract.target_ref, "ENTITY_RANGE",
                                       foreign_goal_contract)),
         ))
+
+
+def test_learned_long_term_budget_is_representable_but_does_not_raise_issuer_limit():
+    d, x = call()
+    longer = replace(x, budget=SkillBudget(
+        max_actions=32,
+        max_duration_ms=600000,
+        max_distance_m=4000,
+        max_observations=1024,
+    ))
+    assert bind_skill_invocation(d, longer) is longer
+    assert longer.invocation_ref != x.invocation_ref
+    # An ABI request is not evidence of runtime authority.
+    ir = invoke_ir(d, longer)
+    assert len(ir.steps) == 2
+    assert ir.invocation.budget.max_actions == 32
+    assert len(ir.steps) <= 8
+    assert ir.invocation.budget.max_duration_ms == 600000
+    assert not hasattr(ir, "physical_authorized")
