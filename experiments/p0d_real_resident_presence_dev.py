@@ -32,6 +32,7 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
     PhysicalGrantStage,
 )
+from experiments.cognitive_physical_move_issue_dev import ResidentMoveDevReceipt
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
@@ -70,6 +71,7 @@ from relay_self.physical_action_port import (
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_move_raw_audit_dev import readback_owned_move_native_source
 from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
     join_resident_paper_presence,
@@ -148,14 +150,16 @@ async def _bounded_b_probe(
     raise RealResidentPresenceRefusal("B requested probe not received")
 
 
-async def _issue_original_selected_b_move(
+async def _issue_original_selected_b_move_core(
     *,
     session: MineflayerProcessSession,
     owner: CheckpointedCognitiveOwner,
     physical: PhysicalIssueAdmission,
     pulse_seconds: float,
-) -> dict[str, object]:
-    """Opt-in B physical DEV pulse after A quit; NOT an autonomous L1 choice.
+) -> tuple[dict[str, object], ResidentMoveDevReceipt, MineflayerObservation]:
+    """Core original-owner MOVE; result still needs source-independent audit.
+
+    Opt-in B physical DEV pulse after A quit; NOT an autonomous L1 choice.
 
     Uses the exact original Self's Intent/Skill/ActionPort and original WAL.
     The *operator* supplies this preselected relative MOVE DEV objective;
@@ -263,7 +267,7 @@ async def _issue_original_selected_b_move(
         or owner.supervisor.open_actions
     ):
         raise RealResidentPresenceRefusal("B original native MOVE/WAL terminal not verified")
-    return {
+    result = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
         "original_action_id": action_id,
         "original_intent_id": intent_id,
@@ -282,6 +286,68 @@ async def _issue_original_selected_b_move(
         "paper_action_causation": False,
         "gpu_inference_ran": False,
     }
+    return result, receipt, current_probe
+
+
+async def _issue_original_selected_b_move(
+    *,
+    session: MineflayerProcessSession,
+    owner: CheckpointedCognitiveOwner,
+    physical: PhysicalIssueAdmission,
+    pulse_seconds: float,
+    evidence_dir: Path | None = None,
+) -> dict[str, object]:
+    """Use original issuer and, if real, freeze all original source bytes.
+
+    Offline fixtures can omit evidence_dir; an actual real-Paper runner
+    MUST provide the owned evidence directory to enable raw-source audit.
+    """
+    if evidence_dir is None:
+        result, _, _ = await _issue_original_selected_b_move_core(
+            session=session, owner=owner, physical=physical,
+            pulse_seconds=pulse_seconds,
+        )
+        return result
+    if type(evidence_dir) is not Path or not evidence_dir.is_dir():
+        raise RealResidentPresenceRefusal("owned raw native audit directory missing")
+    raw = evidence_dir / "B-original-move-native-source.jsonl"
+    # Fail before native MOVE if the exact owned stream cannot be recorded.
+    session.start_raw_source_audit(raw)
+    try:
+        result, receipt, current = await _issue_original_selected_b_move_core(
+            session=session, owner=owner, physical=physical,
+            pulse_seconds=pulse_seconds,
+        )
+    finally:
+        # Readback of this immutable source is available on a HOLD too:
+        # every received line was fsynced at the original process boundary.
+        session.finish_raw_source_audit()
+
+    independently_checked = readback_owned_move_native_source(
+        raw_path=raw,
+        journal_path=owner.files.physical_wal_file,
+        self_id="B",
+        action_id=str(result["original_action_id"]),
+        current_probe=current,
+        receipt=receipt,
+    )
+    audit_path = evidence_dir / "B-original-move-native-readback.json"
+    _write_bytes_new(
+        audit_path,
+        (json.dumps(independently_checked, sort_keys=True, indent=2) + "\n").encode(),
+    )
+    if json.loads(audit_path.read_text()) != independently_checked:
+        raise RealResidentPresenceRefusal("independent MOVE raw audit write/readback mismatch")
+    result["independent_native_source"] = {
+        "raw_file": str(raw), "raw_sha256": file_sha256(raw),
+        "readback_file": str(audit_path),
+        "readback_sha256": file_sha256(audit_path),
+        "readback_classification": independently_checked["classification"],
+        "all_settle_probes": len(independently_checked["all_stop_probes"]),
+        "native_start_ack": independently_checked["native_start_ack"],
+        "native_stop_ack": independently_checked["native_stop_ack"],
+    }
+    return result
 
 
 async def _owned_resident_trial(
@@ -343,6 +409,7 @@ async def _owned_resident_trial(
             session=bridge.sessions["B"],
             owner=bridge.owners["B"], physical=physical,
             pulse_seconds=b_pulse_seconds,
+            evidence_dir=evidence_dir,
         )
     a_relogin_ticket = await bridge.login("A")
     a_relogin = bridge.last_login_evidence["A"]
