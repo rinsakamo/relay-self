@@ -245,7 +245,10 @@ class SkillInvocation:
         if any(
             x.kind is ArgumentKind.TARGET
             and x.value.contract is not None
-            and x.value.contract.scope != self.scope
+            and (
+                x.value.contract.scope != self.scope
+                or x.value.contract.goal_id != self.goal_id
+            )
             for x in self.arguments
         ):
             raise SkillInvocationRefusal("foreign extra target contract")
@@ -328,26 +331,70 @@ class LearnedSkillProgram:
                 or any(not isinstance(c, SkillCallTemplate) for c in self.calls)):
             raise SkillInvocationRefusal("bounded learned Skill hypothesis required")
 
-    def validate_calls(self, registry: tuple[SkillDefinition, ...]) -> None:
-        """One-level, no recursion: execution is intentionally not implemented."""
-        if (type(registry) is not tuple
+    def validate_calls(
+        self, registry: tuple[SkillDefinition, ...], *,
+        learned_programs: tuple[LearnedSkillProgram, ...] = (),
+    ) -> None:
+        """Validate a finite acyclic learned-call DAG, not its execution.
+
+        Registered learned callees need an explicit separate program. Missing
+        definitions/programs, recursive expansion and resource explosions
+        fail closed. This does not register the root or provide Action grants.
+        """
+        if (type(registry) is not tuple or len(registry) > 64
                 or any(not isinstance(d, SkillDefinition) for d in registry)
-                or len({(d.skill_id, d.version) for d in registry}) != len(registry)):
-            raise SkillInvocationRefusal("unique registered Skill definitions required")
+                or len({(d.skill_id, d.version) for d in registry}) != len(registry)
+                or type(learned_programs) is not tuple
+                or len(learned_programs) > 16
+                or any(not isinstance(p, LearnedSkillProgram)
+                       for p in learned_programs)):
+            raise SkillInvocationRefusal("unique bounded Skill registry required")
         definitions = {(d.skill_id, d.version): d for d in registry}
-        parent = {p.name: p.kind for p in self.definition.parameters}
-        for c in self.calls:
-            child = definitions.get((c.skill_id, c.skill_version))
-            if child is None or child is self.definition or child.origin == "LEARNED":
-                raise SkillInvocationRefusal("unregistered/recursive/nested child Skill")
-            provided = dict(c.arguments)
-            declared = {p.name: p for p in child.parameters}
-            if (set(provided) - set(declared)
-                    or any(p.required and p.name not in provided
-                           for p in child.parameters)
-                    or any(parent.get(source) is not declared[dest].kind
-                           for dest, source in c.arguments)):
-                raise SkillInvocationRefusal("invalid child typed argument forwarding")
+        root_key = (self.definition.skill_id, self.definition.version)
+        if (root_key in definitions
+                and definitions[root_key] != self.definition):
+            raise SkillInvocationRefusal("learned root definition revision mismatch")
+        programs = {root_key: self}
+        for program in learned_programs:
+            key = (program.definition.skill_id, program.definition.version)
+            if (key in programs or definitions.get(key) != program.definition
+                    or program.definition.origin != "LEARNED"):
+                raise SkillInvocationRefusal("unregistered/duplicate learned program")
+            programs[key] = program
+
+        leaves = 0
+
+        def check(program: LearnedSkillProgram, stack: tuple[tuple[str, int], ...]) -> None:
+            nonlocal leaves
+            if len(stack) > 8:
+                raise SkillInvocationRefusal("learned Skill call depth exceeded")
+            parent = {p.name: p.kind for p in program.definition.parameters}
+            for call in program.calls:
+                key = (call.skill_id, call.skill_version)
+                if key in stack:
+                    raise SkillInvocationRefusal("recursive learned Skill cycle")
+                child = definitions.get(key)
+                if child is None:
+                    raise SkillInvocationRefusal("unregistered child Skill")
+                provided = dict(call.arguments)
+                declared = {p.name: p for p in child.parameters}
+                if (set(provided) - set(declared)
+                        or any(p.required and p.name not in provided
+                               for p in child.parameters)
+                        or any(parent.get(source) is not declared[dest].kind
+                               for dest, source in call.arguments)):
+                    raise SkillInvocationRefusal("invalid child typed argument forwarding")
+                if child.origin == "LEARNED":
+                    nested = programs.get(key)
+                    if nested is None or nested.definition != child:
+                        raise SkillInvocationRefusal("learned child program not registered")
+                    check(nested, stack + (key,))
+                else:
+                    leaves += 1
+                    if leaves > 32:
+                        raise SkillInvocationRefusal("learned Skill call expansion too large")
+
+        check(self, (root_key,))
 
 
 def _hex(value: float | None) -> str | None:
