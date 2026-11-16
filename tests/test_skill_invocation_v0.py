@@ -382,3 +382,71 @@ def test_partial_child_map_is_rejected_before_any_program_validation():
             "MOVE", 1,
             (("target", "target"), ("budget", "budget")),
         )
+
+
+def test_learned_skill_can_call_other_registered_learned_skill_as_acyclic_dag():
+    # A learned Skill composed of another learned Skill must not be forbidden
+    # purely because the child wasn't innate. It is still data-only.
+    approach = SkillDefinition(
+        "APPROACH", 1, "LEARNED", PARAM_SOURCE,
+        parameters=CORE_PARAMETERS + (
+            SkillParameter("approach_target", ArgumentKind.TARGET),
+        ),
+    )
+    combo = SkillDefinition(
+        "APPROACH_AND_ATTACK", 1, "LEARNED", PARAM_SOURCE,
+        parameters=CORE_PARAMETERS + (
+            SkillParameter("approach_target", ArgumentKind.TARGET),
+        ),
+    )
+    forward = (
+        ("target", "target"), ("constraints", "constraints"),
+        ("budget", "budget"), ("approach_target", "approach_target"),
+    )
+    nested = LearnedSkillProgram(
+        approach, (SkillCallTemplate(
+            "MOVE", 1, (
+                ("target", "approach_target"), ("constraints", "constraints"),
+                ("budget", "budget"),
+            ),
+        ),), PARAM_SOURCE,
+    )
+    composite = LearnedSkillProgram(
+        combo, (
+            SkillCallTemplate("APPROACH", 1, forward),
+            SkillCallTemplate("ATTACK", 1),
+        ), PARAM_SOURCE,
+    )
+    registry = initial_skill_definitions() + (approach, combo)
+    composite.validate_calls(registry, learned_programs=(nested,))
+    with pytest.raises(SkillInvocationRefusal, match="learned child program"):
+        composite.validate_calls(registry)
+    # Replace the child body with a back-edge to the parent:
+    # expansion must reject a cycle, even with matched parameter types.
+    cycle = LearnedSkillProgram(
+        approach, (SkillCallTemplate("APPROACH_AND_ATTACK", 1, forward),),
+        PARAM_SOURCE,
+    )
+    with pytest.raises(SkillInvocationRefusal, match="recursive"):
+        composite.validate_calls(registry, learned_programs=(cycle,))
+
+
+def test_extra_target_contract_must_match_parent_goal_and_world():
+    root = SkillDefinition(
+        "COMPOSITE", 1, "LEARNED", PARAM_SOURCE,
+        parameters=CORE_PARAMETERS + (
+            SkillParameter("secondary_target", ArgumentKind.TARGET),
+        ),
+    )
+    foreign_goal_contract = live_enemy_contract()
+    base = SkillInvocation(
+        SCOPE, root.skill_id, 1, root.definition_ref,
+        "EXPLORE_WORLD", SkillTarget("destination:a", "DESTINATION"),
+        SkillConstraints(), SkillBudget(2, 4000), SOURCE,
+    )
+    with pytest.raises(SkillInvocationRefusal, match="foreign extra target"):
+        replace(base, arguments=(
+            SkillArgument("secondary_target", ArgumentKind.TARGET,
+                          SkillTarget(foreign_goal_contract.target_ref, "ENTITY_RANGE",
+                                      foreign_goal_contract)),
+        ))
