@@ -5,6 +5,7 @@ No Paper, Java, Node, live Mineflayer or Gemma in GitHub CI.
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from experiments.p0d_real_preset_checkpoint_dev import (
     RealPresetCheckpointRefusal,
+    _readback_native_probe_source,
     run_real_two_self_preset_checkpoint,
 )
 from relay_self.checkpointed_cognitive_runtime_dev import StagedRecoveredCognition
@@ -181,4 +183,48 @@ def test_new_native_admission_fails_closed_on_source_or_owner_change(mutation):
         reselect_restored_move_preset(
             original, first, second, source_self_id="A",
             expected_native_session_id="new-native-A",
+        )
+
+
+
+def test_new_native_probe_file_must_replay_two_exact_sessions_sequences_and_requests(
+    tmp_path: Path,
+):
+    source = tmp_path / "original-native.jsonl"
+    native_rows = [
+        {
+            "type": "observation", "session_id": "new-A", "seq": i,
+            "kind": "probe", "request_id": f"req-{i}",
+            "snapshot": {"real_original_source_shape": True},
+        } for i in (11, 12)
+    ]
+    source.write_text(
+        "".join(json.dumps(x) + "\n" for x in native_rows),
+        encoding="utf-8",
+    )
+    digest = _readback_native_probe_source(
+        source, first_request="req-11", second_request="req-12",
+        native_session="new-A", first_seq=11, second_seq=12,
+    )
+    assert len(digest) == 64
+    with pytest.raises(RealPresetCheckpointRefusal, match="missing"):
+        _readback_native_probe_source(
+            source, first_request="req-11", second_request="wrong",
+            native_session="new-A", first_seq=11, second_seq=12,
+        )
+    with pytest.raises(RealPresetCheckpointRefusal, match="missing"):
+        _readback_native_probe_source(
+            source, first_request="req-11", second_request="req-12",
+            native_session="foreign-B", first_seq=11, second_seq=12,
+        )
+    with pytest.raises(RealPresetCheckpointRefusal, match="stale"):
+        _readback_native_probe_source(
+            source, first_request="req-11", second_request="req-11",
+            native_session="new-A", first_seq=11, second_seq=12,
+        )
+    source.write_text(source.read_text() + json.dumps(native_rows[0]) + "\n")
+    with pytest.raises(RealPresetCheckpointRefusal, match="duplicated"):
+        _readback_native_probe_source(
+            source, first_request="req-11", second_request="req-12",
+            native_session="new-A", first_seq=11, second_seq=12,
         )
