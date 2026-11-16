@@ -6,6 +6,8 @@ This codec is reusable inside the #860 typed SelfOwnerCut after stack merge.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict
 from typing import Any
 
@@ -213,13 +215,19 @@ def _unpreset(value: object) -> SkillParameterPreset:
     return result
 
 
+def _registry_digest(payload: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+
+
 def encode_pattern_registry(registry: PatternRegistry, *, self_id: str) -> dict:
     """Produce data-only cognition knowledge for an existing quiesced owner cut."""
     if not isinstance(registry, PatternRegistry) or not self_id:
         raise PresetCheckpointRefusal("typed registry and Self ID required")
     if any(e.receipt.self_id != self_id for e in registry.accepted_presets):
         raise PresetCheckpointRefusal("foreign Self Preset cannot be checkpointed")
-    return {
+    record = {
         "schema": 2, "self_id": self_id, "revision": registry.revision,
         "patterns": [_pattern(p) for p in registry.patterns],
         "accepted_presets": [{
@@ -233,6 +241,8 @@ def encode_pattern_registry(registry: PatternRegistry, *, self_id: str) -> dict:
             },
         } for e in registry.accepted_presets],
     }
+    record["registry_ref"] = "schema-registry:v2@" + _registry_digest(record)
+    return record
 
 
 def decode_pattern_registry(value: object, *, expected_self_id: str) -> PatternRegistry:
@@ -243,12 +253,17 @@ def decode_pattern_registry(value: object, *, expected_self_id: str) -> PatternR
     """
     obj = _exact(value, {
         "schema", "self_id", "revision", "patterns", "accepted_presets",
+        "registry_ref",
     }, "typed Schema checkpoint")
     if (type(obj["schema"]) is not int or obj["schema"] != 2
             or type(obj["self_id"]) is not str
             or obj["self_id"] != expected_self_id
             or type(obj["revision"]) is not int):
         raise PresetCheckpointRefusal("wrong Self or unsupported registry checkpoint")
+    body = {key: value for key, value in obj.items()
+            if key != "registry_ref"}
+    if obj["registry_ref"] != "schema-registry:v2@" + _registry_digest(body):
+        raise PresetCheckpointRefusal("Schema Registry digest changed")
     try:
         patterns = tuple(_unpattern(x) for x in
                          _array(obj["patterns"], "patterns"))
