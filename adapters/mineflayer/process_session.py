@@ -139,6 +139,12 @@ class MineflayerProcessSession:
         self._effect_admission = check_effect
 
     @property
+    def owned_child_pid(self) -> int | None:
+        """OS PID of THIS adapter-owned native process (not source authentication)."""
+        pid = getattr(self._process, "pid", None)
+        return pid if type(pid) is int and pid > 0 else None
+
+    @property
     def process_returncode(self) -> int | None:
         return self._process.returncode
 

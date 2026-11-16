@@ -1,15 +1,17 @@
 """#860 Stage22: operator-gated REAL Paper + two resident Self body presence.
 
-Limited to native login/logout, source-correlated B observation and World
-continuity. Does NOT issue MOVE/EAT/ATTACK, use GPU, attach to an existing
-server, or assert B caused a physical Action. The original Stage19 physical
-issuer explicitly denies control effects until a proper MOVE/WAL owner exists.
+Default is native login/logout, B observation and World continuity.
+Stage23 adds explicit operator-selected B MOVE via original ActionPort,
+WAL, capability-bound native START/STOP and Paper motion witness. No GPU,
+autonomous Skill selection or Action-specific Paper causation is claimed.
+Never attaches to an existing server.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import math
 import os
 import shutil
 import sys
@@ -25,6 +27,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerConnectionEnd,
     MineflayerLaunchConfig,
     MineflayerObservation,
+)
+from experiments.cognitive_physical_executor_dev import (
+    PhysicalDevGrant,
+    PhysicalGrantStage,
 )
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
@@ -43,6 +49,7 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CognitiveOwnerFiles,
 )
 from relay_self.cognitive_minimal_dev import initial_patterns
+from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import (
@@ -54,10 +61,17 @@ from relay_self.persistent_cognition import (
     PersistentCognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_port import (
+    PhysicalActionBinding,
+    PhysicalCapability,
+    PhysicalReadback,
+    propose_bound_physical_action,
+)
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.resident_paper_presence_join_dev import (
+    ResidentPaperVerdict,
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
 )
@@ -73,6 +87,30 @@ from relay_self.world_resident_lifecycle_dev import (
 
 class RealResidentPresenceRefusal(RuntimeError):
     """Real Paper observation or explicit operator/owner evidence not qualified."""
+
+
+def _immutable_receipt(evidence_dir: Path, name: str, receipt: object) -> dict[str, str]:
+    """Preserve each ORIGINAL actor receipt as exclusive fsynced source evidence."""
+    path = evidence_dir / (name + ".json")
+    body = (json.dumps(asdict(receipt), sort_keys=True, indent=2) + "\n").encode()
+    _write_bytes_new(path, body)
+    if path.read_bytes() != body:
+        raise RealResidentPresenceRefusal("immutable logout receipt readback mismatch")
+    return {"path": str(path), "sha256": file_sha256(path)}
+
+
+def _immutable_cognition(
+    evidence_dir: Path, name: str, source: Path,
+) -> dict[str, str]:
+    """Freeze the *first* logout cognition bytes before any Self relogin."""
+    original = source.read_bytes()
+    if not original:
+        raise RealResidentPresenceRefusal("original cognition not persisted")
+    path = evidence_dir / (name + ".json")
+    _write_bytes_new(path, original)
+    if path.read_bytes() != original or file_sha256(path) != file_sha256(source):
+        raise RealResidentPresenceRefusal("first cognition snapshot readback mismatch")
+    return {"path": str(path), "sha256": file_sha256(path)}
 
 
 async def _bounded_b_probe(
@@ -110,6 +148,142 @@ async def _bounded_b_probe(
     raise RealResidentPresenceRefusal("B requested probe not received")
 
 
+async def _issue_original_selected_b_move(
+    *,
+    session: MineflayerProcessSession,
+    owner: CheckpointedCognitiveOwner,
+    physical: PhysicalIssueAdmission,
+    pulse_seconds: float,
+) -> dict[str, object]:
+    """Opt-in B physical DEV pulse after A quit; NOT an autonomous L1 choice.
+
+    Uses the exact original Self's Intent/Skill/ActionPort and original WAL.
+    The *operator* supplies this preselected relative MOVE DEV objective;
+    do not conflate it with spontaneous Self Goal/Skill selection.
+    """
+    if (
+        owner.self_id != "B"
+        or owner.native_session_id != session.started.session_id
+        or physical.current_native_sessions.get("B") != session.started.session_id
+        or physical.resident_states["B"] != "ONLINE"
+        or owner.supervisor.recorded_actions
+        or not 0.15 <= pulse_seconds <= 0.75
+    ):
+        raise RealResidentPresenceRefusal("B original selected MOVE owner unavailable")
+    old_probe = await _bounded_b_probe(session)
+    current_probe = await _bounded_b_probe(session)
+    if (
+        current_probe.seq <= old_probe.seq
+        or current_probe.seq > old_probe.seq + 32
+        or current_probe.session_id != old_probe.session_id
+    ):
+        raise RealResidentPresenceRefusal("fresh B two-probe WorldBody window missing")
+
+    intent_id = "p0d-b-move-intent-" + uuid.uuid4().hex
+    skill_id = "p0d-b-move-skill-" + uuid.uuid4().hex
+    action_id = "p0d-b-move-action-" + uuid.uuid4().hex
+    source = Provenance(
+        "p0d-operator-selected-move-dev",
+        current_probe.provenance.reference,
+    )
+    owner.commit_intent(
+        intent_id, "WALK_RELATIVE", at_ns=1, provenance=source,
+    )
+    owner.start_skill(
+        skill_id, "MOVE", at_ns=2, provenance=source,
+    )
+    selected = owner.skills[skill_id]
+    binding = PhysicalActionBinding(
+        scope=ScopeRef("B", current_probe.session_id),
+        intent_id=intent_id, goal_id="WALK_RELATIVE",
+        skill_id="MOVE", skill_version=1,
+        skill_execution_id=selected.execution_id, action_id=action_id,
+        capability_ref="MOVE", capability_version=1,
+        body_channel="locomotion", target_kind="RELATIVE",
+        target_ref="relative:forward",
+        native_seq=current_probe.seq,
+        native_request_id=current_probe.request_id,
+        native_source=current_probe.provenance,
+    )
+    proposal = propose_bound_physical_action(
+        binding,
+        capability=PhysicalCapability(
+            "MOVE", 1, "locomotion", "RELATIVE", True,
+        ),
+        readback=PhysicalReadback(
+            binding.scope, current_probe.provenance,
+            current_probe.seq, current_probe.request_id,
+            (binding.target_ref,), current_probe.snapshot.health > 0,
+        ),
+        intent_owner=owner.intent, skill_execution=selected,
+        supervisor=owner.supervisor, at_ns=3, provenance=source,
+    )
+
+    def grant(stage: PhysicalGrantStage) -> PhysicalDevGrant:
+        return PhysicalDevGrant(
+            stage=stage,
+            authority_id="operator-stage23-" + stage.value.lower(),
+            provenance=Provenance(
+                "operator-approved-dev-" + stage.value.lower(),
+                current_probe.provenance.reference,
+            ),
+            intent_id=binding.intent_id, action_id=binding.action_id,
+            session_id=current_probe.session_id,
+            probe_seq=current_probe.seq,
+            probe_request_id=current_probe.request_id,
+            selected_target_ref=binding.target_ref,
+            granted=True,
+        )
+
+    original_wal = PhysicalActionJournal.restore(
+        owner.files.physical_wal_file, self_id="B",
+    )
+    receipt = await physical.issue_move(
+        session, proposal=proposal,
+        previous_probe=old_probe, current_probe=current_probe,
+        propose_grant=grant(PhysicalGrantStage.PROPOSE),
+        issue_grant=grant(PhysicalGrantStage.ISSUE),
+        intent_owner=owner.intent, skill_execution=selected,
+        supervisor=owner.supervisor, journal=original_wal,
+        at_ns=4, provenance=source,
+        grant_real_world=True,
+        acknowledge_dev_unverified_principal=True,
+        evidence_timeout_s=15,
+        pulse_seconds=pulse_seconds,
+    )
+    checked = PhysicalActionJournal.restore(
+        owner.files.physical_wal_file, self_id="B",
+    )
+    if (
+        checked.unresolved
+        or not checked.records
+        or checked.records[-1]["status"] != "NATIVE_MOVE_SETTLED"
+        or checked.records[-1]["action_id"] != action_id
+        or checked.digest != receipt.journal_sha256
+        or owner.supervisor.open_actions
+    ):
+        raise RealResidentPresenceRefusal("B original native MOVE/WAL terminal not verified")
+    return {
+        "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
+        "original_action_id": action_id,
+        "original_intent_id": intent_id,
+        "original_skill_execution_id": selected.execution_id,
+        "b_native_session": current_probe.session_id,
+        "native_start_ack_seq": receipt.start_ack.seq,
+        "native_stop_ack_seq": receipt.stop_ack.seq,
+        "initial_stop_seq": receipt.initial_stop_probe.seq,
+        "first_stable_seq": receipt.first_stable_probe.seq,
+        "settled_seq": receipt.settled_probe.seq,
+        "native_net_displacement_m": receipt.displacement_m,
+        "original_canonical_wal_sha256": receipt.journal_sha256,
+        "operator_selected_dev_move": True,
+        "autonomous_l1_skill_selection": False,
+        "skill_success_attested": False,
+        "paper_action_causation": False,
+        "gpu_inference_ran": False,
+    }
+
+
 async def _owned_resident_trial(
     *,
     paper: OwnedPaperWorld,
@@ -120,6 +294,8 @@ async def _owned_resident_trial(
     evidence_dir: Path,
     b_heartbeat_s: float,
     world_only: bool,
+    b_selected_move_dev: bool = False,
+    b_pulse_seconds: float = 0.35,
 ) -> dict[str, object]:
     """One strictly bounded native body scenario. No model/Skill/Action issue."""
     if (
@@ -138,13 +314,22 @@ async def _owned_resident_trial(
     original_a = await bridge.login("A")
     original_b = await bridge.login("B")
     old_a = bridge.sessions["A"].started.session_id
+    a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
+    b_initial_pid = bridge.sessions["B"].owned_child_pid
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
         raise RealResidentPresenceRefusal("A native terminal source mismatch")
+    a_first_logout_receipt = _immutable_receipt(
+        evidence_dir, "A-first-logout-original", a_logout,
+    )
+    a_first_cognition_snapshot = _immutable_cognition(
+        evidence_dir, "A-first-logout-cognition",
+        bridge.owners["A"].files.cognition_file,
+    )
     await asyncio.sleep(float(b_heartbeat_s))
     b_probe = await _bounded_b_probe(bridge.sessions["B"])
     if (
@@ -152,8 +337,16 @@ async def _owned_resident_trial(
         or bridge.sessions["B"].started.session_id != original_b_native
     ):
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
+    b_move = None
+    if b_selected_move_dev:
+        b_move = await _issue_original_selected_b_move(
+            session=bridge.sessions["B"],
+            owner=bridge.owners["B"], physical=physical,
+            pulse_seconds=b_pulse_seconds,
+        )
     a_relogin_ticket = await bridge.login("A")
     a_relogin = bridge.last_login_evidence["A"]
+    a_relogin_pid = bridge.sessions["A"].owned_child_pid
     if a_relogin.native_session_id == old_a:
         raise RealResidentPresenceRefusal("A reused native process")
     await asyncio.sleep(1.0)
@@ -177,8 +370,12 @@ async def _owned_resident_trial(
         original_b_native=original_b_native,
         surviving_b_native=physical.current_native_sessions["B"],
     )
-    # No B physical Action was issued: even a Paper MOVE source event cannot
-    # be credited to an original WAL Action without a separate native ticket.
+    # A settled original B native MOVE and Paper movement can corroborate
+    # motion, but no Action-ID Paper ticket means NO causal attribution.
+    if b_move is not None and result.status is not ResidentPaperVerdict.MOVEMENT_CORRELATED:
+        raise RealResidentPresenceRefusal(
+            "B original native MOVE terminal but independent Paper movement absent"
+        )
     result_data: dict[str, object] = {
         "classification": "REAL_PAPER_RESIDENT_PRESENCE_DEV",
         "paper_player_continuity": result.status.value,
@@ -189,7 +386,12 @@ async def _owned_resident_trial(
         "a_original_ticket": asdict(original_a),
         "b_original_ticket": asdict(original_b),
         "a_original_native_session": old_a,
+        "a_original_owned_pid": a_initial_pid,
+        "b_original_owned_pid": b_initial_pid,
+        "a_relogin_owned_pid": a_relogin_pid,
         "a_logout": asdict(a_logout),
+        "a_first_logout_receipt_file": a_first_logout_receipt,
+        "a_first_logout_cognition_snapshot": a_first_cognition_snapshot,
         "a_relogin_ticket": asdict(a_relogin_ticket),
         "a_relogin_evidence": asdict(a_relogin),
         "b_original_native_session": original_b_native,
@@ -213,14 +415,21 @@ async def _owned_resident_trial(
         "b_paper_continuation_tick": result.b_later_tick,
         "a_paper_rejoin_tick": result.a_rejoin_tick,
         "b_paper_displacement_m": result.b_movement_m,
-        "b_actual_physical_action": False,
-        "b_physical_wal_outcome": False,
+        "b_actual_physical_action": b_move is not None,
+        "b_physical_wal_outcome": b_move is not None,
+        "b_original_selected_move": b_move,
         "b_move_action_causality": False,
         "real_l1_l2_gpu_executed": False,
         "real_peer_transport_executed": False,
     }
-    await bridge.logout("A")
-    await bridge.logout("B")
+    final_a = await bridge.logout("A")
+    final_b = await bridge.logout("B")
+    result_data["final_a_logout_receipt_file"] = _immutable_receipt(
+        evidence_dir, "A-final-logout-original", final_a,
+    )
+    result_data["final_b_logout_receipt_file"] = _immutable_receipt(
+        evidence_dir, "B-final-logout-original", final_b,
+    )
     if not bridge.world_only_quiescence().no_unresolved_physical_actions:
         raise RealResidentPresenceRefusal("not all original issuer receipts retired")
     if world_only:
@@ -247,6 +456,7 @@ async def run_real_resident_presence(
     java: str = "java", node: str = "node",
     timeout_s: float = 120.0, heap_mb: int = 1536,
     b_heartbeat_s: float = 4.0, world_only: bool = False,
+    b_selected_move_dev: bool = False, b_pulse_seconds: float = 0.35,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     if real_world_dev_grant is not True:
@@ -255,6 +465,15 @@ async def run_real_resident_presence(
         )
     if type(b_heartbeat_s) not in (int, float) or not 2 <= b_heartbeat_s <= 12:
         raise RealResidentPresenceRefusal("bounded Paper heartbeat delay required")
+    if (
+        type(b_selected_move_dev) is not bool
+        or type(b_pulse_seconds) not in (int, float)
+        or not math.isfinite(b_pulse_seconds)
+        or not 0.15 <= b_pulse_seconds <= 0.75
+    ):
+        raise RealResidentPresenceRefusal(
+            "bounded explicit operator-selected B MOVE DEV required before Paper launch"
+        )
     paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
@@ -321,6 +540,7 @@ async def run_real_resident_presence(
         initial_native = {sid: "offline-born-" + sid for sid in names}
         physical = PhysicalIssueAdmission(
             initial_native, resident_mode=True, initially_offline=True,
+            allow_resident_move=b_selected_move_dev,
         )
         configs = {
             sid: MineflayerLaunchConfig(
@@ -377,9 +597,14 @@ async def run_real_resident_presence(
             lifecycle=lifecycle, world_uuid=world_uuid,
             evidence_dir=evidence,
             b_heartbeat_s=b_heartbeat_s, world_only=world_only,
+            b_selected_move_dev=b_selected_move_dev,
+            b_pulse_seconds=b_pulse_seconds,
         )]
         report["classification"] = (
-            "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
+            "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
+            if b_selected_move_dev and world_only
+            else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if b_selected_move_dev
+            else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
             if world_only else "REAL_PAPER_RESIDENT_PRESENCE_DEV"
         )
     except BaseException as exc:
@@ -415,6 +640,8 @@ async def run_real_resident_presence(
     if report["classification"] not in (
         "REAL_PAPER_RESIDENT_PRESENCE_DEV",
         "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV",
+        "REAL_PAPER_B_MOVE_CORRELATED_DEV",
+        "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path
@@ -435,6 +662,8 @@ def main() -> int:
     parser.add_argument("--heap-mb", type=int, default=1536)
     parser.add_argument("--b-heartbeat-s", type=float, default=4.0)
     parser.add_argument("--world-only", action="store_true")
+    parser.add_argument("--b-selected-move-dev", action="store_true")
+    parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     args = parser.parse_args()
     try:
         result = asyncio.run(run_real_resident_presence(
@@ -445,6 +674,8 @@ def main() -> int:
             java=args.java, node=args.node,
             timeout_s=args.timeout_s, heap_mb=args.heap_mb,
             b_heartbeat_s=args.b_heartbeat_s, world_only=args.world_only,
+            b_selected_move_dev=args.b_selected_move_dev,
+            b_pulse_seconds=args.b_pulse_seconds,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)

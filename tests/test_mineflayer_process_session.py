@@ -461,7 +461,7 @@ def test_native_process_stdin_effects_require_exact_active_skill_lease(
             self_id="A", native_session_id="session-1",
             action_id="attack-parent", effect_family="ATTACK",
         ):
-            await session.send_attack_entity("attack-parent-child", entity_id=7)
+            await session.send_attack_entity("attack-parent-attack", entity_id=7)
             with pytest.raises(PhysicalIssueFenceError, match="capability-scoped"):
                 await session.send_consume_held("wrong-family-eat")
 

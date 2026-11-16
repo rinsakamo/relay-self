@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -185,6 +186,7 @@ async def issue_selected_attack_dev(
     grant_real_world: bool,
     acknowledge_dev_unverified_principal: bool,
     evidence_timeout_s: float = 9.0,
+    bind_native_children: Callable[[str], None] | None = None,
 ) -> PhysicalAttackDevReceipt:
     check_dev_issuer_preflight(
         session, proposal, intent_owner=intent_owner,
@@ -203,6 +205,9 @@ async def issue_selected_attack_dev(
         supervisor=supervisor, journal=journal, at_ns=at_ns,
         refusal=PhysicalAttackRefusal,
     )
+    # Only original PREPARED-backed selected child can pass native stdin.
+    if bind_native_children is not None:
+        bind_native_children(b.action_id)
     try:
         await session.send_attack_entity(b.action_id + "-attack", entity_id=entity_id)
         ack, hurt = await _expect_native_attack(

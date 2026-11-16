@@ -7,6 +7,7 @@ authentication, continuous Body arbiter and QUAL remain open.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -172,6 +173,7 @@ async def issue_selected_eat_dev(
     grant_real_world: bool,
     acknowledge_dev_unverified_principal: bool,
     evidence_timeout_s: float = 9,
+    bind_native_children: Callable[[str], None] | None = None,
 ) -> PhysicalEatDevReceipt:
     """One real EAT, fsynced before any native IO; *DEV only* by explicit grants.
 
@@ -196,6 +198,10 @@ async def issue_selected_eat_dev(
         supervisor=supervisor, journal=journal, at_ns=at_ns,
         refusal=PhysicalEatRefusal,
     )
+    # The original selected issuer has already fsynced PREPARED. Bind the
+    # exact parent/child native Action IDs before any effect leaves stdin.
+    if bind_native_children is not None:
+        bind_native_children(binding.action_id)
     before_count = sum(
         i.count for i in current_probe.snapshot.inventory if i.name == food
     )
