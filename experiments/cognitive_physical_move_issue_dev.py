@@ -142,7 +142,6 @@ async def _settled(
     )
     first = initial
     last = initial
-    base = initial
     reached_first = False
     while loop.time() < deadline:
         await asyncio.sleep(0.05)
