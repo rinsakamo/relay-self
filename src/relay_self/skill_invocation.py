@@ -142,6 +142,78 @@ class SkillBudget:
 
 
 @dataclass(frozen=True, slots=True)
+class SkillCostEstimate:
+    """Self's fallible cost expectation; NOT an ActionPort admission limit."""
+
+    actions: int
+    duration_ms: int
+    distance_m: float | None = None
+
+    def __post_init__(self) -> None:
+        if (type(self.actions) is not int or not 0 <= self.actions <= 64
+                or type(self.duration_ms) is not int
+                or not 0 <= self.duration_ms <= 3600000):
+            raise SkillInvocationRefusal("invalid bounded expected cost")
+        if self.distance_m is not None:
+            _number("expected distance", self.distance_m, maximum=100000)
+            if self.distance_m < 0:
+                raise SkillInvocationRefusal("expected distance must be nonnegative")
+
+
+@dataclass(frozen=True, slots=True)
+class SkillParameterPreset:
+    """Registered immutable parameters, already chosen before SystemOne SELECT.
+
+    The caller must supply a Self-accepted registry snapshot. This data type
+    itself is not registration, Self approval, or physical authorization.
+    """
+
+    pattern_id: str
+    preset_id: str
+    version: int
+    definition_ref: str
+    constraints: SkillConstraints
+    budget: SkillBudget
+    provenance: Provenance
+    arguments: tuple[SkillArgument, ...] = ()
+    expected_cost: SkillCostEstimate | None = None
+
+    def __post_init__(self) -> None:
+        _ref("pattern id", self.pattern_id)
+        _name("preset id", self.preset_id)
+        _ref("preset definition ref", self.definition_ref)
+        if type(self.version) is not int or self.version < 1:
+            raise SkillInvocationRefusal("invalid preset version")
+        if (not isinstance(self.constraints, SkillConstraints)
+                or not isinstance(self.budget, SkillBudget)
+                or not isinstance(self.provenance, Provenance)
+                or type(self.arguments) is not tuple
+                or len(self.arguments) > 9
+                or any(not isinstance(a, SkillArgument) for a in self.arguments)
+                or len({a.name for a in self.arguments}) != len(self.arguments)
+                or any(a.name in {"target", "constraints", "budget"}
+                       for a in self.arguments)
+                or (self.expected_cost is not None
+                    and not isinstance(self.expected_cost, SkillCostEstimate))):
+            raise SkillInvocationRefusal("invalid complete parameter preset")
+
+    @property
+    def preset_ref(self) -> str:
+        payload = (
+            self.pattern_id, self.preset_id, self.version, self.definition_ref,
+            _constraints(self.constraints),
+            (self.budget.max_actions, self.budget.max_duration_ms,
+             _hex(self.budget.max_distance_m), self.budget.max_observations),
+            self.provenance.source, self.provenance.reference,
+            tuple((a.name, a.kind.value, _arg_value(a)) for a in self.arguments),
+            None if self.expected_cost is None else (
+                self.expected_cost.actions, self.expected_cost.duration_ms,
+                _hex(self.expected_cost.distance_m)),
+        )
+        return "skill-preset:v1@" + _digest(payload)
+
+
+@dataclass(frozen=True, slots=True)
 class SkillParameter:
     name: str
     kind: ArgumentKind
@@ -217,6 +289,8 @@ class SkillInvocation:
     budget: SkillBudget
     provenance: Provenance
     arguments: tuple[SkillArgument, ...] = ()
+    parameter_preset_ref: str | None = None
+    expected_cost: SkillCostEstimate | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ScopeRef) or not self.scope.world_session_id:
@@ -226,6 +300,12 @@ class SkillInvocation:
         if type(self.skill_version) is not int or self.skill_version < 1:
             raise SkillInvocationRefusal("invalid Skill version")
         _ref("definition ref", self.definition_ref)
+        if self.parameter_preset_ref is not None:
+            _ref("parameter preset ref", self.parameter_preset_ref)
+        if self.expected_cost is not None and not isinstance(
+            self.expected_cost, SkillCostEstimate
+        ):
+            raise SkillInvocationRefusal("invalid Self expected cost")
         if (not isinstance(self.target, SkillTarget)
                 or not isinstance(self.constraints, SkillConstraints)
                 or not isinstance(self.budget, SkillBudget)
@@ -264,6 +344,13 @@ class SkillInvocation:
             self.provenance.source, self.provenance.reference,
             tuple((a.name, a.kind.value, _arg_value(a)) for a in self.arguments),
         )
+        if self.parameter_preset_ref is not None or self.expected_cost is not None:
+            payload += (
+                self.parameter_preset_ref,
+                None if self.expected_cost is None else (
+                    self.expected_cost.actions, self.expected_cost.duration_ms,
+                    _hex(self.expected_cost.distance_m)),
+            )
         return "skill-invocation:v1@" + _digest(payload)
 
 
@@ -288,6 +375,29 @@ def bind_skill_invocation(
                    for name, p in provided.items())):
         raise SkillInvocationRefusal("undeclared, missing or mis-typed Skill argument")
     return invocation
+
+
+def bind_preset_invocation(
+    definition: SkillDefinition, preset: SkillParameterPreset, *,
+    scope: ScopeRef, goal_id: str, target: SkillTarget,
+    provenance: Provenance,
+) -> SkillInvocation:
+    """Resolve a registered preset on the CPU BEFORE offering an L1 option.
+
+    No budget/parameter generation occurs at L1 selection or SkillRun start.
+    """
+    if not isinstance(preset, SkillParameterPreset):
+        raise SkillInvocationRefusal("registered parameter preset required")
+    if preset.definition_ref != definition.definition_ref:
+        raise SkillInvocationRefusal("preset targets stale/foreign Skill ABI")
+    return bind_skill_invocation(definition, SkillInvocation(
+        scope=scope, skill_id=definition.skill_id, skill_version=definition.version,
+        definition_ref=definition.definition_ref, goal_id=goal_id,
+        target=target, constraints=preset.constraints, budget=preset.budget,
+        provenance=provenance, arguments=preset.arguments,
+        parameter_preset_ref=preset.preset_ref,
+        expected_cost=preset.expected_cost,
+    ))
 
 
 @dataclass(frozen=True, slots=True)
