@@ -308,7 +308,7 @@ async def _issue_original_selected_b_move(
             pulse_seconds=pulse_seconds,
         )
         return result
-    if type(evidence_dir) is not Path or not evidence_dir.is_dir():
+    if not isinstance(evidence_dir, Path) or not evidence_dir.is_dir():
         raise RealResidentPresenceRefusal("owned raw native audit directory missing")
     raw = evidence_dir / "B-original-move-native-source.jsonl"
     # Fail before native MOVE if the exact owned stream cannot be recorded.
