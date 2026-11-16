@@ -11,9 +11,16 @@ from relay_self.appraisal import (
     AppraisalTargetKind,
     InvalidAppraisalData,
 )
+from relay_self.cognitive_minimal_dev import PatternRegistry
+from relay_self.preset_registry_checkpoint import (
+    PresetCheckpointRefusal,
+    decode_pattern_registry,
+    encode_pattern_registry,
+)
 from relay_self.provenance import InvalidProvenanceData, Provenance
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
+APPRAISAL_SCHEMA_VERSION = 2
 LEGACY_SCHEMA_VERSION = 1
 
 
@@ -90,6 +97,7 @@ class PersistentCognition:
     identity: IdentitySpecification
     memories: tuple[Memory, ...] = ()
     appraisal_dispositions: tuple[AppraisalDisposition, ...] = ()
+    pattern_registry: PatternRegistry | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, IdentitySpecification):
@@ -130,6 +138,36 @@ class PersistentCognition:
                     f"{disposition.key}"
                 )
             appraisal_seen.add(disposition.key)
+        if self.pattern_registry is not None:
+            try:
+                encode_pattern_registry(
+                    self.pattern_registry, self_id=self.identity.self_id,
+                )
+            except PresetCheckpointRefusal as exc:
+                raise InvalidPersistentCognitionData(
+                    "foreign or malformed persisted Self Schema registry"
+                ) from exc
+
+    def retain_schema_registry(
+        self, registry: PatternRegistry, *,
+        expected_revision: int | None = None,
+    ) -> "PersistentCognition":
+        """Owner-accepted revision snapshot; no implicit Action/World authority.
+
+        The existing live owner must serialize mutation with other cognition
+        writes. This immutable operation alone does not authenticate acceptance.
+        """
+        if not isinstance(registry, PatternRegistry):
+            raise InvalidPersistentCognitionData("typed Schema registry required")
+        if self.pattern_registry is not None and (
+            type(expected_revision) is not int
+            or expected_revision != self.pattern_registry.revision
+            or registry.revision <= self.pattern_registry.revision
+        ):
+            raise InvalidPersistentCognitionData("stale Schema registry revision")
+        if self.pattern_registry is None and expected_revision not in (None, -1):
+            raise InvalidPersistentCognitionData("unexpected initial Schema revision")
+        return replace(self, pattern_registry=registry)
 
     def retain_memory(self, memory: Memory) -> "PersistentCognition":
         """Return a new snapshot after an already-governed Memory is accepted."""
@@ -281,6 +319,12 @@ def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, An
             _encode_appraisal_disposition(disposition)
             for disposition in cognition.appraisal_dispositions
         ],
+        "pattern_registry": (
+            None if cognition.pattern_registry is None
+            else encode_pattern_registry(
+                cognition.pattern_registry, self_id=cognition.identity.self_id,
+            )
+        ),
     }
 
 
@@ -290,14 +334,18 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
     version = payload.get("schema_version")
     if type(version) is not int:
         raise InvalidPersistentCognitionData("schema_version must be an integer")
-    if version not in {LEGACY_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION}:
+    if version not in {
+        LEGACY_SCHEMA_VERSION, APPRAISAL_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION,
+    }:
         raise UnsupportedPersistentCognitionVersion(
             f"unsupported persistent cognition schema version: {version}"
         )
 
     expected_keys = {"schema_version", "identity", "memories"}
-    if version == CURRENT_SCHEMA_VERSION:
+    if version >= APPRAISAL_SCHEMA_VERSION:
         expected_keys.add("appraisal_dispositions")
+    if version == CURRENT_SCHEMA_VERSION:
+        expected_keys.add("pattern_registry")
     _require_exact_keys(
         "persistent cognition snapshot",
         payload,
@@ -327,10 +375,21 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
             for index, disposition in enumerate(dispositions_value)
         )
 
+    registry = None
+    if version == CURRENT_SCHEMA_VERSION and payload["pattern_registry"] is not None:
+        try:
+            registry = decode_pattern_registry(
+                payload["pattern_registry"], expected_self_id=identity.self_id,
+            )
+        except PresetCheckpointRefusal as exc:
+            raise InvalidPersistentCognitionData(
+                "invalid persisted Self Schema registry"
+            ) from exc
     return PersistentCognition(
         identity=identity,
         memories=memories,
         appraisal_dispositions=appraisal_dispositions,
+        pattern_registry=registry,
     )
 
 def _decode_identity(value: object) -> IdentitySpecification:
