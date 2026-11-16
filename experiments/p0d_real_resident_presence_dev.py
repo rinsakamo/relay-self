@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import shutil
 import sys
@@ -463,6 +464,15 @@ async def run_real_resident_presence(
         )
     if type(b_heartbeat_s) not in (int, float) or not 2 <= b_heartbeat_s <= 12:
         raise RealResidentPresenceRefusal("bounded Paper heartbeat delay required")
+    if (
+        type(b_selected_move_dev) is not bool
+        or type(b_pulse_seconds) not in (int, float)
+        or not math.isfinite(b_pulse_seconds)
+        or not 0.15 <= b_pulse_seconds <= 0.75
+    ):
+        raise RealResidentPresenceRefusal(
+            "bounded explicit operator-selected B MOVE DEV required before Paper launch"
+        )
     paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
