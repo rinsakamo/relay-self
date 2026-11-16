@@ -308,7 +308,10 @@ async def _real_preset_trial(
         refreshed = await _bounded_b_probe(session)
         source = staged_by_id[sid]
         observed = reselect_restored_move_preset(
-            source, first, refreshed, definition=definition,
+            source, first, refreshed,
+            source_self_id=sid,
+            expected_native_session_id=session.started.session_id,
+            definition=definition,
         )
         if (
             observed.preset_ref != accepted_refs[sid]
