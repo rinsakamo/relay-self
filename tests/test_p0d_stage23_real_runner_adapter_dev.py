@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from experiments.p0d_real_resident_presence_dev import (
+    RealResidentPresenceRefusal,
     _immutable_cognition,
     _immutable_receipt,
     _issue_original_selected_b_move,
@@ -28,6 +29,27 @@ from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.world_resident_lifecycle_dev import LogoutFenceEvidence
 from test_p0d_resident_move_issuer_dev import ScriptedNative
+
+
+def test_real_audit_directory_accepts_concrete_path_before_action(tmp_path):
+    class CaptureSentinel(Exception):
+        pass
+
+    class Session:
+        def start_raw_source_audit(self, path):
+            assert path == tmp_path / "B-original-move-native-source.jsonl"
+            raise CaptureSentinel
+
+    async def invoke(directory):
+        await _issue_original_selected_b_move(
+            session=Session(), owner=None, physical=None,
+            pulse_seconds=0.35, evidence_dir=directory,
+        )
+
+    with pytest.raises(CaptureSentinel):
+        asyncio.run(invoke(tmp_path))
+    with pytest.raises(RealResidentPresenceRefusal):
+        asyncio.run(invoke(tmp_path / "missing"))
 
 
 def test_stage23_real_runner_selected_move_reuses_exact_original_b_owners(tmp_path):
