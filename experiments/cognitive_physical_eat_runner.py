@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -72,6 +73,7 @@ async def issue_eat_from_selected_l1_dev(
     dev_physical_grant: bool,
     acknowledge_unverified_principal: bool,
     l0_skill_ir_dev: bool = False,
+    bind_native_children: Callable[[str], None] | None = None,
 ) -> CognitivePhysicalEatResult:
     """Never issue unless the *real* L1 choice and both probes are EAT-ready.
 
@@ -242,6 +244,7 @@ async def issue_eat_from_selected_l1_dev(
         provenance=provenance,
         grant_real_world=dev_physical_grant,
         acknowledge_dev_unverified_principal=acknowledge_unverified_principal,
+        bind_native_children=bind_native_children,
     )
     if l0 is not None:
         # An OUTCOME from the existing ActionSupervisor, not native ACK alone,
