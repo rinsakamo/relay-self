@@ -75,6 +75,30 @@ class RealResidentPresenceRefusal(RuntimeError):
     """Real Paper observation or explicit operator/owner evidence not qualified."""
 
 
+def _immutable_receipt(evidence_dir: Path, name: str, receipt: object) -> dict[str, str]:
+    """Preserve each ORIGINAL actor receipt as exclusive fsynced source evidence."""
+    path = evidence_dir / (name + ".json")
+    body = (json.dumps(asdict(receipt), sort_keys=True, indent=2) + "\n").encode()
+    _write_bytes_new(path, body)
+    if path.read_bytes() != body:
+        raise RealResidentPresenceRefusal("immutable logout receipt readback mismatch")
+    return {"path": str(path), "sha256": file_sha256(path)}
+
+
+def _immutable_cognition(
+    evidence_dir: Path, name: str, source: Path,
+) -> dict[str, str]:
+    """Freeze the *first* logout cognition bytes before any Self relogin."""
+    original = source.read_bytes()
+    if not original:
+        raise RealResidentPresenceRefusal("original cognition not persisted")
+    path = evidence_dir / (name + ".json")
+    _write_bytes_new(path, original)
+    if path.read_bytes() != original or file_sha256(path) != file_sha256(source):
+        raise RealResidentPresenceRefusal("first cognition snapshot readback mismatch")
+    return {"path": str(path), "sha256": file_sha256(path)}
+
+
 async def _bounded_b_probe(
     native: MineflayerProcessSession, *, timeout_s: float = 12.0,
 ) -> MineflayerObservation:
@@ -138,13 +162,22 @@ async def _owned_resident_trial(
     original_a = await bridge.login("A")
     original_b = await bridge.login("B")
     old_a = bridge.sessions["A"].started.session_id
+    a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
+    b_initial_pid = bridge.sessions["B"].owned_child_pid
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
         raise RealResidentPresenceRefusal("A native terminal source mismatch")
+    a_first_logout_receipt = _immutable_receipt(
+        evidence_dir, "A-first-logout-original", a_logout,
+    )
+    a_first_cognition_snapshot = _immutable_cognition(
+        evidence_dir, "A-first-logout-cognition",
+        bridge.owners["A"].files.cognition_file,
+    )
     await asyncio.sleep(float(b_heartbeat_s))
     b_probe = await _bounded_b_probe(bridge.sessions["B"])
     if (
@@ -154,6 +187,7 @@ async def _owned_resident_trial(
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
     a_relogin_ticket = await bridge.login("A")
     a_relogin = bridge.last_login_evidence["A"]
+    a_relogin_pid = bridge.sessions["A"].owned_child_pid
     if a_relogin.native_session_id == old_a:
         raise RealResidentPresenceRefusal("A reused native process")
     await asyncio.sleep(1.0)
@@ -189,7 +223,12 @@ async def _owned_resident_trial(
         "a_original_ticket": asdict(original_a),
         "b_original_ticket": asdict(original_b),
         "a_original_native_session": old_a,
+        "a_original_owned_pid": a_initial_pid,
+        "b_original_owned_pid": b_initial_pid,
+        "a_relogin_owned_pid": a_relogin_pid,
         "a_logout": asdict(a_logout),
+        "a_first_logout_receipt_file": a_first_logout_receipt,
+        "a_first_logout_cognition_snapshot": a_first_cognition_snapshot,
         "a_relogin_ticket": asdict(a_relogin_ticket),
         "a_relogin_evidence": asdict(a_relogin),
         "b_original_native_session": original_b_native,
@@ -219,8 +258,14 @@ async def _owned_resident_trial(
         "real_l1_l2_gpu_executed": False,
         "real_peer_transport_executed": False,
     }
-    await bridge.logout("A")
-    await bridge.logout("B")
+    final_a = await bridge.logout("A")
+    final_b = await bridge.logout("B")
+    result_data["final_a_logout_receipt_file"] = _immutable_receipt(
+        evidence_dir, "A-final-logout-original", final_a,
+    )
+    result_data["final_b_logout_receipt_file"] = _immutable_receipt(
+        evidence_dir, "B-final-logout-original", final_b,
+    )
     if not bridge.world_only_quiescence().no_unresolved_physical_actions:
         raise RealResidentPresenceRefusal("not all original issuer receipts retired")
     if world_only:
