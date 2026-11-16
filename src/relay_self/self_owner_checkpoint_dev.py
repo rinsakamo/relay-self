@@ -32,6 +32,7 @@ from relay_self.intent import (
     IntentEventKind,
     ReconsiderationDecision,
 )
+from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.preset_checkpoint_recovery_dev import (
     reconcile_restored_self_schema,
 )
@@ -40,7 +41,6 @@ from relay_self.preset_registry_checkpoint import (
     decode_pattern_registry,
     encode_pattern_registry,
 )
-from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillEvent, SkillExecution, SkillState
 
