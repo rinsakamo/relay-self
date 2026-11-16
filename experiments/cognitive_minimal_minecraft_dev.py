@@ -446,6 +446,7 @@ async def execute_one_cognitive_world_turn(
     s49_readonly_shadow: bool = False,
     exploration_need: bool = False,
     use_registered_presets: bool = False,
+    fast_crisis: bool = False,
 ) -> WorldStepReceipt:
     """Run a single DEV turn; native issuance only via existing execute_decision.
 
@@ -464,6 +465,8 @@ async def execute_one_cognitive_world_turn(
             or type(s49_readonly_shadow) is not bool
             or type(exploration_need) is not bool):
         raise MinimalCognitionError("native issuance/shadow flags must be bool")
+    if type(fast_crisis) is not bool:
+        raise MinimalCognitionError("FAST crisis must be an explicit typed signal")
     if type(use_registered_presets) is not bool:
         raise MinimalCognitionError("registered Preset mode must be bool")
     if use_registered_presets and issue_native:
@@ -495,6 +498,7 @@ async def execute_one_cognitive_world_turn(
 
         schema_preset_kwargs = {
             "use_registered_presets": True,
+            "fast_crisis": fast_crisis,
             "skill_definitions": {
                 (d.skill_id, d.version): d for d in initial_skill_definitions()
             },
