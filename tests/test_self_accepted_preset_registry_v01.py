@@ -275,7 +275,6 @@ def test_emergency_last_and_exploration_reservation_without_crisis_mask():
     )
     registry = PatternRegistry(base.revision, base.patterns +
                                (defense, initial_move_pattern()))
-    registry = accept_many(registry) if False else registry
     for p in registry.patterns:
         skill = p.skill_id
         registry = accepted(registry, make_preset(p.pattern_id, skill))
