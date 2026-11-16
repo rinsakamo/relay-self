@@ -556,7 +556,9 @@ def _adopt_verified_trial_report(
     moved = trial.get("b_actual_physical_action") is True
     terminal = trial.get("b_physical_wal_outcome") is True
     detail = trial.get("b_original_selected_move")
-    if (b_selected_move_dev and b_autonomous_l1_dev) or (\n        moved != terminal or moved != (b_selected_move_dev or b_autonomous_l1_dev)\n    ):
+    if (b_selected_move_dev and b_autonomous_l1_dev) or (
+        moved != terminal or moved != (b_selected_move_dev or b_autonomous_l1_dev)
+    ):
         raise RealResidentPresenceRefusal("real B action flag contradicts original WAL")
     if world_only and (
         not trial.get("world_only_generation")
@@ -699,7 +701,20 @@ async def run_real_resident_presence(
         raise RealResidentPresenceRefusal(
             "bounded explicit operator-selected B MOVE DEV required before Paper launch"
         )
-    if b_autonomous_l1_dev and (\n        b_selected_move_dev or not real_llm_grant\n        or b_pulse_seconds != 0.35\n        or not all(\n            isinstance(x, str) and x.strip()\n            for x in (llama_endpoint, systemone_endpoint, model_name)\n        )\n    ):\n        raise RealResidentPresenceRefusal(\n            "Stage24b requires independent real LLM grant and fixed model choice"\n        )\n    if not b_autonomous_l1_dev and real_llm_grant:\n        raise RealResidentPresenceRefusal("unused real LLM grant forbidden")\n    paper_src, plugin_src, scratch = preflight_two_native(
+    if b_autonomous_l1_dev and (
+        b_selected_move_dev or not real_llm_grant
+        or b_pulse_seconds != 0.35
+        or not all(
+            isinstance(x, str) and x.strip()
+            for x in (llama_endpoint, systemone_endpoint, model_name)
+        )
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage24b requires independent real LLM grant and fixed model choice"
+        )
+    if not b_autonomous_l1_dev and real_llm_grant:
+        raise RealResidentPresenceRefusal("unused real LLM grant forbidden")
+    paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
         scratch_parent=scratch_parent, accepted_eula=accepted_eula,
