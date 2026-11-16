@@ -515,6 +515,79 @@ async def _owned_resident_trial(
     return result_data
 
 
+def _adopt_verified_trial_report(
+    report: dict[str, object],
+    trial: dict[str, object],
+    *, b_selected_move_dev: bool, world_only: bool,
+) -> None:
+    """One source of truth for top-level flags, step and classification.
+
+    Never mark a real B MOVE from an operator option alone; the original
+    issuer/WAL, Paper MOVE and frozen raw-native readback must all agree.
+    """
+    if (
+        type(trial) is not dict
+        or type(b_selected_move_dev) is not bool
+        or type(world_only) is not bool
+    ):
+        raise RealResidentPresenceRefusal("unqualified real World trial result")
+    moved = trial.get("b_actual_physical_action") is True
+    terminal = trial.get("b_physical_wal_outcome") is True
+    detail = trial.get("b_original_selected_move")
+    if moved != terminal or moved != b_selected_move_dev:
+        raise RealResidentPresenceRefusal("real B action flag contradicts original WAL")
+    if world_only and (
+        not trial.get("world_only_generation")
+        or not trial.get("world_only_new_session")
+    ):
+        raise RealResidentPresenceRefusal("requested World-only generation not verified")
+    if moved:
+        if (
+            type(detail) is not dict
+            or detail.get("classification") != "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+            or not detail.get("original_action_id")
+            or not detail.get("original_canonical_wal_sha256")
+            or detail.get("autonomous_l1_skill_selection") is not False
+            or detail.get("paper_action_causation") is not False
+            or trial.get("b_move_action_causality") is not False
+            or trial.get("paper_player_continuity")
+            != ResidentPaperVerdict.MOVEMENT_CORRELATED.value
+        ):
+            raise RealResidentPresenceRefusal("original B MOVE and Paper source not correlated")
+        raw = detail.get("independent_native_source")
+        if (
+            type(raw) is not dict
+            or raw.get("readback_classification")
+            != "OWNED_NATIVE_MOVE_RAW_SOURCE_READBACK_DEV"
+            or type(raw.get("all_settle_probes")) is not int
+            or raw["all_settle_probes"] < 3
+            or not all(
+                type(raw.get(k)) is str
+                for k in ("raw_file", "readback_file", "raw_sha256", "readback_sha256")
+            )
+            or file_sha256(Path(raw["raw_file"])) != raw["raw_sha256"]
+            or file_sha256(Path(raw["readback_file"])) != raw["readback_sha256"]
+        ):
+            raise RealResidentPresenceRefusal("immutable B raw native source not independently verified")
+    elif detail is not None:
+        raise RealResidentPresenceRefusal("unrequested B MOVE detail in presence-only trial")
+
+    # Only reach success classifications after all nested source evidence
+    # is checked. On any exception the outer report remains HOLD/UNKNOWN.
+    classification = (
+        "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
+        if moved and world_only
+        else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if moved
+        else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
+        if world_only else "REAL_PAPER_RESIDENT_PRESENCE_DEV"
+    )
+    report["steps"] = [trial]
+    report["real_b_physical_action"] = moved
+    report["real_b_physical_wal_outcome"] = terminal
+    report["native_move_raw_source_attested"] = moved
+    report["classification"] = classification
+
+
 async def run_real_resident_presence(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -574,7 +647,11 @@ async def run_real_resident_presence(
         "plugin_sha256": plugin_sha256,
         "scratch": str(root),
         "localhost_port": port,
-        "real_b_physical_action": False,
+        # A selected MOVE is UNKNOWN until original WAL, Paper and exact
+        # native stdout bytes are independently checked, not automatically false.
+        "real_b_physical_action": None if b_selected_move_dev else False,
+        "real_b_physical_wal_outcome": None if b_selected_move_dev else False,
+        "native_move_raw_source_attested": False,
         "real_gpu": False,
         "steps": [],
     }
@@ -659,20 +736,17 @@ async def run_real_resident_presence(
             launch=native_factory, cognitive_work=cognition,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
-        report["steps"] = [await _owned_resident_trial(
+        trial = await _owned_resident_trial(
             paper=owner, bridge=bridge, physical=physical,
             lifecycle=lifecycle, world_uuid=world_uuid,
             evidence_dir=evidence,
             b_heartbeat_s=b_heartbeat_s, world_only=world_only,
             b_selected_move_dev=b_selected_move_dev,
             b_pulse_seconds=b_pulse_seconds,
-        )]
-        report["classification"] = (
-            "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
-            if b_selected_move_dev and world_only
-            else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if b_selected_move_dev
-            else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
-            if world_only else "REAL_PAPER_RESIDENT_PRESENCE_DEV"
+        )
+        _adopt_verified_trial_report(
+            report, trial, b_selected_move_dev=b_selected_move_dev,
+            world_only=world_only,
         )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
