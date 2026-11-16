@@ -38,7 +38,6 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
-from relay_self.skill_invocation import SkillDefinition, SkillParameterPreset
 from relay_self.self_owner_checkpoint_dev import (
     PeerDelivery,
     RehydratedSelfOwner,
@@ -47,6 +46,7 @@ from relay_self.self_owner_checkpoint_dev import (
     save_self_owner_cut,
 )
 from relay_self.skill import SkillExecution
+from relay_self.skill_invocation import SkillDefinition, SkillParameterPreset
 
 
 class LiveCognitionCheckpointError(RuntimeError):
