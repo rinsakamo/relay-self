@@ -567,9 +567,9 @@ class PhysicalActionJournal:
             or supervisor.get(binding.action_id) is not terminal
         ):
             raise PhysicalJournalError("MOVE original native Action/stop evidence mismatch")
-        to_tick = lambda item: (
-            item.snapshot.time.day * 24000 + item.snapshot.time.time_of_day
-        )
+        def to_tick(item: MineflayerObservation) -> int:
+            assert item.snapshot.time is not None
+            return item.snapshot.time.day * 24000 + item.snapshot.time.time_of_day
         t0, t1, t2 = map(to_tick, (initial_stop, first_stable, settled))
         p0, p1 = first_stable.snapshot.position, settled.snapshot.position
         if (
