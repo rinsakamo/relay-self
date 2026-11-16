@@ -103,7 +103,9 @@ def check_physical_source_window(
         or proposal.proposal.skill_execution_id != b.skill_execution_id
         or b.skill_id != capability or b.skill_version != 1
         or b.capability_ref != capability or b.capability_version != 1
-        or b.body_channel != "hand" or b.target_kind != target_kind
+        or b.body_channel != (
+            "locomotion" if capability == "MOVE" else "hand"
+        ) or b.target_kind != target_kind
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,89}", b.action_id)
         or not isinstance(previous, MineflayerObservation)
         or not isinstance(current, MineflayerObservation)
@@ -174,10 +176,10 @@ def begin_physical_issue_dev(
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
     Caller must already verify the capability-specific TWO-PROBE window.
-    The dispatch is deliberately closed to EAT and ATTACK. No arbitrary
-    model-provided callback can bypass the shared durable reservation.
+    Dispatch is closed to EAT, ATTACK and selected bounded MOVE.
+    No arbitrary model-provided callback can bypass the durable reservation.
     """
-    if capability not in {"EAT", "ATTACK"}:
+    if capability not in {"EAT", "ATTACK", "MOVE"}:
         raise refusal("unregistered physical issuer capability")
     journal.require_clear()
     b = proposal.binding
@@ -223,8 +225,10 @@ def begin_physical_issue_dev(
     # enforces CAS, fsync, anti-replay and cross-restart unresolved STOP.
     if capability == "EAT":
         journal.prepare_eat(b, current_probe)
-    else:
+    elif capability == "ATTACK":
         journal.prepare_attack(b, current_probe)
+    else:
+        journal.prepare_move(b, current_probe)
     issued = supervisor.issue(
         authorized, at_ns=at_ns + 1, deadline_ns=at_ns + 1000,
         provenance=issue_grant.provenance,
