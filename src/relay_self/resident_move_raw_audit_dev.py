@@ -123,9 +123,13 @@ def readback_owned_move_native_source(
         raise ResidentMoveRawAuditError("one or more raw STOP probes missing/modified")
     if not current_probe.seq < start.seq < stop.seq < stops[0].seq:
         raise ResidentMoveRawAuditError("source start/STOP/probe order incorrect")
-    if any(
-        not a.seq < b.seq or not _tick(a) <= _tick(b)
-        for a, b in zip(stops, stops[1:])
+    if (
+        len({x.request_id for x in stops}) != len(stops)
+        or any(
+            not a.seq < b.seq or not _tick(a) <= _tick(b)
+            for a, b in zip(stops, stops[1:])
+        )
+        or _tick(stops[-1]) - _tick(stops[0]) > 200
     ):
         raise ResidentMoveRawAuditError("native STOP probe sequence/clock regressed")
     initial, first, settled = (
@@ -133,6 +137,26 @@ def readback_owned_move_native_source(
         receipt.first_stable_probe,
         receipt.settled_probe,
     )
+    # Recompute the original settling algorithm from ALL captured probes,
+    # including intermediate drift; do not trust a success-only terminal
+    # summary's asserted choice of first/stable/settled samples.
+    reached_first = False
+    baseline = initial
+    recomputed: tuple[MineflayerObservation, MineflayerObservation] | None = None
+    for sample in stops[1:]:
+        if not reached_first:
+            if _tick(sample) - _tick(initial) >= 8:
+                baseline = sample
+                reached_first = True
+            continue
+        if _tick(sample) - _tick(baseline) < 8:
+            continue
+        if _dist(baseline, sample) <= 0.06:
+            recomputed = (baseline, sample)
+            break
+        baseline = sample
+    if recomputed != (first, settled) or stops[-1] != settled:
+        raise ResidentMoveRawAuditError("raw intermediate STOP drift changes terminal verdict")
     if (
         not 8 <= _tick(first) - _tick(initial) <= 200
         or not 8 <= _tick(settled) - _tick(first) <= 200
