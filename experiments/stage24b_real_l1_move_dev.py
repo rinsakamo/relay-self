@@ -6,8 +6,6 @@ issuer, a navigation controller or a proof of Goal completion. No retries.
 """
 from __future__ import annotations
 
-import asyncio
-import hashlib
 import json
 import time
 import uuid
@@ -182,7 +180,7 @@ async def run_stage24b_selected_b_move(
         or not isinstance(physical, PhysicalIssueAdmission)
         or not isinstance(evidence_dir, Path) or not evidence_dir.is_dir()
         or not callable(read_probe)
-        or not type(epoch) is int or epoch < 0
+        or type(epoch) is not int or epoch < 0
         or not 1 <= model_timeout_s <= 120
         or owner.self_id != "B"
         or owner.native_session_id != session.started.session_id
