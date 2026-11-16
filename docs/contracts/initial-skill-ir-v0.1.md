@@ -396,3 +396,27 @@ the one-shot native MOVE issuer. Existing 0.05m native STOP residual check,
 Paper witness, WAL and unresolved 2026-11-16 original real World trial
 remain unchanged. No new physical movement has been run for this interface.
 
+
+## Skill parameters without complex innate Skill logic (2026-11-16 offline DEV)
+
+[Parameterized Skill ABI v0.1](parameterized-skill-abi-v0.1.md) formalizes
+`SkillDefinition` (**Goal-independent innate/learned ability**) versus
+`SkillInvocation` (**source-bound selected Goal+Target+Constraints+Budget
+and typed extra arguments**). The same `MOVE@1` definition can represent
+exploration, a relative step, entity-relative approach or item pickup
+without hardcoding each Goal as a new innate Skill or a motor routine.
+The interpreter still executes the simple finite
+`CHECK_TARGET → ACTION` steps. `PhysicalSkillIR.invocation` and
+`SkillCursor.invocation_ref` preserve selected parameter identity.
+
+`LearnedSkillProgram` admits explicit, bounded type-checked call templates,
+including a finite acyclic DAG of registered learned Skills, but **does
+not run or register** them. No native issuer can silently consume these
+new parameterized IRs: until physical constraints/budgets and the
+single-parent source-bound issuer exist, the interpreter refuses
+parameterized `propose()` after its read-only target check.
+
+Legacy `compile_initial_skill` and actual EAT/ATTACK/MOVE physical
+issue paths keep their original Goal/Target/STOP/WAL admission. The
+2026-11-16 `NATIVE_ISSUED_UNKNOWN` original WAL stays unresolved, no new
+World action is claimed, and Checkpoint #878 is unchanged.
