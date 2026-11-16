@@ -14,7 +14,13 @@ from pathlib import Path
 from typing import Callable
 
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.cognitive_minimal_dev import PatternRegistry, SchemaPattern, accept_learned_pattern
+from relay_self.cognitive_minimal_dev import (
+    PatternRegistry,
+    PresetAcceptanceReceipt,
+    SchemaPattern,
+    accept_learned_pattern,
+    accept_skill_parameter_preset,
+)
 from relay_self.coordinated_autosave_runtime_dev import (
     AdmissionCloseReceipt,
     AdmissionHooks,
@@ -40,6 +46,7 @@ from relay_self.self_owner_checkpoint_dev import (
     save_self_owner_cut,
 )
 from relay_self.skill import SkillExecution
+from relay_self.skill_invocation import SkillDefinition, SkillParameterPreset
 
 
 class LiveCognitionCheckpointError(RuntimeError):
@@ -245,6 +252,19 @@ class CognitionOwnerCohort:
                     pending_question_refs=tuple(sorted(owner.pending_questions)),
                 )
                 retained = owner.retained
+                # This is the same quiesced owner revision used by the typed
+                # owner cut. Save both views, never a stale pre-learning copy.
+                if retained.pattern_registry is None:
+                    retained = retained.retain_schema_registry(owner.pattern_registry)
+                elif retained.pattern_registry.revision < owner.pattern_registry.revision:
+                    retained = retained.retain_schema_registry(
+                        owner.pattern_registry,
+                        expected_revision=retained.pattern_registry.revision,
+                    )
+                elif retained.pattern_registry != owner.pattern_registry:
+                    raise LiveCognitionCheckpointError(
+                        "Owner registry and retained cognitive registry diverged"
+                    )
                 fence_ref = self.fence.fence_ref
             except BaseException:
                 self._freeze_failed = True
@@ -283,6 +303,7 @@ class CognitionOwnerCohort:
         with self.lock:
             self._freeze_active.remove(self_id)
             self._freeze_completed.add(self_id)
+            owner.retained = retained
         return receipt
 
     def rebind(self, self_id: str, new_server_session_id: str) -> ReboundSelfReceipt:
@@ -415,6 +436,11 @@ class CheckpointedCognitiveOwner:
         )
         if len({x.execution_id for x in skills}) != len(skills):
             raise LiveCognitionCheckpointError("duplicate Skill histories")
+        if (retained.pattern_registry is not None
+                and retained.pattern_registry != pattern_registry):
+            raise LiveCognitionCheckpointError(
+                "Self's loaded cognitive Presets disagree with live owner registry"
+            )
         self.retained = retained
         self.intent = intent
         self.pattern_registry = pattern_registry
@@ -486,11 +512,51 @@ class CheckpointedCognitiveOwner:
     def accept_pattern(self, pattern: SchemaPattern, allowed_skills: frozenset[tuple[str, int]]) -> None:
         with self._mutating():
             self._eligible()
-            self.pattern_registry = accept_learned_pattern(
+            new = accept_learned_pattern(
                 self.pattern_registry, pattern,
                 accepted_by_self=True, expected_revision=self.pattern_registry.revision,
                 allowed_skills=allowed_skills,
             )
+            self._publish_registry(new)
+
+    def _publish_registry(self, new_registry: PatternRegistry) -> None:
+        """Single-cohort-lock adoption of registry + retained cognition."""
+        expected = (
+            None if self.retained.pattern_registry is None
+            else self.retained.pattern_registry.revision
+        )
+        if expected is not None and expected != self.pattern_registry.revision:
+            raise LiveCognitionCheckpointError("diverged Self cognitive owner revision")
+        new_retained = self.retained.retain_schema_registry(
+            new_registry, expected_revision=expected,
+        )
+        self.pattern_registry = new_registry
+        self.retained = new_retained
+
+    def accept_parameter_preset(
+        self, preset: SkillParameterPreset, *, definition: SkillDefinition,
+        acceptance_event_id: str, acceptance_provenance: Provenance,
+        available_skills: frozenset[tuple[str, int]],
+    ) -> None:
+        """Only this fenced Self owner publishes L2 proposed parameters.
+
+        Caller must have obtained the actual Self acceptance decision.
+        Recording source provenance is not itself proof of model consent.
+        """
+        with self._mutating():
+            self._eligible()
+            receipt = PresetAcceptanceReceipt(
+                self.self_id, acceptance_event_id, preset.preset_ref,
+                acceptance_provenance,
+            )
+            new = accept_skill_parameter_preset(
+                self.pattern_registry, preset,
+                definition=definition, receipt=receipt,
+                accepted_by_self=True,
+                expected_revision=self.pattern_registry.revision,
+                available_skills=available_skills,
+            )
+            self._publish_registry(new)
 
 
 def staged_recover_cognition_cohort(

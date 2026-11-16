@@ -360,3 +360,61 @@ def test_runtime_holds_when_peer_delivery_missing_before_restart(tmp_path: Path)
     assert latest_verified_generation(store) is None
     assert "restart" not in events and "release" not in events
     assert not (store / "g-000000000001" / "COMMITTED.json").exists()
+
+
+
+@pytest.mark.parametrize("corruption", ["missing-cognition", "legacy-downgrade"])
+def test_accepted_preset_two_cut_mismatch_refuses_generation_before_commit(
+    tmp_path: Path, corruption: str,
+) -> None:
+    """No original physical issue or COMMITTED marker on skewed Self learning."""
+    from relay_self.cognitive_minimal_dev import (
+        PatternRegistry,
+        PresetAcceptanceReceipt,
+        accept_skill_parameter_preset,
+    )
+    from relay_self.initial_skill_ir import initial_skill_definitions
+    from relay_self.persistent_cognition import load_persistent_cognition
+    from relay_self.skill_invocation import (
+        SkillBudget,
+        SkillConstraints,
+        SkillParameterPreset,
+    )
+
+    world, store, specs, cuts = _fixture(tmp_path)
+    definition = next(d for d in initial_skill_definitions() if d.skill_id == "EAT")
+    preset = SkillParameterPreset(
+        "hunger-eat", "SourceOnly", 1, definition.definition_ref,
+        SkillConstraints(), SkillBudget(1, 2000),
+        Provenance("l2-proposal", "A:accepted"),
+    )
+    accepted = accept_skill_parameter_preset(
+        cuts[0].pattern_registry, preset, definition=definition,
+        receipt=PresetAcceptanceReceipt(
+            "A", "A-event", preset.preset_ref,
+            Provenance("self-owner", "A:decision"),
+        ),
+        accepted_by_self=True,
+        expected_revision=cuts[0].pattern_registry.revision,
+        available_skills=frozenset({("EAT", 1)}),
+    )
+    file = specs[0].owner_state_file
+    file.unlink()
+    if corruption == "missing-cognition":
+        # v2 typed owner retains accepted parameters, v3 cognitive Self file
+        # was not committed alongside it.
+        save_self_owner_cut(file, replace(cuts[0], pattern_registry=accepted))
+    else:
+        # v3 cognition contains the adopted revision but owner cut is an
+        # old schema-1 projection that silently omits the Preset.
+        old = load_persistent_cognition(specs[0].cognition_file)
+        save_persistent_cognition(
+            specs[0].cognition_file,
+            old.retain_schema_registry(accepted),
+        )
+        legacy = PatternRegistry(accepted.revision, accepted.patterns)
+        save_self_owner_cut(file, replace(cuts[0], pattern_registry=legacy))
+    with pytest.raises(SelfOwnerCheckpointError, match="disagree"):
+        _capture(world, store, specs)
+    assert latest_verified_generation(store) is None
+    assert not (store / "g-000000000001" / "COMMITTED.json").exists()

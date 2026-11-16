@@ -966,3 +966,182 @@ def test_native_work_bridge_stale_b_probe_rejects_release(tmp_path):
     finally:
         if paper.owned_session_id is not None:
             paper.stop_and_save()
+
+
+
+def test_two_self_accepted_presets_survive_p0d_generation_and_rebuild_fresh_l1(tmp_path):
+    """Entire actual P0-D two-Self checkpoint/restore, synthetic World only.
+
+    The restored knowledge can yield new *numbered*, fully-bound L1 options
+    from NEW source-qualified Target observations, but it cannot resume the
+    original Skill cursor or issue a native Action.
+    """
+    from relay_self.cognitive_minimal_dev import (
+        Option,
+        Target,
+        WorldPercept,
+        assemble_l1_select,
+        cpu_schema_epoch,
+        resolve_l1_choice,
+    )
+    from relay_self.common_io import ScopeRef
+    from relay_self.initial_skill_ir import initial_skill_definitions
+    from relay_self.relay_engine import ProviderDecision, RelayEngine
+    from relay_self.skill_invocation import (
+        SkillBudget,
+        SkillConstraints,
+        SkillParameterPreset,
+    )
+
+    f = RuntimeFixture(tmp_path)
+    definition = next(d for d in initial_skill_definitions() if d.skill_id == "EAT")
+    definitions = {(definition.skill_id, definition.version): definition}
+    accepted_refs = {}
+    for owner in f.owners:
+        sid = owner.self_id
+        preset = SkillParameterPreset(
+            "hunger-eat", "FirstBread", 1, definition.definition_ref,
+            SkillConstraints(), SkillBudget(1, 2000),
+            Provenance("owner-hypothesis", f"learned-{sid}"),
+        )
+        owner.accept_parameter_preset(
+            preset, definition=definition,
+            acceptance_event_id=f"accept-eat-{sid}",
+            acceptance_provenance=Provenance("self-owner", f"evidence-{sid}"),
+            available_skills=frozenset({("EAT", 1)}),
+        )
+        assert owner.retained.pattern_registry == owner.pattern_registry
+        accepted_refs[sid] = preset.preset_ref
+
+    first = f.runtime.run_if_due(0.0)
+    assert first is not None and first.typed_owner_cut_validated
+    assert first.saved_self_ids == ("A", "B")
+    cuts = verify_typed_generation(first.generation)
+    assert len(cuts) == 2
+    for cut in cuts:
+        assert len(cut.pattern_registry.accepted_presets) == 1
+        assert cut.pattern_registry.accepted_presets[0].receipt.self_id == cut.self_id
+        assert cut.pattern_registry.accepted_presets[0].preset.preset_ref == (
+            accepted_refs[cut.self_id]
+        )
+        raw = __import__("json").loads(
+            (first.generation / "selves" / cut.self_id / "owner-state.json").read_text()
+        )
+        assert raw["payload"]["schema"] == 2
+        assert raw["payload"]["pattern_registry"]["registry_ref"].startswith(
+            "schema-registry:v2@"
+        )
+
+    # Current source owners may learn AFTER the generation, but rollback
+    # preserves only exactly the committed cohort.
+    for owner in f.owners:
+        owner.observe_world_tick(
+            session_id=owner.native_session_id, world_tick=120,
+        )
+        owner.retain_memory(Memory(
+            f"future-{owner.self_id}", "not in the committed generation",
+            Provenance("later", owner.self_id),
+            Provenance("later-integration", owner.self_id),
+        ))
+    restored = tmp_path / "restored-branch"
+    restore_generation(first.generation, restored, restore_id="preset-two")
+    cohort = staged_recover_cognition_cohort(first.generation, restored)
+    assert tuple(c.self_id for c in cohort) == ("A", "B")
+
+    for recovered in cohort:
+        sid = recovered.self_id
+        assert recovered.fresh_worldbody_required
+        assert not recovered.issue_authorized
+        assert not recovered.native_session_bound
+        assert not recovered.semantic.old_skill_resume_authorized
+        assert not recovered.semantic.new_physical_action_issue_authorized
+        assert recovered.retained.pattern_registry == recovered.semantic.pattern_registry
+        assert len(recovered.retained.memories) == 0
+
+        # NEW WorldBody observation, no cached Target or previous L1 result.
+        new_session = f"new-world-native-{sid}"
+        observation_source = Provenance("fresh-bridge", f"new-probe-{sid}")
+        percept = WorldPercept(
+            ScopeRef(sid, new_session), observation_source, 1,
+            hunger=8, fatigue_high=False,
+            targets=(
+                Target("inventory:bread", "FOOD", observation_source,
+                       new_session, 1),
+            ),
+        )
+        first_frame = cpu_schema_epoch(
+            percept, recovered.retained.pattern_registry, epoch=1,
+            allowed_skills=frozenset({("EAT", 1)}),
+            skill_definitions=definitions, use_registered_presets=True,
+        )
+        assert len(first_frame.options) == 1
+        option = first_frame.options[0]
+        assert option.invocation is not None
+        assert option.invocation.parameter_preset_ref == accepted_refs[sid]
+        assert option.invocation.scope.world_session_id == new_session
+        round_ = assemble_l1_select(
+            first_frame, intent_owner=IntentCommitment(),
+        )
+        selected_id = next(choice for choice, candidate in round_.numbered
+                           if isinstance(candidate, Option))
+        result = RelayEngine(
+            lambda request, *, mode: ProviderDecision.resolved(selected_id),
+        )(round_.request)
+        changed_probe = WorldPercept(
+            ScopeRef(sid, new_session),
+            Provenance("fresh-bridge", f"next-probe-{sid}"), 2,
+            hunger=8, fatigue_high=False,
+            targets=(
+                Target("inventory:bread", "FOOD",
+                       Provenance("fresh-bridge", f"next-probe-{sid}"),
+                       new_session, 2),
+            ),
+        )
+        current_frame = cpu_schema_epoch(
+            changed_probe, recovered.retained.pattern_registry, epoch=2,
+            allowed_skills=frozenset({("EAT", 1)}),
+            skill_definitions=definitions, use_registered_presets=True,
+        )
+        selection = resolve_l1_choice(
+            round_, result, current_frame=current_frame,
+            intent_owner=IntentCommitment(),
+            available_skills=frozenset({("EAT", 1)}),
+        )
+        assert selection.status == "READY"
+        assert selection.option.invocation.invocation_ref == (
+            option.invocation.invocation_ref
+        )
+        # READY is *cognitive selection*, never ActionPort admission.
+        restored_wal = PhysicalActionJournal.restore(
+            recovered.physical_wal_path, self_id=sid,
+        )
+        restored_wal.require_clear()
+
+
+def test_self_owner_rejects_preset_adoption_while_checkpoint_fenced(tmp_path):
+    from relay_self.initial_skill_ir import initial_skill_definitions
+    from relay_self.skill_invocation import (
+        SkillBudget,
+        SkillConstraints,
+        SkillParameterPreset,
+    )
+
+    f = RuntimeFixture(tmp_path)
+    owner = f.owners[0]
+    definition = next(d for d in initial_skill_definitions() if d.skill_id == "EAT")
+    preset = SkillParameterPreset(
+        "hunger-eat", "NoWrite", 1, definition.definition_ref,
+        SkillConstraints(), SkillBudget(1, 1000),
+        Provenance("proposal", "no-grant"),
+    )
+    closed = f.cohort.close()
+    assert closed.physical_admission_closed
+    with pytest.raises(LiveCognitionCheckpointError, match="fenced"):
+        owner.accept_parameter_preset(
+            preset, definition=definition,
+            acceptance_event_id="late-write",
+            acceptance_provenance=Provenance("self-owner", "late"),
+            available_skills=frozenset({("EAT", 1)}),
+        )
+    assert owner.pattern_registry.accepted_presets == ()
+    assert owner.retained.pattern_registry is None

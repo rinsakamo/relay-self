@@ -32,6 +32,15 @@ from relay_self.intent import (
     IntentEventKind,
     ReconsiderationDecision,
 )
+from relay_self.persistent_cognition import load_persistent_cognition
+from relay_self.preset_checkpoint_recovery_dev import (
+    reconcile_restored_self_schema,
+)
+from relay_self.preset_registry_checkpoint import (
+    PresetCheckpointRefusal,
+    decode_pattern_registry,
+    encode_pattern_registry,
+)
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillEvent, SkillExecution, SkillState
 
@@ -186,7 +195,7 @@ def _replay_intent(events: tuple[IntentEvent, ...]) -> IntentCommitment:
 
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
     return {
-        "schema": 1,
+        "schema": 2 if cut.pattern_registry.accepted_presets else 1,
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -210,19 +219,22 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
                 ],
             } for s in cut.skill_executions
         ],
-        "pattern_registry": {
-            "revision": cut.pattern_registry.revision,
-            "patterns": [
-                {
-                    "pattern_id": p.pattern_id, "version": p.version,
-                    "schema_id": p.schema_id, "kind": p.kind.value,
-                    "predicate": p.predicate.value, "goal_id": p.goal_id,
-                    "skill_id": p.skill_id, "skill_version": p.skill_version,
-                    "target_kind": p.target_kind, "origin": p.origin.value,
-                    "provenance": _provenance(p.provenance),
-                } for p in cut.pattern_registry.patterns
-            ],
-        },
+        "pattern_registry": (
+            encode_pattern_registry(cut.pattern_registry, self_id=cut.self_id)
+            if cut.pattern_registry.accepted_presets else {
+                "revision": cut.pattern_registry.revision,
+                "patterns": [
+                    {
+                        "pattern_id": p.pattern_id, "version": p.version,
+                        "schema_id": p.schema_id, "kind": p.kind.value,
+                        "predicate": p.predicate.value, "goal_id": p.goal_id,
+                        "skill_id": p.skill_id, "skill_version": p.skill_version,
+                        "target_kind": p.target_kind, "origin": p.origin.value,
+                        "provenance": _provenance(p.provenance),
+                    } for p in cut.pattern_registry.patterns
+                ],
+            }
+        ),
         "peer_deliveries": [
             {
                 "message_id": m.message_id, "sender_self_id": m.sender_self_id,
@@ -274,7 +286,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
         "former_native_session_id", "last_observed_world_tick", "intent_events",
         "skills", "pattern_registry", "peer_deliveries", "pending_question_refs",
     }, "owner snapshot")
-    if type(payload["schema"]) is not int or payload["schema"] != 1:
+    if type(payload["schema"]) is not int or payload["schema"] not in (1, 2):
         raise SelfOwnerCheckpointError("unsupported owner checkpoint schema")
     try:
         if any(type(payload[k]) is not list for k in (
@@ -291,26 +303,38 @@ def _deserialize(value: object) -> SelfOwnerCut:
                 _nat(e["at_ns"], "Intent time"), _read_provenance(e["provenance"]),
                 e["objective"], e["reason"],
             ))
-        registry = _exact(payload["pattern_registry"], {
-            "revision", "patterns",
-        }, "pattern registry")
-        if type(registry["patterns"]) is not list:
-            raise SelfOwnerCheckpointError("pattern list required")
-        patterns = []
-        for raw in registry["patterns"]:
-            p = _exact(raw, {
-                "pattern_id", "version", "schema_id", "kind", "predicate",
-                "goal_id", "skill_id", "skill_version", "target_kind", "origin",
-                "provenance",
-            }, "Schema pattern")
-            patterns.append(SchemaPattern(
-                pattern_id=p["pattern_id"], version=p["version"],
-                schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
-                predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
-                skill_id=p["skill_id"], skill_version=p["skill_version"],
-                target_kind=p["target_kind"], origin=Origin(p["origin"]),
-                provenance=_read_provenance(p["provenance"]),
-            ))
+        if payload["schema"] == 2:
+            restored_registry = decode_pattern_registry(
+                payload["pattern_registry"], expected_self_id=payload["self_id"],
+            )
+            if not restored_registry.accepted_presets:
+                raise SelfOwnerCheckpointError(
+                    "owner-cut v2 requires an actual adopted Preset"
+                )
+        else:
+            registry = _exact(payload["pattern_registry"], {
+                "revision", "patterns",
+            }, "legacy pattern registry")
+            if type(registry["patterns"]) is not list:
+                raise SelfOwnerCheckpointError("pattern list required")
+            patterns = []
+            for raw in registry["patterns"]:
+                p = _exact(raw, {
+                    "pattern_id", "version", "schema_id", "kind", "predicate",
+                    "goal_id", "skill_id", "skill_version", "target_kind", "origin",
+                    "provenance",
+                }, "Schema pattern")
+                patterns.append(SchemaPattern(
+                    pattern_id=p["pattern_id"], version=p["version"],
+                    schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
+                    predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
+                    skill_id=p["skill_id"], skill_version=p["skill_version"],
+                    target_kind=p["target_kind"], origin=Origin(p["origin"]),
+                    provenance=_read_provenance(p["provenance"]),
+                ))
+            restored_registry = PatternRegistry(
+                _nat(registry["revision"], "registry revision"), tuple(patterns),
+            )
         peers = []
         for raw in payload["peer_deliveries"]:
             m = _exact(raw, {
@@ -328,9 +352,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
             ),
             intent_events=tuple(intent_events),
             skill_executions=tuple(_read_skill(s) for s in payload["skills"]),
-            pattern_registry=PatternRegistry(
-                _nat(registry["revision"], "registry revision"), tuple(patterns),
-            ),
+            pattern_registry=restored_registry,
             peer_deliveries=tuple(peers),
             pending_question_refs=tuple(payload["pending_question_refs"]),
         )
@@ -466,6 +488,22 @@ def _load_copied_cohort(
         cut = load_self_owner_cut(file)
         if cut.self_id != sid:
             raise SelfOwnerCheckpointError("owner snapshot Self identity mismatch")
+        retained = load_persistent_cognition(
+            generation / "selves" / sid / "cognition.json"
+        )
+        if retained.pattern_registry is not None or cut.pattern_registry.accepted_presets:
+            try:
+                reconcile_restored_self_schema(
+                    retained,
+                    owner_cut_pattern_registry=encode_pattern_registry(
+                        cut.pattern_registry, self_id=sid,
+                    ),
+                    expected_self_id=sid,
+                )
+            except PresetCheckpointRefusal as exc:
+                raise SelfOwnerCheckpointError(
+                    "typed owner and cognition Preset revisions disagree"
+                ) from exc
         cuts.append(cut)
     cohort = tuple(cuts)
     verify_peer_cohort(
