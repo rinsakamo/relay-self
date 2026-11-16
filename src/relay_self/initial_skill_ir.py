@@ -231,24 +231,43 @@ def compile_invoked_skill(
             or not capability.available
             or capability.target_kind != target.kind):
         raise SkillIRRefusal("selected Skill/Target/capability do not match definition")
-    try:
-        invocation = bind_skill_invocation(
-            definition,
-            SkillInvocation(
-                scope=selection.world_scope,
-                skill_id=definition.skill_id,
-                skill_version=definition.version,
-                definition_ref=definition.definition_ref,
-                goal_id=option.goal_id,
-                target=target,
-                constraints=constraints,
-                budget=budget,
-                provenance=provenance,
-                arguments=arguments,
-            ),
-        )
-    except SkillInvocationRefusal as exc:
-        raise SkillIRRefusal("typed Skill Invocation arguments invalid") from exc
+    if option.invocation is not None:
+        # The Schema has already completed and frozen the call. L0 is not
+        # allowed to rebind a Budget, constraint, preset, argument or source.
+        invocation = option.invocation
+        if (invocation.scope != selection.world_scope
+                or invocation.definition_ref != definition.definition_ref
+                or invocation.target != target
+                or invocation.constraints != constraints
+                or invocation.budget != budget
+                or invocation.provenance != provenance
+                or invocation.arguments != arguments):
+            raise SkillIRRefusal("compiled parameters differ from L1-bound invocation")
+        try:
+            bind_skill_invocation(definition, invocation)
+        except SkillInvocationRefusal as exc:
+            raise SkillIRRefusal("selected invocation ABI is invalid") from exc
+    else:
+        # Transitional compatibility for existing unparameterized DEV tests.
+        # No preset/parameterized physical Action privilege is implied.
+        try:
+            invocation = bind_skill_invocation(
+                definition,
+                SkillInvocation(
+                    scope=selection.world_scope,
+                    skill_id=definition.skill_id,
+                    skill_version=definition.version,
+                    definition_ref=definition.definition_ref,
+                    goal_id=option.goal_id,
+                    target=target,
+                    constraints=constraints,
+                    budget=budget,
+                    provenance=provenance,
+                    arguments=arguments,
+                ),
+            )
+        except SkillInvocationRefusal as exc:
+            raise SkillIRRefusal("typed Skill Invocation arguments invalid") from exc
     return PhysicalSkillIR(
         skill_id=definition.skill_id,
         version=definition.version,
@@ -363,6 +382,8 @@ class FiniteSkillInterpreter:
             or ir.invocation.target.contract != option.arrival_contract
         ):
             raise SkillIRRefusal("selected Target/condition differs from Skill invocation")
+        if option.invocation is not None and ir.invocation != option.invocation:
+            raise SkillIRRefusal("L0 IR differs from completed L1 invocation")
         if not isinstance(intent_owner, IntentCommitment) or not isinstance(
             skill_execution, SkillExecution
         ):
