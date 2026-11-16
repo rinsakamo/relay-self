@@ -669,6 +669,7 @@ def cpu_schema_epoch(
     skill_definitions: Mapping[tuple[str, int], SkillDefinition] | None = None,
     parameter_presets: Mapping[str, SkillParameterPreset] | None = None,
     use_registered_presets: bool = False,
+    fast_crisis: bool = False,
 ) -> SchemaFrame:
     """Synchronous finite CPU-only step; caller controls event-loop cadence.
 
@@ -677,8 +678,8 @@ def cpu_schema_epoch(
     t0 = time.perf_counter_ns()
     if type(epoch) is not int or epoch < 0:
         raise MinimalCognitionError("invalid epoch")
-    if type(use_registered_presets) is not bool:
-        raise MinimalCognitionError("registered Preset path must be explicit bool")
+    if type(use_registered_presets) is not bool or type(fast_crisis) is not bool:
+        raise MinimalCognitionError("registered Preset and FAST crisis flags must be bool")
     if use_registered_presets and (
         skill_definitions is None or parameter_presets is not None
     ):
@@ -751,7 +752,7 @@ def cpu_schema_epoch(
     if use_registered_presets:
         return bind_registered_skill_invocations(
             frame, registry, definitions=skill_definitions,
-            fast_crisis=percept.threat_cue,
+            fast_crisis=fast_crisis,
         )
     if (skill_definitions is None) != (parameter_presets is None):
         raise MinimalCognitionError("definition and accepted preset maps must be paired")
