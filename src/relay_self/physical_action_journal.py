@@ -10,6 +10,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 import stat
 import tempfile
@@ -64,6 +65,23 @@ _ROW = {
     "count_before", "count_after",
 }
 _ATTACK_FIELDS = {"target_entity_id", "hurt_seq", "source_entity_id", "actor_entity_id"}
+_MOVE_FIELDS = {
+    "control", "started_position", "settled_position",
+    "initial_stop_seq", "first_stable_seq",
+    "initial_stop_tick", "first_stable_tick", "settled_tick",
+    "displacement_m",
+}
+
+
+def _move_pos(value: object) -> tuple[float, float, float]:
+    if (
+        type(value) is not dict or set(value) != {"x", "y", "z"}
+        or any(type(v) not in (int, float) or not math.isfinite(v)
+               for v in value.values())
+    ):
+        raise PhysicalJournalError("MOVE persisted 3D position missing/nonfinite")
+    return (float(value["x"]), float(value["y"]), float(value["z"]))
+
 
 
 def _validate(value: object) -> dict[str, Any]:
@@ -76,8 +94,15 @@ def _validate(value: object) -> dict[str, Any]:
     for idx, entry in enumerate(body["actions"]):
         if type(entry) is not dict:
             raise PhysicalJournalError("physical journal row must be mapping")
-        row = _exact(entry, _ROW | _ATTACK_FIELDS if entry.get("capability") == "ATTACK"
-                     else _ROW)
+        row = _exact(
+            entry, (
+                _ROW | _ATTACK_FIELDS
+                if entry.get("capability") == "ATTACK"
+                else _ROW | _MOVE_FIELDS
+                if entry.get("capability") == "MOVE"
+                else _ROW
+            ),
+        )
         for field in (
             "session_id", "intent_id", "skill_execution_id", "action_id",
             "capability", "target_ref", "probe_request_id", "source_ref",
@@ -97,6 +122,15 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("invalid ATTACK target identity")
             _number(row["target_entity_id"])
+        elif row["capability"] == "MOVE":
+            if (
+                row["target_ref"] not in {
+                    "relative:forward", "relative:back",
+                    "relative:left", "relative:right",
+                }
+                or row["control"] != row["target_ref"].removeprefix("relative:")
+            ):
+                raise PhysicalJournalError("MOVE control not original relative target")
         else:
             raise PhysicalJournalError("unknown physical Action capability")
         if row["action_id"] in seen:
@@ -119,6 +153,14 @@ def _validate(value: object) -> dict[str, Any]:
                 ("hurt_seq", "source_entity_id", "actor_entity_id")
             ):
                 raise PhysicalJournalError("unresolved ATTACK cannot claim a hurt event")
+            if row["capability"] == "MOVE":
+                _move_pos(row["started_position"])
+                if any(row[k] is not None for k in (
+                    "settled_position", "initial_stop_seq", "first_stable_seq",
+                    "initial_stop_tick", "first_stable_tick", "settled_tick",
+                    "displacement_m",
+                )):
+                    raise PhysicalJournalError("unresolved MOVE cannot claim stop/outcome")
             max_seq[session] = seq
         elif row["status"] == "NATIVE_EAT_OUTCOME" and row["capability"] == "EAT":
             effects = row["effect_seqs"]
@@ -159,6 +201,32 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("ATTACK attributed hurt evidence invalid")
             max_seq[session] = after
+        elif row["status"] == "NATIVE_MOVE_SETTLED" and row["capability"] == "MOVE":
+            child_seq = row["effect_seqs"]
+            start_pos = _move_pos(row["started_position"])
+            end_pos = _move_pos(row["settled_position"])
+            if type(child_seq) is not list or len(child_seq) != 2:
+                raise PhysicalJournalError("MOVE requires start+stop native ACK")
+            start_seq, stop_seq = [_number(v) for v in child_seq]
+            initial = _number(row["initial_stop_seq"])
+            first = _number(row["first_stable_seq"])
+            final = _number(row["after_seq"])
+            initial_tick = _number(row["initial_stop_tick"])
+            first_tick = _number(row["first_stable_tick"])
+            final_tick = _number(row["settled_tick"])
+            delta = row["displacement_m"]
+            if (
+                type(delta) not in (int, float) or not math.isfinite(delta)
+                or not 0.1 <= delta <= 8.0
+                or abs(math.dist(start_pos, end_pos) - delta) > 1e-6
+                or row["food_before"] is not None or row["food_after"] is not None
+                or row["count_before"] is not None or row["count_after"] is not None
+                or not seq < start_seq < stop_seq < initial < first < final
+                or not 8 <= first_tick - initial_tick <= 200
+                or not 8 <= final_tick - first_tick <= 200
+            ):
+                raise PhysicalJournalError("MOVE original ACK/stop/settle chronology invalid")
+            max_seq[session] = final
         else:
             raise PhysicalJournalError("unknown durable physical status")
     return body
@@ -390,6 +458,148 @@ class PhysicalActionJournal:
             "count_after": after_count,
         }])
 
+
+    def prepare_move(
+        self, binding: PhysicalActionBinding, probe: MineflayerObservation,
+    ) -> None:
+        """Durably reserve the original Self WAL BEFORE any native MOVE effect."""
+        self.require_clear()
+        if (
+            not isinstance(binding, PhysicalActionBinding)
+            or binding.scope.self_id != self._body["self_id"]
+            or binding.skill_id != "MOVE" or binding.skill_version != 1
+            or binding.capability_ref != "MOVE" or binding.capability_version != 1
+            or binding.body_channel != "locomotion"
+            or binding.target_kind != "RELATIVE"
+            or binding.target_ref not in {
+                "relative:forward", "relative:back",
+                "relative:left", "relative:right",
+            }
+            or not isinstance(probe, MineflayerObservation)
+            or probe.kind != "probe" or not probe.request_id
+            or probe.session_id != binding.scope.world_session_id
+            or probe.seq != binding.native_seq
+            or probe.request_id != binding.native_request_id
+            or probe.provenance != binding.native_source
+            or probe.snapshot.time is None
+            or probe.snapshot.health <= 0
+        ):
+            raise PhysicalJournalError("original MOVE parent/native source not qualified")
+        pos = probe.snapshot.position
+        self._commit([*self._body["actions"], {
+            "session_id": probe.session_id,
+            "intent_id": binding.intent_id,
+            "skill_execution_id": binding.skill_execution_id,
+            "action_id": binding.action_id,
+            "capability": "MOVE",
+            "target_ref": binding.target_ref,
+            "probe_seq": probe.seq,
+            "probe_request_id": probe.request_id,
+            "source_ref": probe.provenance.reference,
+            "status": "PREPARED_UNRESOLVED",
+            "effect_seqs": None,
+            "after_seq": None,
+            "food_before": None,
+            "food_after": None,
+            "count_before": None,
+            "count_after": None,
+            "control": binding.target_ref.removeprefix("relative:"),
+            "started_position": {"x": pos.x, "y": pos.y, "z": pos.z},
+            "settled_position": None,
+            "initial_stop_seq": None,
+            "first_stable_seq": None,
+            "initial_stop_tick": None,
+            "first_stable_tick": None,
+            "settled_tick": None,
+            "displacement_m": None,
+        }])
+
+    def close_move(
+        self, binding: PhysicalActionBinding,
+        before: MineflayerObservation,
+        start_ack: MineflayerEffectResult,
+        stop_ack: MineflayerEffectResult,
+        initial_stop: MineflayerObservation,
+        first_stable: MineflayerObservation,
+        settled: MineflayerObservation,
+        terminal: ActionLifecycle,
+        supervisor: ActionSupervisor,
+    ) -> None:
+        """Only original two native ACKs and 8+8 tick settling seal MOVE.
+
+        STOP drift <=0.06m is a stop qualification, NOT a navigation target
+        tolerance. Net displacement merely witnesses movement; no Goal/Skill
+        success or independent Paper causal attribution is claimed.
+        """
+        if not self.unresolved or not isinstance(binding, PhysicalActionBinding):
+            raise PhysicalJournalError("MOVE canonical PREPARED reservation absent")
+        row = self.records[-1]
+        entries = (before, initial_stop, first_stable, settled)
+        if (
+            row["capability"] != "MOVE"
+            or row["action_id"] != binding.action_id
+            or row["intent_id"] != binding.intent_id
+            or row["skill_execution_id"] != binding.skill_execution_id
+            or row["source_ref"] != binding.native_source.reference
+            or row["target_ref"] != binding.target_ref
+            or any(not isinstance(x, MineflayerObservation) or x.kind != "probe"
+                   or x.snapshot.time is None or not x.request_id
+                   or x.snapshot.health <= 0 for x in entries)
+            or any(x.session_id != row["session_id"] for x in entries)
+            or before.seq != row["probe_seq"]
+            or before.request_id != row["probe_request_id"]
+            or not isinstance(start_ack, MineflayerEffectResult)
+            or not isinstance(stop_ack, MineflayerEffectResult)
+            or start_ack.session_id != before.session_id
+            or stop_ack.session_id != before.session_id
+            or start_ack.action_id != binding.action_id + "-start"
+            or stop_ack.action_id != binding.action_id + "-stop"
+            or start_ack.effect != "set_control"
+            or stop_ack.effect != "clear_controls"
+            or start_ack.result != "applied" or stop_ack.result != "applied"
+            or not before.seq < start_ack.seq < stop_ack.seq
+            or not stop_ack.seq < initial_stop.seq < first_stable.seq < settled.seq
+            or len({x.request_id for x in entries}) != 4
+            or not isinstance(terminal, ActionLifecycle)
+            or terminal.state is not ActionState.OUTCOME
+            or terminal.action_id != binding.action_id
+            or not isinstance(supervisor, ActionSupervisor)
+            or supervisor.get(binding.action_id) is not terminal
+        ):
+            raise PhysicalJournalError("MOVE original native Action/stop evidence mismatch")
+        to_tick = lambda item: (
+            item.snapshot.time.day * 24000 + item.snapshot.time.time_of_day
+        )
+        t0, t1, t2 = map(to_tick, (initial_stop, first_stable, settled))
+        p0, p1 = first_stable.snapshot.position, settled.snapshot.position
+        if (
+            not 8 <= t1 - t0 <= 200
+            or not 8 <= t2 - t1 <= 200
+            or math.dist((p0.x, p0.y, p0.z), (p1.x, p1.y, p1.z)) > 0.06
+        ):
+            raise PhysicalJournalError("MOVE 8+8 tick native STOP settled proof missing")
+        before_pos, after_pos = before.snapshot.position, settled.snapshot.position
+        displacement = math.dist(
+            (before_pos.x, before_pos.y, before_pos.z),
+            (after_pos.x, after_pos.y, after_pos.z),
+        )
+        if not 0.1 <= displacement <= 8.0:
+            raise PhysicalJournalError("MOVE observed displacement not qualified")
+        self._commit([*self._body["actions"][:-1], {
+            **row,
+            "status": "NATIVE_MOVE_SETTLED",
+            "effect_seqs": [start_ack.seq, stop_ack.seq],
+            "after_seq": settled.seq,
+            "settled_position": {
+                "x": after_pos.x, "y": after_pos.y, "z": after_pos.z,
+            },
+            "initial_stop_seq": initial_stop.seq,
+            "first_stable_seq": first_stable.seq,
+            "initial_stop_tick": t0,
+            "first_stable_tick": t1,
+            "settled_tick": t2,
+            "displacement_m": displacement,
+        }])
 
     def prepare_attack(
         self, binding: PhysicalActionBinding, probe: MineflayerObservation,
