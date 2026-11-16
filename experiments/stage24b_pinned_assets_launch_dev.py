@@ -13,13 +13,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from experiments.p0d_real_resident_presence_dev import run_real_resident_presence
 from experiments.p0d_real_paper_smoke_dev import (
     PAPER_1218_60_SHA256,
     file_sha256,
     prepare_assets,
 )
-
+from experiments.p0d_real_resident_presence_dev import run_real_resident_presence
 
 # P0BRecorder actual jar, independently hashed in the archived pre-World
 # Stage24b HOLD (PR #925 / Issue #911, HEAD c3b1347b). Narrow DEV pin only:
