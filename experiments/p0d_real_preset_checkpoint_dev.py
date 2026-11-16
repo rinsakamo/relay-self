@@ -56,7 +56,7 @@ from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import (
     OwnedResidentPhysicalBridge,
 )
-from relay_self.p0d_real_preset_reselect_dev import reselect_restored_move_preset
+from relay_self.p0d_real_preset_reselect_dev import reselect_restored_move_preset_live
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -402,7 +402,13 @@ async def _real_preset_trial(
         native_raw = evidence / ("native-rejoin-" + sid + ".jsonl")
         session.start_raw_source_audit(native_raw)
         first = await _bounded_b_probe(session)
-        refreshed = await _bounded_b_probe(session)
+        source = staged_by_id[sid]
+        observed, refreshed = await reselect_restored_move_preset_live(
+            source, first, lambda: _bounded_b_probe(session),
+            source_self_id=sid,
+            expected_native_session_id=session.started.session_id,
+            definition=definition,
+        )
         session.finish_raw_source_audit()
         # Frozen ORIGINAL Mineflayer stdout is independently reread, not
         # inferred from the parsed Python receipts alone.
@@ -412,13 +418,6 @@ async def _real_preset_trial(
             second_request=refreshed.request_id,
             native_session=session.started.session_id,
             first_seq=first.seq, second_seq=refreshed.seq,
-        )
-        source = staged_by_id[sid]
-        observed = reselect_restored_move_preset(
-            source, first, refreshed,
-            source_self_id=sid,
-            expected_native_session_id=session.started.session_id,
-            definition=definition,
         )
         if (
             observed.preset_ref != accepted_refs[sid]

@@ -61,10 +61,9 @@ class RestoredPresetProbeWitness:
     old_target_reused: bool = False
 
 
-def reselect_restored_move_preset(
+def _reselect_steps(
     restored: StagedRecoveredCognition,
     first: MineflayerObservation,
-    refreshed: MineflayerObservation,
     *,
     source_self_id: str,
     expected_native_session_id: str,
@@ -83,21 +82,18 @@ def reselect_restored_move_preset(
         or type(expected_native_session_id) is not str
         or not expected_native_session_id
         or not isinstance(first, MineflayerObservation)
-        or not isinstance(refreshed, MineflayerObservation)
-        or first.kind != "probe" or refreshed.kind != "probe"
-        or not first.request_id or not refreshed.request_id
-        or first.request_id == refreshed.request_id
+        or first.kind != "probe"
+        or not first.request_id
         or not (restored.fresh_worldbody_required
                 and not restored.native_session_bound
                 and not restored.issue_authorized
                 and not restored.semantic.old_skill_resume_authorized
                 and not restored.semantic.new_physical_action_issue_authorized)
-        or first.session_id != refreshed.session_id
         or first.session_id != expected_native_session_id
         or first.session_id == restored.semantic.cut.former_native_session_id
-        or not 0 <= first.seq < refreshed.seq
-        or first.snapshot.health <= 0 or refreshed.snapshot.health <= 0
-        or first.snapshot.time is None or refreshed.snapshot.time is None
+        or first.seq < 0
+        or first.snapshot.health <= 0
+        or first.snapshot.time is None
         or restored.retained.identity.self_id != restored.self_id
         or restored.retained.pattern_registry != restored.semantic.pattern_registry
     ):
@@ -105,9 +101,6 @@ def reselect_restored_move_preset(
             "new original native probes or inert adopted registry missing"
         )
     a = first.snapshot.position
-    b = refreshed.snapshot.position
-    if math.dist((a.x, a.y, a.z), (b.x, b.y, b.z)) > 0.25:
-        raise RestoredPresetRealProbeRefusal("moving target source unstable")
     if definition is None:
         definition = next(
             d for d in initial_skill_definitions() if d.skill_id == "MOVE"
@@ -161,6 +154,20 @@ def reselect_restored_move_preset(
     scripted = RelayEngine(
         lambda request, *, mode: ProviderDecision.resolved(choice),
     )(round_.request)
+    # The caller must obtain the second observation only after the choice.
+    refreshed = yield
+    if (
+        not isinstance(refreshed, MineflayerObservation)
+        or refreshed.kind != "probe" or not refreshed.request_id
+        or first.request_id == refreshed.request_id
+        or first.session_id != refreshed.session_id
+        or not first.seq < refreshed.seq
+        or refreshed.snapshot.health <= 0 or refreshed.snapshot.time is None
+    ):
+        raise RestoredPresetRealProbeRefusal("new original native probes invalid")
+    b = refreshed.snapshot.position
+    if math.dist((a.x, a.y, a.z), (b.x, b.y, b.z)) > 0.25:
+        raise RestoredPresetRealProbeRefusal("moving target source unstable")
     # The same operator-proposed destination is still admitted as a Goal
     # hypothesis after a second NEW native probe. Use original bound Target
     # provenance, not a forged fresh target precision.
@@ -195,3 +202,26 @@ def reselect_restored_move_preset(
         l1_number=choice,
         choice_status=result.status,
     )
+
+
+def reselect_restored_move_preset(restored, first, refreshed, **kwargs):
+    """Offline compatibility helper; live caller uses the ordered async path."""
+    steps = _reselect_steps(restored, first, **kwargs)
+    next(steps)
+    try:
+        steps.send(refreshed)
+    except StopIteration as done:
+        return done.value
+    raise RestoredPresetRealProbeRefusal("unexpected selection continuation")
+
+
+async def reselect_restored_move_preset_live(restored, first, probe, **kwargs):
+    """Choose first, then request the new observation and revalidate."""
+    steps = _reselect_steps(restored, first, **kwargs)
+    next(steps)
+    refreshed = await probe()
+    try:
+        steps.send(refreshed)
+    except StopIteration as done:
+        return done.value, refreshed
+    raise RestoredPresetRealProbeRefusal("unexpected selection continuation")

@@ -228,3 +228,30 @@ def test_new_native_probe_file_must_replay_two_exact_sessions_sequences_and_requ
             source, first_request="req-11", second_request="req-12",
             native_session="new-A", first_seq=11, second_seq=12,
         )
+
+
+def test_live_choice_precedes_second_native_probe(monkeypatch):
+    import relay_self.p0d_real_preset_reselect_dev as module
+
+    original_engine = module.RelayEngine
+    events = []
+
+    def recording_engine(*args, **kwargs):
+        engine = original_engine(*args, **kwargs)
+
+        def choose(request):
+            events.append("choice")
+            return engine(request)
+        return choose
+
+    async def probe():
+        events.append("probe")
+        return native_probe(seq=12)
+
+    monkeypatch.setattr(module, "RelayEngine", recording_engine)
+    witness, _ = asyncio.run(module.reselect_restored_move_preset_live(
+        source_recovered(), native_probe(), probe,
+        source_self_id="A", expected_native_session_id="new-native-A",
+    ))
+    assert events == ["choice", "probe"]
+    assert witness.choice_status == "READY"
