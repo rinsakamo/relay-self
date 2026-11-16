@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -66,6 +67,9 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_paper_presence_join_dev import (
+    parse_owned_paper_resident_trace,
+)
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
     capture_typed_generation,
@@ -87,6 +91,40 @@ from relay_self.world_resident_lifecycle_dev import (
 
 class RealPresetCheckpointRefusal(RuntimeError):
     """Source-qualified World, Self or Preset knowledge is not admissible."""
+
+
+def _paper_join_witness(
+    paper: OwnedPaperWorld, *, paper_session_id: str, world_uuid: str,
+) -> dict[str, object]:
+    """Read the current original Paper stdout, not a replayed arbitrary log."""
+    source = paper.read_owned_log(paper_session_id)
+    digest = hashlib.sha256(source).hexdigest()
+    parsed = parse_owned_paper_resident_trace(
+        owned_paper_session_id=paper_session_id,
+        expected_world_uuid=world_uuid,
+        owned_paper_log=source,
+        log_ref=f"owned-paper:{paper_session_id}:sha256:{digest}",
+    )
+    joins: dict[str, str] = {}
+    for event in parsed.events:
+        if event.event == "JOIN" and event.name in ("RelayA", "RelayB"):
+            if event.name in joins:
+                raise RealPresetCheckpointRefusal(
+                    "duplicate Paper JOIN for original one-session actor"
+                )
+            joins[event.name] = event.actor_uuid
+    if set(joins) != {"RelayA", "RelayB"} or len(set(joins.values())) != 2:
+        raise RealPresetCheckpointRefusal(
+            "both independent Paper player JOIN sources required"
+        )
+    return {
+        "paper_session": paper_session_id,
+        "boot_id": parsed.boot_id,
+        "world_uuid": parsed.world_uuid,
+        "owned_stdout_sha256": parsed.lines_sha256,
+        "actor_uuids": joins,
+        "read_only_source": True,
+    }
 
 
 def _stage_owner_cuts(
@@ -196,6 +234,10 @@ async def _real_preset_trial(
         accepted_refs[sid] = preset.preset_ref
     # An initial Paper presence sample is independent from native readback.
     await asyncio.sleep(2.2)
+    paper_before = _paper_join_witness(
+        paper, paper_session_id=first_paper_session,
+        world_uuid=world_uuid,
+    )
     original_native = {
         sid: bridge.sessions[sid].started.session_id for sid in ("A", "B")
     }
@@ -301,6 +343,17 @@ async def _real_preset_trial(
     # Fresh native sensors MUST come from newly launched owned processes.
     # Both probes are independently request-correlated in native session.
     await asyncio.sleep(1.2)
+    paper_after = _paper_join_witness(
+        paper, paper_session_id=restarted.new_server_session_id,
+        world_uuid=world_uuid,
+    )
+    if (
+        paper_after["boot_id"] == paper_before["boot_id"]
+        or paper_after["actor_uuids"] != paper_before["actor_uuids"]
+    ):
+        raise RealPresetCheckpointRefusal(
+            "new Paper boot or stable player UUIDs not corroborated"
+        )
     witnessed: dict[str, object] = {}
     for sid in ("A", "B"):
         session = bridge.sessions[sid]
@@ -341,6 +394,8 @@ async def _real_preset_trial(
         "world_uuid": world_uuid,
         "original_paper_session": first_paper_session,
         "new_paper_session": restarted.new_server_session_id,
+        "paper_join_before": paper_before,
+        "paper_join_after": paper_after,
         "restored_fork_branch": restore_receipt["fork_branch_id"],
         "fork_used_as_running_world": False,
         "same_source_paper_restart": True,
