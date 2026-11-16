@@ -118,10 +118,13 @@ CALL ATTACK@1(
 
 `validate_calls()` is **data-only**: it checks each child exists,
 the named argument map is total and type-correct, no unregistered child,
-unknown param, recursion or nested learned call. It does not install a
-registered Skill, issue a child Action, create a fresh target/LOS observation,
-allocate a physical motor lease, automatically execute both calls, or
-promote a parent/child outcome to success. Both calls must later be carried
+unknown param or recursive cycles. A child may itself be a **registered
+learned Skill with an explicitly available program**; expansion is a finite
+acyclic DAG (depth ≤8, expanded leaves ≤32), never a free recursive runtime.
+This does not install a registered Skill, issue a child Action, create a
+fresh target/LOS observation, allocate a physical motor lease, automatically
+execute both calls, or promote a parent/child outcome to success. Both
+calls must later be carried
 through the normal bounded Intent/Skill/ActionPort, source refresh,
 WAL and per-child causal evidence boundary. Budgets will have to be
 **shared/split** by the future executor; simply forwarding a parent budget
@@ -141,7 +144,10 @@ its argument types validate.
   requalified/replayed. No new Minecraft World, Mineflayer control or Gemma
   inference was run.
 - The new ABI does not currently participate in every legacy CLI
-  `compile_initial_skill` call. A future opt-in caller must construct an
+  `compile_initial_skill` call. The parameterized `PhysicalSkillIR` can
+  pass a read-only L0 CHECK_TARGET, but `FiniteSkillInterpreter.propose`
+  explicitly rejects it before any physical Action proposal until the
+  parameter-aware issuer/constraint/budget admission is implemented. A future opt-in caller must construct an
   explicit invocation from a *validated original* L1 `Option`, and the
   Action owner and native issuer must additionally bind and enforce the
   invocation source, target contract, all required constraints and total
