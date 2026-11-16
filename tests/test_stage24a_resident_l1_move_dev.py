@@ -194,7 +194,8 @@ def test_unknown_model_number_fails_without_issuing():
         turn, choose(turn, choice_id="999"),
         current_probe=probe(11), intent_owner=owner, capability=CAP, epoch=2,
     )
-    assert decision.status == "REJECTED"
+    # RelayEngine already rejects out-of-set provider numbers as unresolved.
+    assert decision.status == "RECONSIDER"
     with pytest.raises(ResidentL1MoveRefusal, match="only current"):
         propose_resident_l1_move(
             decision, intent_owner=owner,
