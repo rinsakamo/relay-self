@@ -34,6 +34,7 @@ class Predicate(str, Enum):
     HUNGRY = "HUNGRY"
     ZOMBIE_NEAR = "ZOMBIE_NEAR"
     FATIGUE_HIGH = "FATIGUE_HIGH"
+    EXPLORE = "EXPLORE"
 
 
 class PatternKind(str, Enum):
@@ -87,6 +88,8 @@ class SchemaPattern:
                 raise MinimalCognitionError("HUNGRY must match FOOD")
             if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
                 raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
+            if self.predicate is Predicate.EXPLORE and self.target_kind != "RELATIVE":
+                raise MinimalCognitionError("Stage24a EXPLORE must match RELATIVE")
         elif any(x is not None for x in (
             self.goal_id, self.skill_id, self.skill_version, self.target_kind
         )) or self.predicate is not Predicate.FATIGUE_HIGH:
@@ -122,6 +125,22 @@ def initial_patterns() -> PatternRegistry:
         SchemaPattern("body-fatigue", 1, "body", PatternKind.CONSTRAINT,
                       Predicate.FATIGUE_HIGH, None, None, None, None,
                       Origin.INNATE, provenance),
+    ))
+
+def initial_patterns_with_relative_move() -> PatternRegistry:
+    """Opt-in Stage24a Goal/Skill pair for existing native relative controls.
+
+    Unlike DESTINATION navigation, RELATIVE MOVE means a bounded control
+    pulse only. This data registration never issues an Action or grants
+    physical permission; the original Stage23b issuer remains the sole port.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (
+        SchemaPattern(
+            "exploration-relative-move", 1, "exploration", PatternKind.GOAL,
+            Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "RELATIVE",
+            Origin.INNATE, Provenance("innate-schema", "stage24a-relative-dev"),
+        ),
     ))
 
 
@@ -182,6 +201,7 @@ class WorldPercept:
     fatigue_high: bool | None
     targets: tuple[Target, ...]
     threat_cue: bool = False
+    exploration_need: bool = False
 
     def __post_init__(self) -> None:
         if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
@@ -194,8 +214,8 @@ class WorldPercept:
             raise MinimalCognitionError("invalid observed hunger")
         if self.fatigue_high is not None and type(self.fatigue_high) is not bool:
             raise MinimalCognitionError("invalid fatigue")
-        if type(self.threat_cue) is not bool:
-            raise MinimalCognitionError("invalid threat cue")
+        if type(self.threat_cue) is not bool or type(self.exploration_need) is not bool:
+            raise MinimalCognitionError("invalid threat/exploration cue")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
@@ -282,6 +302,9 @@ def cpu_schema_epoch(
         ) or (
             pattern.predicate is Predicate.FATIGUE_HIGH
             and percept.fatigue_high is True
+        ) or (
+            pattern.predicate is Predicate.EXPLORE
+            and percept.exploration_need is True
         )
         if not triggered:
             continue
