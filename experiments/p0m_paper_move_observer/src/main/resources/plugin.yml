@@ -1,4 +1,0 @@
-name: P0MMoveWitness
-version: 0.1-dev
-main: io.github.rinsakamo.p0m.MoveWitness
-api-version: '1.21.8'
