@@ -26,6 +26,7 @@ from adapters.mineflayer.python_protocol import (
 from experiments.stage24b_real_l1_move_dev import (
     Stage24bMoveRefusal,
     Stage24bNoAction,
+    require_frozen_stage24b_binding,
     require_frozen_stage24b_choice,
     run_stage24b_selected_b_move,
 )
@@ -180,6 +181,14 @@ def test_actual_numbered_choice_only_reaches_original_issue_port(monkeypatch, tm
     assert data["selected_pulse_seconds"] == 0.35
     assert data["actual_original_action_issued"] is False
     assert data["physical_action_authorized_by_model"] is False
+    binding = json.loads(
+        (tmp_path / "B-stage24b-preissue-binding.json").read_text()
+    )
+    assert len(binding["actual_model_choice_sha256"]) == 64
+    assert binding["physical_binding"]["target_ref"] == "relative:right"
+    assert binding["physical_binding"]["intent_id"] == owner.intent.current_intent.intent_id
+    assert binding["physical_authorized"] is False
+    assert binding["physical_issued"] is False
 
 
 @pytest.mark.parametrize("answer", ["5", "6", "999"])
@@ -264,3 +273,46 @@ def test_frozen_choice_source_digest_and_target_cannot_be_changed(tmp_path):
             skill_execution_id="r", target_ref="relative:right",
             model_choice_id="4",
         )
+
+
+def test_frozen_preissue_binding_detects_tampered_original_lineage(tmp_path):
+    from experiments.p0d_real_paper_smoke_dev import file_sha256
+
+    path = tmp_path / "B-stage24b-preissue-binding.json"
+    row = {
+        "classification": "STAGE24B_PREISSUE_L1_OPTION_BINDING_DEV",
+        "actual_model_choice_sha256": "f" * 64,
+        "selected_number": "3",
+        "physical_authorized": False,
+        "physical_issued": False,
+        "physical_binding": {
+            "action_id": "action-1",
+            "intent_id": "intent-1",
+            "skill_execution_id": "skill-run-1",
+            "target_ref": "relative:left",
+            "native_seq": 12,
+            "native_request_id": "probe-12",
+            "goal_id": "EXPLORE_WORLD",
+            "skill_id": "MOVE",
+            "skill_version": 1,
+            "target_kind": "RELATIVE",
+            "capability_ref": "MOVE",
+        },
+    }
+    path.write_text(json.dumps(row))
+    kwargs = {
+        "model_choice_sha256": "f" * 64,
+        "action_id": "action-1", "intent_id": "intent-1",
+        "skill_execution_id": "skill-run-1",
+        "target_ref": "relative:left", "chosen_number": "3",
+        "native_probe_seq": 12, "native_request_id": "probe-12",
+    }
+    sha = file_sha256(path)
+    assert require_frozen_stage24b_binding(path, sha, **kwargs) == row
+    with pytest.raises(Stage24bMoveRefusal, match="diverged"):
+        require_frozen_stage24b_binding(
+            path, sha, **{**kwargs, "target_ref": "relative:right"},
+        )
+    path.write_text(json.dumps({**row, "selected_number": "4"}))
+    with pytest.raises(Stage24bMoveRefusal, match="digest changed"):
+        require_frozen_stage24b_binding(path, sha, **kwargs)
