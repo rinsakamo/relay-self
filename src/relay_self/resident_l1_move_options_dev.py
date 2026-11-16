@@ -36,7 +36,6 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, RelayEngineResult
 from relay_self.skill import SkillExecution
 
-
 RELATIVE_CONTROLS = ("forward", "back", "left", "right")
 MOVE_PULSE_SECONDS = 0.35
 MOVE_SKILLS = frozenset({("MOVE", 1)})
