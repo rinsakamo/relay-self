@@ -357,8 +357,37 @@ async def _real_preset_trial(
     witnessed: dict[str, object] = {}
     for sid in ("A", "B"):
         session = bridge.sessions[sid]
+        native_raw = evidence / ("native-rejoin-" + sid + ".jsonl")
+        session.start_raw_source_audit(native_raw)
         first = await _bounded_b_probe(session)
         refreshed = await _bounded_b_probe(session)
+        session.finish_raw_source_audit()
+        # Read ORIGINAL fsynced Mineflayer stdout again. Both correlated
+        # requests must be present with the exact source session + sequence.
+        raw = native_raw.read_bytes()
+        observed_pairs: set[tuple[str, int, str]] = set()
+        for line in raw.splitlines():
+            try:
+                row = json.loads(line)
+            except (ValueError, UnicodeError) as exc:
+                raise RealPresetCheckpointRefusal(
+                    "native source transcript contains invalid JSON"
+                ) from exc
+            if type(row) is not dict:
+                raise RealPresetCheckpointRefusal("native JSONL non-object")
+            if row.get("type") == "observation" and row.get("kind") == "probe":
+                observed_pairs.add((
+                    row.get("session_id"), row.get("seq"),
+                    row.get("request_id"),
+                ))
+        expected_pairs = {
+            (first.session_id, first.seq, first.request_id),
+            (refreshed.session_id, refreshed.seq, refreshed.request_id),
+        }
+        if not expected_pairs.issubset(observed_pairs):
+            raise RealPresetCheckpointRefusal(
+                "new native probe readback differs from exact stdout source"
+            )
         source = staged_by_id[sid]
         observed = reselect_restored_move_preset(
             source, first, refreshed,
@@ -382,6 +411,9 @@ async def _real_preset_trial(
             "source_refreshed": refreshed.provenance.reference,
             "first_position": asdict(first.snapshot.position),
             "refreshed_position": asdict(refreshed.snapshot.position),
+            "exact_native_stdout_path": str(native_raw),
+            "exact_native_stdout_sha256": file_sha256(native_raw),
+            "exact_native_stdout_two_correlated_probes": True,
         }
 
     for sid in ("A", "B"):
