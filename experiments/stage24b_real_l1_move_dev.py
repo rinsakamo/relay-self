@@ -22,8 +22,8 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
-from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.relay_engine import CognitionMode, ProviderDecision, RelayEngine
+from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.resident_l1_move_options_dev import (
     MOVE_PULSE_SECONDS,
     build_resident_l1_move_turn,
