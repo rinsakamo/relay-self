@@ -81,6 +81,7 @@ _EFFECT_FAMILIES: dict[str, frozenset[str]] = {
     "ATTACK": frozenset({"attack_entity"}),
     # MOVE is only opted into resident mode with an original canonical WAL.
     "MOVE": frozenset({"set_control", "clear_controls"}),
+    "MOVE_PLACE": frozenset({"look", "set_control", "clear_controls"}),
 }
 
 
@@ -95,6 +96,12 @@ def _native_children(family: str, parent_action_id: str) -> dict[str, str]:
         return {"attack_entity": parent_action_id + "-attack"}
     if family == "MOVE":
         return {
+            "set_control": parent_action_id + "-start",
+            "clear_controls": parent_action_id + "-stop",
+        }
+    if family == "MOVE_PLACE":
+        return {
+            "look": parent_action_id + "-look",
             "set_control": parent_action_id + "-start",
             "clear_controls": parent_action_id + "-stop",
         }
@@ -248,7 +255,7 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("physical Action ID required")
             if effect_family not in _EFFECT_FAMILIES:
                 raise PhysicalIssueFenceError("unsupported physical effect family")
-            if effect_family == "MOVE" and not (
+            if effect_family in ("MOVE", "MOVE_PLACE") and not (
                 self._resident_mode and self._allow_resident_move
             ):
                 raise PhysicalIssueFenceError("MOVE requires original resident opt-in")
@@ -270,7 +277,7 @@ class PhysicalIssueAdmission:
             # literal Action ID. Real selected issuers explicitly bind their
             # parent-child IDs after original PREPARED WAL reservation.
             self._native_child_ids[self_id] = (
-                {} if defer_selected_children or effect_family == "MOVE"
+                {} if defer_selected_children or effect_family in ("MOVE", "MOVE_PLACE")
                 else _native_children(effect_family, action_id)
                 if not self._resident_mode and effect_family in ("EAT", "ATTACK")
                 else {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
@@ -319,7 +326,7 @@ class PhysicalIssueAdmission:
                 or lease.effect_family != family
                 or self._native_child_ids.get(self_id) is None
                 or (
-                    family == "MOVE" and lease.action_id != parent_action_id
+                    family in ("MOVE", "MOVE_PLACE") and lease.action_id != parent_action_id
                 )
             ):
                 raise PhysicalIssueFenceError("original selected lease no longer current")
@@ -348,7 +355,7 @@ class PhysicalIssueAdmission:
                 resident_state == "QUARANTINED"
                 and not self._closed and not self._poisoned
                 and active_motion is not None
-                and active_motion.effect_family == "MOVE"
+                and active_motion.effect_family in ("MOVE", "MOVE_PLACE")
                 and effect == "clear_controls"
                 and self._native_child_ids.get(self_id, {}).get(effect) == action_id
             )
@@ -727,6 +734,34 @@ class PhysicalIssueAdmission:
                     family="MOVE", journal=kwargs["journal"],
                 )
             return await issue_selected_move_dev(
+                session, **kwargs, bind_native_children=register,
+            )
+
+    async def issue_place_move(self, session: Any, **kwargs: Any) -> Any:
+        """Original resident lease with exact LOOK/start/STOP PLACE children.
+
+        This is a separate opt-in effect-family, not an unbounded extension
+        of existing RELATIVE MOVE. The original fsynced Self WAL is mandatory.
+        """
+        from experiments.cognitive_physical_place_move_issue_dev import (
+            issue_selected_place_move_dev,
+        )
+
+        proposal = kwargs["proposal"]
+        parent = proposal.binding.action_id
+        with self.lease(
+            self_id=proposal.binding.scope.self_id,
+            native_session_id=session.started.session_id,
+            action_id=parent, effect_family="MOVE_PLACE",
+        ):
+            def register(selected: str) -> None:
+                self.bind_native_children(
+                    self_id=proposal.binding.scope.self_id,
+                    native_session_id=session.started.session_id,
+                    lease_action_id=parent, parent_action_id=selected,
+                    family="MOVE_PLACE", journal=kwargs["journal"],
+                )
+            return await issue_selected_place_move_dev(
                 session, **kwargs, bind_native_children=register,
             )
 
