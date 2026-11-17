@@ -138,12 +138,14 @@ def test_original_server_argv_key_source_and_unauthorized_negative_guard(tmp_pat
     assert receipt.anonymous_slot_denied
     assert receipt.wrong_key_slot_denied
     assert receipt.anonymous_completion_denied
-    assert seen == [
-        ("GET", "Bearer " + secret),
-        ("GET", None),
-        ("GET", "Bearer stage26-invalid-credential"),
-        ("POST", None),
+    # Never include the real credential in a failing pytest diff/log.
+    assert [(method, token is not None) for method, token in seen] == [
+        ("GET", True),
+        ("GET", False),
+        ("GET", True),
+        ("POST", False),
     ]
+    assert seen[2][1] != seen[0][1]
     assert not receipt.external_client_absence_attested
     assert not receipt.gpu_wide_exclusivity_attested
 
