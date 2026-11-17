@@ -172,6 +172,8 @@ def begin_physical_issue_dev(
     journal: PhysicalActionJournal,
     at_ns: int,
     refusal: type[ValueError] = ValueError,
+    place_invocation: object | None = None,
+    place_motion: object | None = None,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -228,7 +230,14 @@ def begin_physical_issue_dev(
     elif capability == "ATTACK":
         journal.prepare_attack(b, current_probe)
     else:
-        journal.prepare_move(b, current_probe)
+        if place_invocation is None and place_motion is None:
+            journal.prepare_move(b, current_probe)
+        elif place_invocation is not None and place_motion is not None:
+            journal.prepare_place_move(
+                b, current_probe, place_invocation, place_motion,
+            )
+        else:
+            raise refusal("partial PLACE original issuer plan is invalid")
     issued = supervisor.issue(
         authorized, at_ns=at_ns + 1, deadline_ns=at_ns + 1000,
         provenance=issue_grant.provenance,
