@@ -75,7 +75,8 @@ def _frozen_model_choice(
         "candidates_sha256": turn.candidate_set_sha256,
         "cpu_epoch": turn.round.frame.epoch,
         "cpu_schema_elapsed_ns": turn.round.frame.elapsed_ns,
-        "cpu_exploration_eligible": turn.exploration_eligible,
+        "cpu_exploration_need_active": turn.exploration_need_active,
+        "stage24c_gate_historical_indicators_only": True,
         "stage24c_original_gate": asdict(audit_exploration_gate(
             probe_before, intent_owner=ticket_intent_owner,
         )),
