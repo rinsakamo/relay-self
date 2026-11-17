@@ -77,7 +77,7 @@ class ResidentL1MoveTurn:
     round: L1Round
     prebound_moves: tuple[PreboundRelativeMove, ...]
     candidate_set_sha256: str
-    exploration_eligible: bool  # compatibility: innate Need is active, NOT a permit
+    exploration_need_active: bool  # innate Need, never motor permission
 
     def candidate_for(self, choice_id: str) -> PreboundRelativeMove | None:
         return next(
