@@ -35,6 +35,10 @@ from experiments.p0d_real_paper_smoke_dev import (
 from relay_self.checkpoint_stop_neutralization_dev import (
     prepare_stop_before_autosave,
 )
+from relay_self.mineflayer_oxygen_patch_dev import (
+    MineflayerOxygenPatchRefusal,
+    require_owned_mineflayer_oxygen_patch,
+)
 from relay_self.owned_native_rejoin_cohort_dev import OwnedNativeRejoinCohort
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
@@ -104,6 +108,12 @@ def _verify_local_runtime(java: str, node: str) -> None:
         raise TwoNativePaperRefusal("unreadable locked mineflayer version") from exc
     if version != "4.39.0":
         raise TwoNativePaperRefusal("only locked Mineflayer 4.39.0 allowed")
+    # Stage24d: pin verified upstream #4052 owner-only backport before
+    # creating a disposable World. Never trust plain npm version alone.
+    try:
+        require_owned_mineflayer_oxygen_patch(bridge)
+    except MineflayerOxygenPatchRefusal as exc:
+        raise TwoNativePaperRefusal(str(exc)) from exc
 
 
 def preflight_two_native(

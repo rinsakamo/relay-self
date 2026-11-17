@@ -12,6 +12,7 @@ import pytest
 from experiments import p0d_real_two_native_smoke_dev as original_runtime
 from experiments import stage24b_pinned_assets_launch_dev as launch
 from experiments.p0d_real_paper_smoke_dev import file_sha256
+from relay_self.mineflayer_oxygen_patch_dev import SELF_OWNED
 
 
 def _assets(tmp_path, monkeypatch):
@@ -213,6 +214,9 @@ def test_original_runtime_rejects_external_node_path_instead_of_local_lock(
     ):
         original_runtime._verify_local_runtime("java", "node")
     package.write_text(json.dumps({"version": "4.39.0"}))
+    entities = local / "lib" / "plugins" / "entities.js"
+    entities.parent.mkdir(parents=True)
+    entities.write_text(SELF_OWNED)
     original_runtime._verify_local_runtime("java", "node")
 
 
