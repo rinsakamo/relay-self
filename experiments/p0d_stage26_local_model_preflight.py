@@ -10,17 +10,10 @@ import argparse
 import hashlib
 import json
 import os
-import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
-
-from relay_self.stage26_private_model_auth_dev import (
-    load_stage26_private_api_key,
-    require_stage26_private_auth_guards,
-    stage26_bearer_headers,
-)
 
 
 class Stage26ModelPreflightHold(RuntimeError):
@@ -45,11 +38,6 @@ class Stage26OwnedModelSource:
     slots_id: int
     slots_processing: bool
     windows_gpu_snapshot_sha256: str | None
-    dedicated_api_key_file_attested: bool = False
-    authenticated_slot_verified: bool = False
-    anonymous_slot_denied: bool = False
-    wrong_key_slot_denied: bool = False
-    anonymous_completion_denied: bool = False
     gpu_wide_exclusivity_attested: bool = False
     gpu_capacity_attested: bool = False
     external_client_absence_attested: bool = False
@@ -125,7 +113,6 @@ def inspect_stage26_model_source(
     executable_sha256: str, gguf: Path, gguf_sha256: str,
     proc_root: Path = Path("/proc"),
     windows_gpu_snapshot: Path | None = None,
-    api_key_file: Path | None = None,
 ) -> Stage26OwnedModelSource:
     """Read only source evidence; no claims about other WDDM GUI processes."""
     if type(pid) is not int or pid < 1:
@@ -177,35 +164,9 @@ def inspect_stage26_model_source(
                 "original single-slot context/offload model configuration changed"
             )
         inode = _owned_loopback_socket_inode(pid, url.port, proc_root=proc_root)
-        private_key = None
-        if api_key_file is not None:
-            private_key = load_stage26_private_api_key(api_key_file)
-            argv_key_file = Path(
-                _argv_value(argv, "--api-key-file")
-            ).resolve(strict=True)
-            if argv_key_file != api_key_file.resolve(strict=True):
-                raise Stage26ModelPreflightHold(
-                    "server argv and client do not share the same private API key file"
-                )
-            if "--api-key" in argv or any(
-                item.startswith("--api-key=") for item in argv
-            ):
-                raise Stage26ModelPreflightHold(
-                    "API secret must be file-based, not in server argv"
-                )
-            if _argv_value(argv, "--cors-origins") != "localhost":
-                raise Stage26ModelPreflightHold(
-                    "Stage26 server requires explicit localhost-only CORS"
-                )
         request = urllib.request.Request(
             f"http://127.0.0.1:{url.port}/slots",
-            method="GET", headers={
-                "Accept": "application/json",
-                **(
-                    stage26_bearer_headers(private_key)
-                    if private_key is not None else {}
-                ),
-            },
+            method="GET", headers={"Accept": "application/json"},
         )
         with urllib.request.urlopen(request, timeout=2.0) as reply:
             if reply.status != 200:
@@ -224,8 +185,6 @@ def inspect_stage26_model_source(
             raise Stage26ModelPreflightHold(
                 "original llama-server n_parallel=1 idle slot unverified"
             )
-        if private_key is not None:
-            require_stage26_private_auth_guards(endpoint)
         desktop_digest = (
             _sha256(windows_gpu_snapshot)
             if windows_gpu_snapshot is not None else None
@@ -246,11 +205,6 @@ def inspect_stage26_model_source(
             slots_raw_sha256=hashlib.sha256(slots_raw).hexdigest(),
             slots_id=0, slots_processing=False,
             windows_gpu_snapshot_sha256=desktop_digest,
-            dedicated_api_key_file_attested=private_key is not None,
-            authenticated_slot_verified=private_key is not None,
-            anonymous_slot_denied=private_key is not None,
-            wrong_key_slot_denied=private_key is not None,
-            anonymous_completion_denied=private_key is not None,
         )
     except Stage26ModelPreflightHold:
         raise
@@ -271,7 +225,6 @@ def main() -> int:
     parser.add_argument("--gguf", type=Path, required=True)
     parser.add_argument("--gguf-sha256", required=True)
     parser.add_argument("--windows-gpu-snapshot", type=Path)
-    parser.add_argument("--api-key-file", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
@@ -281,10 +234,9 @@ def main() -> int:
             executable_sha256=args.executable_sha256,
             gguf=args.gguf, gguf_sha256=args.gguf_sha256,
             windows_gpu_snapshot=args.windows_gpu_snapshot,
-            api_key_file=args.api_key_file,
         ))
         status = 0
-    except (Stage26ModelPreflightHold, ValueError) as exc:
+    except Stage26ModelPreflightHold as exc:
         result = {
             "classification": "PRE_WORLD_HOLD",
             "reason": str(exc),
