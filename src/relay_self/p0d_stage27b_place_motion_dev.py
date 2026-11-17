@@ -54,6 +54,8 @@ class Stage27PlaceMotionPlan:
     desired_mineflayer_yaw_rad: float | None
     observation_status: str
     next_step: str
+    preset_max_distance_m: float | None = None
+    full_envelope_reachable_within_distance_budget: bool = False
     clearance_observed: bool = False
     facing_aligned_observed: bool = False
     action_granted: bool = False
@@ -190,22 +192,22 @@ def resolve_stage27_place_motion(
             contract.contract_ref, contract.target_ref, 0.0, distance, None,
             assessment.status.value,
             "TARGET_GEOMETRY_OBSERVED_AWAIT_INDEPENDENT_GOAL_EVALUATION",
+            preset_max_distance_m=invocation.budget.max_distance_m,
+            full_envelope_reachable_within_distance_budget=True,
         )
     if assessment.status is not TargetConditionStatus.OUTSIDE or gap is None:
         raise Stage27PlaceResolutionRefusal(
             f"native PLACE condition {assessment.status.value} cannot be resolved"
         )
-    if (
-        invocation.budget.max_actions < 1
-        or invocation.budget.max_duration_ms <= 0
-        or (
-            invocation.budget.max_distance_m is not None
-            and gap > invocation.budget.max_distance_m
-        )
-    ):
-        raise Stage27PlaceResolutionRefusal(
-            "fixed Preset MOVE budget cannot cover required target envelope"
-        )
+    if invocation.budget.max_actions < 1 or invocation.budget.max_duration_ms <= 0:
+        raise Stage27PlaceResolutionRefusal("fixed Preset has no finite MOVE budget")
+    # A child can attempt a partial MOVE without completing the Goal. Do not
+    # confuse an inaccurate/short expected budget with inability to act, but
+    # never extend or silently rewrite the immutable budget.
+    can_finish_in_budget = (
+        invocation.budget.max_distance_m is None
+        or gap <= invocation.budget.max_distance_m
+    )
     # This is only a geometrically calculated look heading; the actual
     # orientation, terrain clearance, native look acknowledgement and MOVE
     # amount are NOT attested by the current native position-only snapshot.
@@ -218,4 +220,6 @@ def resolve_stage27_place_motion(
         contract.contract_ref, contract.target_ref, gap, distance,
         yaw, assessment.status.value,
         "NATIVE_LOOK_AND_BOUNDED_MOVE_RESOLUTION_REQUIRED_NOT_ISSUABLE",
+        preset_max_distance_m=invocation.budget.max_distance_m,
+        full_envelope_reachable_within_distance_budget=can_finish_in_budget,
     )
