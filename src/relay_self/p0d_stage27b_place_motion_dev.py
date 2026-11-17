@@ -82,7 +82,7 @@ def resolve_stage27_place_motion(
         or not isinstance(observation, MineflayerObservation)
         or not isinstance(owner, CheckpointedCognitiveOwner)
         or not isinstance(physical, PhysicalIssueAdmission)
-        or type(world_epoch) is not int or world_epoch < 1
+        or type(world_epoch) is not int or world_epoch < 0
         or owner is not prepared.original_owner
         or handoff.self_id != prepared.self_id
         or handoff.native_session_id != prepared.native_session
