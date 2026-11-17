@@ -1,11 +1,15 @@
 """Stage24b pinned-jar run guard: SYNTHETIC offline tests, no actual World."""
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 import zipfile
+from types import SimpleNamespace
 
 import pytest
 
+from experiments import p0d_real_two_native_smoke_dev as original_runtime
 from experiments import stage24b_pinned_assets_launch_dev as launch
 from experiments.p0d_real_paper_smoke_dev import file_sha256
 
@@ -25,6 +29,9 @@ def _assets(tmp_path, monkeypatch):
     # independently archived actual Paper/build60 and P0BRecorder binaries.
     monkeypatch.setattr(launch, "PAPER_1218_60_SHA256", file_sha256(paper))
     monkeypatch.setattr(launch, "PINNED_STAGE24B_PLUGIN_SHA256", file_sha256(plugin))
+    # Synthetic jars do not require actual host Java/Node/npm provisioning;
+    # explicit CLI tests below replace this guard to verify original behavior.
+    monkeypatch.setattr(launch, "_verify_local_runtime", lambda java, node: None)
     return paper, plugin, scratch
 
 
@@ -111,6 +118,102 @@ def test_inspect_only_cli_never_executes_original_world_runner(
     assert launch.main() == 0
     assert "STAGE24B_ASSET_CHECK_OK" in capsys.readouterr().out
     assert not any(scratch.iterdir())
+
+
+
+def test_inspect_only_invokes_original_local_runtime_gate(
+    tmp_path, monkeypatch, capsys,
+):
+    paper, plugin, scratch = _assets(tmp_path, monkeypatch)
+    checked = []
+
+    def verify(java, node):
+        checked.append((java, node))
+
+    async def unexpected_world(**kwargs):
+        raise AssertionError("inspect-only must not create a World")
+
+    monkeypatch.setattr(launch, "_verify_local_runtime", verify)
+    monkeypatch.setattr(launch, "run_real_resident_presence", unexpected_world)
+    monkeypatch.setattr(sys, "argv", [
+        "stage24b_pinned_assets_launch_dev",
+        "--paper-jar", str(paper), "--plugin-jar", str(plugin),
+        "--scratch-parent", str(scratch), "--eula-accepted",
+        "--inspect-only",
+    ])
+    assert launch.main() == 0
+    assert checked == [("java", "node")]
+    assert "STAGE24B_RUNTIME_CHECK_OK" in capsys.readouterr().out
+    assert not any(scratch.iterdir())
+
+
+def test_inspect_only_missing_local_lock_dependencies_is_hold(
+    tmp_path, monkeypatch, capsys,
+):
+    paper, plugin, scratch = _assets(tmp_path, monkeypatch)
+
+    def missing(java, node):
+        raise original_runtime.TwoNativePaperRefusal(
+            "locked mineflayer dependencies absent; npm ci --prefix adapters/mineflayer"
+        )
+
+    async def unexpected_world(**kwargs):
+        raise AssertionError("missing worktree install must fail before World")
+
+    monkeypatch.setattr(launch, "_verify_local_runtime", missing)
+    monkeypatch.setattr(launch, "run_real_resident_presence", unexpected_world)
+    monkeypatch.setattr(sys, "argv", [
+        "stage24b_pinned_assets_launch_dev",
+        "--paper-jar", str(paper), "--plugin-jar", str(plugin),
+        "--scratch-parent", str(scratch), "--eula-accepted",
+        "--inspect-only",
+    ])
+    assert launch.main() == 2
+    result = capsys.readouterr()
+    assert "STAGE24B_RUNTIME_CHECK_OK" not in result.out
+    assert "locked mineflayer dependencies absent" in result.err
+    assert not any(scratch.iterdir())
+
+
+def test_original_runtime_rejects_external_node_path_instead_of_local_lock(
+    tmp_path, monkeypatch,
+):
+    # A real PATH/NODE_PATH lookup is NOT the source used by original runner.
+    # Simulate Java 21 + Node 22 as already installed, without touching real
+    # npm cache or executing untrusted packages.
+    source = tmp_path / "experiments" / "p0d_real_two_native_smoke_dev.py"
+    monkeypatch.setattr(original_runtime, "__file__", str(source))
+
+    def fake_runtime(args, **kwargs):
+        if args[-1] == "-version":
+            return SimpleNamespace(stdout="", stderr='openjdk version "21.0.12"')
+        assert args[-1] == "--version"
+        return SimpleNamespace(stdout="v22.22.2", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_runtime)
+    external = tmp_path / "outside" / "node_modules"
+    external.mkdir(parents=True)
+    monkeypatch.setenv("NODE_PATH", str(external))
+    (external / "mineflayer").mkdir()
+    (external / "mineflayer" / "package.json").write_text(
+        json.dumps({"version": "4.39.0"}),
+    )
+    with pytest.raises(
+        original_runtime.TwoNativePaperRefusal,
+        match="locked mineflayer dependencies absent",
+    ):
+        original_runtime._verify_local_runtime("java", "node")
+
+    local = tmp_path / "adapters" / "mineflayer" / "node_modules" / "mineflayer"
+    local.mkdir(parents=True)
+    package = local / "package.json"
+    package.write_text(json.dumps({"version": "4.39.1"}))
+    with pytest.raises(
+        original_runtime.TwoNativePaperRefusal, match="only locked Mineflayer 4.39.0",
+    ):
+        original_runtime._verify_local_runtime("java", "node")
+    package.write_text(json.dumps({"version": "4.39.0"}))
+    original_runtime._verify_local_runtime("java", "node")
 
 
 def test_execute_once_requires_grants_and_actual_model_endpoint(
