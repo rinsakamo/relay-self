@@ -647,10 +647,24 @@ class LlamaCppRelayProvider:
         key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
         request = self._stage26_audit_dir / (key + ".request.json")
         response = self._stage26_audit_dir / (key + ".response.json")
+        manifest_path = self._stage26_audit_dir / (key + ".source.sha256.json")
+        manifest = json.loads(manifest_path.read_bytes())
         original_request = request.read_bytes()
         original_response = response.read_bytes()
-        if not original_request or not original_response or len(original_response) > 2097152:
-            raise LlamaCppProviderError("model HTTP source incomplete")
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("request_id") != request_id
+            or not original_request or not original_response
+            or len(original_response) > 2097152
+            or manifest.get("request_sha256") != hashlib.sha256(
+                original_request
+            ).hexdigest()
+            or manifest.get("response_sha256") != hashlib.sha256(
+                original_response
+            ).hexdigest()
+            or manifest.get("response_bytes") != len(original_response)
+        ):
+            raise LlamaCppProviderError("model HTTP evidence checksum mismatch")
         return LlamaCppRawAuditReceipt(
             request_id=request_id,
             request_path=str(request),
@@ -801,8 +815,28 @@ class LlamaCppRelayProvider:
             ) as response:
                 raw = response.read(2097153)
             if response_path is not None:
-                # Persist actual response bytes before UTF-8/JSON parsing.
+                # Persist actual response bytes and independent digest manifest
+                # before parsing, including malformed JSON/model outputs.
                 _write_exclusive_source(response_path, raw)
+                assert request_id is not None
+                assert self._stage26_audit_dir is not None
+                key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+                manifest_path = self._stage26_audit_dir / (
+                    key + ".source.sha256.json"
+                )
+                original_digest = {
+                    "request_id": request_id,
+                    "request_sha256": hashlib.sha256(request_bytes).hexdigest(),
+                    "response_sha256": hashlib.sha256(raw).hexdigest(),
+                    "response_bytes": len(raw),
+                }
+                _write_exclusive_source(
+                    manifest_path,
+                    json.dumps(
+                        original_digest, sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8"),
+                )
             if len(raw) > 2097152:
                 raise LlamaCppProviderProtocolError("model response above 2MiB bound")
             body = json.loads(raw.decode("utf-8"))
