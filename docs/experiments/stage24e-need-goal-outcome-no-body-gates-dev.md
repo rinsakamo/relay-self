@@ -31,6 +31,21 @@ These are temporary innate Needs; they do not claim that Minecraft's native raw 
 - Body attempts MOVE but is stuck / physically exhausted / blocked: WorldBody motor and Paper readbacks, original physical ActionPort and canonical WAL should classify the **actual** result. This patch neither fabricates a no-motion OUTCOME nor returns success for an unexecuted Action.
 - Inference epoch advances or Body values change: the selected frozen Skill+Target revalidation checks same native session, new native probe, current capability and owner, not a biological threshold. A different session, replayed probe, missing Skill, wrong target or occupied Intent can still cause technical refusal.
 
+## Observed failure as first-class Action Outcome
+
+The original Stage23/24 MOVE issue path previously rejected selected Actions at two physiological checks (`health<=0` and `oxygen_level==0`) before native START, and the fsynced canonical journal required `NATIVE_MOVE_SETTLED` displacement ≥0.1m even after valid START/STOP/settling evidence. Those policies would prevent Self from experiencing *attempted but physically ineffective movement*.
+
+Stage24e removes the two biological checks from `issue_selected_move_dev` and from the original journal's MOVE reservation/closure. With the **same** trusted source, bound capability, owned native child Action IDs, applied START/STOP acknowledgments, distinct probes, and 8+8 Paper-tick stop-settling proof, the existing original WAL now persists one of two terminal, independently restorable statuses:
+
+- `NATIVE_MOVE_SETTLED`: ≥0.1m and ≤8m **net** displacement, still NOT Goal/Skill success or Paper causal proof.
+- `NATIVE_MOVE_NO_NET_DISPLACEMENT`: ≥0m and <0.1m **net** displacement; observed attempt without meaningful net displacement, **not** a claim the character never moved during the pulse nor an inferred physical cause (stuck, tired, collision, etc.).
+
+These are outcomes with different evidence meaning, not success/failure values secretly assigned by Schema. Neither outcome grants a future Action or removes a Need; Self can evaluate and learn the result separately. A missing/ambiguous ACK, source, STOP, or settling proof **does not** become a no-motion result and stays in `PREPARED_UNRESOLVED` for reconciliation.
+
+The present native MOVE executor retains a required observable World tick in the current source for 8+8 STOP verification. This is an **evidence integrity precondition**, not physiological permission or a claim that unknown World time prevents the character from moving. Removing this requirement requires a different independently proven tick witness. This DEV branch does not fake such a clock.
+
+The new regression harness simulates an ACKed motor command whose position remains identical, verifies the canonical `NATIVE_MOVE_NO_NET_DISPLACEMENT` remains terminal after WAL restore, and separately verifies the original issuer does not reject a simulated healthy-but-low-health/oxygen-zero Self. There is no real World test of no-net displacement in this branch.
+
 ## Stage24c comparison record is historic, not rerun under new CPU policy
 
 At exact HEAD `c40aea2e2f35de1d374edff98d608c51a8e0fa00`, the earlier actual Gemma synthetic comparison had A oxygen null → no MOVE, Jev UNRESOLVED; B synthetic oxygen 300 → MOVE options, model chose MOVE forward. That frozen evidence **does not change**.
