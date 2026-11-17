@@ -1,8 +1,8 @@
-"""Stage24g DEV: pinned asset check -> optional one-shot ORIGINAL real runner.
+"""Stage24g DEV: pinned asset and runtime inspection; execution remains HOLD.
 
 Avoid operator copy/paste of a 64-character plugin SHA. This *does not*
 choose a Skill, issue an Action, launch a model, authenticate a GPU service,
-or replace the guarded Paper runner. Read-only by default. No retries.
+or replace the guarded Paper runner. Inspection is read-only; execution is disabled until remaining gates exist.
 """
 from __future__ import annotations
 
