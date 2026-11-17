@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import math
-from dataclasses import dataclass
 
 import pytest
 
@@ -16,7 +15,6 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
     PhysicalGrantStage,
 )
-from relay_self.action import ActionState
 from relay_self.p0d_stage27c_l0_place_proposal_dev import Stage27L0PlaceProposal
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
