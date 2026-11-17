@@ -49,12 +49,14 @@ async def _one_a_choice(f, lane):
 
 
 def _handoff(f, lane, prepared, ticket, witness, refreshed, **kwargs):
-    return begin_stage27_owned_move_intent(
-        prepared, ticket=ticket, witness=witness, refreshed=refreshed,
-        lane=lane, physical=f.physical, actor_self_id="A",
-        at_ns=100, provenance=Provenance("original-stage27-dev", "self-A"),
-        **kwargs,
+    args = dict(
+        prepared=prepared, ticket=ticket, witness=witness,
+        refreshed=refreshed, lane=lane, physical=f.physical,
+        actor_self_id="A", at_ns=100,
+        provenance=Provenance("original-stage27-dev", "self-A"),
     )
+    args.update(kwargs)
+    return begin_stage27_owned_move_intent(**args)
 
 
 def test_a_real_bounded_ready_starts_only_original_a_intent_and_skill(tmp_path):
