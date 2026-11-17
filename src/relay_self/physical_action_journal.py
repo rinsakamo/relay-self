@@ -201,7 +201,9 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("ATTACK attributed hurt evidence invalid")
             max_seq[session] = after
-        elif row["status"] == "NATIVE_MOVE_SETTLED" and row["capability"] == "MOVE":
+        elif row["status"] in (
+            "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+        ) and row["capability"] == "MOVE":
             child_seq = row["effect_seqs"]
             start_pos = _move_pos(row["started_position"])
             end_pos = _move_pos(row["settled_position"])
@@ -217,7 +219,11 @@ def _validate(value: object) -> dict[str, Any]:
             delta = row["displacement_m"]
             if (
                 type(delta) not in (int, float) or not math.isfinite(delta)
-                or not 0.1 <= delta <= 8.0
+                or not (
+                    0.1 <= delta <= 8.0
+                    if row["status"] == "NATIVE_MOVE_SETTLED"
+                    else 0 <= delta < 0.1
+                )
                 or abs(math.dist(start_pos, end_pos) - delta) > 1e-6
                 or row["food_before"] is not None or row["food_after"] is not None
                 or row["count_before"] is not None or row["count_after"] is not None
@@ -481,8 +487,7 @@ class PhysicalActionJournal:
             or probe.seq != binding.native_seq
             or probe.request_id != binding.native_request_id
             or probe.provenance != binding.native_source
-            or probe.snapshot.time is None
-            or probe.snapshot.health <= 0
+            or probe.snapshot.time is None  # STOP evidence clock required
         ):
             raise PhysicalJournalError("original MOVE parent/native source not qualified")
         pos = probe.snapshot.position
@@ -544,7 +549,7 @@ class PhysicalActionJournal:
             or row["target_ref"] != binding.target_ref
             or any(not isinstance(x, MineflayerObservation) or x.kind != "probe"
                    or x.snapshot.time is None or not x.request_id
-                   or x.snapshot.health <= 0 for x in entries)
+                   for x in entries)
             or any(x.session_id != row["session_id"] for x in entries)
             or before.seq != row["probe_seq"]
             or before.request_id != row["probe_request_id"]
@@ -583,11 +588,18 @@ class PhysicalActionJournal:
             (before_pos.x, before_pos.y, before_pos.z),
             (after_pos.x, after_pos.y, after_pos.z),
         )
-        if not 0.1 <= displacement <= 8.0:
+        if not 0 <= displacement <= 8.0:
             raise PhysicalJournalError("MOVE observed displacement not qualified")
+        # An actual selected Action can have no net displacement. This is a
+        # terminal measured result, not a pretend successful MOVE. Strong
+        # start/stop ACK + 8+8 tick settle proof is required in both cases.
+        status = (
+            "NATIVE_MOVE_SETTLED" if displacement >= 0.1
+            else "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        )
         self._commit([*self._body["actions"][:-1], {
             **row,
-            "status": "NATIVE_MOVE_SETTLED",
+            "status": status,
             "effect_seqs": [start_ack.seq, stop_ack.seq],
             "after_seq": settled.seq,
             "settled_position": {
