@@ -24,6 +24,7 @@ import sys
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -253,8 +254,9 @@ async def _real_preset_trial(
     owners: dict[str, CheckpointedCognitiveOwner],
     evidence: Path, world_uuid: str,
     inference_lane: ResidentLlamaInferenceLane | None = None,
+    stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
 ) -> dict[str, object]:
-    """One admitted real-world no-motor attempt with full saved Self cohort."""
+    """Original saved/rejoined Self cohort; Stage26 remains nonissuing by default."""
     original_world = lifecycle.world
     first_paper_session = paper.owned_session_id
     if first_paper_session != original_world.paper_session_id:
@@ -411,6 +413,7 @@ async def _real_preset_trial(
     pending: dict[str, object] = {}
     rawfiles: dict[str, Path] = {}
     first_probes: dict[str, object] = {}
+    completed: dict[str, tuple[object, object]] = {}
     if inference_lane is not None:
         # Both Self submit BEFORE awaiting either result. The original shared
         # one-slot lane serializes actual provider access; no forked GPU owner.
@@ -451,7 +454,10 @@ async def _real_preset_trial(
                 prepared, ticket=ticket, lane=inference_lane,
                 fresh_probe=lambda: _bounded_b_probe(session),
             )
-        session.finish_raw_source_audit()
+        if stage27_motor_hook is None or sid != "A":
+            session.finish_raw_source_audit()
+        if stage27_motor_hook is not None:
+            completed[sid] = (observed, refreshed)
         # Frozen ORIGINAL Mineflayer stdout is independently reread, not
         # inferred from the parsed Python receipts alone.
         native_digest = _readback_native_probe_source(
@@ -493,6 +499,28 @@ async def _real_preset_trial(
     if inference_lane is not None:
         inference_lane.require_world_idle()
 
+    stage27_result: dict[str, object] | None = None
+    if stage27_motor_hook is not None:
+        if inference_lane is None or tuple(sorted(completed)) != ("A", "B"):
+            raise RealPresetCheckpointRefusal("original Stage27 real model witnesses absent")
+        try:
+            stage27_result = await stage27_motor_hook(
+                paper=paper, bridge=bridge, physical=physical,
+                lane=inference_lane, owners=owners,
+                world_epoch=lifecycle.world.epoch,
+                prepared={sid: pending[sid][0] for sid in ("A", "B")},
+                tickets={sid: pending[sid][1] for sid in ("A", "B")},
+                witnesses={sid: completed[sid][0] for sid in ("A", "B")},
+                refreshed={sid: completed[sid][1] for sid in ("A", "B")},
+                evidence=evidence, world_uuid=world_uuid,
+                native_audit=rawfiles["A"],
+            )
+        finally:
+            # The original A native stdout audit stays active across the
+            # physical children and STOP samples. Freeze it only after issue.
+            bridge.sessions["A"].finish_raw_source_audit()
+            witnessed["A"]["exact_native_stdout_sha256"] = file_sha256(rawfiles["A"])
+
     for sid in ("A", "B"):
         await bridge.logout(sid)
     if not bridge.world_only_quiescence().no_unresolved_physical_actions:
@@ -500,6 +528,8 @@ async def _real_preset_trial(
 
     return {
         "classification": (
+            stage27_result["classification"]
+            if stage27_result is not None else
             "REAL_PAPER_2SELF_PRESET_LLAMA_L1_OBSERVED_DEV"
             if inference_lane is not None else
             "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV"
@@ -522,7 +552,11 @@ async def _real_preset_trial(
             inference_lane.provider.model if inference_lane is not None else None
         ),
         "backend_model_weights_independently_verified": False,
-        "real_native_physical_action_issued": False,
+        "stage27": stage27_result,
+        "real_native_physical_action_issued": (
+            bool(stage27_result["physical_effect_observed"])
+            if stage27_result is not None else False
+        ),
         "old_action_or_skill_replayed": False,
         "old_gpu_output_reused": False,
         "owner_acceptance": "OPERATOR_DEV_TEMPLATE_NOT_AUTONOMOUS_SELF",
@@ -541,6 +575,7 @@ async def run_real_two_self_preset_checkpoint(
     gemma_l1_endpoint: str | None = None,
     gemma_l1_model: str | None = None,
     gemma_l1_jev: bool = False,
+    _stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -559,6 +594,12 @@ async def run_real_two_self_preset_checkpoint(
     if real_gemma_l1 != (gemma_l1_model is not None):
         raise RealPresetCheckpointRefusal(
             "real-Gemma opt-in requires operator-declared model identity"
+        )
+    if _stage27_motor_hook is not None and (
+        not callable(_stage27_motor_hook) or not real_gemma_l1 or gemma_l1_jev
+    ):
+        raise RealPresetCheckpointRefusal(
+            "Stage27 native MOVE requires a separate real bounded model hook"
         )
     provider = None
     slot_witness = None
@@ -643,7 +684,8 @@ async def run_real_two_self_preset_checkpoint(
         original_ids = {sid: "offline-born-" + sid for sid in names}
         physical = PhysicalIssueAdmission(
             original_ids, resident_mode=True,
-            initially_offline=True, allow_resident_move=False,
+            initially_offline=True,
+            allow_resident_move=_stage27_motor_hook is not None,
         )
         configs = {
             sid: MineflayerLaunchConfig(
@@ -707,6 +749,7 @@ async def run_real_two_self_preset_checkpoint(
             work=work, lifecycle=lifecycle, owners=originals,
             evidence=evidence, world_uuid=world_uuid,
             inference_lane=lane,
+            stage27_motor_hook=_stage27_motor_hook,
         )
         report.update(trial)
     except BaseException as exc:
@@ -748,7 +791,14 @@ async def run_real_two_self_preset_checkpoint(
         if real_gemma_l1
         else "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV"
     )
-    if report["classification"] != expected_classification:
+    if _stage27_motor_hook is not None:
+        expected_classifications = {
+            "REAL_STAGE27_A_PLACE_MOVE_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+        }
+    else:
+        expected_classifications = {expected_classification}
+    if report["classification"] not in expected_classifications:
         raise RealPresetCheckpointRefusal("unqualified real PRESET World result")
     return report_path
 
