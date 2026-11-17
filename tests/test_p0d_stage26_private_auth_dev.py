@@ -22,8 +22,8 @@ from experiments.p0d_stage26_local_model_preflight import (
     Stage26ModelPreflightHold,
     inspect_stage26_model_source,
 )
-from relay_self.resident_llama_inference_lane_dev import LlamaCppSingleSlotWitness
 from relay_self.relay_engine import CognitionMode
+from relay_self.resident_llama_inference_lane_dev import LlamaCppSingleSlotWitness
 from relay_self.stage26_private_model_auth_dev import (
     Stage26PrivateAuthError,
     load_stage26_private_api_key,
