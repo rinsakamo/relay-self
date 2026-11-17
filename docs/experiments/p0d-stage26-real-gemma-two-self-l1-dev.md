@@ -1,10 +1,10 @@
 # Stage26 — Restored 2-Self Preset → REAL bounded L1 on one original llama.cpp GPU lane
 
-**Status: implementation / source-shaped HTTP contract DEV. No genuine local Gemma, Paper or Mineflayer run on this branch yet.** Stack: Stage25 real native checkpoint [Draft #923](https://github.com/rinsakamo/relay-self/pull/923) at independently qualified HEAD `a4fd1c1426c1e00a43df5ccbf88ae5c3848c3164` (one real Paper trial, one original World). Stage21 [Draft #898](https://github.com/rinsakamo/relay-self/pull/898) owns the existing resident one-slot GPU lane. Do **not** replace either original owner with a synthetic second facade.
+**Status: source-shaped HTTP/Owner contract DEV, plus real Gemma BOUNDED preflight (177+17=194 tokens; finish=stop) independently reported by LocalCodex. No Stage26 real Paper/2-Self World trial yet.** Stack: Stage25 real native checkpoint [Draft #923](https://github.com/rinsakamo/relay-self/pull/923) at independently qualified HEAD `a4fd1c1426c1e00a43df5ccbf88ae5c3848c3164` (one real Paper trial, one original World). Stage21 [Draft #898](https://github.com/rinsakamo/relay-self/pull/898) owns the existing resident one-slot GPU lane. Do **not** replace either original owner with a synthetic second facade.
 
 ## What changed
 
-The Stage25 runner remains default **SCRIPTED**, reproducing the previously qualified source route exactly. New arguments `--real-gemma-l1 --gemma-l1-endpoint <loopback-URL> --gemma-l1-model <model-id>` opt in to a real existing llama.cpp endpoint **before starting any disposable Paper server**. The model endpoint must be `http://127.0.0.1:<port>/v1/chat/completions` or localhost and an existing exclusive /slots API must report one **idle slot id 0**. No port discovery, remote provider, external GPU owner, unowned inference, or automatic external llama-server process launch. Optional `--gemma-l1-jev` uses the original provider's same-endpoint SystemOne/JEV request/parse path. The installed Gemma weights/model SHA and exclusive process ownership are **operator evidence**, not established by trusting a `--gemma-l1-model` string.
+The Stage25 runner remains default **SCRIPTED**, reproducing the previously qualified source route exactly. New arguments `--real-gemma-l1 --gemma-l1-endpoint <loopback-URL> --gemma-l1-model <model-id>` opt in to a real existing llama.cpp endpoint **before starting any disposable Paper server**. The model endpoint must be `http://127.0.0.1:<port>/v1/chat/completions` or localhost and an existing exclusive /slots API must report one **idle slot id 0**. No port discovery, remote provider, external GPU owner, unowned inference, or automatic external llama-server process launch. Optional `--gemma-l1-jev` uses the original provider's same-endpoint SystemOne/JEV request/parse path. The installed Gemma weights/model SHA and dedicated process ownership are **operator evidence**, not established by trusting a `--gemma-l1-model` string.
 
 The original `ResidentLlamaInferenceLane` is injected into the original `OwnedResidentPhysicalBridge` before any native login. A and B share **one** original `ResidentCognitiveWorkOwner`, one serialized provider lane, original PhysicalIssueAdmission (resident MOVE **disabled**), and original native A/B session. Every staged owner retired at the first World save is matched to its original Self's recovered source. Old native sessions, Intent/Skill execution, physical Action grant and old GPU results do not resume. Paper restarts from the same source World as Stage25 (the fork is only restored/staged offline).
 
@@ -18,14 +18,14 @@ No MOVE, EAT, ATTACK, physical parametric Skill or L2 generator call is made. On
 
 **Do not require exclusive ownership of the entire RTX 3060.** Windows Desktop Window Manager, Explorer, ChatGPT UI and NVIDIA Overlay can legitimately use its graphics/video resources while a local CUDA llama-server runs. Windows `nvidia-smi.exe` may label these processes `C+G`, which **does not by itself demonstrate an active competing LLM/CUDA inference job**. WSL `nvidia-smi` not listing Windows processes is a WSL observability limitation: it is neither proof of global GPU exclusivity nor a standalone reason to HOLD. The earlier Stage26 PRE_WORLD_HOLD correctly performed **no unsafe work**, but applied an overly broad interpretation of “GPU exclusivity.” That earlier HOLD and the unconsumed one-shot World budget remain historical evidence.
 
-Two independent, narrower safety requirements apply instead:
+Two independent, narrower operational checks apply instead. **Per user decision, protecting against untrusted external inference-client mixing is explicitly out of scope for Stage26 DEV** (no API key, CORS restriction, client isolation proof or extra request-client attribution gate required). Keep one-slot runtime checks and model/WorldBody result correlation:
 
-1. **RelaySelf inference endpoint/slot ownership (mandatory).** Identify exactly one original or user-approved dedicated llama-server process: its actual PID, executable SHA/build, argv, loaded GGUF path/SHA, private loopback-bound port, model alias, `-np 1` and working one-entry `/slots` API. Ensure the RelaySelf runner is the sole **authorized inference client** of that specific endpoint throughout the bounded experiment. Confirm `/slots` idle before the experiment, before/after each provider request, and after shutdown/retirement; preserve server stdout and observed connection/listener ownership. Don't infer prevention of every possible external connection from loopback or `/slots` alone. If actual foreign requests to the same endpoint appear, or the server/port owner cannot be identified, **HOLD**.
+1. **RelaySelf inference endpoint/slot ownership (mandatory).** Identify exactly one original or user-approved dedicated llama-server process: its actual PID, executable SHA/build, argv, loaded GGUF path/SHA, private loopback-bound port, model alias, `-np 1` and working one-entry `/slots` API. Check `/slots` idle before the experiment, before/after each provider request and after retirement; preserve server stdout and listener ownership. **Do not require proof that no external client can connect during the World**. Slot checks attest observed server-lane state, not prevention of outside requests. If actual competing work invalidates result/source attribution, HOLD on observable evidence, not hypothetical future clients.
 2. **Practical GPU resource availability / non-interference (mandatory).** Before starting, capture both Windows and WSL GPU totals, used/free VRAM, compute utilization and available per-process or GPU-engine telemetry. Preserve the preexisting **desktop GUI baseline** and review evidence for a known active **competing compute workload** or insufficient free VRAM. Ordinary desktop `C+G` processes alone are **not a blocker**. Model loading must succeed with expected GPU offload and enough VRAM; compare post-load memory/usage with the baseline, and watch for OOM, interference, GPU faults or a newly admitted competing heavy compute job during the one-shot. If an actual compute contender cannot be bounded or the model cannot fit safely, **HOLD without stopping any other process**.
 
 Suggested read-only inspection, adjusted to capabilities of installed WDDM/WSL drivers: `nvidia-smi.exe --query-gpu=index,name,memory.total,memory.used,memory.free,utilization.gpu --format=csv` on Windows; `nvidia-smi --query-gpu=memory.total,memory.used,memory.free,utilization.gpu --format=csv` in WSL; host `nvidia-smi.exe --query-compute-apps=pid,process_name,used_gpu_memory --format=csv` where supported, and Windows GPU-engine counters if available. Unavailable WDDM per-process VRAM or a missing Windows↔WSL PID mapping must be recorded as **limited observability**, not silently turned into “zero processes” or “no possible inference.” Attribute source PIDs through owned /proc/port/argv and independent Windows process/listener records when obtainable.
 
-**Operational qualification is bounded, not absolute**: prove exclusive control of this model server's *inference work lane* and adequate GPU capacity, not universal ownership of the graphics card. If GUI processes remain present but show no demonstrated conflict, all owned-model/slot and capacity checks pass, it is valid to continue to a **single** isolated real World DEV trial. This does NOT prove that no other Windows app could ever use CUDA or that VRAM is reserved. Do not label such evidence “global GPU exclusive.” If necessary source evidence for the narrower requirements is missing, remain PRE_WORLD_HOLD with a precise identified blocker. No restarts to circumvent HOLD, no killing desktop processes, and no invalidation of Stage25's original evidence.
+**Operational qualification is bounded, not absolute**: verify the model server's single-slot source and adequate GPU capacity, not universal ownership of the graphics card. If GUI processes remain present but show no demonstrated conflict, all owned-model/slot and capacity checks pass, it is valid to continue to a **single** isolated real World DEV trial. This does NOT prove that no other Windows app could ever use CUDA or that VRAM is reserved. Do not label such evidence “global GPU exclusive.” If necessary source evidence for the narrower requirements is missing, remain PRE_WORLD_HOLD with a precise identified blocker. No restarts to circumvent HOLD, no killing desktop processes, and no invalidation of Stage25's original evidence.
 
 ## Owned llama-server original-source preflight command (Stage26)
 
@@ -70,12 +70,11 @@ source before any real World; never fabricate a matching PID.
 The positive receipt is deliberately classified
 `OWNED_MODEL_SLOT_IDLE_DEV_NOT_FULL_GPU_ATTESTATION`. It has false-valued
 `gpu_capacity_attested`, `external_client_absence_attested` and
-`gpu_wide_exclusivity_attested`: **do not interpret it as permission to
-launch Paper**. LocalCodex must additionally check Windows+WSL VRAM
-baseline/post-model fit and offload, no demonstrated heavy competing
-compute, endpoint client access control and live slot stability. Only
-after those additional original-source checks and existing exact-HEAD CI
-may the one-shot real World runner start.
+`gpu_wide_exclusivity_attested`: these are outside this inspector's proof.
+**The false external-client flag is informational, not a Stage26 HOLD gate.**
+LocalCodex must check Windows+WSL VRAM baseline/post-model fit, offload and
+live slot stability, not external client exclusion. Once the other checks
+and exact-HEAD CI succeed, the one-shot real World DEV may start.
 
 ## LocalCodex operator-authorized trial
 
@@ -114,3 +113,27 @@ The first pre-World HOLD identified a real gap: original model HTTP response-bod
 For Stage26 BOUNDED, `usage.prompt_tokens`, `usage.completion_tokens`, `usage.total_tokens` and `choices[0].finish_reason="stop"` are all required; total must equal prompt + completion. If the real backend omits any of them, preserve raw bytes and **HOLD without a second World**. Stage26 JEV SystemOne has a distinct no-generated-token protocol; this strict evidence mode requires `usage.input_tokens`, `usage.output_tokens=0` and explicit `finish_reason="stop"` (and records their original source). A JEV server that does not expose an explicit finish_reason **cannot qualify this Stage26 path** merely by passing the ordinary provider parser. Use standard BOUNDED only when independently confirmed compatible; never silently switch between JEV and BOUNDED after World creation. Both routes are original llama.cpp provider operations; no synthetic provider may be used to assert real Gemma.
 
 Previous user-host preflight **did not find the owned dedicated llama-server process**. This source-audit fix does not change that physical requirement. Do not spawn a second/unowned model server or proceed to Paper without independently verifying a model process, actual GGUF path/SHA, exclusive PID and single idle /slots, appropriate model protocol, and original Paper/plugin jar SHA. The standing Minecraft EULA + isolated World DEV approval remains valid. This patch was **offline-only** until an owner-qualified real trial is reported.
+
+
+## 2026-11-17 — User-scoped DEV simplification: no external-client prevention
+
+The user explicitly removed the requirement to prevent or prove future
+external-client non-interference during Stage26. The Bearer/API-key
+work introduced after the pre-World client-isolation HOLD has been reverted.
+No `--gemma-l1-api-key-file`, server `--api-key-file`, CORS restriction,
+client-auth tests or additional access-control service is required
+for the one-shot DEV run. Continue using the owned llama-server PID,
+bound GGUF, single-slot observation, original HTTP body/source SHA audit,
+original Self/World/session ticket matching and post-decision native probe.
+These validate **the specific observed result**, not network exclusivity.
+
+A foreign request that demonstrably changes /slots, invalidates a scoped
+result, or creates an unexplained request/response mismatch still requires
+reporting and HOLD on data integrity grounds. **Speculative future access**
+to an otherwise owned, idle local server is not grounds for PRE_WORLD_HOLD.
+Do not claim external-client absence was proved or retroactively change the
+prior original-host HOLD. The prior real Gemma BOUNDED preflight was successful;
+JEV returned HTTP 400 on the tested chat endpoint, so use BOUNDED unless a
+separate pre-World compatibility result proves another mode.
+Minecraft EULA and isolated World DEV remain previously authorized;
+the Stage26 World one-shot is still unconsumed.
