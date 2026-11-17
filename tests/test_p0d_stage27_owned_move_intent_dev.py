@@ -31,7 +31,7 @@ from test_p0d_stage26_gemma_l1_dev import _attach_and_audit, _online_two_actor
 
 async def _one_a_choice(f, lane):
     original = await _online_two_actor(f, lane)
-    sid = "A"
+    sid = f.names[0]
     native = f.bridge.sessions[sid].started.session_id
     prepared = prepare_restored_preset_l1(
         self_id=sid, restored=original[sid],
@@ -52,7 +52,7 @@ def _handoff(f, lane, prepared, ticket, witness, refreshed, **kwargs):
     args = dict(
         prepared=prepared, ticket=ticket, witness=witness,
         refreshed=refreshed, lane=lane, physical=f.physical,
-        actor_self_id="A", at_ns=100,
+        actor_self_id=f.names[0], at_ns=100,
         provenance=Provenance("original-stage27-dev", "self-A"),
     )
     args.update(kwargs)
@@ -69,18 +69,18 @@ def test_a_real_bounded_ready_starts_only_original_a_intent_and_skill(tmp_path):
     async def scenario():
         prepared, ticket, witness, refreshed = await _one_a_choice(f, lane)
         before_b = (
-            f.owners["B"].intent.events,
+            f.owners[f.names[1]].intent.events,
             tuple(f.owners["B"].skills.items()),
             PhysicalActionJournal.restore(
                 f.owners["B"].files.physical_wal_file,
-                self_id="B",
+                self_id=f.names[1],
             ).digest,
         )
         result = _handoff(f, lane, prepared, ticket, witness, refreshed)
         assert result.self_id == "A"
         assert result.decision_number == "1"
         assert result.target_kind == "DESTINATION"
-        assert result.intent_id == f.owners["A"].intent.current_intent.intent_id
+        assert result.intent_id == f.owners[f.names[0]].intent.current_intent.intent_id
         assert result.skill_execution_id in f.owners["A"].skills
         assert result.invocation_ref == witness.candidate_invocation_ref
         assert result.preset_ref == witness.preset_ref
@@ -159,7 +159,7 @@ def test_source_tampering_stays_nonissuing_and_uncommitted(tmp_path, fault):
         prepared, ticket, witness, refreshed = await _one_a_choice(f, lane)
         kw = {}
         if fault == "foreign_actor":
-            kw["actor_self_id"] = "B"
+            kw["actor_self_id"] = f.names[1]
         elif fault == "old_session":
             witness = replace(
                 witness, new_native_session_id=witness.former_native_session_id,
@@ -220,11 +220,11 @@ def test_stage27_refuses_stale_l1_after_actual_a_logout(tmp_path):
 
     async def scenario():
         prepared, ticket, witness, refreshed = await _one_a_choice(f, lane)
-        await f.bridge.logout("A")
+        await f.bridge.logout(f.names[0])
         with pytest.raises(Stage27MoveHandoffRefusal):
             _handoff(f, lane, prepared, ticket, witness, refreshed)
         assert f.owners["A"].intent.current_intent is None
-        await f.bridge.logout("B")
+        await f.bridge.logout(f.names[1])
 
     try:
         asyncio.run(scenario())
