@@ -27,6 +27,56 @@ Suggested read-only inspection, adjusted to capabilities of installed WDDM/WSL d
 
 **Operational qualification is bounded, not absolute**: prove exclusive control of this model server's *inference work lane* and adequate GPU capacity, not universal ownership of the graphics card. If GUI processes remain present but show no demonstrated conflict, all owned-model/slot and capacity checks pass, it is valid to continue to a **single** isolated real World DEV trial. This does NOT prove that no other Windows app could ever use CUDA or that VRAM is reserved. Do not label such evidence “global GPU exclusive.” If necessary source evidence for the narrower requirements is missing, remain PRE_WORLD_HOLD with a precise identified blocker. No restarts to circumvent HOLD, no killing desktop processes, and no invalidation of Stage25's original evidence.
 
+## Owned llama-server original-source preflight command (Stage26)
+
+A read-only repeatable source auditor now lives at
+`experiments/p0d_stage26_local_model_preflight.py`. It must be run **after**
+the previously approved dedicated RelaySelf llama-server is independently
+started by LocalCodex and **before any Paper World**. It does **not** start
+or stop a process, send inference, authorize a World trial or prove global GPU
+exclusivity. The stdout/exclusive on-disk JSON receipt records the specific
+Linux PID, binary bytes, GGUF SHA, exact argv, 8192 context, `-np 1`, positive
+GPU offload, independently attributed `127.0.0.1` LISTEN socket, and one
+idle `/slots` response; an optional Windows WDDM snapshot is hashed for
+provenance but **never** automatically treated as model contention.
+
+An example with the disk identities previously observed on the user host
+(rehash both files and replace `ACTUAL_PID`, `ACTUAL_PORT` and paths after
+independent process inspection; **do not assume this PID exists**):
+
+```bash
+PYTHONPATH=src:. python experiments/p0d_stage26_local_model_preflight.py \
+  --pid ACTUAL_PID \
+  --endpoint http://127.0.0.1:ACTUAL_PORT/v1/chat/completions \
+  --executable /home/rinsa/src/llama.cpp-jev-paper2-162/build/bin/llama-server \
+  --executable-sha256 ACTUAL_VERIFIED_BINARY_SHA256 \
+  --gguf /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf \
+  --gguf-sha256 c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed \
+  --windows-gpu-snapshot /ABSOLUTE/EXISTING/windows-gpu-before.txt \
+  --output /ABSOLUTE/EXISTING/evidence/model-source-preflight.json
+```
+
+The tool restricts the endpoint to an explicitly loopback-bound IPv4
+listener whose inode is attributable to that exact Linux PID. A wildcard,
+foreign PID, ambiguous flag, different model, duplicate parallel slot, busy
+slot or missing process source HOLDs. If the owned server was launched
+with otherwise supported equivalent CLI flags but this inspector cannot
+prove them, **record a preflight HOLD and improve the observer/test
+offline**, not an inferred PASS or unrelated process stop. On WSL, if
+`/proc/net/tcp` or `/proc/<pid>/fd` is not sufficiently observable, record
+the limitation and corroborate with another independent owned-listener
+source before any real World; never fabricate a matching PID.
+
+The positive receipt is deliberately classified
+`OWNED_MODEL_SLOT_IDLE_DEV_NOT_FULL_GPU_ATTESTATION`. It has false-valued
+`gpu_capacity_attested`, `external_client_absence_attested` and
+`gpu_wide_exclusivity_attested`: **do not interpret it as permission to
+launch Paper**. LocalCodex must additionally check Windows+WSL VRAM
+baseline/post-model fit and offload, no demonstrated heavy competing
+compute, endpoint client access control and live slot stability. Only
+after those additional original-source checks and existing exact-HEAD CI
+may the one-shot real World runner start.
+
 ## LocalCodex operator-authorized trial
 
 User has previously granted **standing explicit Minecraft EULA consent and real disposable World DEV approval** in this project; do not ask again. Always pass `--eula-accepted --real-world-dev-grant`. Validate actual model/process owner, Gemma GGUF Q4_K_M SHA256, exact model bytes, exclusive llama-server PID/port/args and n_parallel=1, original Paper+plugin SHA, JVM, Node and CI exact HEAD. Run a disposable localhost World **once** only, no blind reruns on HOLD.
