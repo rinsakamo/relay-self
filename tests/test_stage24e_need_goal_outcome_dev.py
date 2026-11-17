@@ -1,8 +1,6 @@
 """Stage24e: Need/Goal always selectable; WorldBody outcomes remain authoritative."""
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from relay_self.cognitive_minimal_dev import (
