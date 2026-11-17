@@ -21,6 +21,8 @@ from adapters.llama_cpp.relay_engine import (
     render_llama_cpp_jev_request,
 )
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
@@ -58,7 +60,9 @@ def synthetic_control_pair():
             time=MineflayerTime(6000, 0, True),
             inventory=(), nearby_entities=(),
             nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
-                MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE, 16.0, 16, 0, False,
+                MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES, 0, False,
             ),
         )
         probe = MineflayerObservation(
@@ -83,7 +87,7 @@ def _json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def synthetic_jev_payloads(model: str) -> tuple[tuple[str, object, dict], ...]:
+def synthetic_jev_payloads(model: str) -> tuple[tuple[str, object, object, dict], ...]:
     if type(model) is not str or not model.strip():
         raise Stage24cCalibrationRefusal("explicit actual model alias required")
     return tuple(
