@@ -77,3 +77,63 @@ Stage27a tests use synthetic HTTP/native fixtures only; exact-HEAD CI
 must pass before any local real-World test. Existing EULA and real-World
 DEV approvals remain in force, but neither is a replacement for a
 correct parameterized motor issuer. QUAL and SCIENCE are not claimed.
+
+
+## Stage27b — Read-only original PLACE-to-WorldBody geometry (offline)
+
+Implementation `src/relay_self/p0d_stage27b_place_motion_dev.py`;
+contract tests `tests/test_p0d_stage27b_place_motion_dev.py`.
+The resolver takes the **Stage27a original owned Intent receipt**, the
+original Stage26 immutable complete `SkillInvocation`, the original
+`CheckpointedCognitiveOwner` and `PhysicalIssueAdmission`, and one
+source-scoped **fresh native probe**, and produces `Stage27PlaceMotionPlan`.
+
+Required bindings: same Self ID/native session/World epoch; exact
+request/invocation/preset/TargetContract refs; live original Intent and
+STARTED Skill; original WAL still clear, no active Action; native probe
+not older than the Stage27a post-model recheck. No new L1 or L2 model
+request is made. Peer B's Intent/Skill/WAL are untouched.
+
+`evaluate_target` reuses the original immutable PLACE arrival envelope:
+the Stage26 DEV example is 1 metre world-east of the initial body,
+arrival within 0.6m, so the initial native x-position has a 0.4m
+**gap to envelope**, but is not itself an arrival certification.
+`mineflayer_yaw_to_target(position, target)` converts only the native
+body position and original target anchor into the Mineflayer-native
+expected yaw; for positive X the result is `-pi/2`. **This is a desired
+angle, not observation that the body is facing that angle**. The current
+native snapshot lacks current yaw/pitch or navigability/obstacle proof.
+
+The plan's `clearance_observed`, `facing_aligned_observed`,
+`action_granted`, `native_effect_issued`, and
+`world_goal_succeeded` remain **false**. No `send_look`,
+`send_set_control`, `send_clear_controls` or WAL call occurs here.
+
+Budget is the *frozen original Preset*; this stage exposes
+`preset_max_distance_m` and whether it can geometrically finish the
+envelope. If target distance exceeds that cap, it is **not** proof the
+Self cannot make progress; the future physical issuer may attempt
+a smaller bounded movement, then report the actual Body Outcome.
+The Preset may not be silently increased or rebound by L1.
+An observed obstacle/failed movement is valuable Body feedback, not
+a priori evidence that the Target/Goal should disappear.
+
+**Not implemented and still essential for Stage27c physical test:**
+- original resident `PhysicalIssueAdmission` MOVE family only permits
+  native `set_control` and `clear_controls`, and its durable MOVE WAL
+  requires `relative:* target_ref` plus start/stop child IDs
+- parameterized PLACE `SkillInvocation` cannot pass the current
+  `FiniteSkillInterpreter.propose` admission. Do **not** bypass it by
+  replacing the selected PLACE Target with a synthetic RELATIVE target
+- to issue a native LOOK and bounded forward MOVE safely, the owner
+  must explicitly extend its native child lease and durable WAL
+  identity for the original `TargetContract` and Invocation; record
+  native ACKs and final STOP settling/readback, enforce the per-Preset
+  duration/actions/distance caps and final source-correlated Outcome
+- all results (including no displacement/blocked) must be attributed
+  to the exact original Self/Target/physical parent and treated as
+  feedback; automatic retries on uncertain STOP are forbidden
+
+No real Stage27b Paper/real Gemma/physical MOVE trial has been run by
+this branch. Source-shaped tests are synthetic. Stage26's verified
+real-world classification remains separate.
