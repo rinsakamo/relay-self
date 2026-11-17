@@ -86,6 +86,7 @@ from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
+    require_pre_inference_resident_presence,
 )
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyOwnedPaperCheckpoint,
@@ -424,6 +425,31 @@ async def _owned_resident_trial(
     ):
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
     b_move = None
+    if b_autonomous_l1_dev:
+        # Stage24f's pinned plugin emitted P0B_PLAYER/P0D_TICK_READY but
+        # no P0D_RESIDENT. Prove the independent Paper observer is actually
+        # producing its own records BEFORE the one-shot Gemma choice/MOVE.
+        # This is not a Body oxygen/health/World permission gate.
+        import hashlib
+
+        pre_inference_source = paper.read_owned_log(paper_session)
+        pre_inference_hash = hashlib.sha256(pre_inference_source).hexdigest()
+        _write_bytes_new(
+            evidence_dir / "pre-inference-paper-resident-owned.log",
+            pre_inference_source,
+        )
+        pre_inference_trace = parse_owned_paper_resident_trace(
+            owned_paper_session_id=paper_session,
+            expected_world_uuid=world_uuid,
+            owned_paper_log=pre_inference_source,
+            log_ref=(
+                f"paper-owned-pre-inference:{paper_session}:"
+                f"sha256:{pre_inference_hash}"
+            ),
+        )
+        require_pre_inference_resident_presence(
+            pre_inference_trace, a_name="RelayA", b_name="RelayB",
+        )
     if b_autonomous_l1_dev:
         if bridge.inference_lane is None:
             raise RealResidentPresenceRefusal("Stage24b original resident L1 lane missing")
