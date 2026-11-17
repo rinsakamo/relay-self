@@ -154,7 +154,10 @@ class FakeNativeResident:
 
 
 class ResidentFixture:
-    def __init__(self, root: Path, n: int, *, cognitive_work: bool = False):
+    def __init__(
+        self, root: Path, n: int, *, cognitive_work: bool = False,
+        allow_resident_move: bool = False,
+    ):
         self.paper = _fake_paper(root)
         paper_session = self.paper.start_owned()
         self.names = tuple(f"S{i:03d}" for i in range(n))
@@ -163,6 +166,7 @@ class ResidentFixture:
         }
         self.physical = PhysicalIssueAdmission(
             self.original_ids, resident_mode=True, initially_offline=True,
+            allow_resident_move=allow_resident_move,
         )
         self.owners = {}
         for sid in self.names:
