@@ -48,6 +48,7 @@ class _SyntheticLlamaServer:
         self.leave_busy = False
         self.extra_slots = False
         self.respond_500 = False
+        self.choice_id = "A"
         self.calls: list[str] = []
         self.probes = 0
         self.srv: ThreadingHTTPServer | None = None
@@ -95,7 +96,7 @@ class _SyntheticLlamaServer:
                     self._write(500, {"error": "synthetic transport failure"})
                     return
                 response = (
-                    '{"status":"resolved","choice_id":"A"}'
+                    json.dumps({"status": "resolved", "choice_id": owner.choice_id})
                     if "response_format" in payload
                     else "Cognition is a tentative inference, not physical truth."
                 )

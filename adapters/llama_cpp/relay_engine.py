@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from relay_self.provenance import Provenance
@@ -83,6 +87,25 @@ class LlamaCppProviderError(RuntimeError):
 
 class LlamaCppProviderProtocolError(LlamaCppProviderError):
     """Raised when provider/model output violates the declared wire contract."""
+
+
+@dataclass(frozen=True, slots=True)
+class LlamaCppRawAuditReceipt:
+    request_id: str
+    request_path: str
+    request_sha256: str
+    response_path: str
+    response_sha256: str
+    response_bytes: int
+
+
+def _write_exclusive_source(path: Path, payload: bytes) -> None:
+    """Exclusive creation with fsync; source evidence is never overwritten."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _identity_payload(
@@ -559,7 +582,7 @@ def parse_llama_cpp_jev_decision(
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
-        finish_reason=None,
+        finish_reason=body.get("finish_reason"),
     )
 
     if choice_id == _JEV_UNRESOLVED_CHOICE:
@@ -605,6 +628,51 @@ class LlamaCppRelayProvider:
             raise ValueError("timeout must be a positive number")
         self._model = model
         self._timeout = float(timeout)
+        self._stage26_audit_dir: Path | None = None
+
+    def enable_stage26_raw_audit(self, directory: Path) -> None:
+        """One-time opt-in; evidence dir must exist and be empty."""
+        if (
+            self._stage26_audit_dir is not None
+            or not isinstance(directory, Path)
+            or not directory.is_dir()
+            or any(directory.iterdir())
+        ):
+            raise LlamaCppProviderError("exclusive empty Stage26 audit directory required")
+        self._stage26_audit_dir = directory
+
+    def stage26_raw_receipt(self, request_id: str) -> LlamaCppRawAuditReceipt:
+        if self._stage26_audit_dir is None:
+            raise LlamaCppProviderError("Stage26 source audit not enabled")
+        key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+        request = self._stage26_audit_dir / (key + ".request.json")
+        response = self._stage26_audit_dir / (key + ".response.json")
+        manifest_path = self._stage26_audit_dir / (key + ".source.sha256.json")
+        manifest = json.loads(manifest_path.read_bytes())
+        original_request = request.read_bytes()
+        original_response = response.read_bytes()
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("request_id") != request_id
+            or not original_request or not original_response
+            or len(original_response) > 2097152
+            or manifest.get("request_sha256") != hashlib.sha256(
+                original_request
+            ).hexdigest()
+            or manifest.get("response_sha256") != hashlib.sha256(
+                original_response
+            ).hexdigest()
+            or manifest.get("response_bytes") != len(original_response)
+        ):
+            raise LlamaCppProviderError("model HTTP evidence checksum mismatch")
+        return LlamaCppRawAuditReceipt(
+            request_id=request_id,
+            request_path=str(request),
+            request_sha256=hashlib.sha256(original_request).hexdigest(),
+            response_path=str(response),
+            response_sha256=hashlib.sha256(original_response).hexdigest(),
+            response_bytes=len(original_response),
+        )
 
     @property
     def endpoint(self) -> str:
@@ -634,10 +702,21 @@ class LlamaCppRelayProvider:
             body = self._call(
                 request_body,
                 endpoint=self._systemone_endpoint,
+                request_id=request.request_id,
             )
+            if self._stage26_audit_dir is not None:
+                usage = body.get("usage")
+                if (
+                    not isinstance(usage, dict)
+                    or _jev_usage_int(usage, "input_tokens") is None
+                    or _jev_usage_int(usage, "output_tokens") is None
+                    or body.get("finish_reason") != "stop"
+                ):
+                    raise LlamaCppProviderProtocolError(
+                        "audited JEV requires token counts and finish_reason=stop"
+                    )
             return parse_llama_cpp_jev_decision(
-                body,
-                request=request,
+                body, request=request,
             )
 
         if mode is CognitionMode.OPEN:
@@ -647,7 +726,7 @@ class LlamaCppRelayProvider:
                 request,
                 model=self._model,
             )
-            body = self._call(request_body)
+            body = self._call(request_body, request_id=request.request_id)
             raw_text, call_facts = _extract_completion(
                 body,
                 request_body=request_body,
@@ -674,11 +753,24 @@ class LlamaCppRelayProvider:
             mode=mode,
             model=self._model,
         )
-        body = self._call(request_body)
+        body = self._call(request_body, request_id=request.request_id)
         raw_text, call_facts = _extract_completion(
             body,
             request_body=request_body,
         )
+        if self._stage26_audit_dir is not None:
+            if (
+                call_facts.finish_reason != "stop"
+                or call_facts.prompt_tokens is None
+                or call_facts.completion_tokens is None
+                or call_facts.total_tokens is None
+                or call_facts.total_tokens != (
+                    call_facts.prompt_tokens + call_facts.completion_tokens
+                )
+            ):
+                raise LlamaCppProviderProtocolError(
+                    "audited bounded completion needs exact usage and finish=stop"
+                )
         decision = parse_llama_cpp_decision(raw_text, mode=mode)
         return ProviderDecision(
             status=decision.status,
@@ -692,16 +784,24 @@ class LlamaCppRelayProvider:
         request_body: dict[str, object],
         *,
         endpoint: str | None = None,
+        request_id: str | None = None,
     ) -> dict[str, Any]:
         target_endpoint = self._endpoint if endpoint is None else endpoint
+        request_bytes = json.dumps(
+            request_body, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        response_path: Path | None = None
+        if self._stage26_audit_dir is not None:
+            if type(request_id) is not str or not request_id.strip():
+                raise LlamaCppProviderError("audited model call missing request ID")
+            key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+            request_path = self._stage26_audit_dir / (key + ".request.json")
+            response_path = self._stage26_audit_dir / (key + ".response.json")
+            _write_exclusive_source(request_path, request_bytes)
         request = urllib.request.Request(
             target_endpoint,
-            data=json.dumps(
-                request_body,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8"),
+            data=request_bytes,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -713,7 +813,33 @@ class LlamaCppRelayProvider:
                 request,
                 timeout=self._timeout,
             ) as response:
-                body = json.loads(response.read().decode("utf-8"))
+                raw = response.read(2097153)
+            if response_path is not None:
+                # Persist actual response bytes and independent digest manifest
+                # before parsing, including malformed JSON/model outputs.
+                _write_exclusive_source(response_path, raw)
+                assert request_id is not None
+                assert self._stage26_audit_dir is not None
+                key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+                manifest_path = self._stage26_audit_dir / (
+                    key + ".source.sha256.json"
+                )
+                original_digest = {
+                    "request_id": request_id,
+                    "request_sha256": hashlib.sha256(request_bytes).hexdigest(),
+                    "response_sha256": hashlib.sha256(raw).hexdigest(),
+                    "response_bytes": len(raw),
+                }
+                _write_exclusive_source(
+                    manifest_path,
+                    json.dumps(
+                        original_digest, sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8"),
+                )
+            if len(raw) > 2097152:
+                raise LlamaCppProviderProtocolError("model response above 2MiB bound")
+            body = json.loads(raw.decode("utf-8"))
         except (
             urllib.error.URLError,
             TimeoutError,

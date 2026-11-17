@@ -25,6 +25,7 @@ import tempfile
 from dataclasses import asdict
 from pathlib import Path
 
+from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from experiments.p0d_real_paper_smoke_dev import (
@@ -57,6 +58,11 @@ from relay_self.owned_resident_physical_bridge_dev import (
     OwnedResidentPhysicalBridge,
 )
 from relay_self.p0d_real_preset_reselect_dev import reselect_restored_move_preset_live
+from relay_self.p0d_stage26_gemma_l1_dev import (
+    finish_restored_preset_l1,
+    prepare_restored_preset_l1,
+    submit_restored_preset_l1,
+)
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -67,6 +73,10 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_llama_inference_lane_dev import (
+    LlamaCppSingleSlotWitness,
+    ResidentLlamaInferenceLane,
+)
 from relay_self.resident_paper_presence_join_dev import (
     parse_owned_paper_resident_trace,
 )
@@ -242,6 +252,7 @@ async def _real_preset_trial(
     lifecycle: WorldResidentLifecycle,
     owners: dict[str, CheckpointedCognitiveOwner],
     evidence: Path, world_uuid: str,
+    inference_lane: ResidentLlamaInferenceLane | None = None,
 ) -> dict[str, object]:
     """One admitted real-world no-motor attempt with full saved Self cohort."""
     original_world = lifecycle.world
@@ -397,18 +408,49 @@ async def _real_preset_trial(
             "new Paper boot or stable player UUIDs not corroborated"
         )
     witnessed: dict[str, object] = {}
+    pending: dict[str, object] = {}
+    rawfiles: dict[str, Path] = {}
+    first_probes: dict[str, object] = {}
+    if inference_lane is not None:
+        # Both Self submit BEFORE awaiting either result. The original shared
+        # one-slot lane serializes actual provider access; no forked GPU owner.
+        for sid in ("A", "B"):
+            session = bridge.sessions[sid]
+            raw = evidence / ("native-rejoin-" + sid + ".jsonl")
+            session.start_raw_source_audit(raw)
+            first = await _bounded_b_probe(session)
+            prepared = prepare_restored_preset_l1(
+                self_id=sid, restored=staged_by_id[sid],
+                first=first, owner=owners[sid], lane=inference_lane,
+                definition=definition,
+            )
+            ticket = submit_restored_preset_l1(
+                prepared, lane=inference_lane,
+            )
+            pending[sid] = (prepared, ticket)
+            rawfiles[sid] = raw
+            first_probes[sid] = first
     for sid in ("A", "B"):
         session = bridge.sessions[sid]
-        native_raw = evidence / ("native-rejoin-" + sid + ".jsonl")
-        session.start_raw_source_audit(native_raw)
-        first = await _bounded_b_probe(session)
         source = staged_by_id[sid]
-        observed, refreshed = await reselect_restored_move_preset_live(
-            source, first, lambda: _bounded_b_probe(session),
-            source_self_id=sid,
-            expected_native_session_id=session.started.session_id,
-            definition=definition,
-        )
+        if inference_lane is None:
+            native_raw = evidence / ("native-rejoin-" + sid + ".jsonl")
+            session.start_raw_source_audit(native_raw)
+            first = await _bounded_b_probe(session)
+            observed, refreshed = await reselect_restored_move_preset_live(
+                source, first, lambda: _bounded_b_probe(session),
+                source_self_id=sid,
+                expected_native_session_id=session.started.session_id,
+                definition=definition,
+            )
+        else:
+            native_raw = rawfiles[sid]
+            first = first_probes[sid]
+            prepared, ticket = pending[sid]
+            observed, refreshed = await finish_restored_preset_l1(
+                prepared, ticket=ticket, lane=inference_lane,
+                fresh_probe=lambda: _bounded_b_probe(session),
+            )
         session.finish_raw_source_audit()
         # Frozen ORIGINAL Mineflayer stdout is independently reread, not
         # inferred from the parsed Python receipts alone.
@@ -419,11 +461,20 @@ async def _real_preset_trial(
             native_session=session.started.session_id,
             first_seq=first.seq, second_seq=refreshed.seq,
         )
+        prior_native = (
+            observed.old_native_session_id if inference_lane is None
+            else observed.former_native_session_id
+        )
         if (
             observed.preset_ref != accepted_refs[sid]
-            or observed.old_native_session_id != original_native[sid]
+            or prior_native != original_native[sid]
             or observed.new_native_session_id != session.started.session_id
-            or observed.physical_action_issued or observed.native_action_granted
+            or (inference_lane is None and (
+                observed.physical_action_issued or observed.native_action_granted
+            ))
+            or (inference_lane is not None and (
+                observed.issued_native_effect or observed.selection_is_action_permission
+            ))
         ):
             raise RealPresetCheckpointRefusal(
                 "fresh native L1 candidate not bound to restored Self Preset"
@@ -439,6 +490,8 @@ async def _real_preset_trial(
             "exact_native_stdout_sha256": native_digest,
             "exact_native_stdout_two_correlated_probes": True,
         }
+    if inference_lane is not None:
+        inference_lane.require_world_idle()
 
     for sid in ("A", "B"):
         await bridge.logout(sid)
@@ -446,7 +499,11 @@ async def _real_preset_trial(
         raise RealPresetCheckpointRefusal("new source resident WAL not clear")
 
     return {
-        "classification": "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV",
+        "classification": (
+            "REAL_PAPER_2SELF_PRESET_LLAMA_L1_OBSERVED_DEV"
+            if inference_lane is not None else
+            "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV"
+        ),
         "world_uuid": world_uuid,
         "original_paper_session": first_paper_session,
         "new_paper_session": restarted.new_server_session_id,
@@ -460,6 +517,11 @@ async def _real_preset_trial(
         "original_owned_pids": original_pid,
         "new_l1_option_witnesses": witnessed,
         "real_gemma_systemone_executed": False,
+        "real_llama_cpp_bounded_inference_executed": inference_lane is not None,
+        "backend_model_operator_declared": (
+            inference_lane.provider.model if inference_lane is not None else None
+        ),
+        "backend_model_weights_independently_verified": False,
         "real_native_physical_action_issued": False,
         "old_action_or_skill_replayed": False,
         "old_gpu_output_reused": False,
@@ -475,11 +537,45 @@ async def run_real_two_self_preset_checkpoint(
     real_world_dev_grant: bool,
     java: str = "java", node: str = "node",
     timeout_s: float = 120.0, heap_mb: int = 1536,
+    real_gemma_l1: bool = False,
+    gemma_l1_endpoint: str | None = None,
+    gemma_l1_model: str | None = None,
+    gemma_l1_jev: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
         raise RealPresetCheckpointRefusal(
             "HOLD: user-authorized Minecraft EULA and real World DEV required"
+        )
+    # A real bounded-model path is strict opt-in and MUST be an owned,
+    # exclusive loopback llama-server with exactly one currently idle slot.
+    # Do not launch an isolated Paper World when the model source is invalid.
+    if type(real_gemma_l1) is not bool or type(gemma_l1_jev) is not bool:
+        raise RealPresetCheckpointRefusal("typed real-Gemma L1 mode required")
+    if real_gemma_l1 != (gemma_l1_endpoint is not None):
+        raise RealPresetCheckpointRefusal(
+            "real-Gemma opt-in needs exactly one explicit local endpoint"
+        )
+    if real_gemma_l1 != (gemma_l1_model is not None):
+        raise RealPresetCheckpointRefusal(
+            "real-Gemma opt-in requires operator-declared model identity"
+        )
+    provider = None
+    slot_witness = None
+    if real_gemma_l1:
+        provider = LlamaCppRelayProvider(
+            endpoint=gemma_l1_endpoint, model=gemma_l1_model,
+            timeout=55.0,
+            systemone_endpoint=gemma_l1_endpoint if gemma_l1_jev else None,
+        )
+        slot_witness = LlamaCppSingleSlotWitness(
+            provider=provider, backend_ref="stage26-owned-one-slot-llama",
+            timeout_s=2.0,
+        )
+        slot_witness.require_idle()
+    elif gemma_l1_jev:
+        raise RealPresetCheckpointRefusal(
+            "JEV/choice mode requires explicit real bounded L1 opt-in"
         )
     paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
@@ -491,6 +587,10 @@ async def run_real_two_self_preset_checkpoint(
     os.chmod(root, 0o700)
     evidence = root / "evidence"
     evidence.mkdir(mode=0o700)
+    if provider is not None:
+        model_source = evidence / "original-model-http"
+        model_source.mkdir(mode=0o700)
+        provider.enable_stage26_raw_audit(model_source)
     plugins = root / "plugins"
     plugins.mkdir(mode=0o700)
     shutil.copyfile(paper_src, root / "paper.jar")
@@ -517,6 +617,7 @@ async def run_real_two_self_preset_checkpoint(
     paper: OwnedPaperWorld | None = None
     bridge: OwnedResidentPhysicalBridge | None = None
     physical: PhysicalIssueAdmission | None = None
+    lane: ResidentLlamaInferenceLane | None = None
     try:
         bootstrap = _bootstrap_paper(
             world_root=root, launch=launch, timeout_s=timeout_s,
@@ -573,6 +674,12 @@ async def run_real_two_self_preset_checkpoint(
                 physical_supervisor=ActionSupervisor(),
             )
         work = ResidentCognitiveWorkOwner(originals)
+        if provider is not None:
+            assert slot_witness is not None
+            lane = ResidentLlamaInferenceLane(
+                provider=provider, cognitive_work=work,
+                witness=slot_witness,
+            )
         lifecycle = WorldResidentLifecycle(
             world=WorldLifetime(
                 world_uuid, "p0d-real-preset-cut", first_paper, 0, 0,
@@ -592,12 +699,14 @@ async def run_real_two_self_preset_checkpoint(
             lifecycle=lifecycle, physical=physical, paper=paper,
             configs=configs, owners=originals,
             launch=launch_owned, cognitive_work=work,
+            inference_lane=lane,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _real_preset_trial(
             paper=paper, bridge=bridge, physical=physical,
             work=work, lifecycle=lifecycle, owners=originals,
             evidence=evidence, world_uuid=world_uuid,
+            inference_lane=lane,
         )
         report.update(trial)
     except BaseException as exc:
@@ -634,9 +743,12 @@ async def run_real_two_self_preset_checkpoint(
                 "P0D_HOLD: owned disposable Paper may still run; inspect PID.",
                 file=sys.stderr, flush=True,
             )
-    if report["classification"] != (
-        "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV"
-    ):
+    expected_classification = (
+        "REAL_PAPER_2SELF_PRESET_LLAMA_L1_OBSERVED_DEV"
+        if real_gemma_l1
+        else "REAL_PAPER_2SELF_PRESET_CHECKPOINT_SCRIPTED_L1_DEV"
+    )
+    if report["classification"] != expected_classification:
         raise RealPresetCheckpointRefusal("unqualified real PRESET World result")
     return report_path
 
@@ -654,6 +766,10 @@ def main() -> int:
     p.add_argument("--node", default="node")
     p.add_argument("--timeout-s", type=float, default=120.0)
     p.add_argument("--heap-mb", type=int, default=1536)
+    p.add_argument("--real-gemma-l1", action="store_true")
+    p.add_argument("--gemma-l1-endpoint")
+    p.add_argument("--gemma-l1-model")
+    p.add_argument("--gemma-l1-jev", action="store_true")
     a = p.parse_args()
     try:
         result = asyncio.run(run_real_two_self_preset_checkpoint(
@@ -663,6 +779,10 @@ def main() -> int:
             real_world_dev_grant=a.real_world_dev_grant,
             java=a.java, node=a.node,
             timeout_s=a.timeout_s, heap_mb=a.heap_mb,
+            real_gemma_l1=a.real_gemma_l1,
+            gemma_l1_endpoint=a.gemma_l1_endpoint,
+            gemma_l1_model=a.gemma_l1_model,
+            gemma_l1_jev=a.gemma_l1_jev,
         ))
     except Exception as exc:
         print(f"P0D_REAL_PRESET_HOLD={type(exc).__name__}: {exc}",
