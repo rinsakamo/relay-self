@@ -87,7 +87,7 @@ def test_truncated_coverage_distinguishes_unknown_from_present_entity():
     _, turn, _ = _fixture()
     probe = turn.initial_probe
     coverage = replace(probe.snapshot.nearby_entities_coverage, truncated=True,
-                       observed_count=17)
+                       candidate_count=17)
     truncated = _replace_snapshot(probe, nearby_entities_coverage=coverage)
     audit = audit_exploration_gate(truncated, intent_owner=IntentCommitment())
     assert not audit.eligible
@@ -98,7 +98,7 @@ def test_truncated_coverage_distinguishes_unknown_from_present_entity():
         4, "zombie", "mob", 2.0, MineflayerPosition(1, 64, 0),
     )
     full = replace(
-        coverage, truncated=False, observed_count=1,
+        coverage, truncated=False, candidate_count=1,
     )
     occupied = _replace_snapshot(
         probe, nearby_entities=(entity,), nearby_entities_coverage=full,
