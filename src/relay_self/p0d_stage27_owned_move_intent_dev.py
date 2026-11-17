@@ -27,8 +27,8 @@ from relay_self.resident_llama_inference_lane_dev import (
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
 )
-from relay_self.skill_invocation import SkillInvocation
 from relay_self.skill import SkillState
+from relay_self.skill_invocation import SkillInvocation
 
 
 class Stage27MoveHandoffRefusal(RuntimeError):
