@@ -16,7 +16,7 @@ import stat
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
@@ -26,6 +26,10 @@ from adapters.mineflayer.python_protocol import (
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.physical_action_port import PhysicalActionBinding
+
+if TYPE_CHECKING:
+    from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
+    from relay_self.skill_invocation import SkillInvocation
 
 
 class PhysicalJournalError(ValueError):
