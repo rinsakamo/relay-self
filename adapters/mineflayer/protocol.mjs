@@ -314,7 +314,7 @@ function nearbyEntityObservation (bot) {
   }
 }
 
-export function snapshotFromBot (bot) {
+export function snapshotFromBot (bot, ownedOxygenReceipt = undefined) {
   if (!bot || !bot.entity || !bot.entity.position) {
     throw new Error('bot position is unavailable before spawn')
   }
@@ -327,7 +327,13 @@ export function snapshotFromBot (bot) {
       'bot.foodSaturation',
       bot.foodSaturation
     ),
-    oxygen_level: optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel),
+    oxygen_level: (
+      ownedOxygenReceipt === undefined
+        ? optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel)
+        : ownedOxygenReceipt?.epistemic_status === 'FRESH_OWNED'
+          ? optionalFiniteNumber('owned oxygen witness', ownedOxygenReceipt.level)
+          : null
+    ),
     position: {
       x: requireFiniteNumber('position.x', bot.entity.position.x),
       y: requireFiniteNumber('position.y', bot.entity.position.y),
