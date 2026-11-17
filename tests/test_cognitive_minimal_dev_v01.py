@@ -216,7 +216,7 @@ def test_d7_unaccepted_invalid_or_unavailable_l2_pattern_never_published() -> No
     with pytest.raises(MinimalCognitionError, match="stale"):
         accept_learned_pattern(registry, proposal, accepted_by_self=True,
                                expected_revision=1, allowed_skills=SKILLS)
-    assert registry.revision == 0 and len(registry.patterns) == 3
+    assert registry.revision == 0 and len(registry.patterns) == 4
     assert len(frame(percept(targets=(target("apple-1", "FOOD"),))).options) == 1
 
 
@@ -227,7 +227,7 @@ def test_d7_accepted_pattern_reuses_same_cpu_format_without_changing_old_snapsho
                             Origin.LEARNED, source())
     new = accept_learned_pattern(old, learned, accepted_by_self=True,
                                  expected_revision=0, allowed_skills=SKILLS)
-    assert len(old.patterns) == 3 and old.revision == 0
+    assert len(old.patterns) == 4 and old.revision == 0
     assert len(new.patterns) == 4 and new.revision == 1
     p = percept(targets=(target("apple-1", "FOOD"),))
     assert len(cpu_schema_epoch(p, old, allowed_skills=SKILLS, epoch=1).options) == 1
@@ -351,4 +351,4 @@ def test_l2_invalid_code_and_shape_never_becomes_executable_cpu_pattern() -> Non
             "skill_version": None,
             "target_kind": None,
         }), model_provenance=source())
-    assert len(initial_patterns().patterns) == 3
+    assert len(initial_patterns().patterns) == 4
