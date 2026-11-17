@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import math
 from dataclasses import replace
+from unittest.mock import patch
 
 import pytest
 
@@ -16,7 +17,8 @@ from relay_self.p0d_stage27b_place_motion_dev import (
     resolve_stage27_place_motion,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
-from test_p0d_real_preset_checkpoint_dev import native_probe
+from relay_self.skill_invocation import SkillBudget
+from test_p0d_real_preset_checkpoint_dev import native_probe, source_recovered
 from test_p0d_resident_llama_slot_owner_dev import (
     ResidentFixture,
     _SyntheticLlamaServer,
@@ -202,6 +204,59 @@ def test_stage27b_refuses_after_original_actor_logout(tmp_path):
         with pytest.raises(Stage27PlaceResolutionRefusal):
             _resolve(f, prepared, handoff, fresh)
         await f.bridge.logout(f.names[1])
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+        http.stop()
+
+
+def test_too_short_frozen_budget_still_allows_partial_target_plan(tmp_path):
+    """Goal achievement is not required to be possible in one bounded pulse."""
+    http = _SyntheticLlamaServer()
+    http.choice_id = "1"
+    endpoint = http.start()
+    f = ResidentFixture(tmp_path, 2, cognitive_work=True)
+    lane = _attach_and_audit(f, endpoint, tmp_path)
+
+    def source_with_short_budget(sid):
+        staged = source_recovered(sid)
+        registry = staged.semantic.pattern_registry
+        (entry,) = registry.accepted_presets
+        preset = replace(
+            entry.preset, budget=SkillBudget(1, 1500, 0.1, 4),
+        )
+        owned = replace(entry, preset=preset, receipt=replace(
+            entry.receipt, preset_ref=preset.preset_ref,
+        ))
+        revised = replace(registry, accepted_presets=(owned,))
+        return replace(
+            staged,
+            retained=replace(staged.retained, pattern_registry=revised),
+            semantic=replace(staged.semantic, pattern_registry=revised),
+        )
+
+    async def scenario():
+        # The synthetic restored Self actually holds this short immutable
+        # accepted Preset BEFORE L1; neither the model nor L0 alters it.
+        with patch(
+            "test_p0d_stage26_gemma_l1_dev.source_recovered",
+            side_effect=source_with_short_budget,
+        ):
+            prepared, handoff, fresh = await qualified_a(f, lane)
+        plan = _resolve(f, prepared, handoff, fresh)
+        assert plan.preset_max_distance_m == pytest.approx(0.1)
+        assert plan.gap_to_arrival_envelope_m == pytest.approx(0.4)
+        assert not plan.full_envelope_reachable_within_distance_budget
+        assert plan.next_step.endswith("NOT_ISSUABLE")
+        assert plan.invocation_ref == handoff.invocation_ref
+        assert len(http.calls) == 1
+        for sid in f.names:
+            PhysicalActionJournal.restore(
+                f.owners[sid].files.physical_wal_file, self_id=sid,
+            ).require_clear()
+            await f.bridge.logout(sid)
 
     try:
         asyncio.run(scenario())
