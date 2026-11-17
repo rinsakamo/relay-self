@@ -38,7 +38,7 @@ def _replace_snapshot(probe, **changes):
     return replace(probe, snapshot=replace(probe.snapshot, **changes))
 
 
-def test_unknown_oxygen_removes_exploration_without_inventing_missing_air():
+def test_unknown_oxygen_is_legacy_condition_but_not_exploration_permission():
     controls = calibration.synthetic_control_pair()
     assert len(controls) == 2
     unknown, known = controls
@@ -46,20 +46,21 @@ def test_unknown_oxygen_removes_exploration_without_inventing_missing_air():
     assert known[0] == "oxygen_known_positive"
     assert unknown[1].initial_probe.snapshot.oxygen_level is None
     assert known[1].initial_probe.snapshot.oxygen_level == 300
+    # Preserve the historical Stage24c audit as read-only evidence.
     assert not unknown[2].eligible
     assert _status(unknown[2])["oxygen_known_positive"] == "UNKNOWN"
     assert unknown[2].blocking_codes == ("oxygen_known_positive:UNKNOWN",)
-    assert unknown[1].round.frame.goals == ()
-    assert unknown[1].prebound_moves == ()
-    assert [c.description for c in unknown[1].round.request.choices] == [
-        "ESCALATE_L2", "DEFER",
-    ]
     assert known[2].eligible
-    assert len(known[1].prebound_moves) == 4
-    assert [c.choice_id for c in known[1].round.request.choices] == [
-        "1", "2", "3", "4", "5", "6",
-    ]
-    assert not any(c.physical_authorized for c in (unknown[2], known[2]))
+    # Stage24e intentionally changes candidate-generation semantics; the
+    # archived Stage24c A/B model response is not rerun or rewritten.
+    for _, turn, audit in controls:
+        assert turn.exploration_need_active
+        assert len(turn.prebound_moves) == 4
+        assert {g.goal_id for g in turn.round.frame.goals} == {"EXPLORE_WORLD"}
+        assert [c.choice_id for c in turn.round.request.choices] == [
+            "1", "2", "3", "4", "5", "6",
+        ]
+        assert not audit.physical_authorized
 
 
 @pytest.mark.parametrize(
@@ -137,11 +138,11 @@ def test_original_jev_response_parser_distinguishes_unresolved_and_explicit_choi
     )
     criteria = raw_request["questions"]["decision"]["criteria"]
     assert set(criteria) == {
-        "1", "2", "__relay_self_unresolved__",
+        "1", "2", "3", "4", "5", "6", "__relay_self_unresolved__",
     }
     for choice, status, expected in (
         ("__relay_self_unresolved__", DecisionStatus.UNRESOLVED, None),
-        ("2", DecisionStatus.RESOLVED, "2"),
+        ("6", DecisionStatus.RESOLVED, "6"),
     ):
         parsed = parse_llama_cpp_jev_decision(
             {
@@ -253,9 +254,13 @@ def test_synthetic_real_model_pair_preserves_raw_body_before_parsing(
     )
     assert len(calls) == 2
     assert [r["provider_status"] for r in records] == [
-        "unresolved", "resolved",
+        "resolved", "resolved",
     ]
-    assert [r["provider_choice_id"] for r in records] == [None, "4"]
+    assert [r["provider_choice_id"] for r in records] == ["4", "4"]
+    assert all(r["exploration_policy"] == "INNATE_NEED_NOT_BODY_GATE"
+               for r in records)
+    assert all(r["historic_stage24c_outcome_reproduced"] is False
+               for r in records)
     assert records[1]["source_kind"] == "SYNTHETIC_NOT_WORLD_EVIDENCE"
     assert all(not r["physical_action_authorized"] for r in records)
     assert all((out / f"{r['case']}-jev-raw-http-body.json").is_file()
