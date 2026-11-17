@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 from relay_self.stage26_private_model_auth_dev import (
     load_stage26_private_api_key,
+    require_stage26_private_auth_guards,
     stage26_bearer_headers,
 )
 
@@ -224,39 +225,7 @@ def inspect_stage26_model_source(
                 "original llama-server n_parallel=1 idle slot unverified"
             )
         if private_key is not None:
-            # Reject unauthenticated and wrong-key access to both the slot
-            # readback and the completion endpoint. A syntactically invalid
-            # anonymous POST MUST be rejected at auth before model parsing.
-            def must_deny(request: urllib.request.Request) -> None:
-                try:
-                    with urllib.request.urlopen(request, timeout=2.0):
-                        pass
-                except urllib.error.HTTPError as err:
-                    if err.code in (401, 403):
-                        return
-                    raise Stage26ModelPreflightHold(
-                        "model auth guard returned a non-auth rejection"
-                    ) from err
-                raise Stage26ModelPreflightHold(
-                    "model server accepts requests without private credential"
-                )
-
-            slots_endpoint = f"http://127.0.0.1:{url.port}/slots"
-            must_deny(urllib.request.Request(
-                slots_endpoint, method="GET",
-                headers={"Accept": "application/json"},
-            ))
-            must_deny(urllib.request.Request(
-                slots_endpoint, method="GET",
-                headers={
-                    "Accept": "application/json",
-                    "Authorization": "Bearer stage26-invalid-credential",
-                },
-            ))
-            must_deny(urllib.request.Request(
-                endpoint, method="POST", data=b"{}",
-                headers={"Content-Type": "application/json"},
-            ))
+            require_stage26_private_auth_guards(endpoint)
         desktop_digest = (
             _sha256(windows_gpu_snapshot)
             if windows_gpu_snapshot is not None else None
