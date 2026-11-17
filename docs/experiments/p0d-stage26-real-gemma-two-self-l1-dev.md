@@ -52,6 +52,7 @@ PYTHONPATH=src:. python experiments/p0d_stage26_local_model_preflight.py \
   --executable-sha256 ACTUAL_VERIFIED_BINARY_SHA256 \
   --gguf /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf \
   --gguf-sha256 c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed \
+  --api-key-file /home/rinsa/work/stage26-private-auth/llama-server.key \
   --windows-gpu-snapshot /ABSOLUTE/EXISTING/windows-gpu-before.txt \
   --output /ABSOLUTE/EXISTING/evidence/model-source-preflight.json
 ```
@@ -178,7 +179,8 @@ PYTHONPATH=src:. python experiments/p0d_real_preset_checkpoint_dev.py \
   --eula-accepted --real-world-dev-grant \
   --real-gemma-l1 \
   --gemma-l1-endpoint http://127.0.0.1:8080/v1/chat/completions \
-  --gemma-l1-model ACTUAL_VERIFIED_MODEL_ALIAS
+  --gemma-l1-model ACTUAL_VERIFIED_MODEL_ALIAS \
+  --gemma-l1-api-key-file /home/rinsa/work/stage26-private-auth/llama-server.key
 ```
 
 If the currently configured llama.cpp instance supports the existing SystemOne/JEV structured format, add `--gemma-l1-jev` explicitly; do not assume the backend can parse that format. Do not use an offline HTTP stub to claim actual GPU Gemma evidence. Under real-JEV mode, `render_llama_cpp_jev_request` and the original parser must be observed functioning on the actual model.
