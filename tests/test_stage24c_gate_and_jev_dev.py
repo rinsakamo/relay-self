@@ -87,11 +87,21 @@ def test_truncated_coverage_distinguishes_unknown_from_present_entity():
     probe = turn.initial_probe
     coverage = replace(probe.snapshot.nearby_entities_coverage, truncated=True,
                        candidate_count=17)
-    truncated = _replace_snapshot(probe, nearby_entities_coverage=coverage)
+    observed = tuple(
+        MineflayerEntityFact(
+            i, "unknown", "mob", 2.0, MineflayerPosition(1, 64, 0),
+        )
+        for i in range(16)
+    )
+    truncated = _replace_snapshot(
+        probe, nearby_entities=observed, nearby_entities_coverage=coverage,
+    )
     audit = audit_exploration_gate(truncated, intent_owner=IntentCommitment())
     assert not audit.eligible
     assert _status(audit)["entity_coverage_complete"] == "UNKNOWN"
-    assert _status(audit)["nearby_entities_absent"] == "UNKNOWN"
+    # A truncated registry MUST contain 16 observed entries; absence
+    # is already disproved, not merely unknown.
+    assert _status(audit)["nearby_entities_absent"] == "BLOCKED"
 
     entity = MineflayerEntityFact(
         4, "zombie", "mob", 2.0, MineflayerPosition(1, 64, 0),
