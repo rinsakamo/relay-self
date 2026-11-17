@@ -127,7 +127,9 @@ def test_oxygen_thresholds_adjust_need_not_permission():
 
 def test_head_medium_is_not_oxygen_need_input():
     from relay_self.head_breathing_context_dev import (
-        HeadBreathingContext, HeadVolumeCell, assess_head_breathing_context,
+        HeadBreathingContext,
+        HeadVolumeCell,
+        assess_head_breathing_context,
     )
 
     air = HeadVolumeCell(True, "AIRLIKE", "NONE")
