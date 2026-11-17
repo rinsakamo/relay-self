@@ -116,7 +116,7 @@ from pathlib import Path
 p = Path.home() / "work/stage26-private-auth/llama-server.key"
 fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
 with os.fdopen(fd, "w", encoding="ascii") as f:
-    f.write(secrets.token_urlsafe(48) + "\\n")
+    f.write(secrets.token_urlsafe(48) + "\n")
     f.flush()
     os.fsync(f.fileno())
 print("private-key-created")
