@@ -587,6 +587,10 @@ async def run_real_two_self_preset_checkpoint(
     os.chmod(root, 0o700)
     evidence = root / "evidence"
     evidence.mkdir(mode=0o700)
+    if provider is not None:
+        model_source = evidence / "original-model-http"
+        model_source.mkdir(mode=0o700)
+        provider.enable_stage26_raw_audit(model_source)
     plugins = root / "plugins"
     plugins.mkdir(mode=0o700)
     shutil.copyfile(paper_src, root / "paper.jar")
