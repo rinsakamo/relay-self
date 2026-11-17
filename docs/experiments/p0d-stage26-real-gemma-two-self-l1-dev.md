@@ -77,6 +77,91 @@ compute, endpoint client access control and live slot stability. Only
 after those additional original-source checks and existing exact-HEAD CI
 may the one-shot real World runner start.
 
+## Stage26 — private inference-client admission contract (post-BOUNDED HOLD)
+
+The second original-host PRE_WORLD_HOLD independently qualified actual Gemma
+BOUNDED inference (177 prompt, 17 completion, 194 total, finish `stop`),
+but found an **unprotected** loopback llama-server allowing unauthenticated
+clients, with open CORS. No Stage26 Paper trial or A/B decision was performed.
+The JEV request sent to the chat endpoint returned HTTP 400, so **BOUNDED
+is the qualified mode, NOT JEV**. Historical HOLD and the untouched one-shot
+World budget remain unchanged.
+
+The Stage26 **real-Gemma runner now fails closed before Paper** unless it
+has `--gemma-l1-api-key-file ABSOLUTE_0600_PATH`. The original provider
+reads this owner-owned, 0600-or-stricter file once into memory and adds
+`Authorization: Bearer` to model POST requests; its original shared
+`/slots` witness uses the same header. Scripted Stage25 does not need
+this file and explicitly rejects it. Neither token nor Authorization header
+is written to HTTP **body** evidence, source manifests, runner reports or
+process argv.
+
+**Server and client use the same dedicated file**. The actual llama.cpp
+build must support `--api-key-file` and `--cors-origins localhost`;
+verify `llama-server --help` on the candidate build BEFORE launching.
+Never use `--api-key TOKEN` (which exposes the secret in argv), and
+never place the private key in the repository, Paper directory, CI or
+public evidence artifacts. Keep its parent directory private (0700),
+file mode 0600, and generate it with a cryptographically secure random
+generator, not a fixed string. Example one-time local provision after
+checking that this is a fresh, private, owned directory:
+
+```bash
+umask 077
+mkdir -p -m 700 "$HOME/work/stage26-private-auth"
+python3 - <<'PY'
+import os
+import secrets
+from pathlib import Path
+p = Path.home() / "work/stage26-private-auth/llama-server.key"
+fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, "w", encoding="ascii") as f:
+    f.write(secrets.token_urlsafe(48) + "\\n")
+    f.flush()
+    os.fsync(f.fileno())
+print("private-key-created")
+PY
+```
+
+Example existing verified server invocation must include (alongside the
+independently reverified binary/model hashes, offload and context):
+
+```text
+--host 127.0.0.1 --port ACTUAL_PORT
+-np 1 -c 8192 -ngl 999 --no-context-shift
+--alias stage26-gemma
+--api-key-file /home/rinsa/work/stage26-private-auth/llama-server.key
+--cors-origins localhost
+```
+
+The **pre-World** owner inspector accepts
+`--api-key-file /home/rinsa/work/stage26-private-auth/llama-server.key`
+and verifies that the **original process argv** explicitly binds the
+same file and localhost-only CORS. It first GETs `/slots` using the
+private Bearer token, then performs three **unauthorized negative probes**:
+anonymous GET /slots, wrong-token GET /slots, anonymous malformed
+POST /v1/chat/completions. All must return **401 or 403**; a successful
+or 400/500 response is HOLD. None of these tests request an accepted
+inference. This checks actual server access control, rather than
+assuming it from a start flag. Preserve the status code/headers in
+local non-secret original evidence. Only after successful auth preflight
+and already required GPU, owned PID and model checks may the real
+World runner receive the same `--gemma-l1-api-key-file`.
+
+**Boundaries**: CORS is a browser policy, not client authentication.
+A 0600 file prevents access by other UIDs, **not same-UID adversarial
+processes** or a compromised owner. Private loopback plus a fresh,
+unguessable key prevents *unauthorized* accepted model calls under this
+bounded single-owner DEV threat model but **cannot prove that a future
+client with a stolen/shared valid token will never connect**. Preserve
+server request activity and model `/slots` before/after each Self call;
+HOLD if unknown authorized requests, unexpected GPU activity, or
+key material exposure is observed. Keep Paper process environments
+free of the key/token and do not use an ad-hoc namespace that breaks
+its bootstrap asset resolution. No real Paper trial is authorized
+**solely** because the preflight inspector returns success; the
+operator must separately validate the credential guard and availability.
+
 ## LocalCodex operator-authorized trial
 
 User has previously granted **standing explicit Minecraft EULA consent and real disposable World DEV approval** in this project; do not ask again. Always pass `--eula-accepted --real-world-dev-grant`. Validate actual model/process owner, Gemma GGUF Q4_K_M SHA256, exact model bytes, exclusive llama-server PID/port/args and n_parallel=1, original Paper+plugin SHA, JVM, Node and CI exact HEAD. Run a disposable localhost World **once** only, no blind reruns on HOLD.
