@@ -70,3 +70,26 @@ Stage24g operator must first:
 Until then: `STAGE24G_OFFLINE_ONLY / REAL_WORLD_NOT_RUN /
 QUAL_NO_GO / SCIENCE_NOT_RUN`. A model choice and native terminal alone are
 not the Paper or checkpoint success classification.
+
+## Local binary audit and observer-only DEV (2026-11-17)
+
+The original Stage24f jar contains `Recorder.class`, `TickWitness.class`, and
+`plugin.yml`, but no `ResidentPresenceWitness.class`; its `Recorder.onEnable`
+bytecode starts only the tick witness. The archived Paper log confirms plugin
+startup and tick events, with no resident boot or events. This establishes
+that the executed binary lacked the resident witness registration present in
+current source. The original evidence was read-only and its manifest verified.
+
+The locally rebuilt Java 21 jar, archived at
+`/home/rinsa/evidence/stage24g-witness-20261117/P0BRecorder.jar`, hashes to
+`0b20dd042231618fc301bbe26ee48c5808c09dafddc946c49f4393ca48386fb5`.
+Its bytecode starts the resident witness. A distinct real Paper observer-only
+DEV World recorded both joins, A quit, B presence after that quit, and A rejoin.
+This did not use Gemma or issue a B physical action. It does not establish MOVE
+correlation or a checkpoint.
+
+`stage24g_pinned_assets_launch_dev` independently pins this exact local jar and
+provides read-only inspection. Execution deliberately remains HOLD: the
+independent GPU/model/WAL gate and HTTP raw capture are not implemented. Do not
+use another launcher to bypass that HOLD. This is partial DEV, not QUAL or
+SCIENCE, and does not change the Stage24f terminal.
