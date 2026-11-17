@@ -120,17 +120,13 @@ class LlamaCppSingleSlotWitness:
                     "L1 and L2 on different backends require separate owners"
                 )
         self.backend_ref = backend_ref
-        self._provider = provider
         self.endpoint = f"http://{host}:{port}/slots"
         self.timeout_s = float(timeout_s)
 
     def require_idle(self) -> LlamaSlotIdleReceipt:
         request = urllib.request.Request(
             self.endpoint, method="GET",
-            headers={
-                "Accept": "application/json",
-                **self._provider.request_auth_headers(),
-            },
+            headers={"Accept": "application/json"},
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
