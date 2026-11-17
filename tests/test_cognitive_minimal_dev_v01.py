@@ -228,7 +228,7 @@ def test_d7_accepted_pattern_reuses_same_cpu_format_without_changing_old_snapsho
     new = accept_learned_pattern(old, learned, accepted_by_self=True,
                                  expected_revision=0, allowed_skills=SKILLS)
     assert len(old.patterns) == 4 and old.revision == 0
-    assert len(new.patterns) == 4 and new.revision == 1
+    assert len(new.patterns) == 5 and new.revision == 1
     p = percept(targets=(target("apple-1", "FOOD"),))
     assert len(cpu_schema_epoch(p, old, allowed_skills=SKILLS, epoch=1).options) == 1
     assert len(cpu_schema_epoch(p, new, allowed_skills=SKILLS, epoch=1).options) == 2
