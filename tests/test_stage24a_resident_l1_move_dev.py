@@ -95,7 +95,7 @@ def make_turn(owner=None):
 
 def test_cpu_schema_exploration_emits_four_complete_options_without_operator_choice():
     turn, _ = make_turn()
-    assert turn.exploration_eligible
+    assert turn.exploration_need_active
     assert len(turn.prebound_moves) == 4
     assert {c.option.target_ref for c in turn.prebound_moves} == {
         "relative:forward", "relative:back",
@@ -228,7 +228,7 @@ def test_missing_capability_yields_unresolved_goal_not_fake_move():
         probe(10), self_id="B", intent_owner=owner,
         capability=replace(CAP, available=False), epoch=1,
     )
-    assert turn.exploration_eligible
+    assert turn.exploration_need_active
     assert turn.round.frame.goals[-1].goal_id == "EXPLORE_WORLD"
     assert turn.round.frame.goals[-1].unresolved
     assert not turn.prebound_moves
@@ -265,7 +265,7 @@ def test_exploration_goal_exists_in_unfavorable_initial_body_states(changes):
         probe(10, **changes), self_id="B", intent_owner=owner,
         capability=CAP, epoch=1,
     )
-    assert turn.exploration_eligible  # legacy name: Need active, not an admission gate
+    assert turn.exploration_need_active  # Need active, never a motor admission gate
     assert len(turn.prebound_moves) == 4
     assert any(g.goal_id == "EXPLORE_WORLD" for g in turn.round.frame.goals)
     assert not owner.events
