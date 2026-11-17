@@ -22,6 +22,7 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
+from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.relay_engine import CognitionMode, ProviderDecision, RelayEngine
 from relay_self.resident_l1_move_options_dev import (
     MOVE_PULSE_SECONDS,
@@ -47,7 +48,7 @@ B_CAPABILITY = PhysicalCapability("MOVE", 1, "locomotion", "RELATIVE", True)
 def _frozen_model_choice(
     *, turn, provider: ProviderDecision, selected, ticket,
     model_elapsed_ns: int, probe_before: MineflayerObservation,
-    probe_after: MineflayerObservation,
+    probe_after: MineflayerObservation, ticket_intent_owner,
 ) -> dict[str, object]:
     """Model output is source-qualified, but not independently raw HTTP replayed."""
     request = turn.round.request
@@ -75,6 +76,12 @@ def _frozen_model_choice(
         "cpu_epoch": turn.round.frame.epoch,
         "cpu_schema_elapsed_ns": turn.round.frame.elapsed_ns,
         "cpu_exploration_eligible": turn.exploration_eligible,
+        "stage24c_original_gate": asdict(audit_exploration_gate(
+            probe_before, intent_owner=ticket_intent_owner,
+        )),
+        "stage24c_latest_gate": asdict(audit_exploration_gate(
+            probe_after, intent_owner=ticket_intent_owner,
+        )),
         "before_native_session": probe_before.session_id,
         "before_native_seq": probe_before.seq,
         "before_request_id": probe_before.request_id,
@@ -278,6 +285,7 @@ async def run_stage24b_selected_b_move(
         audit = _frozen_model_choice(
             turn=turn, provider=provider, selected=selected, ticket=ticket,
             model_elapsed_ns=elapsed_ns, probe_before=observed, probe_after=current,
+            ticket_intent_owner=owner.intent,
         )
         decision_file = evidence_dir / "B-original-systemone-choice.json"
         _write_bytes_new(
