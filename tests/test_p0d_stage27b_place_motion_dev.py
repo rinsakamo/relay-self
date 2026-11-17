@@ -65,6 +65,8 @@ def test_stage27b_world_east_uses_native_target_yaw_not_relative_forward(tmp_pat
         assert actual.observation_status == "OUTSIDE"
         assert actual.horizontal_distance_m == pytest.approx(1.0)
         assert actual.gap_to_arrival_envelope_m == pytest.approx(0.4)
+        assert actual.preset_max_distance_m == pytest.approx(2.0)
+        assert actual.full_envelope_reachable_within_distance_budget
         assert actual.desired_mineflayer_yaw_rad == pytest.approx(-math.pi / 2)
         assert actual.next_step == (
             "NATIVE_LOOK_AND_BOUNDED_MOVE_RESOLUTION_REQUIRED_NOT_ISSUABLE"
@@ -107,6 +109,8 @@ def test_stage27b_already_in_target_envelope_does_not_move(tmp_path):
         here = native_probe(sid, 12, session=handoff.native_session_id, x=2.0)
         plan = _resolve(f, prepared, handoff, here)
         assert plan.observation_status == "CONDITION_OBSERVED"
+        assert plan.preset_max_distance_m == pytest.approx(2.0)
+        assert plan.full_envelope_reachable_within_distance_budget
         assert plan.desired_mineflayer_yaw_rad is None
         assert plan.next_step == (
             "TARGET_GEOMETRY_OBSERVED_AWAIT_INDEPENDENT_GOAL_EVALUATION"
