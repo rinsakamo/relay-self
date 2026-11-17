@@ -146,7 +146,7 @@ def test_non_ready_never_commits_any_intent_or_skill(tmp_path, choice):
 @pytest.mark.parametrize("fault", [
     "foreign_actor", "old_session", "foreign_request", "recheck_seq",
     "recheck_id", "preset_ref", "invocation_ref", "unsafe_permission",
-    "not_idle", "replayed_old_gpu", "wrong_choice", "wrong_target_kind",
+    "not_idle", "replayed_old_gpu", "wrong_choice", "wrong_contract",
 ])
 def test_source_tampering_stays_nonissuing_and_uncommitted(tmp_path, fault):
     http = _SyntheticLlamaServer()
@@ -182,17 +182,8 @@ def test_source_tampering_stays_nonissuing_and_uncommitted(tmp_path, fault):
             witness = replace(witness, old_gpu_result_reused=True)
         elif fault == "wrong_choice":
             witness = replace(witness, selected_number="3")
-        elif fault == "wrong_target_kind":
-            prepared = replace(
-                prepared, round=replace(
-                    prepared.round, frame=replace(
-                        prepared.round.frame, options=(
-                            replace(prepared.round.frame.options[0],
-                                    target_kind="RELATIVE"),
-                        ),
-                    ),
-                ),
-            )
+        elif fault == "wrong_contract":
+            witness = replace(witness, target_contract_ref="foreign-contract")
         with pytest.raises(Stage27MoveHandoffRefusal):
             _handoff(f, lane, prepared, ticket, witness, refreshed, **kw)
         for sid in f.names:
