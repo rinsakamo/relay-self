@@ -254,6 +254,10 @@ def test_l1_selected_move_can_have_terminal_no_net_outcome_without_fake_success(
         self_id="B", native_session_id=session, effect=effect,
         action_id=action,
     )
+    # Fixture's last original model-binding probe is native seq=12.
+    # The original scripted emitter normally begins at 2, so synchronize
+    # the synthetic stream without altering production source validation.
+    native.seq = 12
     original_send = native.send_set_control
 
     async def real_command_but_no_net_motion(action_id, *, control, state):
