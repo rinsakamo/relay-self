@@ -10,6 +10,8 @@ import {
   probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { inspectInstalled } from './oxygen_owner_patch.mjs'
+import { OwnedOxygenWitness } from './oxygen_owner_witness.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -22,6 +24,17 @@ import {
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
 const require = createRequire(import.meta.url)
+// Refuse unowned oxygen metadata BEFORE spawning a real native bot.
+let oxygenPatch
+try {
+  oxygenPatch = inspectInstalled()
+  if (oxygenPatch.status !== 'PATCHED') {
+    throw new Error('explicit Mineflayer oxygen owner backport missing')
+  }
+} catch (error) {
+  process.stderr.write('STAGE24D_OXYGEN_SOURCE_HOLD=' + String(error.message || error) + '\\n')
+  process.exit(2)
+}
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 
@@ -42,6 +55,7 @@ try {
 }
 
 const sessionId = randomUUID()
+const ownedOxygen = new OwnedOxygenWitness({ sessionId })
 let seq = 0
 let spawned = false
 let closing = false
@@ -65,8 +79,19 @@ function emitAdapterError (error) {
 
 function emitObservation (kind, requestId = undefined) {
   try {
-    const snapshot = snapshotFromBot(bot)
+    const receipt = ownedOxygen.read(bot.entity?.id)
+    const snapshot = snapshotFromBot(bot, receipt)
     if (kind === 'probe') {
+      // A passive witness is a separate source audit, not an added field to
+      // the original strict native protocol or a physical action authority.
+      if (process.env.RELAY_P0B_OXYGEN_WITNESS_PATH) {
+        appendFileSync(process.env.RELAY_P0B_OXYGEN_WITNESS_PATH, JSON.stringify({
+          ...receipt,
+          native_session_id: sessionId,
+          native_seq: seq,
+          native_request_id: requestId ?? null
+        }) + '\\n')
+      }
       if (process.env.RELAY_P0B_IDENTITY_WITNESS_PATH) {
         appendFileSync(process.env.RELAY_P0B_IDENTITY_WITNESS_PATH, JSON.stringify(
           probeIdentityWitness(bot, snapshot, sessionId, seq)
@@ -103,6 +128,7 @@ const bot = mineflayer.createBot(options)
 attachHealthSynchronizedSpawnListeners(
   bot,
   () => {
+    ownedOxygen.bindSelf(bot.entity?.id)
     spawned = true
     emitObservation('spawn')
   },
@@ -110,6 +136,17 @@ attachHealthSynchronizedSpawnListeners(
     if (spawned) emitObservation('health')
   }
 )
+
+// Source is the *patched* self-only metadata 'breath' event. The witness
+// resets at each body generation and has an explicit finite freshness window.
+bot.on('breath', () => {
+  if (spawned) {
+    ownedOxygen.acceptBreath({
+      entityId: bot.entity?.id,
+      oxygenLevel: bot.oxygenLevel
+    })
+  }
+})
 
 bot.on('time', () => {
   if (!spawned) return
@@ -164,10 +201,12 @@ bot.on('forcedMove', () => {
 
 bot.on('death', () => {
   if (spawned) emitObservation('death')
+  ownedOxygen.invalidate()
   spawned = false
 })
 
 bot.on('respawn', () => {
+  ownedOxygen.bindSelf(bot.entity?.id)
   spawned = true
   emitObservation('respawn')
 })
@@ -177,6 +216,7 @@ bot.on('error', (error) => {
 })
 
 bot.on('end', (reason) => {
+  ownedOxygen.invalidate()
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
   if (inputReader !== null) inputReader.close()
