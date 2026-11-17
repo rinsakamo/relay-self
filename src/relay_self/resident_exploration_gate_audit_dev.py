@@ -1,7 +1,9 @@
-"""Stage24c: source-qualified, read-only explanation of exploration admission.
+"""Historical Stage24c body-condition audit; no longer an action permit.
 
-No sensor fallback, no physical permission and no invented air value. UNKNOWN
-blocks low-pressure exploration rather than assuming safety.
+These predicates document why the *archived* Stage24c CPU policy removed
+MOVE options. Stage24e deliberately decouples all such observations from
+the standing EXPLORE_WORLD Need. Do NOT use `eligible` or `blocking_codes`
+to generate candidates, reject selected Skills, or authorize motor output.
 """
 from __future__ import annotations
 
@@ -37,11 +39,10 @@ class ExplorationGateAudit:
 def audit_exploration_gate(
     probe: MineflayerObservation, *, intent_owner: IntentCommitment,
 ) -> ExplorationGateAudit:
-    """Use exactly the predicates that gate the original Stage24a exploration.
+    """Read only the retired historical conditions; not a current gate.
 
-    Known oxygen 0 is BLOCKED; missing oxygen is UNKNOWN, never zero or
-    assumed to be ambient air. The capability gate is applied separately
-    by the original candidate builder.
+    Known oxygen 0 and unknown are different observations; neither can
+    suppress a Stage24e exploration Goal or predetermine physical Outcome.
     """
     if (
         not isinstance(probe, MineflayerObservation)

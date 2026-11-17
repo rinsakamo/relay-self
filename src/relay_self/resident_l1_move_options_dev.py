@@ -34,7 +34,6 @@ from relay_self.physical_action_port import (
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, RelayEngineResult
-from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.skill import SkillExecution
 
 RELATIVE_CONTROLS = ("forward", "back", "left", "right")
@@ -78,7 +77,7 @@ class ResidentL1MoveTurn:
     round: L1Round
     prebound_moves: tuple[PreboundRelativeMove, ...]
     candidate_set_sha256: str
-    exploration_eligible: bool
+    exploration_need_active: bool  # innate Need, never motor permission
 
     def candidate_for(self, choice_id: str) -> PreboundRelativeMove | None:
         return next(
@@ -97,19 +96,6 @@ class ResidentL1MoveDecision:
     candidate: PreboundRelativeMove | None
     current_probe: MineflayerObservation
     candidate_set_sha256: str
-
-
-def _eligible_exploration(
-    probe: MineflayerObservation, *, intent_owner: IntentCommitment,
-) -> bool:
-    """Original conservative gate, with a traceable read-only explanation.
-
-    UNKNOWN oxygen/time/coverage never becomes an inferred safe value.
-    Capability availability still gates actual candidate publication.
-    """
-    return audit_exploration_gate(
-        probe, intent_owner=intent_owner,
-    ).eligible
 
 
 def _canonical_digest(
@@ -147,10 +133,12 @@ def build_resident_l1_move_turn(
     capability: PhysicalCapability,
     epoch: int,
 ) -> ResidentL1MoveTurn:
-    """Derive curiosity from present body pressure, not a CLI explore flag.
+    """Offer innate exploration as a Goal, not as a Body/World permission.
 
-    Relative controls are *reference Action catalogue entries*, NOT
-    observed reachable destinations or world-space target coordinates.
+    Oxygen reserve, hunger, health, nearby threats, World time and sensor
+    coverage inform separate Needs/experience. They never mask the MOVE
+    options. Relative controls are reference actions, not a reachability
+    guarantee. Only the original physical issuer knows the actual Outcome.
     """
     if (
         not isinstance(probe, MineflayerObservation)
@@ -164,8 +152,6 @@ def build_resident_l1_move_turn(
         or epoch < 0
     ):
         raise ResidentL1MoveRefusal("current typed native probe/owner required")
-    if probe.snapshot.health <= 0:
-        raise ResidentL1MoveRefusal("dead WorldBody cannot select MOVE")
     if (
         capability.capability_ref != "MOVE"
         or capability.version != 1
@@ -174,7 +160,9 @@ def build_resident_l1_move_turn(
     ):
         raise ResidentL1MoveRefusal("unqualified physical MOVE catalogue")
 
-    exploration = _eligible_exploration(probe, intent_owner=intent_owner)
+    # Exploration is a standing innate Need; L1 may select it or favor an
+    # urgent homeostatic Need. Do not use physiology as action permission.
+    exploration = True
     references = (
         tuple(
             Target(
@@ -194,6 +182,7 @@ def build_resident_l1_move_turn(
         fatigue_high=None,  # not measured in the native snapshot
         targets=references,
         exploration_need=exploration,
+        oxygen_reserve=probe.snapshot.oxygen_level,
         threat_cue=any(e.name == "zombie" for e in probe.snapshot.nearby_entities),
     )
     frame = cpu_schema_epoch(
@@ -258,7 +247,6 @@ def resolve_resident_l1_move(
     if chosen.status == "READY" and (
         candidate is None or chosen.option != candidate.option
         or candidate not in turn.prebound_moves
-        or not fresh.exploration_eligible
     ):
         raise ResidentL1MoveRefusal("unbound or stale selected physical preset")
     return ResidentL1MoveDecision(

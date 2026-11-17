@@ -214,17 +214,33 @@ def test_model_nonphysical_choice_cannot_issue(monkeypatch, tmp_path, answer):
     assert recorded["selected_status"] != "READY"
 
 
-def test_changed_body_after_real_selection_is_no_action(monkeypatch, tmp_path):
+def test_changed_body_after_model_choice_reaches_original_issuer(monkeypatch, tmp_path):
     owner, gate, native, lane, read_probe, requests, wal = _run(
         tmp_path, monkeypatch, answer="1", food_after=11,
     )
-    with pytest.raises(Stage24bNoAction):
+    calls = []
+
+    class IssuerIntercepted(Exception):
+        pass
+
+    async def original_issue(self, session, **kwargs):
+        assert session is native
+        calls.append(kwargs)
+        assert kwargs["current_probe"].snapshot.food == 11
+        assert kwargs["proposal"].binding.goal_id == "EXPLORE_WORLD"
+        assert kwargs["proposal"].state == "PROPOSED_NOT_AUTHORIZED"
+        # No actual issue: capture right at the original physical owner.
+        raise IssuerIntercepted
+
+    monkeypatch.setattr(PhysicalIssueAdmission, "issue_move", original_issue)
+    with pytest.raises(IssuerIntercepted):
         asyncio.run(run_stage24b_selected_b_move(
             session=native, owner=owner, physical=gate, lane=lane,
             evidence_dir=tmp_path, read_probe=read_probe,
             real_world_granted=True, real_llm_granted=True,
         ))
-    assert owner.intent.current_intent is None
+    assert len(calls) == 1
+    assert owner.intent.current_intent.objective == "EXPLORE_WORLD"
     assert not PhysicalActionJournal.restore(wal, self_id="B").records
 
 

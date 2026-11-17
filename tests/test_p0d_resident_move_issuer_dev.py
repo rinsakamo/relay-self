@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -357,20 +358,13 @@ def test_original_issuer_deferred_eat_and_attack_children_match_original_wal(tmp
                 )
 
 
-@pytest.mark.parametrize("bad", ["wrong-stop-ack", "no-motion"])
+@pytest.mark.parametrize("bad", ["wrong-stop-ack"])
 def test_original_move_uncertain_keeps_wal_and_blocks_a_retirement(tmp_path, bad):
     gate = PhysicalIssueAdmission(
         {"A": "native-A", "B": "native-B"},
         resident_mode=True, allow_resident_move=True,
     )
     s = ScriptedNative("native-A", bad_stop=bad == "wrong-stop-ack")
-    if bad == "no-motion":
-        original = s.send_set_control
-
-        async def no_motion(action_id, *, control, state):
-            await original(action_id, control=control, state=state)
-            s.x = 1.0
-        s.send_set_control = no_motion
     s.gate = lambda native, effect, action: gate.require_native_effect(
         self_id="A", native_session_id=native,
         effect=effect, action_id=action,
@@ -444,3 +438,67 @@ def test_canonical_move_row_rejects_fake_settle_timing(tmp_path):
             p1, p2, p3, terminal, supervisor,
         )
     assert journal.unresolved
+
+
+class NativeNoNetMovement(ScriptedNative):
+    """Original native ACK/STOP works but the body has zero observed displacement."""
+
+    async def send_set_control(self, action_id, *, control, state):
+        await super().send_set_control(action_id, control=control, state=state)
+        # Entirely synthetic body/world: motor command acknowledged, physical
+        # position never changed in the authoritative native readback.
+        self.x -= 0.8
+
+
+def test_original_move_with_zero_net_displacement_records_terminal_outcome(tmp_path):
+    gate = PhysicalIssueAdmission(
+        {"A": "native-A"}, resident_mode=True, allow_resident_move=True,
+    )
+    native = NativeNoNetMovement()
+    native.gate = lambda session, effect, action: gate.require_native_effect(
+        self_id="A", native_session_id=session, effect=effect, action_id=action,
+    )
+    args = _selected(tmp_path)
+
+    async def scenario():
+        result = await gate.issue_move(native, **args)
+        assert result.terminal.state is ActionState.OUTCOME
+        assert result.displacement_m == 0.0
+        assert result.skill_success_attested is False
+        assert result.paper_causal_attribution is False
+        assert native.stop_received.is_set()
+        journal = args["journal"]
+        assert not journal.unresolved
+        assert journal.records[-1]["status"] == "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        restored = PhysicalActionJournal.restore(journal.path, self_id="A")
+        assert not restored.unresolved
+        assert restored.records[-1]["status"] == "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        assert restored.records[-1]["displacement_m"] == 0.0
+
+    asyncio.run(scenario())
+
+
+def test_low_health_and_zero_oxygen_are_not_original_physical_move_permissions(tmp_path):
+    gate = PhysicalIssueAdmission(
+        {"A": "native-A"}, resident_mode=True, allow_resident_move=True,
+    )
+    native = ScriptedNative()
+    native.gate = lambda session, effect, action: gate.require_native_effect(
+        self_id="A", native_session_id=session, effect=effect, action_id=action,
+    )
+    args = _selected(tmp_path)
+    args["current_probe"] = replace(
+        args["current_probe"],
+        snapshot=replace(
+            args["current_probe"].snapshot,
+            oxygen_level=0, health=1,
+        ),
+    )
+
+    async def scenario():
+        result = await gate.issue_move(native, **args)
+        assert result.terminal.state is ActionState.OUTCOME
+        assert result.displacement_m >= 0.8
+        assert args["journal"].records[-1]["status"] == "NATIVE_MOVE_SETTLED"
+
+    asyncio.run(scenario())

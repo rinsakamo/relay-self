@@ -35,6 +35,7 @@ def probe(
     seq: int, *,
     native: str = "world-B",
     food: float = 20.0,
+    health: float = 20.0,
     oxygen: float | None = 300.0,
     has_time: bool = True,
     entity: bool = False,
@@ -52,7 +53,7 @@ def probe(
         )
     count = 17 if truncated else len(entities)
     snapshot = MineflayerSnapshot(
-        health=20.0,
+        health=health,
         food=food,
         food_saturation=5.0,
         oxygen_level=oxygen,
@@ -94,7 +95,7 @@ def make_turn(owner=None):
 
 def test_cpu_schema_exploration_emits_four_complete_options_without_operator_choice():
     turn, _ = make_turn()
-    assert turn.exploration_eligible
+    assert turn.exploration_need_active
     assert len(turn.prebound_moves) == 4
     assert {c.option.target_ref for c in turn.prebound_moves} == {
         "relative:forward", "relative:back",
@@ -148,12 +149,15 @@ def test_l1_number_selects_exact_right_preset_and_proposes_only():
     [
         {"food": 10.0},
         {"oxygen": None},
+        {"oxygen": 0},
+        {"health": 0},
+        {"health": 5},
         {"has_time": False},
         {"entity": True},
         {"truncated": True},
     ],
 )
-def test_body_pressure_or_unknown_coverage_removes_move_candidate(changes):
+def test_body_pressure_or_unknown_coverage_never_vetoes_selected_move(changes):
     turn, owner = make_turn()
     chosen = turn.prebound_moves[0].choice_id
     decision = resolve_resident_l1_move(
@@ -161,8 +165,8 @@ def test_body_pressure_or_unknown_coverage_removes_move_candidate(changes):
         current_probe=probe(11, **changes),
         intent_owner=owner, capability=CAP, epoch=2,
     )
-    assert decision.status != "READY"
-    assert decision.candidate is None
+    assert decision.status == "READY"
+    assert decision.candidate.option.goal_id == "EXPLORE_WORLD"
     assert owner.events == ()
 
 
@@ -224,7 +228,7 @@ def test_missing_capability_yields_unresolved_goal_not_fake_move():
         probe(10), self_id="B", intent_owner=owner,
         capability=replace(CAP, available=False), epoch=1,
     )
-    assert turn.exploration_eligible
+    assert turn.exploration_need_active
     assert turn.round.frame.goals[-1].goal_id == "EXPLORE_WORLD"
     assert turn.round.frame.goals[-1].unresolved
     assert not turn.prebound_moves
@@ -246,3 +250,49 @@ def test_frozen_candidate_tamper_and_repeated_probe_fail_closed():
             current_probe=probe(11), intent_owner=owner,
             capability=CAP, epoch=2,
         )
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"food": 0.0, "oxygen": None, "has_time": False},
+        {"food": 5.0, "oxygen": 0, "entity": True},
+        {"health": 0, "oxygen": 0, "truncated": True},
+    ],
+)
+def test_exploration_goal_exists_in_unfavorable_initial_body_states(changes):
+    owner = IntentCommitment()
+    turn = build_resident_l1_move_turn(
+        probe(10, **changes), self_id="B", intent_owner=owner,
+        capability=CAP, epoch=1,
+    )
+    assert turn.exploration_need_active  # Need active, never a motor admission gate
+    assert len(turn.prebound_moves) == 4
+    assert any(g.goal_id == "EXPLORE_WORLD" for g in turn.round.frame.goals)
+    assert not owner.events
+    assert all(v.option.skill_id == "MOVE" for v in turn.prebound_moves)
+
+
+def test_low_oxygen_produces_independent_unresolved_goal_not_fake_move_skill():
+    owner = IntentCommitment()
+    turn = build_resident_l1_move_turn(
+        probe(10, oxygen=0), self_id="B", intent_owner=owner,
+        capability=CAP, epoch=1,
+    )
+    oxygen = next(g for g in turn.round.frame.goals
+                  if g.goal_id == "RESTORE_OXYGEN")
+    assert oxygen.schema_id == "homeostatic"
+    assert oxygen.strength == "URGENT"
+    assert oxygen.skill_id == ""
+    assert oxygen.unresolved
+    assert {c.option.goal_id for c in turn.prebound_moves} == {"EXPLORE_WORLD"}
+    assert "OXYGEN_LOW" in turn.round.frame.fast_cues
+
+
+def test_unknown_oxygen_is_not_low_oxygen_or_move_veto():
+    owner = IntentCommitment()
+    turn = build_resident_l1_move_turn(
+        probe(10, oxygen=None), self_id="B", intent_owner=owner,
+        capability=CAP, epoch=1,
+    )
+    assert not any(g.goal_id == "RESTORE_OXYGEN" for g in turn.round.frame.goals)
+    assert len(turn.prebound_moves) == 4

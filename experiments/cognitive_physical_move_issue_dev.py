@@ -226,9 +226,7 @@ async def issue_selected_move_dev(
             "relative:forward", "relative:back",
             "relative:left", "relative:right",
         }
-        or current_probe.snapshot.time is None
-        or current_probe.snapshot.health <= 0
-        or current_probe.snapshot.oxygen_level == 0
+        or current_probe.snapshot.time is None  # technical STOP evidence clock
     ):
         raise PhysicalMoveRefusal("selected MOVE direction/body no longer available")
     begin_physical_issue_dev(
