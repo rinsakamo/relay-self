@@ -75,8 +75,11 @@ def synthetic_control_pair():
             capability=capability, epoch=1,
         )
         audit = audit_exploration_gate(probe, intent_owner=owner)
-        if turn.exploration_eligible != audit.eligible:
-            raise Stage24cCalibrationRefusal("CPU gate/audit mismatch")
+        # Stage24c historic source-HEAD compared two *different* candidate
+        # sets. Stage24e deliberately removes that motor permission gate.
+        # The old outcome remains immutable; a new run has new semantics.
+        if not turn.exploration_need_active:
+            raise Stage24cCalibrationRefusal("innate exploration Need missing")
         controls.append((case_name, turn, audit))
     return tuple(controls)
 
@@ -134,7 +137,9 @@ def run_stage24c_calibration(
         _write_bytes_new(request_file, _json_bytes(body))
         record = {
             "case": name,
-            "schema": "STAGE24C_SYNTHETIC_JEV_CONTROL",
+            "schema": "STAGE24E_SYNTHETIC_JEV_CONTROL",
+            "exploration_policy": "INNATE_NEED_NOT_BODY_GATE",
+            "historic_stage24c_outcome_reproduced": False,
             "source_kind": "SYNTHETIC_NOT_WORLD_EVIDENCE",
             "original_eligibility_audit": asdict(audit),
             "original_candidate_ids": tuple(
