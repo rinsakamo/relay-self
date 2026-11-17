@@ -27,6 +27,7 @@ from experiments.cognitive_physical_executor_dev import (
 )
 from experiments.cognitive_physical_move_issue_dev import _native, _settled
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
+from relay_self.initial_skill_ir import ActionOutcomeWitness
 from relay_self.p0d_stage26_gemma_l1_dev import PreparedStage26L1
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
 from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
@@ -59,6 +60,8 @@ class Stage27PlaceMoveReceipt:
     journal_status: str
     journal_sha256: str
     all_stop_probes: tuple[MineflayerObservation, ...]
+    l0_step_status: str = "YIELD_EVALUATION"
+    l0_goal_succeeded: bool = False
     native_effect_issued: bool = True
     skill_success_attested: bool = False
     paper_causal_attribution: bool = False
@@ -229,7 +232,7 @@ async def issue_selected_place_move_dev(
             stop_seq=stop.seq, timeout_s=evidence_timeout_s,
         )
         closed: list[str] = []
-        finish_physical_issue_dev(
+        terminal = finish_physical_issue_dev(
             action_id=parent, after=settled,
             supervisor=owner.supervisor, journal=journal, at_ns=at_ns,
             close=lambda t: closed.append(journal.close_place_move(
@@ -240,6 +243,22 @@ async def issue_selected_place_move_dev(
         )
         if len(closed) != 1:
             raise Stage27PlaceMoveRefusal("original PLACE WAL was not closed exactly once")
+        # The real original finite Skill controller observes the same terminal
+        # Action and canonical WAL consequence. It yields to Self evaluation,
+        # without asserting that the Goal/Skill succeeded.
+        step = l0.interpreter.observe_action(
+            l0.cursor, action=terminal,
+            witness=ActionOutcomeWitness(
+                scope=proposal.binding.scope, action_id=parent,
+                native_source=current_probe.provenance,
+                journal_closed=True, effect_correlated=True,
+            ),
+            intent_owner=owner.intent,
+            skill_execution=owner.skills[handoff.skill_execution_id],
+            at_ns=at_ns + 2,
+        )
+        if step.status != "YIELD_EVALUATION":
+            raise Stage27PlaceMoveRefusal("original L0 did not yield after physical Outcome")
         a, b = current_probe.snapshot.position, settled.snapshot.position
         return Stage27PlaceMoveReceipt(
             invocation.invocation_ref, invocation.parameter_preset_ref or "",
