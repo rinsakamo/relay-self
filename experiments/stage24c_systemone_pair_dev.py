@@ -87,7 +87,7 @@ def synthetic_jev_payloads(model: str) -> tuple[tuple[str, object, dict], ...]:
     if type(model) is not str or not model.strip():
         raise Stage24cCalibrationRefusal("explicit actual model alias required")
     return tuple(
-        (name, audit, render_llama_cpp_jev_request(
+        (name, turn, audit, render_llama_cpp_jev_request(
             turn.round.request, model=model,
         ))
         for name, turn, audit in synthetic_control_pair()
@@ -125,7 +125,7 @@ def run_stage24c_calibration(
         raise Stage24cCalibrationRefusal("inspection never authorizes real GPU")
     evidence_dir.mkdir(mode=0o700, parents=False)
     records = []
-    for name, audit, body in payloads:
+    for name, turn, audit, body in payloads:
         request_file = evidence_dir / f"{name}-jev-request.json"
         _write_bytes_new(request_file, _json_bytes(body))
         record = {
@@ -169,7 +169,7 @@ def run_stage24c_calibration(
             # Parse through the production adapter, but only AFTER raw bytes
             # have been fsynced and secured for later independent readback.
             decision = parse_llama_cpp_jev_decision(
-                json.loads(raw_body), request=dict(synthetic_control_pair())[name].round.request,
+                json.loads(raw_body), request=turn.round.request,
             )
             record.update({
                 "actual_model_executed": True,
