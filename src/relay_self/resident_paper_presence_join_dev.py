@@ -182,6 +182,45 @@ def parse_owned_paper_resident_trace(
     )
 
 
+def require_pre_inference_resident_presence(
+    trace: OwnedPaperResidentTrace, *, a_name: str, b_name: str,
+) -> None:
+    """Prove the owned Paper witness is live before calling real Gemma.
+
+    This verifies *observation availability*, not whether Self may move.
+    Final cross-source correlation still requires the separate full join.
+    """
+    if (
+        not isinstance(trace, OwnedPaperResidentTrace)
+        or a_name == b_name
+        or not all(_NAME.fullmatch(x) for x in (a_name, b_name))
+    ):
+        raise ResidentPaperJoinError("invalid pre-inference resident source")
+    a = [x for x in trace.events if x.name == a_name]
+    b = [x for x in trace.events if x.name == b_name]
+    if (
+        not a or not b or a[0].event != "JOIN" or b[0].event != "JOIN"
+        or len({x.actor_uuid for x in a}) != 1
+        or len({x.actor_uuid for x in b}) != 1
+        or a[0].actor_uuid == b[0].actor_uuid
+    ):
+        raise ResidentPaperJoinError("pre-inference Paper A/B JOIN missing")
+    quits = [x for x in a if x.event == "QUIT"]
+    if (
+        len(quits) != 1 or quits[0].line <= a[0].line
+        or any(x.event == "QUIT" for x in b)
+        or any(x.event == "JOIN" for x in a[1:] + b[1:])
+    ):
+        raise ResidentPaperJoinError("pre-inference Paper logout/peer epoch invalid")
+    if not any(
+        x.line > quits[0].line and x.event in ("PRESENT", "MOVE")
+        for x in b
+    ):
+        raise ResidentPaperJoinError(
+            "pre-inference independent Paper B presence after A quit missing"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class ResidentPresenceDecision:
     status: ResidentPaperVerdict
