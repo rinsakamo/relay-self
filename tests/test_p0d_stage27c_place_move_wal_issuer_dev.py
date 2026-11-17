@@ -232,9 +232,9 @@ def test_original_place_native_uncertainty_keeps_prepared_wal_and_no_retry(
         assert journal.records[-1]["status"] == "PREPARED_UNRESOLVED"
         assert len(http.calls) == 1
         # Keep physical uncertainty: no cleanup, no retry or fabricated result.
+        await f.bridge.logout(f.names[1])
         f.physical.hold_for_operator()
         assert not f.physical.active_action_ids
-        await f.bridge.logout(f.names[1])
 
     try:
         asyncio.run(scenario())
