@@ -33,6 +33,7 @@ from relay_self.physical_action_port import (
     propose_bound_physical_action,
 )
 from relay_self.provenance import Provenance
+from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.relay_engine import BoundedChoice, RelayEngineResult
 from relay_self.skill import SkillExecution
 
@@ -101,23 +102,14 @@ class ResidentL1MoveDecision:
 def _eligible_exploration(
     probe: MineflayerObservation, *, intent_owner: IntentCommitment,
 ) -> bool:
-    """Innate low-pressure opportunity, NOT operator-supplied MOVE choice.
+    """Original conservative gate, with a traceable read-only explanation.
 
-    Unobserved fatigue/terrain remains UNKNOWN. Even eligible directions
-    may hit obstacles and never imply a route or a safe destination.
+    UNKNOWN oxygen/time/coverage never becomes an inferred safe value.
+    Capability availability still gates actual candidate publication.
     """
-    body = probe.snapshot
-    coverage = body.nearby_entities_coverage
-    return (
-        intent_owner.current_intent is None
-        and body.health >= 16
-        and body.food >= 18
-        and body.oxygen_level is not None
-        and body.oxygen_level > 0
-        and body.time is not None
-        and not coverage.truncated
-        and not body.nearby_entities
-    )
+    return audit_exploration_gate(
+        probe, intent_owner=intent_owner,
+    ).eligible
 
 
 def _canonical_digest(
