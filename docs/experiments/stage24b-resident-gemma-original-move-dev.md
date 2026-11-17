@@ -40,7 +40,17 @@ PYTHONPATH=src:. python -m experiments.stage24b_pinned_assets_launch_dev \
   --inspect-only
 ```
 
-Verify the output: `STAGE24B_ASSET_CHECK_OK` with exactly those pinned hashes and an empty scratch folder. Verify actual model PID, binary, GGUF SHA and single owned `/slots` *separately*. A prior empty Jev HTTP 422 validates malformed input rejection **only**, not a real model choice.
+Verify **both** lines, `STAGE24B_ASSET_CHECK_OK` and `STAGE24B_RUNTIME_CHECK_OK`, with pinned hashes and an empty scratch folder. The inspect-only path now reuses the **exact original runner** `_verify_local_runtime(java,node)` gate: Java 21, Node 22 and installed Mineflayer `4.39.0` under **this checked-out worktree's** `adapters/mineflayer/node_modules/mineflayer/package.json`. An external `NODE_PATH` satisfying `require('mineflayer')` is **not evidence** of this original run contract. Inspect-only never installs dependencies or creates a World. Verify actual model PID, binary, GGUF SHA and single owned `/slots` *separately*.
+
+The second Stage24b real DEV attempt on HEAD `c95b33d0` stopped **before World creation** with `PRE_WORLD_HOLD_LOCKED_MINEFLAYER_DEPENDENCIES_ABSENT`: the preflight checked external `NODE_PATH`, but the original runner requires the worktree-local locked package. This immutable HOLD and its SHA256 manifest (`6f8ca305c7cf16c8e272fc0664df86c29ad36c2205eab758784529a698cbab2e`) remain untouched; see [PR #925 report](https://github.com/rinsakamo/relay-self/pull/925#issuecomment-6931827673).
+
+Before starting a **new** explicitly isolated attempt, LocalCodex should in its **new worktree only** verify `adapters/mineflayer/package-lock.json` and `package.json`, and if the dependency is absent, run the repository-standard locked installation:
+
+```bash
+npm ci --prefix adapters/mineflayer
+```
+
+This is a provisioning step, **not** a retry of the former World attempt. Do not use `npm install` to change the lock, create symlinks into external `node_modules`, bypass the original gate, alter `NODE_PATH` to conceal missing dependencies, or touch an unrelated worktree. Confirm exact version `4.39.0`, run the adapter's existing Node tests, then run **inspect-only again** and require both `*_CHECK_OK` receipts. Only afterwards prepare the independently owned real model process and invoke `--execute-once` in a fresh scratch/evidence scope. Failure is pre-World HOLD and the real runner must not start. A prior empty Jev HTTP 422 validates malformed input rejection **only**, not a real model choice.
 
 After checking the exact HEAD/CI and ensuring that this attempt has a **new** evidence and scratch scope, authorize **one** original trial:
 
@@ -79,7 +89,7 @@ Preserve the complete new source archive and SHA256s including model choice, nat
 
 ## Offline regression
 
-Include `tests/test_stage24b_pinned_assets_launch_dev.py`, which verifies read-only inspect, real byte pinning, 69-character typo refusal, source tampering/symlink refusal, missing grants, and exact one-call delegation. This regression uses synthetic jars and does not run Minecraft.
+Include `tests/test_stage24b_pinned_assets_launch_dev.py`, which verifies read-only inspect, real byte pinning, 69-character typo refusal, source tampering/symlink refusal, missing grants, **the original worktree-local runtime gate and external NODE_PATH rejection**, and exact one-call delegation. This regression uses synthetic jars and does not run Minecraft.
 
 
 ```bash
