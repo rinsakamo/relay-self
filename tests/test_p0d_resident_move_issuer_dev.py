@@ -6,6 +6,7 @@ independent B Paper damage/movement causation, or target tolerance accepted.
 from __future__ import annotations
 
 import asyncio
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -207,8 +208,10 @@ def test_original_resident_move_can_run_while_peers_stay_active(tmp_path, count)
     args = _selected(tmp_path, sid=a, native=sessions[a], action_id="move-" + a)
 
     async def scenario():
+        before_dispatch = time.monotonic_ns()
         task = asyncio.create_task(gate.issue_move(s, **args))
         await s.start_received.wait()
+        after_dispatch = time.monotonic_ns()
         fence = gate.quarantine_resident(self_id=a, native_session_id=s.started.session_id)
         assert fence.active_action_ids == ("move-" + a,)
         with pytest.raises(PhysicalIssueFenceError, match="blocked"):
@@ -226,6 +229,7 @@ def test_original_resident_move_can_run_while_peers_stay_active(tmp_path, count)
                 effect="consume_held", action_id="peer-EAT",
             )
         result = await task
+        assert before_dispatch <= result.native_start_dispatch_monotonic_ns <= after_dispatch
         assert result.terminal.state is ActionState.OUTCOME
         assert result.displacement_m >= 0.8
         assert s.stop_received.is_set()

@@ -20,6 +20,7 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 
+from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
@@ -43,6 +44,11 @@ from experiments.p0d_real_paper_smoke_dev import (
 from experiments.p0d_real_two_native_smoke_dev import (
     preflight_two_native,
     two_native_server_properties,
+)
+from experiments.stage24b_real_l1_move_dev import (
+    require_frozen_stage24b_binding,
+    require_frozen_stage24b_choice,
+    run_stage24b_selected_b_move,
 )
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
@@ -71,6 +77,10 @@ from relay_self.physical_action_port import (
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_llama_inference_lane_dev import (
+    LlamaCppSingleSlotWitness,
+    ResidentLlamaInferenceLane,
+)
 from relay_self.resident_move_raw_audit_dev import readback_owned_move_native_source
 from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
@@ -362,8 +372,10 @@ async def _owned_resident_trial(
     world_only: bool,
     b_selected_move_dev: bool = False,
     b_pulse_seconds: float = 0.35,
+    b_autonomous_l1_dev: bool = False,
+    real_llm_granted: bool = False,
 ) -> dict[str, object]:
-    """One strictly bounded native body scenario. No model/Skill/Action issue."""
+    """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
         paper.owned_session_id is None
         or not 2 <= b_heartbeat_s <= 12
@@ -404,7 +416,16 @@ async def _owned_resident_trial(
     ):
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
     b_move = None
-    if b_selected_move_dev:
+    if b_autonomous_l1_dev:
+        if bridge.inference_lane is None:
+            raise RealResidentPresenceRefusal("Stage24b original resident L1 lane missing")
+        b_move = await run_stage24b_selected_b_move(
+            session=bridge.sessions["B"], owner=bridge.owners["B"],
+            physical=physical, lane=bridge.inference_lane,
+            evidence_dir=evidence_dir, read_probe=_bounded_b_probe,
+            real_world_granted=True, real_llm_granted=real_llm_granted,
+        )
+    elif b_selected_move_dev:
         b_move = await _issue_original_selected_b_move(
             session=bridge.sessions["B"],
             owner=bridge.owners["B"], physical=physical,
@@ -486,7 +507,7 @@ async def _owned_resident_trial(
         "b_physical_wal_outcome": b_move is not None,
         "b_original_selected_move": b_move,
         "b_move_action_causality": False,
-        "real_l1_l2_gpu_executed": False,
+        "real_l1_l2_gpu_executed": b_move is not None and b_autonomous_l1_dev,
         "real_peer_transport_executed": False,
     }
     final_a = await bridge.logout("A")
@@ -519,6 +540,7 @@ def _adopt_verified_trial_report(
     report: dict[str, object],
     trial: dict[str, object],
     *, b_selected_move_dev: bool, world_only: bool,
+    b_autonomous_l1_dev: bool = False,
 ) -> None:
     """One source of truth for top-level flags, step and classification.
 
@@ -528,13 +550,16 @@ def _adopt_verified_trial_report(
     if (
         type(trial) is not dict
         or type(b_selected_move_dev) is not bool
+        or type(b_autonomous_l1_dev) is not bool
         or type(world_only) is not bool
     ):
         raise RealResidentPresenceRefusal("unqualified real World trial result")
     moved = trial.get("b_actual_physical_action") is True
     terminal = trial.get("b_physical_wal_outcome") is True
     detail = trial.get("b_original_selected_move")
-    if moved != terminal or moved != b_selected_move_dev:
+    if (b_selected_move_dev and b_autonomous_l1_dev) or (
+        moved != terminal or moved != (b_selected_move_dev or b_autonomous_l1_dev)
+    ):
         raise RealResidentPresenceRefusal("real B action flag contradicts original WAL")
     if world_only and (
         not trial.get("world_only_generation")
@@ -547,7 +572,7 @@ def _adopt_verified_trial_report(
             or detail.get("classification") != "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
             or not detail.get("original_action_id")
             or not detail.get("original_canonical_wal_sha256")
-            or detail.get("autonomous_l1_skill_selection") is not False
+            or detail.get("autonomous_l1_skill_selection") is not b_autonomous_l1_dev
             or detail.get("paper_action_causation") is not False
             or trial.get("b_move_action_causality") is not False
             or trial.get("paper_player_continuity")
@@ -592,13 +617,76 @@ def _adopt_verified_trial_report(
             or sidecar.get("autonomous_l1_skill_selection") is not False
         ):
             raise RealResidentPresenceRefusal("frozen B raw source/WAL identity sidecar inconsistent")
+        if b_autonomous_l1_dev:
+            model_path = detail.get("model_choice_file")
+            model_sha = detail.get("model_choice_sha256")
+            if (
+                type(model_path) is not str or type(model_sha) is not str
+                or detail.get("operator_selected_dev_move") is not False
+                or detail.get("gpu_inference_ran") is not True
+                or trial.get("real_l1_l2_gpu_executed") is not True
+            ):
+                raise RealResidentPresenceRefusal("real model response evidence absent")
+            try:
+                actual_choice = require_frozen_stage24b_choice(
+                    Path(model_path), model_sha,
+                    original_action_id=detail["original_action_id"],
+                    intent_id=detail["original_intent_id"],
+                    skill_execution_id=detail["original_skill_execution_id"],
+                    target_ref=detail["model_choice_target_ref"],
+                    model_choice_id=detail["model_choice_id"],
+                )
+            except (ValueError, OSError, RuntimeError) as exc:
+                raise RealResidentPresenceRefusal(
+                    "frozen model-selected Skill source not verified"
+                ) from exc
+            if (
+                actual_choice["candidates_sha256"]
+                != detail.get("model_choice_candidates_sha256")
+                or actual_choice["selected_preset_ref"]
+                != detail.get("model_choice_preset_ref")
+            ):
+                raise RealResidentPresenceRefusal("model-selected parameter digest changed")
+            binding_path = detail.get("model_binding_file")
+            binding_sha = detail.get("model_binding_sha256")
+            if type(binding_path) is not str or type(binding_sha) is not str:
+                raise RealResidentPresenceRefusal("original L1 pre-ISSUE binding missing")
+            try:
+                read_binding = require_frozen_stage24b_binding(
+                    Path(binding_path), binding_sha,
+                    model_choice_sha256=model_sha,
+                    action_id=detail["original_action_id"],
+                    intent_id=detail["original_intent_id"],
+                    skill_execution_id=detail["original_skill_execution_id"],
+                    target_ref=detail["model_choice_target_ref"],
+                    chosen_number=detail["model_choice_id"],
+                    native_probe_seq=actual_choice["after_native_seq"],
+                    native_request_id=actual_choice["after_request_id"],
+                )
+            except (ValueError, OSError, RuntimeError) as exc:
+                raise RealResidentPresenceRefusal(
+                    "original L1-selected pre-ISSUE binding not verified"
+                ) from exc
+            if (
+                read_binding["physical_binding"]["native_seq"]
+                != sidecar["selected_probe"]["seq"]
+                or read_binding["physical_binding"]["native_request_id"]
+                != sidecar["selected_probe"]["request_id"]
+            ):
+                raise RealResidentPresenceRefusal(
+                    "actual L1 selected Action and native issuer probe diverged"
+                )
     elif detail is not None:
         raise RealResidentPresenceRefusal("unrequested B MOVE detail in presence-only trial")
 
     # Only reach success classifications after all nested source evidence
     # is checked. On any exception the outer report remains HOLD/UNKNOWN.
     classification = (
-        "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
+        "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV"
+        if moved and world_only and b_autonomous_l1_dev
+        else "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_DEV"
+        if moved and b_autonomous_l1_dev
+        else "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV"
         if moved and world_only
         else "REAL_PAPER_B_MOVE_CORRELATED_DEV" if moved
         else "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV"
@@ -608,6 +696,8 @@ def _adopt_verified_trial_report(
     report["real_b_physical_action"] = moved
     report["real_b_physical_wal_outcome"] = terminal
     report["native_move_raw_source_attested"] = moved
+    report["real_gpu"] = b_autonomous_l1_dev and moved
+    report["autonomous_l1_skill_selection"] = b_autonomous_l1_dev and moved
     report["classification"] = classification
 
 
@@ -620,6 +710,10 @@ async def run_real_resident_presence(
     timeout_s: float = 120.0, heap_mb: int = 1536,
     b_heartbeat_s: float = 4.0, world_only: bool = False,
     b_selected_move_dev: bool = False, b_pulse_seconds: float = 0.35,
+    b_autonomous_l1_dev: bool = False, real_llm_grant: bool = False,
+    llama_endpoint: str | None = None,
+    systemone_endpoint: str | None = None,
+    model_name: str | None = None,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     if real_world_dev_grant is not True:
@@ -637,6 +731,19 @@ async def run_real_resident_presence(
         raise RealResidentPresenceRefusal(
             "bounded explicit operator-selected B MOVE DEV required before Paper launch"
         )
+    if b_autonomous_l1_dev and (
+        b_selected_move_dev or not real_llm_grant
+        or b_pulse_seconds != 0.35
+        or not all(
+            isinstance(x, str) and x.strip()
+            for x in (llama_endpoint, systemone_endpoint, model_name)
+        )
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage24b requires independent real LLM grant and fixed model choice"
+        )
+    if not b_autonomous_l1_dev and real_llm_grant:
+        raise RealResidentPresenceRefusal("unused real LLM grant forbidden")
     paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
@@ -672,10 +779,11 @@ async def run_real_resident_presence(
         "localhost_port": port,
         # A selected MOVE is UNKNOWN until original WAL, Paper and exact
         # native stdout bytes are independently checked, not automatically false.
-        "real_b_physical_action": None if b_selected_move_dev else False,
-        "real_b_physical_wal_outcome": None if b_selected_move_dev else False,
+        "real_b_physical_action": None if (b_selected_move_dev or b_autonomous_l1_dev) else False,
+        "real_b_physical_wal_outcome": None if (b_selected_move_dev or b_autonomous_l1_dev) else False,
         "native_move_raw_source_attested": False,
-        "real_gpu": False,
+        "real_gpu": None if b_autonomous_l1_dev else False,
+        "autonomous_l1_skill_selection": None if b_autonomous_l1_dev else False,
         "steps": [],
     }
     owner = None
@@ -707,7 +815,7 @@ async def run_real_resident_presence(
         initial_native = {sid: "offline-born-" + sid for sid in names}
         physical = PhysicalIssueAdmission(
             initial_native, resident_mode=True, initially_offline=True,
-            allow_resident_move=b_selected_move_dev,
+            allow_resident_move=(b_selected_move_dev or b_autonomous_l1_dev),
         )
         configs = {
             sid: MineflayerLaunchConfig(
@@ -738,6 +846,21 @@ async def run_real_resident_presence(
                 physical_supervisor=ActionSupervisor(),
             )
         cognition = ResidentCognitiveWorkOwner(originals)
+        lane = None
+        if b_autonomous_l1_dev:
+            assert llama_endpoint is not None and systemone_endpoint is not None
+            assert model_name is not None
+            provider = LlamaCppRelayProvider(
+                endpoint=llama_endpoint, systemone_endpoint=systemone_endpoint,
+                model=model_name, timeout=60.0,
+            )
+            witness = LlamaCppSingleSlotWitness(
+                provider=provider, backend_ref="stage24b-" + uuid.uuid4().hex,
+            )
+            witness.require_idle()
+            lane = ResidentLlamaInferenceLane(
+                provider=provider, cognitive_work=cognition, witness=witness,
+            )
         lifecycle = WorldResidentLifecycle(
             world=WorldLifetime(
                 world_uuid, "p0d-real-resident-presence", paper_session, 0, 0,
@@ -757,6 +880,7 @@ async def run_real_resident_presence(
             lifecycle=lifecycle, physical=physical, paper=owner,
             configs=configs, owners=originals,
             launch=native_factory, cognitive_work=cognition,
+            inference_lane=lane,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _owned_resident_trial(
@@ -766,10 +890,12 @@ async def run_real_resident_presence(
             b_heartbeat_s=b_heartbeat_s, world_only=world_only,
             b_selected_move_dev=b_selected_move_dev,
             b_pulse_seconds=b_pulse_seconds,
+            b_autonomous_l1_dev=b_autonomous_l1_dev,
+            real_llm_granted=real_llm_grant,
         )
         _adopt_verified_trial_report(
             report, trial, b_selected_move_dev=b_selected_move_dev,
-            world_only=world_only,
+            world_only=world_only, b_autonomous_l1_dev=b_autonomous_l1_dev,
         )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
@@ -806,6 +932,8 @@ async def run_real_resident_presence(
         "REAL_PAPER_RESIDENT_PRESENCE_AND_WORLD_ONLY_DEV",
         "REAL_PAPER_B_MOVE_CORRELATED_DEV",
         "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV",
+        "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_DEV",
+        "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path
@@ -828,6 +956,11 @@ def main() -> int:
     parser.add_argument("--world-only", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
+    parser.add_argument("--b-autonomous-l1-dev", action="store_true")
+    parser.add_argument("--grant-real-llm", action="store_true")
+    parser.add_argument("--llama-endpoint")
+    parser.add_argument("--systemone-endpoint")
+    parser.add_argument("--model")
     args = parser.parse_args()
     try:
         result = asyncio.run(run_real_resident_presence(
@@ -840,6 +973,11 @@ def main() -> int:
             b_heartbeat_s=args.b_heartbeat_s, world_only=args.world_only,
             b_selected_move_dev=args.b_selected_move_dev,
             b_pulse_seconds=args.b_pulse_seconds,
+            b_autonomous_l1_dev=args.b_autonomous_l1_dev,
+            real_llm_grant=args.grant_real_llm,
+            llama_endpoint=args.llama_endpoint,
+            systemone_endpoint=args.systemone_endpoint,
+            model_name=args.model,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)
