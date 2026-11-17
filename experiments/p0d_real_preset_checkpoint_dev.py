@@ -541,6 +541,7 @@ async def run_real_two_self_preset_checkpoint(
     gemma_l1_endpoint: str | None = None,
     gemma_l1_model: str | None = None,
     gemma_l1_jev: bool = False,
+    gemma_l1_api_key_file: Path | None = None,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -560,6 +561,17 @@ async def run_real_two_self_preset_checkpoint(
         raise RealPresetCheckpointRefusal(
             "real-Gemma opt-in requires operator-declared model identity"
         )
+    # Unlike Stage25 scripted mode, a real Stage26 model requires a
+    # file-owned private credential; public CORS/unauthenticated endpoint
+    # access cannot qualify for the one-shot World.
+    if real_gemma_l1 and gemma_l1_api_key_file is None:
+        raise RealPresetCheckpointRefusal(
+            "PRE_WORLD_HOLD: real Stage26 needs exclusive private model API key file"
+        )
+    if not real_gemma_l1 and gemma_l1_api_key_file is not None:
+        raise RealPresetCheckpointRefusal(
+            "private model API key cannot be passed to scripted Stage25 mode"
+        )
     provider = None
     slot_witness = None
     if real_gemma_l1:
@@ -567,7 +579,12 @@ async def run_real_two_self_preset_checkpoint(
             endpoint=gemma_l1_endpoint, model=gemma_l1_model,
             timeout=55.0,
             systemone_endpoint=gemma_l1_endpoint if gemma_l1_jev else None,
+            api_key_file=gemma_l1_api_key_file,
         )
+        if not provider.stage26_private_auth_enabled:
+            raise RealPresetCheckpointRefusal(
+                "PRE_WORLD_HOLD: authenticated private model client required"
+            )
         slot_witness = LlamaCppSingleSlotWitness(
             provider=provider, backend_ref="stage26-owned-one-slot-llama",
             timeout_s=2.0,
@@ -612,6 +629,10 @@ async def run_real_two_self_preset_checkpoint(
         "plugin_sha256": plugin_sha256,
         "scratch": str(root),
         "real_gemma_systemone_executed": False,
+        "stage26_private_model_auth_configured": (
+            provider.stage26_private_auth_enabled
+            if provider is not None else False
+        ),
         "physical_action_issue_authorized": False,
     }
     paper: OwnedPaperWorld | None = None
@@ -770,6 +791,7 @@ def main() -> int:
     p.add_argument("--gemma-l1-endpoint")
     p.add_argument("--gemma-l1-model")
     p.add_argument("--gemma-l1-jev", action="store_true")
+    p.add_argument("--gemma-l1-api-key-file", type=Path)
     a = p.parse_args()
     try:
         result = asyncio.run(run_real_two_self_preset_checkpoint(
@@ -783,6 +805,7 @@ def main() -> int:
             gemma_l1_endpoint=a.gemma_l1_endpoint,
             gemma_l1_model=a.gemma_l1_model,
             gemma_l1_jev=a.gemma_l1_jev,
+            gemma_l1_api_key_file=a.gemma_l1_api_key_file,
         ))
     except Exception as exc:
         print(f"P0D_REAL_PRESET_HOLD={type(exc).__name__}: {exc}",
