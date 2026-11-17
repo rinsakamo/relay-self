@@ -70,18 +70,18 @@ def test_a_real_bounded_ready_starts_only_original_a_intent_and_skill(tmp_path):
         prepared, ticket, witness, refreshed = await _one_a_choice(f, lane)
         before_b = (
             f.owners[f.names[1]].intent.events,
-            tuple(f.owners["B"].skills.items()),
+            tuple(f.owners[f.names[1]].skills.items()),
             PhysicalActionJournal.restore(
-                f.owners["B"].files.physical_wal_file,
+                f.owners[f.names[1]].files.physical_wal_file,
                 self_id=f.names[1],
             ).digest,
         )
         result = _handoff(f, lane, prepared, ticket, witness, refreshed)
-        assert result.self_id == "A"
+        assert result.self_id == f.names[0]
         assert result.decision_number == "1"
         assert result.target_kind == "DESTINATION"
         assert result.intent_id == f.owners[f.names[0]].intent.current_intent.intent_id
-        assert result.skill_execution_id in f.owners["A"].skills
+        assert result.skill_execution_id in f.owners[f.names[0]].skills
         assert result.invocation_ref == witness.candidate_invocation_ref
         assert result.preset_ref == witness.preset_ref
         assert result.outcome == "INTENT_STARTED_TARGET_RESOLUTION_REQUIRED"
@@ -91,11 +91,11 @@ def test_a_real_bounded_ready_starts_only_original_a_intent_and_skill(tmp_path):
         assert not result.wal_modified
         assert not result.peer_owner_mutated
         after_b = (
-            f.owners["B"].intent.events,
-            tuple(f.owners["B"].skills.items()),
+            f.owners[f.names[1]].intent.events,
+            tuple(f.owners[f.names[1]].skills.items()),
             PhysicalActionJournal.restore(
-                f.owners["B"].files.physical_wal_file,
-                self_id="B",
+                f.owners[f.names[1]].files.physical_wal_file,
+                self_id=f.names[1],
             ).digest,
         )
         assert before_b == after_b
@@ -107,7 +107,7 @@ def test_a_real_bounded_ready_starts_only_original_a_intent_and_skill(tmp_path):
         assert len(http.calls) == 1
         with pytest.raises(Stage27MoveHandoffRefusal):
             _handoff(f, lane, prepared, ticket, witness, refreshed)
-        assert len(f.owners["A"].intent.events) == 1
+        assert len(f.owners[f.names[0]].intent.events) == 1
         for sid in f.names:
             await f.bridge.logout(sid)
 
@@ -131,8 +131,8 @@ def test_non_ready_never_commits_any_intent_or_skill(tmp_path, choice):
         assert witness.l1_status in {"DEFER", "ESCALATE_L2"}
         with pytest.raises(Stage27MoveHandoffRefusal):
             _handoff(f, lane, prepared, ticket, witness, refreshed)
-        assert f.owners["A"].intent.current_intent is None
-        assert not f.owners["A"].skills
+        assert f.owners[f.names[0]].intent.current_intent is None
+        assert not f.owners[f.names[0]].skills
         for sid in f.names:
             await f.bridge.logout(sid)
 
@@ -223,7 +223,7 @@ def test_stage27_refuses_stale_l1_after_actual_a_logout(tmp_path):
         await f.bridge.logout(f.names[0])
         with pytest.raises(Stage27MoveHandoffRefusal):
             _handoff(f, lane, prepared, ticket, witness, refreshed)
-        assert f.owners["A"].intent.current_intent is None
+        assert f.owners[f.names[0]].intent.current_intent is None
         await f.bridge.logout(f.names[1])
 
     try:
