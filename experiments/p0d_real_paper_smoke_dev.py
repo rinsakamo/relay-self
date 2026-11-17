@@ -80,6 +80,14 @@ def prepare_assets(
             or "io/github/rinsakamo/p0b/Recorder.class" not in plugin.namelist()
         ):
             raise RealPaperSmokeRefusal("Paper tick witness plugin not compiled")
+        # A legacy P0BRecorder can print P0B_PLAYER/P0D_TICK_READY yet
+        # have no independent P0D_RESIDENT records. Stage24f reached the
+        # model/physical Action before this mismatch was discovered. Check
+        # the actual Jar bytes, not just the newer source-tree class.
+        if "io/github/rinsakamo/p0b/ResidentPresenceWitness.class" not in plugin.namelist():
+            raise RealPaperSmokeRefusal(
+                "Paper resident presence witness plugin not compiled"
+            )
     with zipfile.ZipFile(result[0]) as jar:
         if "META-INF/MANIFEST.MF" not in jar.namelist():
             raise RealPaperSmokeRefusal("Paper server jar lacks manifest")
