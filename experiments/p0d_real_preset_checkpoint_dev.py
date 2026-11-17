@@ -92,6 +92,9 @@ from relay_self.skill_invocation import (
     SkillCostEstimate,
     SkillParameterPreset,
 )
+from relay_self.stage26_private_model_auth_dev import (
+    require_stage26_private_auth_guards,
+)
 from relay_self.world_resident_lifecycle_dev import (
     WorldInstallationEvidence,
     WorldLifetime,
@@ -590,6 +593,10 @@ async def run_real_two_self_preset_checkpoint(
             timeout_s=2.0,
         )
         slot_witness.require_idle()
+        # Reuse the *same* original server guard as the independent
+        # PID/GGUF preflight: reject anonymous and wrong-key requests
+        # before Paper bootstrap, with no accepted model inference.
+        require_stage26_private_auth_guards(provider.endpoint)
     elif gemma_l1_jev:
         raise RealPresetCheckpointRefusal(
             "JEV/choice mode requires explicit real bounded L1 opt-in"
