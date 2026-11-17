@@ -8,6 +8,7 @@ capability; equip/consume are NOT two separately dispatched IR Actions.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, replace
 from enum import Enum
 
@@ -466,6 +467,7 @@ class FiniteSkillInterpreter:
         capability: PhysicalCapability, readback: PhysicalReadback,
         intent_owner: IntentCommitment, skill_execution: SkillExecution,
         supervisor: ActionSupervisor, at_ns: int, provenance: Provenance,
+        place_motion: object | None = None,
     ) -> SkillStepReceipt:
         ir = self._require_cursor(
             cursor, at_ns=at_ns, intent_owner=intent_owner,
@@ -475,14 +477,59 @@ class FiniteSkillInterpreter:
                 or ir.steps[cursor.index].kind is not StepKind.ACTION
                 or cursor.action_count >= 4):
             raise SkillIRRefusal("no executable ACTION step or pending prior Action")
-        # The existing native issuers have not yet gained source-qualified
-        # constraint/budget enforcement or composite-call WAL ownership.
-        # A typed invocation is representable and may enter L0 CHECK_TARGET,
-        # but cannot be silently promoted into a legacy physical proposal.
+        # Stage27c: a scoped, SOURCE-SHAPED PLACE MOVE may be PROPOSED,
+        # but remains absolutely nonissuing; the original physical issuer and
+        # canonical WAL still reject this DESTINATION binding until an exact
+        # parameterized LOOK/start/STOP reservation is implemented.
         if ir.invocation is not None:
-            raise SkillIRRefusal(
-                "parameterized physical issuer not admitted; no Action proposal"
-            )
+            if place_motion is None:
+                raise SkillIRRefusal(
+                    "parameterized physical issuer not admitted; no Action proposal"
+                )
+            from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
+            from relay_self.target_contract import TargetKind
+
+            inv = ir.invocation
+            contract = inv.target.contract
+            if (
+                not isinstance(place_motion, Stage27PlaceMotionPlan)
+                or ir.skill_id != "MOVE" or ir.version != 1
+                or ir.goal_id != "EXPLORE_WORLD"
+                or ir.target_kind != "DESTINATION"
+                or contract is None or contract.kind is not TargetKind.PLACE
+                or place_motion.self_id != cursor.scope.self_id
+                or place_motion.native_session_id != cursor.scope.world_session_id
+                or place_motion.intent_id != cursor.intent_id
+                or place_motion.skill_execution_id != cursor.execution_id
+                or place_motion.invocation_ref != inv.invocation_ref
+                or place_motion.parameter_preset_ref != inv.parameter_preset_ref
+                or place_motion.target_contract_ref != contract.contract_ref
+                or place_motion.target_ref != inv.target.ref
+                or place_motion.native_probe_seq != binding.native_seq
+                or place_motion.native_probe_request_id != binding.native_request_id
+                or place_motion.observation_status != "OUTSIDE"
+                or place_motion.next_step
+                != "NATIVE_LOOK_AND_BOUNDED_MOVE_RESOLUTION_REQUIRED_NOT_ISSUABLE"
+                or place_motion.desired_mineflayer_yaw_rad is None
+                or not math.isfinite(place_motion.desired_mineflayer_yaw_rad)
+                or not 0 < place_motion.gap_to_arrival_envelope_m <= 1000
+                or place_motion.preset_max_distance_m != inv.budget.max_distance_m
+                or place_motion.clearance_observed
+                or place_motion.facing_aligned_observed
+                or place_motion.action_granted
+                or place_motion.native_effect_issued
+                or place_motion.world_goal_succeeded
+                or cursor.action_count >= inv.budget.max_actions
+                or inv.budget.max_duration_ms < 1
+                or binding.native_source.source != "mineflayer"
+                or binding.native_source.reference
+                != f"{cursor.scope.world_session_id}:{binding.native_seq}"
+            ):
+                raise SkillIRRefusal(
+                    "original finite MOVE/PLACE source not qualified for L0 proposal"
+                )
+        elif place_motion is not None:
+            raise SkillIRRefusal("nonparameterized Skill cannot borrow PLACE plan")
         step = ir.steps[cursor.index]
         if (not isinstance(binding, PhysicalActionBinding)
                 or binding.scope != cursor.scope
