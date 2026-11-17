@@ -23,9 +23,9 @@ from relay_self.p0d_stage26_gemma_l1_dev import (
 from relay_self.resident_llama_inference_lane_dev import ResidentGpuLaneError
 from test_p0d_real_preset_checkpoint_dev import native_probe, source_recovered
 from test_p0d_resident_llama_slot_owner_dev import (
-    ResidentFixture,
     _SyntheticLlamaServer,
     _attach,
+    ResidentFixture,
 )
 
 
