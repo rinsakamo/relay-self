@@ -482,6 +482,10 @@ class FiniteSkillInterpreter:
         # canonical WAL still reject this DESTINATION binding until an exact
         # parameterized LOOK/start/STOP reservation is implemented.
         if ir.invocation is not None:
+            if place_motion is None:
+                raise SkillIRRefusal(
+                    "parameterized physical issuer not admitted; no Action proposal"
+                )
             from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
             from relay_self.target_contract import TargetKind
 
