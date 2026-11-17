@@ -94,6 +94,11 @@ class RealGemmaChoiceWitness:
     inference_request_id: str
     backend_slot_idle_after_call: bool
     provider_call_facts: dict[str, object]
+    original_http_request_path: str
+    original_http_request_sha256: str
+    original_http_response_path: str
+    original_http_response_sha256: str
+    original_http_response_bytes: int
     selection_is_action_permission: bool = False
     issued_native_effect: bool = False
     old_intent_resumed: bool = False
@@ -260,6 +265,16 @@ async def finish_restored_preset_l1(
     answer = await lane.await_result(ticket, timeout_s=result_timeout_s)
     if not isinstance(answer, ProviderDecision):
         raise Stage26L1Refusal("real bounded provider returned non-choice")
+    # The original HTTP response MUST have been fsynced BEFORE backend result.
+    # Missing source, missing usage or nonterminal finish always HOLD.
+    facts = answer.call_facts
+    if (
+        facts.prompt_tokens is None or facts.completion_tokens is None
+        or facts.total_tokens is None or facts.finish_reason != "stop"
+        or facts.total_tokens != facts.prompt_tokens + facts.completion_tokens
+    ):
+        raise Stage26L1Refusal("unauditable token usage or finish reason")
+    raw = lane.provider.stage26_raw_receipt(ticket.request_id)
     # Crucial ordering: MODEL ANSWER must precede a request for fresh WorldBody.
     refreshed = await fresh_probe()
     first = prepared.first_probe
@@ -345,5 +360,10 @@ async def finish_restored_preset_l1(
         inference_request_id=ticket.request_id,
         backend_slot_idle_after_call=True,
         provider_call_facts=asdict(answer.call_facts),
+        original_http_request_path=raw.request_path,
+        original_http_request_sha256=raw.request_sha256,
+        original_http_response_path=raw.response_path,
+        original_http_response_sha256=raw.response_sha256,
+        original_http_response_bytes=raw.response_bytes,
     )
     return witness, refreshed
