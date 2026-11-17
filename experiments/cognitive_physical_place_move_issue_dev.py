@@ -141,7 +141,8 @@ async def issue_selected_place_move_dev(
         or l0.cursor.pending_action_id != l0.action_id
         or l0.cursor.action_count != 1
         or l0.cursor.blocked
-        or at_ns >= l0.cursor.deadline_ns
+        or type(at_ns) is not int
+        or at_ns + 2 >= l0.cursor.deadline_ns
         or pulse_seconds * 1000 > invocation.budget.max_duration_ms
         or invocation.budget.max_actions < 1
         or current_probe.snapshot.time is None
