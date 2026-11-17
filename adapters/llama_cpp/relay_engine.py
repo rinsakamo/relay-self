@@ -20,6 +20,10 @@ from relay_self.relay_engine import (
     ProviderDecision,
     ProviderExpression,
 )
+from relay_self.stage26_private_model_auth_dev import (
+    load_stage26_private_api_key,
+    stage26_bearer_headers,
+)
 
 BOUNDED_MAX_TOKENS = 48
 THINK_MAX_TOKENS = 256
@@ -612,6 +616,7 @@ class LlamaCppRelayProvider:
         model: str,
         timeout: float = 60.0,
         systemone_endpoint: str | None = None,
+        api_key_file: Path | None = None,
     ) -> None:
         self._endpoint = _validate_endpoint(endpoint)
         self._systemone_endpoint = (
@@ -628,7 +633,22 @@ class LlamaCppRelayProvider:
             raise ValueError("timeout must be a positive number")
         self._model = model
         self._timeout = float(timeout)
+        self._stage26_api_key = (
+            load_stage26_private_api_key(api_key_file)
+            if api_key_file is not None else None
+        )
         self._stage26_audit_dir: Path | None = None
+
+    @property
+    def stage26_private_auth_enabled(self) -> bool:
+        return self._stage26_api_key is not None
+
+    def request_auth_headers(self) -> dict[str, str]:
+        """Bearer token stays in RAM and HTTP headers, never call evidence."""
+        return (
+            stage26_bearer_headers(self._stage26_api_key)
+            if self._stage26_api_key is not None else {}
+        )
 
     def enable_stage26_raw_audit(self, directory: Path) -> None:
         """One-time opt-in; evidence dir must exist and be empty."""
@@ -805,6 +825,7 @@ class LlamaCppRelayProvider:
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                **self.request_auth_headers(),
             },
             method="POST",
         )
