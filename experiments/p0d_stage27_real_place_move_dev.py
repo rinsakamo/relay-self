@@ -269,8 +269,17 @@ async def stage27_real_a_motor_hook(
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
     lane.require_world_idle()
+    status_label = {
+        "NATIVE_PLACE_MOVE_SETTLED": "REAL_STAGE27_A_PLACE_MOVE_NATIVE_OBSERVED_DEV",
+        "NATIVE_PLACE_MOVE_NO_PROGRESS":
+            "REAL_STAGE27_A_PLACE_NO_PROGRESS_NATIVE_OBSERVED_DEV",
+        "NATIVE_PLACE_MOVE_OVERSHOOT":
+            "REAL_STAGE27_A_PLACE_MOVE_OVERSHOOT_DEV",
+    }.get(receipt.journal_status)
+    if status_label is None:
+        raise Stage27RealWorldRefusal("unknown original PLACE MOVE outcome")
     return {
-        "classification": "REAL_STAGE27_A_PLACE_MOVE_NATIVE_OBSERVED_DEV",
+        "classification": status_label,
         "physical_effect_observed": True,
         "original_world_uuid": world_uuid,
         "paper_ownership_session": paper.owned_session_id,
