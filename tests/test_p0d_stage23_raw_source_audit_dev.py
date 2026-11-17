@@ -31,7 +31,11 @@ from relay_self.resident_move_raw_audit_dev import (
     readback_owned_move_native_source,
 )
 from test_mineflayer_process_session import FakeProcess, observation_line, started_line
-from test_p0d_resident_move_issuer_dev import ScriptedNative, _selected
+from test_p0d_resident_move_issuer_dev import (
+    NativeNoNetMovement,
+    ScriptedNative,
+    _selected,
+)
 
 
 def _raw_row(item):
@@ -42,13 +46,13 @@ def _raw_row(item):
     raise AssertionError("only original native effect/probe rows")
 
 
-def _build_raw_original_stream(tmp_path):
+def _build_raw_original_stream(tmp_path, *, no_net=False):
     """Use original issuer/WAL; encode a LOCAL fixture, NOT native source proof."""
     args = _selected(tmp_path)
     gate = PhysicalIssueAdmission(
         {"A": "native-A"}, resident_mode=True, allow_resident_move=True,
     )
-    native = ScriptedNative("native-A")
+    native = NativeNoNetMovement("native-A") if no_net else ScriptedNative("native-A")
     native.gate = lambda sid, effect, action_id: gate.require_native_effect(
         self_id="A", native_session_id=sid, effect=effect, action_id=action_id,
     )
@@ -131,6 +135,7 @@ def _sidecar(original_file: Path, digest: str) -> str:
         "original_native_session": "native-B",
         "original_action_id": "original-move",
         "canonical_wal_digest": digest,
+        "original_wal_terminal_status": "NATIVE_MOVE_SETTLED",
         "source_sha256": source_sha,
         "all_stop_probes": [{}, {}, {}],
         "native_start_ack": {"action_id": "original-move-start"},
@@ -147,6 +152,7 @@ def test_real_report_true_is_derived_from_original_terminal_plus_raw_and_paper(t
     checked.write_text(_sidecar(raw, "a" * 64))
     info = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
+        "original_wal_terminal_status": "NATIVE_MOVE_SETTLED",
         "original_action_id": "original-move",
         "original_canonical_wal_sha256": "a" * 64,
         "b_native_session": "native-B",
@@ -198,6 +204,7 @@ def test_report_never_claims_real_b_move_on_unverified_or_conflicting_source(
     audit.write_text(_sidecar(raw, "d" * 64))
     move = {
         "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
+        "original_wal_terminal_status": "NATIVE_MOVE_SETTLED",
         "original_action_id": "original-move",
         "original_canonical_wal_sha256": "d" * 64,
         "b_native_session": "native-B",
