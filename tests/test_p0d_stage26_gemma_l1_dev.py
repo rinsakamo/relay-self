@@ -29,6 +29,14 @@ from test_p0d_resident_llama_slot_owner_dev import (
 )
 
 
+def _attach_and_audit(f, endpoint, tmp_path):
+    lane = _attach(f, endpoint)
+    folder = tmp_path / "source-http"
+    folder.mkdir(mode=0o700)
+    lane.provider.enable_stage26_raw_audit(folder)
+    return lane
+
+
 def _online_two_actor(f, lane):
     async def join():
         preserved = {}
@@ -55,7 +63,7 @@ def test_actual_bounded_http_response_is_rechecked_after_second_native_probe(
     http.choice_id = choice_id
     endpoint = http.start()
     f = ResidentFixture(tmp_path, 2, cognitive_work=True)
-    lane = _attach(f, endpoint)
+    lane = _attach_and_audit(f, endpoint, tmp_path)
 
     async def scenario():
         restored = await _online_two_actor(f, lane)
@@ -103,6 +111,10 @@ def test_actual_bounded_http_response_is_rechecked_after_second_native_probe(
             assert not result.issued_native_effect
             assert not result.old_gpu_result_reused
             assert result.inference_request_id == tickets[sid].request_id
+            assert result.original_http_response_bytes > 0
+            assert result.original_http_response_sha256
+            assert result.original_http_request_sha256
+            assert result.provider_call_facts["finish_reason"] == "stop"
         for sid in f.names:
             await f.bridge.logout(sid)
         assert all(lane.retired_clean(sid) for sid in f.names)
@@ -122,7 +134,7 @@ def test_old_model_answer_rejected_after_self_logout_and_new_native_login(tmp_pa
     http.choice_id = "1"
     endpoint = http.start()
     f = ResidentFixture(tmp_path, 2, cognitive_work=True)
-    lane = _attach(f, endpoint)
+    lane = _attach_and_audit(f, endpoint, tmp_path)
 
     async def scenario():
         original = await _online_two_actor(f, lane)
@@ -166,7 +178,7 @@ def test_source_and_owner_mismatch_refuses_before_model_submission(
     http = _SyntheticLlamaServer()
     endpoint = http.start()
     f = ResidentFixture(tmp_path, 2, cognitive_work=True)
-    lane = _attach(f, endpoint)
+    lane = _attach_and_audit(f, endpoint, tmp_path)
 
     async def scenario():
         restored = await _online_two_actor(f, lane)
