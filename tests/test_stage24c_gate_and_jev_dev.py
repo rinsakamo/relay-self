@@ -14,13 +14,12 @@ from adapters.llama_cpp.relay_engine import (
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerEntityFact,
-    MineflayerNearbyEntitiesCoverage,
     MineflayerPosition,
 )
 from experiments import stage24c_systemone_pair_dev as calibration
 from relay_self.intent import IntentCommitment
-from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.relay_engine import DecisionStatus
+from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 
 
 def _fixture(oxygen=300):
