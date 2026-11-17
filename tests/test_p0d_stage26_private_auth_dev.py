@@ -196,3 +196,31 @@ def test_real_stage26_without_private_key_holds_before_world(tmp_path):
             gemma_l1_model="stage26-gemma",
         ))
     assert not list(tmp_path.glob("p0d-real-preset-cut-*"))
+
+
+def test_real_stage26_with_private_file_still_refuses_unprotected_model_before_paper(
+    tmp_path,
+):
+    import asyncio
+
+    key = private_key(tmp_path)
+    with patch("urllib.request.urlopen", return_value=FakeSlotResponse([
+        {"id": 0, "is_processing": False},
+    ])) as requests:
+        with pytest.raises(
+            Stage26PrivateAuthError, match="unauthenticated/wrong-key"
+        ):
+            asyncio.run(run_real_two_self_preset_checkpoint(
+                paper_jar=tmp_path / "absent-paper.jar",
+                paper_sha256="0" * 64,
+                plugin_jar=tmp_path / "absent-plugin.jar",
+                plugin_sha256="0" * 64,
+                scratch_parent=tmp_path,
+                accepted_eula=True, real_world_dev_grant=True,
+                real_gemma_l1=True,
+                gemma_l1_endpoint="http://127.0.0.1:8080/v1/chat/completions",
+                gemma_l1_model="stage26-gemma",
+                gemma_l1_api_key_file=key,
+            ))
+    assert requests.call_count == 2  # authorized slot + rejected anonymous test
+    assert not list(tmp_path.glob("p0d-real-preset-cut-*"))
