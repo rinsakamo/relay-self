@@ -38,7 +38,6 @@ from relay_self.relay_engine import (
     RelayEngine,
 )
 from relay_self.resident_llama_inference_lane_dev import (
-    ResidentGpuLaneError,
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
 )
