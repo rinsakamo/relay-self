@@ -1,6 +1,8 @@
 """Stage24e: Need/Goal always selectable; WorldBody outcomes remain authoritative."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from relay_self.cognitive_minimal_dev import (
@@ -42,6 +44,11 @@ def test_low_oxygen_emits_unresolved_homeostatic_goal_not_a_move_veto(
     assert any(g.goal_id == "HUNGER_RELIEF" for g in turn.round.frame.goals)
     assert any(g.goal_id == "DEFEND_SELF" for g in turn.round.frame.goals)
     assert not owner.events
+    context = json.loads(turn.round.request.context[0].value_json)
+    oxygen_presented = next(g for g in context["goals"]
+                            if g["id"] == "RESTORE_OXYGEN")
+    assert oxygen_presented["skill"] is None
+    assert oxygen_presented["unresolved"] is True
 
 
 @pytest.mark.parametrize("oxygen", [None, 10.01, 20, 300])
