@@ -560,7 +560,10 @@ async def _real_preset_trial(
         "old_action_or_skill_replayed": False,
         "old_gpu_output_reused": False,
         "owner_acceptance": "OPERATOR_DEV_TEMPLATE_NOT_AUTONOMOUS_SELF",
-        "physical_action_issue_authorized": False,
+        "physical_action_issue_authorized": (
+            bool(stage27_result["physical_effect_observed"])
+            if stage27_result is not None else False
+        ),
     }
 
 
@@ -794,6 +797,8 @@ async def run_real_two_self_preset_checkpoint(
     if _stage27_motor_hook is not None:
         expected_classifications = {
             "REAL_STAGE27_A_PLACE_MOVE_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27_A_PLACE_NO_PROGRESS_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27_A_PLACE_MOVE_OVERSHOOT_DEV",
             "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
         }
     else:
