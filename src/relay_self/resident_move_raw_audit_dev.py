@@ -161,7 +161,7 @@ def readback_owned_move_native_source(
         not 8 <= _tick(first) - _tick(initial) <= 200
         or not 8 <= _tick(settled) - _tick(first) <= 200
         or _dist(first, settled) > 0.06
-        or not 0.1 <= _dist(current_probe, settled) <= 8.0
+        or not 0 <= _dist(current_probe, settled) <= 8.0
         or abs(_dist(current_probe, settled) - receipt.displacement_m) > 1e-6
     ):
         raise ResidentMoveRawAuditError("raw STOP 8+8 ticks/drift/displacement failed")
@@ -171,8 +171,13 @@ def readback_owned_move_native_source(
     if not records or persisted.unresolved or persisted.digest != receipt.journal_sha256:
         raise ResidentMoveRawAuditError("original canonical WAL not settled/matched")
     row = records[-1]
+    expected_status = (
+        "NATIVE_MOVE_SETTLED"
+        if receipt.displacement_m >= 0.1
+        else "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+    )
     if (
-        row["status"] != "NATIVE_MOVE_SETTLED"
+        row["status"] != expected_status
         or row["capability"] != "MOVE"
         or row["action_id"] != action_id
         or row["session_id"] != current_probe.session_id
@@ -235,6 +240,12 @@ def readback_owned_move_native_source(
         "first_stable_seq": first.seq,
         "settled_seq": settled.seq,
         "native_net_displacement_m": receipt.displacement_m,
+        "original_wal_terminal_status": expected_status,
+        "net_displacement_evidence": (
+            "NET_MOVE_0_1M_OR_MORE"
+            if expected_status == "NATIVE_MOVE_SETTLED"
+            else "NO_NET_DISPLACEMENT_UNDER_0_1M"
+        ),
         "paper_action_id_causal_ticket": False,
         "autonomous_l1_skill_selection": False,
     }
