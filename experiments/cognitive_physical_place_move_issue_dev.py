@@ -232,7 +232,7 @@ async def issue_selected_place_move_dev(
             stop_seq=stop.seq, timeout_s=evidence_timeout_s,
         )
         closed: list[str] = []
-        terminal = finish_physical_issue_dev(
+        finish_physical_issue_dev(
             action_id=parent, after=settled,
             supervisor=owner.supervisor, journal=journal, at_ns=at_ns,
             close=lambda t: closed.append(journal.close_place_move(
