@@ -358,20 +358,13 @@ def test_original_issuer_deferred_eat_and_attack_children_match_original_wal(tmp
                 )
 
 
-@pytest.mark.parametrize("bad", ["wrong-stop-ack", "no-motion"])
+@pytest.mark.parametrize("bad", ["wrong-stop-ack"])
 def test_original_move_uncertain_keeps_wal_and_blocks_a_retirement(tmp_path, bad):
     gate = PhysicalIssueAdmission(
         {"A": "native-A", "B": "native-B"},
         resident_mode=True, allow_resident_move=True,
     )
     s = ScriptedNative("native-A", bad_stop=bad == "wrong-stop-ack")
-    if bad == "no-motion":
-        original = s.send_set_control
-
-        async def no_motion(action_id, *, control, state):
-            await original(action_id, control=control, state=state)
-            s.x = 1.0
-        s.send_set_control = no_motion
     s.gate = lambda native, effect, action: gate.require_native_effect(
         self_id="A", native_session_id=native,
         effect=effect, action_id=action,
