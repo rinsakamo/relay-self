@@ -271,14 +271,22 @@ async def _issue_original_selected_b_move_core(
     if (
         checked.unresolved
         or not checked.records
-        or checked.records[-1]["status"] != "NATIVE_MOVE_SETTLED"
+        or checked.records[-1]["status"] not in (
+            "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+        )
         or checked.records[-1]["action_id"] != action_id
         or checked.digest != receipt.journal_sha256
         or owner.supervisor.open_actions
     ):
         raise RealResidentPresenceRefusal("B original native MOVE/WAL terminal not verified")
+    terminal_status = checked.records[-1]["status"]
     result = {
-        "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
+        "classification": (
+            "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+            if terminal_status == "NATIVE_MOVE_SETTLED"
+            else "DEV_ORIGINAL_B_NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        ),
+        "original_wal_terminal_status": terminal_status,
         "original_action_id": action_id,
         "original_intent_id": intent_id,
         "original_skill_execution_id": selected.execution_id,
@@ -460,10 +468,22 @@ async def _owned_resident_trial(
     )
     # A settled original B native MOVE and Paper movement can corroborate
     # motion, but no Action-ID Paper ticket means NO causal attribution.
-    if b_move is not None and result.status is not ResidentPaperVerdict.MOVEMENT_CORRELATED:
-        raise RealResidentPresenceRefusal(
-            "B original native MOVE terminal but independent Paper movement absent"
+    if b_move is not None:
+        # Paper MOVEMENT_CORRELATED implies net motion. For a source-attested
+        # no-net terminal, Paper must independently prove continued presence,
+        # not be mislabeled as a successful MOVE. Do not infer a physical cause.
+        wal_kind = b_move.get("original_wal_terminal_status")
+        expected_paper = (
+            ResidentPaperVerdict.MOVEMENT_CORRELATED
+            if wal_kind == "NATIVE_MOVE_SETTLED"
+            else ResidentPaperVerdict.PRESENCE_CORRELATED
+            if wal_kind == "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+            else None
         )
+        if result.status is not expected_paper:
+            raise RealResidentPresenceRefusal(
+                "native MOVE outcome disagrees with independent Paper source"
+            )
     result_data: dict[str, object] = {
         "classification": "REAL_PAPER_RESIDENT_PRESENCE_DEV",
         "paper_player_continuity": result.status.value,
@@ -567,16 +587,30 @@ def _adopt_verified_trial_report(
     ):
         raise RealResidentPresenceRefusal("requested World-only generation not verified")
     if moved:
+        if type(detail) is not dict:
+            raise RealResidentPresenceRefusal("original B MOVE details missing")
+        wal_kind = detail.get("original_wal_terminal_status")
+        if wal_kind not in (
+            "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+        ):
+            raise RealResidentPresenceRefusal("unknown original terminal MOVE result")
+        no_net = wal_kind == "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        expected_detail_kind = (
+            "DEV_ORIGINAL_B_NATIVE_MOVE_NO_NET_DISPLACEMENT"
+            if no_net else "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+        )
+        expected_paper = (
+            ResidentPaperVerdict.PRESENCE_CORRELATED.value
+            if no_net else ResidentPaperVerdict.MOVEMENT_CORRELATED.value
+        )
         if (
-            type(detail) is not dict
-            or detail.get("classification") != "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+            detail.get("classification") != expected_detail_kind
             or not detail.get("original_action_id")
             or not detail.get("original_canonical_wal_sha256")
             or detail.get("autonomous_l1_skill_selection") is not b_autonomous_l1_dev
             or detail.get("paper_action_causation") is not False
             or trial.get("b_move_action_causality") is not False
-            or trial.get("paper_player_continuity")
-            != ResidentPaperVerdict.MOVEMENT_CORRELATED.value
+            or trial.get("paper_player_continuity") != expected_paper
         ):
             raise RealResidentPresenceRefusal("original B MOVE and Paper source not correlated")
         raw = detail.get("independent_native_source")
@@ -606,6 +640,7 @@ def _adopt_verified_trial_report(
             or sidecar.get("original_action_id") != detail["original_action_id"]
             or sidecar.get("canonical_wal_digest")
             != detail["original_canonical_wal_sha256"]
+            or sidecar.get("original_wal_terminal_status") != wal_kind
             or sidecar.get("source_sha256") != raw["raw_sha256"]
             or sidecar.get("original_self_id") != "B"
             or sidecar.get("original_native_session") != detail.get("b_native_session")
@@ -682,7 +717,15 @@ def _adopt_verified_trial_report(
     # Only reach success classifications after all nested source evidence
     # is checked. On any exception the outer report remains HOLD/UNKNOWN.
     classification = (
-        "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV"
+        "REAL_PAPER_B_L1_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV"
+        if moved and world_only and b_autonomous_l1_dev and no_net
+        else "REAL_PAPER_B_L1_SELECTED_NO_NET_DISPLACEMENT_DEV"
+        if moved and b_autonomous_l1_dev and no_net
+        else "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV"
+        if moved and world_only and no_net
+        else "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_DEV"
+        if moved and no_net
+        else "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV"
         if moved and world_only and b_autonomous_l1_dev
         else "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_DEV"
         if moved and b_autonomous_l1_dev
@@ -696,6 +739,9 @@ def _adopt_verified_trial_report(
     report["real_b_physical_action"] = moved
     report["real_b_physical_wal_outcome"] = terminal
     report["native_move_raw_source_attested"] = moved
+    report["native_move_no_net_displacement"] = bool(moved and no_net)
+    report["paper_movement_correlation_attested"] = bool(moved and not no_net)
+
     report["real_gpu"] = b_autonomous_l1_dev and moved
     report["autonomous_l1_skill_selection"] = b_autonomous_l1_dev and moved
     report["classification"] = classification
@@ -934,6 +980,10 @@ async def run_real_resident_presence(
         "REAL_PAPER_B_MOVE_CORRELATED_WORLD_ONLY_DEV",
         "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_DEV",
         "REAL_PAPER_B_L1_SELECTED_MOVE_CORRELATED_WORLD_ONLY_DEV",
+        "REAL_PAPER_B_L1_SELECTED_NO_NET_DISPLACEMENT_DEV",
+        "REAL_PAPER_B_L1_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
+        "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_DEV",
+        "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path

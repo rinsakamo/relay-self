@@ -244,6 +244,75 @@ def test_changed_body_after_model_choice_reaches_original_issuer(monkeypatch, tm
     assert not PhysicalActionJournal.restore(wal, self_id="B").records
 
 
+def test_l1_selected_move_can_have_terminal_no_net_outcome_without_fake_success(
+    monkeypatch, tmp_path,
+):
+    owner, gate, native, lane, read_probe, requests, wal = _run(
+        tmp_path, monkeypatch, answer="1",
+    )
+    native.gate = lambda session, effect, action: gate.require_native_effect(
+        self_id="B", native_session_id=session, effect=effect,
+        action_id=action,
+    )
+    # Fixture's last original model-binding probe is native seq=12.
+    # The original scripted emitter normally begins at 2, so synchronize
+    # the synthetic stream without altering production source validation.
+    native.seq = 12
+    original_send = native.send_set_control
+
+    async def real_command_but_no_net_motion(action_id, *, control, state):
+        await original_send(action_id, control=control, state=state)
+        native.x -= 0.8
+
+    monkeypatch.setattr(native, "send_set_control", real_command_but_no_net_motion)
+
+    def independently_read_back_stub(*, receipt, **kwargs):
+        # Only exercises Stage24b's already-verified control-flow branch.
+        # Actual raw/WAL independent verification is tested separately by
+        # test_p0d_stage23_raw_source_audit_dev.py.
+        return {
+            "classification": "OWNED_NATIVE_MOVE_RAW_SOURCE_READBACK_DEV",
+            "original_wal_terminal_status": (
+                "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+            ),
+            "all_stop_probes": [
+                {"seq": x.seq} for x in receipt.all_stop_probes
+            ],
+            "native_start_ack": {"seq": receipt.start_ack.seq},
+            "native_stop_ack": {"seq": receipt.stop_ack.seq},
+        }
+
+    monkeypatch.setattr(
+        "experiments.stage24b_real_l1_move_dev.readback_owned_move_native_source",
+        independently_read_back_stub,
+    )
+    result = asyncio.run(run_stage24b_selected_b_move(
+        session=native, owner=owner, physical=gate, lane=lane,
+        evidence_dir=tmp_path, read_probe=read_probe,
+        real_world_granted=True, real_llm_granted=True,
+    ))
+    assert result["classification"] == (
+        "DEV_ORIGINAL_B_NATIVE_MOVE_NO_NET_DISPLACEMENT"
+    )
+    assert result["original_wal_terminal_status"] == (
+        "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+    )
+    assert result["native_net_displacement_m"] == 0.0
+    assert result["autonomous_l1_skill_selection"] is True
+    assert result["skill_success_attested"] is False
+    assert result["paper_action_causation"] is False
+    readback = PhysicalActionJournal.restore(wal, self_id="B")
+    assert not readback.unresolved
+    assert readback.records[-1]["status"] == (
+        "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+    )
+    assert len(requests) == 1
+    choice = json.loads((tmp_path / "B-original-systemone-choice.json").read_text())
+    assert choice["actual_model_choice_id"] == "1"
+    assert choice["selected_skill_id"] == "MOVE"
+    assert choice["physical_action_authorized_by_model"] is False
+
+
 def test_grant_missing_refuses_without_model_or_probe(monkeypatch, tmp_path):
     owner, gate, native, lane, read_probe, requests, wal = _run(tmp_path, monkeypatch)
     with pytest.raises(Stage24bMoveRefusal):

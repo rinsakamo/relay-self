@@ -401,15 +401,23 @@ async def run_stage24b_selected_b_move(
         )
         if (
             checked.unresolved or not checked.records
-            or checked.records[-1]["status"] != "NATIVE_MOVE_SETTLED"
+            or checked.records[-1]["status"] not in (
+                "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+            )
             or checked.records[-1]["action_id"] != action_id
             or checked.digest != receipt.journal_sha256
             or owner.supervisor.open_actions
         ):
             raise Stage24bMoveRefusal("original WAL/native terminal not qualified")
         issued_probe = current
+        measured_status = checked.records[-1]["status"]
         issued_result = {
-            "classification": "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED",
+            "classification": (
+                "DEV_ORIGINAL_B_NATIVE_MOVE_SETTLED"
+                if measured_status == "NATIVE_MOVE_SETTLED"
+                else "DEV_ORIGINAL_B_NATIVE_MOVE_NO_NET_DISPLACEMENT"
+            ),
+            "original_wal_terminal_status": measured_status,
             "original_action_id": action_id,
             "original_intent_id": intent_id,
             "original_skill_execution_id": skill.execution_id,
@@ -458,6 +466,8 @@ async def run_stage24b_selected_b_move(
     )
     if json.loads(sidecar_path.read_text()) != independent:
         raise Stage24bMoveRefusal("original native raw readback sidecar mismatched")
+    if independent["original_wal_terminal_status"] != issued_result["original_wal_terminal_status"]:
+        raise Stage24bMoveRefusal("raw native and original WAL outcomes differ")
     issued_result["independent_native_source"] = {
         "raw_file": str(raw), "raw_sha256": file_sha256(raw),
         "readback_file": str(sidecar_path),
