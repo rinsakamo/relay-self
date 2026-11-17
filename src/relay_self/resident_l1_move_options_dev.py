@@ -33,8 +33,8 @@ from relay_self.physical_action_port import (
     propose_bound_physical_action,
 )
 from relay_self.provenance import Provenance
-from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.relay_engine import BoundedChoice, RelayEngineResult
+from relay_self.resident_exploration_gate_audit_dev import audit_exploration_gate
 from relay_self.skill import SkillExecution
 
 RELATIVE_CONTROLS = ("forward", "back", "left", "right")
