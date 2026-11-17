@@ -203,3 +203,59 @@ def test_original_peer_snapshot_is_nonmutating(tmp_path):
         assert before["open_action_count"] == 0
     finally:
         f.stop_paper()
+
+
+@pytest.mark.parametrize(("number", "status"), [
+    ("2", "ESCALATE_L2"), ("3", "DEFER"), (None, "RECONSIDER"),
+])
+def test_stage27_real_a_nonready_choice_never_grants_motor(tmp_path, number, status):
+    """A real runner cannot force MOVE when A's source-selected number differs."""
+    f = ResidentFixture(tmp_path, 2, cognitive_work=True)
+    a, b = f.names
+
+    async def scenario():
+        keys = {"A": object(), "B": object()}
+        witness = {
+            "A": SimpleNamespace(selected_number=number, l1_status=status),
+            "B": SimpleNamespace(selected_number="1", l1_status="READY"),
+        }
+        called = []
+        lane = SimpleNamespace(require_world_idle=lambda: called.append("idle"))
+        result = await stage27_real_a_motor_hook(
+            paper=f.paper,
+            bridge=SimpleNamespace(sessions={"A": object(), "B": object()}),
+            physical=f.physical,
+            lane=lane,
+            owners={"A": f.owners[a], "B": f.owners[b]},
+            world_epoch=0,
+            prepared=keys,
+            tickets=keys,
+            witnesses=witness,
+            refreshed=keys,
+            evidence=tmp_path,
+            world_uuid="synthetic-world",
+            native_audit=tmp_path / "never-read-native-source.jsonl",
+        )
+        assert result["classification"] == (
+            "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV"
+        )
+        assert result["self_a_selected_number"] == number
+        assert result["self_b_selected_number"] == "1"
+        assert not result["physical_effect_observed"]
+        assert not result["stage27_a_intent_started"]
+        assert result["stage27_native_action_count"] == 0
+        assert result["original_peer_b_before"] == result["original_peer_b_after"]
+        assert called == ["idle"]
+        assert not f.physical.active_action_ids
+        for sid in f.names:
+            journal = PhysicalActionJournal.restore(
+                f.owners[sid].files.physical_wal_file, self_id=sid,
+            )
+            journal.require_clear()
+            assert not journal.records
+            assert f.owners[sid].intent.current_intent is None
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
