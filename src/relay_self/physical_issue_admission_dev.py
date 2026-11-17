@@ -746,9 +746,24 @@ class PhysicalIssueAdmission:
         from experiments.cognitive_physical_place_move_issue_dev import (
             issue_selected_place_move_dev,
         )
+        from relay_self.p0d_stage27b_place_motion_dev import (
+            resolve_stage27_place_motion,
+        )
 
         proposal = kwargs["proposal"]
         parent = proposal.binding.action_id
+        # Re-resolve source geometry BEFORE acquiring the original motion
+        # lease. The read-only Stage27b resolver correctly rejects any
+        # active physical issue, including the lease this wrapper takes.
+        if kwargs.get("physical") is not self:
+            raise PhysicalIssueFenceError("original Self physical admission mismatch")
+        computed = resolve_stage27_place_motion(
+            kwargs["prepared"], kwargs["handoff"], kwargs["current_probe"],
+            owner=kwargs["owner"], physical=self,
+            world_epoch=kwargs["l0"].world_epoch,
+        )
+        if computed != kwargs["motion"]:
+            raise PhysicalIssueFenceError("original native PLACE motion changed")
         with self.lease(
             self_id=proposal.binding.scope.self_id,
             native_session_id=session.started.session_id,
