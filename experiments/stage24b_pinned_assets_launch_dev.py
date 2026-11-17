@@ -19,6 +19,7 @@ from experiments.p0d_real_paper_smoke_dev import (
     prepare_assets,
 )
 from experiments.p0d_real_resident_presence_dev import run_real_resident_presence
+from experiments.p0d_real_two_native_smoke_dev import _verify_local_runtime
 
 # P0BRecorder actual jar, independently hashed in the archived pre-World
 # Stage24b HOLD (PR #925 / Issue #911, HEAD c3b1347b). Narrow DEV pin only:
@@ -135,6 +136,18 @@ def main() -> int:
             "STAGE24B_ASSET_CHECK_OK "
             f"paper_sha256={checked.paper_sha256} "
             f"plugin_sha256={checked.plugin_sha256} "
+            "world_created=false gpu_used=false",
+            flush=True,
+        )
+        # Reuse the ORIGINAL World runner's exact worktree-local runtime gate,
+        # not external NODE_PATH resolution. This also runs in inspect-only
+        # so the next real attempt cannot fail with the old missing lock
+        # dependencies after an apparently successful preflight.
+        _verify_local_runtime(args.java, args.node)
+        print(
+            "STAGE24B_RUNTIME_CHECK_OK "
+            "java_major=21 node_major=22 "
+            "mineflayer=4.39.0 origin=worktree-local-locked-install "
             "world_created=false gpu_used=false",
             flush=True,
         )
