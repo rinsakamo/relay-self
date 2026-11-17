@@ -57,12 +57,12 @@ from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import (
     OwnedResidentPhysicalBridge,
 )
+from relay_self.p0d_real_preset_reselect_dev import reselect_restored_move_preset_live
 from relay_self.p0d_stage26_gemma_l1_dev import (
     finish_restored_preset_l1,
     prepare_restored_preset_l1,
     submit_restored_preset_l1,
 )
-from relay_self.p0d_real_preset_reselect_dev import reselect_restored_move_preset_live
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
