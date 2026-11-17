@@ -162,6 +162,9 @@ def test_one_original_a_place_parent_look_forward_stop_and_b_is_unchanged(
         assert script.start_received.is_set()
         assert script.stop_received.is_set()
         assert receipt.native_effect_issued
+        assert receipt.l0_step_status == "YIELD_EVALUATION"
+        assert not receipt.l0_goal_succeeded
+        assert f.owners[a].supervisor.get(l0.action_id).state.value == "outcome"
         assert not receipt.skill_success_attested
         assert not receipt.paper_causal_attribution
         assert len(script.sent_commands) == 3
