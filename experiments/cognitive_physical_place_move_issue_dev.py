@@ -29,10 +29,7 @@ from experiments.cognitive_physical_move_issue_dev import _native, _settled
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.p0d_stage26_gemma_l1_dev import PreparedStage26L1
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
-from relay_self.p0d_stage27b_place_motion_dev import (
-    Stage27PlaceMotionPlan,
-    resolve_stage27_place_motion,
-)
+from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
 from relay_self.p0d_stage27c_l0_place_proposal_dev import Stage27L0PlaceProposal
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalActionProposalReceipt
@@ -127,6 +124,7 @@ async def issue_selected_place_move_dev(
         or physical.current_native_sessions.get(owner.self_id)
         != session.started.session_id
         or physical.resident_states.get(owner.self_id) != "ONLINE"
+        or physical.active_action_ids != (proposal.binding.action_id,)
     ):
         raise Stage27PlaceMoveRefusal("original PLACE physical owner and bounded source invalid")
     opts = prepared.round.frame.options
@@ -154,10 +152,9 @@ async def issue_selected_place_move_dev(
     ):
         raise Stage27PlaceMoveRefusal("original Invocation/budget/lifecycle invalid")
     try:
-        computed = resolve_stage27_place_motion(
-            prepared, handoff, current_probe, owner=owner,
-            physical=physical, world_epoch=l0.world_epoch,
-        )
+        # The original admission wrapper already revalidated the exact
+        # native PLACE result immediately before acquiring this exclusive
+        # lease. The lease itself would make a second Stage27b call fail.
         l0.interpreter._require_cursor(
             l0.cursor, at_ns=at_ns,
             intent_owner=owner.intent,
@@ -167,8 +164,8 @@ async def issue_selected_place_move_dev(
         raise Stage27PlaceMoveRefusal(
             "original native PLACE motion and L0 cursor changed before issue"
         ) from exc
-    if computed != motion or motion.action_granted or motion.native_effect_issued:
-        raise Stage27PlaceMoveRefusal("original native PLACE motion plan changed")
+    if motion.action_granted or motion.native_effect_issued:
+        raise Stage27PlaceMoveRefusal("original native PLACE motion plan already consumed")
     check_dev_issuer_preflight(
         session, proposal, intent_owner=owner.intent,
         skill_execution=owner.skills[handoff.skill_execution_id],
