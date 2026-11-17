@@ -23,7 +23,6 @@ from experiments.p0d_real_preset_checkpoint_dev import (
     run_real_two_self_preset_checkpoint,
 )
 from experiments.p0d_real_resident_presence_dev import _bounded_b_probe
-from experiments.p0d_real_paper_smoke_dev import file_sha256
 from relay_self.p0d_stage27_owned_move_intent_dev import (
     begin_stage27_owned_move_intent,
 )
