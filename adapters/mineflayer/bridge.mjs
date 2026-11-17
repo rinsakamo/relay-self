@@ -32,7 +32,7 @@ try {
     throw new Error('explicit Mineflayer oxygen owner backport missing')
   }
 } catch (error) {
-  process.stderr.write('STAGE24D_OXYGEN_SOURCE_HOLD=' + String(error.message || error) + '\\n')
+  process.stderr.write('STAGE24D_OXYGEN_SOURCE_HOLD=' + String(error.message || error) + '\n')
   process.exit(2)
 }
 const mineflayer = require('mineflayer')
@@ -90,7 +90,7 @@ function emitObservation (kind, requestId = undefined) {
           native_session_id: sessionId,
           native_seq: seq,
           native_request_id: requestId ?? null
-        }) + '\\n')
+        }) + '\n')
       }
       if (process.env.RELAY_P0B_IDENTITY_WITNESS_PATH) {
         appendFileSync(process.env.RELAY_P0B_IDENTITY_WITNESS_PATH, JSON.stringify(
