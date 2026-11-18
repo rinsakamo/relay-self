@@ -9,7 +9,7 @@ prepares a source-linked body receipt; it does not grant a Skill or L1.
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
+import re
 
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
@@ -122,8 +122,6 @@ def link_recovered_a_b_native_paper_body(
         or process.pid != boot.paper_pid
     ):
         raise Stage28NativePaperLinkHold("Paper tick not from original new boot")
-    import re
-
     nonce = re.fullmatch(
         r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
         tick.source_ref,
