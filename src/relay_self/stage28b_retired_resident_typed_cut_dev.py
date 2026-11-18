@@ -27,9 +27,6 @@ from relay_self.self_owner_checkpoint_dev import (
     save_self_owner_cut,
     verify_typed_generation,
 )
-from relay_self.stage28_cognitive_recovery_gate_dev import (
-    stage28_inert_cognitive_recovery,
-)
 
 
 class Stage28bRetiredCutHold(RuntimeError):
