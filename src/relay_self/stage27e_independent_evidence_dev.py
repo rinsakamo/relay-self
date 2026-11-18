@@ -21,7 +21,8 @@ class Stage27IndependentEvidenceError(ValueError):
 
 
 def capture_original_prepared_wal(
-    journal: PhysicalActionJournal, evidence_dir: Path, *, action_id: str,
+    journal: PhysicalActionJournal, evidence_dir: Path, *,
+    action_id: str, self_id: str = "A",
 ) -> dict[str, object]:
     """Copy source WAL bytes after fsynced PREPARED, before ANY native LOOK.
 
@@ -36,7 +37,7 @@ def capture_original_prepared_wal(
     if (
         source.is_symlink() or not source.is_file()
         or evidence_dir.is_symlink() or not evidence_dir.is_dir()
-        or journal._body["self_id"] != "A"
+        or journal._body["self_id"] != self_id
         or len(journal.records) != 1
         or journal.records[-1]["status"] != "PREPARED_UNRESOLVED"
         or journal.records[-1]["capability"] != "MOVE_PLACE"
@@ -44,7 +45,7 @@ def capture_original_prepared_wal(
     ):
         raise Stage27IndependentEvidenceError("foreign or non-PLACE original WAL")
     before = source.read_bytes()
-    same_source = PhysicalActionJournal.restore(source, self_id="A")
+    same_source = PhysicalActionJournal.restore(source, self_id=self_id)
     if not same_source.unresolved or same_source.digest != journal.digest:
         raise Stage27IndependentEvidenceError("original WAL source changed")
     snapshot = evidence_dir / "stage27e-A-original-PREPARED.json"
@@ -61,7 +62,7 @@ def capture_original_prepared_wal(
         os.close(folder)
     if snapshot.read_bytes() != before or source.read_bytes() != before:
         raise Stage27IndependentEvidenceError("PREPARED raw-byte snapshot mismatch")
-    snapshot_journal = PhysicalActionJournal.restore(snapshot, self_id="A")
+    snapshot_journal = PhysicalActionJournal.restore(snapshot, self_id=self_id)
     if (
         snapshot_journal.digest != journal.digest
         or snapshot_journal.records[-1]["action_id"] != action_id
