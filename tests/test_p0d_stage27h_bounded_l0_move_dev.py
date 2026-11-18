@@ -199,7 +199,7 @@ def test_l0_stops_before_issuing_or_reissuing_unqualified_move(tmp_path, mode):
                 handoff.native_session_id, blocked=mode == "no-progress",
             )
             receipt = await _issue(f, pre, handoff, loop, previous, observed, native)
-             result = loop.observe_terminal_action(
+            result = loop.observe_terminal_action(
                 receipt, source_probe=observed, now_ns=180,
             )
             assert result.status == "L0_NO_PROGRESS_YIELD_EVALUATION"
