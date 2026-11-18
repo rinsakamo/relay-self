@@ -330,7 +330,7 @@ async def run_restored_a_b_real_observation(
         report["final_paper_resident_log_sha256"] = digest
         report["final_paper_resident_boot_id"] = trace.boot_id
         stopped = paper.stop_and_save()
-        if stopped.exit_code != 0:
+        if stopped.process_exit_code != 0 or not stopped.all_dimensions_saved:
             raise Stage28c2bRealRejoinHold("owned Paper failed clean save/stop")
         report["paper_stopped"] = asdict(stopped)
         for native in native_sessions:
