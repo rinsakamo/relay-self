@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import sys
 import time
 from dataclasses import asdict
@@ -33,6 +34,10 @@ from relay_self.p0d_stage27c_l0_place_proposal_dev import (
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
+from relay_self.stage27e_independent_evidence_dev import (
+    capture_original_prepared_wal,
+    correlate_owned_paper_position,
+)
 
 
 class Stage27RealWorldRefusal(RuntimeError):
@@ -121,9 +126,24 @@ def _peer_snapshot(owner) -> dict[str, object]:
     }
 
 
+def _freeze_owned_paper_source(evidence: Path, name: str, source: bytes) -> str:
+    """Retain owned Paper Popen stdout bytes without modifying the source."""
+    if evidence.is_symlink() or not evidence.is_dir() or type(source) is not bytes:
+        raise Stage27RealWorldRefusal("owned Paper evidence directory/source invalid")
+    path = evidence / name
+    with path.open("xb") as output:
+        output.write(source)
+        output.flush()
+        os.fsync(output.fileno())
+    if path.read_bytes() != source:
+        raise Stage27RealWorldRefusal("owned Paper evidence raw-byte mismatch")
+    return hashlib.sha256(source).hexdigest()
+
+
 async def stage27_real_a_motor_hook(
     *, paper, bridge, physical, lane, owners, world_epoch, prepared,
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
+    capture_independent_evidence: bool = False,
 ) -> dict[str, object]:
     """Original A Self only; one accepted real bounded L1 and one native MOVE."""
     if (
@@ -207,6 +227,20 @@ async def stage27_real_a_motor_hook(
         actor.files.physical_wal_file, self_id="A",
     )
     journal.require_clear()
+    # The optional Stage27e tap takes the original Paper source BEFORE
+    # physical issuance. PREPARED is independently copied AFTER reservation,
+    # before native LOOK, through the issuer-owned pre-native callback.
+    paper_pre = None
+    prepared_original: dict[str, object] = {}
+    if capture_independent_evidence:
+        paper_pre = paper.read_owned_log(paper.owned_session_id)
+        _freeze_owned_paper_source(evidence, "stage27e-paper-pre-native.log", paper_pre)
+
+    def capture_reserved(journal_to_capture, reserved_action_id):
+        prepared_original.update(capture_original_prepared_wal(
+            journal_to_capture, evidence, action_id=reserved_action_id,
+        ))
+
     # Original physical issuer owns PREPARED, three native effect IDs,
     # STOP and settlement. ONE invocation only, no automatic retry.
     receipt = await physical.issue_place_move(
@@ -225,6 +259,7 @@ async def stage27_real_a_motor_hook(
         acknowledge_dev_unverified_principal=True,
         pulse_seconds=0.15,
         evidence_timeout_s=15.0,
+        pre_native_evidence=capture_reserved if capture_independent_evidence else None,
     )
     if (
         receipt.action_id != binding.action_id
@@ -265,6 +300,19 @@ async def stage27_real_a_motor_hook(
             receipt.first_stable_probe.seq, receipt.settled_probe.seq,
         ),
     )
+    paper_correlated = None
+    if capture_independent_evidence:
+        if paper_pre is None or not prepared_original:
+            raise Stage27RealWorldRefusal("original PREPARED evidence absent after issue")
+        paper_post = paper.read_owned_log(paper.owned_session_id)
+        _freeze_owned_paper_source(evidence, "stage27e-paper-post-native.log", paper_post)
+        a0, a1 = current.snapshot.position, receipt.settled_probe.snapshot.position
+        paper_correlated = correlate_owned_paper_position(
+            before=paper_pre, after=paper_post,
+            paper_session_id=paper.owned_session_id, world_uuid=world_uuid,
+            native_start_xyz=(a0.x, a0.y, a0.z),
+            native_settled_xyz=(a1.x, a1.y, a1.z),
+        )
     peer_after = _peer_snapshot(owners["B"])
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
@@ -312,11 +360,25 @@ async def stage27_real_a_motor_hook(
         "l0_terminal_status": receipt.l0_step_status,
         "stage27_native_action_count": 1,
         "native_source": native_source,
-        "independent_paper_displacement_attested": False,
+        "independent_paper_displacement_attested": bool(
+            paper_correlated is not None
+            and paper_correlated["paper_position_independently_correlated"]
+        ),
+        **({
+            "stage27e_preissue_original_wal": prepared_original,
+            "stage27e_independent_paper_position": paper_correlated,
+        } if capture_independent_evidence else {}),
         "goal_success_attested": False,
         "skill_success_attested": False,
         "qual_and_science_attested": False,
     }
+
+
+async def stage27e_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Explicit Stage27e hook; never changes Stage26/27d default issuance."""
+    return await stage27_real_a_motor_hook(
+        **kwargs, capture_independent_evidence=True,
+    )
 
 
 async def run_stage27_real_world(
@@ -327,6 +389,7 @@ async def run_stage27_real_world(
     gemma_l1_endpoint: str, gemma_l1_model: str,
     java: str = "java", node: str = "node",
     timeout_s: float = 120.0, heap_mb: int = 1536,
+    stage27e_independent_evidence: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -345,7 +408,10 @@ async def run_stage27_real_world(
         real_gemma_l1=True, gemma_l1_endpoint=gemma_l1_endpoint,
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
-        _stage27_motor_hook=stage27_real_a_motor_hook,
+        _stage27_motor_hook=(
+            stage27e_real_a_motor_hook if stage27e_independent_evidence
+            else stage27_real_a_motor_hook
+        ),
     )
 
 
@@ -364,6 +430,7 @@ def main() -> int:
     p.add_argument("--node", default="node")
     p.add_argument("--timeout-s", type=float, default=120.0)
     p.add_argument("--heap-mb", type=int, default=1536)
+    p.add_argument("--stage27e-independent-evidence", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -376,6 +443,7 @@ def main() -> int:
             gemma_l1_model=args.gemma_l1_model,
             java=args.java, node=args.node,
             timeout_s=args.timeout_s, heap_mb=args.heap_mb,
+            stage27e_independent_evidence=args.stage27e_independent_evidence,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
