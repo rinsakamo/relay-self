@@ -8,10 +8,9 @@ Paper process and its original tick ACK/log reader; no native issue or L1.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.stage28c2b_execution_copy_dev import ExecutionCopy
+from relay_self.stage28_cognitive_recovery_gate_dev import Stage28ForkPaperEpoch
 from relay_self.world_resident_lifecycle_dev import WorldLifetime
 
 
@@ -23,28 +22,6 @@ _TICK_SOURCE = re.compile(
     r"^paper-main-thread:p0d:([0-9a-zA-Z-]+):"
     r"([0-9a-zA-Z-]+):sha256:([a-f0-9]{64})$"
 )
-
-
-@dataclass(frozen=True, slots=True)
-class Stage28ForkPaperEpoch:
-    """Source-qualified boot-local initial tick. Historical clock is separate."""
-
-    generation_id: str
-    source_world_id: str
-    source_branch_id: str
-    source_declared_tick: int
-    fork_branch_id: str
-    committed_sha256: str
-    paper_session_id: str
-    paper_boot_id: str
-    world_epoch: int
-    boot_tick: int
-    paper_tick_source_ref: str
-    paper_pid: int
-    historical_native_sessions: tuple[str, ...]
-    old_ticks_directly_comparable: bool = False
-    replay_authorized: bool = False
-    physical_action_issue_authorized: bool = False
 
 
 def observe_new_fork_paper_epoch(
