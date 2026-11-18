@@ -150,6 +150,10 @@ async def stage27_real_a_motor_hook(
     capture_stage27f_evaluation: bool = False,
 ) -> dict[str, object]:
     """Original A Self only; one accepted real bounded L1 and one native MOVE."""
+    if capture_stage27f_evaluation and not capture_independent_evidence:
+        raise Stage27RealWorldRefusal(
+            "Stage27f requires Stage27e independent evidence before physical issue"
+        )
     if (
         set(prepared) != {"A", "B"}
         or set(tickets) != {"A", "B"}
@@ -319,10 +323,6 @@ async def stage27_real_a_motor_hook(
         )
     stage27f_frame = None
     if capture_stage27f_evaluation:
-        if not capture_independent_evidence:
-            raise Stage27RealWorldRefusal(
-                "Stage27f requires the Stage27e independent evidence opt-in"
-            )
         stage27f_frame = prepare_stage27f_outcome_evaluation(
             prepared["A"], handoff, proposal, receipt,
             owner=actor, physical=physical, world_epoch=world_epoch,
