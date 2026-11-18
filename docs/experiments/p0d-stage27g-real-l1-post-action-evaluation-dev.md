@@ -32,7 +32,11 @@ issuer is introduced.
    TargetContract. If Gemma chose `REVIEW_COMPLETION` but the new native body
    position is no longer inside the envelope, demote it to
    `RECONSIDER_FRESH_WORLD_CHANGED`; never commit success.
-7. Record the model number and recommendation, source HTTP digest, original
+7. Reread the original A native stdout JSONL on disk after the post-model
+   probe; require exactly one same-session tuple (probe seq, request ID),
+   reject foreign/duplicated/corrupted source, and retain stdout SHA256.
+   In-process ordering is not independent cross-process timestamp proof.
+8. Record the model number and recommendation, source HTTP digest, original
    and fresh assessment, native probe ID/seq, and B isolation. The original
    A Intent remains current and original Skill remains STARTED regardless
    of the model number. No further motor Action, same-World retry, skill
