@@ -57,7 +57,7 @@ class Stage28cInertRestore:
     paper_dimensions: tuple[str, ...]
     self_pattern_revisions: tuple[tuple[str, int], ...]
     fresh_worldbody_required: bool = True
-    old_native_session_invalidated: bool = True
+    old_native_session_reuse_forbidden: bool = True
     old_action_replay_authorized: bool = False
     old_l1_decision_reusable: bool = False
     old_skill_resume_authorized: bool = False
