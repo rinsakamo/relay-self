@@ -47,6 +47,7 @@ class Stage28c2aOwnerReceipt:
     old_l1_decision_reused: bool = False
     physical_action_issue_authorized: bool = False
     l1_reevaluation_eligible: bool = False
+    source_committed_sha256: str = ""
 
 
 @dataclass(slots=True)
@@ -201,5 +202,6 @@ def prepare_recovered_a_b_resident_owners(
         plan.source_world_id, plan.fork_branch_id,
         plan.cut_ticks, tuple(sorted(old_ids.items())),
         tuple(sorted(sha_rows)),
+        source_committed_sha256=source.committed_sha256,
     )
     return Stage28c2aOfflineOwners(plan, owners, work, physical, receipt)

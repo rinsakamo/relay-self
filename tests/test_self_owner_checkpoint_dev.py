@@ -56,6 +56,7 @@ from relay_self.self_owner_checkpoint_dev import (
 )
 from relay_self.skill import SkillExecution, SkillState
 from relay_self.stage28_cognitive_recovery_gate_dev import (
+    Stage28ForkPaperEpoch,
     Stage28RecoveryHold,
     stage28_inert_cognitive_recovery,
     stage28_require_fresh_l1_eligibility,
@@ -381,21 +382,32 @@ def _stage28_fixture(tmp_path: Path):
 
 
 def _stage28_new_native(plan):
+    # The new Paper process uses its OWN clock starting at an independent
+    # tick, which may be lower than the saved source's W110.
+    new_boot_tick = 8
     world = WorldLifetime(
-        plan.source_world_id, plan.fork_branch_id, "paper-session-new", 1,
-        plan.declared_world_tick,
+        plan.source_world_id, plan.fork_branch_id, "paper-owned-new", 1,
+        new_boot_tick,
     )
     logins = tuple(NativeLoginEvidence(
         sid, 1, plan.source_world_id, plan.fork_branch_id,
         world.paper_session_id, world.epoch,
-        "fresh-native-" + sid, plan.declared_world_tick,
+        "fresh-native-" + sid, new_boot_tick,
         "owned-native-fresh-probe:" + sid,
         True, True, True, True, True,
     ) for sid in plan.roster)
     slot = LlamaSlotIdleReceipt(
         "fresh-owned-backend", 0, 1, False, "GET /slots:0:idle",
     )
-    return world, logins, slot
+    boot = Stage28ForkPaperEpoch(
+        plan.generation_id, plan.source_world_id, plan.source_branch_id,
+        plan.declared_world_tick, plan.fork_branch_id,
+        plan.source_committed_sha256, world.paper_session_id, "fresh-boot",
+        world.epoch, new_boot_tick,
+        "paper-main-thread:p0d:fresh-boot:nonce:sha256:" + "a" * 64,
+        1001, tuple(sorted(dict(plan.old_native_sessions).values())),
+    )
+    return world, logins, slot, boot
 
 
 def test_stage28_typed_world_a_b_recovery_is_inert_and_fresh_only(tmp_path: Path):
@@ -418,14 +430,17 @@ def test_stage28_typed_world_a_b_recovery_is_inert_and_fresh_only(tmp_path: Path
     assert plan.physical_action_issue_authorized is False
     assert plan.l1_reevaluation_eligible is False
 
-    world, logins, idle = _stage28_new_native(plan)
+    world, logins, idle, boot = _stage28_new_native(plan)
     receipt = stage28_require_fresh_l1_eligibility(
-        plan, world=world, logins=logins, idle=idle,
+        plan, world=world, logins=logins, idle=idle, boot=boot,
     )
     assert receipt.l1_reevaluation_eligible is True
     assert receipt.physical_action_issue_authorized is False
     assert receipt.old_l1_decision_reusable is False
     assert receipt.old_skill_resume_authorized is False
+    assert receipt.source_saved_world_tick == 110
+    assert receipt.new_process_boot_tick == 8
+    assert receipt.source_and_new_ticks_comparable is False
     assert receipt.native_sessions == (
         ("A", "fresh-native-A"), ("B", "fresh-native-B"),
     )
@@ -501,7 +516,7 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
         generation, dest,
         expected_self_ids=("A", "B"), expected_source_world_id="world-1",
     )
-    world, logins, idle = _stage28_new_native(plan)
+    world, logins, idle, boot = _stage28_new_native(plan)
     if failure == "old-native":
         logins = (replace(logins[0], native_session_id="old-session-A"), logins[1])
     elif failure == "stale-gpu":
@@ -514,7 +529,7 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
         logins = (replace(logins[0], world_epoch=0), logins[1])
     elif failure == "stale-worldbody":
         logins = (
-            replace(logins[0], observed_world_tick=plan.declared_world_tick - 1),
+            replace(logins[0], observed_world_tick=boot.boot_tick - 1),
             logins[1],
         )
     elif failure == "busy-slot":
@@ -529,5 +544,5 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
         ))
     with pytest.raises(Stage28RecoveryHold):
         stage28_require_fresh_l1_eligibility(
-            plan, world=world, logins=logins, idle=idle,
+            plan, world=world, logins=logins, idle=idle, boot=boot,
         )

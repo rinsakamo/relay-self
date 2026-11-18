@@ -48,6 +48,34 @@ class Stage28InertRecovery:
     old_l1_decision_reusable: bool = False
     physical_action_issue_authorized: bool = False
     l1_reevaluation_eligible: bool = False
+    source_committed_sha256: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Stage28ForkPaperEpoch:
+    """Owned Paper boot proof for the *new* process tick domain.
+
+    The source stopped tick remains immutable history, NOT a comparable
+    wall-clock or process tick offset. A live runner must create this from
+    a source-validated execution copy and Paper main-thread ACK/log.
+    """
+
+    generation_id: str
+    source_world_id: str
+    source_branch_id: str
+    source_declared_tick: int
+    fork_branch_id: str
+    committed_sha256: str
+    paper_session_id: str
+    paper_boot_id: str
+    world_epoch: int
+    boot_tick: int
+    paper_tick_source_ref: str
+    paper_pid: int
+    historical_native_sessions: tuple[str, ...]
+    old_ticks_directly_comparable: bool = False
+    replay_authorized: bool = False
+    physical_action_issue_authorized: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +91,10 @@ class Stage28FreshL1Eligibility:
     old_skill_resume_authorized: bool = False
     historical_action_replayed: bool = False
     physical_action_issue_authorized: bool = False
+    source_saved_world_tick: int = 0
+    new_process_boot_tick: int = 0
+    new_paper_boot_id: str = ""
+    source_and_new_ticks_comparable: bool = False
 
 
 def _file_hash(path: Path) -> str:
@@ -171,6 +203,7 @@ def stage28_inert_cognitive_recovery(
         tuple((c.self_id, c.former_native_session_id) for c in cuts),
         tuple((c.self_id, c.last_observed_world_tick) for c in cuts),
         candidates,
+        source_committed_sha256=_file_hash(generation / "COMMITTED.json"),
     )
 
 
@@ -179,6 +212,7 @@ def stage28_require_fresh_l1_eligibility(
     world: WorldLifetime,
     logins: tuple[NativeLoginEvidence, ...],
     idle: LlamaSlotIdleReceipt,
+    boot: Stage28ForkPaperEpoch,
 ) -> Stage28FreshL1Eligibility:
     """One fresh evidence gate for *reevaluation*, not physical Action issue.
 
@@ -187,13 +221,39 @@ def stage28_require_fresh_l1_eligibility(
     """
     if (
         not isinstance(plan, Stage28InertRecovery)
+        or not isinstance(boot, Stage28ForkPaperEpoch)
         or not isinstance(world, WorldLifetime)
         or type(logins) is not tuple
         or not isinstance(idle, LlamaSlotIdleReceipt)
         or world.world_id != plan.source_world_id
         or world.branch_id != plan.fork_branch_id
         or type(world.epoch) is not int or world.epoch < 1
-        or world.world_tick < plan.declared_world_tick
+        or boot.generation_id != plan.generation_id
+        or boot.source_world_id != plan.source_world_id
+        or boot.source_branch_id != plan.source_branch_id
+        or boot.source_declared_tick != plan.declared_world_tick
+        or boot.fork_branch_id != plan.fork_branch_id
+        or boot.paper_session_id != world.paper_session_id
+        or boot.world_epoch != world.epoch
+        or type(boot.boot_tick) is not int or boot.boot_tick < 0
+        or world.world_tick < boot.boot_tick
+        or type(boot.committed_sha256) is not str
+        or len(boot.committed_sha256) != 64
+        or boot.committed_sha256 != plan.source_committed_sha256
+        or not boot.paper_session_id.startswith("paper-owned-")
+        or not boot.paper_boot_id
+        or not boot.paper_tick_source_ref.startswith(
+            "paper-main-thread:p0d:" + boot.paper_boot_id + ":"
+        )
+        or boot.paper_pid <= 0
+        or boot.old_ticks_directly_comparable is not False
+        or boot.replay_authorized is not False
+        or boot.physical_action_issue_authorized is not False
+        or type(boot.historical_native_sessions) is not tuple
+        or len(set(boot.historical_native_sessions)) != len(boot.historical_native_sessions)
+        or not set(dict(plan.old_native_sessions).values()).issubset(
+            boot.historical_native_sessions
+        )
         or not idle.backend_ref or idle.is_processing
         or idle.slot_id != 0 or idle.n_slots != 1
         or idle.request_issue_authorized
@@ -208,7 +268,9 @@ def stage28_require_fresh_l1_eligibility(
     if set(by_self) != set(plan.roster):
         raise Stage28RecoveryHold("new native roster missing, duplicate or foreign")
     sessions = [p.native_session_id for p in logins]
-    if len(set(sessions)) != len(sessions) or set(sessions) & set(old.values()):
+    if len(set(sessions)) != len(sessions) or set(sessions) & (
+        set(old.values()) | set(boot.historical_native_sessions)
+    ):
         raise Stage28RecoveryHold("replayed original or duplicate native session")
     for sid in plan.roster:
         p = by_self[sid]
@@ -217,7 +279,7 @@ def stage28_require_fresh_l1_eligibility(
             or p.branch_id != world.branch_id
             or p.paper_session_id != world.paper_session_id
             or p.world_epoch != world.epoch
-            or p.observed_world_tick < plan.declared_world_tick
+            or p.observed_world_tick < boot.boot_tick
             or not p.observation_ref
             or not p.old_native_invalidated
             or not p.physical_wal_clear
@@ -233,4 +295,7 @@ def stage28_require_fresh_l1_eligibility(
         plan.generation_id, world.world_id, world.branch_id,
         world.paper_session_id, world.epoch,
         tuple((sid, by_self[sid].native_session_id) for sid in plan.roster),
+        source_saved_world_tick=plan.declared_world_tick,
+        new_process_boot_tick=boot.boot_tick,
+        new_paper_boot_id=boot.paper_boot_id,
     )
