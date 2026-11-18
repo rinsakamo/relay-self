@@ -79,6 +79,30 @@ class Stage28ForkPaperEpoch:
 
 
 @dataclass(frozen=True, slots=True)
+class Stage28NativePaperBodyLink:
+    """Paper process tick and native Minecraft day time are DIFFERENT clocks.
+
+    A verifier must obtain this from the original live native owner and
+    independently owned Paper JOIN/PRESENT log + fresh tick nonce ACK.
+    Merely constructing this dataclass is NOT evidence of a real World trial.
+    """
+
+    self_id: str
+    native_session_id: str
+    native_probe_ref: str
+    native_world_time_tick: int
+    paper_session_id: str
+    tick_boot_id: str
+    presence_boot_id: str
+    paper_observed_tick: int
+    paper_tick_source_ref: str
+    paper_log_sha256: str
+    paper_actor_uuid: str
+    clocks_numerically_comparable: bool = False
+    physical_action_issue_authorized: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class Stage28FreshL1Eligibility:
     generation_id: str
     world_id: str
@@ -213,6 +237,7 @@ def stage28_require_fresh_l1_eligibility(
     logins: tuple[NativeLoginEvidence, ...],
     idle: LlamaSlotIdleReceipt,
     boot: Stage28ForkPaperEpoch,
+    links: tuple[Stage28NativePaperBodyLink, ...],
 ) -> Stage28FreshL1Eligibility:
     """One fresh evidence gate for *reevaluation*, not physical Action issue.
 
@@ -224,6 +249,7 @@ def stage28_require_fresh_l1_eligibility(
         or not isinstance(boot, Stage28ForkPaperEpoch)
         or not isinstance(world, WorldLifetime)
         or type(logins) is not tuple
+        or type(links) is not tuple
         or not isinstance(idle, LlamaSlotIdleReceipt)
         or world.world_id != plan.source_world_id
         or world.branch_id != plan.fork_branch_id
@@ -267,6 +293,16 @@ def stage28_require_fresh_l1_eligibility(
     by_self = {p.self_id: p for p in logins}
     if set(by_self) != set(plan.roster):
         raise Stage28RecoveryHold("new native roster missing, duplicate or foreign")
+    if (
+        len(links) != len(plan.roster)
+        or any(not isinstance(link, Stage28NativePaperBodyLink)
+               for link in links)
+        or len({link.self_id for link in links}) != len(links)
+        or {link.self_id for link in links} != set(plan.roster)
+        or len({link.paper_actor_uuid for link in links}) != len(links)
+    ):
+        raise Stage28RecoveryHold("original Paper/native A+B body links required")
+    by_link = {link.self_id: link for link in links}
     sessions = [p.native_session_id for p in logins]
     if len(set(sessions)) != len(sessions) or set(sessions) & (
         set(old.values()) | set(boot.historical_native_sessions)
@@ -279,7 +315,8 @@ def stage28_require_fresh_l1_eligibility(
             or p.branch_id != world.branch_id
             or p.paper_session_id != world.paper_session_id
             or p.world_epoch != world.epoch
-            or p.observed_world_tick < boot.boot_tick
+            # Native World time is Minecraft day clock, not Bukkit tick.
+            # Require native/Paper source linkage instead of numeric compare.
             or not p.observation_ref
             or not p.old_native_invalidated
             or not p.physical_wal_clear
@@ -287,6 +324,21 @@ def stage28_require_fresh_l1_eligibility(
             or not p.stale_transport_fenced
             or not p.new_native_source_verified
             or p.action_issue_authorized
+            or by_link[sid].native_session_id != p.native_session_id
+            or by_link[sid].native_probe_ref != p.observation_ref
+            or by_link[sid].native_world_time_tick != p.observed_world_tick
+            or by_link[sid].paper_session_id != world.paper_session_id
+            or by_link[sid].tick_boot_id != boot.paper_boot_id
+            or not by_link[sid].presence_boot_id
+            or by_link[sid].paper_observed_tick < boot.boot_tick
+            or by_link[sid].paper_observed_tick > world.world_tick
+            or not by_link[sid].paper_tick_source_ref.startswith(
+                "paper-main-thread:p0d:" + boot.paper_boot_id + ":"
+            )
+            or len(by_link[sid].paper_log_sha256) != 64
+            or not by_link[sid].paper_actor_uuid
+            or by_link[sid].clocks_numerically_comparable is not False
+            or by_link[sid].physical_action_issue_authorized is not False
         ):
             raise Stage28RecoveryHold(
                 "fresh WorldBody/stale-work fence missing for one Self"
