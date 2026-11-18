@@ -90,7 +90,7 @@ def test_actual_owned_http_choice_is_read_only_after_real_shape_action(
         ticket = submit_stage27g_original_evaluation(
             frame, pre, owner=a, physical=f.physical, lane=lane,
         )
-        assert ticket.mode.value == "BOUNDED"
+        assert ticket.mode.value == "bounded"
         server.choice_id = model_number
         invoked = []
 
