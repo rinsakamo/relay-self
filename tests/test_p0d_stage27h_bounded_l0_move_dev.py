@@ -57,7 +57,7 @@ def _fixture(tmp_path, case):
     endpoint = server.start()
     f = ResidentFixture(tmp_path, 2, cognitive_work=True, allow_resident_move=True)
     lane = _attach_and_audit(f, endpoint, tmp_path)
-    budget = SkillBudget(4, 15000, 2.0, 16)
+    budget = SkillBudget(4, 15000, 2.0, 256)
     original = source_recovered
 
     def multi(self_id="A"):
