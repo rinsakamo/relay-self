@@ -98,6 +98,57 @@ def _native_place_wire_readback(
     }
 
 
+
+def _native_post_model_probe_readback(
+    raw_file: Path, *, session_id: str, probe_id: str, probe_seq: int,
+    prior_settled_seq: int,
+) -> dict[str, object]:
+    """Independently reread original A native stdout after the model recheck.
+
+    This binds exact source bytes to the returned fresh probe. In-process
+    sequencing proves it was *requested* after the model result; stdout alone
+    is not a timestamped cross-process causality proof.
+    """
+    if (
+        raw_file.is_symlink() or not raw_file.is_file()
+        or not session_id or not probe_id
+        or type(probe_seq) is not int or type(prior_settled_seq) is not int
+        or probe_seq <= prior_settled_seq
+    ):
+        raise Stage27RealWorldRefusal("invalid original post-model native source")
+    data = raw_file.read_bytes()
+    rows: list[tuple[int, str]] = []
+    for line in data.splitlines():
+        try:
+            event = json.loads(line)
+        except (UnicodeError, ValueError) as exc:
+            raise Stage27RealWorldRefusal("native stdout JSONL corrupted") from exc
+        if (
+            type(event) is not dict
+            or event.get("session_id") != session_id
+        ):
+            raise Stage27RealWorldRefusal("foreign original native source")
+        if event.get("type") == "observation" and event.get("kind") == "probe":
+            rows.append((event.get("seq"), event.get("request_id")))
+    if (
+        rows.count((probe_seq, probe_id)) != 1
+        or sum(1 for seq, _ in rows if seq == probe_seq) != 1
+        or sum(1 for _, ident in rows if ident == probe_id) != 1
+    ):
+        raise Stage27RealWorldRefusal(
+            "original native post-model probe stdout missing or duplicate"
+        )
+    return {
+        "original_a_native_stdout_sha256_after_l1": hashlib.sha256(data).hexdigest(),
+        "bytes": len(data),
+        "original_a_native_stdout": str(raw_file),
+        "post_model_probe_request_id": probe_id,
+        "post_model_probe_seq": probe_seq,
+        "source_readback": "EXACT_ONCE_NATIVE_STDOUT_DEV",
+        "independent_model_vs_native_wallclock_causality": False,
+    }
+
+
 def _grant(stage: PhysicalGrantStage, binding):
     """Explicit DEV operator grant label; not external principal attestation."""
     return PhysicalDevGrant(
@@ -349,9 +400,16 @@ async def stage27_real_a_motor_hook(
             lane=lane, ticket=evaluation_ticket,
             fresh_probe=lambda: _bounded_b_probe(session),
         )
+        post_model_raw = _native_post_model_probe_readback(
+            native_audit, session_id=original_a_native,
+            probe_id=evaluation_witness.fresh_native_probe_request_id,
+            probe_seq=evaluation_witness.fresh_native_probe_seq,
+            prior_settled_seq=receipt.settled_probe.seq,
+        )
         stage27g_result = {
             "choice": asdict(evaluation_choice),
             "witness": asdict(evaluation_witness),
+            "native_post_model_source": post_model_raw,
             "model_evaluation_decision_only": True,
             "next_physical_action_authorized": False,
             "original_goal_or_skill_completed": False,
