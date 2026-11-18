@@ -32,8 +32,8 @@ from test_p0d_stage26_gemma_l1_dev import _attach_and_audit
 from test_p0d_stage27c_place_move_wal_issuer_dev import (
     ScriptedPlaceNative,
     _args,
-    selected_original,
 )
+from test_p0d_stage27b_place_motion_dev import qualified_a
 
 
 class SlowPlaceNative(ScriptedPlaceNative):
@@ -65,7 +65,10 @@ def _fixture(tmp_path, case):
 
 
 async def _start(f, lane):
-    pre, handoff, _, _, former, current = await selected_original(f, lane)
+    pre, handoff, former = await qualified_a(f, lane)
+    current = native_probe(
+        f.names[0], former.seq + 1, session=handoff.native_session_id,
+    )
     owner = f.owners[f.names[0]]
     loop = Stage27hBoundedMoveLoop(
         pre, handoff, owner=owner,
