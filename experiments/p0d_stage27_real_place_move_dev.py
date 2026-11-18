@@ -38,6 +38,7 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     finish_stage27g_original_evaluation,
     submit_stage27g_original_evaluation,
 )
+from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -506,6 +507,251 @@ async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
     )
 
 
+def _stage27h_capture_prepared(
+    journal: PhysicalActionJournal, evidence: Path, *,
+    action_id: str, action_index: int,
+) -> dict[str, object]:
+    """Freeze a complete canonical WAL with the LAST row still PREPARED.
+
+    Stage27e's original one-row evidence collector remains intentionally
+    unchanged. Stage27h snapshots distinct WAL versions for each child.
+    """
+    if (
+        not isinstance(journal, PhysicalActionJournal)
+        or not journal.unresolved or evidence.is_symlink()
+        or type(action_index) is not int or not 0 <= action_index < 4
+        or len(journal.records) != action_index + 1
+        or any(row["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+               for row in journal.records[:-1])
+        or journal.records[-1]["status"] != "PREPARED_UNRESOLVED"
+        or journal.records[-1]["capability"] != "MOVE_PLACE"
+        or journal.records[-1]["action_id"] != action_id
+        or journal.path.is_symlink()
+    ):
+        raise Stage27RealWorldRefusal("Stage27h original per-Action PREPARED invalid")
+    raw = journal.path.read_bytes()
+    if PhysicalActionJournal.restore(
+        journal.path, self_id="A",
+    ).digest != journal.digest:
+        raise Stage27RealWorldRefusal("Stage27h original PREPARED WAL changed")
+    dest = evidence / f"stage27h-A-PREPARED-{action_index + 1}.json"
+    with dest.open("xb") as target:
+        target.write(raw)
+        target.flush()
+        os.fsync(target.fileno())
+    if dest.read_bytes() != raw:
+        raise Stage27RealWorldRefusal("Stage27h immutable PREPARED source mismatch")
+    frozen = PhysicalActionJournal.restore(dest, self_id="A")
+    if frozen.digest != journal.digest or not frozen.unresolved:
+        raise Stage27RealWorldRefusal("Stage27h PREPARED independent readback failed")
+    return {
+        "original_action_id": action_id,
+        "action_number": action_index + 1,
+        "snapshot": str(dest),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "journal_digest": journal.digest,
+        "before_any_native_effect": True,
+    }
+
+
+async def stage27h_real_a_motor_hook(
+    *, paper, bridge, physical, lane, owners, world_epoch, prepared,
+    tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
+) -> dict[str, object]:
+    """Strict Stage27h opt-in: CPU L0 repeats ORIGINAL bounded MOVE Actions.
+
+    Uses the existing Stage27c child interpreter and original resident
+    physical issuer for EACH short Action. There is only one initial real L1
+    choice and no model evaluation inside the L0 MOVE loop.
+    """
+    if (
+        set(prepared) != {"A", "B"} or set(tickets) != {"A", "B"}
+        or set(witnesses) != {"A", "B"} or set(refreshed) != {"A", "B"}
+        or set(owners) != {"A", "B"} or set(bridge.sessions) != {"A", "B"}
+        or paper.owned_session_id is None
+        or lane is None or physical.closed or physical.active_action_ids
+    ):
+        raise Stage27RealWorldRefusal("Stage27h original 2-Self ownership absent")
+    lane.require_world_idle()
+    peer_before = _peer_snapshot(owners["B"])
+    if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
+        return await stage27_real_a_motor_hook(
+            paper=paper, bridge=bridge, physical=physical, lane=lane,
+            owners=owners, world_epoch=world_epoch, prepared=prepared,
+            tickets=tickets, witnesses=witnesses, refreshed=refreshed,
+            evidence=evidence, world_uuid=world_uuid, native_audit=native_audit,
+        )
+    owner = owners["A"]
+    session = bridge.sessions["A"]
+    native_id = session.started.session_id
+    if (
+        native_id != prepared["A"].native_session
+        or owner.native_session_id != native_id
+        or session.process_returncode is not None
+        or physical.current_native_sessions.get("A") != native_id
+        or physical.resident_states.get("A") != "ONLINE"
+    ):
+        raise Stage27RealWorldRefusal("Stage27h original A live session unavailable")
+    original_model_count = 2  # A and B initial choices; no later L1 in the loop
+    handoff = begin_stage27_owned_move_intent(
+        prepared["A"], ticket=tickets["A"], witness=witnesses["A"],
+        refreshed=refreshed["A"], lane=lane, physical=physical,
+        actor_self_id="A", at_ns=time.monotonic_ns(),
+        provenance=Provenance("stage27h-original-A", world_uuid),
+    )
+    loop = Stage27hBoundedMoveLoop(
+        prepared["A"], handoff, owner=owner, physical=physical,
+        world_epoch=world_epoch, start_ns=time.monotonic_ns(),
+    )
+    previous = refreshed["A"]
+    current = await _bounded_b_probe(session)
+    if current.seq <= previous.seq or current.session_id != native_id:
+        raise Stage27RealWorldRefusal("Stage27h first post-L1 native source stale")
+    result = loop.pre_action(current, now_ns=time.monotonic_ns())
+    action_receipts: list[dict[str, object]] = []
+    while result.status == "L0_CONTINUE_MOVE":
+        if len(action_receipts) != loop.action_count:
+            raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
+        idx = loop.action_count
+        # Native target geometry is recalculated from the SAME frozen Target.
+        # No new L1 choice, no new invocation, no parameter/preset tuning.
+        plan = resolve_stage27_place_motion(
+            prepared["A"], handoff, current, owner=owner,
+            physical=physical, world_epoch=world_epoch,
+        )
+        proposal = propose_stage27c_original_place_move(
+            prepared["A"], handoff, plan, current, owner=owner,
+            physical=physical, world_epoch=world_epoch,
+            capability=PhysicalCapability(
+                "MOVE", 1, "locomotion", "DESTINATION", True,
+            ), at_ns=time.monotonic_ns(),
+            provenance=Provenance("stage27h-original-l0", current.provenance.reference),
+        )
+        binding = proposal.proposal.binding
+        journal = PhysicalActionJournal.restore(
+            owner.files.physical_wal_file, self_id="A",
+        )
+        journal.require_clear()
+        if len(journal.records) != idx:
+            raise Stage27RealWorldRefusal("Stage27h pre-Action journal row count wrong")
+        paper_before = paper.read_owned_log(paper.owned_session_id)
+        _freeze_owned_paper_source(
+            evidence, f"stage27h-Paper-pre-{idx + 1}.log", paper_before,
+        )
+        original_prepared: dict[str, object] = {}
+
+        def capture_reserved(source, action):
+            original_prepared.update(_stage27h_capture_prepared(
+                source, evidence, action_id=action, action_index=idx,
+            ))
+
+        t0 = time.monotonic_ns()
+        receipt = await physical.issue_place_move(
+            session, proposal=proposal.proposal,
+            l0=proposal, prepared=prepared["A"],
+            handoff=handoff, motion=plan,
+            previous_probe=previous, current_probe=current,
+            owner=owner, physical=physical,
+            propose_grant=_grant(PhysicalGrantStage.PROPOSE, binding),
+            issue_grant=_grant(PhysicalGrantStage.ISSUE, binding),
+            journal=journal, at_ns=t0 + 3,
+            provenance=Provenance(
+                "stage27h-original-physical", current.provenance.reference,
+            ),
+            grant_real_world=True,
+            acknowledge_dev_unverified_principal=True,
+            pulse_seconds=0.15, evidence_timeout_s=15.0,
+            pre_native_evidence=capture_reserved,
+        )
+        if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
+            raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
+        # Original WAL closes before a second Action can ever be proposed.
+        post = loop.observe_terminal_action(
+            receipt, source_probe=current, now_ns=time.monotonic_ns(),
+        )
+        readback = _native_place_wire_readback(
+            native_audit, session_id=native_id, parent=binding.action_id,
+            new_probe_seq=current.seq,
+            ack_seqs=(receipt.look_ack.seq, receipt.start_ack.seq,
+                      receipt.stop_ack.seq),
+            stop_probe_seqs=(receipt.initial_stop_probe.seq,
+                             receipt.first_stable_probe.seq,
+                             receipt.settled_probe.seq),
+        )
+        paper_after = paper.read_owned_log(paper.owned_session_id)
+        _freeze_owned_paper_source(
+            evidence, f"stage27h-Paper-post-{idx + 1}.log", paper_after,
+        )
+        p0, p1 = current.snapshot.position, receipt.settled_probe.snapshot.position
+        correlated = correlate_owned_paper_position(
+            before=paper_before, after=paper_after,
+            paper_session_id=paper.owned_session_id, world_uuid=world_uuid,
+            native_start_xyz=(p0.x, p0.y, p0.z),
+            native_settled_xyz=(p1.x, p1.y, p1.z),
+        )
+        action_receipts.append({
+            "action": receipt.action_id,
+            "invocation_ref": receipt.original_invocation_ref,
+            "preset_ref": receipt.original_preset_ref,
+            "target_contract_ref": receipt.target_contract_ref,
+            "native_source": readback,
+            "prepared_source": original_prepared,
+            "terminal_wal_status": receipt.journal_status,
+            "terminal_wal_digest": receipt.journal_sha256,
+            "original_native_probe_seq": current.seq,
+            "settled_native_probe_seq": receipt.settled_probe.seq,
+            "displacement_m": receipt.displacement_m,
+            "paper_correlational_position": correlated,
+            "l0_feedback": asdict(post),
+            "goal_success": False,
+            "skill_success": False,
+        })
+        result = post
+        if result.status != "L0_CONTINUE_MOVE":
+            break
+        previous = receipt.settled_probe
+        current = await _bounded_b_probe(session)
+        if current.session_id != native_id or current.seq <= previous.seq:
+            raise Stage27RealWorldRefusal(
+                "Stage27h fresh next-motor WorldBody observation unavailable"
+            )
+        result = loop.pre_action(current, now_ns=time.monotonic_ns())
+    if result.status == "L0_CONTINUE_MOVE":
+        raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
+    if _peer_snapshot(owners["B"]) != peer_before:
+        raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
+    lane.require_world_idle()
+    status = {
+        "L0_TARGET_REACHED_YIELD_EVALUATION":
+            "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+        "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
+            "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+        "L0_NO_PROGRESS_YIELD_EVALUATION":
+            "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+    }.get(result.status, "REAL_STAGE27H_L0_UNREACHED_DEV")
+    return {
+        "classification": status,
+        "original_world_uuid": world_uuid,
+        "original_world_epoch": world_epoch,
+        "original_paper_session": paper.owned_session_id,
+        "stage27h_original_intent": handoff.intent_id,
+        "stage27h_original_skill": handoff.skill_execution_id,
+        "stage27h_invocation_ref": handoff.invocation_ref,
+        "stage27h_preset_ref": handoff.preset_ref,
+        "stage27h_bound_model_initial_requests_expected": original_model_count,
+        "stage27h_additional_model_requests": 0,
+        "stage27h_l0_action_count": loop.action_count,
+        "stage27h_l0_feedback": asdict(result),
+        "stage27h_original_action_witnesses": action_receipts,
+        "stage27h_peer_b_before": peer_before,
+        "stage27h_peer_b_after": _peer_snapshot(owners["B"]),
+        "stage27h_goal_success": False,
+        "stage27h_skill_success": False,
+        "stage27h_operator_dev_template_not_autonomous": True,
+        "qual_and_science_attested": False,
+    }
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -517,6 +763,7 @@ async def run_stage27_real_world(
     stage27e_independent_evidence: bool = False,
     stage27f_cpu_evaluation: bool = False,
     stage27g_real_l1_evaluation: bool = False,
+    stage27h_l0_move_loop: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -535,8 +782,10 @@ async def run_stage27_real_world(
         real_gemma_l1=True, gemma_l1_endpoint=gemma_l1_endpoint,
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
+        _stage27h_multi_preset=stage27h_l0_move_loop,
         _stage27_motor_hook=(
-            stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
+            stage27h_real_a_motor_hook if stage27h_l0_move_loop
+            else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
             else stage27e_real_a_motor_hook if stage27e_independent_evidence
             else stage27_real_a_motor_hook
@@ -562,6 +811,7 @@ def main() -> int:
     p.add_argument("--stage27e-independent-evidence", action="store_true")
     p.add_argument("--stage27f-cpu-evaluation", action="store_true")
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
+    p.add_argument("--stage27h-l0-move-loop", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -577,6 +827,7 @@ def main() -> int:
             stage27e_independent_evidence=args.stage27e_independent_evidence,
             stage27f_cpu_evaluation=args.stage27f_cpu_evaluation,
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
+            stage27h_l0_move_loop=args.stage27h_l0_move_loop,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
