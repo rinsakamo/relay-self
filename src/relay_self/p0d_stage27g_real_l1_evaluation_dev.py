@@ -164,7 +164,8 @@ def _owner_still_eligible(
         != frame.source_probe_request_id,
         original_context.get("target_assessment")
         != frame.target_assessment.status.value,
-        original_context.get("target_condition_observed") is not review,
+        original_context.get("target_condition_observed")
+        is not frame.target_assessment.condition_observed,
         original_context.get("goal_success_attested") is not False,
         original_context.get("skill_success_attested") is not False,
         original_context.get("next_physical_action_authorized") is not False,
