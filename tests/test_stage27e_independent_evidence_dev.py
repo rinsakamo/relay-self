@@ -17,15 +17,23 @@ from relay_self.stage27e_independent_evidence_dev import (
     capture_original_prepared_wal,
     correlate_owned_paper_position,
 )
-from test_p0d_resident_paper_presence_join_dev import (
-    A, B, BOOT, PAPER, WORLD, _line,
-)
 from test_p0d_resident_llama_slot_owner_dev import (
-    ResidentFixture, _SyntheticLlamaServer,
+    ResidentFixture,
+    _SyntheticLlamaServer,
+)
+from test_p0d_resident_paper_presence_join_dev import (
+    BOOT,
+    PAPER,
+    WORLD,
+    A,
+    B,
+    _line,
 )
 from test_p0d_stage26_gemma_l1_dev import _attach_and_audit
 from test_p0d_stage27c_place_move_wal_issuer_dev import (
-    ScriptedPlaceNative, _args, selected_original,
+    ScriptedPlaceNative,
+    _args,
+    selected_original,
 )
 
 
