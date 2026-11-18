@@ -8,7 +8,7 @@ execution granularity**, not the initial L1 chooser.
 ## Original owner architecture
 
 Stage27h opts into one newly bound, operator-authorized **DEV** initial
-MOVE Preset `SkillBudget(4, 15000, 2.0, 16)`; the original Stage26/27d-g
+MOVE Preset `SkillBudget(4, 15000, 2.0, 256)`; the original Stage26/27d-g
 `SkillBudget(1, 1500, 2.0, 4)` default remains identical.
 
 Only one initial original A/B bounded L1 model selection is made. If A chooses
