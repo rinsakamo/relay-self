@@ -17,12 +17,12 @@ from experiments.p0d_stage27_real_place_move_dev import (
     run_stage27_real_world,
     stage27h_real_a_motor_hook,
 )
+from relay_self.p0d_stage27b_place_motion_dev import resolve_stage27_place_motion
+from relay_self.p0d_stage27c_l0_place_proposal_dev import propose_stage27c_original_place_move
 from relay_self.p0d_stage27h_bounded_l0_move_dev import (
     Stage27hBoundedMoveLoop,
     Stage27hLoopRefusal,
 )
-from relay_self.p0d_stage27b_place_motion_dev import resolve_stage27_place_motion
-from relay_self.p0d_stage27c_l0_place_proposal_dev import propose_stage27c_original_place_move
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -34,11 +34,11 @@ from test_p0d_resident_llama_slot_owner_dev import (
     _SyntheticLlamaServer,
 )
 from test_p0d_stage26_gemma_l1_dev import _attach_and_audit
+from test_p0d_stage27b_place_motion_dev import qualified_a
 from test_p0d_stage27c_place_move_wal_issuer_dev import (
     ScriptedPlaceNative,
     _args,
 )
-from test_p0d_stage27b_place_motion_dev import qualified_a
 
 
 class SlowPlaceNative(ScriptedPlaceNative):
