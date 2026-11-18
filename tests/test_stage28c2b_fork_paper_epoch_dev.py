@@ -173,7 +173,7 @@ def test_stage28c2b_paper_epoch_source_refuses_foreign_boot(
 @pytest.mark.parametrize("failure", [
     "recycled-first-a", "duplicate-native", "old-owner-session",
     "wrong-paper-session", "wrong-fork", "wrong-epoch",
-    "before-new-boot", "busy-gpu", "source-commit-mismatch",
+    "negative-native-world-time", "busy-gpu", "source-commit-mismatch",
     "boot-ref-mismatch", "world-tick-before-boot", "foreign-paper-boot",
 ])
 def test_stage28c2b_l1_eligibility_rejects_stale_or_foreign_clock(
@@ -196,8 +196,8 @@ def test_stage28c2b_l1_eligibility_rejects_stale_or_foreign_clock(
         world = replace(world, branch_id="foreign-fork")
     elif failure == "wrong-epoch":
         logins = (replace(logins[0], world_epoch=0), logins[1])
-    elif failure == "before-new-boot":
-        logins = (replace(logins[0], observed_world_tick=2), logins[1])
+    elif failure == "negative-native-world-time":
+        logins = (replace(logins[0], observed_world_tick=-1), logins[1])
     elif failure == "busy-gpu":
         idle = replace(idle, is_processing=True)
     elif failure == "source-commit-mismatch":
