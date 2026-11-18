@@ -149,6 +149,9 @@ class Stage27hBoundedMoveLoop:
             or self.action_count > 0 and journal.digest != self.last_wal_digest
         ):
             raise Stage27hLoopRefusal("canonical multi-Action WAL lineage changed")
+        if abs(sum(row["displacement_m"] for row in journal.records)
+               - self.cumulative_distance_m) > 1e-6:
+            raise Stage27hLoopRefusal("cumulative original MOVE budget counter altered")
         for idx, row in enumerate(journal.records):
             if (
                 row["capability"] != "MOVE_PLACE"
@@ -266,6 +269,8 @@ class Stage27hBoundedMoveLoop:
         action = owner.supervisor.get(receipt.action_id)
         if (
             len(journal.records) != self.action_count + 1
+            or abs(sum(r["displacement_m"] for r in journal.records[:-1])
+                   - self.cumulative_distance_m) > 1e-6
             or row is None or row["action_id"] != receipt.action_id
             or row["status"] != receipt.journal_status
             or row["capability"] != "MOVE_PLACE"
