@@ -92,7 +92,7 @@ def test_stage28c1_one_fork_restores_world_dimensions_and_inert_owners(
     assert result.paper_dimensions == ("world_nether", "world_the_end")
     assert result.self_pattern_revisions == (("A", 0), ("B", 0))
     assert result.fresh_worldbody_required
-    assert result.old_native_session_invalidated
+    assert result.old_native_session_reuse_forbidden
     assert result.old_l1_decision_reusable is False
     assert result.old_skill_resume_authorized is False
     assert result.old_peer_redelivery_authorized is False
