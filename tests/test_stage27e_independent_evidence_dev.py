@@ -155,6 +155,51 @@ def test_prepared_raw_bytes_preserved_before_first_native_look(tmp_path):
         http.stop()
 
 
+def test_failed_prepared_evidence_capture_blocks_every_native_child(tmp_path):
+    http = _SyntheticLlamaServer()
+    http.choice_id = "1"
+    endpoint = http.start()
+    f = ResidentFixture(
+        tmp_path, 2, cognitive_work=True, allow_resident_move=True,
+    )
+    lane = _attach_and_audit(f, endpoint, tmp_path)
+
+    async def scenario():
+        pre, handoff, plan, l0, former, current = await selected_original(f, lane)
+        script = ScriptedPlaceNative(l0.native_session_id)
+        script.seq = current.seq
+        script.tick = 1213
+        script.gate = lambda native, effect, action: f.physical.require_native_effect(
+            self_id=f.names[0], native_session_id=native,
+            effect=effect, action_id=action,
+        )
+        args = _args(f, pre, handoff, plan, l0, former, current)
+
+        def fail_evidence(journal, action_id):
+            assert journal.unresolved
+            assert journal.records[-1]["action_id"] == action_id
+            assert not script.sent_commands
+            raise Stage27IndependentEvidenceError("evidence disk unavailable")
+
+        with pytest.raises(Stage27IndependentEvidenceError, match="disk"):
+            await f.physical.issue_place_move(
+                script, **args, pre_native_evidence=fail_evidence,
+            )
+        assert script.sent_commands == []
+        unresolved = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert unresolved.unresolved
+        assert unresolved.records[-1]["status"] == "PREPARED_UNRESOLVED"
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        f.stop_paper()
+        http.stop()
+
+
 def test_stage27e_witness_only_explicit_runner_optin(tmp_path):
     args = dict(
         paper_jar=tmp_path / "paper.jar", paper_sha256="0" * 64,
