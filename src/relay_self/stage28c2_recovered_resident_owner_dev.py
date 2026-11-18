@@ -78,6 +78,7 @@ def prepare_recovered_a_b_resident_owners(
     expected_source_branch_id: str,
     expected_committed_sha256: str,
     expected_fork_branch_id: str,
+    observation_only: bool = False,
 ) -> Stage28c2aOfflineOwners:
     """Verify full typed source+fork, rebuild original A/B objects *offline*.
 
@@ -177,6 +178,7 @@ def prepare_recovered_a_b_resident_owners(
             old_ids,
             resident_mode=True, initially_offline=True,
             allow_resident_move=False,
+            observation_only=observation_only,
         )
         if (
             not physical.all_residents_offline

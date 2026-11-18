@@ -10,6 +10,7 @@ from relay_self.persistent_cognition import (
     Memory,
     save_persistent_cognition,
 )
+from relay_self.physical_issue_admission_dev import PhysicalIssueFenceError
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkError,
@@ -160,3 +161,25 @@ def test_stage28c2a_stale_world_cannot_reuse_duplicate_owner_handles(
     prepared_owners = _reattach(generation, restored, prepared)
     with pytest.raises(ResidentCognitiveWorkError, match="unattached"):
         type(prepared_owners.cognitive_work)(prepared_owners.owners)
+
+
+def test_observation_only_remains_fenced_after_resident_login(tmp_path, monkeypatch):
+    generation, restored, prepared = _context(tmp_path, monkeypatch)
+    recovered = _reattach(generation, restored, prepared, observation_only=True)
+    recovered.physical.admit_resident_login(
+        self_id="A", former_native_session_id="native-retired-A",
+        fresh_native_session_id="new-A", source_world_epoch_validated=True,
+        physical_wal_file=recovered.owners["A"].files.physical_wal_file,
+    )
+    assert recovered.physical.resident_states["A"] == "ONLINE"
+    with pytest.raises(PhysicalIssueFenceError, match="observation-only"):
+        with recovered.physical.lease(
+            self_id="A", native_session_id="new-A", action_id="eat",
+            effect_family="EAT",
+        ):
+            pytest.fail("physical action admitted")
+    with pytest.raises(PhysicalIssueFenceError, match="observation-only"):
+        recovered.physical.require_native_effect(
+            self_id="A", native_session_id="new-A", effect="consume_held",
+            action_id="eat",
+        )
