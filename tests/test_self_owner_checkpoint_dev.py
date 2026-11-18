@@ -42,6 +42,7 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.self_owner_checkpoint_dev import (
     PeerDelivery,
     SelfOwnerCheckpointError,
@@ -54,6 +55,15 @@ from relay_self.self_owner_checkpoint_dev import (
     verify_typed_generation,
 )
 from relay_self.skill import SkillExecution, SkillState
+from relay_self.stage28_cognitive_recovery_gate_dev import (
+    Stage28RecoveryHold,
+    stage28_inert_cognitive_recovery,
+    stage28_require_fresh_l1_eligibility,
+)
+from relay_self.world_resident_lifecycle_dev import (
+    NativeLoginEvidence,
+    WorldLifetime,
+)
 
 
 def _fixture(tmp_path: Path, *, peer: bool = True, complete_a: bool = True):
@@ -360,3 +370,164 @@ def test_runtime_holds_when_peer_delivery_missing_before_restart(tmp_path: Path)
     assert latest_verified_generation(store) is None
     assert "restart" not in events and "release" not in events
     assert not (store / "g-000000000001" / "COMMITTED.json").exists()
+
+
+def _stage28_fixture(tmp_path: Path):
+    world, store, sources, cuts = _fixture(tmp_path)
+    generation = _capture(world, store, sources)
+    dest = tmp_path / "restored-staged-world"
+    restore_generation(generation, dest, restore_id="stage28-new-world")
+    return world, store, sources, cuts, generation, dest
+
+
+def _stage28_new_native(plan):
+    world = WorldLifetime(
+        plan.source_world_id, plan.fork_branch_id, "paper-session-new", 1,
+        plan.declared_world_tick,
+    )
+    logins = tuple(NativeLoginEvidence(
+        sid, 1, plan.source_world_id, plan.fork_branch_id,
+        world.paper_session_id, world.epoch,
+        "fresh-native-" + sid, plan.declared_world_tick,
+        "owned-native-fresh-probe:" + sid,
+        True, True, True, True, True,
+    ) for sid in plan.roster)
+    slot = LlamaSlotIdleReceipt(
+        "fresh-owned-backend", 0, 1, False, "GET /slots:0:idle",
+    )
+    return world, logins, slot
+
+
+def test_stage28_typed_world_a_b_recovery_is_inert_and_fresh_only(tmp_path: Path):
+    _, _, _, _, generation, dest = _stage28_fixture(tmp_path)
+    plan = stage28_inert_cognitive_recovery(
+        generation, dest,
+        expected_self_ids=("A", "B"), expected_source_world_id="world-1",
+    )
+    assert plan.roster == ("A", "B")
+    assert plan.declared_world_tick == 110
+    assert plan.cut_ticks == (("A", 105), ("B", 105))
+    assert [c.semantic.cut.self_id for c in plan.candidates] == ["A", "B"]
+    assert plan.candidates[0].semantic.pattern_registry.revision == 1
+    assert plan.candidates[0].semantic.intent.current_intent.intent_id == "intent-A"
+    assert plan.candidates[1].semantic.skill_histories[0].state is SkillState.STARTED
+    assert plan.old_action_replay_authorized is False
+    assert plan.old_skill_resume_authorized is False
+    assert plan.old_message_redelivery_authorized is False
+    assert plan.old_l1_decision_reusable is False
+    assert plan.physical_action_issue_authorized is False
+    assert plan.l1_reevaluation_eligible is False
+
+    world, logins, idle = _stage28_new_native(plan)
+    receipt = stage28_require_fresh_l1_eligibility(
+        plan, world=world, logins=logins, idle=idle,
+    )
+    assert receipt.l1_reevaluation_eligible is True
+    assert receipt.physical_action_issue_authorized is False
+    assert receipt.old_l1_decision_reusable is False
+    assert receipt.old_skill_resume_authorized is False
+    assert receipt.native_sessions == (
+        ("A", "fresh-native-A"), ("B", "fresh-native-B"),
+    )
+
+
+def test_stage28_world_only_archive_is_not_cognition_checkpoint(tmp_path: Path):
+    # The Stage24g world-only layout cannot be upgraded by synthetic Self IDs.
+    generation = tmp_path / "world-only-000000000000"
+    generation.mkdir()
+    (generation / "WORLD_ONLY_COMMITTED.json").write_text("{}")
+    with pytest.raises(Stage28RecoveryHold, match="typed World"):
+        stage28_inert_cognitive_recovery(
+            generation, tmp_path,
+            expected_self_ids=("A", "B"), expected_source_world_id="world-1",
+        )
+
+
+@pytest.mark.parametrize("failure", [
+    "world-file", "foreign-world", "missing-self", "restored-self",
+])
+def test_stage28_foreign_or_corrupt_recovery_holds(
+    tmp_path: Path, failure: str,
+):
+    _, _, _, _, generation, dest = _stage28_fixture(tmp_path)
+    expected_ids = ("A", "B")
+    expected_world = "world-1"
+    if failure == "world-file":
+        (dest / "world" / "entities" / "r.0.0.mca").write_bytes(
+            b"future-zombie-dead"
+        )
+    elif failure == "foreign-world":
+        expected_world = "foreign-world"
+    elif failure == "missing-self":
+        expected_ids = ("A",)
+    else:
+        (dest / "selves" / "B" / "cognition.json").write_bytes(b"tampered")
+    with pytest.raises(Stage28RecoveryHold):
+        stage28_inert_cognitive_recovery(
+            generation, dest, expected_self_ids=expected_ids,
+            expected_source_world_id=expected_world,
+        )
+
+
+def test_stage28_later_cognition_tick_cannot_join_earlier_world(
+    tmp_path: Path,
+):
+    world, store, sources, cuts = _fixture(tmp_path)
+    # Source-cut timestamp C111 cannot coexist with World W110 even when
+    # both are internally valid and the owner envelope SHA matches.
+    altered = replace(cuts[1], last_observed_world_tick=111)
+    sources[1].owner_state_file.unlink()
+    save_self_owner_cut(sources[1].owner_state_file, altered)
+    generation = _capture(world, store, sources)
+    dest = tmp_path / "restored"
+    restore_generation(generation, dest, restore_id="stage28-too-late")
+    with pytest.raises(Stage28RecoveryHold, match="roster/tick"):
+        stage28_inert_cognitive_recovery(
+            generation, dest,
+            expected_self_ids=("A", "B"), expected_source_world_id="world-1",
+        )
+
+
+@pytest.mark.parametrize("failure", [
+    "old-native", "stale-gpu", "stale-transport",
+    "foreign-paper", "wrong-world-epoch", "stale-worldbody",
+    "busy-slot", "missing-b", "different-world", "duplicate-native",
+])
+def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
+    tmp_path: Path, failure: str,
+):
+    _, _, _, _, generation, dest = _stage28_fixture(tmp_path)
+    plan = stage28_inert_cognitive_recovery(
+        generation, dest,
+        expected_self_ids=("A", "B"), expected_source_world_id="world-1",
+    )
+    world, logins, idle = _stage28_new_native(plan)
+    if failure == "old-native":
+        logins = (replace(logins[0], native_session_id="old-session-A"), logins[1])
+    elif failure == "stale-gpu":
+        logins = (replace(logins[0], stale_gpu_fenced=False), logins[1])
+    elif failure == "stale-transport":
+        logins = (replace(logins[1], stale_transport_fenced=False), logins[0])
+    elif failure == "foreign-paper":
+        logins = (replace(logins[0], paper_session_id="old-paper"), logins[1])
+    elif failure == "wrong-world-epoch":
+        logins = (replace(logins[0], world_epoch=0), logins[1])
+    elif failure == "stale-worldbody":
+        logins = (
+            replace(logins[0], observed_world_tick=plan.declared_world_tick - 1),
+            logins[1],
+        )
+    elif failure == "busy-slot":
+        idle = replace(idle, is_processing=True)
+    elif failure == "missing-b":
+        logins = (logins[0],)
+    elif failure == "different-world":
+        world = replace(world, world_id="other-world")
+    else:
+        logins = (logins[0], replace(
+            logins[1], native_session_id=logins[0].native_session_id,
+        ))
+    with pytest.raises(Stage28RecoveryHold):
+        stage28_require_fresh_l1_eligibility(
+            plan, world=world, logins=logins, idle=idle,
+        )

@@ -1,0 +1,236 @@
+"""Stage28a: inert same-generation World + A/B Self recovery admission.
+
+This is a *read-only* checkpoint verification and fresh-source reevaluation
+boundary. It does not revive a Self, issue an Action, replay a WAL or invoke L1.
+World-only checkpoint archives are intentionally NOT cognitive checkpoints.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from relay_self.checkpointed_cognitive_runtime_dev import (
+    StagedRecoveredCognition,
+    staged_recover_cognition_cohort,
+)
+from relay_self.coordinated_checkpoint_dev import verify_generation
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
+from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+from relay_self.world_checkpoint_dev import verify_world_checkpoint
+from relay_self.world_resident_lifecycle_dev import (
+    NativeLoginEvidence,
+    WorldLifetime,
+)
+
+
+class Stage28RecoveryHold(RuntimeError):
+    """The source and new WorldBody cannot be admitted as one continuity cut."""
+
+
+@dataclass(frozen=True, slots=True)
+class Stage28InertRecovery:
+    """Validated snapshots only. Cannot issue or redeliver any physical effect."""
+
+    generation_id: str
+    source_world_id: str
+    source_branch_id: str
+    fork_branch_id: str
+    declared_world_tick: int
+    roster: tuple[str, ...]
+    old_native_sessions: tuple[tuple[str, str], ...]
+    cut_ticks: tuple[tuple[str, int], ...]
+    candidates: tuple[StagedRecoveredCognition, ...]
+    old_action_replay_authorized: bool = False
+    old_skill_resume_authorized: bool = False
+    old_message_redelivery_authorized: bool = False
+    old_l1_decision_reusable: bool = False
+    physical_action_issue_authorized: bool = False
+    l1_reevaluation_eligible: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Stage28FreshL1Eligibility:
+    generation_id: str
+    world_id: str
+    fork_branch_id: str
+    paper_session_id: str
+    world_epoch: int
+    native_sessions: tuple[tuple[str, str], ...]
+    l1_reevaluation_eligible: bool = True
+    old_l1_decision_reusable: bool = False
+    old_skill_resume_authorized: bool = False
+    historical_action_replayed: bool = False
+    physical_action_issue_authorized: bool = False
+
+
+def _file_hash(path: Path) -> str:
+    if path.is_symlink() or not path.is_file():
+        raise Stage28RecoveryHold("restored World file missing or symlinked")
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while data := stream.read(1024 * 1024):
+            digest.update(data)
+    return digest.hexdigest()
+
+
+def _require_restored_world_files(directory: Path, archived: dict) -> None:
+    """Compare every restored World byte against the verified archived cut."""
+    if directory.is_symlink() or not directory.is_dir():
+        raise Stage28RecoveryHold("restored World directory unavailable")
+    expected = {row["path"]: row for row in archived["files"]}
+    observed: set[str] = set()
+    for item in directory.rglob("*"):
+        if item.is_symlink():
+            raise Stage28RecoveryHold("restored World symlink forbidden")
+        if item.is_file():
+            rel = item.relative_to(directory).as_posix()
+            if rel in observed:
+                raise Stage28RecoveryHold("duplicate restored file")
+            observed.add(rel)
+        elif not item.is_dir():
+            raise Stage28RecoveryHold("unknown restored World node")
+    if observed != set(expected):
+        raise Stage28RecoveryHold("restored World inventory differs from exact generation")
+    for rel, row in expected.items():
+        file = directory / rel
+        if file.stat().st_size != row["size"] or _file_hash(file) != row["sha256"]:
+            raise Stage28RecoveryHold("restored World bytes differ from committed cut")
+
+
+def stage28_inert_cognitive_recovery(
+    generation: Path, restored_directory: Path, *,
+    expected_self_ids: tuple[str, ...],
+    expected_source_world_id: str,
+) -> Stage28InertRecovery:
+    """Qualify one *typed* World+A/B cut, never pair independent C and W ticks.
+
+    Both the source generation and branched restore must be independently
+    committed/verified. The returned candidate is *still inert*: restoring
+    JSON/WAL files neither authorizes a physical Action nor an L1 inference.
+    """
+    if (
+        type(expected_self_ids) is not tuple
+        or not expected_self_ids
+        or any(type(sid) is not str or not sid for sid in expected_self_ids)
+        or len(set(expected_self_ids)) != len(expected_self_ids)
+        or not isinstance(expected_source_world_id, str)
+        or not expected_source_world_id
+    ):
+        raise Stage28RecoveryHold("explicit exact Self roster and source World ID required")
+    generation = Path(generation)
+    restored_directory = Path(restored_directory)
+    try:
+        # A World-only archive has no COMMITTED typed Self roster, and fails.
+        cuts = verify_typed_generation(generation)
+        manifest = verify_generation(generation)
+        archived = verify_world_checkpoint(generation / "world")
+        if (
+            tuple(sorted(expected_self_ids)) != tuple(manifest["roster"])
+            or archived["world_id"] != expected_source_world_id
+            or not cuts
+            or any(c.last_observed_world_tick > manifest["declared_tick"] for c in cuts)
+        ):
+            raise Stage28RecoveryHold(
+                "Self cut roster/tick is inconsistent with the same World generation"
+            )
+        # This further validates typed copied owners, original WAL and
+        # world.restore/RESTORE_PREPARED source-generation receipts.
+        candidates = staged_recover_cognition_cohort(generation, restored_directory)
+        if tuple(c.self_id for c in candidates) != tuple(sorted(expected_self_ids)):
+            raise Stage28RecoveryHold("restored Self roster incomplete or foreign")
+        _require_restored_world_files(restored_directory / "world", archived)
+        for dim in manifest.get("paper_dimensions", {}):
+            companion = verify_world_checkpoint(
+                generation / "paper-dimensions" / dim
+            )
+            _require_restored_world_files(restored_directory / dim, companion)
+        prepared = json.loads(
+            (restored_directory / "RESTORE_PREPARED.json").read_bytes()
+        )
+        fork_branch = prepared["fork_branch_id"]
+        if (
+            type(fork_branch) is not str or not fork_branch
+            or fork_branch == archived["branch_id"]
+            or any(c.native_session_bound or c.issue_authorized
+                   or c.conversation_redelivery_authorized for c in candidates)
+            or any(not c.fresh_worldbody_required for c in candidates)
+        ):
+            raise Stage28RecoveryHold("new branch or inert recovery boundary missing")
+    except Stage28RecoveryHold:
+        raise
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+        raise Stage28RecoveryHold(
+            "typed World+A/B recovery source unverified; World-only is insufficient"
+        ) from exc
+    return Stage28InertRecovery(
+        generation.name, archived["world_id"], archived["branch_id"],
+        fork_branch, manifest["declared_tick"],
+        tuple(manifest["roster"]),
+        tuple((c.self_id, c.former_native_session_id) for c in cuts),
+        tuple((c.self_id, c.last_observed_world_tick) for c in cuts),
+        candidates,
+    )
+
+
+def stage28_require_fresh_l1_eligibility(
+    plan: Stage28InertRecovery, *,
+    world: WorldLifetime,
+    logins: tuple[NativeLoginEvidence, ...],
+    idle: LlamaSlotIdleReceipt,
+) -> Stage28FreshL1Eligibility:
+    """One fresh evidence gate for *reevaluation*, not physical Action issue.
+
+    Callers must obtain actual native probes, GPU owner and Paper session
+    evidence through the existing owners. This does not call the L1 model.
+    """
+    if (
+        not isinstance(plan, Stage28InertRecovery)
+        or not isinstance(world, WorldLifetime)
+        or type(logins) is not tuple
+        or not isinstance(idle, LlamaSlotIdleReceipt)
+        or world.world_id != plan.source_world_id
+        or world.branch_id != plan.fork_branch_id
+        or type(world.epoch) is not int or world.epoch < 1
+        or world.world_tick < plan.declared_world_tick
+        or not idle.backend_ref or idle.is_processing
+        or idle.slot_id != 0 or idle.n_slots != 1
+        or idle.request_issue_authorized
+    ):
+        raise Stage28RecoveryHold("fresh World and single idle GPU slot required")
+    old = dict(plan.old_native_sessions)
+    if len(logins) != len(plan.roster) or any(
+        not isinstance(proof, NativeLoginEvidence) for proof in logins
+    ):
+        raise Stage28RecoveryHold("full A/B native evidence required")
+    by_self = {p.self_id: p for p in logins}
+    if set(by_self) != set(plan.roster):
+        raise Stage28RecoveryHold("new native roster missing, duplicate or foreign")
+    sessions = [p.native_session_id for p in logins]
+    if len(set(sessions)) != len(sessions) or set(sessions) & set(old.values()):
+        raise Stage28RecoveryHold("replayed original or duplicate native session")
+    for sid in plan.roster:
+        p = by_self[sid]
+        if (
+            p.world_id != world.world_id
+            or p.branch_id != world.branch_id
+            or p.paper_session_id != world.paper_session_id
+            or p.world_epoch != world.epoch
+            or p.observed_world_tick < plan.declared_world_tick
+            or not p.observation_ref
+            or not p.old_native_invalidated
+            or not p.physical_wal_clear
+            or not p.stale_gpu_fenced
+            or not p.stale_transport_fenced
+            or not p.new_native_source_verified
+            or p.action_issue_authorized
+        ):
+            raise Stage28RecoveryHold(
+                "fresh WorldBody/stale-work fence missing for one Self"
+            )
+    return Stage28FreshL1Eligibility(
+        plan.generation_id, world.world_id, world.branch_id,
+        world.paper_session_id, world.epoch,
+        tuple((sid, by_self[sid].native_session_id) for sid in plan.roster),
+    )
