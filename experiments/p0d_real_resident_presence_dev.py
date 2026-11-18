@@ -51,8 +51,8 @@ from experiments.stage24b_real_l1_move_dev import (
     require_frozen_stage24b_choice,
     run_stage24b_selected_b_move,
 )
+from experiments.stage24g_model_gate_dev import Stage24gModelGateReceipt
 from experiments.stage24g_model_gate_dev import (
-    Stage24gModelGateReceipt,
     receipt_json as stage24g_model_receipt_json,
 )
 from relay_self.action_supervision import ActionSupervisor
