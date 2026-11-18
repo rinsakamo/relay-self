@@ -6,12 +6,12 @@ from dataclasses import replace
 
 import pytest
 
-from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
     Stage27EvaluationRefusal,
     prepare_stage27f_outcome_evaluation,
     resolve_stage27f_evaluation_choice,
 )
+from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.relay_engine import ProviderDecision
 from relay_self.skill import SkillState
 from relay_self.target_contract import TargetConditionStatus
