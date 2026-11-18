@@ -56,6 +56,25 @@ than its boot witness. The source saved W221 is never used as a numeric
 threshold. No L1 inference is performed by the validator; no
 physical Action issue permission is granted.
 
+### One Paper boot needs at least two tick reads
+
+The original `PaperMainThreadTickReader` defaults to one read per Paper
+session for legacy Stage24g / Stage28b source qualifications. Stage28c2b
+requires a boot-local tick before native JOIN **and** another independently
+nonce-qualified main-thread tick for `OwnedPaperWorld.stop_and_save()`.
+
+Use explicit `allow_repeated_same_boot=True` only in the restored Paper
+runner's reader. Under that opt-in, the reader requires **every read**
+to have a fresh nonce/ACK/log correlation, the **same owned Paper session
+and boot ID**, and a nonregressing tick. It rejects a different Paper
+session reusing that boot, an unexpected new boot in the same session,
+and a regressed tick. It is not an arbitrary tick override or global
+clock offset. Existing legacy readers default to `False`; their one-shot
+contract and tests remain unchanged.
+
+The owner must stay observation-only; the second read is for save/stop
+provenance, not Action admission.
+
 ### Source-capture and classification boundary
 
 Passing a typed Python dataclass or offline synthetic test is not proof
