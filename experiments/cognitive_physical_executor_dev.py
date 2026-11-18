@@ -174,6 +174,7 @@ def begin_physical_issue_dev(
     refusal: type[ValueError] = ValueError,
     place_invocation: object | None = None,
     place_motion: object | None = None,
+    allow_prior_original_place_terminals: bool = False,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -191,6 +192,57 @@ def begin_physical_issue_dev(
     ):
         raise refusal("physical issuer cannot change selected capability")
     check_physical_grants(b, propose_grant, issue_grant, refusal=refusal)
+    # Stage27h only: a second original MOVE child may follow *fully closed*
+    # preceding children of the SAME original Invocation/Intent/Skill/Target.
+    # Default Stage27g and EAT/ATTACK/RELATIVE still reject ANY history.
+    prior_actions = supervisor.recorded_actions
+    if allow_prior_original_place_terminals:
+        from relay_self.skill_invocation import SkillInvocation
+
+        if (
+            type(allow_prior_original_place_terminals) is not bool
+            or capability != "MOVE"
+            or not isinstance(place_invocation, SkillInvocation)
+            or place_motion is None
+            or not prior_actions
+            or len(prior_actions) != len(journal.records)
+            or len(prior_actions) >= place_invocation.budget.max_actions
+            or place_invocation.budget.max_actions > 4
+            or b.action_id in {a.action_id for a in prior_actions}
+        ):
+            raise refusal("original L0 multi-Action terminal history not admissible")
+        rows = journal.records
+        if (
+            {a.action_id for a in prior_actions}
+            != {row["action_id"] for row in rows}
+            or any(
+                a.state is not ActionState.OUTCOME or not a.is_current_snapshot
+                or a.intent_id != b.intent_id
+                or a.skill_execution_id != b.skill_execution_id
+                for a in prior_actions
+            )
+            or any(
+                row["capability"] != "MOVE_PLACE"
+                or row["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+                or row["session_id"] != b.scope.world_session_id
+                or row["intent_id"] != b.intent_id
+                or row["skill_execution_id"] != b.skill_execution_id
+                or row["target_ref"] != b.target_ref
+                or row["invocation_ref"] != place_invocation.invocation_ref
+                or row["preset_ref"] != place_invocation.parameter_preset_ref
+                or row["target_contract_ref"]
+                != place_invocation.target.contract.contract_ref
+                or row["after_seq"] is None
+                or row["after_seq"] >= current_probe.seq
+                for row in rows
+            )
+            or place_invocation.budget.max_distance_m is None
+            or sum(row["displacement_m"] for row in rows)
+            >= place_invocation.budget.max_distance_m
+        ):
+            raise refusal("original closed multi-MOVE lineage altered or exhausted")
+    elif type(allow_prior_original_place_terminals) is not bool:
+        raise refusal("typed multi-Action issuer mode required")
     owner = intent_owner.current_intent
     if (
         session.started.session_id != b.scope.world_session_id
@@ -204,7 +256,8 @@ def begin_physical_issue_dev(
         or skill_execution.skill_id != b.skill_id
         or skill_execution.skill_id != capability
         or skill_execution.intent_id != b.intent_id
-        or supervisor.open_actions or supervisor.recorded_actions
+        or supervisor.open_actions
+        or (supervisor.recorded_actions and not allow_prior_original_place_terminals)
         or proposal.proposal.action_id != b.action_id
         or not proposal.proposal.is_current_snapshot
     ):
@@ -216,7 +269,11 @@ def begin_physical_issue_dev(
         and journal.records[-1]["after_seq"] >= current_probe.seq
     ):
         raise refusal("previous physical Action source not yet advanced")
-    if at_ns < max(intent_owner.last_at_ns or 0, skill_execution.events[-1].at_ns):
+    if at_ns < max(
+        intent_owner.last_at_ns or 0,
+        skill_execution.events[-1].at_ns,
+        supervisor.last_at_ns or 0,
+    ):
         raise refusal("physical time precedes selected owner/Skill")
 
     authorized = proposal.proposal.authorize(
