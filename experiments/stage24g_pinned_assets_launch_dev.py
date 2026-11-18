@@ -18,8 +18,8 @@ from experiments.p0d_real_paper_smoke_dev import (
     file_sha256,
     prepare_assets,
 )
-from experiments.p0d_real_two_native_smoke_dev import _verify_local_runtime
 from experiments.p0d_real_resident_presence_dev import run_real_resident_presence
+from experiments.p0d_real_two_native_smoke_dev import _verify_local_runtime
 from experiments.stage24g_model_gate_dev import (
     verify_stage24g_model_gate,
 )
