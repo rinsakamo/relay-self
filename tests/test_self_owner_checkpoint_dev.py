@@ -42,6 +42,7 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.self_owner_checkpoint_dev import (
     PeerDelivery,
     SelfOwnerCheckpointError,
@@ -59,7 +60,6 @@ from relay_self.stage28_cognitive_recovery_gate_dev import (
     stage28_inert_cognitive_recovery,
     stage28_require_fresh_l1_eligibility,
 )
-from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.world_resident_lifecycle_dev import (
     NativeLoginEvidence,
     WorldLifetime,
