@@ -119,10 +119,7 @@ def test_stage24g_gate_uses_pid_maps_gpu_catalog_and_one_idle_slot(tmp_path, mon
         f"7f000000-7f010000 r--p 0 00:00 0 {gguf}\n"
     )
 
-    original_path = model_gate.Path
-    def proc_path(text):
-        return proc if text == "/proc" else original_path(text)
-    monkeypatch.setattr(model_gate, "Path", proc_path)
+    monkeypatch.setattr(model_gate, "_PROC_ROOT", proc)
     def run(args, **kwargs):
         return SimpleNamespace(stdout=(
             f"{pid}\n" if "--query-compute-apps=pid" in args
