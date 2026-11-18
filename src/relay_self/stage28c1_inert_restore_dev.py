@@ -79,11 +79,14 @@ def _hash_file(path: Path) -> str:
 
 def inspect_stage28c_source(
     generation: Path, *, expected_world_id: str,
+    expected_source_branch_id: str,
     expected_generation_id: str = "g-000000000000",
 ) -> Stage28cSource:
     """No filesystem mutation; exact typed A/B and three Paper dimension cut."""
     if (
         type(expected_world_id) is not str or not expected_world_id
+        or type(expected_source_branch_id) is not str
+        or not expected_source_branch_id
         or type(expected_generation_id) is not str
         or not expected_generation_id
     ):
@@ -106,6 +109,7 @@ def inspect_stage28c_source(
             or world["world_id"] != expected_world_id
             or manifest["world_id"] != expected_world_id
             or world["branch_id"] != manifest["branch_id"]
+            or world["branch_id"] != expected_source_branch_id
             or tuple(sorted(manifest["paper_dimensions"]))
             != ("world_nether", "world_the_end")
             or any(c.last_observed_world_tick > manifest["declared_tick"] for c in cuts)
@@ -147,12 +151,14 @@ def _fresh_destination(generation: Path, destination: Path) -> None:
 
 def prepare_stage28c_inert_restore(
     generation: Path, destination: Path, *,
-    expected_world_id: str, expected_committed_sha256: str,
-    restore_id: str, expected_generation_id: str = "g-000000000000",
+    expected_world_id: str, expected_source_branch_id: str,
+    expected_committed_sha256: str, restore_id: str,
+    expected_generation_id: str = "g-000000000000",
 ) -> Stage28cInertRestore:
     """Create one fresh branch, independently verify it, never activate A/B."""
     source = inspect_stage28c_source(
         generation, expected_world_id=expected_world_id,
+        expected_source_branch_id=expected_source_branch_id,
         expected_generation_id=expected_generation_id,
     )
     if (
@@ -227,6 +233,7 @@ def prepare_stage28c_inert_restore(
         # cannot silently change while a multi-dimensional copy is made.
         if inspect_stage28c_source(
             generation, expected_world_id=expected_world_id,
+            expected_source_branch_id=expected_source_branch_id,
             expected_generation_id=expected_generation_id,
         ) != source:
             raise Stage28cRestoreHold("source generation changed during restore")
