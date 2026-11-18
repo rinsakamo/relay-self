@@ -137,10 +137,11 @@ def test_l0_reaches_target_after_two_short_actions_without_second_llm(tmp_path):
                 request_id=f"stage27h-preflight-{idx}",
             )
         assert action_ids
-        assert len(action_ids) == 2
+        assert len(action_ids) == 3
         assert len(set(action_ids)) == 2
         assert statuses == [
-            "L0_CONTINUE_MOVE", "L0_TARGET_REACHED_YIELD_EVALUATION",
+            "L0_CONTINUE_MOVE", "L0_CONTINUE_MOVE",
+            "L0_TARGET_REACHED_YIELD_EVALUATION",
         ]
         assert len(server.calls) == model_calls  # no L1/GPU in L0 loop
         assert owner.intent.current_intent is not None
@@ -148,7 +149,7 @@ def test_l0_reaches_target_after_two_short_actions_without_second_llm(tmp_path):
         journal = PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id=owner.self_id,
         )
-        assert len(journal.records) == 2
+        assert len(journal.records) == 3
         assert [r["action_id"] for r in journal.records] == action_ids
         assert all(r["status"] == "NATIVE_PLACE_MOVE_SETTLED" for r in journal.records)
         assert (peer.intent.events, dict(peer.skills),
@@ -180,21 +181,23 @@ def test_l0_stops_before_issuing_or_reissuing_unqualified_move(tmp_path, mode):
             with pytest.raises(Stage27hLoopRefusal):
                 loop.pre_action(observed, now_ns=150)
         else:
-            loop.pre_action(observed, now_ns=150)
+            first = loop.pre_action(
+                observed, now_ns=15_000_000_101 if mode == "budget" else 150,
+            )
+            if mode == "budget":
+                assert first.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+                assert loop.action_count == 0
+                with pytest.raises(Stage27hLoopRefusal):
+                    loop.pre_action(observed, now_ns=15_000_000_102)
+                return
             native = ScriptedPlaceNative(
                 handoff.native_session_id, blocked=mode == "no-progress",
             )
             receipt = await _issue(f, pre, handoff, loop, previous, observed, native)
-            if mode == "budget":
-                loop.cumulative_distance_m = 1.9
-            result = loop.observe_terminal_action(
+             result = loop.observe_terminal_action(
                 receipt, source_probe=observed, now_ns=180,
             )
-            assert result.status == (
-                "L0_NO_PROGRESS_YIELD_EVALUATION"
-                if mode == "no-progress"
-                else "L0_CUMULATIVE_OVERSHOOT_YIELD_EVALUATION"
-            )
+            assert result.status == "L0_NO_PROGRESS_YIELD_EVALUATION"
             assert loop.action_count == 1
             with pytest.raises(Stage27hLoopRefusal):
                 loop.pre_action(receipt.settled_probe, now_ns=200)
