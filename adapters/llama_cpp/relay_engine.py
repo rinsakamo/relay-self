@@ -739,7 +739,9 @@ class LlamaCppRelayProvider:
             with urllib.request.urlopen(
                 request, timeout=self._timeout,
             ) as response:
-                status = response.status
+                # Production urllib responses expose status. Legacy unit
+                # fakes without it are allowed only when capture is disabled.
+                status = getattr(response, "status", None if capture else 200)
                 raw = response.read()
         except urllib.error.HTTPError as exc:
             status = exc.code
