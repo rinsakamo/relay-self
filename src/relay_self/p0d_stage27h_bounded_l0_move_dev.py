@@ -27,6 +27,12 @@ from relay_self.target_contract import (
 )
 
 
+STAGE27H_SETTLING_PROBE_RESERVATION = 60
+# Sufficient STOP/settling probe requests are reserved BEFORE each physical
+# MOVE. This upper bound is consumed pessimistically until a canonical terminal
+# Action and its complete native all_stop_probes source are verified.
+
+
 class Stage27hLoopRefusal(RuntimeError):
     """Unsafe/stale original L0 MOVE continuation, never a new grant."""
 
@@ -87,7 +93,9 @@ class Stage27hBoundedMoveLoop:
             or inv.parameter_preset_ref != handoff.preset_ref
             or inv.budget.max_actions not in (2, 3, 4)
             or inv.budget.max_distance_m is None
-            or inv.budget.max_observations < inv.budget.max_actions * 2
+            or inv.budget.max_observations < inv.budget.max_actions * (
+                1 + STAGE27H_SETTLING_PROBE_RESERVATION
+            )
         ):
             raise Stage27hLoopRefusal(
                 "explicit bounded multi-Action MOVE Preset/Target required"
@@ -108,6 +116,9 @@ class Stage27hBoundedMoveLoop:
         self.terminal_status: str | None = None
         self._seen_action_ids: set[str] = set()
         self._source_seq = -1
+        self._ready_to_reserve_seq: int | None = None
+        self._reserved_source_seq: int | None = None
+        self._settlement_reserved = 0
         self._validate_owner_and_journal()
 
     def _validate_owner_and_journal(self) -> PhysicalActionJournal:
@@ -170,9 +181,15 @@ class Stage27hBoundedMoveLoop:
                 raise Stage27hLoopRefusal("original WAL rows differ from MOVE Skill")
         return journal
 
-    def _assess(self, observed: MineflayerObservation, now_ns: int) -> Stage27hLoopStep:
+    def _assess(
+        self, observed: MineflayerObservation, now_ns: int, *,
+        newly_requested: int = 1, next_preflight_required: bool = False,
+    ) -> Stage27hLoopStep:
         if (
             self.terminal_status is not None
+            or type(newly_requested) is not int
+            or newly_requested not in (0, 1)
+            or type(next_preflight_required) is not bool
             or type(now_ns) is not int or now_ns < self.start_ns
             or not isinstance(observed, MineflayerObservation)
             or observed.kind != "probe" or not observed.request_id
@@ -187,7 +204,11 @@ class Stage27hBoundedMoveLoop:
         ):
             raise Stage27hLoopRefusal("stale/unsafe MOVE WorldBody observation")
         self._source_seq = observed.seq
-        self.observation_count += 1
+        self.observation_count += newly_requested
+        if self.observation_count > self.invocation.budget.max_observations:
+            raise Stage27hLoopRefusal(
+                "Invocation native probe budget exceeded, no further Action"
+            )
         target = self.invocation.target.contract
         assert target is not None
         assessment = evaluate_target(
@@ -201,7 +222,11 @@ class Stage27hBoundedMoveLoop:
         timed_out = (now_ns - self.start_ns) >= limit.max_duration_ms * 1_000_000
         budget_exhausted = (
             self.action_count >= limit.max_actions
-            or self.observation_count >= limit.max_observations
+            # Reserve the full STOP settlement quota before any next MOVE.
+            # After a terminal Action, an additional *preflight* native probe
+            # will be needed before a new reservation.
+            or self.observation_count + STAGE27H_SETTLING_PROBE_RESERVATION
+            + int(next_preflight_required) > limit.max_observations
             or self.cumulative_distance_m >= limit.max_distance_m
             or timed_out
         )
@@ -215,6 +240,10 @@ class Stage27hBoundedMoveLoop:
             status = "L0_CONTINUE_MOVE"
         if status != "L0_CONTINUE_MOVE":
             self.terminal_status = status
+        self._ready_to_reserve_seq = (
+            observed.seq if status == "L0_CONTINUE_MOVE"
+            and not next_preflight_required else None
+        )
         return Stage27hLoopStep(
             status, assessment.status.value, assessment.gap_to_envelope_m,
             self.action_count, self.observation_count, self.cumulative_distance_m,
@@ -226,9 +255,44 @@ class Stage27hBoundedMoveLoop:
     ) -> Stage27hLoopStep:
         """L0 preflight: no physical proposal if the new source is unsafe."""
         self._validate_owner_and_journal()
+        if self._settlement_reserved or self._reserved_source_seq is not None:
+            raise Stage27hLoopRefusal(
+                "L0 settling reservation unresolved: no second MOVE"
+            )
         if self.last_native_seq >= 0 and observed.seq <= self.last_native_seq:
             raise Stage27hLoopRefusal("next native observation not after prior STOP")
         return self._assess(observed, now_ns)
+
+    def reserve_settling_observations(
+        self, *, source_probe: MineflayerObservation,
+    ) -> int:
+        """Precommit maximum native STOP probes BEFORE issuing any motion.
+
+        Physical issuer must use the returned cap. On uncertain STOP/WAL the
+        reservation stays consumed and the whole trial holds (no retry).
+        Only verified terminal receipt may refund the unused probe slots.
+        """
+        self._validate_owner_and_journal()
+        cap = STAGE27H_SETTLING_PROBE_RESERVATION
+        if (
+            self.terminal_status is not None
+            or self._settlement_reserved != 0
+            or self._reserved_source_seq is not None
+            or not isinstance(source_probe, MineflayerObservation)
+            or self._ready_to_reserve_seq is None
+            or source_probe.seq != self._ready_to_reserve_seq
+            or source_probe.session_id != self.prepared.native_session
+            or self.observation_count + cap
+            > self.invocation.budget.max_observations
+        ):
+            raise Stage27hLoopRefusal(
+                "L0 STOP observation reservation unavailable; do not issue"
+            )
+        self.observation_count += cap
+        self._settlement_reserved = cap
+        self._reserved_source_seq = source_probe.seq
+        self._ready_to_reserve_seq = None
+        return cap
 
     def observe_terminal_action(
         self,
@@ -246,6 +310,8 @@ class Stage27hBoundedMoveLoop:
             or now_ns < self.start_ns
             or self.action_count >= self.invocation.budget.max_actions
             or receipt.action_id in self._seen_action_ids
+            or self._settlement_reserved != STAGE27H_SETTLING_PROBE_RESERVATION
+            or self._reserved_source_seq != source_probe.seq
             or receipt.native_session_id != self.prepared.native_session
             or receipt.original_invocation_ref != self.invocation.invocation_ref
             or receipt.original_preset_ref != self.invocation.parameter_preset_ref
@@ -261,6 +327,29 @@ class Stage27hBoundedMoveLoop:
             or receipt.displacement_m < 0
         ):
             raise Stage27hLoopRefusal("Action was not next original MOVE child")
+        stop_probes = receipt.all_stop_probes
+        if (
+            not isinstance(stop_probes, tuple)
+            or not 3 <= len(stop_probes) <= self._settlement_reserved
+            or stop_probes[0] != receipt.initial_stop_probe
+            or stop_probes[-1] != receipt.settled_probe
+            or receipt.first_stable_probe not in stop_probes
+            or len({p.request_id for p in stop_probes}) != len(stop_probes)
+            or any(
+                not isinstance(p, MineflayerObservation)
+                or p.kind != "probe" or not p.request_id
+                or p.session_id != self.prepared.native_session
+                or p.provenance.source != "mineflayer"
+                or p.provenance.reference != f"{p.session_id}:{p.seq}"
+                or p.snapshot.time is None or p.snapshot.health <= 0
+                or p.seq <= source_probe.seq
+                or idx and p.seq <= stop_probes[idx - 1].seq
+                for idx, p in enumerate(stop_probes)
+            )
+        ):
+            raise Stage27hLoopRefusal(
+                "STOP probes not fully accounted: original source unqualified"
+            )
         owner, journal = self.owner, PhysicalActionJournal.restore(
             self.owner.files.physical_wal_file, self_id=self.owner.self_id,
         )
@@ -300,6 +389,11 @@ class Stage27hBoundedMoveLoop:
         self.last_action_id = receipt.action_id
         self.last_wal_digest = journal.digest
         self._seen_action_ids.add(receipt.action_id)
+        # Until this verified terminal Action, the entire STOP quota was
+        # pessimistically counted. Release only the unused reservation.
+        self.observation_count -= self._settlement_reserved - len(stop_probes)
+        self._settlement_reserved = 0
+        self._reserved_source_seq = None
         if receipt.journal_status == "NATIVE_PLACE_MOVE_OVERSHOOT":
             self.terminal_status = "L0_OVERSHOOT_YIELD_EVALUATION"
         elif receipt.journal_status != "NATIVE_PLACE_MOVE_SETTLED":
@@ -313,4 +407,9 @@ class Stage27hBoundedMoveLoop:
                 self.last_native_seq, self.last_action_id, self.last_wal_digest,
             )
         self._validate_owner_and_journal()
-        return self._assess(receipt.settled_probe, now_ns)
+        # The final settled probe is already included in stop_probes.
+        # Target assessment MUST NOT count that same source twice.
+        return self._assess(
+            receipt.settled_probe, now_ns, newly_requested=0,
+            next_preflight_required=True,
+        )
