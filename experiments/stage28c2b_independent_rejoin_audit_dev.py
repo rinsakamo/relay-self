@@ -45,6 +45,61 @@ def _sha(path: Path) -> str:
     return h.hexdigest()
 
 
+def _verify_main_thread_ack(
+    executable: Path, *, paper_session: str, world_id: str,
+    boot_id: str, ref: str, tick: int, paper_stdout: bytes,
+) -> None:
+    """Re-read original plugin ACK bytes, digest and exact owned Paper log."""
+    match = re.fullmatch(
+        r"paper-main-thread:p0d:([A-Za-z0-9-]+):"
+        r"([A-Za-z0-9-]+):sha256:([a-f0-9]{64})",
+        ref,
+    )
+    if (
+        match is None or match.group(1) != boot_id
+        or type(tick) is not int or tick < 0
+    ):
+        raise Stage28c2bIndependentAuditHold("Paper tick reference/clock invalid")
+    nonce, digest = match.group(2), match.group(3)
+    source = (
+        Path(executable) / "plugins" / "P0BRecorder" / "p0d-ticks"
+        / "acks" / (nonce + ".ack")
+    )
+    if _sha(source) != digest:
+        raise Stage28c2bIndependentAuditHold("original Paper plugin ACK bytes changed")
+    try:
+        rows = source.read_text(encoding="utf-8").splitlines()
+        fields = dict(line.split("=", 1) for line in rows)
+    except (UnicodeError, ValueError) as exc:
+        raise Stage28c2bIndependentAuditHold("Paper ACK not parseable") from exc
+    if (
+        len(rows) != len(fields)
+        or set(fields) != {
+            "boot_id", "nonce", "paper_tick",
+            "server_session_id", "source", "world_uuid",
+        }
+        or fields["boot_id"] != boot_id
+        or fields["nonce"] != nonce
+        or fields["paper_tick"] != str(tick)
+        or fields["server_session_id"] != paper_session
+        or fields["source"] != "PAPER_MAIN_THREAD"
+        or fields["world_uuid"] != world_id
+    ):
+        raise Stage28c2bIndependentAuditHold("Paper ACK bytes/owned source mismatch")
+    marker = (
+        "P0D_TICK_ACK nonce=" + nonce
+        + " boot=" + boot_id
+        + " session=" + paper_session
+        + " world=" + world_id
+        + " tick=" + str(tick)
+        + " source=PAPER_MAIN_THREAD"
+    )
+    if marker.encode() not in paper_stdout:
+        raise Stage28c2bIndependentAuditHold(
+            "Paper ACK not reproduced in this original Popen stdout"
+        )
+
+
 def independently_audit_recovered_real_rejoin(
     result_path: Path, *, generation: Path, restored: Path,
     stage28b_evidence: Path, executable: Path,
@@ -243,27 +298,17 @@ def independently_audit_recovered_real_rejoin(
         ).require_clear()
     # Paper main-thread nonce refs and session boot must match actual log,
     # with separate Paper tick values from native World day time.
-    refs = [
-        paper_boot["paper_tick_source_ref"],
-        stopped["tick_source_ref"],
-        *[link["paper_tick_source_ref"] for link in links],
-    ]
-    for ref in refs:
-        match = re.fullmatch(
-            r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
-            ref,
+    for ref, tick in [
+        (paper_boot["paper_tick_source_ref"], paper_boot["boot_tick"]),
+        (stopped["tick_source_ref"], stopped["logical_tick"]),
+        *[(link["paper_tick_source_ref"], report["new_world_process_tick"])
+          for link in links],
+    ]:
+        _verify_main_thread_ack(
+            Path(executable), paper_session=paper_session,
+            world_id=_SOURCE_WORLD, boot_id=paper_boot["paper_boot_id"],
+            ref=ref, tick=tick, paper_stdout=raw_paper,
         )
-        if match is None or match.group(1) != paper_boot["paper_boot_id"]:
-            raise Stage28c2bIndependentAuditHold("foreign Paper tick nonce evidence")
-        marker = (
-            "P0D_TICK_ACK nonce=" + match.group(2)
-            + " boot=" + paper_boot["paper_boot_id"]
-            + " session=" + paper_session
-            + " world=" + _SOURCE_WORLD
-            + " tick="
-        )
-        if marker not in raw_paper.decode("utf-8", errors="replace"):
-            raise Stage28c2bIndependentAuditHold("Paper main-thread tick ACK missing")
     return {
         "classification": "REAL_RESTORED_WORLD_ORIGINAL_A_B_NATIVE_REJOIN_WORLDBODY_DEV",
         "generation_id": report["original_generation"],
