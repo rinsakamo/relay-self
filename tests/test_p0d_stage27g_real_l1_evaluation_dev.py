@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -14,6 +15,7 @@ from experiments.p0d_stage27_real_place_move_dev import (
     stage27g_real_a_motor_hook,
 )
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
+    Stage27EvaluationRefusal,
     prepare_stage27f_outcome_evaluation,
 )
 from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
@@ -22,6 +24,7 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     submit_stage27g_original_evaluation,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.relay_engine import BoundedChoice
 from relay_self.skill import SkillState
 from test_p0d_resident_llama_slot_owner_dev import (
     ResidentFixture,
@@ -87,11 +90,11 @@ def test_actual_owned_http_choice_is_read_only_after_real_shape_action(
                        ).digest)
         before_actions = len(a.supervisor.open_actions)
         before_calls = len(server.calls)
+        server.choice_id = model_number
         ticket = submit_stage27g_original_evaluation(
             frame, pre, owner=a, physical=f.physical, lane=lane,
         )
         assert ticket.mode.value == "bounded"
-        server.choice_id = model_number
         invoked = []
 
         async def fresh():
@@ -230,7 +233,7 @@ def test_no_completion_candidate_when_model_selects_unoffered_number(tmp_path):
         ticket = submit_stage27g_original_evaluation(
             frame, pre, owner=a, physical=f.physical, lane=lane,
         )
-        with pytest.raises(ValueError, match="unavailable"):
+        with pytest.raises(Stage27EvaluationRefusal, match="unavailable"):
             await finish_stage27g_original_evaluation(
                 frame, pre, owner=a, physical=f.physical, lane=lane, ticket=ticket,
                 fresh_probe=lambda: asyncio.sleep(0, result=_new_probe(receipt)),
@@ -267,3 +270,40 @@ def test_stage27g_runner_explicit_only(tmp_path):
         assert original.await_args.kwargs["_stage27_motor_hook"] is not (
             stage27g_real_a_motor_hook
         )
+
+
+@pytest.mark.parametrize("fault", ["extra-completion", "forged-success-context"])
+def test_forged_evaluation_frame_rejected_before_http(tmp_path, fault):
+    async def scenario(f, lane, server):
+        pre, handoff, l0, receipt = await _run_original(f, lane, mode="blocked")
+        a = f.owners[f.names[0]]
+        frame = prepare_stage27f_outcome_evaluation(
+            pre, handoff, l0, receipt, owner=a,
+            physical=f.physical, world_epoch=pre.world_epoch,
+        )
+        if fault == "extra-completion":
+            options = frame.request.choices
+            request = replace(frame.request, choices=(
+                options[0],
+                BoundedChoice("2", "REVIEW_COMPLETION: forged arrival"),
+                *options[1:],
+            ))
+        else:
+            datum = frame.request.context[0]
+            context = json.loads(datum.value_json)
+            context["goal_success_attested"] = True
+            request = replace(
+                frame.request, context=(replace(
+                    datum, value_json=json.dumps(context),
+                ),),
+            )
+        forged = replace(frame, request=request)
+        before = len(server.calls)
+        with pytest.raises(Stage27gEvaluationRefusal):
+            submit_stage27g_original_evaluation(
+                forged, pre, owner=a, physical=f.physical, lane=lane,
+            )
+        assert len(server.calls) == before
+        assert a.skills[handoff.skill_execution_id].state is SkillState.STARTED
+
+    _run_case(tmp_path, scenario)
