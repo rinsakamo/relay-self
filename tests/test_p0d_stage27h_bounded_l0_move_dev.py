@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPosition
+from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveRefusal
 from experiments.p0d_stage27_real_place_move_dev import (
     run_stage27_real_world,
     stage27h_real_a_motor_hook,
@@ -257,5 +258,49 @@ def test_l0_tampered_budget_counter_rejected(tmp_path):
         )
         with pytest.raises(Stage27hLoopRefusal, match="counter altered"):
             loop.pre_action(fresh, now_ns=200)
+
+    _fixture(tmp_path, scenario)
+
+
+def test_original_physical_issuer_rejects_second_action_without_explicit_l0_gate(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, previous, observed, loop = await _start(f, lane)
+        native = SlowPlaceNative(handoff.native_session_id)
+        assert loop.pre_action(observed, now_ns=150).status == "L0_CONTINUE_MOVE"
+        first = await _issue(f, pre, handoff, loop, previous, observed, native)
+        assert loop.observe_terminal_action(
+            first, source_probe=observed, now_ns=200,
+        ).status == "L0_CONTINUE_MOVE"
+        current = replace(
+            first.settled_probe, seq=first.settled_probe.seq + 1,
+            request_id="next-motor-original-probe",
+        )
+        assert loop.pre_action(current, now_ns=250).status == "L0_CONTINUE_MOVE"
+        owner = f.owners[f.names[0]]
+        plan = resolve_stage27_place_motion(
+            pre, handoff, current, owner=owner,
+            physical=f.physical, world_epoch=pre.world_epoch,
+        )
+        proposal = propose_stage27c_original_place_move(
+            pre, handoff, plan, current, owner=owner,
+            physical=f.physical, world_epoch=pre.world_epoch,
+            capability=PhysicalCapability("MOVE", 1, "locomotion", "DESTINATION", True),
+            at_ns=300, provenance=Provenance("stage27h-test", "second-source"),
+        )
+        native.seq = current.seq
+        native.tick = 1213 + current.seq * 9
+        native.x = current.snapshot.position.x
+        args = _args(f, pre, handoff, plan, proposal, first.settled_probe, current)
+        args["at_ns"] = 1010
+        before_commands = tuple(native.sent_commands)
+        with pytest.raises(Stage27PlaceMoveRefusal, match="no longer eligible"):
+            await f.physical.issue_place_move(native, **args)
+        assert tuple(native.sent_commands) == before_commands
+        ledger = PhysicalActionJournal.restore(
+            owner.files.physical_wal_file, self_id=owner.self_id,
+        )
+        ledger.require_clear()
+        assert len(ledger.records) == 1
+        assert ledger.records[0]["action_id"] == first.action_id
 
     _fixture(tmp_path, scenario)
