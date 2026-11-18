@@ -13,6 +13,7 @@ import pytest
 from relay_self.owned_paper_world_dev import OwnedPaperWorld, PaperTickReceipt
 from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.stage28_cognitive_recovery_gate_dev import (
+    Stage28NativePaperBodyLink,
     Stage28RecoveryHold,
     stage28_require_fresh_l1_eligibility,
 )
@@ -76,6 +77,16 @@ def _new_logins(plan, world, tick):
     ) for idx, sid in enumerate(plan.roster, start=1))
 
 
+def _body_links(world, boot, logins):
+    return tuple(Stage28NativePaperBodyLink(
+        sid, p.native_session_id, p.observation_ref,
+        p.observed_world_tick, p.paper_session_id,
+        boot.paper_boot_id, "independent-paper-resident-boot",
+        world.world_tick, boot.paper_tick_source_ref,
+        "c" * 64, "actor-" + sid,
+    ) for sid, p in zip(("A", "B"), logins))
+
+
 def _idle():
     return LlamaSlotIdleReceipt(
         "new-gpu-owned-process", 0, 1, False, "GET /slots:0:idle",
@@ -110,10 +121,11 @@ def test_stage28c2b_new_paper_tick_below_saved_tick_is_valid(
     assert set(boot.historical_native_sessions) == {
         "native-retired-A", "native-retired-B", "native-earlier-A",
     }
+    logins = _new_logins(copy.recovered.plan, world, 4)
     receipt = stage28_require_fresh_l1_eligibility(
         copy.recovered.plan, world=world,
-        logins=_new_logins(copy.recovered.plan, world, 4),
-        idle=_idle(), boot=boot,
+        logins=logins, idle=_idle(), boot=boot,
+        links=_body_links(world, boot, logins),
     )
     assert receipt.l1_reevaluation_eligible
     assert receipt.source_saved_world_tick == 110
@@ -200,6 +212,7 @@ def test_stage28c2b_l1_eligibility_rejects_stale_or_foreign_clock(
         stage28_require_fresh_l1_eligibility(
             copy.recovered.plan, world=world, logins=logins,
             idle=idle, boot=boot,
+            links=_body_links(world, boot, logins),
         )
 
 
