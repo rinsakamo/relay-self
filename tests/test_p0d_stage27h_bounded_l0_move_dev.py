@@ -6,6 +6,7 @@ trial requires separate original-host one-shot execution and qualification.
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -20,6 +21,7 @@ from experiments.cognitive_physical_move_issue_dev import (
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveRefusal
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
+    _stage27h_all_settling_stdout_readback,
     run_stage27_real_world,
     stage27h_real_a_motor_hook,
 )
@@ -339,3 +341,172 @@ def test_stage27h_rejects_mixed_real_runner_modes_before_world(tmp_path):
                 stage27g_real_l1_evaluation=True,
             ))
         original.assert_not_awaited()
+
+
+def test_stage27h_rejects_preset_16_as_insufficient_for_stop_reservations(tmp_path):
+    """No World start is required to discover the exact preflight flaw."""
+    async def scenario(f, lane, server):
+        pre, handoff, former = await qualified_a(f, lane)
+        with pytest.raises(Stage27hLoopRefusal, match="bounded multi-Action"):
+            Stage27hBoundedMoveLoop(
+                pre, handoff, owner=f.owners[f.names[0]], physical=f.physical,
+                world_epoch=pre.world_epoch, start_ns=100,
+            )
+        assert not f.owners[f.names[0]].supervisor.recorded_actions
+    _fixture(tmp_path, scenario, budget=SkillBudget(4, 15000, 2.0, 16))
+
+
+def test_stage27h_stop_quota_reserved_before_any_action(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, _, observed, loop = await _start(f, lane)
+        assert loop.pre_action(observed, now_ns=150).status == "L0_CONTINUE_MOVE"
+        available = STAGE27H_SETTLING_PROBE_RESERVATION
+        assert available == 60
+        original_count = loop.observation_count
+        assert original_count == 1
+        quota = loop.reserve_settling_observations(source_probe=observed)
+        assert quota == available
+        assert loop.observation_count == original_count + available
+        with pytest.raises(Stage27hLoopRefusal, match="reservation unavailable"):
+            loop.reserve_settling_observations(source_probe=observed)
+        with pytest.raises(Stage27hLoopRefusal, match="reservation unresolved"):
+            loop.pre_action(
+                replace(observed, seq=observed.seq + 1,
+                        request_id="unsafe-next-preflight"), now_ns=200,
+            )
+        ledger = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file, self_id=f.names[0],
+        )
+        assert len(ledger.records) == 0
+    _fixture(tmp_path, scenario)
+
+
+def test_stage27h_insufficient_remaining_obs_refuses_reservation_without_effect(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, _, observed, loop = await _start(f, lane)
+        assert loop.pre_action(observed, now_ns=150).status == "L0_CONTINUE_MOVE"
+        # Boundary injection represents consumption of previous canonical
+        # STOP probes; no new physical command may be issued with only 59 left.
+        loop.observation_count = loop.invocation.budget.max_observations - 59
+        with pytest.raises(Stage27hLoopRefusal, match="reservation unavailable"):
+            loop.reserve_settling_observations(source_probe=observed)
+        assert not f.owners[f.names[0]].supervisor.recorded_actions
+    _fixture(tmp_path, scenario)
+
+
+def test_stage27h_rejects_duplicated_stop_probe_without_refunding_budget(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, previous, observed, loop = await _start(f, lane)
+        loop.pre_action(observed, now_ns=150)
+        receipt = await _issue(
+            f, pre, handoff, loop, previous, observed,
+            SlowPlaceNative(handoff.native_session_id),
+        )
+        assert len(receipt.all_stop_probes) == 3
+        forged = replace(
+            receipt,
+            all_stop_probes=receipt.all_stop_probes + (receipt.all_stop_probes[-1],),
+        )
+        with pytest.raises(Stage27hLoopRefusal, match="not fully accounted"):
+            loop.observe_terminal_action(
+                forged, source_probe=observed, now_ns=200,
+            )
+        assert loop.observation_count == 1 + STAGE27H_SETTLING_PROBE_RESERVATION
+        with pytest.raises(Stage27hLoopRefusal, match="reservation unresolved"):
+            loop.pre_action(
+                replace(receipt.settled_probe,
+                        seq=receipt.settled_probe.seq + 1,
+                        request_id="blocked-after-forged-receipt"),
+                now_ns=230,
+            )
+    _fixture(tmp_path, scenario)
+
+
+def test_stage27h_bad_stop_retains_reserved_probes_and_unresolved_wal(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, previous, observed, loop = await _start(f, lane)
+        loop.pre_action(observed, now_ns=150)
+        with pytest.raises(Stage27PlaceMoveRefusal):
+            await _issue(
+                f, pre, handoff, loop, previous, observed,
+                ScriptedPlaceNative(handoff.native_session_id, bad_stop=True),
+            )
+        assert loop.observation_count == 1 + STAGE27H_SETTLING_PROBE_RESERVATION
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file, self_id=f.names[0],
+        )
+        assert journal.unresolved
+    _fixture(tmp_path, scenario)
+
+
+@pytest.mark.parametrize("cap,success", [(16, False), (17, True)])
+def test_native_stop_probe_quota_counts_initial_and_every_settling_request(
+    cap, success,
+):
+    """A 16-tick settlement can require 17 probes, so old total=16 is unsafe."""
+    from experiments import cognitive_physical_move_issue_dev as source
+
+    calls = []
+
+    async def scripted_native_probe(
+        session, *, native, after_seq, timeout_s,
+    ):
+        n = len(calls)
+        if n >= 17:
+            raise AssertionError("STOP issuer requested an unbudgeted probe")
+        original = native_probe("A", n + 10, session="native-A")
+        result = replace(
+            original,
+            snapshot=replace(
+                original.snapshot,
+                time=MineflayerTime(100 + n, 0, True),
+            ),
+        )
+        calls.append(result.request_id)
+        return result
+
+    async def scenario():
+        with patch.object(source, "_probe", side_effect=scripted_native_probe):
+            if success:
+                first, stable, settled, all_stop = await _settled(
+                    object(), native="native-A", stop_seq=2, timeout_s=2.0,
+                    max_probe_requests=cap,
+                )
+                assert len(all_stop) == 17
+                assert (first.seq, stable.seq, settled.seq) == (10, 18, 26)
+            else:
+                with pytest.raises(PhysicalMoveRefusal, match="quota exhausted"):
+                    await _settled(
+                        object(), native="native-A", stop_seq=2, timeout_s=2.0,
+                        max_probe_requests=cap,
+                    )
+
+    asyncio.run(scenario())
+    assert len(calls) == cap
+    assert len(set(calls)) == cap
+
+
+def test_stage27h_original_stdout_accounts_all_stop_probes_exact_once(tmp_path):
+    originals = tuple(native_probe(
+        "A", seq, session="native-A",
+        request_id=f"settling-{seq}",
+    ) for seq in (11, 12, 13))
+    raw = tmp_path / "owned-native-A.jsonl"
+    events = [
+        {"session_id": "native-A", "type": "observation",
+         "kind": "probe", "seq": item.seq,
+         "request_id": item.request_id}
+        for item in originals
+    ]
+    raw.write_text("".join(json.dumps(x) + "\n" for x in events))
+    evidence = _stage27h_all_settling_stdout_readback(
+        raw, session_id="native-A", stop_seq=10, probes=originals,
+    )
+    assert evidence["stop_probe_count"] == 3
+    assert evidence["all_stop_probes_exact_once"] is True
+    with raw.open("a") as file:
+        file.write(json.dumps(events[-1]) + "\n")
+    with pytest.raises(Stage27RealWorldRefusal, match="differs"):
+        _stage27h_all_settling_stdout_readback(
+            raw, session_id="native-A", stop_seq=10, probes=originals,
+        )
