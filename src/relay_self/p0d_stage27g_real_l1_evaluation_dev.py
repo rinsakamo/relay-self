@@ -6,6 +6,7 @@ A model response MUST precede a fresh native probe and owner/WAL recheck.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, replace
 from typing import Awaitable, Callable
 
@@ -110,6 +111,65 @@ def _owner_still_eligible(
         or frame.issued_physical_action
     ):
         raise Stage27gEvaluationRefusal("original evaluation Self/World/owner not current")
+    # A Stage27f frame is a read-only source-bound claim, not a capability.
+    # Recheck the exact pending candidate set and prompt source before sending
+    # its contents to the actual L1 backend, rather than trusting a forged
+    # completion-review option or an edited goal-success context.
+    review = (
+        frame.wal_status == "NATIVE_PLACE_MOVE_SETTLED"
+        and frame.target_assessment.status is TargetConditionStatus.CONDITION_OBSERVED
+    )
+    expected_numbers = (
+        ("3", "4") if frame.wal_status == "NATIVE_PLACE_MOVE_OVERSHOOT"
+        else ("1", "2", "3", "4") if review else ("1", "3", "4")
+    )
+    if (
+        frame.completion_review_offered != review
+        or frame.target_assessment.contract_ref != frame.target_contract_ref
+        or frame.target_assessment.goal_succeeded
+        or frame.target_assessment.physical_authorized
+        or frame.target_assessment.condition_observed
+        != (frame.target_assessment.status is TargetConditionStatus.CONDITION_OBSERVED)
+        or frame.request.request_id
+        != f"stage27f-eval-{frame.self_id}-{frame.native_session_id}-{frame.source_probe_seq}"
+        or frame.request.intent_id != frame.intent_id
+        or frame.request.focus != "POST_ACTION_GOAL_SKILL_EVALUATION"
+        or frame.request.think_allowed
+        or tuple(c.choice_id for c in frame.request.choices) != expected_numbers
+        or len(frame.request.context) != 1
+        or frame.request.context[0].key
+        != "original_physical_outcome_and_target_assessment"
+        or frame.request.context[0].provenance.source != "mineflayer"
+        or frame.request.context[0].provenance.reference
+        != f"{frame.native_session_id}:{frame.source_probe_seq}"
+    ):
+        raise Stage27gEvaluationRefusal("post-Action L1 review choices/source altered")
+    try:
+        original_context = json.loads(frame.request.context[0].value_json)
+    except (ValueError, TypeError) as exc:
+        raise Stage27gEvaluationRefusal("post-Action original context invalid") from exc
+    if not isinstance(original_context, dict) or any((
+        original_context.get("self_id") != frame.self_id,
+        original_context.get("world_session_id") != frame.native_session_id,
+        original_context.get("world_epoch") != frame.world_epoch,
+        original_context.get("action_id") != frame.action_id,
+        original_context.get("skill_execution_id") != frame.skill_execution_id,
+        original_context.get("invocation_ref") != frame.invocation_ref,
+        original_context.get("preset_ref") != frame.preset_ref,
+        original_context.get("target_contract_ref") != frame.target_contract_ref,
+        original_context.get("wal_digest") != frame.wal_digest,
+        original_context.get("wal_status") != frame.wal_status,
+        original_context.get("native_settled_seq") != frame.source_probe_seq,
+        original_context.get("native_settled_probe")
+        != frame.source_probe_request_id,
+        original_context.get("target_assessment")
+        != frame.target_assessment.status.value,
+        original_context.get("target_condition_observed") is not review,
+        original_context.get("goal_success_attested") is not False,
+        original_context.get("skill_success_attested") is not False,
+        original_context.get("next_physical_action_authorized") is not False,
+    )):
+        raise Stage27gEvaluationRefusal("original evaluation context source mismatch")
     skill = owner.skills.get(frame.skill_execution_id)
     action = owner.supervisor.get(frame.action_id)
     original_options = prepared.round.frame.options
