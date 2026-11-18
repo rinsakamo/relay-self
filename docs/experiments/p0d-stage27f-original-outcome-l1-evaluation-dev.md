@@ -73,3 +73,19 @@ development step. QUAL and SCIENCE remain NO-GO.
 Testing: synthetic original physical issue and A/B owners, terminal
 native WAL, no-progress / overshoot and permitted completion candidate,
 negative stale/foreign/false authority and B invariance.
+
+## Optional real-runner observation hook
+
+The original `experiments/p0d_stage27_real_place_move_dev.py` has an
+explicit `--stage27f-cpu-evaluation` mode. This includes the Stage27e
+independent Paper and PREPARED raw evidence capture and generates the
+original `Stage27EvaluationFrame` strictly after actual L0
+`YIELD_EVALUATION` and terminal original A WAL. It serializes the
+model-facing numbered-choice request into the real report. **It does not
+submit that request to Gemma**, accept a L1 evaluation result, mutate the
+existing Skill/Intent, issue another MOVE or change default Stage27d/e
+settings. A non-READY A model selection still causes no physical Action.
+
+Example: add `--stage27f-cpu-evaluation` to the original Stage27d
+fully source-verified host invocation instead of the Stage27e flag;
+do not start a fresh World without the one-shot trial evidence rules.
