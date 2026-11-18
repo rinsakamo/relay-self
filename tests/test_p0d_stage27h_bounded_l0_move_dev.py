@@ -110,7 +110,7 @@ async def _issue(f, pre, handoff, loop, previous, observed, native):
     return receipt
 
 
-def test_l0_reaches_target_after_two_short_actions_without_second_llm(tmp_path):
+def test_l0_reaches_target_after_three_short_actions_without_second_llm(tmp_path):
     async def scenario(f, lane, server):
         pre, handoff, previous, observed, loop = await _start(f, lane)
         owner, peer = f.owners[f.names[0]], f.owners[f.names[1]]
@@ -145,7 +145,7 @@ def test_l0_reaches_target_after_two_short_actions_without_second_llm(tmp_path):
             )
         assert action_ids
         assert len(action_ids) == 3
-        assert len(set(action_ids)) == 2
+        assert len(set(action_ids)) == 3
         assert statuses == [
             "L0_CONTINUE_MOVE", "L0_CONTINUE_MOVE",
             "L0_TARGET_REACHED_YIELD_EVALUATION",
