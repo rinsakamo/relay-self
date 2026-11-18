@@ -71,6 +71,49 @@ def _read_model_catalog(endpoint: str, model_alias: str) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+
+def _verify_pid_owns_endpoint(pid: int, endpoint: str) -> None:
+    """Bind the observed localhost listening TCP socket to the same owned PID.
+
+    Model/PID checks without this allow pointing the client at another server
+    sharing the same model alias. Reads only proc kernel records, no packets.
+    """
+    parsed = urlsplit(endpoint)
+    port = parsed.port
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in {"127.0.0.1", "localhost"}
+        or type(port) is not int
+    ):
+        raise Stage24gModelGateError("model socket not explicit loopback TCP")
+    listening: set[str] = set()
+    for table in (_PROC_ROOT / "net/tcp", _PROC_ROOT / "net/tcp6"):
+        try:
+            rows = table.read_text().splitlines()[1:]
+        except OSError:
+            continue
+        for line in rows:
+            fields = line.split()
+            if len(fields) >= 10 and fields[3] == "0A":
+                try:
+                    found_port = int(fields[1].rsplit(":", 1)[1], 16)
+                except (ValueError, IndexError):
+                    continue
+                if found_port == port:
+                    listening.add(fields[9])
+    if not listening:
+        raise Stage24gModelGateError("model listening TCP socket unavailable")
+    try:
+        targets = {
+            os.readlink(fd)
+            for fd in (_PROC_ROOT / str(pid) / "fd").iterdir()
+        }
+    except OSError as exc:
+        raise Stage24gModelGateError("model PID socket ownership unreadable") from exc
+    if not any(f"socket:[{inode}]" in targets for inode in listening):
+        raise Stage24gModelGateError("model endpoint is not owned by mapped GGUF PID")
+
+
 def verify_stage24g_model_gate(
     *, gguf_path: Path, llama_pid: int, model_alias: str,
     llama_endpoint: str, systemone_endpoint: str,
@@ -130,6 +173,7 @@ def verify_stage24g_model_gate(
     witness = LlamaCppSingleSlotWitness(
         provider=provider, backend_ref=f"stage24g-pid-{llama_pid}",
     )
+    _verify_pid_owns_endpoint(llama_pid, llama_endpoint)
     slot = witness.require_idle()
     catalog_sha = _read_model_catalog(llama_endpoint, model_alias)
     return Stage24gModelGateReceipt(
