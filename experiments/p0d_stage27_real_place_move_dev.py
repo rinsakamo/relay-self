@@ -100,6 +100,59 @@ def _native_place_wire_readback(
 
 
 
+def _stage27h_all_settling_stdout_readback(
+    raw_file: Path, *, session_id: str,
+    stop_seq: int, probes: tuple,
+) -> dict[str, object]:
+    """Read every STOP observation from original native stdout, exact-once.
+
+    This verifies the *whole* requested settling window, not just the first,
+    first-stable and terminal sample. No OCR, Paper inference, or generated
+    synthetic probe can replace an exact stdout (seq, request_id) row.
+    """
+    if (
+        raw_file.is_symlink() or not raw_file.is_file()
+        or not session_id or type(stop_seq) is not int
+        or type(probes) is not tuple or len(probes) < 3
+    ):
+        raise Stage27RealWorldRefusal("Stage27h native STOP sample source absent")
+    data = raw_file.read_bytes()
+    expected = [(p.seq, p.request_id) for p in probes]
+    entries: list[tuple[int, str]] = []
+    for line in data.splitlines():
+        try:
+            row = json.loads(line)
+        except (ValueError, UnicodeError) as exc:
+            raise Stage27RealWorldRefusal(
+                "Stage27h original native stdout corrupted"
+            ) from exc
+        if type(row) is not dict or row.get("session_id") != session_id:
+            raise Stage27RealWorldRefusal("Stage27h native STOP source foreign")
+        if row.get("type") == "observation" and row.get("kind") == "probe":
+            entries.append((row.get("seq"), row.get("request_id")))
+    actual_window = [
+        row for row in entries
+        if type(row[0]) is int and stop_seq < row[0] <= probes[-1].seq
+    ]
+    if (
+        actual_window != expected
+        or len({x[0] for x in expected}) != len(expected)
+        or len({x[1] for x in expected}) != len(expected)
+        or any(not isinstance(x[1], str) or not x[1] for x in expected)
+    ):
+        raise Stage27RealWorldRefusal(
+            "Stage27h STOP probe count/source differs from original native stdout"
+        )
+    return {
+        "original_native_stdout_sha256": hashlib.sha256(data).hexdigest(),
+        "source": str(raw_file),
+        "original_stop_seq": stop_seq,
+        "stop_probe_count": len(expected),
+        "original_stop_probes": [list(x) for x in expected],
+        "all_stop_probes_exact_once": True,
+    }
+
+
 def _native_post_model_probe_readback(
     raw_file: Path, *, session_id: str, probe_id: str, probe_seq: int,
     prior_settled_seq: int,
@@ -618,6 +671,12 @@ async def stage27h_real_a_motor_hook(
         if len(action_receipts) != loop.action_count:
             raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
         idx = loop.action_count
+        # Charge a complete 60-sample STOP settlement quota against the
+        # immutable parent Invocation BEFORE even proposing the next Action.
+        # The issuer cannot request more native probes than this reservation.
+        stop_probe_quota = loop.reserve_settling_observations(
+            source_probe=current,
+        )
         # Native target geometry is recalculated from the SAME frozen Target.
         # No new L1 choice, no new invocation, no parameter/preset tuning.
         plan = resolve_stage27_place_motion(
@@ -668,6 +727,7 @@ async def stage27h_real_a_motor_hook(
             pulse_seconds=0.15, evidence_timeout_s=15.0,
             pre_native_evidence=capture_reserved,
             allow_prior_terminal_place_actions=idx > 0,
+            settlement_probe_limit=stop_probe_quota,
         )
         if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
             raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
@@ -683,6 +743,11 @@ async def stage27h_real_a_motor_hook(
             stop_probe_seqs=(receipt.initial_stop_probe.seq,
                              receipt.first_stable_probe.seq,
                              receipt.settled_probe.seq),
+        )
+        all_settling_readback = _stage27h_all_settling_stdout_readback(
+            native_audit, session_id=native_id,
+            stop_seq=receipt.stop_ack.seq,
+            probes=receipt.all_stop_probes,
         )
         paper_after = paper.read_owned_log(paper.owned_session_id)
         _freeze_owned_paper_source(
@@ -701,6 +766,10 @@ async def stage27h_real_a_motor_hook(
             "preset_ref": receipt.original_preset_ref,
             "target_contract_ref": receipt.target_contract_ref,
             "native_source": readback,
+            "all_stop_probes_native_stdout": all_settling_readback,
+            "stop_probe_reserved": stop_probe_quota,
+            "stop_probe_actual": len(receipt.all_stop_probes),
+            "observation_count_after_settlement": loop.observation_count,
             "prepared_source": original_prepared,
             "terminal_wal_status": receipt.journal_status,
             "terminal_wal_digest": receipt.journal_sha256,
