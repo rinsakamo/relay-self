@@ -117,8 +117,8 @@ def prepare_stage27f_outcome_evaluation(
         or physical.current_native_sessions.get(owner.self_id) != prepared.native_session
         or physical.resident_states.get(owner.self_id) != "ONLINE"
         or handoff.intent_id != l0.intent_id
+        or owner.intent.current_intent is None
         or handoff.intent_id != owner.intent.current_intent.intent_id
-        if owner.intent.current_intent is not None else True
     ):
         raise Stage27EvaluationRefusal("original Self/Intent/native epoch unavailable")
 
@@ -181,7 +181,6 @@ def prepare_stage27f_outcome_evaluation(
     if (
         settled.kind != "probe"
         or settled.session_id != prepared.native_session
-        or settled.seq != l0.cursor.pending_action_id and False
         or settled.seq <= first.seq
         or first.seq <= stop.seq
         or not settled.request_id
