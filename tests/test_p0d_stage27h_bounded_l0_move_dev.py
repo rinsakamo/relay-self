@@ -7,11 +7,16 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPosition
+from experiments.p0d_stage27_real_place_move_dev import (
+    run_stage27_real_world,
+    stage27h_real_a_motor_hook,
+)
 from relay_self.p0d_stage27h_bounded_l0_move_dev import (
     Stage27hBoundedMoveLoop,
     Stage27hLoopRefusal,
@@ -201,5 +206,55 @@ def test_l0_stops_before_issuing_or_reissuing_unqualified_move(tmp_path, mode):
             assert loop.action_count == 1
             with pytest.raises(Stage27hLoopRefusal):
                 loop.pre_action(receipt.settled_probe, now_ns=200)
+
+    _fixture(tmp_path, scenario)
+
+
+def test_stage27h_uses_explicit_original_multi_preset_only(tmp_path):
+    kwargs = dict(
+        paper_jar=tmp_path / "paper.jar", paper_sha256="0" * 64,
+        plugin_jar=tmp_path / "plugin.jar", plugin_sha256="0" * 64,
+        scratch_parent=tmp_path, accepted_eula=True,
+        real_world_dev_grant=True,
+        gemma_l1_endpoint="http://127.0.0.1:18081/v1/chat/completions",
+        gemma_l1_model="stage26-gemma",
+    )
+    with patch(
+        "experiments.p0d_stage27_real_place_move_dev."
+        "run_real_two_self_preset_checkpoint", new_callable=AsyncMock,
+    ) as actual:
+        actual.return_value = Path(tmp_path / "source-report.json")
+        asyncio.run(run_stage27_real_world(
+            **kwargs, stage27h_l0_move_loop=True,
+        ))
+        assert actual.await_args.kwargs["_stage27h_multi_preset"] is True
+        assert actual.await_args.kwargs["_stage27_motor_hook"] is (
+            stage27h_real_a_motor_hook
+        )
+        actual.reset_mock()
+        asyncio.run(run_stage27_real_world(**kwargs))
+        assert actual.await_args.kwargs["_stage27h_multi_preset"] is False
+        assert actual.await_args.kwargs["_stage27_motor_hook"] is not (
+            stage27h_real_a_motor_hook
+        )
+
+
+def test_l0_tampered_budget_counter_rejected(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, previous, observed, loop = await _start(f, lane)
+        loop.pre_action(observed, now_ns=150)
+        native = SlowPlaceNative(handoff.native_session_id)
+        receipt = await _issue(f, pre, handoff, loop, previous, observed, native)
+        loop.observe_terminal_action(
+            receipt, source_probe=observed, now_ns=180,
+        )
+        loop.cumulative_distance_m = 1.9
+        fresh = replace(
+            receipt.settled_probe,
+            seq=receipt.settled_probe.seq + 1,
+            request_id="fresh-after-stop-tamper",
+        )
+        with pytest.raises(Stage27hLoopRefusal, match="counter altered"):
+            loop.pre_action(fresh, now_ns=200)
 
     _fixture(tmp_path, scenario)
