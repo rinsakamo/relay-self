@@ -48,6 +48,7 @@ class Stage28InertRecovery:
     old_l1_decision_reusable: bool = False
     physical_action_issue_authorized: bool = False
     l1_reevaluation_eligible: bool = False
+    source_committed_sha256: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +203,7 @@ def stage28_inert_cognitive_recovery(
         tuple((c.self_id, c.former_native_session_id) for c in cuts),
         tuple((c.self_id, c.last_observed_world_tick) for c in cuts),
         candidates,
+        source_committed_sha256=_file_hash(generation / "COMMITTED.json"),
     )
 
 
@@ -237,7 +239,12 @@ def stage28_require_fresh_l1_eligibility(
         or world.world_tick < boot.boot_tick
         or type(boot.committed_sha256) is not str
         or len(boot.committed_sha256) != 64
-        or not boot.paper_boot_id or not boot.paper_tick_source_ref
+        or boot.committed_sha256 != plan.source_committed_sha256
+        or not boot.paper_session_id.startswith("paper-owned-")
+        or not boot.paper_boot_id
+        or not boot.paper_tick_source_ref.startswith(
+            "paper-main-thread:p0d:" + boot.paper_boot_id + ":"
+        )
         or boot.paper_pid <= 0
         or boot.old_ticks_directly_comparable is not False
         or boot.replay_authorized is not False
