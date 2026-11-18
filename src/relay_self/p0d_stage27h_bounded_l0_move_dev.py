@@ -26,7 +26,6 @@ from relay_self.target_contract import (
     evaluate_target,
 )
 
-
 STAGE27H_SETTLING_PROBE_RESERVATION = 60
 # Sufficient STOP/settling probe requests are reserved BEFORE each physical
 # MOVE. This upper bound is consumed pessimistically until a canonical terminal
