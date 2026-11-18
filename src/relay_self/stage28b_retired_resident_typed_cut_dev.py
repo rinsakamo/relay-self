@@ -10,10 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
-from relay_self.coordinated_autosave_runtime_dev import StoppedWorldReceipt
+from relay_self.coordinated_autosave_runtime_dev import StoppedWorldReceipt, next_generation_sequence
 from relay_self.coordinated_checkpoint_dev import (
     SelfSnapshotSource,
-    next_generation_sequence,
     verify_generation,
 )
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
