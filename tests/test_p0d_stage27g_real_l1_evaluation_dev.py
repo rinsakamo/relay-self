@@ -332,11 +332,12 @@ def test_owned_native_stdout_rechecks_post_gemma_probe(tmp_path, fault):
         b"not-json\n" if fault == "corrupt"
         else b"".join((json.dumps(row) + "\n").encode() for row in rows)
     )
-    call = lambda: _native_post_model_probe_readback(
-        native, session_id="native-A-1",
-        probe_id="post-model-56", probe_seq=56,
-        prior_settled_seq=55,
-    )
+    def call():
+        return _native_post_model_probe_readback(
+            native, session_id="native-A-1",
+            probe_id="post-model-56", probe_seq=56,
+            prior_settled_seq=55,
+        )
     if fault == "valid":
         receipt = call()
         assert receipt["source_readback"] == "EXACT_ONCE_NATIVE_STDOUT_DEV"
