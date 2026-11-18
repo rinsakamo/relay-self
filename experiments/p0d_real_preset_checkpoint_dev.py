@@ -276,7 +276,7 @@ async def _real_preset_trial(
             "exploration-move", "OperatorNearProbe", 1,
             definition.definition_ref,
             SkillConstraints(), (
-                SkillBudget(4, 15000, 2.0, 16) if stage27h_multi_preset
+                SkillBudget(4, 15000, 2.0, 256) if stage27h_multi_preset
                 else SkillBudget(1, 1500, 2.0, 4)
             ),
             Provenance("operator-dev-proposed", f"stage25:{sid}"),
