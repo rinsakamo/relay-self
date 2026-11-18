@@ -128,7 +128,7 @@ def observe_new_fork_paper_epoch(
     evidence = Stage28ForkPaperEpoch(
         plan.generation_id, plan.source_world_id, plan.source_branch_id,
         plan.declared_world_tick, plan.fork_branch_id,
-        source.verified_self_file_sha256[0][2] if False else "",
+        source.source_committed_sha256,
         session, boot, new_world_epoch, tick.tick, tick.source_ref,
         proc.pid, tuple(sorted(historical_native_sessions)),
     )
