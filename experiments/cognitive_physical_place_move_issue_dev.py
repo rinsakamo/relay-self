@@ -89,6 +89,7 @@ async def issue_selected_place_move_dev(
     evidence_timeout_s: float = 15.0,
     pulse_seconds: float = 0.15,
     bind_native_children: Callable[[str], None] | None = None,
+    pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -194,6 +195,11 @@ async def issue_selected_place_move_dev(
         place_invocation=invocation, place_motion=motion,
     )
     parent = proposal.binding.action_id
+    # Optional operator DEV evidence tap runs only after the original fsynced
+    # PREPARED WAL and strictly before any native LOOK/forward/STOP write.
+    # Failure keeps the original WAL unresolved; it never licenses a retry.
+    if pre_native_evidence is not None:
+        pre_native_evidence(journal, parent)
     look_id, start_id, stop_id = (
         parent + "-look", parent + "-start", parent + "-stop",
     )
