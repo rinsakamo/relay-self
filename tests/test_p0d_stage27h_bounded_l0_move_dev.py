@@ -426,7 +426,7 @@ def test_stage27h_bad_stop_retains_reserved_probes_and_unresolved_wal(tmp_path):
     async def scenario(f, lane, server):
         pre, handoff, previous, observed, loop = await _start(f, lane)
         loop.pre_action(observed, now_ns=150)
-        with pytest.raises(Stage27PlaceMoveRefusal):
+        with pytest.raises(PhysicalMoveRefusal, match="failed native child ACK"):
             await _issue(
                 f, pre, handoff, loop, previous, observed,
                 ScriptedPlaceNative(handoff.native_session_id, bad_stop=True),
