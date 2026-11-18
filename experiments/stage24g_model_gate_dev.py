@@ -86,7 +86,7 @@ def verify_stage24g_model_gate(
     resolved = gguf_path.resolve(strict=True)
     if _digest_file(resolved) != PINNED_STAGE24G_GGUF_SHA256:
         raise Stage24gModelGateError("GGUF bytes differ from independently archived pin")
-    proc = Path("/proc") / str(llama_pid)
+    proc = _PROC_ROOT / str(llama_pid)
     try:
         if proc.is_symlink() or proc.stat().st_uid != os.getuid():
             raise Stage24gModelGateError("llama PID not owned by current operator")
