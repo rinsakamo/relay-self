@@ -3,9 +3,15 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from experiments.p0d_stage27_real_place_move_dev import (
+    run_stage27_real_world,
+    stage27f_real_a_motor_hook,
+)
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
     Stage27EvaluationRefusal,
     prepare_stage27f_outcome_evaluation,
@@ -183,3 +189,30 @@ def test_source_or_original_lifecycle_mismatch_rejected(tmp_path, fault):
         assert owner.intent.events == before
 
     _world_fixture(tmp_path, scenario)
+
+
+def test_stage27f_explicit_runner_hook_without_changing_stage27e_default(tmp_path):
+    args = dict(
+        paper_jar=tmp_path / "paper.jar", paper_sha256="0" * 64,
+        plugin_jar=tmp_path / "plugin.jar", plugin_sha256="0" * 64,
+        scratch_parent=tmp_path, accepted_eula=True, real_world_dev_grant=True,
+        gemma_l1_endpoint="http://127.0.0.1:18081/v1/chat/completions",
+        gemma_l1_model="stage26-gemma",
+    )
+    with patch(
+        "experiments.p0d_stage27_real_place_move_dev."
+        "run_real_two_self_preset_checkpoint", new_callable=AsyncMock,
+    ) as original:
+        original.return_value = Path(tmp_path / "report.json")
+        got = asyncio.run(run_stage27_real_world(
+            **args, stage27f_cpu_evaluation=True,
+        ))
+        assert got == tmp_path / "report.json"
+        assert original.await_args.kwargs["_stage27_motor_hook"] is (
+            stage27f_real_a_motor_hook
+        )
+        original.reset_mock()
+        asyncio.run(run_stage27_real_world(**args))
+        assert original.await_args.kwargs["_stage27_motor_hook"] is not (
+            stage27f_real_a_motor_hook
+        )
