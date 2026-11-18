@@ -310,6 +310,7 @@ async def run_restored_a_b_real_observation(
         # the actual owned children were terminated, before saving World.
         log = paper.read_owned_log(paper_session)
         digest = hashlib.sha256(log).hexdigest()
+        _write_bytes_new(evidence / "prestop-paper-resident-owned.log", log)
         trace = parse_owned_paper_resident_trace(
             owned_paper_session_id=paper_session,
             expected_world_uuid=_SOURCE_WORLD, owned_paper_log=log,
