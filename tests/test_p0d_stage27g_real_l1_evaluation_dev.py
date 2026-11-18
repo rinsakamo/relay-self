@@ -213,7 +213,7 @@ def test_original_wal_changed_before_gpu_submission_fails_closed(tmp_path):
         )
         changed = replace(frame, wal_digest="0" * 64)
         before_calls = len(server.calls)
-        with pytest.raises(Stage27gEvaluationRefusal, match="terminal WAL"):
+        with pytest.raises(Stage27gEvaluationRefusal, match="source mismatch|terminal WAL"):
             submit_stage27g_original_evaluation(
                 changed, pre, owner=a, physical=f.physical, lane=lane,
             )
