@@ -11,6 +11,8 @@ import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPosition
 from experiments.p0d_stage27_real_place_move_dev import (
+    Stage27RealWorldRefusal,
+    _native_post_model_probe_readback,
     run_stage27_real_world,
     stage27g_real_a_motor_hook,
 )
@@ -307,3 +309,39 @@ def test_forged_evaluation_frame_rejected_before_http(tmp_path, fault):
         assert a.skills[handoff.skill_execution_id].state is SkillState.STARTED
 
     _run_case(tmp_path, scenario)
+
+
+@pytest.mark.parametrize(
+    "fault", ["valid", "duplicate", "foreign", "missing", "corrupt"],
+)
+def test_owned_native_stdout_rechecks_post_gemma_probe(tmp_path, fault):
+    native = tmp_path / "owned-original-A-native.jsonl"
+    event = {
+        "type": "observation", "kind": "probe",
+        "session_id": "native-A-1", "seq": 56, "request_id": "post-model-56",
+    }
+    if fault == "missing":
+        rows = [{**event, "seq": 55, "request_id": "old-55"}]
+    elif fault == "foreign":
+        rows = [{**event, "session_id": "native-B-1"}]
+    else:
+        rows = [event]
+    if fault == "duplicate":
+        rows.append(dict(event))
+    native.write_bytes(
+        b"not-json\n" if fault == "corrupt"
+        else b"".join((json.dumps(row) + "\n").encode() for row in rows)
+    )
+    call = lambda: _native_post_model_probe_readback(
+        native, session_id="native-A-1",
+        probe_id="post-model-56", probe_seq=56,
+        prior_settled_seq=55,
+    )
+    if fault == "valid":
+        receipt = call()
+        assert receipt["source_readback"] == "EXACT_ONCE_NATIVE_STDOUT_DEV"
+        assert receipt["post_model_probe_seq"] == 56
+        assert not receipt["independent_model_vs_native_wallclock_causality"]
+    else:
+        with pytest.raises(Stage27RealWorldRefusal):
+            call()
