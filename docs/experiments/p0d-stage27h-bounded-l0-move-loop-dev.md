@@ -11,6 +11,33 @@ Stage27h opts into one newly bound, operator-authorized **DEV** initial
 MOVE Preset `SkillBudget(4, 15000, 2.0, 256)`; the original Stage26/27d-g
 `SkillBudget(1, 1500, 2.0, 4)` default remains identical.
 
+**Observation-limit correction after the 2026-11-18 pre-World HOLD:**
+The original Stage27h `max_observations=16` counted only pre-MOVE and
+terminal TargetAssessment probes while the issuer's 50ms STOP/settling
+loop could request many additional native observations. This is now an
+explicit whole-Invocation cap **256**, not an per-Action allowance. The
+CPU L0 parent pessimistically reserves **60 requested STOP probes**
+BEFORE each physical MOVE (up to four total Actions), and the issuer's
+`_settled(max_probe_requests=60)` refuses a 61st native request.
+A canonical terminal Action/settled receipt with complete distinct
+`all_stop_probes` is required to refund unused reserved observations.
+The original native stdout is read back independently for *every*
+settling request ID and sequence, not only first/stable/final samples.
+Each distinct pre-MOVE probe also counts as one. A terminal settled
+probe counts **once** even though it is used for TargetAssessment.
+
+If the physical STOP is applied but its observation quota expires
+without confirming 8+8 tick settlement, the original issuer leaves
+the WAL unresolved and the run HOLDs: never extend the Invocation
+budget, fake STOP settled, or reissue that Action. Reserving is
+pessimistic until terminal verification. At most four Actions reserve
+`4 * 60` STOP slots and up to four distinct preflight probes, so
+`max_observations=256` can encompass the full finite loop with 12
+unused probe slots available. Real settling often uses fewer than 60;
+the unused slots are returned **only** after final WAL verification.
+The 60-probe finite cap may cause a legitimate slow/blocked world to
+HOLD, rather than overshoot the cognitive observation contract.
+
 Only one initial original A/B bounded L1 model selection is made. If A chooses
 1/READY, the original A Intent/Skill is started ONCE. A finite CPU L0 parent
 (`Stage27hBoundedMoveLoop`) iterates the following sequence:
