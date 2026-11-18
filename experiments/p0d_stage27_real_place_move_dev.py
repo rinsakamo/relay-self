@@ -34,6 +34,10 @@ from relay_self.p0d_stage27c_l0_place_proposal_dev import (
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
     prepare_stage27f_outcome_evaluation,
 )
+from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
+    finish_stage27g_original_evaluation,
+    submit_stage27g_original_evaluation,
+)
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -94,6 +98,57 @@ def _native_place_wire_readback(
     }
 
 
+
+def _native_post_model_probe_readback(
+    raw_file: Path, *, session_id: str, probe_id: str, probe_seq: int,
+    prior_settled_seq: int,
+) -> dict[str, object]:
+    """Independently reread original A native stdout after the model recheck.
+
+    This binds exact source bytes to the returned fresh probe. In-process
+    sequencing proves it was *requested* after the model result; stdout alone
+    is not a timestamped cross-process causality proof.
+    """
+    if (
+        raw_file.is_symlink() or not raw_file.is_file()
+        or not session_id or not probe_id
+        or type(probe_seq) is not int or type(prior_settled_seq) is not int
+        or probe_seq <= prior_settled_seq
+    ):
+        raise Stage27RealWorldRefusal("invalid original post-model native source")
+    data = raw_file.read_bytes()
+    rows: list[tuple[int, str]] = []
+    for line in data.splitlines():
+        try:
+            event = json.loads(line)
+        except (UnicodeError, ValueError) as exc:
+            raise Stage27RealWorldRefusal("native stdout JSONL corrupted") from exc
+        if (
+            type(event) is not dict
+            or event.get("session_id") != session_id
+        ):
+            raise Stage27RealWorldRefusal("foreign original native source")
+        if event.get("type") == "observation" and event.get("kind") == "probe":
+            rows.append((event.get("seq"), event.get("request_id")))
+    if (
+        rows.count((probe_seq, probe_id)) != 1
+        or sum(1 for seq, _ in rows if seq == probe_seq) != 1
+        or sum(1 for _, ident in rows if ident == probe_id) != 1
+    ):
+        raise Stage27RealWorldRefusal(
+            "original native post-model probe stdout missing or duplicate"
+        )
+    return {
+        "original_a_native_stdout_sha256_after_l1": hashlib.sha256(data).hexdigest(),
+        "bytes": len(data),
+        "original_a_native_stdout": str(raw_file),
+        "post_model_probe_request_id": probe_id,
+        "post_model_probe_seq": probe_seq,
+        "source_readback": "EXACT_ONCE_NATIVE_STDOUT_DEV",
+        "independent_model_vs_native_wallclock_causality": False,
+    }
+
+
 def _grant(stage: PhysicalGrantStage, binding):
     """Explicit DEV operator grant label; not external principal attestation."""
     return PhysicalDevGrant(
@@ -148,8 +203,13 @@ async def stage27_real_a_motor_hook(
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
     capture_independent_evidence: bool = False,
     capture_stage27f_evaluation: bool = False,
+    capture_stage27g_real_evaluation: bool = False,
 ) -> dict[str, object]:
     """Original A Self only; one accepted real bounded L1 and one native MOVE."""
+    if capture_stage27g_real_evaluation and not capture_stage27f_evaluation:
+        raise Stage27RealWorldRefusal(
+            "Stage27g requires original Stage27f evaluation source"
+        )
     if capture_stage27f_evaluation and not capture_independent_evidence:
         raise Stage27RealWorldRefusal(
             "Stage27f requires Stage27e independent evidence before physical issue"
@@ -327,6 +387,33 @@ async def stage27_real_a_motor_hook(
             prepared["A"], handoff, proposal, receipt,
             owner=actor, physical=physical, world_epoch=world_epoch,
         )
+    stage27g_result = None
+    if capture_stage27g_real_evaluation:
+        if stage27f_frame is None:
+            raise Stage27RealWorldRefusal("Stage27g original evaluation frame absent")
+        evaluation_ticket = submit_stage27g_original_evaluation(
+            stage27f_frame, prepared["A"], owner=actor,
+            physical=physical, lane=lane,
+        )
+        evaluation_choice, evaluation_witness = await finish_stage27g_original_evaluation(
+            stage27f_frame, prepared["A"], owner=actor, physical=physical,
+            lane=lane, ticket=evaluation_ticket,
+            fresh_probe=lambda: _bounded_b_probe(session),
+        )
+        post_model_raw = _native_post_model_probe_readback(
+            native_audit, session_id=original_a_native,
+            probe_id=evaluation_witness.fresh_native_probe_request_id,
+            probe_seq=evaluation_witness.fresh_native_probe_seq,
+            prior_settled_seq=receipt.settled_probe.seq,
+        )
+        stage27g_result = {
+            "choice": asdict(evaluation_choice),
+            "witness": asdict(evaluation_witness),
+            "native_post_model_source": post_model_raw,
+            "model_evaluation_decision_only": True,
+            "next_physical_action_authorized": False,
+            "original_goal_or_skill_completed": False,
+        }
     peer_after = _peer_snapshot(owners["B"])
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
@@ -384,8 +471,11 @@ async def stage27_real_a_motor_hook(
         } if capture_independent_evidence else {}),
         **({
             "stage27f_read_only_l1_evaluation_frame": asdict(stage27f_frame),
-            "stage27f_real_l1_evaluation_model_called": False,
+            "stage27f_real_l1_evaluation_model_called":
+                capture_stage27g_real_evaluation,
         } if stage27f_frame is not None else {}),
+        **({"stage27g_real_l1_post_action_evaluation": stage27g_result}
+           if stage27g_result is not None else {}),
         "goal_success_attested": False,
         "skill_success_attested": False,
         "qual_and_science_attested": False,
@@ -407,6 +497,15 @@ async def stage27f_real_a_motor_hook(**kwargs) -> dict[str, object]:
     )
 
 
+async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Only explicit real post-Action L1 call on original GPU lane."""
+    return await stage27_real_a_motor_hook(
+        **kwargs, capture_independent_evidence=True,
+        capture_stage27f_evaluation=True,
+        capture_stage27g_real_evaluation=True,
+    )
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -417,6 +516,7 @@ async def run_stage27_real_world(
     timeout_s: float = 120.0, heap_mb: int = 1536,
     stage27e_independent_evidence: bool = False,
     stage27f_cpu_evaluation: bool = False,
+    stage27g_real_l1_evaluation: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -436,7 +536,8 @@ async def run_stage27_real_world(
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
         _stage27_motor_hook=(
-            stage27f_real_a_motor_hook if stage27f_cpu_evaluation
+            stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
+            else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
             else stage27e_real_a_motor_hook if stage27e_independent_evidence
             else stage27_real_a_motor_hook
         ),
@@ -460,6 +561,7 @@ def main() -> int:
     p.add_argument("--heap-mb", type=int, default=1536)
     p.add_argument("--stage27e-independent-evidence", action="store_true")
     p.add_argument("--stage27f-cpu-evaluation", action="store_true")
+    p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -474,6 +576,7 @@ def main() -> int:
             timeout_s=args.timeout_s, heap_mb=args.heap_mb,
             stage27e_independent_evidence=args.stage27e_independent_evidence,
             stage27f_cpu_evaluation=args.stage27f_cpu_evaluation,
+            stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
