@@ -539,6 +539,11 @@ def _stage27h_capture_prepared(
         target.write(raw)
         target.flush()
         os.fsync(target.fileno())
+    folder_fd = os.open(evidence, os.O_RDONLY)
+    try:
+        os.fsync(folder_fd)
+    finally:
+        os.close(folder_fd)
     if dest.read_bytes() != raw:
         raise Stage27RealWorldRefusal("Stage27h immutable PREPARED source mismatch")
     frozen = PhysicalActionJournal.restore(dest, self_id="A")
@@ -772,6 +777,16 @@ async def run_stage27_real_world(
         or not gemma_l1_endpoint or not gemma_l1_model
     ):
         raise Stage27RealWorldRefusal("original real Gemma/EULA/World DEV prerequisites missing")
+    if (
+        type(stage27h_l0_move_loop) is not bool
+        or (stage27h_l0_move_loop and (
+            stage27e_independent_evidence or stage27f_cpu_evaluation
+            or stage27g_real_l1_evaluation
+        ))
+    ):
+        raise Stage27RealWorldRefusal(
+            "Stage27h multi-Action mode must be the sole explicit DEV stage"
+        )
     return await run_real_two_self_preset_checkpoint(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
