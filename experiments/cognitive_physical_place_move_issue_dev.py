@@ -90,6 +90,7 @@ async def issue_selected_place_move_dev(
     pulse_seconds: float = 0.15,
     bind_native_children: Callable[[str], None] | None = None,
     pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None = None,
+    allow_prior_terminal_place_actions: bool = False,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -104,6 +105,7 @@ async def issue_selected_place_move_dev(
         or not isinstance(journal, PhysicalActionJournal)
         or type(pulse_seconds) not in (float, int)
         or not math.isfinite(pulse_seconds)
+        or type(allow_prior_terminal_place_actions) is not bool
         or not 0.15 <= pulse_seconds <= 0.75
         or owner is not prepared.original_owner
         or owner.self_id != handoff.self_id
@@ -193,6 +195,7 @@ async def issue_selected_place_move_dev(
         supervisor=owner.supervisor, journal=journal, at_ns=at_ns,
         refusal=Stage27PlaceMoveRefusal,
         place_invocation=invocation, place_motion=motion,
+        allow_prior_original_place_terminals=allow_prior_terminal_place_actions,
     )
     parent = proposal.binding.action_id
     # Optional operator DEV evidence tap runs only after the original fsynced
