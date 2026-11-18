@@ -26,6 +26,7 @@ def _assets(tmp_path, monkeypatch):
         z.writestr("plugin.yml", "name: P0BRecorder\nversion: 1.0\n")
         z.writestr("io/github/rinsakamo/p0b/TickWitness.class", b"fixture")
         z.writestr("io/github/rinsakamo/p0b/Recorder.class", b"fixture")
+        z.writestr("io/github/rinsakamo/p0b/ResidentPresenceWitness.class", b"fixture")
     # Fixture-specific pinned values: production constants stay pinned to the
     # independently archived actual Paper/build60 and P0BRecorder binaries.
     monkeypatch.setattr(launch, "PAPER_1218_60_SHA256", file_sha256(paper))

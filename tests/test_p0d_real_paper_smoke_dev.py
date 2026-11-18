@@ -34,7 +34,10 @@ def test_missing_plugin_ready_holds(tmp_path):
         proc.wait(timeout=3)
 
 
-def _jar(path: Path, *, paper: bool = False, witness: bool = True) -> str:
+def _jar(
+    path: Path, *, paper: bool = False, witness: bool = True,
+    resident_witness: bool = True,
+) -> str:
     with zipfile.ZipFile(path, "w") as jar:
         if paper:
             jar.writestr("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Paperclip\n")
@@ -43,6 +46,8 @@ def _jar(path: Path, *, paper: bool = False, witness: bool = True) -> str:
             jar.writestr("io/github/rinsakamo/p0b/Recorder.class", b"stub")
             if witness:
                 jar.writestr("io/github/rinsakamo/p0b/TickWitness.class", b"stub")
+            if resident_witness:
+                jar.writestr("io/github/rinsakamo/p0b/ResidentPresenceWitness.class", b"stub")
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -68,6 +73,7 @@ def test_no_operator_eula_confirmation_never_creates_world(tmp_path):
     ("paper-sha", "SHA256"),
     ("plugin-sha", "SHA256"),
     ("missing-witness", "Paper tick witness plugin not compiled"),
+    ("missing-resident-witness", "Paper resident presence witness plugin not compiled"),
     ("missing-eula", "explicitly accept"),
 ])
 def test_preflight_fail_closed_before_any_process(tmp_path, fault, expected):
@@ -78,6 +84,8 @@ def test_preflight_fail_closed_before_any_process(tmp_path, fault, expected):
         plugin_sha = "0" * 64
     if fault == "missing-witness":
         plugin_sha = _jar(plugin, witness=False)
+    if fault == "missing-resident-witness":
+        plugin_sha = _jar(plugin, resident_witness=False)
     with pytest.raises(RealPaperSmokeRefusal, match=expected):
         prepare_assets(
             paper_jar=paper, paper_sha256=sha,

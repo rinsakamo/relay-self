@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -50,6 +51,10 @@ from experiments.stage24b_real_l1_move_dev import (
     require_frozen_stage24b_choice,
     run_stage24b_selected_b_move,
 )
+from experiments.stage24g_model_gate_dev import Stage24gModelGateReceipt
+from experiments.stage24g_model_gate_dev import (
+    receipt_json as stage24g_model_receipt_json,
+)
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
@@ -86,6 +91,7 @@ from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
+    require_pre_inference_resident_presence,
 )
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyOwnedPaperCheckpoint,
@@ -425,6 +431,31 @@ async def _owned_resident_trial(
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
     b_move = None
     if b_autonomous_l1_dev:
+        # Stage24f's pinned plugin emitted P0B_PLAYER/P0D_TICK_READY but
+        # no P0D_RESIDENT. Prove the independent Paper observer is actually
+        # producing its own records BEFORE the one-shot Gemma choice/MOVE.
+        # This is not a Body oxygen/health/World permission gate.
+        import hashlib
+
+        pre_inference_source = paper.read_owned_log(paper_session)
+        pre_inference_hash = hashlib.sha256(pre_inference_source).hexdigest()
+        _write_bytes_new(
+            evidence_dir / "pre-inference-paper-resident-owned.log",
+            pre_inference_source,
+        )
+        pre_inference_trace = parse_owned_paper_resident_trace(
+            owned_paper_session_id=paper_session,
+            expected_world_uuid=world_uuid,
+            owned_paper_log=pre_inference_source,
+            log_ref=(
+                f"paper-owned-pre-inference:{paper_session}:"
+                f"sha256:{pre_inference_hash}"
+            ),
+        )
+        require_pre_inference_resident_presence(
+            pre_inference_trace, a_name="RelayA", b_name="RelayB",
+        )
+    if b_autonomous_l1_dev:
         if bridge.inference_lane is None:
             raise RealResidentPresenceRefusal("Stage24b original resident L1 lane missing")
         b_move = await run_stage24b_selected_b_move(
@@ -747,6 +778,38 @@ def _adopt_verified_trial_report(
     report["classification"] = classification
 
 
+def _require_stage24g_systemone_capture(evidence: Path) -> dict[str, object]:
+    """Verify original one-POST evidence before promoting any integrated result."""
+    folder = evidence / "stage24g-systemone-http"
+    try:
+        request = (folder / "systemone-request-body.bin").read_bytes()
+        response = (folder / "systemone-response-body.bin").read_bytes()
+        manifest = json.loads((folder / "systemone-http-evidence.json").read_bytes())
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        raise RealResidentPresenceRefusal(
+            "Stage24g SystemOne original HTTP evidence unavailable"
+        ) from exc
+    if (
+        type(manifest) is not dict
+        or manifest.get("capture_type") != "urllib_http_entity_bodies_not_wire_headers"
+        or manifest.get("http_status") != 200
+        or manifest.get("request_body_sha256") != hashlib.sha256(request).hexdigest()
+        or manifest.get("response_body_sha256") != hashlib.sha256(response).hexdigest()
+        or manifest.get("request_body_bytes") != len(request)
+        or manifest.get("response_body_bytes") != len(response)
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage24g actual SystemOne HTTP body/status digest mismatch"
+        )
+    return {
+        "model_http_entity_bodies_archived": True,
+        "model_http_wire_headers_archived": False,
+        "model_http_status_attested": 200,
+        "model_http_request_sha256": manifest["request_body_sha256"],
+        "model_http_response_sha256": manifest["response_body_sha256"],
+    }
+
+
 async def run_real_resident_presence(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -760,6 +823,7 @@ async def run_real_resident_presence(
     llama_endpoint: str | None = None,
     systemone_endpoint: str | None = None,
     model_name: str | None = None,
+    stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     if real_world_dev_grant is not True:
@@ -790,6 +854,15 @@ async def run_real_resident_presence(
         )
     if not b_autonomous_l1_dev and real_llm_grant:
         raise RealResidentPresenceRefusal("unused real LLM grant forbidden")
+    if stage24g_model_receipt is not None and (
+        not isinstance(stage24g_model_receipt, Stage24gModelGateReceipt)
+        or not b_autonomous_l1_dev
+        or stage24g_model_receipt.model_alias != model_name
+        or stage24g_model_receipt.slot_count != 1
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage24g original independent model gate receipt inconsistent"
+        )
     paper_src, plugin_src, scratch = preflight_two_native(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
@@ -800,6 +873,11 @@ async def run_real_resident_presence(
     os.chmod(root, 0o700)
     evidence = root / "evidence"
     evidence.mkdir(mode=0o700)
+    if stage24g_model_receipt is not None:
+        _write_bytes_new(
+            evidence / "stage24g-model-preworld.json",
+            stage24g_model_receipt_json(stage24g_model_receipt),
+        )
     plugins = root / "plugins"
     plugins.mkdir(mode=0o700)
     shutil.copyfile(paper_src, root / "paper.jar")
@@ -874,7 +952,26 @@ async def run_real_resident_presence(
             folder = root / ("self-" + sid)
             folder.mkdir(mode=0o700)
             wal = folder / "physical-wal.json"
-            PhysicalActionJournal.create(wal, self_id=sid)
+            created_wal = PhysicalActionJournal.create(wal, self_id=sid)
+            if stage24g_model_receipt is not None:
+                restored_wal = PhysicalActionJournal.restore(wal, self_id=sid)
+                if (
+                    restored_wal.records or restored_wal.unresolved
+                    or restored_wal.digest != created_wal.digest
+                ):
+                    raise RealResidentPresenceRefusal(
+                        "Stage24g new World canonical WAL not independently empty"
+                    )
+                _write_bytes_new(
+                    evidence / f"stage24g-{sid}-empty-wal.json",
+                    (json.dumps({
+                        "self_id": sid,
+                        "wal_sha256": file_sha256(wal),
+                        "canonical_digest": restored_wal.digest,
+                        "records": 0,
+                        "unresolved": False,
+                    }, sort_keys=True) + "\n").encode(),
+                )
             originals[sid] = CheckpointedCognitiveOwner(
                 retained=PersistentCognition(
                     IdentitySpecification(
@@ -896,9 +993,14 @@ async def run_real_resident_presence(
         if b_autonomous_l1_dev:
             assert llama_endpoint is not None and systemone_endpoint is not None
             assert model_name is not None
+            raw_dir = None
+            if stage24g_model_receipt is not None:
+                raw_dir = evidence / "stage24g-systemone-http"
+                raw_dir.mkdir(mode=0o700)
             provider = LlamaCppRelayProvider(
                 endpoint=llama_endpoint, systemone_endpoint=systemone_endpoint,
                 model=model_name, timeout=60.0,
+                systemone_raw_dir=raw_dir,
             )
             witness = LlamaCppSingleSlotWitness(
                 provider=provider, backend_ref="stage24b-" + uuid.uuid4().hex,
@@ -939,6 +1041,8 @@ async def run_real_resident_presence(
             b_autonomous_l1_dev=b_autonomous_l1_dev,
             real_llm_granted=real_llm_grant,
         )
+        if stage24g_model_receipt is not None:
+            report.update(_require_stage24g_systemone_capture(evidence))
         _adopt_verified_trial_report(
             report, trial, b_selected_move_dev=b_selected_move_dev,
             world_only=world_only, b_autonomous_l1_dev=b_autonomous_l1_dev,

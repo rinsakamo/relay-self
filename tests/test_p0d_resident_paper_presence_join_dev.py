@@ -10,6 +10,7 @@ from relay_self.resident_paper_presence_join_dev import (
     ResidentPaperVerdict,
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
+    require_pre_inference_resident_presence,
 )
 from relay_self.world_resident_lifecycle_dev import (
     LogoutFenceEvidence,
@@ -203,3 +204,44 @@ def test_paper_main_thread_tick_and_native_world_time_are_not_compared():
         original_b_native="native-B", surviving_b_native="native-B",
     )
     assert decision.status is ResidentPaperVerdict.MOVEMENT_CORRELATED
+
+
+def _stage24g_before_model_lines():
+    # Remove the final A rejoin: Gemma has not been invoked yet.
+    return _events().decode().splitlines()[:-1]
+
+
+def test_stage24g_paper_live_witness_before_gemma():
+    source = ("\n".join(_stage24g_before_model_lines()) + "\n").encode()
+    trace = _trace(source)
+    require_pre_inference_resident_presence(
+        trace, a_name="RelayA", b_name="RelayB",
+    )
+
+
+@pytest.mark.parametrize("fault", [
+    "no-resident-boot",
+    "old-p0b-only",
+    "missing-b-after-a-quit",
+    "duplicate-a-epoch",
+])
+def test_stage24g_pre_inference_never_substitutes_old_paper_telemetry(fault):
+    lines = _stage24g_before_model_lines()
+    if fault == "no-resident-boot":
+        lines = lines[1:]
+    if fault == "old-p0b-only":
+        lines = [
+            "[Server thread/INFO]: P0D_TICK_READY boot=" + BOOT,
+            "[Server thread/INFO]: P0B_PLAYER tick=11 world=" + WORLD
+            + " actor=" + B + " name=RelayB",
+        ]
+    if fault == "missing-b-after-a-quit":
+        lines = lines[:-2]
+    if fault == "duplicate-a-epoch":
+        lines.append(_line("JOIN", 160, A, "RelayA"))
+    raw = ("\n".join(lines) + "\n").encode()
+    with pytest.raises(ResidentPaperJoinError):
+        trace = _trace(raw)
+        require_pre_inference_resident_presence(
+            trace, a_name="RelayA", b_name="RelayB",
+        )

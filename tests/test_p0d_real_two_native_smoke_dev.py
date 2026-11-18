@@ -37,6 +37,7 @@ def _jar(path: Path, *, paper: bool = False) -> str:
             jar.writestr("plugin.yml", "name: P0BRecorder\n")
             jar.writestr("io/github/rinsakamo/p0b/Recorder.class", b"test")
             jar.writestr("io/github/rinsakamo/p0b/TickWitness.class", b"test")
+            jar.writestr("io/github/rinsakamo/p0b/ResidentPresenceWitness.class", b"test")
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
