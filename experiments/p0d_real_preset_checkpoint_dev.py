@@ -104,6 +104,114 @@ class RealPresetCheckpointRefusal(RuntimeError):
     """Source-qualified World, Self or Preset knowledge is not admissible."""
 
 
+def _preserve_and_validate_stage27h_hook_return(
+    result: object, *, evidence: Path,
+) -> dict[str, object]:
+    """Durably freeze original motor-hook output BEFORE parent aggregation.
+
+    A returned-but-incompatible hook may follow irreversible physical
+    effects. Capture its raw mapping before checking the contract, then HOLD
+    on any inconsistency. This is evidence durability, NOT retry permission.
+    """
+    if (
+        type(result) is not dict
+        or not isinstance(evidence, Path)
+        or evidence.is_symlink() or not evidence.is_dir()
+    ):
+        raise RealPresetCheckpointRefusal(
+            "Stage27h original motor-hook return cannot be preserved"
+        )
+    try:
+        payload = (json.dumps(result, sort_keys=True, indent=2, allow_nan=False)
+                   + "\n").encode("utf-8")
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise RealPresetCheckpointRefusal(
+            "Stage27h original motor-hook result is not serializable"
+        ) from exc
+    filename = evidence / "stage27h-original-motor-hook-return.json"
+    _write_bytes_new(filename, payload)
+    directory_fd = os.open(evidence, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    digest = hashlib.sha256(payload).hexdigest()
+    if filename.read_bytes() != payload or file_sha256(filename) != digest:
+        raise RealPresetCheckpointRefusal(
+            "Stage27h motor-hook frozen original readback mismatch"
+        )
+
+    # No broad bool(...) conversion: a missing/non-boolean key would have
+    # caused the former KeyError after the one real physical Action.
+    if type(result.get("physical_effect_observed")) is not bool:
+        raise RealPresetCheckpointRefusal(
+            "Stage27h motor-hook missing typed physical_effect_observed"
+        )
+    classification = result.get("classification")
+    nonselected = classification == "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV"
+    if nonselected:
+        if (
+            result["physical_effect_observed"]
+            or result.get("stage27_native_action_count") != 0
+            or result.get("original_peer_b_before")
+            != result.get("original_peer_b_after")
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27h nonselected motor hook reported physical effect"
+            )
+    else:
+        feedback = result.get("stage27h_l0_feedback")
+        actions = result.get("stage27h_original_action_witnesses")
+        before = result.get("stage27h_peer_b_before")
+        after = result.get("stage27h_peer_b_after")
+        action_count = result.get("stage27h_l0_action_count")
+        expected_status = {
+            "L0_TARGET_REACHED_YIELD_EVALUATION":
+                "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
+                "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+            "L0_NO_PROGRESS_YIELD_EVALUATION":
+                "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+        }
+        if (
+            type(action_count) is not int or not 0 <= action_count <= 4
+            or result["physical_effect_observed"] != (action_count > 0)
+            or result.get("stage27_native_action_count") != action_count
+            or type(feedback) is not dict
+            or feedback.get("action_count") != action_count
+            or type(actions) is not list or len(actions) != action_count
+            or feedback.get("status") is None
+            or classification != expected_status.get(
+                feedback["status"], "REAL_STAGE27H_L0_UNREACHED_DEV",
+            )
+            or type(before) is not dict or type(after) is not dict
+            or before != after
+            or result.get("original_peer_b_before") != before
+            or result.get("original_peer_b_after") != after
+            or result.get("stage27h_self_a_skill_state") != "started"
+            or not result.get("stage27h_self_a_intent_current")
+            or result.get("stage27h_goal_success") is not False
+            or result.get("stage27h_skill_success") is not False
+            or any(
+                type(row) is not dict or not row.get("action")
+                or row.get("goal_success") is not False
+                or row.get("skill_success") is not False
+                or row.get("l0_feedback", {}).get("action_count") != i + 1
+                for i, row in enumerate(actions)
+            )
+            or len({row["action"] for row in actions}) != len(actions)
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27h motor-hook original result violates parent contract"
+            )
+    return {
+        "original_hook_return_path": str(filename),
+        "original_hook_return_sha256": digest,
+        "original_hook_contract_valid": True,
+        "original_hook_frozen_before_parent_aggregation": True,
+    }
+
+
 def _paper_join_witness(
     paper: OwnedPaperWorld, *, paper_session_id: str, world_uuid: str,
 ) -> dict[str, object]:
@@ -255,6 +363,7 @@ async def _real_preset_trial(
     evidence: Path, world_uuid: str,
     inference_lane: ResidentLlamaInferenceLane | None = None,
     stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
+    stage27h_multi_preset: bool = False,
 ) -> dict[str, object]:
     """Original saved/rejoined Self cohort; Stage26 remains nonissuing by default."""
     original_world = lifecycle.world
@@ -274,9 +383,15 @@ async def _real_preset_trial(
         preset = SkillParameterPreset(
             "exploration-move", "OperatorNearProbe", 1,
             definition.definition_ref,
-            SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
+            SkillConstraints(), (
+                SkillBudget(4, 15000, 2.0, 256) if stage27h_multi_preset
+                else SkillBudget(1, 1500, 2.0, 4)
+            ),
             Provenance("operator-dev-proposed", f"stage25:{sid}"),
-            expected_cost=SkillCostEstimate(1, 1200, 1.0),
+            expected_cost=(
+                SkillCostEstimate(4, 8000, 1.0) if stage27h_multi_preset
+                else SkillCostEstimate(1, 1200, 1.0)
+            ),
         )
         owners[sid].accept_parameter_preset(
             preset, definition=definition,
@@ -500,6 +615,7 @@ async def _real_preset_trial(
         inference_lane.require_world_idle()
 
     stage27_result: dict[str, object] | None = None
+    stage27h_hook_snapshot: dict[str, object] | None = None
     if stage27_motor_hook is not None:
         if inference_lane is None or tuple(sorted(completed)) != ("A", "B"):
             raise RealPresetCheckpointRefusal("original Stage27 real model witnesses absent")
@@ -520,6 +636,13 @@ async def _real_preset_trial(
             # physical children and STOP samples. Freeze it only after issue.
             bridge.sessions["A"].finish_raw_source_audit()
             witnessed["A"]["exact_native_stdout_sha256"] = file_sha256(rawfiles["A"])
+
+    if stage27h_multi_preset:
+        # Persist source-qualified original A/B state, feedback, and raw
+        # physical-action summaries *before* peer logout or parent dict keys.
+        stage27h_hook_snapshot = _preserve_and_validate_stage27h_hook_return(
+            stage27_result, evidence=evidence,
+        )
 
     for sid in ("A", "B"):
         await bridge.logout(sid)
@@ -553,6 +676,7 @@ async def _real_preset_trial(
         ),
         "backend_model_weights_independently_verified": False,
         "stage27": stage27_result,
+        "stage27h_hook_snapshot": stage27h_hook_snapshot,
         "real_native_physical_action_issued": (
             bool(stage27_result["physical_effect_observed"])
             if stage27_result is not None else False
@@ -579,6 +703,7 @@ async def run_real_two_self_preset_checkpoint(
     gemma_l1_model: str | None = None,
     gemma_l1_jev: bool = False,
     _stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
+    _stage27h_multi_preset: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -603,6 +728,12 @@ async def run_real_two_self_preset_checkpoint(
     ):
         raise RealPresetCheckpointRefusal(
             "Stage27 native MOVE requires a separate real bounded model hook"
+        )
+    if type(_stage27h_multi_preset) is not bool or (
+        _stage27h_multi_preset and _stage27_motor_hook is None
+    ):
+        raise RealPresetCheckpointRefusal(
+            "Stage27h multi-action budget requires explicit original motor hook"
         )
     provider = None
     slot_witness = None
@@ -753,11 +884,20 @@ async def run_real_two_self_preset_checkpoint(
             evidence=evidence, world_uuid=world_uuid,
             inference_lane=lane,
             stage27_motor_hook=_stage27_motor_hook,
+            stage27h_multi_preset=_stage27h_multi_preset,
         )
         report.update(trial)
     except BaseException as exc:
         report["classification"] = "HOLD"
         report["reason"] = f"{type(exc).__name__}: {exc}"
+        # Even when a result-contract error propagates, the hook return may
+        # already be fsynced after irreversible native movement. Keep a
+        # pointer in the terminal HOLD report; never infer it is validated.
+        captured = evidence / "stage27h-original-motor-hook-return.json"
+        if _stage27h_multi_preset and captured.is_file() and not captured.is_symlink():
+            report["stage27h_hook_return_evidence"] = str(captured)
+            report["stage27h_hook_return_sha256"] = file_sha256(captured)
+            report["stage27h_hook_contract_valid"] = False
         if physical is not None:
             physical.hold_for_operator()
         raise
@@ -800,6 +940,10 @@ async def run_real_two_self_preset_checkpoint(
             "REAL_STAGE27_A_PLACE_NO_PROGRESS_NATIVE_OBSERVED_DEV",
             "REAL_STAGE27_A_PLACE_MOVE_OVERSHOOT_DEV",
             "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+            "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+            "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+            "REAL_STAGE27H_L0_UNREACHED_DEV",
         }
     else:
         expected_classifications = {expected_classification}
