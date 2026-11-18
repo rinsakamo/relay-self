@@ -547,7 +547,7 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
         logins = (replace(logins[0], world_epoch=0), logins[1])
     elif failure == "stale-worldbody":
         logins = (
-            replace(logins[0], observed_world_tick=boot.boot_tick - 1),
+            replace(logins[0], observed_world_tick=-1),
             logins[1],
         )
     elif failure == "busy-slot":
