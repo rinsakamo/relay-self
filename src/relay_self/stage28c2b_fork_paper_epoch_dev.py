@@ -68,8 +68,8 @@ def observe_new_fork_paper_epoch(
     try:
         # Checks the actual owned Popen and its matching stdout, rather
         # than a foreign disk log or an arbitrary claimed tick.
-        raw_log = paper.read_owned_log(session)
         tick = paper.tick_readback(session)
+        raw_log = paper.read_owned_log(session)
         proc = paper._assert_owned()
     except (OSError, ValueError, RuntimeError) as exc:
         raise Stage28ForkEpochHold("owned Paper main-thread tick unavailable") from exc
