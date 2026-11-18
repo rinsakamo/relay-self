@@ -21,6 +21,7 @@ from relay_self.resident_llama_inference_lane_dev import LlamaCppSingleSlotWitne
 PINNED_STAGE24G_GGUF_SHA256 = (
     "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
 )
+_PROC_ROOT = Path("/proc")
 
 
 class Stage24gModelGateError(RuntimeError):
