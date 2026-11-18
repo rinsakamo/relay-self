@@ -15,6 +15,7 @@ import pytest
 from adapters.mineflayer.python_protocol import MineflayerPosition
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveRefusal
 from experiments.p0d_stage27_real_place_move_dev import (
+    Stage27RealWorldRefusal,
     run_stage27_real_world,
     stage27h_real_a_motor_hook,
 )
@@ -304,3 +305,24 @@ def test_original_physical_issuer_rejects_second_action_without_explicit_l0_gate
         assert ledger.records[0]["action_id"] == first.action_id
 
     _fixture(tmp_path, scenario)
+
+
+def test_stage27h_rejects_mixed_real_runner_modes_before_world(tmp_path):
+    kwargs = dict(
+        paper_jar=tmp_path / "paper.jar", paper_sha256="0" * 64,
+        plugin_jar=tmp_path / "plugin.jar", plugin_sha256="0" * 64,
+        scratch_parent=tmp_path, accepted_eula=True,
+        real_world_dev_grant=True,
+        gemma_l1_endpoint="http://127.0.0.1:18081/v1/chat/completions",
+        gemma_l1_model="stage26-gemma",
+    )
+    with patch(
+        "experiments.p0d_stage27_real_place_move_dev."
+        "run_real_two_self_preset_checkpoint", new_callable=AsyncMock,
+    ) as original:
+        with pytest.raises(Stage27RealWorldRefusal, match="sole explicit DEV"):
+            asyncio.run(run_stage27_real_world(
+                **kwargs, stage27h_l0_move_loop=True,
+                stage27g_real_l1_evaluation=True,
+            ))
+        original.assert_not_awaited()
