@@ -203,6 +203,7 @@ def begin_physical_issue_dev(
             type(allow_prior_original_place_terminals) is not bool
             or capability != "MOVE"
             or not isinstance(place_invocation, SkillInvocation)
+            or place_invocation.target.contract is None
             or place_motion is None
             or not prior_actions
             or len(prior_actions) != len(journal.records)
