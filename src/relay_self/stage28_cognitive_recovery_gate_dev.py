@@ -7,6 +7,7 @@ World-only checkpoint archives are intentionally NOT cognitive checkpoints.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -145,8 +146,6 @@ def stage28_inert_cognitive_recovery(
                 generation / "paper-dimensions" / dim
             )
             _require_restored_world_files(restored_directory / dim, companion)
-        import json
-
         prepared = json.loads(
             (restored_directory / "RESTORE_PREPARED.json").read_bytes()
         )
