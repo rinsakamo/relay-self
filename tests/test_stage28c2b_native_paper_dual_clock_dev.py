@@ -39,9 +39,6 @@ def _clock_context(tmp_path, monkeypatch, *, native_time=0, two=True):
     paper = _owned_paper_from_synthetic_log(copy, tick=10)
     # The original new Paper-boot witness was at tick3. The helper's fake
     # Paper log/tick is synthetic; actual code demands the owned Popen.
-    paper.tick_readback = lambda sid: type(paper.tick_readback(sid))(
-        sid, 3, paper.tick_readback(sid).source_ref,
-    ) if False else paper.tick_readback
     # Build a real typed boot dataclass first with a sample tick3.
     from relay_self.owned_paper_world_dev import PaperTickReceipt
 
@@ -129,7 +126,9 @@ def _fake_trace(boot, **kwargs):
     if kwargs.get("missing_b"):
         events.pop()
     if kwargs.get("foreign_actor"):
-        events[3] = replace(events[3], actor_uuid="other-actor")
+        events[3] = SimpleNamespace(**{
+            **vars(events[3]), "actor_uuid": "other-actor",
+        })
     return SimpleNamespace(
         boot_id="different-resident-plugin-boot",
         paper_session_id=boot.paper_session_id, events=tuple(events),
