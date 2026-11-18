@@ -10,8 +10,8 @@ from relay_self.persistent_cognition import (
     Memory,
     save_persistent_cognition,
 )
-from relay_self.provenance import Provenance
 from relay_self.physical_issue_admission_dev import PhysicalIssueFenceError
+from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkError,
 )
