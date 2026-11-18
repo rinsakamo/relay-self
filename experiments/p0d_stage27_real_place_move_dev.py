@@ -793,7 +793,8 @@ async def stage27h_real_a_motor_hook(
         result = loop.pre_action(current, now_ns=time.monotonic_ns())
     if result.status == "L0_CONTINUE_MOVE":
         raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
-    if _peer_snapshot(owners["B"]) != peer_before:
+    peer_after = _peer_snapshot(owners["B"])
+    if peer_after != peer_before:
         raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
     lane.require_world_idle()
     status = {
@@ -804,8 +805,31 @@ async def stage27h_real_a_motor_hook(
         "L0_NO_PROGRESS_YIELD_EVALUATION":
             "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
     }.get(result.status, "REAL_STAGE27H_L0_UNREACHED_DEV")
+    original_skill = owner.skills.get(handoff.skill_execution_id)
+    if (
+        original_skill is None
+        or owner.intent.current_intent is None
+        or owner.intent.current_intent.intent_id != handoff.intent_id
+        or original_skill.intent_id != handoff.intent_id
+    ):
+        raise Stage27RealWorldRefusal(
+            "Stage27h original Intent/Skill not retained for final hook result"
+        )
     return {
         "classification": status,
+        # Explicit Stage25 parent-runner contract. A terminal Action has
+        # already been observed; this flag does NOT attest Skill/Goal success.
+        "physical_effect_observed": loop.action_count > 0,
+        "stage27_native_action_count": loop.action_count,
+        "self_a_selected_number": witnesses["A"].selected_number,
+        "self_a_status": witnesses["A"].l1_status,
+        "self_b_selected_number": witnesses["B"].selected_number,
+        "self_b_status": witnesses["B"].l1_status,
+        "original_peer_b_before": peer_before,
+        "original_peer_b_after": peer_after,
+        "stage27h_self_a_intent_current": owner.intent.current_intent.intent_id,
+        "stage27h_self_a_skill_state": original_skill.state.value,
+        "stage27h_elapsed_ms": (time.monotonic_ns() - loop.start_ns) / 1_000_000,
         "original_world_uuid": world_uuid,
         "original_world_epoch": world_epoch,
         "original_paper_session": paper.owned_session_id,
@@ -819,7 +843,7 @@ async def stage27h_real_a_motor_hook(
         "stage27h_l0_feedback": asdict(result),
         "stage27h_original_action_witnesses": action_receipts,
         "stage27h_peer_b_before": peer_before,
-        "stage27h_peer_b_after": _peer_snapshot(owners["B"]),
+        "stage27h_peer_b_after": peer_after,
         "stage27h_goal_success": False,
         "stage27h_skill_success": False,
         "stage27h_operator_dev_template_not_autonomous": True,
