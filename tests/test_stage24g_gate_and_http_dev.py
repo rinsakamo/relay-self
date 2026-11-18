@@ -117,6 +117,13 @@ def test_stage24g_gate_uses_pid_maps_gpu_catalog_and_one_idle_slot(tmp_path, mon
     (owned / "maps").write_text(
         f"7f000000-7f010000 r--p 0 00:00 0 {gguf}\n"
     )
+    (owned / "fd").mkdir()
+    (owned / "fd" / "4").symlink_to("socket:[4321]")
+    (proc / "net").mkdir()
+    (proc / "net/tcp").write_text(
+        "sl local_address rem_address st tx_queue rx_queue tr tm->when retrnsmt uid timeout inode\n"
+        "0: 0100007F:1F40 00000000:0000 0A 0:0 0:0 0 1000 0 4321\n"
+    )
 
     monkeypatch.setattr(model_gate, "_PROC_ROOT", proc)
     def run(args, **kwargs):
