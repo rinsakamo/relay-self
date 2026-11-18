@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from relay_self.provenance import Provenance
