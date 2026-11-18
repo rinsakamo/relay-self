@@ -12,7 +12,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from adapters.mineflayer.python_protocol import MineflayerPosition
+from adapters.mineflayer.python_protocol import MineflayerPosition, MineflayerTime
+from experiments.cognitive_physical_move_issue_dev import (
+    PhysicalMoveRefusal,
+    _settled,
+)
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveRefusal
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
@@ -22,6 +26,7 @@ from experiments.p0d_stage27_real_place_move_dev import (
 from relay_self.p0d_stage27b_place_motion_dev import resolve_stage27_place_motion
 from relay_self.p0d_stage27c_l0_place_proposal_dev import propose_stage27c_original_place_move
 from relay_self.p0d_stage27h_bounded_l0_move_dev import (
+    STAGE27H_SETTLING_PROBE_RESERVATION,
     Stage27hBoundedMoveLoop,
     Stage27hLoopRefusal,
 )
@@ -51,13 +56,13 @@ class SlowPlaceNative(ScriptedPlaceNative):
         self.x -= 0.6
 
 
-def _fixture(tmp_path, case):
+def _fixture(tmp_path, case, budget=None):
     server = _SyntheticLlamaServer()
     server.choice_id = "1"
     endpoint = server.start()
     f = ResidentFixture(tmp_path, 2, cognitive_work=True, allow_resident_move=True)
     lane = _attach_and_audit(f, endpoint, tmp_path)
-    budget = SkillBudget(4, 15000, 2.0, 256)
+    budget = budget or SkillBudget(4, 15000, 2.0, 256)
     original = source_recovered
 
     def multi(self_id="A"):
@@ -107,6 +112,9 @@ async def _issue(f, pre, handoff, loop, previous, observed, native):
     kwargs = _args(f, pre, handoff, plan, l0, previous, observed)
     kwargs["at_ns"] = 1000 + loop.action_count * 20
     kwargs["allow_prior_terminal_place_actions"] = loop.action_count > 0
+    kwargs["settlement_probe_limit"] = loop.reserve_settling_observations(
+        source_probe=observed,
+    )
     receipt = await f.physical.issue_place_move(native, **kwargs)
     return receipt
 
@@ -147,6 +155,11 @@ def test_l0_reaches_target_after_three_short_actions_without_second_llm(tmp_path
         assert action_ids
         assert len(action_ids) == 3
         assert len(set(action_ids)) == 3
+        # Three source-qualified STOP probes per original Action and one
+        # distinct pre-motor observation per Action = 12 in total.
+        assert loop.observation_count == 3 * (3 + 1)
+        assert loop.observation_count <= loop.invocation.budget.max_observations
+        assert loop._settlement_reserved == 0
         assert statuses == [
             "L0_CONTINUE_MOVE", "L0_CONTINUE_MOVE",
             "L0_TARGET_REACHED_YIELD_EVALUATION",
