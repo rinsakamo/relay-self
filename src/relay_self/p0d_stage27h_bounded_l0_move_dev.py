@@ -253,11 +253,14 @@ class Stage27hBoundedMoveLoop:
         self, observed: MineflayerObservation, *, now_ns: int,
     ) -> Stage27hLoopStep:
         """L0 preflight: no physical proposal if the new source is unsafe."""
-        self._validate_owner_and_journal()
         if self._settlement_reserved or self._reserved_source_seq is not None:
+            # A prior physical Action was issued but its complete canonical
+            # STOP/settlement readback was not accepted. Do not even attempt
+            # to requalify a new preflight or reinterpret its WAL as clear.
             raise Stage27hLoopRefusal(
                 "L0 settling reservation unresolved: no second MOVE"
             )
+        self._validate_owner_and_journal()
         if self.last_native_seq >= 0 and observed.seq <= self.last_native_seq:
             raise Stage27hLoopRefusal("next native observation not after prior STOP")
         return self._assess(observed, now_ns)
