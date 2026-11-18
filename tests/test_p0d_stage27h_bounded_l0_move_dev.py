@@ -19,6 +19,10 @@ from experiments.cognitive_physical_move_issue_dev import (
     _settled,
 )
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveRefusal
+from experiments.p0d_real_preset_checkpoint_dev import (
+    RealPresetCheckpointRefusal,
+    _preserve_and_validate_stage27h_hook_return,
+)
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
     _stage27h_all_settling_stdout_readback,
@@ -510,3 +514,144 @@ def test_stage27h_original_stdout_accounts_all_stop_probes_exact_once(tmp_path):
         _stage27h_all_settling_stdout_readback(
             raw, session_id="native-A", stop_seq=10, probes=originals,
         )
+
+
+def _one_action_hook_result():
+    """Only synthetic hook summary; not real World/Paper evidence."""
+    peer = {
+        "intent_event_count": 0, "skill_execution_count": 0,
+        "physical_wal_sha256": "synthetic-empty", "physical_wal_action_rows": 0,
+        "open_action_count": 0,
+    }
+    result = {
+        "classification": "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+        "physical_effect_observed": True,
+        "stage27_native_action_count": 1,
+        "stage27h_l0_action_count": 1,
+        "stage27h_l0_feedback": {
+            "status": "L0_TARGET_REACHED_YIELD_EVALUATION", "action_count": 1,
+            "observation_count": 19, "target_status": "CONDITION_OBSERVED",
+        },
+        "stage27h_original_action_witnesses": [{
+            "action": "stage27c-A-39",
+            "l0_feedback": {
+                "status": "L0_TARGET_REACHED_YIELD_EVALUATION",
+                "action_count": 1, "observation_count": 19,
+            },
+            "goal_success": False, "skill_success": False,
+        }],
+        "stage27h_peer_b_before": peer,
+        "stage27h_peer_b_after": dict(peer),
+        "original_peer_b_before": peer,
+        "original_peer_b_after": dict(peer),
+        "stage27h_self_a_intent_current": "original-intent-A",
+        "stage27h_self_a_skill_state": "started",
+        "stage27h_goal_success": False,
+        "stage27h_skill_success": False,
+    }
+    return result
+
+
+def test_stage27h_parent_contract_one_action_arrival_preserves_original(tmp_path):
+    """One MOVE inside original arrival envelope is valid; not multi-MOVE proof."""
+    source = _one_action_hook_result()
+    receipt = _preserve_and_validate_stage27h_hook_return(
+        source, evidence=tmp_path,
+    )
+    assert receipt["original_hook_contract_valid"] is True
+    file = tmp_path / "stage27h-original-motor-hook-return.json"
+    assert file.exists()
+    assert json.loads(file.read_bytes()) == source
+    assert receipt["original_hook_return_sha256"]
+    assert receipt["original_hook_frozen_before_parent_aggregation"] is True
+
+
+def test_stage27h_parent_contract_three_original_actions_is_typed(tmp_path):
+    source = _one_action_hook_result()
+    source["stage27_native_action_count"] = 3
+    source["stage27h_l0_action_count"] = 3
+    source["stage27h_l0_feedback"]["action_count"] = 3
+    source["stage27h_original_action_witnesses"] = [
+        {
+            "action": f"stage27c-A-{39+i}",
+            "l0_feedback": {
+                "action_count": i + 1,
+                "status": (
+                    "L0_TARGET_REACHED_YIELD_EVALUATION" if i == 2
+                    else "L0_CONTINUE_MOVE"
+                ),
+            },
+            "goal_success": False, "skill_success": False,
+        } for i in range(3)
+    ]
+    assert _preserve_and_validate_stage27h_hook_return(
+        source, evidence=tmp_path,
+    )["original_hook_contract_valid"]
+
+
+@pytest.mark.parametrize("fault", [
+    "missing-physical-key", "physical-nonbool", "false-effect", "wrong-count",
+    "peer-mutated", "peer-report-mismatch", "wrong-status", "skill-completed",
+    "goal-completed", "duplicate-actions", "missing-feedback",
+])
+def test_stage27h_post_effect_aggregation_fail_closed_with_durable_evidence(
+    tmp_path, fault,
+):
+    source = _one_action_hook_result()
+    if fault == "missing-physical-key":
+        del source["physical_effect_observed"]
+    elif fault == "physical-nonbool":
+        source["physical_effect_observed"] = 1
+    elif fault == "false-effect":
+        source["physical_effect_observed"] = False
+    elif fault == "wrong-count":
+        source["stage27_native_action_count"] = 0
+    elif fault == "peer-mutated":
+        source["stage27h_peer_b_after"]["intent_event_count"] = 1
+    elif fault == "peer-report-mismatch":
+        source["original_peer_b_after"]["intent_event_count"] = 1
+    elif fault == "wrong-status":
+        source["classification"] = "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV"
+    elif fault == "skill-completed":
+        source["stage27h_self_a_skill_state"] = "succeeded"
+    elif fault == "goal-completed":
+        source["stage27h_goal_success"] = True
+    elif fault == "duplicate-actions":
+        source["stage27h_l0_action_count"] = 2
+        source["stage27_native_action_count"] = 2
+        source["stage27h_l0_feedback"]["action_count"] = 2
+        source["stage27h_original_action_witnesses"] *= 2
+        source["stage27h_original_action_witnesses"][1]["l0_feedback"]["action_count"] = 2
+    elif fault == "missing-feedback":
+        del source["stage27h_l0_feedback"]
+    with pytest.raises(RealPresetCheckpointRefusal, match="motor-hook"):
+        _preserve_and_validate_stage27h_hook_return(
+            source, evidence=tmp_path,
+        )
+    # The invalid return is captured *before* parent starts indexing keys
+    # and must survive HOLD to explain any prior irreversible Action.
+    stored = tmp_path / "stage27h-original-motor-hook-return.json"
+    assert stored.is_file()
+    assert json.loads(stored.read_bytes()) == source
+
+
+def test_stage27h_nonselected_motor_return_is_nonissuing(tmp_path):
+    peer = {"intent_event_count": 0, "skill_execution_count": 0}
+    source = {
+        "classification": "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+        "physical_effect_observed": False,
+        "stage27_native_action_count": 0,
+        "original_peer_b_before": peer, "original_peer_b_after": dict(peer),
+    }
+    evidence = _preserve_and_validate_stage27h_hook_return(
+        source, evidence=tmp_path,
+    )
+    assert evidence["original_hook_contract_valid"]
+    assert not source["physical_effect_observed"]
+
+
+def test_stage27h_parent_result_file_is_write_once_no_replay(tmp_path):
+    source = _one_action_hook_result()
+    _preserve_and_validate_stage27h_hook_return(source, evidence=tmp_path)
+    with pytest.raises(FileExistsError):
+        _preserve_and_validate_stage27h_hook_return(source, evidence=tmp_path)
