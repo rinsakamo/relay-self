@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from relay_self import stage28b_retired_resident_typed_cut_dev as stage28b
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
@@ -25,7 +26,6 @@ from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     stage28_inert_cognitive_recovery,
 )
-from relay_self import stage28b_retired_resident_typed_cut_dev as stage28b
 from relay_self.world_resident_lifecycle_dev import (
     WorldLifetime,
     WorldOnlyQuiescenceEvidence,
