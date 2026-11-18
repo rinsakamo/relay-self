@@ -104,6 +104,7 @@ async def _issue(f, pre, handoff, loop, previous, observed, native):
     )
     kwargs = _args(f, pre, handoff, plan, l0, previous, observed)
     kwargs["at_ns"] = 1000 + loop.action_count * 20
+    kwargs["allow_prior_terminal_place_actions"] = loop.action_count > 0
     receipt = await f.physical.issue_place_move(native, **kwargs)
     return receipt
 
