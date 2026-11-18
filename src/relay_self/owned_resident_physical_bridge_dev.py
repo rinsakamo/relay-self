@@ -91,6 +91,7 @@ class OwnedResidentPhysicalBridge:
         probe_timeout_s: float = 12.0,
         cognitive_work: ResidentCognitiveWorkOwner | None = None,
         inference_lane: ResidentLlamaInferenceLane | None = None,
+        forbidden_native_sessions: frozenset[str] = frozenset(),
     ) -> None:
         if (
             not isinstance(lifecycle, WorldResidentLifecycle)
@@ -135,6 +136,9 @@ class OwnedResidentPhysicalBridge:
                 or o.supervisor.open_actions
                 for sid, o in owners.items()
             )
+            or type(forbidden_native_sessions) is not frozenset
+            or any(type(sid) is not str or not sid
+                   for sid in forbidden_native_sessions)
             or not callable(launch)
             or type(probe_timeout_s) not in (float, int)
             or not 0 < probe_timeout_s <= 60
@@ -152,6 +156,10 @@ class OwnedResidentPhysicalBridge:
         self.work = InertResidentWorkBoundary(lifecycle.self_roster)
         self.cognitive_work = cognitive_work
         self.inference_lane = inference_lane
+        # A restored Self may have joined/quit more than once in the old
+        # boot. All historical native IDs, not just last_owner_session,
+        # must be refused BEFORE rebind/admission.
+        self.forbidden_native_sessions = forbidden_native_sessions
         self.sessions: dict[str, MineflayerProcessSession] = {}
         self.retired: dict[str, ResidentIssuerRetired] = {}
         # Preserve the ORIGINAL verified native/Paper source claim so an
@@ -183,6 +191,7 @@ class OwnedResidentPhysicalBridge:
                 launched.process_returncode is not None
                 or launched.started.config != config
                 or launched.started.session_id == prior
+                or launched.started.session_id in self.forbidden_native_sessions
                 or launched.started.session_id in {
                     other.started.session_id for other in self.sessions.values()
                 }

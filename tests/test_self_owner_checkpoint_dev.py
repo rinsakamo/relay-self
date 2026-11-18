@@ -57,6 +57,7 @@ from relay_self.self_owner_checkpoint_dev import (
 from relay_self.skill import SkillExecution, SkillState
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
+    Stage28NativePaperBodyLink,
     Stage28RecoveryHold,
     stage28_inert_cognitive_recovery,
     stage28_require_fresh_l1_eligibility,
@@ -410,6 +411,22 @@ def _stage28_new_native(plan):
     return world, logins, slot, boot
 
 
+def _stage28_body_links(world, logins, boot):
+    # Synthetic contract witness only, not a live Paper/native attestation.
+    return tuple(Stage28NativePaperBodyLink(
+        self_id=p.self_id, native_session_id=p.native_session_id,
+        native_probe_ref=p.observation_ref,
+        native_world_time_tick=p.observed_world_tick,
+        paper_session_id=p.paper_session_id,
+        tick_boot_id=boot.paper_boot_id,
+        presence_boot_id="distinct-resident-plugin-boot",
+        paper_observed_tick=world.world_tick,
+        paper_tick_source_ref=boot.paper_tick_source_ref,
+        paper_log_sha256="b" * 64,
+        paper_actor_uuid="actor-" + p.self_id,
+    ) for p in logins)
+
+
 def test_stage28_typed_world_a_b_recovery_is_inert_and_fresh_only(tmp_path: Path):
     _, _, _, _, generation, dest = _stage28_fixture(tmp_path)
     plan = stage28_inert_cognitive_recovery(
@@ -433,6 +450,7 @@ def test_stage28_typed_world_a_b_recovery_is_inert_and_fresh_only(tmp_path: Path
     world, logins, idle, boot = _stage28_new_native(plan)
     receipt = stage28_require_fresh_l1_eligibility(
         plan, world=world, logins=logins, idle=idle, boot=boot,
+        links=_stage28_body_links(world, logins, boot),
     )
     assert receipt.l1_reevaluation_eligible is True
     assert receipt.physical_action_issue_authorized is False
@@ -529,7 +547,7 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
         logins = (replace(logins[0], world_epoch=0), logins[1])
     elif failure == "stale-worldbody":
         logins = (
-            replace(logins[0], observed_world_tick=boot.boot_tick - 1),
+            replace(logins[0], observed_world_tick=-1),
             logins[1],
         )
     elif failure == "busy-slot":
@@ -545,4 +563,5 @@ def test_stage28_renewed_l1_requires_fresh_a_b_world_gpu_sources(
     with pytest.raises(Stage28RecoveryHold):
         stage28_require_fresh_l1_eligibility(
             plan, world=world, logins=logins, idle=idle, boot=boot,
+            links=_stage28_body_links(world, logins, boot),
         )
