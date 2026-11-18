@@ -255,6 +255,7 @@ async def _real_preset_trial(
     evidence: Path, world_uuid: str,
     inference_lane: ResidentLlamaInferenceLane | None = None,
     stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
+    stage27h_multi_preset: bool = False,
 ) -> dict[str, object]:
     """Original saved/rejoined Self cohort; Stage26 remains nonissuing by default."""
     original_world = lifecycle.world
@@ -274,9 +275,15 @@ async def _real_preset_trial(
         preset = SkillParameterPreset(
             "exploration-move", "OperatorNearProbe", 1,
             definition.definition_ref,
-            SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
+            SkillConstraints(), (
+                SkillBudget(4, 15000, 2.0, 16) if stage27h_multi_preset
+                else SkillBudget(1, 1500, 2.0, 4)
+            ),
             Provenance("operator-dev-proposed", f"stage25:{sid}"),
-            expected_cost=SkillCostEstimate(1, 1200, 1.0),
+            expected_cost=(
+                SkillCostEstimate(4, 8000, 1.0) if stage27h_multi_preset
+                else SkillCostEstimate(1, 1200, 1.0)
+            ),
         )
         owners[sid].accept_parameter_preset(
             preset, definition=definition,
@@ -579,6 +586,7 @@ async def run_real_two_self_preset_checkpoint(
     gemma_l1_model: str | None = None,
     gemma_l1_jev: bool = False,
     _stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
+    _stage27h_multi_preset: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -603,6 +611,12 @@ async def run_real_two_self_preset_checkpoint(
     ):
         raise RealPresetCheckpointRefusal(
             "Stage27 native MOVE requires a separate real bounded model hook"
+        )
+    if type(_stage27h_multi_preset) is not bool or (
+        _stage27h_multi_preset and _stage27_motor_hook is None
+    ):
+        raise RealPresetCheckpointRefusal(
+            "Stage27h multi-action budget requires explicit original motor hook"
         )
     provider = None
     slot_witness = None
@@ -753,6 +767,7 @@ async def run_real_two_self_preset_checkpoint(
             evidence=evidence, world_uuid=world_uuid,
             inference_lane=lane,
             stage27_motor_hook=_stage27_motor_hook,
+            stage27h_multi_preset=_stage27h_multi_preset,
         )
         report.update(trial)
     except BaseException as exc:
@@ -800,6 +815,10 @@ async def run_real_two_self_preset_checkpoint(
             "REAL_STAGE27_A_PLACE_NO_PROGRESS_NATIVE_OBSERVED_DEV",
             "REAL_STAGE27_A_PLACE_MOVE_OVERSHOOT_DEV",
             "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+            "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+            "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+            "REAL_STAGE27H_L0_UNREACHED_DEV",
         }
     else:
         expected_classifications = {expected_classification}
