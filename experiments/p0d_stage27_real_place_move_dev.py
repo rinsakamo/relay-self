@@ -34,6 +34,10 @@ from relay_self.p0d_stage27c_l0_place_proposal_dev import (
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
     prepare_stage27f_outcome_evaluation,
 )
+from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
+    finish_stage27g_original_evaluation,
+    submit_stage27g_original_evaluation,
+)
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -148,8 +152,13 @@ async def stage27_real_a_motor_hook(
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
     capture_independent_evidence: bool = False,
     capture_stage27f_evaluation: bool = False,
+    capture_stage27g_real_evaluation: bool = False,
 ) -> dict[str, object]:
     """Original A Self only; one accepted real bounded L1 and one native MOVE."""
+    if capture_stage27g_real_evaluation and not capture_stage27f_evaluation:
+        raise Stage27RealWorldRefusal(
+            "Stage27g requires original Stage27f evaluation source"
+        )
     if capture_stage27f_evaluation and not capture_independent_evidence:
         raise Stage27RealWorldRefusal(
             "Stage27f requires Stage27e independent evidence before physical issue"
@@ -327,6 +336,26 @@ async def stage27_real_a_motor_hook(
             prepared["A"], handoff, proposal, receipt,
             owner=actor, physical=physical, world_epoch=world_epoch,
         )
+    stage27g_result = None
+    if capture_stage27g_real_evaluation:
+        if stage27f_frame is None:
+            raise Stage27RealWorldRefusal("Stage27g original evaluation frame absent")
+        evaluation_ticket = submit_stage27g_original_evaluation(
+            stage27f_frame, prepared["A"], owner=actor,
+            physical=physical, lane=lane,
+        )
+        evaluation_choice, evaluation_witness = await finish_stage27g_original_evaluation(
+            stage27f_frame, prepared["A"], owner=actor, physical=physical,
+            lane=lane, ticket=evaluation_ticket,
+            fresh_probe=lambda: _bounded_b_probe(session),
+        )
+        stage27g_result = {
+            "choice": asdict(evaluation_choice),
+            "witness": asdict(evaluation_witness),
+            "model_evaluation_decision_only": True,
+            "next_physical_action_authorized": False,
+            "original_goal_or_skill_completed": False,
+        }
     peer_after = _peer_snapshot(owners["B"])
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
@@ -384,8 +413,11 @@ async def stage27_real_a_motor_hook(
         } if capture_independent_evidence else {}),
         **({
             "stage27f_read_only_l1_evaluation_frame": asdict(stage27f_frame),
-            "stage27f_real_l1_evaluation_model_called": False,
+            "stage27f_real_l1_evaluation_model_called":
+                capture_stage27g_real_evaluation,
         } if stage27f_frame is not None else {}),
+        **({"stage27g_real_l1_post_action_evaluation": stage27g_result}
+           if stage27g_result is not None else {}),
         "goal_success_attested": False,
         "skill_success_attested": False,
         "qual_and_science_attested": False,
@@ -407,6 +439,15 @@ async def stage27f_real_a_motor_hook(**kwargs) -> dict[str, object]:
     )
 
 
+async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Only explicit real post-Action L1 call on original GPU lane."""
+    return await stage27_real_a_motor_hook(
+        **kwargs, capture_independent_evidence=True,
+        capture_stage27f_evaluation=True,
+        capture_stage27g_real_evaluation=True,
+    )
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -417,6 +458,7 @@ async def run_stage27_real_world(
     timeout_s: float = 120.0, heap_mb: int = 1536,
     stage27e_independent_evidence: bool = False,
     stage27f_cpu_evaluation: bool = False,
+    stage27g_real_l1_evaluation: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -436,7 +478,8 @@ async def run_stage27_real_world(
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
         _stage27_motor_hook=(
-            stage27f_real_a_motor_hook if stage27f_cpu_evaluation
+            stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
+            else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
             else stage27e_real_a_motor_hook if stage27e_independent_evidence
             else stage27_real_a_motor_hook
         ),
@@ -460,6 +503,7 @@ def main() -> int:
     p.add_argument("--heap-mb", type=int, default=1536)
     p.add_argument("--stage27e-independent-evidence", action="store_true")
     p.add_argument("--stage27f-cpu-evaluation", action="store_true")
+    p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -474,6 +518,7 @@ def main() -> int:
             timeout_s=args.timeout_s, heap_mb=args.heap_mb,
             stage27e_independent_evidence=args.stage27e_independent_evidence,
             stage27f_cpu_evaluation=args.stage27f_cpu_evaluation,
+            stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
