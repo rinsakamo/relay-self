@@ -317,6 +317,8 @@ def stage28_require_fresh_l1_eligibility(
             or p.world_epoch != world.epoch
             # Native World time is Minecraft day clock, not Bukkit tick.
             # Require native/Paper source linkage instead of numeric compare.
+            or type(p.observed_world_tick) is not int
+            or p.observed_world_tick < 0
             or not p.observation_ref
             or not p.old_native_invalidated
             or not p.physical_wal_clear
