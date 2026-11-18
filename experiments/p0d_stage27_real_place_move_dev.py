@@ -31,12 +31,12 @@ from relay_self.p0d_stage27b_place_motion_dev import resolve_stage27_place_motio
 from relay_self.p0d_stage27c_l0_place_proposal_dev import (
     propose_stage27c_original_place_move,
 )
-from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.physical_action_port import PhysicalCapability
-from relay_self.provenance import Provenance
 from relay_self.p0d_stage27f_l1_evaluation_dev import (
     prepare_stage27f_outcome_evaluation,
 )
+from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_port import PhysicalCapability
+from relay_self.provenance import Provenance
 from relay_self.stage27e_independent_evidence_dev import (
     capture_original_prepared_wal,
     correlate_owned_paper_position,
