@@ -91,6 +91,7 @@ async def issue_selected_place_move_dev(
     bind_native_children: Callable[[str], None] | None = None,
     pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None = None,
     allow_prior_terminal_place_actions: bool = False,
+    settlement_probe_limit: int | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -106,6 +107,10 @@ async def issue_selected_place_move_dev(
         or type(pulse_seconds) not in (float, int)
         or not math.isfinite(pulse_seconds)
         or type(allow_prior_terminal_place_actions) is not bool
+        or (settlement_probe_limit is not None and (
+            type(settlement_probe_limit) is not int
+            or not 3 <= settlement_probe_limit <= 4096
+        ))
         or not 0.15 <= pulse_seconds <= 0.75
         or owner is not prepared.original_owner
         or owner.self_id != handoff.self_id
@@ -240,6 +245,7 @@ async def issue_selected_place_move_dev(
         initial, first, settled, all_stop = await _settled(
             session, native=current_probe.session_id,
             stop_seq=stop.seq, timeout_s=evidence_timeout_s,
+            max_probe_requests=settlement_probe_limit,
         )
         closed: list[str] = []
         terminal = finish_physical_issue_dev(
