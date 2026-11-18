@@ -93,6 +93,9 @@ from relay_self.resident_paper_presence_join_dev import (
     parse_owned_paper_resident_trace,
     require_pre_inference_resident_presence,
 )
+from relay_self.stage28b_retired_resident_typed_cut_dev import (
+    capture_retired_resident_typed_world,
+)
 from relay_self.world_only_owned_checkpoint_dev import (
     WorldOnlyOwnedPaperCheckpoint,
     verify_world_only_generation,
@@ -388,6 +391,7 @@ async def _owned_resident_trial(
     b_pulse_seconds: float = 0.35,
     b_autonomous_l1_dev: bool = False,
     real_llm_granted: bool = False,
+    typed_owner_cut_dev: bool = False,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -571,6 +575,23 @@ async def _owned_resident_trial(
     )
     if not bridge.world_only_quiescence().no_unresolved_physical_actions:
         raise RealResidentPresenceRefusal("not all original issuer receipts retired")
+    if typed_owner_cut_dev:
+        if world_only:
+            raise RealResidentPresenceRefusal(
+                "typed owner generation must not be mislabeled World-only"
+            )
+        store = evidence_dir / "typed-world-self-generations"
+        store.mkdir(mode=0o700)
+        typed = capture_retired_resident_typed_world(
+            bridge=bridge, paper=paper,
+            store=store, evidence_dir=evidence_dir,
+        )
+        result_data["typed_world_self_generation"] = str(typed.generation)
+        result_data["typed_world_self_saved_tick"] = typed.stopped_world_tick
+        result_data["typed_world_self_roster"] = typed.verified_self_ids
+        result_data["typed_world_self_cut_validated"] = typed.actual_typed_owner_cut
+        result_data["typed_world_self_replay_authorized"] = False
+        result_data["real_60_second_autosave_attested"] = False
     if world_only:
         store = evidence_dir / "world-only-generations"
         store.mkdir(mode=0o700)
@@ -824,6 +845,7 @@ async def run_real_resident_presence(
     systemone_endpoint: str | None = None,
     model_name: str | None = None,
     stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
+    typed_owner_cut_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     if real_world_dev_grant is not True:
@@ -854,6 +876,14 @@ async def run_real_resident_presence(
         )
     if not b_autonomous_l1_dev and real_llm_grant:
         raise RealResidentPresenceRefusal("unused real LLM grant forbidden")
+    if typed_owner_cut_dev and (
+        type(typed_owner_cut_dev) is not bool
+        or world_only or b_selected_move_dev or b_autonomous_l1_dev
+        or real_llm_grant
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage28b typed offline source cut requires passive A/B, no LLM or MOVE"
+        )
     if stage24g_model_receipt is not None and (
         not isinstance(stage24g_model_receipt, Stage24gModelGateReceipt)
         or not b_autonomous_l1_dev
@@ -1040,6 +1070,7 @@ async def run_real_resident_presence(
             b_pulse_seconds=b_pulse_seconds,
             b_autonomous_l1_dev=b_autonomous_l1_dev,
             real_llm_granted=real_llm_grant,
+            typed_owner_cut_dev=typed_owner_cut_dev,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1047,6 +1078,21 @@ async def run_real_resident_presence(
             report, trial, b_selected_move_dev=b_selected_move_dev,
             world_only=world_only, b_autonomous_l1_dev=b_autonomous_l1_dev,
         )
+        if typed_owner_cut_dev:
+            if not trial.get("typed_world_self_cut_validated"):
+                raise RealResidentPresenceRefusal(
+                    "Stage28b same-generation typed A/B checkpoint unverified"
+                )
+            report["classification"] = (
+                "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV"
+            )
+            report["typed_world_self_generation"] = trial[
+                "typed_world_self_generation"
+            ]
+            report["typed_world_self_saved_tick"] = trial[
+                "typed_world_self_saved_tick"
+            ]
+            report["real_60_second_autosave_attested"] = False
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if physical is not None:
@@ -1088,6 +1134,7 @@ async def run_real_resident_presence(
         "REAL_PAPER_B_L1_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_DEV",
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
+        "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path
@@ -1108,6 +1155,7 @@ def main() -> int:
     parser.add_argument("--heap-mb", type=int, default=1536)
     parser.add_argument("--b-heartbeat-s", type=float, default=4.0)
     parser.add_argument("--world-only", action="store_true")
+    parser.add_argument("--typed-owner-cut-dev", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     parser.add_argument("--b-autonomous-l1-dev", action="store_true")
@@ -1132,6 +1180,7 @@ def main() -> int:
             llama_endpoint=args.llama_endpoint,
             systemone_endpoint=args.systemone_endpoint,
             model_name=args.model,
+            typed_owner_cut_dev=args.typed_owner_cut_dev,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)
