@@ -662,6 +662,7 @@ async def stage27h_real_a_motor_hook(
             acknowledge_dev_unverified_principal=True,
             pulse_seconds=0.15, evidence_timeout_s=15.0,
             pre_native_evidence=capture_reserved,
+            allow_prior_terminal_place_actions=idx > 0,
         )
         if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
             raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
