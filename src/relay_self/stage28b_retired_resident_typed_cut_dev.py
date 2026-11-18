@@ -126,6 +126,8 @@ def capture_retired_resident_typed_world(
         raise Stage28bRetiredCutHold("one original bridge/owned Paper and separate stores")
     lifecycle = bridge.lifecycle
     world = lifecycle.world
+    if tuple(sorted(bridge.owners)) != ("A", "B"):
+        raise Stage28bRetiredCutHold("exact A/B original Self roster required")
     if (
         paper.held_uncertain
         or paper.owned_session_id != world.paper_session_id
