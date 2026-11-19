@@ -16,7 +16,11 @@ import pytest
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from relay_self.cognitive_minimal_dev import initial_patterns, initial_patterns_with_move
-from relay_self.exploration_continuity_dev import AttemptPhase, open_question_refs
+from relay_self.exploration_continuity_dev import (
+    AttemptPhase,
+    ExplorationContinuityError,
+    open_question_refs,
+)
 from relay_self.exploration_d9_original_l1_dev import (
     D9OriginalL1Hold,
     form_d9_native_exploration_round,
@@ -253,8 +257,9 @@ def test_d9_same_question_old_attempt_blocks_second_gpu_model_call(
             world_session_id="paper-owned-d9", timeout_s=8.0,
         ))
         assert first.attempted_l2_ref is not None
-        # Same work ref may NOT be submitted twice through B's original lane.
-        with pytest.raises(RuntimeError, match="duplicate work reference"):
+        # Source-owned D Question ledger refuses duplicate before any
+        # second original GPU submission; no synthetic extra L1 inference.
+        with pytest.raises(ExplorationContinuityError, match="already registered"):
             asyncio.run(run_d9_original_bounded_l1(
                 owners["A"], resident, lane, probes["A"],
                 world_session_id="paper-owned-d9", timeout_s=8.0,
