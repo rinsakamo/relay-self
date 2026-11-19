@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -32,6 +33,12 @@ from relay_self.p0d_stage27c_l0_place_proposal_dev import (
     propose_stage27c_original_place_move,
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
+from relay_self.p0d_stage27i_model_http_census_dev import (
+    Stage27iModelAuditRefusal,
+    census_stage27i_model_http,
+    freeze_stage27i_model_http,
+    require_stage27i_two_initial_calls,
+)
 from relay_self.p0d_stage27i_precision_gait_dev import (
     STAGE27I_ARRIVAL_M,
     STAGE27I_PRESET_ID,
@@ -120,6 +127,74 @@ def _original_peer_b(tmp_path):
     return owner
 
 
+def _original_model_http_test_sources(tmp_path):
+    """Source-shaped audited HTTP bytes, no localhost/model execution."""
+    folder = tmp_path / "original-model-http"
+    folder.mkdir()
+    original_receipts = {}
+    tickets = {}
+    for sid in ("A", "B"):
+        request_id = f"synthetic-l1-original-{sid}"
+        key = hashlib.sha256(request_id.encode()).hexdigest()
+        original_request = json.dumps(
+            {"model": "synthetic-only", "self_id": sid}
+        ).encode()
+        original_response = json.dumps(
+            {"choices": [{"message": {"content": "1"}}], "id": request_id}
+        ).encode()
+        (folder / f"{key}.request.json").write_bytes(original_request)
+        (folder / f"{key}.response.json").write_bytes(original_response)
+        request_sha = hashlib.sha256(original_request).hexdigest()
+        response_sha = hashlib.sha256(original_response).hexdigest()
+        manifest = {
+            "request_id": request_id,
+            "request_sha256": request_sha,
+            "response_sha256": response_sha,
+            "response_bytes": len(original_response),
+        }
+        (folder / f"{key}.source.sha256.json").write_text(
+            json.dumps(manifest),
+        )
+        original_receipts[request_id] = SimpleNamespace(
+            request_sha256=request_sha,
+            response_sha256=response_sha,
+            response_bytes=len(original_response),
+        )
+        tickets[sid] = SimpleNamespace(request_id=request_id)
+    lane = SimpleNamespace(provider=SimpleNamespace(
+        stage26_raw_receipt=lambda ref: original_receipts[ref],
+    ))
+    return lane, tickets, folder
+
+
+def _stage27i_model_report_parts(tmp_path):
+    lane, tickets, _ = _original_model_http_test_sources(tmp_path)
+    before = census_stage27i_model_http(
+        tmp_path, lane=lane, tickets=tickets,
+    )
+    before_evidence = freeze_stage27i_model_http(
+        tmp_path, label="before", snapshot=before,
+    )
+    require_stage27i_two_initial_calls(before)
+    after = census_stage27i_model_http(
+        tmp_path, lane=lane, tickets=tickets,
+    )
+    after_evidence = freeze_stage27i_model_http(
+        tmp_path, label="after", snapshot=after,
+    )
+    require_stage27i_two_initial_calls(after)
+    assert before == after
+    return {
+        "stage27i_model_http_before": before,
+        "stage27i_model_http_after": after,
+        "stage27i_model_http_before_evidence": before_evidence,
+        "stage27i_model_http_after_evidence": after_evidence,
+        "stage27h_additional_model_requests": (
+            after["request_count"] - before["request_count"]
+        ),
+    }
+
+
 def _stage27i_parent_report(tmp_path, original_b, *, mutate_memory=False):
     before = _peer_snapshot(original_b)
     frozen_before = _freeze_peer_b_snapshot(
@@ -147,6 +222,7 @@ def _stage27i_parent_report(tmp_path, original_b, *, mutate_memory=False):
         summary[key] = after
     summary["stage27i_peer_b_before_evidence"] = frozen_before
     summary["stage27i_peer_b_after_evidence"] = frozen_after
+    summary.update(_stage27i_model_report_parts(tmp_path))
     return summary
 
 
@@ -521,3 +597,58 @@ def test_stage27i_B_peer_snapshot_files_are_write_once(tmp_path):
     _freeze_peer_b_snapshot(tmp_path, label="before", snapshot=snapshot)
     with pytest.raises(FileExistsError):
         _freeze_peer_b_snapshot(tmp_path, label="before", snapshot=snapshot)
+
+
+def test_stage27i_model_http_census_extra_issued_request_is_detected(tmp_path):
+    lane, tickets, folder = _original_model_http_test_sources(tmp_path)
+    before = census_stage27i_model_http(
+        tmp_path, lane=lane, tickets=tickets,
+    )
+    assert before["request_count"] == before["response_count"] == 2
+    assert not before["unexpected_files"]
+    freeze_stage27i_model_http(
+        tmp_path, label="before", snapshot=before,
+    )
+    # An actual HTTP attempt is audited BEFORE POST, so a third unfinished
+    # request has to count even without response and manifest.
+    (folder / ("f" * 64 + ".request.json")).write_bytes(
+        b'{"different":"request"}'
+    )
+    after = census_stage27i_model_http(
+        tmp_path, lane=lane, tickets=tickets,
+    )
+    freeze_stage27i_model_http(
+        tmp_path, label="after", snapshot=after,
+    )
+    assert after["request_count"] == 3
+    assert after["response_count"] == 2
+    with pytest.raises(Stage27iModelAuditRefusal, match="extra"):
+        require_stage27i_two_initial_calls(after)
+    assert (tmp_path / "stage27i-model-http-before.json").is_file()
+    assert (tmp_path / "stage27i-model-http-after.json").is_file()
+
+
+def test_stage27i_parent_rejects_false_zero_if_extra_model_file_present(
+    tmp_path,
+):
+    peer = _original_peer_b(tmp_path)
+    source = _stage27i_parent_report(tmp_path, peer)
+    (tmp_path / "original-model-http" / ("e" * 64 + ".request.json")
+    ).write_bytes(b'{"unauthorized":"model"}')
+    with pytest.raises(RealPresetCheckpointRefusal, match="HTTP"):
+        _preserve_and_validate_stage27h_hook_return(
+            source, evidence=tmp_path,
+        )
+    assert (tmp_path / "stage27h-original-motor-hook-return.json").is_file()
+
+
+def test_stage27i_missing_model_http_evidence_fails_closed(tmp_path):
+    peer = _original_peer_b(tmp_path)
+    source = _stage27i_parent_report(tmp_path, peer)
+    del source["stage27i_model_http_before_evidence"]
+    with pytest.raises(
+        RealPresetCheckpointRefusal, match="HTTP census frozen",
+    ):
+        _preserve_and_validate_stage27h_hook_return(
+            source, evidence=tmp_path,
+        )
