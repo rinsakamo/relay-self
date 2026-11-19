@@ -28,6 +28,11 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
+from relay_self.self_owner_checkpoint_dev import (
+    SelfOwnerCut,
+    load_self_owner_cut,
+    save_self_owner_cut,
+)
 from relay_self.skill import SkillState
 from test_p0d_real_preset_checkpoint_dev import native_probe
 from test_p0d_stage27f_l1_evaluation_dev import _run_original
@@ -123,6 +128,22 @@ def test_original_l1_review_is_not_success_until_separate_self_acceptance(tmp_pa
         assert load_persistent_cognition(a.files.cognition_file) == a.retained
         assert a.intent.current_intent is not None
         assert (b.retained, b.intent.events, dict(b.skills)) == prior_b
+        # Same original owner is now ready for a typed Stage28 handoff.
+        # This is NOT itself a complete World+A/B COMMITTED generation.
+        typed = SelfOwnerCut(
+            generation_id="g-000000000001", self_id=a.self_id,
+            world_id="synthetic-stage27-world", branch_id="source",
+            former_native_session_id=a.native_session_id,
+            last_observed_world_tick=a.last_observed_tick,
+            intent_events=a.intent.events,
+            skill_executions=tuple(a.skills.values()),
+            pattern_registry=a.pattern_registry,
+        )
+        source = a.files.self_root / "owner-state.json"
+        save_self_owner_cut(source, typed)
+        assert load_self_owner_cut(source) == typed
+        assert typed.skill_executions[0].state is SkillState.SUCCEEDED
+        assert a.retained.memories[0].memory_id == receipt.memory_id
         assert PhysicalActionJournal.restore(
             a.files.physical_wal_file, self_id="A",
         ).digest == wal.digest
