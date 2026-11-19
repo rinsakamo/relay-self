@@ -102,15 +102,18 @@ def inspect_d8_original_source(
     )
 
     try:
-        historical = inspect_original_stage28b_native_sessions(
-            stage28b_evidence, generation,
-            expected_manifest_sha256=pins.stage28b_evidence_sha256,
-            expected_files=pins.stage28b_evidence_files,
-            expected_report_classification=(
+        historical_kwargs = {
+            "expected_manifest_sha256": pins.stage28b_evidence_sha256,
+            "expected_files": pins.stage28b_evidence_files,
+        }
+        if pins.d10_source_audit_sha256 is not None:
+            historical_kwargs["expected_report_classification"] = (
                 "REAL_D9_SOURCE_A_B_TYPED_CUT_CAPTURED_INDEPENDENT_AUDIT_PENDING"
-                if pins.d10_source_audit_sha256 is not None
-                else "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV"
-            ),
+            )
+        # Preserve ORIGINAL B exact call signature for historic B sources.
+        # Only D10 explicitly opts in to the new D9 source classification.
+        historical = inspect_original_stage28b_native_sessions(
+            stage28b_evidence, generation, **historical_kwargs,
         )
         if pins.d10_source_audit_sha256 is not None:
             # The D10 audit was made in a SECOND process, OUTSIDE the
