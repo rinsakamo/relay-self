@@ -62,3 +62,18 @@ ExplorationExperienceRef is an optional *read-only* typed reference package (Sel
 Next slice: actual resident Self owner admission of Goal/Question and owner-owned hysteresis, resource/horizon HOLD and retained L2 attempt key, with cross-epoch source fences. Separately qualify CPU owner integration before real Gemma/Paper. Stage27, Stage28 and C branch code/evidence are untouched.
 
 Status: **DEV CPU OFFLINE candidate only**. No real autonomous exploration, GPU L2 model call, native action, checkpoint continuity, QUAL or SCIENCE claim.
+
+
+## D2 Owner review integration (next offline slice, #996 continuation)
+
+The original Present/Intent owners remain authoritative. D Lane adds a **stateless owner adapter**, not a second Goal owner: exploration_owner_admission_dev.py.
+
+1. **Owner supplies current Goal view**: scope, owner revision, previously adopted Goal ref (must appear in existing Present.active_goal_refs), previously recorded strength/transition time and provenance. The D function does not retain this. Source and Present/Schema revisions must agree.
+2. **Self asks explicitly for ADOPT, HOLD or CONTINUE**. review_exploration_goal returns a typed **review receipt**. Existing different CurrentIntent always HOLDs until the original IntentCommitment explicitly reconsiders/releases it. A caller-supplied minimum Goal tenure and strength-switch margin prevent epoch-to-epoch flips; urgent CPU L0 remains entirely outside this non-emergency review. No action permission or automatic winner.
+3. **ADOPTION_PROPOSED is not adopted**. The actual Present owner must publish the Goal in active_goal_refs and advance its revision; D neither mutates Present nor writes checkpoint/Memory.
+4. **Intent start is separate**. A fresh Present + updated original owner revision + new original numbered L1 result for the *same complete accepted SkillInvocation* are required by begin_adopted_exploration_intent. Only this explicit, validated second call invokes the existing IntentCommitment.commit; it does not start a SkillRun or propose/issue any Action.
+5. **Fail closed**: old Intent history, foreign Self, changed Question, wrong owner revision, absent adopted Goal, DEFER/ESCALATE_L2, missing Target/Preset and stale sources never start an Intent. A review receipt cannot be replayed even if the original Intent was subsequently released.
+
+Offline test fixtures demonstrate incumbent Intent reconsideration using the existing IntentCommitment request_reconsideration -> reconsider(RELEASE) APIs. Their use is **not** automatic interruption and does not attest FAST/WorldBody/GPU. Physical continuation is deferred to the existing SkillExecution/ActionPort owner rather than creating a second D issuer.
+
+Still open: real resident Present Goal publication and persistent owner revision/Question/attempt-key snapshots across Stage28 typed checkpoints, owner-managed concurrent Intent horizon arbitration and L2 GPU admission, C Lane experience revisions. No new Checkpoint format is introduced here. Any committed Intent in the synthetic tests is a **cognition-only original-owner event**; no World motor, success or scientific evidence.
