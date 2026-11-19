@@ -22,7 +22,6 @@ from relay_self.persistent_cognition import IdentitySpecification, PersistentCog
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
 
-
 P = Provenance("test-source", "test-parent")
 DIGEST = "a" * 64
 SCOPE = ScopeRef("self-A", "native-old-1")
