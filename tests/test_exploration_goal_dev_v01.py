@@ -59,6 +59,7 @@ from relay_self.exploration_continuity_dev import (
 )
 from relay_self.persistent_cognition import (
     InvalidPersistentCognitionData,
+    UnsupportedPersistentCognitionVersion,
     load_persistent_cognition,
     save_persistent_cognition,
 )
@@ -1032,10 +1033,10 @@ def test_d3_checkpoint_malformed_or_forged_attempt_fails_closed(tmp_path, mutate
     payload = json.loads(path.read_text())
     mutate(payload)
     path.write_text(json.dumps(payload))
-    with pytest.raises((
-        InvalidPersistentCognitionData,
-        Exception if payload["schema_version"] == 5 else InvalidPersistentCognitionData,
-    )):
+    error = (UnsupportedPersistentCognitionVersion
+             if payload["schema_version"] == 5
+             else InvalidPersistentCognitionData)
+    with pytest.raises(error):
         load_persistent_cognition(path)
 
 
