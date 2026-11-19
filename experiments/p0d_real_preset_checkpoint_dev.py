@@ -71,6 +71,7 @@ from relay_self.persistent_cognition import (
     load_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.p0d_stage27i_precision_gait_dev import STAGE27I_PRESET_ID
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
@@ -165,13 +166,14 @@ def _preserve_and_validate_stage27h_hook_return(
         before = result.get("stage27h_peer_b_before")
         after = result.get("stage27h_peer_b_after")
         action_count = result.get("stage27h_l0_action_count")
+        stage = "27I" if result.get("stage27i_precision_enabled") is True else "27H"
         expected_status = {
             "L0_TARGET_REACHED_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+                f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
             "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+                f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
             "L0_NO_PROGRESS_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+                f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
         }
         if (
             type(action_count) is not int or not 0 <= action_count <= 4
@@ -182,7 +184,7 @@ def _preserve_and_validate_stage27h_hook_return(
             or type(actions) is not list or len(actions) != action_count
             or feedback.get("status") is None
             or classification != expected_status.get(
-                feedback["status"], "REAL_STAGE27H_L0_UNREACHED_DEV",
+                feedback["status"], f"REAL_STAGE{stage}_L0_UNREACHED_DEV",
             )
             or type(before) is not dict or type(after) is not dict
             or before != after
@@ -383,7 +385,7 @@ async def _real_preset_trial(
         # actual Self-owner acceptance/authorization is not established.
         preset = SkillParameterPreset(
             "exploration-move",
-            "OperatorPrecisionWalkSneak" if stage27i_precision_target
+            STAGE27I_PRESET_ID if stage27i_precision_target
             else "OperatorNearProbe",
             1,
             definition.definition_ref,
