@@ -135,3 +135,29 @@ D6 is an isolated Draft #1018 stacked on D5 #1014. B #988, D #996, C Lane and ma
 - Adversarial tests cover missing B, mismatched or missing OPEN Question, no real owner login despite synthetic receipt, old native session, wrong native probe ID, stale GPU, foreign Paper, busy slot, inconsistent cognition, and original freeze HOLD with no COMMITTED.
 
 **OPEN:** actual Paper stop/restart and native joining, real current native/Paper source proofs, real GPU L1/L2 work and cancellation, and B Lane acceptance of opt-in typed OwnerCut schema2. Offline evidence does not attest witness origin from real hardware, QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+## D7 real World DEV source preflight (no local execution)
+
+Isolated D7 Draft #1023 extends D6. The output class is STRUCTURAL_TYPED_CUT_ONLY, never a claim of live Paper/Native/Gemma origin. These GitHub tools do NOT have the user's WSL RTX3060, owned Minecraft Paper process, local source World or Gemma GPU session. Actual real World DEV was NOT executed here.
+
+### Implemented
+
+- src/relay_self/exploration_d7_real_world_preflight_dev.py is read-only. Pin immutable COMMITTED SHA256, original World UUID, source branch, restored fork branch and generation ID. It invokes the original Stage28c full 3-dimension Paper source inspection, plus D4 full source+restored typed World, A/B, Owner, WAL and cognition integrity verification.
+- It requires A and B to each retain an original OPEN Question. At least ONE Self must have an actual historical L2 attempt. A Self who chose DEFER can have zero attempts: the test must never force a model choice to invent an old RESERVED record.
+- All returned attempts are inert prior-history refs. Real World, native reJOIN, Gemma L1/L2, GPU lease, physical issue and old model replay remain false.
+- CLI module experiments.stage28_d7_exploration_source_inspect_dev accepts --generation, --restored, --world-id, --source-branch, --fork-branch, --committed-sha256, --generation-id and --inspect-only. It prints a read-only JSON structural candidate; --execute-once always refuses.
+- B #988's real Stage28c2b executable is pinned to a SPECIFIC original World UUID, source commit SHA and fork. That B source is not equivalent to a newer D-carrying typed cut. Running the B command without source-owning integration cannot qualify D7.
+
+### Next real LocalCodex DEV (pending, not performed)
+
+The user has already granted continuing Minecraft EULA consent and real World DEV permission. Do not ask again. On a local branch based on D7, keeping original B #988, D #996, A/C and main untouched:
+
+1. Verify local exact Paper 1.21.8/plugin assets, Java 21, Node/Mineflayer, real Gemma GGUF and idle one-slot GPU before launching World. No synthetic Paper, Native, Model or WAL receipts.
+2. Under the ORIGINAL B owner, after actual native A/B login and genuine fresh WorldBody probes, form source-qualified D OPEN Question and run a real Gemma L1 bounded numbered choice (or record a legitimate DEFER). Only a genuine original-owner ESCALATE_L2 can reserve a D3 attempt. No forced L1 selection, no historical model result replay, and no need for an actual L2 POST.
+3. Via the original Stage28b owner, actually retire A/B and stop Paper, capture all three dimension files and the original typed A/B cognitive Owner/WAL cut, verify and pin COMMITTED SHA, World UUID and fork. Never overwrite earlier source generations.
+4. Restore the D-carrying typed cut into ONE new isolated fork. Run this D7 inspect-only CLI. On HOLD, do not start the new Paper process.
+5. Extend original B Stage28c2b owned real runner to accept the newly independently verified D source pins, without removing its native/physical/GPU admission and stale-work fences or misusing old B hardcoded pins. Start one new Paper process, reJOIN A/B and verify genuine independent Paper main-thread tick nonce and native/raw Paper JOIN/PRESENT/QUIT evidence.
+6. If a real GPU backend remains idle, run ONE new Gemma bounded L1 choice under the original GPU owner. Confirm unchanged previously attempted Question+epistemic evidence blocks an automatic repeat of L2; only new evidence may justify new owner-mediated review. Do not issue MOVE/EAT/ATTACK.
+7. Cleanly terminate original owned Paper and Native children. Preserve original process, Paper stdout, native JSONL, model/GGUF and WAL hashes, verify in a SECOND Python process, and report real UUID/PID/session receipts and exact PASS/HOLD. Never auto-retry ambiguous trial or cleanup.
+
+BLOCKER: B #988 runner has no D source-journal integration or new source-pin support yet. Therefore D7 remains PRE_WORLD_CANDIDATE_ONLY / REAL_WORLD_NOT_RUN / REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN. A read-only source candidate must never be upgraded to real evidence by its own receipt.
