@@ -496,6 +496,28 @@ def _load_copied_cohort(
         cut = load_self_owner_cut(file)
         if cut.self_id != sid:
             raise SelfOwnerCheckpointError("owner snapshot Self identity mismatch")
+        # D5 convergence: a typed cut cannot silently discard Self-accepted
+        # Presets or an OPEN D Question from the SAME generation cognition.
+        from relay_self.exploration_continuity_dev import open_question_refs
+        from relay_self.persistent_cognition import load_persistent_cognition
+
+        cognition = load_persistent_cognition(
+            generation / "selves" / sid / "cognition.json"
+        )
+        if cognition.identity.self_id != sid:
+            raise SelfOwnerCheckpointError("foreign Self cognition in typed cut")
+        if (
+            (cut.pattern_registry.accepted_presets
+             and cognition.pattern_registry is None)
+            or (cognition.pattern_registry is not None
+                and cognition.pattern_registry != cut.pattern_registry)
+            or not set(open_question_refs(
+                cognition, expected_self_id=sid,
+            )).issubset(cut.pending_question_refs)
+        ):
+            raise SelfOwnerCheckpointError(
+                "same-generation accepted Preset/Question diverges from typed owner cut"
+            )
         cuts.append(cut)
     cohort = tuple(cuts)
     verify_peer_cohort(
