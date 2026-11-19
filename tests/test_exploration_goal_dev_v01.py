@@ -110,7 +110,7 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
           curiosity=1.0, with_target=True, with_preset=True,
           hunger=20, live_intent=False, mode=SchemaMode.FULL):
     scope = ScopeRef(self_id, "world-A")
-    question_ref = "question:ridge" if self_id == "self-A" else "question:forest"
+    question_ref = "question:ridge" if self_id in ("self-A", "A") else "question:forest"
     retained = PersistentCognition(
         IdentitySpecification(self_id, ("Curious",), OWNER),
     )
@@ -1383,7 +1383,7 @@ def test_d4_checkpoint_requires_actual_stage28_not_an_untyped_manifest(
         sys.modules, "relay_self.stage28_cognitive_recovery_gate_dev",
         raising=False,
     )
-    with pytest.raises(D4OwnerHold, match="real Stage28 typed recovery"):
+    with pytest.raises(D4OwnerHold, match="Stage28 typed"):
         inspect_d4_inert_recovery(
             tmp_path, tmp_path,
             expected_self_ids=("self-A", "self-B"),
@@ -1409,6 +1409,13 @@ def test_d4_stub_stage28_plan_requires_same_commit_roster_and_pending_refs(
     marker = tmp_path / "COMMITTED.json"
     marker.write_bytes(b'{"generation_id":"g-000000000001"}')
     digest = hashlib.sha256(marker.read_bytes()).hexdigest()
+    # D5 requires archive/restored Self file equality. This synthetic plan
+    # uses one directory for both, with explicitly bounded mock copies.
+    for sid in ("self-A", "self-B"):
+        self_root = tmp_path / "selves" / sid
+        self_root.mkdir(parents=True)
+        for name in ("cognition.json", "owner-state.json", "physical-wal.json"):
+            (self_root / name).write_text("synthetic-typed:" + sid + ":" + name)
 
     def staged(c, pending):
         sid = c["scope"].self_id
@@ -1480,3 +1487,287 @@ def test_d4_stub_stage28_plan_requires_same_commit_roster_and_pending_refs(
             expected_source_world_id="world-A",
             expected_committed_sha256="0" * 64,
         )
+
+
+# D5: actual unmodified Stage28 Python owner classes copied from B source into
+# this isolated integration branch. Not a native Paper/Gemma trial.
+
+def d5_actual_stage28_resident(tmp_path, *, with_accepted_preset=False):
+    """Use the real B CheckpointedCognitiveOwner/ResidentCognitiveWorkOwner."""
+    from relay_self.action_supervision import ActionSupervisor
+    from relay_self.checkpointed_cognitive_runtime_dev import (
+        CheckpointedCognitiveOwner,
+        CognitiveOwnerFiles,
+    )
+    from relay_self.cognitive_minimal_dev import initial_patterns
+    from relay_self.physical_action_journal import PhysicalActionJournal
+    from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+
+    roster = {}
+    original = {}
+    for sid in ("A", "B"):
+        c = setup(sid, with_target=False,
+                  with_preset=with_accepted_preset and sid == "A")
+        root = tmp_path / sid
+        root.mkdir()
+        journal = root / "physical-wal.json"
+        PhysicalActionJournal.create(journal, self_id=sid)
+        registry = (c["registry"] if with_accepted_preset and sid == "A"
+                    else initial_patterns())
+        if with_accepted_preset and sid == "A":
+            c["retained"] = c["retained"].retain_schema_registry(registry)
+        owner = CheckpointedCognitiveOwner(
+            retained=c["retained"], intent=c["owner"],
+            pattern_registry=registry,
+            native_session_id="native-old-" + sid,
+            last_observed_tick=100,
+            files=CognitiveOwnerFiles(root, root / "cognition.json", journal),
+            physical_supervisor=ActionSupervisor(),
+        )
+        save_persistent_cognition(owner.files.cognition_file, owner.retained)
+        roster[sid] = owner
+        original[sid] = c
+    resident = ResidentCognitiveWorkOwner(roster)
+    for sid, owner in roster.items():
+        resident.bind_login(
+            self_id=sid, native_session_id="native-live-" + sid,
+            world_epoch=2, world_tick=100,
+        )
+        # Synthetic positive resident readout only; NOT actual native attestation.
+        owner.current_worldbody_observation = object()
+    return roster, resident, original
+
+
+def d5_lease(owner, resident, cognition_world_session_id):
+    epoch, native, world_epoch = resident.current_scope(owner.self_id)
+    return ResidentD4Scope(
+        owner.self_id, cognition_world_session_id, epoch, native,
+        world_epoch, len(owner.intent.events), owner.intent.last_at_ns,
+    )
+
+
+def test_d5_real_b_owner_a_b_d_question_and_l2_durable_gate(tmp_path):
+    from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
+    from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+
+    owners, resident, sources = d5_actual_stage28_resident(tmp_path)
+    assert isinstance(owners["A"], CheckpointedCognitiveOwner)
+    assert isinstance(resident, ResidentCognitiveWorkOwner)
+    for sid in ("A", "B"):
+        owner = owners[sid]
+        c = sources[sid]
+        lease = d5_lease(owner, resident, c["scope"].world_session_id)
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref=c["present"].active_question_refs[0],
+            owner_provenance=OWNER,
+        )
+        round_ = build(c)
+        ticket = reserve_resident_l2(
+            owner, resident, scope=lease, round_=round_,
+            selection=choose(c, round_, "ESCALATE_L2"),
+            owner_provenance=OWNER,
+        )
+        assert ticket is not None
+        assert ticket.native_session_ref == lease.native_session_id
+        assert load_persistent_cognition(owner.files.cognition_file) == owner.retained
+        assert open_question_refs(owner.retained, expected_self_id=sid) == (
+            c["present"].active_question_refs[0],
+        )
+        assert owner.pending_questions == set(c["present"].active_question_refs)
+        assert reserve_resident_l2(
+            owner, resident, scope=lease, round_=round_,
+            selection=choose(c, round_, "ESCALATE_L2"),
+            owner_provenance=OWNER,
+        ) is None
+    old = owners["A"].retained
+    resident.fence_self("A")
+    with pytest.raises(D4OwnerHold):
+        retain_resident_question(
+            owners["A"], resident,
+            scope=d5_lease(owners["B"], resident, sources["B"]["scope"].world_session_id),
+            present=sources["A"]["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    assert owners["A"].retained == old
+    # B is still independent and ONLINE when A is QUARANTINED.
+    assert resident.current_scope("B")[1] == "native-live-B"
+    assert owners["B"].retained.identity.self_id == "B"
+
+
+def d5_real_b_typed_generation(
+    tmp_path, *, with_accepted_preset=False, mismatch_cognition=False,
+):
+    from relay_self.coordinated_checkpoint_dev import (
+        SelfSnapshotSource,
+        restore_generation,
+    )
+    from relay_self.self_owner_checkpoint_dev import (
+        SelfOwnerCut,
+        capture_typed_generation,
+        save_self_owner_cut,
+    )
+
+    owners, resident, contexts = d5_actual_stage28_resident(
+        tmp_path, with_accepted_preset=with_accepted_preset,
+    )
+    sources = []
+    for sid in ("A", "B"):
+        owner = owners[sid]
+        c = contexts[sid]
+        lease = d5_lease(owner, resident, c["scope"].world_session_id)
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref=c["present"].active_question_refs[0],
+            owner_provenance=OWNER,
+        )
+        round_ = build(c)
+        assert reserve_resident_l2(
+            owner, resident, scope=lease, round_=round_,
+            selection=choose(c, round_, "ESCALATE_L2"),
+            owner_provenance=OWNER,
+        ) is not None
+        resident.fence_self(sid)
+        if mismatch_cognition and sid == "A":
+            owner.retained = replace(owner.retained, pattern_registry=None)
+            save_persistent_cognition(owner.files.cognition_file, owner.retained)
+        cut = SelfOwnerCut(
+            generation_id="g-000000000001", self_id=sid,
+            world_id="world-A", branch_id="source",
+            former_native_session_id=owner.native_session_id,
+            last_observed_world_tick=owner.last_observed_tick,
+            intent_events=owner.intent.events,
+            skill_executions=(), pattern_registry=owner.pattern_registry,
+            pending_question_refs=tuple(sorted(owner.pending_questions)),
+        )
+        owner_cut = owner.files.self_root / "owner-state.json"
+        save_self_owner_cut(owner_cut, cut)
+        sources.append(SelfSnapshotSource(
+            sid, owner.files.cognition_file,
+            owner.files.physical_wal_file, owner_cut,
+        ))
+    world = tmp_path / "world"
+    world.mkdir()
+    (world / "level.dat").write_bytes(b"synthetic-W110")
+    store = tmp_path / "store"
+    store.mkdir()
+    generation = capture_typed_generation(
+        world, store, sequence=1,
+        expected_self_ids=("A", "B"), selves=tuple(sources),
+        world_id="world-A", branch_id="source",
+        logical_tick=110, tick_source_ref="fixture:world-tick",
+        stopped_server_ref="fixture:world-stop",
+        quiesced_selves_ref="fixture:both-self-locked",
+    )
+    restored = tmp_path / "forked"
+    receipt = restore_generation(generation, restored, restore_id="d5-fork")
+    assert receipt["physical_action_issue_authorized"] is False
+    return generation, restored, owners, receipt
+
+
+def test_d5_real_stage28_world_a_b_typed_generation_restores_inert_d_history(tmp_path):
+    import hashlib
+
+    from relay_self.checkpointed_cognitive_runtime_dev import (
+        staged_recover_cognition_cohort,
+    )
+    from relay_self.self_owner_checkpoint_dev import (
+        prepare_typed_owner_restore,
+        verify_typed_generation,
+    )
+
+    generation, restored, owners, receipt = d5_real_b_typed_generation(tmp_path)
+    cuts = verify_typed_generation(generation)
+    assert tuple(c.self_id for c in cuts) == ("A", "B")
+    assert tuple(prepare_typed_owner_restore(generation, restored))
+    recovered = staged_recover_cognition_cohort(generation, restored)
+    assert tuple(x.self_id for x in recovered) == ("A", "B")
+    digest = hashlib.sha256((generation / "COMMITTED.json").read_bytes()).hexdigest()
+    plan = inspect_d4_inert_recovery(
+        generation, restored,
+        expected_self_ids=("A", "B"),
+        expected_source_world_id="world-A",
+        expected_committed_sha256=digest,
+    )
+    assert plan.generation_id == generation.name
+    assert plan.fork_branch_id == receipt["fork_branch_id"]
+    assert plan.current_native_session_attested is False
+    assert plan.l2_dispatch_authorized is False
+    assert plan.physical_action_issue_authorized is False
+    for sid, inert in zip(("A", "B"), plan.restored):
+        assert inert.self_id == sid
+        assert inert.question_refs == ("question:ridge" if sid == "A"
+                                       else "question:forest",)
+        assert len(inert.attempt_refs) == 1
+        assert inert.historical_native_session_id == owners[sid].native_session_id
+        assert inert.old_l2_replay_authorized is False
+        restored_cognition = next(x.retained for x in recovered if x.self_id == sid)
+        assert restored_cognition.exploration_continuity.attempts[0].phase is (
+            AttemptPhase.RESERVED
+        )
+    assert owners["A"].pending_questions == {"question:ridge"}
+    assert owners["B"].pending_questions == {"question:forest"}
+    assert (restored / "world" / "level.dat").read_bytes() == b"synthetic-W110"
+
+
+def test_d5_real_stage28_rejects_corrupted_restored_self_or_wrong_commit(tmp_path):
+    import hashlib
+    generation, restored, _, _ = d5_real_b_typed_generation(tmp_path)
+    digest = hashlib.sha256((generation / "COMMITTED.json").read_bytes()).hexdigest()
+    with pytest.raises(D4OwnerHold):
+        inspect_d4_inert_recovery(
+            generation, restored, expected_self_ids=("A", "B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256="0" * 64,
+        )
+    file = restored / "selves" / "A" / "cognition.json"
+    file.write_text(file.read_text().replace("question:ridge", "question:altered"))
+    with pytest.raises(D4OwnerHold):
+        inspect_d4_inert_recovery(
+            generation, restored, expected_self_ids=("A", "B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256=digest,
+        )
+
+
+
+def test_d5_actual_b_cut_schema2_retains_self_accepted_preset_on_restore(tmp_path):
+    import hashlib
+
+    from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+
+    gen, restored, _, _ = d5_real_b_typed_generation(
+        tmp_path, with_accepted_preset=True,
+    )
+    cuts = verify_typed_generation(gen)
+    assert len(cuts[0].pattern_registry.accepted_presets) == 1
+    assert len(cuts[1].pattern_registry.accepted_presets) == 0
+    a_cut = json.loads((gen / "selves" / "A" / "owner-state.json").read_text())
+    assert a_cut["payload"]["schema"] == 2
+    b_cut = json.loads((gen / "selves" / "B" / "owner-state.json").read_text())
+    assert b_cut["payload"]["schema"] == 1
+    original = load_persistent_cognition(gen / "selves" / "A" / "cognition.json")
+    assert original.pattern_registry == cuts[0].pattern_registry
+    assert original.exploration_continuity is not None
+    digest = hashlib.sha256((gen / "COMMITTED.json").read_bytes()).hexdigest()
+    recovered = inspect_d4_inert_recovery(
+        gen, restored, expected_self_ids=("A", "B"),
+        expected_source_world_id="world-A",
+        expected_committed_sha256=digest,
+    )
+    assert recovered.l2_dispatch_authorized is False
+    assert recovered.physical_action_issue_authorized is False
+    assert recovered.restored[0].question_refs == ("question:ridge",)
+
+
+def test_d5_preset_cognition_owner_divergence_blocks_generation_precommit(tmp_path):
+    from relay_self.self_owner_checkpoint_dev import SelfOwnerCheckpointError
+
+    with pytest.raises(SelfOwnerCheckpointError, match="Preset/Question diverges"):
+        d5_real_b_typed_generation(
+            tmp_path, with_accepted_preset=True,
+            mismatch_cognition=True,
+        )
+    incomplete = tmp_path / "store" / "g-000000000001"
+    assert incomplete.is_dir()
+    assert not (incomplete / "COMMITTED.json").exists()
