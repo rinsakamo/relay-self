@@ -481,6 +481,30 @@ class CheckpointedCognitiveOwner:
             self.last_observed_tick = world_tick
             self.fresh_native_observation_required = False
 
+    def accept_rejoined_worldbody(self, observation, *, request_id: str) -> None:
+        """Adopt one request-correlated CURRENT original native probe.
+
+        Reuses the Stage28 original Owner contract; not itself proof of
+        independently authenticated native transport or Paper provenance.
+        """
+        from adapters.mineflayer.python_protocol import MineflayerObservation
+
+        with self._mutating():
+            self._eligible()
+            if (
+                not isinstance(observation, MineflayerObservation)
+                or observation.kind != "probe"
+                or observation.session_id != self.native_session_id
+                or observation.request_id != request_id or not request_id
+                or observation.snapshot.time is None
+                or observation.snapshot.time.day * 24000
+                + observation.snapshot.time.time_of_day != self.last_observed_tick
+            ):
+                raise LiveCognitionCheckpointError(
+                    "foreign or stale native WorldBody probe"
+                )
+            self.current_worldbody_observation = observation
+
     def retain_memory(self, memory: Memory) -> None:
         with self._mutating():
             self._eligible()
