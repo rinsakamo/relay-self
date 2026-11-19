@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from types import SimpleNamespace
+import threading
 
 import pytest
 
@@ -176,7 +177,7 @@ def test_preflight_refuses_stale_or_unowned_original_source(
         bridge.owners["A"].pattern_registry = PatternRegistry(123, ())
         bridge.owners["A"].current_worldbody_observation = None
     elif failure == "physical-open":
-        bridge.physical.observation_only = False
+        bridge.physical._observation_only = False
     elif failure == "wrong-preset":
         with pytest.raises(Stage28c2cL1Hold):
             _prepare(case, skills=frozenset({("EAT", 1)}))
@@ -293,6 +294,7 @@ def test_attach_owned_gpu_lane_requires_original_active_body_then_fences_on_logo
     lane = object.__new__(ResidentLlamaInferenceLane)
     lane.cognitive_work = bridge.cognitive_work
     lane._uncertain = False
+    lane._lock = threading.RLock()
     lane.witness = SimpleNamespace(require_idle=lambda: None)
     bound = []
     lane.bind_login = bound.append
