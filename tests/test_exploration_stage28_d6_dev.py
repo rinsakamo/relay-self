@@ -54,7 +54,6 @@ from relay_self.persistent_cognition import (
     save_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.self_owner_checkpoint_dev import (
     verify_typed_generation,
@@ -293,7 +292,6 @@ def _synthetic_native_probe(*, self_id: str, native: str, tick: int):
                 MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES, 0, False,
             ),
         ),
-        provenance=Provenance("synthetic-probe", native),
     )
 
 
