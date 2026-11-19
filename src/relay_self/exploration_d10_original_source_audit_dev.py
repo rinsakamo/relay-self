@@ -18,6 +18,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import parse_llama_cpp_jev_decision
+from experiments.p0d_real_paper_smoke_dev import PAPER_1218_60_SHA256
+from experiments.stage24g_model_gate_dev import PINNED_STAGE24G_GGUF_SHA256
+from experiments.stage28_d8_assets_dev import PINNED_STAGE24G_PLUGIN_SHA256
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
@@ -195,6 +198,8 @@ def audit_d10_original_d9_source(
             or report.get("world_uuid") != world.world_id
             or trial.get("world_uuid") != world.world_id
             or report.get("real_world_permission") is not True
+            or report.get("paper_sha256") != PAPER_1218_60_SHA256
+            or report.get("plugin_sha256") != PINNED_STAGE24G_PLUGIN_SHA256
             or report.get("cleanup_uncertain")
             or report.get("d9_actual_model_post_count") != 1
             or report.get("d9_previous_l2_model_post_count") != 0
@@ -315,6 +320,7 @@ def audit_d10_original_d9_source(
         if full.boot_id != trial.get("paper_boot"):
             raise D10OriginalAuditHold("actual Paper boot identity changed")
         paper_actors: set[str] = set()
+        paper_by_self: dict[str, list] = {}
         for sid in ("A", "B"):
             rows = [event for event in full.events if event.name == "Relay" + sid]
             expected_events = 2 if sid == "A" else 1
@@ -324,18 +330,39 @@ def audit_d10_original_d9_source(
                 or len({e.actor_uuid for e in rows}) != 1
                 or not any(e.event == "PRESENT" for e in rows)
                 or rows[0].event != "JOIN" or rows[-1].event != "QUIT"
+                or trial.get(sid.lower() + "_actor_uuid") != rows[0].actor_uuid
             ):
-                raise D10OriginalAuditHold("Paper A/B distinct JOIN/QUIT/PRESENT missing")
+                raise D10OriginalAuditHold("Paper A/B owner JOIN/QUIT/PRESENT mismatch")
+            paper_by_self[sid] = rows
             paper_actors.add(rows[0].actor_uuid)
         if len(paper_actors) != 2:
             raise D10OriginalAuditHold("Paper A/B actor UUID collision")
-        # The old native session's lifecycle is not numerically comparable
-        # to Paper ticks; use only each stream's ordered own source.
+        a_events = paper_by_self["A"]
+        b_events = paper_by_self["B"]
+        a_quits = [x for x in a_events if x.event == "QUIT"]
+        a_joins = [x for x in a_events if x.event == "JOIN"]
+        b_continuations = [
+            x for x in b_events
+            if x.event in ("PRESENT", "MOVE")
+            and x.tick == trial.get("b_paper_continuation_tick")
+        ]
         if (
-            trial.get("a_actor_uuid") not in paper_actors
-            or trial.get("b_actor_uuid") not in paper_actors
+            len(a_quits) != 2 or len(a_joins) != 2
+            or type(trial.get("a_paper_quit_tick")) is not int
+            or type(trial.get("b_paper_continuation_tick")) is not int
+            or type(trial.get("a_paper_rejoin_tick")) is not int
+            or a_quits[0].tick != trial["a_paper_quit_tick"]
+            or a_joins[1].tick != trial["a_paper_rejoin_tick"]
+            or not b_continuations
+            or not (
+                a_quits[0].tick < b_continuations[0].tick
+                < a_joins[1].tick
+            )
         ):
-            raise D10OriginalAuditHold("Paper owner actors differ")
+            raise D10OriginalAuditHold(
+                "independent Paper A-QUIT/B-PRESENT/A-reJOIN ordering differs"
+            )
+        # Do not compare Paper tick numbers directly to native clock values.
         model_dir = root / "stage24g-systemone-http"
         model_request = model_dir / "systemone-request-body.bin"
         model_response = model_dir / "systemone-response-body.bin"
@@ -361,7 +388,16 @@ def audit_d10_original_d9_source(
             request.get("model") != preflight.get("model_alias")
             or preflight.get("slot_count") != 1
             or preflight.get("slot_id") != 0
-            or not preflight.get("gguf_sha256")
+            or preflight.get("gguf_sha256") != PINNED_STAGE24G_GGUF_SHA256
+            or "RTX 3060" not in str(preflight.get("gpu_name", ""))
+            or type(preflight.get("llama_pid")) is not int
+            or preflight["llama_pid"] <= 1
+            or any(not re.fullmatch(
+                r"[0-9a-f]{64}", str(preflight.get(key, "")),
+            ) for key in (
+                "native_cmdline_sha256", "maps_sha256",
+                "model_catalog_sha256",
+            ))
             or request["state"]["request_id"] != b["l1_request_id"]
             or set(criteria) != {
                 "1", "2", "__relay_self_unresolved__",
