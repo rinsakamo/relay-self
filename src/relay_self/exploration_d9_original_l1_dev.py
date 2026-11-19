@@ -93,6 +93,40 @@ class D9OriginalL1Outcome:
     physical_action_issue_authorized: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class D9OriginalQuestionOnly:
+    """Genuine owner-adopted Question; explicitly NO L1 provider selection."""
+
+    self_id: str
+    old_native_session_id: str
+    question_ref: str
+    native_probe_request_id: str
+    l1_model_invoked: bool = False
+    l2_model_invoked: bool = False
+    physical_action_issue_authorized: bool = False
+
+
+def retain_d9_question_without_model(
+    owner, resident: ResidentCognitiveWorkOwner,
+    probe: MineflayerObservation, *, world_session_id: str,
+) -> D9OriginalQuestionOnly:
+    """Permit one model-free Self; do NOT label this as L1 DEFER."""
+    source = form_d9_native_exploration_round(
+        owner, resident, probe, world_session_id=world_session_id,
+    )
+    retain_resident_question(
+        owner, resident, scope=source.scope, present=source.round_.present,
+        question_ref=source.question_ref,
+        owner_provenance=Provenance(
+            "original-self-owner", "d9:" + owner.self_id,
+        ),
+    )
+    return D9OriginalQuestionOnly(
+        owner.self_id, source.scope.native_session_id,
+        source.question_ref, source.probe_request_id,
+    )
+
+
 def _original_scope(
     owner, resident: ResidentCognitiveWorkOwner, probe: MineflayerObservation,
     world_session_id: str,
