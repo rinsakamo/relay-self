@@ -37,6 +37,14 @@ from relay_self.exploration_continuity_dev import (
     retain_open_question,
     validate_persisted_l2_reservation,
 )
+from relay_self.exploration_checkpoint_bridge_dev import (
+    D4OwnerHold,
+    ResidentD4Scope,
+    inspect_d4_inert_recovery,
+    record_resident_l2_result,
+    reserve_resident_l2,
+    retain_resident_question,
+)
 from relay_self.exploration_goal_dev import (
     ExplorationBasis,
     ExplorationContractError,
@@ -1127,3 +1135,342 @@ def test_d3_positive_l2_target_audit_rechecks_current_world_and_does_not_close_q
         "question:ridge",
     )
     assert c["owner"].events == ()
+
+
+# D4 local Stage28-compatible contract harness. These fake classes mirror the
+# documented B-Lane shape but DO NOT attest the unmerged real B resident/runtime.
+# In an actual merged tree the D4 adapter requires the REAL B classes.
+
+def d4_owner_harness(c, tmp_path, monkeypatch):
+    import sys
+    import threading
+    import types
+    from types import SimpleNamespace
+
+    class Stage28OriginalCognitiveOwner:
+        def __init__(self, cognition, parent):
+            self.retained = cognition
+            self.intent = c["owner"]
+            self.pending_questions = set()
+            self.files = SimpleNamespace(
+                self_root=parent, cognition_file=parent / "cognition.json",
+            )
+            self.native_session_id = "native-D4"
+            self.current_worldbody_observation = object()
+            self.fresh_native_observation_required = False
+            self.cohort = None
+
+        @property
+        def self_id(self):
+            return self.retained.identity.self_id
+
+        def _eligible(self):
+            if self.cohort is None:
+                raise RuntimeError("no original owner")
+            self.cohort._mutating(self.self_id)
+            if self.fresh_native_observation_required:
+                raise RuntimeError("fresh native observation absent")
+
+    class Stage28OriginalResidentWorkOwner:
+        def __init__(self, owner):
+            self.lock = threading.RLock()
+            self.owners = {owner.self_id: owner}
+            self.mode = "ONLINE"
+            self.epoch = 1
+            self.native = owner.native_session_id
+            self.world_epoch = 2
+            owner.cohort = self
+
+        def _mutating(self, self_id):
+            if self.mode != "ONLINE" or self_id not in self.owners:
+                raise RuntimeError("original resident not online")
+
+        def current_scope(self, self_id):
+            self._mutating(self_id)
+            return self.epoch, self.native, self.world_epoch
+
+        def fence_self(self, self_id):
+            if self_id not in self.owners:
+                raise RuntimeError("foreign Self")
+            self.mode = "QUARANTINED"
+            self.epoch += 1
+
+    modules = (
+        ("relay_self.checkpointed_cognitive_runtime_dev",
+         "CheckpointedCognitiveOwner", Stage28OriginalCognitiveOwner),
+        ("relay_self.resident_cognitive_work_owner_dev",
+         "ResidentCognitiveWorkOwner", Stage28OriginalResidentWorkOwner),
+    )
+    for module_name, attr, obj in modules:
+        module = types.ModuleType(module_name)
+        setattr(module, attr, obj)
+        monkeypatch.setitem(sys.modules, module_name, module)
+    root = tmp_path / c["scope"].self_id
+    root.mkdir()
+    owner = Stage28OriginalCognitiveOwner(c["retained"], root)
+    save_persistent_cognition(owner.files.cognition_file, owner.retained)
+    resident = Stage28OriginalResidentWorkOwner(owner)
+    scope = ResidentD4Scope(
+        owner.self_id, 1, "native-D4", 2,
+        len(owner.intent.events), owner.intent.last_at_ns,
+    )
+    return owner, resident, scope
+
+
+def test_d4_resident_original_owner_mutations_are_one_atomic_path(tmp_path, monkeypatch):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    original = owner.retained
+    retain_resident_question(
+        owner, resident, scope=lease, present=c["present"],
+        question_ref="question:ridge", owner_provenance=OWNER,
+    )
+    assert owner.retained != original
+    assert load_persistent_cognition(owner.files.cognition_file) == owner.retained
+    assert owner.pending_questions == {"question:ridge"}
+    assert owner.retained.exploration_continuity.revision == 1
+
+    r = build(c)
+    selection = choose(c, r, "ESCALATE_L2")
+    task = reserve_resident_l2(
+        owner, resident, scope=lease, round_=r,
+        selection=selection, owner_provenance=OWNER,
+    )
+    assert task is not None
+    assert load_persistent_cognition(owner.files.cognition_file) == owner.retained
+    assert len(owner.retained.exploration_continuity.attempts) == 1
+    again = reserve_resident_l2(
+        owner, resident, scope=lease, round_=r,
+        selection=selection, owner_provenance=OWNER,
+    )
+    assert again is None
+    assert owner.retained.exploration_continuity.revision == 2
+    record_resident_l2_result(
+        owner, resident, scope=lease, reservation=task,
+        phase=AttemptPhase.TIMEOUT,
+        current_source_revision_refs=c["sources"],
+    )
+    assert owner.retained.exploration_continuity.attempts[0].phase is (
+        AttemptPhase.TIMEOUT
+    )
+    assert owner.pending_questions == {"question:ridge"}
+    assert c["owner"].events == ()
+    assert resident.mode == "ONLINE"
+
+
+def test_d4_quarantined_or_rebound_resident_does_not_mutate(tmp_path, monkeypatch):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    before = owner.retained
+    resident.fence_self(owner.self_id)
+    with pytest.raises(D4OwnerHold, match="not currently admitted"):
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    assert owner.retained == before
+    assert load_persistent_cognition(owner.files.cognition_file) == before
+
+
+def test_d4_wrong_owner_native_epoch_and_unobserved_body_hold(tmp_path, monkeypatch):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    wrong = replace(lease, cognition_epoch=lease.cognition_epoch + 1)
+    with pytest.raises(D4OwnerHold, match="stale"):
+        retain_resident_question(
+            owner, resident, scope=wrong, present=c["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    owner.current_worldbody_observation = None
+    with pytest.raises(D4OwnerHold, match="stale"):
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    assert owner.pending_questions == set()
+
+
+def test_d4_original_disk_mismatch_fences_resident_without_overwrite(
+    tmp_path, monkeypatch,
+):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    from relay_self.persistent_cognition import Memory
+    divergent = owner.retained.retain_memory(
+        Memory("foreign-entry", "unadopted", OWNER, OWNER),
+    )
+    save_persistent_cognition(owner.files.cognition_file, divergent)
+    with pytest.raises(D4OwnerHold, match="disk/current owner disagreement"):
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    assert resident.mode == "QUARANTINED"
+    assert owner.retained != divergent
+    assert load_persistent_cognition(owner.files.cognition_file) == divergent
+
+
+def test_d4_cognition_write_failure_quarantines_original_owner(
+    tmp_path, monkeypatch,
+):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    before = owner.retained
+    def fail_save(path, cognition):
+        raise OSError("simulated disk full")
+    monkeypatch.setattr(
+        "relay_self.exploration_checkpoint_bridge_dev.save_persistent_cognition",
+        fail_save,
+    )
+    with pytest.raises(OSError, match="disk full"):
+        retain_resident_question(
+            owner, resident, scope=lease, present=c["present"],
+            question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    assert owner.retained == before
+    assert owner.pending_questions == set()
+    assert resident.mode == "QUARANTINED"
+    assert load_persistent_cognition(owner.files.cognition_file) == before
+
+
+def test_d4_l2_completion_after_native_fork_rejected(tmp_path, monkeypatch):
+    c = setup(with_target=False)
+    owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
+    retain_resident_question(
+        owner, resident, scope=lease, present=c["present"],
+        question_ref="question:ridge", owner_provenance=OWNER,
+    )
+    r = build(c)
+    task = reserve_resident_l2(
+        owner, resident, scope=lease, round_=r,
+        selection=choose(c, r, "ESCALATE_L2"), owner_provenance=OWNER,
+    )
+    assert task is not None
+    retained = owner.retained
+    resident.fence_self(owner.self_id)
+    resident.mode = "ONLINE"
+    resident.native = "native-NEW"
+    resident.epoch += 1
+    owner.native_session_id = "native-NEW"
+    next_scope = replace(
+        lease, native_session_id="native-NEW", cognition_epoch=resident.epoch,
+    )
+    with pytest.raises(D4OwnerHold, match="stale/foreign"):
+        record_resident_l2_result(
+            owner, resident, scope=next_scope, reservation=task,
+            phase=AttemptPhase.UNRESOLVED,
+            current_source_revision_refs=c["sources"],
+        )
+    assert owner.retained == retained
+    assert owner.retained.exploration_continuity.attempts[0].phase is (
+        AttemptPhase.RESERVED
+    )
+
+
+def test_d4_checkpoint_requires_actual_stage28_not_an_untyped_manifest(
+    tmp_path, monkeypatch,
+):
+    import sys
+    # No Stage28 implementation on D/#917 stack: never silently downgrade to
+    # owner-state-only verification or the same timestamp without World/WAL.
+    monkeypatch.delitem(
+        sys.modules, "relay_self.stage28_cognitive_recovery_gate_dev",
+        raising=False,
+    )
+    with pytest.raises(D4OwnerHold, match="real Stage28 typed recovery"):
+        inspect_d4_inert_recovery(
+            tmp_path, tmp_path,
+            expected_self_ids=("self-A", "self-B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256="0" * 64,
+        )
+
+
+def test_d4_stub_stage28_plan_requires_same_commit_roster_and_pending_refs(
+    tmp_path, monkeypatch,
+):
+    """Contract simulation of B's exact StagedRecoveredCognition fields only."""
+    import hashlib
+    import sys
+    import types
+    from types import SimpleNamespace
+    a = setup("self-A", with_target=False)
+    b = setup("self-B", with_target=False)
+    d3_question(a)
+    d3_question(b)
+    a["retained"], _ = d3_reserved(a)
+    b["retained"], _ = d3_reserved(b)
+    marker = tmp_path / "COMMITTED.json"
+    marker.write_bytes(b'{"generation_id":"g-000000000001"}')
+    digest = hashlib.sha256(marker.read_bytes()).hexdigest()
+
+    def staged(c, pending):
+        sid = c["scope"].self_id
+        cut = SimpleNamespace(
+            self_id=sid, generation_id=tmp_path.name,
+            world_id="world-A", branch_id="branch-SOURCE",
+            former_native_session_id="native-old-" + sid,
+            pending_question_refs=pending,
+        )
+        return SimpleNamespace(
+            self_id=sid, retained=c["retained"],
+            semantic=SimpleNamespace(cut=cut),
+            native_session_bound=False,
+            issue_authorized=False,
+            fresh_worldbody_required=True,
+        )
+    plan = SimpleNamespace(
+        generation_id=tmp_path.name,
+        source_world_id="world-A", source_branch_id="branch-SOURCE",
+        fork_branch_id="branch-FORK",
+        roster=("self-A", "self-B"),
+        candidates=(staged(a, ("question:ridge",)),
+                    staged(b, ("question:forest",))),
+        source_committed_sha256=digest,
+        physical_action_issue_authorized=False,
+        old_l1_decision_reusable=False,
+        old_skill_resume_authorized=False,
+        l1_reevaluation_eligible=False,
+    )
+    module = types.ModuleType("relay_self.stage28_cognitive_recovery_gate_dev")
+    module.stage28_inert_cognitive_recovery = lambda *args, **kwargs: plan
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    result = inspect_d4_inert_recovery(
+        tmp_path, tmp_path,
+        expected_self_ids=("self-A", "self-B"),
+        expected_source_world_id="world-A",
+        expected_committed_sha256=digest,
+    )
+    assert result.generation_id == tmp_path.name
+    assert result.l2_dispatch_authorized is False
+    assert result.physical_action_issue_authorized is False
+    assert result.current_native_session_attested is False
+    assert result.restored[0].question_refs == ("question:ridge",)
+    assert result.restored[1].question_refs == ("question:forest",)
+    assert len(result.restored[0].attempt_refs) == 1
+    plan.candidates = (staged(a, ()), staged(b, ("question:forest",)))
+    with pytest.raises(D4OwnerHold, match="open D Question absent"):
+        inspect_d4_inert_recovery(
+            tmp_path, tmp_path,
+            expected_self_ids=("self-A", "self-B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256=digest,
+        )
+    plan.candidates = (staged(a, ("question:ridge",)),
+                       staged(b, ("question:forest",)))
+    plan.physical_action_issue_authorized = True
+    with pytest.raises(D4OwnerHold, match="wrong committed"):
+        inspect_d4_inert_recovery(
+            tmp_path, tmp_path,
+            expected_self_ids=("self-A", "self-B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256=digest,
+        )
+    plan.physical_action_issue_authorized = False
+    with pytest.raises(D4OwnerHold, match="wrong committed"):
+        inspect_d4_inert_recovery(
+            tmp_path, tmp_path,
+            expected_self_ids=("self-A", "self-B"),
+            expected_source_world_id="world-A",
+            expected_committed_sha256="0" * 64,
+        )
