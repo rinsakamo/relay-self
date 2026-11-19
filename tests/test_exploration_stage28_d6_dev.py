@@ -80,7 +80,9 @@ from test_exploration_goal_dev_v01 import (
 )
 
 
-def _original_b_cohort(tmp_path: Path, *, bad_a_pending: bool = False):
+def _original_b_cohort(
+    tmp_path: Path, *, bad_a_pending: bool = False, skip_b_l2_attempt: bool = False,
+):
     owners = []
     old_tasks = {}
     original = {}
@@ -89,10 +91,12 @@ def _original_b_cohort(tmp_path: Path, *, bad_a_pending: bool = False):
         if sid == "A":
             c["retained"] = c["retained"].retain_schema_registry(c["registry"])
         d3_question(c)
-        c["retained"], task = d3_reserved(
-            c, native_session_ref="native-old-" + sid,
-        )
-        assert task is not None
+        task = None
+        if sid != "B" or not skip_b_l2_attempt:
+            c["retained"], task = d3_reserved(
+                c, native_session_ref="native-old-" + sid,
+            )
+            assert task is not None
         root = tmp_path / sid
         root.mkdir()
         wal = root / "physical-wal.json"
@@ -179,8 +183,10 @@ def _original_b_cohort(tmp_path: Path, *, bad_a_pending: bool = False):
     return owners, original, old_tasks, cohort, autosave, status
 
 
-def _actual_cut_and_restore(tmp_path):
-    owners, context, tasks, cohort, autosave, state = _original_b_cohort(tmp_path)
+def _actual_cut_and_restore(tmp_path, *, skip_b_l2_attempt: bool = False):
+    owners, context, tasks, cohort, autosave, state = _original_b_cohort(
+        tmp_path, skip_b_l2_attempt=skip_b_l2_attempt,
+    )
     result = autosave.run_if_due(60.0)
     assert result is not None
     assert result.typed_owner_cut_validated
