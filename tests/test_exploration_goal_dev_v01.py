@@ -1492,7 +1492,7 @@ def test_d4_stub_stage28_plan_requires_same_commit_roster_and_pending_refs(
 # D5: actual unmodified Stage28 Python owner classes copied from B source into
 # this isolated integration branch. Not a native Paper/Gemma trial.
 
-def d5_actual_stage28_resident(tmp_path):
+def d5_actual_stage28_resident(tmp_path, *, with_accepted_preset=False):
     """Use the real B CheckpointedCognitiveOwner/ResidentCognitiveWorkOwner."""
     from relay_self.action_supervision import ActionSupervisor
     from relay_self.checkpointed_cognitive_runtime_dev import (
@@ -1506,14 +1506,19 @@ def d5_actual_stage28_resident(tmp_path):
     roster = {}
     original = {}
     for sid in ("A", "B"):
-        c = setup(sid, with_target=False, with_preset=False)
+        c = setup(sid, with_target=False,
+                  with_preset=with_accepted_preset and sid == "A")
         root = tmp_path / sid
         root.mkdir()
         journal = root / "physical-wal.json"
         PhysicalActionJournal.create(journal, self_id=sid)
+        registry = (c["registry"] if with_accepted_preset and sid == "A"
+                    else initial_patterns())
+        if with_accepted_preset and sid == "A":
+            c["retained"] = c["retained"].retain_schema_registry(registry)
         owner = CheckpointedCognitiveOwner(
             retained=c["retained"], intent=c["owner"],
-            pattern_registry=initial_patterns(),
+            pattern_registry=registry,
             native_session_id="native-old-" + sid,
             last_observed_tick=100,
             files=CognitiveOwnerFiles(root, root / "cognition.json", journal),
@@ -1590,7 +1595,9 @@ def test_d5_real_b_owner_a_b_d_question_and_l2_durable_gate(tmp_path):
     assert owners["B"].retained.identity.self_id == "B"
 
 
-def d5_real_b_typed_generation(tmp_path):
+def d5_real_b_typed_generation(
+    tmp_path, *, with_accepted_preset=False, mismatch_cognition=False,
+):
     from relay_self.coordinated_checkpoint_dev import (
         SelfSnapshotSource,
         restore_generation,
@@ -1601,7 +1608,9 @@ def d5_real_b_typed_generation(tmp_path):
         save_self_owner_cut,
     )
 
-    owners, resident, contexts = d5_actual_stage28_resident(tmp_path)
+    owners, resident, contexts = d5_actual_stage28_resident(
+        tmp_path, with_accepted_preset=with_accepted_preset,
+    )
     sources = []
     for sid in ("A", "B"):
         owner = owners[sid]
@@ -1619,6 +1628,9 @@ def d5_real_b_typed_generation(tmp_path):
             owner_provenance=OWNER,
         ) is not None
         resident.fence_self(sid)
+        if mismatch_cognition and sid == "A":
+            owner.retained = replace(owner.retained, pattern_registry=None)
+            save_persistent_cognition(owner.files.cognition_file, owner.retained)
         cut = SelfOwnerCut(
             generation_id="g-000000000001", self_id=sid,
             world_id="world-A", branch_id="source",
@@ -1716,3 +1728,46 @@ def test_d5_real_stage28_rejects_corrupted_restored_self_or_wrong_commit(tmp_pat
             expected_source_world_id="world-A",
             expected_committed_sha256=digest,
         )
+
+
+
+def test_d5_actual_b_cut_schema2_retains_self_accepted_preset_on_restore(tmp_path):
+    import hashlib
+
+    from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+
+    gen, restored, _, _ = d5_real_b_typed_generation(
+        tmp_path, with_accepted_preset=True,
+    )
+    cuts = verify_typed_generation(gen)
+    assert len(cuts[0].pattern_registry.accepted_presets) == 1
+    assert len(cuts[1].pattern_registry.accepted_presets) == 0
+    a_cut = json.loads((gen / "selves" / "A" / "owner-state.json").read_text())
+    assert a_cut["payload"]["schema"] == 2
+    b_cut = json.loads((gen / "selves" / "B" / "owner-state.json").read_text())
+    assert b_cut["payload"]["schema"] == 1
+    original = load_persistent_cognition(gen / "selves" / "A" / "cognition.json")
+    assert original.pattern_registry == cuts[0].pattern_registry
+    assert original.exploration_continuity is not None
+    digest = hashlib.sha256((gen / "COMMITTED.json").read_bytes()).hexdigest()
+    recovered = inspect_d4_inert_recovery(
+        gen, restored, expected_self_ids=("A", "B"),
+        expected_source_world_id="world-A",
+        expected_committed_sha256=digest,
+    )
+    assert recovered.l2_dispatch_authorized is False
+    assert recovered.physical_action_issue_authorized is False
+    assert recovered.restored[0].question_refs == ("question:ridge",)
+
+
+def test_d5_preset_cognition_owner_divergence_blocks_generation_precommit(tmp_path):
+    from relay_self.self_owner_checkpoint_dev import SelfOwnerCheckpointError
+
+    with pytest.raises(SelfOwnerCheckpointError, match="Preset/Question diverges"):
+        d5_real_b_typed_generation(
+            tmp_path, with_accepted_preset=True,
+            mismatch_cognition=True,
+        )
+    incomplete = tmp_path / "store" / "g-000000000001"
+    assert incomplete.is_dir()
+    assert not (incomplete / "COMMITTED.json").exists()
