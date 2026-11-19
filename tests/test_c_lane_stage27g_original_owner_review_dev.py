@@ -22,7 +22,10 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     finish_stage27g_original_evaluation,
     submit_stage27g_original_evaluation,
 )
-from relay_self.persistent_cognition import load_persistent_cognition
+from relay_self.persistent_cognition import (
+    load_persistent_cognition,
+    save_persistent_cognition,
+)
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillState
@@ -54,7 +57,10 @@ async def _review(f, lane, server, *, mode="moved", number="2", stale_post=False
         world_tick=post.snapshot.time.day * 24000 + post.snapshot.time.time_of_day,
     )
     a.accept_rejoined_worldbody(post, request_id=post.request_id)
-    wal = PhysicalActionJournal.restore(a.files.physical_wal_file, self_id="A")
+    # Stage27's bare ResidentFixture does not create cognition.json before
+    # running; seed the existing original file as Stage25 real cut would do.
+    save_persistent_cognition(a.files.cognition_file, a.retained)
+    wal = PhysicalActionJournal.restore(a.files.physical_wal_file, self_id=a.self_id)
     first = wal.records[0]
     before = native_probe(
         f.names[0], first["probe_seq"], session=pre.native_session,
@@ -69,7 +75,7 @@ async def _review(f, lane, server, *, mode="moved", number="2", stale_post=False
 
 def _approve(prepared):
     return OriginalSelfC1Approval(
-        self_id="A",
+        self_id=prepared["owner"].self_id,
         native_session_id=prepared["frame"].native_session_id,
         evaluation_request_id=prepared["frame"].request.request_id,
         skill_execution_id=prepared["frame"].skill_execution_id,
@@ -83,7 +89,7 @@ def test_original_l1_review_is_not_success_until_separate_self_acceptance(tmp_pa
         inputs, before, settled = await _review(f, lane, server)
         a, b = f.owners[f.names[0]], f.owners[f.names[1]]
         prior_b = (b.retained, b.intent.events, dict(b.skills))
-        wal = PhysicalActionJournal.restore(a.files.physical_wal_file, self_id="A")
+        wal = PhysicalActionJournal.restore(a.files.physical_wal_file, self_id=a.self_id)
         proposal = prepare_original_stage27g_c1_review(**inputs)
         assert proposal is not None
         assert not proposal.terminal_skill_accepted
