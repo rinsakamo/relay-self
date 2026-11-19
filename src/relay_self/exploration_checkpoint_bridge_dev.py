@@ -396,6 +396,27 @@ def inspect_d4_inert_recovery(
                 or not candidate.fresh_worldbody_required
             ):
                 raise D4OwnerHold("inert restored Self/source mismatch")
+            # B's initial staged recovery proves the archived generation,
+            # but D must also reject post-restore edits to per-Self cognition.
+            # Never use a same-tick or filename-only equivalence argument.
+            for name in ("cognition.json", "owner-state.json", "physical-wal.json"):
+                archived = (
+                    Path(generation) / "selves" / candidate.self_id / name
+                )
+                copied = (
+                    Path(restored_directory) / "selves" / candidate.self_id / name
+                )
+                if (
+                    archived.is_symlink() or copied.is_symlink()
+                    or archived.parent.is_symlink() or copied.parent.is_symlink()
+                    or not archived.is_file() or not copied.is_file()
+                    or archived.stat().st_size != copied.stat().st_size
+                    or hashlib.sha256(archived.read_bytes()).digest()
+                    != hashlib.sha256(copied.read_bytes()).digest()
+                ):
+                    raise D4OwnerHold(
+                        "restored cognition/typed Owner/WAL differs from exact cut"
+                    )
             questions = _assert_cut_questions(
                 candidate.retained, cut.pending_question_refs,
                 expected_self_id=candidate.self_id,
