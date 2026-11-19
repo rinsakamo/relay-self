@@ -27,8 +27,8 @@ from relay_self.resident_llama_inference_lane_dev import (
     LlamaCppSingleSlotWitness,
     ResidentLlamaInferenceLane,
 )
-from test_exploration_goal_dev_v01 import OWNER
-from test_exploration_stage28_d6_dev import _synthetic_native_probe, d5_actual_stage28_resident
+from test_exploration_goal_dev_v01 import d5_actual_stage28_resident
+from test_exploration_stage28_d6_dev import _synthetic_native_probe
 
 
 class _D9SyntheticBackend:
