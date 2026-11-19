@@ -16,9 +16,11 @@ from relay_self.exploration_d7_real_world_preflight_dev import (
 from test_exploration_stage28_d6_dev import _actual_cut_and_restore
 
 
-def _fixture(tmp_path: Path):
+def _fixture(tmp_path: Path, *, skip_b_l2_attempt: bool = False):
     (_, _, old_tasks, _, _, gen, restored, receipt, sha) = (
-        _actual_cut_and_restore(tmp_path)
+        _actual_cut_and_restore(
+            tmp_path, skip_b_l2_attempt=skip_b_l2_attempt,
+        )
     )
     inputs = {
         "expected_world_id": "world-A",
@@ -147,3 +149,19 @@ def test_d7_partial_source_before_commit_never_promotes_candidate(tmp_path):
             expected_committed_sha256="a" * 64,
             expected_generation_id=gen.name,
         )
+
+
+def test_d7_natural_b_defer_preserves_open_question_without_forged_l2(tmp_path):
+    generation, restored, tasks, pins = _fixture(
+        tmp_path, skip_b_l2_attempt=True,
+    )
+    assert tasks["A"] is not None
+    assert tasks["B"] is None  # B did not actually choose ESCALATE_L2.
+    readout = inspect_d7_real_world_candidate(generation, restored, **pins)
+    assert readout.selves[0].attempts_reserved == 1
+    assert readout.selves[0].attempt_refs == (tasks["A"].attempt_ref,)
+    assert readout.selves[1].question_refs == ("question:forest",)
+    assert readout.selves[1].attempt_refs == ()
+    assert readout.selves[1].attempts_reserved == 0
+    assert readout.real_world_attested is False
+    assert readout.l2_dispatch_authorized is False
