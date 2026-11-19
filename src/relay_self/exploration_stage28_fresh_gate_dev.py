@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.exploration_continuity_dev import open_question_refs
+from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
@@ -90,53 +91,58 @@ def inspect_d6_new_exploration_reevaluation(
             raise D6FreshReconsiderationHold(
                 "recovered cohort or original physical permission mismatch"
             )
-        proof_by_self = {proof.self_id: proof for proof in logins}
-        current = []
-        for self_id, new_session in eligible.native_sessions:
-            owner = recovered.owners[self_id]
-            e, actual_session, world_epoch = (
-                recovered.cognitive_work.current_scope(self_id)
-            )
-            observation = owner.current_worldbody_observation
-            proof = proof_by_self[self_id]
-            if (
-                type(e) is not int or e < 1
-                or world_epoch != eligible.world_epoch
-                or actual_session != new_session
-                or owner.cohort is not recovered.cognitive_work
-                or owner.native_session_id != new_session
-                or owner.fresh_native_observation_required
-                or not isinstance(observation, MineflayerObservation)
-                or observation.kind != "probe"
-                or observation.session_id != new_session
-                or observation.request_id != proof.observation_ref
-                or observation.snapshot.time is None
-                or owner.last_observed_tick != (
-                    observation.snapshot.time.day * 24000
-                    + observation.snapshot.time.time_of_day
+        with recovered.cognitive_work.lock:
+            proof_by_self = {proof.self_id: proof for proof in logins}
+            current = []
+            for self_id, new_session in eligible.native_sessions:
+                owner = recovered.owners[self_id]
+                e, actual_session, world_epoch = (
+                    recovered.cognitive_work.current_scope(self_id)
                 )
-                or owner.retained.identity.self_id != self_id
-                or owner.files.cognition_file.is_symlink()
-            ):
-                raise D6FreshReconsiderationHold(
-                    "original resident native probe not current/qualified"
+                observation = owner.current_worldbody_observation
+                proof = proof_by_self[self_id]
+                if (
+                    type(e) is not int or e < 1
+                    or world_epoch != eligible.world_epoch
+                    or actual_session != new_session
+                    or owner.cohort is not recovered.cognitive_work
+                    or owner.native_session_id != new_session
+                    or owner.fresh_native_observation_required
+                    or not isinstance(observation, MineflayerObservation)
+                    or observation.kind != "probe"
+                    or observation.session_id != new_session
+                    or observation.request_id != proof.observation_ref
+                    or observation.snapshot.time is None
+                    or owner.last_observed_tick != (
+                        observation.snapshot.time.day * 24000
+                        + observation.snapshot.time.time_of_day
+                    )
+                    or owner.retained.identity.self_id != self_id
+                    or owner.files.cognition_file.is_symlink()
+                    or owner.files.cognition_file != owner.files.self_root / "cognition.json"
+                    or load_persistent_cognition(owner.files.cognition_file) != owner.retained
+                    or (owner.retained.pattern_registry is not None
+                        and owner.retained.pattern_registry != owner.pattern_registry)
+                ):
+                    raise D6FreshReconsiderationHold(
+                        "original resident native probe not current/qualified"
+                    )
+                open_refs = open_question_refs(
+                    owner.retained, expected_self_id=self_id,
                 )
-            open_refs = open_question_refs(
-                owner.retained, expected_self_id=self_id,
-            )
-            if not set(open_refs).issubset(owner.pending_questions):
-                raise D6FreshReconsiderationHold(
-                    "restored Question not adopted by original resident"
-                )
-            prior = owner.retained.exploration_continuity
-            current.append(D6CurrentQuestionView(
-                self_id=self_id, native_session_id=new_session,
-                current_source_world_session_id=world.paper_session_id,
-                active_question_refs=open_refs,
-                prior_l2_attempt_refs=() if prior is None else tuple(
-                    a.attempt_ref for a in prior.attempts
-                ),
-            ))
+                if not set(open_refs).issubset(owner.pending_questions):
+                    raise D6FreshReconsiderationHold(
+                        "restored Question not adopted by original resident"
+                    )
+                prior = owner.retained.exploration_continuity
+                current.append(D6CurrentQuestionView(
+                    self_id=self_id, native_session_id=new_session,
+                    current_source_world_session_id=world.paper_session_id,
+                    active_question_refs=open_refs,
+                    prior_l2_attempt_refs=() if prior is None else tuple(
+                        a.attempt_ref for a in prior.attempts
+                    ),
+                ))
     except D6FreshReconsiderationHold:
         raise
     except (KeyError, ValueError, RuntimeError, TypeError, AttributeError) as exc:
