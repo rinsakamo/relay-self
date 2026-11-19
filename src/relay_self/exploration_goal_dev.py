@@ -12,12 +12,22 @@ from enum import Enum
 from typing import Mapping
 
 from relay_self.cognitive_minimal_dev import (
-    Goal, L1Round, Option, PatternRegistry, SchemaFrame, Selection, Target, WorldPercept,
-    assemble_l1_select, cpu_schema_epoch,
+    Goal,
+    L1Round,
+    PatternRegistry,
+    SchemaFrame,
+    Selection,
+    Target,
+    WorldPercept,
+    assemble_l1_select,
+    cpu_schema_epoch,
 )
 from relay_self.common_io import CommonEnvelope, ScopeRef
 from relay_self.innate_schema import (
-    CognitiveSignal, SchemaMode, SchemaSnapshot, check_schema_eligibility,
+    CognitiveSignal,
+    SchemaMode,
+    SchemaSnapshot,
+    check_schema_eligibility,
     signal_is_current,
 )
 from relay_self.intent import IntentCommitment
