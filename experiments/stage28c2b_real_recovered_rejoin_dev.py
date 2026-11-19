@@ -17,6 +17,7 @@ import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
@@ -127,8 +128,9 @@ async def run_restored_a_b_real_observation(
     execution_dir: Path, evidence_dir: Path, paper_jar: Path,
     plugin_jar: Path, java: str, node: str,
     timeout_s: float = 120, presence_timeout_s: float = 12.0,
+    on_reconnected: Callable[..., Awaitable[None]] | None = None,
 ) -> Path:
-    """One real Paper/native A/B trial, no auto retries, never a model POST.
+    """One real Paper/native A/B trial, no auto retries; no model by default.
 
     Any failure is HOLD; never silently start a second new World. First
     validate source/pins/assets on disk, then create one new executable copy.
@@ -347,6 +349,16 @@ async def run_restored_a_b_real_observation(
             PhysicalActionJournal.restore(
                 owner.files.physical_wal_file, self_id=sid,
             ).require_clear()
+        if on_reconnected is not None:
+            # Stage28c2c explicitly opts into an already verified original
+            # A/B source-linked Body. Default Stage28c2b remains model-free.
+            if not callable(on_reconnected):
+                raise Stage28c2bRealRejoinHold("foreign reconnected cognition hook")
+            await on_reconnected(
+                prepared=prepared, bridge=bridge, boot=boot,
+                world=current, links=linked, paper=paper,
+                evidence=evidence, report=report,
+            )
         report["retirement_A"] = asdict(await bridge.logout("A"))
         report["retirement_B"] = asdict(await bridge.logout("B"))
         await asyncio.sleep(0.5)
