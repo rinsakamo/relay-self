@@ -64,6 +64,7 @@ from relay_self.p0d_stage26_gemma_l1_dev import (
     prepare_restored_preset_l1,
     submit_restored_preset_l1,
 )
+from relay_self.p0d_stage27i_precision_gait_dev import STAGE27I_PRESET_ID
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -71,7 +72,6 @@ from relay_self.persistent_cognition import (
     load_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.p0d_stage27i_precision_gait_dev import STAGE27I_PRESET_ID
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
