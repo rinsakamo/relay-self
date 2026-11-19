@@ -160,7 +160,7 @@ def test_no_terminal_skill_or_memory_when_review_source_fails(
         if fault == "unadopted-observation":
             a.current_worldbody_observation = None
         if fault == "inactive-owner":
-            lane.cognitive_work.fence_self("A")
+            lane.cognitive_work.fence_self(a.self_id)
         if fault == "changed-original-wal":
             a.files.physical_wal_file.write_bytes(b"corrupted wal")
         try:
