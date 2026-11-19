@@ -369,9 +369,11 @@ def record_l2_attempt_result(
             raise ExplorationContinuityError(
                 "resolved reference requires prior typed current World review"
             )
-    elif (reviewed_target is not None or current_percept is not None
-          or current_source_revision_refs):
+    elif reviewed_target is not None or current_percept is not None:
         raise ExplorationContinuityError("unresolved result cannot cite a target")
+    if (current_source_revision_refs
+            and current_source_revision_refs != reservation.task.source_revision_refs):
+        raise ExplorationContinuityError("stale source revision for L2 result")
     index = next((i for i, a in enumerate(state.attempts)
                   if a.attempt_ref == reservation.attempt_ref), None)
     if index is None or state.attempts[index].phase is not AttemptPhase.RESERVED:
