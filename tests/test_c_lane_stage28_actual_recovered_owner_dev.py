@@ -41,7 +41,6 @@ from relay_self.three_self_present import EpistemicStatus, Lens
 from test_p0d_resident_move_issuer_dev import _probe
 from test_stage28c2b_native_paper_dual_clock_dev import _clock_context, _link
 
-
 P = Provenance("synthetic-historical-c1", "NOT_REAL_WORLD_EVIDENCE")
 
 
