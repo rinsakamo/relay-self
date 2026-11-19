@@ -50,6 +50,19 @@ class ResidentD4Scope:
     intent_event_count: int
     last_intent_at_ns: int | None
 
+    def __post_init__(self) -> None:
+        for value in (self.cognition_epoch, self.world_epoch,
+                      self.intent_event_count):
+            if type(value) is not int or value < 0:
+                raise D4OwnerHold("invalid resident epoch/history counters")
+        if (not self.self_id or not self.native_session_id
+                or type(self.self_id) is not str
+                or type(self.native_session_id) is not str
+                or (self.last_intent_at_ns is not None and (
+                    type(self.last_intent_at_ns) is not int
+                    or self.last_intent_at_ns < 0))):
+            raise D4OwnerHold("invalid original owner identity/time")
+
 
 @dataclass(frozen=True, slots=True)
 class D4RecoveredSelf:
@@ -165,7 +178,10 @@ def _write_original_owner(
     if not isinstance(scope, ResidentD4Scope):
         raise D4OwnerHold("typed original resident scope required")
     with resident.lock:
-        _check_owner(owner, resident, scope)
+        try:
+            _check_owner(owner, resident, scope)
+        except (RuntimeError, AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise D4OwnerHold("original Self resident not currently admitted") from exc
         try:
             owner._eligible()
         except RuntimeError as exc:
@@ -174,7 +190,13 @@ def _write_original_owner(
         _assert_cut_questions(
             previous, owner.pending_questions, expected_self_id=owner.self_id,
         )
-        if load_persistent_cognition(owner.files.cognition_file) != previous:
+        try:
+            original_on_disk = load_persistent_cognition(owner.files.cognition_file)
+        except (OSError, ValueError, RuntimeError) as exc:
+            resident.fence_self(owner.self_id)
+            raise D4OwnerHold("original cognition unreadable; resident fenced") from exc
+        if original_on_disk != previous:
+            resident.fence_self(owner.self_id)
             raise D4OwnerHold("original cognition disk/current owner disagreement")
         updated, result = update(previous)
         if updated is previous:
@@ -288,6 +310,7 @@ def record_resident_l2_result(
         or reservation.task.scope.self_id != scope.self_id
         or reservation.native_session_ref != scope.native_session_id
         or reservation.intent_owner_revision < 0
+        or reservation.task.source_revision_refs != current_source_revision_refs
     ):
         raise D4OwnerHold("stale/foreign resident L2 completion")
     def write(cognition: PersistentCognition) -> tuple[PersistentCognition, None]:
