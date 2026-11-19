@@ -22,7 +22,6 @@ from relay_self.p0d_stage27j_long_move_profile_dev import (
     STAGE27J_MAX_DURATION_MS,
     STAGE27J_MAX_OBSERVATIONS,
     STAGE27J_PRESET_ID,
-    STAGE27J_CHILD_TIME_RESERVE_MS,
     STAGE27J_SNEAK_ACTION_RESERVE_M,
     STAGE27J_WALK_ACTION_RESERVE_M,
     stage27j_can_reserve_action,
