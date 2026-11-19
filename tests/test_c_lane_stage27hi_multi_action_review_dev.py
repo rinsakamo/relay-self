@@ -164,8 +164,10 @@ def _accept_kwargs(loop, witness, first, last, fresh, f, lane):
 def test_original_three_actions_review_then_separate_self_c1_approval(tmp_path):
     async def scenario(f, lane, server):
         peer = f.owners[f.names[1]]
-        initial_peer = (peer.retained, peer.intent.events, dict(peer.skills))
         loop, witness, first, last, fresh = await _review_multi(f, lane, server)
+        # Stage27's original preset restore updates B during _start().
+        # Compare B AFTER that baseline, before C-only explicit adoption.
+        initial_peer = (peer.retained, peer.intent.events, dict(peer.skills))
         owner = loop.owner
         wal = PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id=owner.self_id,
