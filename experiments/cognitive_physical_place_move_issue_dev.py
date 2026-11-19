@@ -65,6 +65,8 @@ class Stage27PlaceMoveReceipt:
     native_effect_issued: bool = True
     skill_success_attested: bool = False
     paper_causal_attribution: bool = False
+    gait_mode: str = "WALK"
+    gait_control_ack: MineflayerEffectResult | None = None
 
 
 async def issue_selected_place_move_dev(
@@ -92,6 +94,7 @@ async def issue_selected_place_move_dev(
     pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None = None,
     allow_prior_terminal_place_actions: bool = False,
     settlement_probe_limit: int | None = None,
+    precision_gait: str | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -107,6 +110,7 @@ async def issue_selected_place_move_dev(
         or type(pulse_seconds) not in (float, int)
         or not math.isfinite(pulse_seconds)
         or type(allow_prior_terminal_place_actions) is not bool
+        or precision_gait not in (None, "WALK", "SNEAK")
         or (settlement_probe_limit is not None and (
             type(settlement_probe_limit) is not int
             or not 3 <= settlement_probe_limit <= 4096
@@ -201,6 +205,7 @@ async def issue_selected_place_move_dev(
         refusal=Stage27PlaceMoveRefusal,
         place_invocation=invocation, place_motion=motion,
         allow_prior_original_place_terminals=allow_prior_terminal_place_actions,
+        place_gait_mode=precision_gait,
     )
     parent = proposal.binding.action_id
     # Optional operator DEV evidence tap runs only after the original fsynced
@@ -226,10 +231,28 @@ async def issue_selected_place_move_dev(
             effect="look", request_id=None, timeout_s=evidence_timeout_s,
         )
         assert isinstance(look, MineflayerEffectResult)
+        gait_ack: MineflayerEffectResult | None = None
+        if precision_gait == "SNEAK":
+            # Separate ONE-SHOT child admitted only from the fsynced SNEAK
+            # PREPARED row under the same original parent Action. STOP clears
+            # both sneak and forward controls; no speed command is unbound.
+            sneak_id = parent + "-sneak"
+            await session.send_set_control(
+                sneak_id, control="sneak", state=True,
+            )
+            gait_result = await _native(
+                session, session_id=current_probe.session_id,
+                after_seq=look.seq, action_id=sneak_id,
+                effect="set_control", request_id=None,
+                timeout_s=evidence_timeout_s,
+            )
+            assert isinstance(gait_result, MineflayerEffectResult)
+            gait_ack = gait_result
         await session.send_set_control(start_id, control="forward", state=True)
         start = await _native(
             session, session_id=current_probe.session_id,
-            after_seq=look.seq, action_id=start_id,
+            after_seq=gait_ack.seq if gait_ack is not None else look.seq,
+            action_id=start_id,
             effect="set_control", request_id=None, timeout_s=evidence_timeout_s,
         )
         assert isinstance(start, MineflayerEffectResult)
@@ -254,7 +277,7 @@ async def issue_selected_place_move_dev(
             close=lambda t: closed.append(journal.close_place_move(
                 proposal.binding, invocation, current_probe,
                 look, start, stop, initial, first, settled,
-                t, owner.supervisor,
+                t, owner.supervisor, gait_ack=gait_ack,
             )),
         )
         if len(closed) != 1:
@@ -282,6 +305,8 @@ async def issue_selected_place_move_dev(
             look, start, stop, initial, first, settled,
             math.dist((a.x, a.y, a.z), (b.x, b.y, b.z)),
             closed[0], journal.digest, all_stop,
+            gait_mode=precision_gait or "WALK",
+            gait_control_ack=gait_ack,
         )
     except BaseException:
         if not attempted_stop:
