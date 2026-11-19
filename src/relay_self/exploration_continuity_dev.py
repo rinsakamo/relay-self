@@ -18,6 +18,7 @@ from relay_self.exploration_goal_dev import (
     ExplorationL2Task,
     ExplorationRound,
     prepare_exploration_l2,
+    L2TargetReview,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import OpenCognitionRequest
@@ -233,6 +234,7 @@ def reserve_exploration_l2(
     expected_revision: int,
     current_intent_owner_revision: int,
     native_session_ref: str,
+    owner_provenance: Provenance,
 ) -> tuple[PersistentCognition, L2Reservation | None]:
     """Stage a crash-safe RESERVED record before model dispatch.
 
@@ -242,6 +244,8 @@ def reserve_exploration_l2(
     state = _current(cognition)
     _nat("expected continuity revision", expected_revision)
     _text("native session ref", native_session_ref)
+    if not isinstance(owner_provenance, Provenance):
+        raise ExplorationContinuityError("original Self owner provenance required")
     if (state.revision != expected_revision
             or state.self_id != round_.present.three_self.scope.self_id
             or round_.owner_revision != current_intent_owner_revision):
@@ -264,7 +268,7 @@ def reserve_exploration_l2(
     attempt = AttemptRecord(
         _attempt_ref(state.self_id, task.question_ref, digest),
         task.question_ref, digest, AttemptPhase.RESERVED,
-        round_.need.signal.envelope.provenance,
+        owner_provenance,
     )
     next_state = replace(
         state, revision=state.revision + 1,
@@ -332,6 +336,7 @@ def record_l2_attempt_result(
     reservation: L2Reservation,
     phase: AttemptPhase,
     expected_revision: int,
+    reviewed_target: L2TargetReview | None = None,
 ) -> PersistentCognition:
     """Owner-mediated terminal audit, without closing the Question.
 
@@ -345,6 +350,16 @@ def record_l2_attempt_result(
             or state.self_id != reservation.task.scope.self_id
             or state.revision < reservation.owner_state_revision):
         raise ExplorationContinuityError("stale/invalid terminal L2 record")
+    if phase is AttemptPhase.REFERENCED_OBSERVED_TARGET:
+        if (not isinstance(reviewed_target, L2TargetReview)
+                or reviewed_target.status != "REFERENCED_OBSERVED_TARGET"
+                or reviewed_target.target is None
+                or reviewed_target.question_ref != reservation.task.question_ref):
+            raise ExplorationContinuityError(
+                "resolved reference requires prior typed current World review"
+            )
+    elif reviewed_target is not None:
+        raise ExplorationContinuityError("unresolved result cannot cite a target")
     index = next((i for i, a in enumerate(state.attempts)
                   if a.attempt_ref == reservation.attempt_ref), None)
     if index is None or state.attempts[index].phase is not AttemptPhase.RESERVED:
