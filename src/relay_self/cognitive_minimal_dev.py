@@ -236,7 +236,7 @@ def accept_learned_pattern(
         raise MinimalCognitionError("stale registry revision")
     if proposed.origin is not Origin.LEARNED:
         raise MinimalCognitionError("only learned patterns may be proposed")
-    if proposed.schema_id not in {"homeostatic", "defensive", "body"}:
+    if proposed.schema_id not in {"homeostatic", "defensive", "body", "exploration"}:
         raise MinimalCognitionError("unknown owning schema")
     if proposed.kind is PatternKind.GOAL and (
         proposed.skill_id, proposed.skill_version
