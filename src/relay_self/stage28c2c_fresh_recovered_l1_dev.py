@@ -436,7 +436,7 @@ def validate_fresh_original_l1_result(
         option.option.skill_id if option.option else None,
         option.option.target_ref if option.option else None,
         mapped if option.option is not None else None,
-        provider.status.value,
+        decision.status.value,
         provider.call_facts.prompt_tokens,
         provider.call_facts.completion_tokens,
     )
