@@ -42,7 +42,7 @@ class ResidentD4Scope:
     """Existing Stage28 resident lease readout; NOT a new model/physical lease."""
 
     self_id: str
-    world_id: str
+    world_session_id: str
     cognition_epoch: int
     native_session_id: str
     world_epoch: int
@@ -54,8 +54,8 @@ class ResidentD4Scope:
                       self.intent_event_count):
             if type(value) is not int or value < 0:
                 raise D4OwnerHold("invalid resident epoch/history counters")
-        if (not self.self_id or not self.world_id
-                or type(self.world_id) is not str
+        if (not self.self_id or not self.world_session_id
+                or type(self.world_session_id) is not str
                 or not self.native_session_id
                 or type(self.self_id) is not str
                 or type(self.native_session_id) is not str
@@ -242,7 +242,7 @@ def retain_resident_question(
         not isinstance(present, PresentFrame)
         or not isinstance(owner_provenance, Provenance)
         or present.three_self.scope.self_id != scope.self_id
-        or present.three_self.scope.world_id != scope.world_id
+        or present.three_self.scope.world_session_id != scope.world_session_id
     ):
         raise D4OwnerHold("foreign/unprojected original Present Question")
     def write(cognition: PersistentCognition) -> tuple[PersistentCognition, None]:
@@ -276,7 +276,7 @@ def reserve_resident_l2(
         not isinstance(round_, ExplorationRound)
         or not isinstance(owner_provenance, Provenance)
         or round_.present.three_self.scope.self_id != scope.self_id
-        or round_.present.three_self.scope.world_id != scope.world_id
+        or round_.present.three_self.scope.world_session_id != scope.world_session_id
     ):
         raise D4OwnerHold("foreign/unprojected L2 round")
     def write(
@@ -311,7 +311,7 @@ def record_resident_l2_result(
         not isinstance(reservation, L2Reservation)
         or not isinstance(phase, AttemptPhase)
         or reservation.task.scope.self_id != scope.self_id
-        or reservation.task.scope.world_id != scope.world_id
+        or reservation.task.scope.world_session_id != scope.world_session_id
         or reservation.native_session_ref != scope.native_session_id
         or reservation.intent_owner_revision < 0
         or reservation.task.source_revision_refs != current_source_revision_refs
