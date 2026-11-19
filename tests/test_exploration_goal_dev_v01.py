@@ -10,21 +10,36 @@ from dataclasses import replace
 import pytest
 
 from relay_self.cognitive_minimal_dev import (
-    MinimalCognitionError, Option, Origin, PatternKind, PresetAcceptanceReceipt,
-    Target, WorldPercept, accept_learned_pattern,
-    accept_skill_parameter_preset, initial_patterns_with_move,
-    parse_l2_pattern_proposal, resolve_l1_choice,
+    MinimalCognitionError,
+    Origin,
+    PatternKind,
+    PresetAcceptanceReceipt,
+    Target,
+    WorldPercept,
+    accept_learned_pattern,
+    accept_skill_parameter_preset,
+    initial_patterns_with_move,
+    parse_l2_pattern_proposal,
+    resolve_l1_choice,
 )
 from relay_self.common_io import Clock, ClockStamp, CommonEnvelope, ScopeRef
 from relay_self.exploration_goal_dev import (
-    ExplorationBasis, ExplorationContractError, ExplorationDisposition,
-    ExplorationEvidence, NeedReadout, form_exploration_round,
-    prepare_exploration_l2, propose_exploration_need,
+    ExplorationBasis,
+    ExplorationContractError,
+    ExplorationDisposition,
+    ExplorationEvidence,
+    NeedReadout,
+    form_exploration_round,
+    prepare_exploration_l2,
+    propose_exploration_need,
     review_l2_target_reference,
 )
 from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.innate_schema import (
-    SchemaActivation, SchemaMode, SchemaModuleSpec, SchemaSnapshot,
+    SchemaActivation,
+    SchemaMode,
+    SchemaModuleSpec,
+    SchemaSnapshot,
     with_schema_mode,
 )
 from relay_self.intent import IntentCommitment
@@ -33,7 +48,9 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import ProviderDecision, RelayEngine
 from relay_self.skill_invocation import SkillBudget, SkillConstraints, SkillParameterPreset
 from relay_self.three_self_present import (
-    EpistemicStatus, project_present_frame, project_three_self,
+    EpistemicStatus,
+    project_present_frame,
+    project_three_self,
 )
 
 SOURCE = Provenance("gateway-dev", "native-13")
