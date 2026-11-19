@@ -23,7 +23,7 @@ from adapters.mineflayer.python_protocol import (
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
-    CognitiveOwnerCohort,
+    CognitionOwnerCohort,
     CognitiveOwnerFiles,
     ExternalPhysicalFence,
     ExternalRejoin,
