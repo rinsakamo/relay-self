@@ -43,6 +43,25 @@ from relay_self.exploration_owner_admission_dev import (
     begin_adopted_exploration_intent,
     review_exploration_goal,
 )
+from relay_self.exploration_continuity_dev import (
+    AttemptPhase,
+    ExplorationContinuity,
+    ExplorationContinuityError,
+    L2Reservation,
+    QuestionRecord,
+    decode_exploration_continuity,
+    encode_exploration_continuity,
+    open_question_refs,
+    record_l2_attempt_result,
+    reserve_exploration_l2,
+    retain_open_question,
+    validate_persisted_l2_reservation,
+)
+from relay_self.persistent_cognition import (
+    InvalidPersistentCognitionData,
+    load_persistent_cognition,
+    save_persistent_cognition,
+)
 from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.innate_schema import (
     SchemaActivation,
@@ -783,3 +802,272 @@ def test_d2_unknown_owner_goal_strength_or_tenure_never_means_zero(
     assert review.status is GoalReviewStatus.HELD
     assert review.reason == reason
     assert c["owner"].events == ()
+
+
+# D3: the same owner cognition path is the only persistence, including Stage28
+# generation copies. No L2/GPU call, no WorldBody Action and no restored Target.
+
+
+def d3_question(c):
+    changed = retain_open_question(
+        c["retained"], question_ref=c["present"].active_question_refs[0],
+        origin=OWNER, expected_revision=0,
+        current_present_question_refs=c["present"].active_question_refs,
+    )
+    c["retained"] = changed
+    return changed
+
+
+def d3_reserved(c, *, owner_revision=4, native_session_ref="native-A"):
+    r = build(c, owner_revision=owner_revision)
+    selection = choose(c, r, "ESCALATE_L2")
+    return reserve_exploration_l2(
+        c["retained"], round_=r, selection=selection,
+        expected_revision=c["retained"].exploration_continuity.revision,
+        current_intent_owner_revision=owner_revision,
+        native_session_ref=native_session_ref,
+    )
+
+
+def test_d3_legacy_cognition_v3_unchanged_and_question_explicitly_owned(tmp_path):
+    c = setup(with_target=False)
+    path = tmp_path / "self-A.json"
+    save_persistent_cognition(path, c["retained"])
+    import json
+    legacy = json.loads(path.read_text())
+    assert legacy["schema_version"] == 3
+    assert "exploration_continuity" not in legacy
+    assert open_question_refs(load_persistent_cognition(path), expected_self_id="self-A") == ()
+    d3_question(c)
+    assert c["retained"].exploration_continuity.revision == 1
+    assert c["retained"].memories == ()
+    assert c["retained"].exploration_continuity.questions[0].question_ref == "question:ridge"
+    assert c["present"].active_question_refs == ("question:ridge",)
+    save_persistent_cognition(path, c["retained"])
+    obj = json.loads(path.read_text())
+    assert obj["schema_version"] == 4
+    assert set(obj) == {"schema_version", "identity", "memories",
+                        "appraisal_dispositions", "pattern_registry",
+                        "exploration_continuity"}
+    assert load_persistent_cognition(path) == c["retained"]
+
+
+def test_d3_original_owner_cas_and_present_question_checks():
+    c = setup(with_target=False)
+    with pytest.raises(ExplorationContinuityError, match="stale/unprojected"):
+        retain_open_question(
+            c["retained"], question_ref="invented", origin=OWNER,
+            expected_revision=0,
+            current_present_question_refs=c["present"].active_question_refs,
+        )
+    d3_question(c)
+    with pytest.raises(ExplorationContinuityError, match="already registered"):
+        retain_open_question(
+            c["retained"], question_ref="question:ridge", origin=OWNER,
+            expected_revision=1,
+            current_present_question_refs=c["present"].active_question_refs,
+        )
+    with pytest.raises(ExplorationContinuityError, match="stale/unprojected"):
+        retain_open_question(
+            c["retained"], question_ref="other", origin=OWNER,
+            expected_revision=0,
+            current_present_question_refs=("other",),
+        )
+    with pytest.raises(InvalidPersistentCognitionData, match="owner revision"):
+        c["retained"].retain_exploration_continuity(
+            ExplorationContinuity("self-A", 1), expected_revision=1,
+        )
+    with pytest.raises(InvalidPersistentCognitionData, match="foreign"):
+        c["retained"].retain_exploration_continuity(
+            ExplorationContinuity("self-B", 2), expected_revision=1,
+        )
+
+
+def test_d3_reservation_is_inert_until_original_file_saved_and_read_back(tmp_path):
+    c = setup(with_target=False)
+    d3_question(c)
+    path = tmp_path / "original-cognition.json"
+    save_persistent_cognition(path, c["retained"])
+    new, reservation = d3_reserved(c)
+    assert isinstance(reservation, L2Reservation)
+    assert new.exploration_continuity.revision == 2
+    assert new.exploration_continuity.attempts[0].phase is AttemptPhase.RESERVED
+    assert new.memories == ()
+    assert c["owner"].events == ()
+    with pytest.raises(ExplorationContinuityError, match="not durably committed"):
+        validate_persisted_l2_reservation(
+            path, reservation=reservation, current_scope=c["scope"],
+            current_native_session_ref="native-A", current_intent_owner_revision=4,
+            current_source_revision_refs=c["sources"],
+        )
+    # The EXISTING original cognition writer, not D, commits the whole snapshot.
+    save_persistent_cognition(path, new)
+    request = validate_persisted_l2_reservation(
+        path, reservation=reservation, current_scope=c["scope"],
+        current_native_session_ref="native-A", current_intent_owner_revision=4,
+        current_source_revision_refs=c["sources"],
+    )
+    assert request is reservation.task.request
+    assert request.focus == "EXPLORATION_TARGET_DISCOVERY"
+    assert request.intent_id is None
+    assert c["owner"].events == ()
+
+
+def test_d3_crash_after_reserved_rejoin_never_auto_retries_same_evidence(tmp_path):
+    c = setup(with_target=False)
+    d3_question(c)
+    new, reservation = d3_reserved(c)
+    path = tmp_path / "owner.json"
+    save_persistent_cognition(path, new)
+    c["retained"] = load_persistent_cognition(path)
+    assert open_question_refs(c["retained"], expected_self_id="self-A") == ("question:ridge",)
+    r = build(c, owner_revision=5)
+    selection = choose(c, r, "ESCALATE_L2")
+    same, second = reserve_exploration_l2(
+        c["retained"], round_=r, selection=selection,
+        expected_revision=2, current_intent_owner_revision=5,
+        native_session_ref="native-REJOIN",
+    )
+    assert same is c["retained"] and second is None
+    assert c["retained"].exploration_continuity.attempts[0].phase is AttemptPhase.RESERVED
+    with pytest.raises(ExplorationContinuityError, match="stale L2 session"):
+        validate_persisted_l2_reservation(
+            path, reservation=reservation, current_scope=c["scope"],
+            current_native_session_ref="native-REJOIN",
+            current_intent_owner_revision=5,
+            current_source_revision_refs=c["sources"],
+        )
+    assert not hasattr(c["retained"].exploration_continuity, "worldbody_position")
+    assert not hasattr(c["retained"].exploration_continuity, "action_issue_grant")
+
+
+@pytest.mark.parametrize("outcome", [
+    AttemptPhase.CANCELLED, AttemptPhase.TIMEOUT, AttemptPhase.UNRESOLVED,
+])
+def test_d3_cancel_timeout_unresolved_preserves_question_without_duplicate(outcome):
+    c = setup(with_target=False)
+    d3_question(c)
+    updated, reservation = d3_reserved(c)
+    c["retained"] = record_l2_attempt_result(
+        updated, reservation=reservation,
+        phase=outcome, expected_revision=2,
+    )
+    assert c["retained"].exploration_continuity.revision == 3
+    assert open_question_refs(c["retained"], expected_self_id="self-A") == ("question:ridge",)
+    repeated, task = d3_reserved(c, owner_revision=23, native_session_ref="new-native")
+    assert repeated is c["retained"] and task is None
+    with pytest.raises(ExplorationContinuityError, match="duplicate"):
+        record_l2_attempt_result(
+            c["retained"], reservation=reservation,
+            phase=outcome, expected_revision=3,
+        )
+
+
+def test_d3_evidence_change_not_owner_revision_can_enable_one_new_attempt():
+    c = setup(with_target=False)
+    d3_question(c)
+    c["retained"], first = d3_reserved(c)
+    assert d3_reserved(c, owner_revision=5)[1] is None
+    original_basis = c["need"].basis
+    c["need"] = replace(c["need"], basis=original_basis + (
+        ExplorationEvidence(
+            ExplorationBasis.PREDICTION_MISMATCH,
+            "attention:unexpected-outcome",
+            EpistemicStatus.INFERRED,
+        ),
+    ))
+    changed, second = d3_reserved(c, owner_revision=6, native_session_ref="new-native")
+    assert second is not None
+    assert first.attempt_ref != second.attempt_ref
+    assert len(changed.exploration_continuity.attempts) == 2
+    c["retained"] = changed
+    assert d3_reserved(c, owner_revision=7)[1] is None
+    assert c["owner"].events == ()
+
+
+def test_d3_two_self_question_and_attempt_records_stay_separate(tmp_path):
+    a = setup("self-A", with_target=False)
+    b = setup("self-B", with_target=False)
+    d3_question(a)
+    d3_question(b)
+    a["retained"], ar = d3_reserved(a)
+    b["retained"], br = d3_reserved(b)
+    assert ar.attempt_ref != br.attempt_ref
+    assert open_question_refs(b["retained"], expected_self_id="self-B") == (
+        "question:forest",
+    )
+    with pytest.raises(ExplorationContinuityError, match="foreign restored Self"):
+        open_question_refs(a["retained"], expected_self_id="self-B")
+    apath = tmp_path / "A.json"
+    save_persistent_cognition(apath, a["retained"])
+    with pytest.raises(ExplorationContinuityError, match="not durably committed"):
+        validate_persisted_l2_reservation(
+            apath, reservation=br, current_scope=b["scope"],
+            current_native_session_ref="native-A",
+            current_intent_owner_revision=4,
+            current_source_revision_refs=b["sources"],
+        )
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda p: p["exploration_continuity"].update(self_id="self-foreign"),
+    lambda p: p["exploration_continuity"]["attempts"][0].update(
+        evidence_digest="not-a-digest"),
+    lambda p: p["exploration_continuity"]["attempts"][0].update(
+        attempt_ref="forged"),
+    lambda p: p["exploration_continuity"]["attempts"].append(
+        dict(p["exploration_continuity"]["attempts"][0])),
+    lambda p: p["exploration_continuity"].update(extra_field="silent"),
+    lambda p: p["exploration_continuity"].update(schema_version=999),
+    lambda p: p["exploration_continuity"].update(questions=[]),
+    lambda p: p.update(schema_version=5),
+])
+def test_d3_checkpoint_malformed_or_forged_attempt_fails_closed(tmp_path, mutate):
+    c = setup(with_target=False)
+    d3_question(c)
+    new, _ = d3_reserved(c)
+    path = tmp_path / "corrupt.json"
+    save_persistent_cognition(path, new)
+    import json
+    payload = json.loads(path.read_text())
+    mutate(payload)
+    path.write_text(json.dumps(payload))
+    with pytest.raises((
+        InvalidPersistentCognitionData,
+        Exception if payload["schema_version"] == 5 else InvalidPersistentCognitionData,
+    )):
+        load_persistent_cognition(path)
+
+
+def test_d3_question_history_has_no_native_target_or_l2_output_replay(tmp_path):
+    c = setup(with_target=False)
+    d3_question(c)
+    updated, reservation = d3_reserved(c)
+    path = tmp_path / "owner.json"
+    save_persistent_cognition(path, updated)
+    recovered = load_persistent_cognition(path)
+    assert recovered.exploration_continuity.attempts[0].phase is AttemptPhase.RESERVED
+    assert recovered.exploration_continuity.questions[0].open is True
+    assert recovered.memories == ()
+    assert open_question_refs(recovered, expected_self_id="self-A") == ("question:ridge",)
+    assert "observed" not in str(encode_exploration_continuity(
+        recovered.exploration_continuity,
+    )).lower()
+    with pytest.raises(ExplorationContinuityError, match="stale L2 session"):
+        validate_persisted_l2_reservation(
+            path, reservation=reservation, current_scope=ScopeRef("self-A", "fork"),
+            current_native_session_ref="native-A",
+            current_intent_owner_revision=4,
+            current_source_revision_refs=c["sources"],
+        )
+
+
+def test_d3_schema_codec_exact_fields_and_readonly_decoding():
+    q = QuestionRecord("question:small", OWNER)
+    state = ExplorationContinuity("self-A", 1, (q,), ())
+    obj = encode_exploration_continuity(state)
+    assert decode_exploration_continuity(obj, expected_self_id="self-A") == state
+    obj["questions"][0]["origin"]["reference"] = "owner-mutated"
+    assert state.questions[0].origin == OWNER
+    with pytest.raises(ExplorationContinuityError, match="foreign"):
+        decode_exploration_continuity(obj, expected_self_id="self-B")
