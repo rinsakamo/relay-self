@@ -18,12 +18,12 @@ from pathlib import Path
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.persistent_cognition import Memory, load_persistent_cognition
+from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
     Stage28FreshL1Eligibility,
 )
 from relay_self.stage28c2b_execution_copy_dev import ExecutionCopy
-from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 
 
 class C1TypedCheckpointHold(RuntimeError):
