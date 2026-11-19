@@ -289,6 +289,53 @@ class OwnedResidentPhysicalBridge:
         finally:
             self._pending_login.discard(self_id)
 
+    def attach_observation_only_bounded_l1(
+        self, lane: ResidentLlamaInferenceLane,
+    ) -> None:
+        """Stage28c2c: attach one owned model lane AFTER fresh A/B Body proof.
+
+        This never issues an Action. The same bridge must own the lane so its
+        existing logout fences/waits for backend completion and slot readback.
+        No hot replacement or attachment while native work is uncertain.
+        """
+        self._check_world()
+        if (
+            self.inference_lane is not None
+            or not isinstance(lane, ResidentLlamaInferenceLane)
+            or self.cognitive_work is None
+            or lane.cognitive_work is not self.cognitive_work
+            or lane.uncertain
+            or not self.physical.observation_only
+            or self.physical.active_action_ids
+            or tuple(sorted(self.sessions)) != self.lifecycle.self_roster
+            or tuple(sorted(self.last_login_observations))
+            != self.lifecycle.self_roster
+            or any(
+                self.lifecycle.view(sid).status is not Presence.ONLINE
+                or self.sessions[sid].process_returncode is not None
+                or self.owners[sid].current_worldbody_observation
+                is not self.last_login_observations[sid]
+                or self.owners[sid].fresh_native_observation_required
+                or self.owners[sid].supervisor.open_actions
+                for sid in self.lifecycle.self_roster
+            )
+        ):
+            raise OwnedResidentBridgeError(
+                "only one fresh original A/B observer may adopt bounded GPU lane"
+            )
+        # Existing llama owner checks /slots n_parallel=1 idle. An external
+        # inference client can race this probe; exclusive loopback ownership
+        # remains a hard operator/runner prerequisite, not inferred here.
+        lane.witness.require_idle()
+        try:
+            for sid in self.lifecycle.self_roster:
+                lane.bind_login(sid)
+        except BaseException:
+            for sid in self.lifecycle.self_roster:
+                lane.fence_self(sid)
+            raise
+        self.inference_lane = lane
+
     def quarantine(self, self_id: str) -> None:
         """Synchronous, per-Self immediate issue block before any async wait."""
         if self_id not in self.sessions:
