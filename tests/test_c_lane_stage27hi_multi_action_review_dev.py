@@ -86,7 +86,7 @@ async def _review_multi(f, lane, server, *, number="2", move_away=False):
     physical = f.physical
     last = receipts[-1].settled_probe
     common = {
-        "physical": physical, "lane": lane,
+        "physical": physical, "lane": lane, "bridge": f.bridge,
         "first_action_probe": first, "last_settled_probe": last,
     }
     save_persistent_cognition(owner.files.cognition_file, owner.retained)
@@ -156,7 +156,7 @@ def _accept_kwargs(loop, witness, first, last, fresh, f, lane):
     )
     return {
         "witness": witness, "approval": _approval(witness),
-        "loop": loop, "physical": f.physical, "lane": lane,
+        "loop": loop, "physical": f.physical, "lane": lane, "bridge": f.bridge,
         "first_action_probe": first, "last_settled_probe": last,
         "post_model_probe": fresh, "at_ns": stamp + 100,
     }
@@ -271,6 +271,6 @@ def test_multi_child_review_is_one_new_l1_call_no_physical_extra(tmp_path):
         assert witness.choice_number == "3"
         assert not witness.review_completion_selected
         assert len(loop._seen_action_ids) == 3
-        assert loop.physical.active_action_ids == ()
+        assert not loop.physical.active_action_ids
         assert loop.owner.skills[loop.handoff.skill_execution_id].state is SkillState.STARTED
     _fixture(tmp_path, scenario)
