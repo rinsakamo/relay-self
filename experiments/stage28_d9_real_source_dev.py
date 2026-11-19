@@ -34,7 +34,7 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
     PhysicalGrantStage,
 )
-from experiments.cognitive_physical_move_issue_dev import ResidentMoveDevReceipt
+from experiments.stage28_d9_original_move_issue_compat_dev import ResidentMoveDevReceipt
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
