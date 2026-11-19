@@ -78,6 +78,13 @@ def test_d10_three_original_native_sessions_raw_sha_and_current_probes(tmp_path)
     assert actual == tuple(
         (name, receipts[name]["sha256"]) for name in ("A0", "A1", "B0")
     )
+    with pytest.raises(D10OriginalAuditHold, match="PID"):
+        _native_raw(
+            tmp_path, {"d10_original_native_sources": receipts},
+            native_ids={k: v[0] for k, v in expected.items()},
+            request_ids={k: v[1] for k, v in expected.items()},
+            expected_pids={"A0": 9999, "A1": 102, "B0": 103},
+        )
 
 
 @pytest.mark.parametrize("malice", [
