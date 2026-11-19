@@ -25,6 +25,7 @@ from relay_self.p0d_stage27j_long_move_profile_dev import (
     STAGE27J_CHILD_TIME_RESERVE_MS,
     STAGE27J_SNEAK_ACTION_RESERVE_M,
     STAGE27J_WALK_ACTION_RESERVE_M,
+    stage27j_can_reserve_action,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
@@ -333,11 +334,12 @@ class Stage27hBoundedMoveLoop:
             if gait_mode == "WALK" else STAGE27J_SNEAK_ACTION_RESERVE_M
         )
         limit = self.invocation.budget
-        if (
-            self.cumulative_distance_m + envelope
-            > limit.max_distance_m + 1e-9
-            or now_ns + STAGE27J_CHILD_TIME_RESERVE_MS * 1_000_000
-            >= self.original_deadline_ns
+        if not stage27j_can_reserve_action(
+            gait_mode=gait_mode,
+            cumulative_m=self.cumulative_distance_m,
+            max_distance_m=limit.max_distance_m,
+            now_ns=now_ns,
+            deadline_ns=self.original_deadline_ns,
         ):
             self.terminal_status = "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
             self._ready_to_reserve_seq = None
