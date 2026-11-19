@@ -184,9 +184,18 @@ def _replay_intent(events: tuple[IntentEvent, ...]) -> IntentCommitment:
     return owner
 
 
+def _encode_accepted_registry(cut: SelfOwnerCut) -> dict[str, Any]:
+    """Opt-in D5 typed Self-accepted Presets, legacy schema1 untouched."""
+    from relay_self.preset_registry_checkpoint import encode_pattern_registry
+
+    return encode_pattern_registry(
+        cut.pattern_registry, self_id=cut.self_id,
+    )
+
+
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
     return {
-        "schema": 1,
+        "schema": 2 if cut.pattern_registry.accepted_presets else 1,
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -210,7 +219,9 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
                 ],
             } for s in cut.skill_executions
         ],
-        "pattern_registry": {
+        "pattern_registry": (
+            _encode_accepted_registry(cut)
+            if cut.pattern_registry.accepted_presets else {
             "revision": cut.pattern_registry.revision,
             "patterns": [
                 {
@@ -222,7 +233,8 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
                     "provenance": _provenance(p.provenance),
                 } for p in cut.pattern_registry.patterns
             ],
-        },
+            }
+        ),
         "peer_deliveries": [
             {
                 "message_id": m.message_id, "sender_self_id": m.sender_self_id,
@@ -274,7 +286,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
         "former_native_session_id", "last_observed_world_tick", "intent_events",
         "skills", "pattern_registry", "peer_deliveries", "pending_question_refs",
     }, "owner snapshot")
-    if type(payload["schema"]) is not int or payload["schema"] != 1:
+    if type(payload["schema"]) is not int or payload["schema"] not in (1, 2):
         raise SelfOwnerCheckpointError("unsupported owner checkpoint schema")
     try:
         if any(type(payload[k]) is not list for k in (
@@ -291,26 +303,46 @@ def _deserialize(value: object) -> SelfOwnerCut:
                 _nat(e["at_ns"], "Intent time"), _read_provenance(e["provenance"]),
                 e["objective"], e["reason"],
             ))
-        registry = _exact(payload["pattern_registry"], {
-            "revision", "patterns",
-        }, "pattern registry")
-        if type(registry["patterns"]) is not list:
-            raise SelfOwnerCheckpointError("pattern list required")
-        patterns = []
-        for raw in registry["patterns"]:
-            p = _exact(raw, {
-                "pattern_id", "version", "schema_id", "kind", "predicate",
-                "goal_id", "skill_id", "skill_version", "target_kind", "origin",
-                "provenance",
-            }, "Schema pattern")
-            patterns.append(SchemaPattern(
-                pattern_id=p["pattern_id"], version=p["version"],
-                schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
-                predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
-                skill_id=p["skill_id"], skill_version=p["skill_version"],
-                target_kind=p["target_kind"], origin=Origin(p["origin"]),
-                provenance=_read_provenance(p["provenance"]),
-            ))
+        if payload["schema"] == 2:
+            from relay_self.preset_registry_checkpoint import (
+                PresetCheckpointRefusal,
+                decode_pattern_registry,
+            )
+
+            try:
+                pattern_registry = decode_pattern_registry(
+                    payload["pattern_registry"],
+                    expected_self_id=payload["self_id"],
+                )
+            except PresetCheckpointRefusal as exc:
+                raise SelfOwnerCheckpointError(
+                    "invalid Self-accepted owner Preset registry"
+                ) from exc
+        else:
+            registry = _exact(payload["pattern_registry"], {
+                "revision", "patterns",
+            }, "pattern registry")
+            if type(registry["patterns"]) is not list:
+                raise SelfOwnerCheckpointError("pattern list required")
+            patterns = []
+            for raw in registry["patterns"]:
+                p = _exact(raw, {
+                    "pattern_id", "version", "schema_id", "kind", "predicate",
+                    "goal_id", "skill_id", "skill_version", "target_kind", "origin",
+                    "provenance",
+                }, "Schema pattern")
+                patterns.append(SchemaPattern(
+                    pattern_id=p["pattern_id"], version=p["version"],
+                    schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
+                    predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
+                    skill_id=p["skill_id"], skill_version=p["skill_version"],
+                    target_kind=p["target_kind"], origin=Origin(p["origin"]),
+                    provenance=_read_provenance(p["provenance"]),
+                ))
+            pattern_registry = PatternRegistry(
+                _nat(registry["revision"], "registry revision"),
+                tuple(patterns),
+            )
         peers = []
         for raw in payload["peer_deliveries"]:
             m = _exact(raw, {
@@ -328,9 +360,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
             ),
             intent_events=tuple(intent_events),
             skill_executions=tuple(_read_skill(s) for s in payload["skills"]),
-            pattern_registry=PatternRegistry(
-                _nat(registry["revision"], "registry revision"), tuple(patterns),
-            ),
+            pattern_registry=pattern_registry,
             peer_deliveries=tuple(peers),
             pending_question_refs=tuple(payload["pending_question_refs"]),
         )
