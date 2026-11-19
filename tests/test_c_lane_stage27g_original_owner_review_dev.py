@@ -145,7 +145,7 @@ def test_original_l1_review_is_not_success_until_separate_self_acceptance(tmp_pa
         assert typed.skill_executions[0].state is SkillState.SUCCEEDED
         assert a.retained.memories[0].memory_id == receipt.memory_id
         assert PhysicalActionJournal.restore(
-            a.files.physical_wal_file, self_id="A",
+            a.files.physical_wal_file, self_id=a.self_id,
         ).digest == wal.digest
         with pytest.raises(C1OwnerReviewHold):
             accept_original_stage27g_c1_review(**args)  # replay not allowed
