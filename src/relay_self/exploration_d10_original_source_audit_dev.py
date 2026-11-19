@@ -23,7 +23,6 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     parse_mineflayer_line,
 )
-from relay_self.common_io import ScopeRef
 from relay_self.exploration_continuity_dev import AttemptPhase, open_question_refs
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
