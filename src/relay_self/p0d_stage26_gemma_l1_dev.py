@@ -41,6 +41,7 @@ from relay_self.resident_llama_inference_lane_dev import (
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
 )
+from relay_self.p0d_stage27j_long_move_profile_dev import STAGE27J_TARGET_DISTANCE_M
 from relay_self.skill_invocation import SkillDefinition
 from relay_self.target_contract import (
     ArrivalCondition,
@@ -114,6 +115,7 @@ def prepare_restored_preset_l1(
     lane: ResidentLlamaInferenceLane,
     definition: SkillDefinition | None = None,
     stage27i_precision_target: bool = False,
+    stage27j_long_target: bool = False,
 ) -> PreparedStage26L1:
     """Prepare the complete numbered choices under the *original* owner gate."""
     if (
@@ -136,6 +138,8 @@ def prepare_restored_preset_l1(
         or restored.semantic.new_physical_action_issue_authorized
         or owner.fresh_native_observation_required
         or type(stage27i_precision_target) is not bool
+        or type(stage27j_long_target) is not bool
+        or (stage27i_precision_target and stage27j_long_target)
         or restored.retained.identity.self_id != self_id
         or restored.retained.pattern_registry != restored.semantic.pattern_registry
         or owner.retained != restored.retained
@@ -169,11 +173,16 @@ def prepare_restored_preset_l1(
         reference_frame=ReferenceFrame.WORLD,
         provenance=first.provenance,
         condition=ArrivalCondition(
-            0.0, 0.15 if stage27i_precision_target else 0.6, 1.0,
+            0.0, 0.15 if (
+                stage27i_precision_target or stage27j_long_target
+            ) else 0.6, 1.0,
         ),
         bound_seq=first.seq,
         anchor=MineflayerPosition(
-            here.x + (1.5 if stage27i_precision_target else 1.0),
+            here.x + (
+                STAGE27J_TARGET_DISTANCE_M if stage27j_long_target
+                else 1.5 if stage27i_precision_target else 1.0
+            ),
             here.y, here.z,
         ),
     )
