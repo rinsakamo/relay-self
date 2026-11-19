@@ -165,7 +165,10 @@ def test_d10_d8_legacy_source_manifest_backward_compatible_but_no_auto_d9(
 
     checked = []
     def frozen_historical(*a, **kwargs):
-        checked.append(kwargs["expected_report_classification"])
+        checked.append(kwargs.get(
+            "expected_report_classification",
+            "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
+        ))
         return SimpleNamespace(
             historical_native_sessions=("native-old-A", "native-old-B"),
         )
