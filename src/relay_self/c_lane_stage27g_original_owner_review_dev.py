@@ -147,7 +147,6 @@ def prepare_original_stage27g_c1_review(
         owner is not prepared.original_owner
         or lane.cognitive_work.owners.get(owner.self_id) is not owner
         or owner.cohort is not lane.cognitive_work
-        or owner.self_id != "A"
         or frame.self_id != owner.self_id
         or prepared.self_id != owner.self_id
         or owner.native_session_id != prepared.native_session
