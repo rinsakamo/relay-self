@@ -47,7 +47,7 @@ P = Provenance("synthetic-historical-c1", "NOT_REAL_WORLD_EVIDENCE")
 
 def _historical_synthetic_c1() -> BoundedSkillExperience:
     """Typed historical datum, not a claim about actual Stage27 evidence."""
-    old = ScopeRef("A", "native-retired-A")
+    old = ScopeRef("A", "native-before-A")
     first = WorldBodyRead(
         scope=old, world_id="world-1", epoch=0,
         source_seq=10, clock=ClockStamp(Clock.WORLD_TICK, 100),
