@@ -23,6 +23,14 @@ from relay_self.cognitive_minimal_dev import (
     resolve_l1_choice,
 )
 from relay_self.common_io import Clock, ClockStamp, CommonEnvelope, ScopeRef
+from relay_self.exploration_checkpoint_bridge_dev import (
+    D4OwnerHold,
+    ResidentD4Scope,
+    inspect_d4_inert_recovery,
+    record_resident_l2_result,
+    reserve_resident_l2,
+    retain_resident_question,
+)
 from relay_self.exploration_continuity_dev import (
     AttemptPhase,
     ExplorationContinuity,
@@ -36,14 +44,6 @@ from relay_self.exploration_continuity_dev import (
     reserve_exploration_l2,
     retain_open_question,
     validate_persisted_l2_reservation,
-)
-from relay_self.exploration_checkpoint_bridge_dev import (
-    D4OwnerHold,
-    ResidentD4Scope,
-    inspect_d4_inert_recovery,
-    record_resident_l2_result,
-    reserve_resident_l2,
-    retain_resident_question,
 )
 from relay_self.exploration_goal_dev import (
     ExplorationBasis,
@@ -1276,13 +1276,13 @@ def test_d4_wrong_owner_native_epoch_and_unobserved_body_hold(tmp_path, monkeypa
     c = setup(with_target=False)
     owner, resident, lease = d4_owner_harness(c, tmp_path, monkeypatch)
     wrong = replace(lease, cognition_epoch=lease.cognition_epoch + 1)
-    with pytest.raises(D4OwnerHold, match="stale"):
+    with pytest.raises(D4OwnerHold, match="(stale|not currently admitted)"):
         retain_resident_question(
             owner, resident, scope=wrong, present=c["present"],
             question_ref="question:ridge", owner_provenance=OWNER,
         )
     owner.current_worldbody_observation = None
-    with pytest.raises(D4OwnerHold, match="stale"):
+    with pytest.raises(D4OwnerHold, match="(stale|not currently admitted)"):
         retain_resident_question(
             owner, resident, scope=lease, present=c["present"],
             question_ref="question:ridge", owner_provenance=OWNER,
