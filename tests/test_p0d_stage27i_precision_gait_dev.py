@@ -10,6 +10,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
+from experiments.cognitive_physical_move_issue_dev import PhysicalMoveRefusal
+from experiments.p0d_real_preset_checkpoint_dev import (
+    _preserve_and_validate_stage27h_hook_return,
+)
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
     _native_place_wire_readback,
@@ -33,6 +37,7 @@ from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.skill_invocation import SkillBudget
 from test_p0d_real_preset_checkpoint_dev import native_probe, source_recovered
+from test_p0d_stage27h_bounded_l0_move_dev import _one_action_hook_result
 from test_p0d_resident_llama_slot_owner_dev import (
     ResidentFixture,
     _SyntheticLlamaServer,
@@ -312,3 +317,59 @@ def test_stage27i_new_runner_mode_exclusive_before_world(tmp_path):
                 stage27h_l0_move_loop=True,
             ))
         original.assert_not_awaited()
+
+
+def test_stage27i_parent_aggregation_one_action_contract_is_durable(tmp_path):
+    """The old Stage27h post-MOVE KeyError must not recur for Stage27i."""
+    summary = _one_action_hook_result()
+    summary["stage27i_precision_enabled"] = True
+    summary["classification"] = (
+        "REAL_STAGE27I_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV"
+    )
+    report = _preserve_and_validate_stage27h_hook_return(
+        summary, evidence=tmp_path,
+    )
+    assert report["original_hook_contract_valid"] is True
+    assert json.loads(
+        (tmp_path / "stage27h-original-motor-hook-return.json").read_text()
+    ) == summary
+
+
+def test_precision_bad_sneak_ack_retains_unresolved_original_wal(tmp_path):
+    """A rejected gait ACK must never become a synthetic settled Action."""
+
+    class BadSneak(PrecisionPlaceNative):
+        async def send_set_control(self, action_id, *, control, state):
+            await super().send_set_control(
+                action_id, control=control, state=state,
+            )
+            if control == "sneak":
+                current = self.events[-1]
+                self.events[-1] = replace(current, result="rejected")
+
+    async def scenario(f, lane, server, pre, handoff, former, current, loop):
+        initial = current.snapshot.position
+        current = replace(
+            current, snapshot=replace(
+                current.snapshot, position=replace(initial, x=1.85),
+            ),
+        )
+        step = loop.pre_action(current, now_ns=150)
+        gait = choose_stage27i_gait(loop, step, current)
+        assert gait.gait_mode == "SNEAK"
+        model_count = len(server.calls)
+        native = BadSneak(handoff.native_session_id)
+        with pytest.raises(PhysicalMoveRefusal, match="failed native child ACK"):
+            await _issue(
+                f, pre, handoff, loop, former, current, native, "SNEAK",
+            )
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert journal.unresolved
+        assert journal.records[-1]["gait_mode"] == "SNEAK"
+        assert journal.records[-1]["gait_ack_seq"] is None
+        assert len(server.calls) == model_count
+        assert not native.sneak_active
+    _case(tmp_path, scenario)
