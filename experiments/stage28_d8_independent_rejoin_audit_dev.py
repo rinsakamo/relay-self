@@ -233,6 +233,46 @@ def independently_audit_recovered_real_rejoin(
     live_ids = {logins[sid]["native_session_id"] for sid in ("A", "B")}
     if len(live_ids) != 2 or live_ids & old_ids:
         raise Stage28c2bIndependentAuditHold("historical native reused")
+    # Independently compare the original Owner's post-reJOIN D journal
+    # readback with the archived/restored same-generation candidate and
+    # the actual raw Native/Paper session evidence below.
+    online = report.get("d8_online_owner_readback")
+    if (
+        type(online) is not dict
+        or online.get("generation_id") != candidate.generation_id
+        or online.get("paper_session_id") != paper_session
+        or online.get("original_self_roster") != ["A", "B"]
+        or online.get("old_l2_replay_authorized") is not False
+        or online.get("fresh_l1_run") is not False
+        or online.get("physical_action_issue_authorized") is not False
+        or type(online.get("owners")) is not list
+        or len(online["owners"]) != 2
+    ):
+        raise Stage28c2bIndependentAuditHold(
+            "missing original A/B D Question live-owner readback"
+        )
+    for sid, item, historical in zip(
+        ("A", "B"), online["owners"], candidate.selves, strict=True,
+    ):
+        native = logins[sid]
+        link = link_map[sid]
+        if (
+            type(item) is not dict
+            or item.get("self_id") != sid
+            or item.get("native_session_id") != native["native_session_id"]
+            or item.get("paper_session_id") != paper_session
+            or item.get("current_native_probe_ref") != native["observation_ref"]
+            or item.get("current_native_probe_ref") != link["native_probe_ref"]
+            or item.get("question_refs") != list(historical.question_refs)
+            or item.get("prior_l2_attempt_refs") != list(historical.attempt_refs)
+            or item.get("old_l2_replay_authorized") is not False
+            or item.get("physical_action_issue_authorized") is not False
+            or item.get("cognition_sha256")
+            != _sha(Path(restored) / "selves" / sid / "cognition.json")
+        ):
+            raise Stage28c2bIndependentAuditHold(
+                "original reJOIN Owner lost source D OPEN Question or L2 history"
+            )
     for sid in ("A", "B"):
         link = link_map[sid]
         native = logins[sid]
