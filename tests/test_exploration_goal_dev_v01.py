@@ -34,6 +34,15 @@ from relay_self.exploration_goal_dev import (
     propose_exploration_need,
     review_l2_target_reference,
 )
+from relay_self.exploration_owner_admission_dev import (
+    ExplorationOwnerError,
+    GoalDisposition,
+    GoalReviewPolicy,
+    GoalReviewStatus,
+    OwnerGoalReadout,
+    begin_adopted_exploration_intent,
+    review_exploration_goal,
+)
 from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.innate_schema import (
     SchemaActivation,
@@ -463,3 +472,293 @@ def test_unknown_attention_cannot_be_labeled_observed_by_exploration():
             current_registry_revision=7,
             current_source_revision_refs=c["sources"],
         )
+
+
+# D2: actual original IntentCommitment owner, no secondary Goal state database.
+
+def owner_goal_view(c, *, incumbent=None, intensity=None, changed=None,
+                    revision=4):
+    return OwnerGoalReadout(
+        scope=c["scope"], revision=revision, incumbent_goal_ref=incumbent,
+        incumbent_intensity=intensity, last_goal_transition_ns=changed,
+        provenance=OWNER,
+    )
+
+
+def goal_review(c, r, *, directive=GoalDisposition.ADOPT, incumbent=None,
+                intensity=None, changed=None, revision=4, now=100,
+                policy=None, goal_ref="EXPLORE_WORLD"):
+    return review_exploration_goal(
+        r, goal_ref=goal_ref, disposition=directive,
+        owner=owner_goal_view(
+            c, incumbent=incumbent, intensity=intensity,
+            changed=changed, revision=revision,
+        ),
+        intent_owner=c["owner"], policy=policy or GoalReviewPolicy(),
+        current_present_revision=c["present"].frame_revision,
+        current_schema_revision=c["snapshot"].revision,
+        current_source_revision_refs=c["sources"], now_ns=now,
+    )
+
+
+def project_owner_goal(c, goal_refs, *, frame_revision=3):
+    c["present"] = project_present_frame(
+        three_self=c["present"].three_self, snapshot=c["snapshot"],
+        current_registry_revision=c["snapshot"].revision,
+        current_source_revision_refs=c["sources"],
+        frame_revision=frame_revision,
+        signals=(c["need"].signal,),
+        active_question_refs=c["present"].active_question_refs,
+        active_goal_refs=goal_refs,
+        attention_refs=c["present"].attention_refs,
+        need_refs=c["present"].need_refs,
+    )
+    return c
+
+
+def chosen_l1_result(round_, choice="MOVE"):
+    selection = next(
+        number for number, option in round_.l1.numbered
+        if option == choice or (hasattr(option, "skill_id")
+                                and option.skill_id == choice)
+    )
+    return RelayEngine(
+        lambda req, *, mode: ProviderDecision.resolved(selection),
+    )(round_.l1.request)
+
+
+def test_d2_explicit_goal_review_is_proposal_not_intent_commit():
+    c = setup()
+    r = build(c)
+    old = c["owner"].events
+    reviewed = goal_review(c, r)
+    assert reviewed.status is GoalReviewStatus.ADOPTION_PROPOSED
+    assert reviewed.goal_ref == "EXPLORE_WORLD"
+    assert reviewed.question_refs == ("question:ridge",)
+    assert c["owner"].events == old
+    assert c["present"].active_goal_refs == ()
+    assert c["retained"].memories == ()
+
+
+def test_d2_explicit_hold_and_continue_do_not_start_or_end_intent():
+    c = setup(live_intent=True)
+    r = build(c)
+    held = goal_review(c, r, directive=GoalDisposition.HOLD)
+    assert held.status is GoalReviewStatus.HELD
+    assert held.reason == "OWNER_HELD"
+    project_owner_goal(c, ("EXPLORE_WORLD",))
+    r = build(c)
+    continued = goal_review(
+        c, r, directive=GoalDisposition.CONTINUE,
+        incumbent="EXPLORE_WORLD", intensity=0.5,
+    )
+    assert continued.status is GoalReviewStatus.CONTINUED
+    assert c["owner"].current_intent.intent_id == "intent:ongoing"
+    assert len(c["owner"].events) == 1
+
+
+def test_d2_busy_different_intent_requires_original_owner_reconsideration():
+    c = setup(live_intent=True)
+    r = build(c)
+    held = goal_review(c, r)
+    assert held.reason == "INCUMBENT_INTENT_MUST_BE_RECONSIDERED"
+    assert c["owner"].current_intent.objective == "BUILD_SHELTER"
+    assert len(c["owner"].events) == 1
+    from relay_self.intent import ReconsiderationDecision
+
+    c["owner"].request_reconsideration(
+        "intent:ongoing", reason="new goal evaluation",
+        at_ns=101, provenance=OWNER,
+    )
+    c["owner"].reconsider(
+        "intent:ongoing", decision=ReconsiderationDecision.RELEASE,
+        reason="Self chooses to release incumbent",
+        at_ns=102, provenance=OWNER,
+    )
+    assert c["owner"].current_intent is None
+    r = build(c, owner_revision=5)
+    assert goal_review(c, r, revision=5, now=103).status is (
+        GoalReviewStatus.ADOPTION_PROPOSED
+    )
+
+
+def test_d2_hysteresis_min_duration_holds_even_with_strong_goal():
+    c = setup()
+    project_owner_goal(c, ("BUILD_SHELTER",))
+    r = build(c)
+    held = goal_review(
+        c, r, incumbent="BUILD_SHELTER", intensity=0.0,
+        changed=99, now=100,
+        policy=GoalReviewPolicy(min_hold_ns=10, switch_margin=0.0),
+    )
+    assert held.status is GoalReviewStatus.HELD
+    assert held.reason == "GOAL_HYSTERESIS_HOLD"
+    assert c["present"].active_goal_refs == ("BUILD_SHELTER",)
+
+
+def test_d2_small_intensity_delta_does_not_flip_goal_every_epoch():
+    c = setup()
+    project_owner_goal(c, ("BUILD_SHELTER",))
+    r = build(c)
+    held = goal_review(
+        c, r, incumbent="BUILD_SHELTER", intensity=0.62,
+        changed=1, now=100,
+        policy=GoalReviewPolicy(min_hold_ns=10, switch_margin=0.10),
+    )
+    assert held.status is GoalReviewStatus.HELD
+    assert held.reason == "GOAL_MARGIN_HOLD"
+    admitted = goal_review(
+        c, r, incumbent="BUILD_SHELTER", intensity=0.3,
+        changed=1, now=100,
+        policy=GoalReviewPolicy(min_hold_ns=10, switch_margin=0.10),
+    )
+    assert admitted.status is GoalReviewStatus.ADOPTION_PROPOSED
+    assert c["owner"].events == ()
+
+
+def test_d2_goal_owner_must_publish_before_start_and_new_l1_must_choose():
+    c = setup()
+    first = build(c, owner_revision=4)
+    admission = goal_review(c, first)
+    assert c["owner"].current_intent is None
+    with pytest.raises(ExplorationOwnerError, match="owner-published"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=first,
+            l1_result=chosen_l1_result(first), intent_owner=c["owner"],
+            intent_id="explore-A", current_owner_revision=4,
+            current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+        )
+    assert c["owner"].events == ()
+
+    project_owner_goal(c, ("EXPLORE_WORLD",))
+    refreshed = build(c, owner_revision=5)
+    with pytest.raises(ExplorationOwnerError, match="new L1"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=refreshed,
+            l1_result=chosen_l1_result(refreshed, "DEFER"),
+            intent_owner=c["owner"], intent_id="explore-A",
+            current_owner_revision=5, current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+        )
+    selected = begin_adopted_exploration_intent(
+        admission=admission, refreshed=refreshed,
+        l1_result=chosen_l1_result(refreshed), intent_owner=c["owner"],
+        intent_id="explore-A", current_owner_revision=5,
+        current_source_revision_refs=c["sources"],
+        available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+    )
+    assert selected.intent_id == "explore-A"
+    assert selected.objective == "EXPLORE_WORLD"
+    assert c["owner"].current_intent == selected
+    assert len(c["owner"].events) == 1
+    assert c["retained"].memories == ()
+    assert not hasattr(selected, "action")
+    assert not hasattr(selected, "world_outcome")
+
+
+def test_d2_no_target_allows_goal_review_but_not_physical_intent_start():
+    c = setup(with_target=False)
+    admission = goal_review(c, build(c))
+    assert admission.status is GoalReviewStatus.ADOPTION_PROPOSED
+    project_owner_goal(c, ("EXPLORE_WORLD",))
+    r = build(c, owner_revision=5)
+    with pytest.raises(ExplorationOwnerError, match="new L1"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=r,
+            l1_result=chosen_l1_result(r, "ESCALATE_L2"),
+            intent_owner=c["owner"], intent_id="invented-move",
+            current_owner_revision=5, current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+        )
+    assert c["owner"].events == ()
+    assert c["present"].active_question_refs == ("question:ridge",)
+
+
+def test_d2_stale_original_intent_history_fences_replay_after_release():
+    c = setup()
+    admission = goal_review(c, build(c))
+    project_owner_goal(c, ("EXPLORE_WORLD",))
+    r = build(c, owner_revision=5)
+    result = chosen_l1_result(r)
+    begin_adopted_exploration_intent(
+        admission=admission, refreshed=r, l1_result=result,
+        intent_owner=c["owner"], intent_id="intent-A",
+        current_owner_revision=5, current_source_revision_refs=c["sources"],
+        available_skills=ALLOWED, at_ns=110, provenance=OWNER,
+    )
+    c["owner"].complete(
+        "intent-A", reason="closed without physical effect",
+        at_ns=111, provenance=OWNER,
+    )
+    with pytest.raises(ExplorationOwnerError, match="owner"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=r, l1_result=result,
+            intent_owner=c["owner"], intent_id="replayed-B",
+            current_owner_revision=5, current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=112, provenance=OWNER,
+        )
+    assert c["owner"].current_intent is None
+
+
+def test_d2_foreign_self_and_stale_revision_cannot_adopt_goal():
+    a = setup("self-A")
+    b = setup("self-B")
+    ra = build(a)
+    with pytest.raises(ExplorationOwnerError, match="stale/foreign"):
+        review_exploration_goal(
+            ra, goal_ref="EXPLORE_WORLD",
+            disposition=GoalDisposition.ADOPT,
+            owner=owner_goal_view(b), intent_owner=a["owner"],
+            policy=GoalReviewPolicy(),
+            current_present_revision=a["present"].frame_revision,
+            current_schema_revision=7,
+            current_source_revision_refs=a["sources"],
+            now_ns=100,
+        )
+    with pytest.raises(ExplorationOwnerError, match="stale/foreign"):
+        goal_review(a, ra, revision=5)
+    with pytest.raises(ExplorationOwnerError, match="stale/foreign"):
+        review_exploration_goal(
+            ra, goal_ref="EXPLORE_WORLD",
+            disposition=GoalDisposition.ADOPT,
+            owner=owner_goal_view(a), intent_owner=a["owner"],
+            policy=GoalReviewPolicy(),
+            current_present_revision=a["present"].frame_revision + 1,
+            current_schema_revision=7,
+            current_source_revision_refs=a["sources"],
+            now_ns=100,
+        )
+
+
+def test_d2_original_owner_revision_and_question_cannot_be_skipped():
+    c = setup()
+    admission = goal_review(c, build(c))
+    project_owner_goal(c, ("EXPLORE_WORLD",))
+    r = build(c, owner_revision=6)
+    with pytest.raises(ExplorationOwnerError, match="owner"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=r,
+            l1_result=chosen_l1_result(r),
+            intent_owner=c["owner"], intent_id="wrong-revision",
+            current_owner_revision=6, current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+        )
+    c["present"] = project_present_frame(
+        three_self=c["present"].three_self, snapshot=c["snapshot"],
+        current_registry_revision=7,
+        current_source_revision_refs=c["sources"], frame_revision=4,
+        signals=(c["need"].signal,),
+        active_goal_refs=("EXPLORE_WORLD",),
+        active_question_refs=("different-question",),
+    )
+    r = build(c, owner_revision=5)
+    with pytest.raises(ExplorationOwnerError, match="owner"):
+        begin_adopted_exploration_intent(
+            admission=admission, refreshed=r,
+            l1_result=chosen_l1_result(r),
+            intent_owner=c["owner"], intent_id="wrong-question",
+            current_owner_revision=5, current_source_revision_refs=c["sources"],
+            available_skills=ALLOWED, at_ns=120, provenance=OWNER,
+        )
+    assert c["owner"].events == ()
