@@ -40,6 +40,9 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_paper_presence_join_dev import (
     parse_owned_paper_resident_trace,
 )
+from relay_self.stage28c2b_bounded_paper_presence_dev import (
+    await_both_recovered_paper_present,
+)
 from relay_self.stage28c2b_execution_copy_dev import (
     create_execution_copy,
 )
@@ -123,7 +126,7 @@ async def run_restored_a_b_real_observation(
     *, generation: Path, restored: Path, stage28b_evidence: Path,
     execution_dir: Path, evidence_dir: Path, paper_jar: Path,
     plugin_jar: Path, java: str, node: str,
-    timeout_s: float = 120, heartbeat_s: float = 1.5,
+    timeout_s: float = 120, presence_timeout_s: float = 12.0,
 ) -> Path:
     """One real Paper/native A/B trial, no auto retries, never a model POST.
 
@@ -133,10 +136,12 @@ async def run_restored_a_b_real_observation(
     if (
         type(timeout_s) not in (int, float)
         or not math.isfinite(timeout_s) or not 30 <= timeout_s <= 180
-        or type(heartbeat_s) not in (int, float)
-        or not math.isfinite(heartbeat_s) or not 0.5 <= heartbeat_s <= 8
+        or type(presence_timeout_s) not in (int, float)
+        or not math.isfinite(presence_timeout_s)
+        or not 1 <= presence_timeout_s <= 30
+        or presence_timeout_s > timeout_s / 2
     ):
-        raise Stage28c2bRealRejoinHold("bounded real-run timeout/heartbeat required")
+        raise Stage28c2bRealRejoinHold("bounded real-run/presence timeout required")
     _verify_local_runtime(java, node)
     history, source = inspect_real_recovered_sources(
         generation, restored, stage28b_evidence,
@@ -291,7 +296,14 @@ async def run_restored_a_b_real_observation(
         )
         await bridge.login("A")
         await bridge.login("B")
-        await asyncio.sleep(heartbeat_s)
+        # Do NOT guess B PRESENT after a fixed 1.5s. Paper witnesses
+        # stationary presence only after >=40 Bukkit ticks per native JOIN.
+        # Await BOTH original actors; any missing/foreign/retired one is HOLD.
+        ready = await await_both_recovered_paper_present(
+            bridge=bridge, paper=paper, boot=boot,
+            timeout_seconds=presence_timeout_s,
+        )
+        report["bounded_paper_presence"] = asdict(ready)
         current, linked = link_recovered_a_b_native_paper_body(
             bridge=bridge, paper=paper, boot=boot,
             forbidden_native_sessions=frozenset(
@@ -438,6 +450,7 @@ def main() -> int:
     parser.add_argument("--eula-accepted", action="store_true")
     parser.add_argument("--real-world-dev-grant", action="store_true")
     parser.add_argument("--timeout-s", type=float, default=120.0)
+    parser.add_argument("--presence-timeout-s", type=float, default=12.0)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--inspect-only", action="store_true")
     modes.add_argument("--execute-once", action="store_true")
@@ -485,6 +498,7 @@ def main() -> int:
             execution_dir=args.execution_dir, evidence_dir=args.evidence_dir,
             paper_jar=checked.paper_jar, plugin_jar=checked.plugin_jar,
             java=args.java, node=args.node, timeout_s=args.timeout_s,
+            presence_timeout_s=args.presence_timeout_s,
         ))
         print(f"STAGE28C2B_CAPTURED_UNAUDITED={result}", flush=True)
         return 0

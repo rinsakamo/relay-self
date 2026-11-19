@@ -56,6 +56,52 @@ LocalCodex and its independently checked source artifacts.**
    spawn/request-bound probe. Persist their raw JSONL stdout. A real Paper
    JOIN/PRESENT log with distinct actors + post-JOIN main-thread nonce ACK
    is required to link each original Self's new WorldBody.
+### Stage28c2b bounded A/B Paper presence (post-HOLD correction)
+
+The first real attempt at exact HEAD
+`a8be2f7a01cdef80678307a350c5a721789745b2` is **CONSUMED** and
+remains `REAL_REJOIN_HOLD`. Do NOT restart that execution directory or
+promote its evidence. Its owned Paper log independently recorded:
+
+- A JOIN tick17, PRESENT tick60, QUIT tick64.
+- B JOIN tick30, **NO B PRESENT**, QUIT tick64.
+- Last post-join tick ACK 63. Stationary players get a
+  `ResidentPresenceWitness` PRESENT only once at least **40 Bukkit ticks**
+  have elapsed since the last per-player sample. A had 43 JOIN-to-PRESENT
+  ticks, B had only 33 ticks before the post-join ACK.
+- A/B raw native probes and Paper JOIN exist, but the actual existing
+  recovered owner WorldBody handoff was NOT reached. Normal retirement
+  receipts are absent; all results remain HOLD.
+
+New `stage28c2b_bounded_paper_presence_dev.await_both_recovered_paper_present`
+polls the **same actually owned Paper Popen log**, not an external
+`latest.log`. It requires **BOTH** original player UUIDs, exactly one
+JOIN each, strictly later actual PRESENT/MOVE for each, original World UUID,
+fork branch, Paper PID/session and full original native owner sessions
+still online. Missing B PRESENT is never inferred from elapsed wall time
+or an expected Java 40-tick sample.
+
+Bounds: default 12.0 seconds wall-clock, 0.10 second polls, and maximum
+120 ticks between the latest JOIN and observed Paper resident events.
+Parameters are finite and capped (1–30s timeout, 0.02–0.5s poll,
+40–240 tick span), with no automatic retry, Paper restart, physical
+Action, GPU POST or message. If either actor QUITs, the Paper source
+changes, a new native exits, original physical observation-only guard
+changes, or either bound expires: **HOLD immediately**.
+
+The wait is only a **precondition**. After BOTH actual events are seen
+the original `link_recovered_a_b_native_paper_body` still independently
+requests a **fresh main-thread nonce ACK** and re-parses the latest
+owned log before the original cognitive owner's
+`accept_rejoined_worldbody` is invoked. Waiting does not itself
+attest any cognitive handoff or grant Physical Action permission.
+
+The new CLI knob is `--presence-timeout-s 12` (bounded by half the
+real-run timeout); do not adjust it blindly to pass a trial. Check
+the exact code, synthetic tests, pinned original sources, cleanup and
+independent audit first. An additional *new* isolated real World DEV
+attempt must be separately planned; the previous evidence is immutable.
+
 8. Original A/B retained identity, Schema and memory are preserved.
    **No L1/Gemma POST, new Skill, MOVE/EAT/ATTACK/REST, Peer send,
    original Action replay or physical authorization** is allowed.
@@ -108,7 +154,7 @@ PYTHONPATH=src:. python3 -m experiments.stage28c2b_real_recovered_rejoin_dev \
   --execution-dir "$ONE_NEVER_EXISTED_EXECUTION_COPY" \
   --evidence-dir "$ONE_NEVER_EXISTED_EVIDENCE_DIR" \
   --eula-accepted --real-world-dev-grant --execute-once \
-  --java "$JAVA21_BIN" --node "$NODE22_BIN" --timeout-s 120
+  --java "$JAVA21_BIN" --node "$NODE22_BIN" --timeout-s 120 --presence-timeout-s 12
 ```
 
 The user has permanently approved Minecraft EULA and isolated real World
