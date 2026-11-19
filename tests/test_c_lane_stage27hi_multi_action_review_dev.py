@@ -26,7 +26,7 @@ from relay_self.persistent_cognition import (
     load_persistent_cognition,
     save_persistent_cognition,
 )
-from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
 from relay_self.provenance import Provenance
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
