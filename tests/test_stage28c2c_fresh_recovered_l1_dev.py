@@ -5,9 +5,9 @@ Physical Action, start a Skill, commit an Intent, or claim a real Gemma POST.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import replace
 from types import SimpleNamespace
-import threading
 
 import pytest
 
