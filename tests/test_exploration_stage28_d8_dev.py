@@ -16,6 +16,10 @@ from relay_self.exploration_d8_owned_source_dev import (
     inspect_d8_original_source,
     load_d8_pins,
 )
+from relay_self.exploration_d8_online_owner_dev import (
+    D8OriginalOwnerHold,
+    inspect_d8_original_online_owner,
+)
 from test_exploration_stage28_d7_dev import _fixture
 
 
@@ -236,3 +240,110 @@ def test_d8_independent_audit_refuses_unbound_or_tampered_d_source(
                 pins=pins,
             )
     assert not (tmp_path / "execution-never-started").exists()
+
+
+
+def _actual_d8_online_owner_fixture(tmp_path):
+    from relay_self.stage28c2_recovered_resident_owner_dev import (
+        prepare_recovered_a_b_resident_owners,
+    )
+    from test_exploration_stage28_d6_dev import (
+        _d6_new_world_sources,
+        _synthetic_native_probe,
+    )
+
+    generation, fork, _, expected = _fixture(tmp_path)
+    from relay_self.exploration_d7_real_world_preflight_dev import (
+        inspect_d7_real_world_candidate,
+    )
+
+    candidate = inspect_d7_real_world_candidate(generation, fork, **expected)
+    recovered = prepare_recovered_a_b_resident_owners(
+        generation, fork, expected_world_id="world-A",
+        expected_source_branch_id="source",
+        expected_committed_sha256=expected["expected_committed_sha256"],
+        expected_fork_branch_id=expected["expected_fork_branch_id"],
+        observation_only=True,
+    )
+    world, logins, idle, boot, links = _d6_new_world_sources(recovered.plan)
+    for p in logins:
+        recovered.cognitive_work.bind_login(
+            self_id=p.self_id, native_session_id=p.native_session_id,
+            world_epoch=world.epoch, world_tick=8,
+        )
+        probe = _synthetic_native_probe(
+            self_id=p.self_id, native=p.native_session_id, tick=8,
+        )
+        recovered.owners[p.self_id].accept_rejoined_worldbody(
+            probe, request_id=probe.request_id,
+        )
+    return recovered, candidate, world, {p.self_id: p for p in logins}, links
+
+
+def test_d8_real_b_original_owner_a_b_retains_d_journal_on_new_probe(tmp_path):
+    recovered, candidate, world, logins, links = _actual_d8_online_owner_fixture(
+        tmp_path
+    )
+    readback = inspect_d8_original_online_owner(
+        recovered, candidate, world=world, logins=logins, links=links,
+    )
+    assert readback.original_self_roster == ("A", "B")
+    assert readback.generation_id == candidate.generation_id
+    assert readback.old_l2_replay_authorized is False
+    assert readback.fresh_l1_run is False
+    assert readback.physical_action_issue_authorized is False
+    for sid, actual, source in zip(
+        ("A", "B"), readback.owners, candidate.selves, strict=True,
+    ):
+        assert actual.self_id == sid
+        assert actual.question_refs == source.question_refs
+        assert actual.prior_l2_attempt_refs == source.attempt_refs
+        assert actual.cognition_sha256 == __import__("hashlib").sha256(
+            recovered.owners[sid].files.cognition_file.read_bytes()
+        ).hexdigest()
+        assert actual.native_session_id == logins[sid].native_session_id
+    assert recovered.physical.active_action_ids == ()
+
+
+@pytest.mark.parametrize("tamper", [
+    "lost-question", "wrong-current-probe", "disk-divergence",
+    "foreign-paper", "native-session-changed",
+])
+def test_d8_live_owner_d_journal_change_or_new_source_fails_closed(
+    tmp_path, tamper,
+):
+    from dataclasses import replace
+
+    recovered, candidate, world, logins, links = _actual_d8_online_owner_fixture(
+        tmp_path
+    )
+    if tamper == "lost-question":
+        recovered.owners["A"].pending_questions.clear()
+    elif tamper == "wrong-current-probe":
+        recovered.owners["B"].current_worldbody_observation = None
+    elif tamper == "disk-divergence":
+        source = recovered.owners["A"].files.cognition_file
+        source.write_bytes(source.read_bytes() + b"\ntampered-after-restore\n")
+    elif tamper == "foreign-paper":
+        world = replace(world, paper_session_id="paper-owned-foreign")
+    else:
+        logins["A"] = replace(
+            logins["A"], native_session_id="native-old-A",
+        )
+    with pytest.raises(D8OriginalOwnerHold):
+        inspect_d8_original_online_owner(
+            recovered, candidate, world=world, logins=logins, links=links,
+        )
+    assert recovered.physical.active_action_ids == ()
+
+
+def test_d8_missing_real_historical_evidence_cannot_launch_paper(tmp_path):
+    generation, fork, _, expected = _fixture(tmp_path)
+    # No monkeypatch: the ORIGINAL B historical source verifier needs actual
+    # SHA256SUMS, one real resident report, exact full inventory + native IDs.
+    with pytest.raises(D8PinnedSourceHold, match="historical source"):
+        inspect_d8_original_source(
+            generation, fork, tmp_path / "not-an-attested-B-source",
+            pins=_pins(expected),
+        )
+    assert not (fork / "paper.jar").exists()
