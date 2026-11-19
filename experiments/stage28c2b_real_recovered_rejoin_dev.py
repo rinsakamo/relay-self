@@ -40,11 +40,11 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_paper_presence_join_dev import (
     parse_owned_paper_resident_trace,
 )
-from relay_self.stage28c2b_execution_copy_dev import (
-    create_execution_copy,
-)
 from relay_self.stage28c2b_bounded_paper_presence_dev import (
     await_both_recovered_paper_present,
+)
+from relay_self.stage28c2b_execution_copy_dev import (
+    create_execution_copy,
 )
 from relay_self.stage28c2b_fork_paper_epoch_dev import (
     observe_new_fork_paper_epoch,
