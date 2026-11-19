@@ -73,7 +73,6 @@ def propose_stage27c_original_place_move(
     capability: PhysicalCapability,
     at_ns: int,
     provenance: Provenance,
-    parent_deadline_ns: int | None = None,
 ) -> Stage27L0PlaceProposal:
     """Use the *same* finite interpreter and original ActionPort, no issuance."""
     if (
@@ -86,12 +85,6 @@ def propose_stage27c_original_place_move(
         or not isinstance(capability, PhysicalCapability)
         or not isinstance(provenance, Provenance)
         or type(at_ns) is not int or at_ns < 0
-        or (
-            parent_deadline_ns is not None and (
-                type(parent_deadline_ns) is not int
-                or parent_deadline_ns <= at_ns + 2
-            )
-        )
         or owner is not prepared.original_owner
         or owner.self_id != handoff.self_id
         or owner.fresh_native_observation_required
@@ -167,18 +160,10 @@ def propose_stage27c_original_place_move(
     )
     interpreter = FiniteSkillInterpreter()
     current_skill = owner.skills[handoff.skill_execution_id]
+    # Finite child interpreter uses its existing local deadline. The parent
+    # L0 Budget is a between-Action continuation decision, not a deadline
+    # that invalidates an already begun MOVE/STOP/WAL sequence.
     deadline_ns = at_ns + invocation.budget.max_duration_ms * 1_000_000
-    if parent_deadline_ns is not None:
-        # The same original Invocation cannot mint a fresh duration on each
-        # child. Long-range Stage27j explicitly inherits its parent's clock.
-        if (
-            invocation.budget.max_actions != 12
-            or parent_deadline_ns > deadline_ns
-        ):
-            raise Stage27L0ProposalRefusal(
-                "original L0 child cannot extend parent Skill deadline"
-            )
-        deadline_ns = parent_deadline_ns
     cursor = interpreter.begin(
         choice, ir=ir, intent_owner=owner.intent,
         skill_execution=current_skill,
