@@ -23,6 +23,20 @@ from relay_self.cognitive_minimal_dev import (
     resolve_l1_choice,
 )
 from relay_self.common_io import Clock, ClockStamp, CommonEnvelope, ScopeRef
+from relay_self.exploration_continuity_dev import (
+    AttemptPhase,
+    ExplorationContinuity,
+    ExplorationContinuityError,
+    L2Reservation,
+    QuestionRecord,
+    decode_exploration_continuity,
+    encode_exploration_continuity,
+    open_question_refs,
+    record_l2_attempt_result,
+    reserve_exploration_l2,
+    retain_open_question,
+    validate_persisted_l2_reservation,
+)
 from relay_self.exploration_goal_dev import (
     ExplorationBasis,
     ExplorationContractError,
@@ -43,26 +57,6 @@ from relay_self.exploration_owner_admission_dev import (
     begin_adopted_exploration_intent,
     review_exploration_goal,
 )
-from relay_self.exploration_continuity_dev import (
-    AttemptPhase,
-    ExplorationContinuity,
-    ExplorationContinuityError,
-    L2Reservation,
-    QuestionRecord,
-    decode_exploration_continuity,
-    encode_exploration_continuity,
-    open_question_refs,
-    record_l2_attempt_result,
-    reserve_exploration_l2,
-    retain_open_question,
-    validate_persisted_l2_reservation,
-)
-from relay_self.persistent_cognition import (
-    InvalidPersistentCognitionData,
-    UnsupportedPersistentCognitionVersion,
-    load_persistent_cognition,
-    save_persistent_cognition,
-)
 from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.innate_schema import (
     SchemaActivation,
@@ -72,7 +66,14 @@ from relay_self.innate_schema import (
     with_schema_mode,
 )
 from relay_self.intent import IntentCommitment
-from relay_self.persistent_cognition import IdentitySpecification, PersistentCognition
+from relay_self.persistent_cognition import (
+    IdentitySpecification,
+    InvalidPersistentCognitionData,
+    PersistentCognition,
+    UnsupportedPersistentCognitionVersion,
+    load_persistent_cognition,
+    save_persistent_cognition,
+)
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import ProviderDecision, RelayEngine
 from relay_self.skill_invocation import SkillBudget, SkillConstraints, SkillParameterPreset
