@@ -1,6 +1,7 @@
 """Stage28c2b: CLI grants and independent audit stay fail-closed offline."""
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -10,6 +11,29 @@ import pytest
 
 from experiments import stage28c2b_independent_rejoin_audit_dev as audit
 from experiments import stage28c2b_real_recovered_rejoin_dev as runner
+
+
+@pytest.mark.parametrize("failure", ["termination", "still-running", "raw-close"])
+def test_native_cleanup_never_hides_uncertainty(failure):
+    class Native:
+        process_returncode = None
+        _raw_source_audit_finished = False
+
+        async def terminate(self):
+            if failure == "termination":
+                raise RuntimeError("termination failed")
+            if failure != "still-running":
+                self.process_returncode = 0
+
+        def finish_raw_source_audit(self):
+            if failure == "raw-close":
+                raise OSError("close failed")
+            self._raw_source_audit_finished = True
+
+    report = {}
+    asyncio.run(runner._cleanup_native(Native(), report))
+    expected = "raw_source_audit_uncertain" if failure == "raw-close" else "cleanup_uncertain"
+    assert report[expected] is True
 
 
 def _args(tmp_path: Path):

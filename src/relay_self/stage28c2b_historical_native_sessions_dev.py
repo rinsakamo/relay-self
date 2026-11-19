@@ -51,8 +51,9 @@ def inspect_original_stage28b_native_sessions(
 ) -> HistoricalNativeSessionReceipt:
     """Verify every original file, then recover the complete real A/B history.
 
-    The manifest must cover *every* evidence file except itself. This
-    routine is read-only, uses no Paper/GPU and never authorizes an Action.
+    The outer manifest covers all evidence files except itself and the
+    generation's three checksum files, which the typed verifier checks.
+    This routine is read-only and never authorizes an Action.
     """
     root = Path(evidence_root)
     if (
@@ -92,7 +93,27 @@ def inspect_original_stage28b_native_sessions(
                     got.add(rel)
             elif not file.is_dir():
                 raise HistoricalSessionHold("unsupported evidence node")
-        if got != set(expected):
+        # The archived outer manifest excludes files named SHA256SUMS.  The
+        # three nested checksum files are verified by verify_typed_generation
+        # against the committed, outer-manifest-covered inventory.
+        generation_path = Path(generation).resolve()
+        try:
+            generation_rel = generation_path.relative_to(root.resolve())
+        except ValueError:
+            generation_rel = None
+        nested = set()
+        if generation_rel is not None:
+            committed_rel = (generation_rel / "COMMITTED.json").as_posix()
+            if committed_rel not in expected:
+                raise HistoricalSessionHold("generation commit is not in original manifest")
+            for path in (
+                "world/SHA256SUMS",
+                "paper-dimensions/world_nether/SHA256SUMS",
+                "paper-dimensions/world_the_end/SHA256SUMS",
+            ):
+                rel = (generation_rel / path).as_posix()
+                nested.add(rel)
+        if got != set(expected) | nested:
             raise HistoricalSessionHold("missing/untracked original evidence files")
         for relative, digest in expected.items():
             if _sha(root / relative) != digest:

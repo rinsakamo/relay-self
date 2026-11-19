@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 
 import pytest
 
@@ -64,6 +65,30 @@ def test_stage28c2b_native_history_source_is_immutable_hashed_trial(tmp_path, mo
     assert result.source_verified
     assert result.new_native_session_authorized is False
     assert result.source_manifest_sha256 == sha
+
+
+def test_nested_generation_checksums_are_verified_even_when_outer_manifest_omits_them(
+    tmp_path, monkeypatch,
+):
+    source = _source(tmp_path, monkeypatch)
+    root, _ = _make_evidence(tmp_path)
+    generation = root / source.name
+    shutil.copytree(source, generation)
+    files = sorted(p for p in root.rglob("*") if p.is_file() and p.name != "SHA256SUMS")
+    checksum = "".join(
+        hashlib.sha256(p.read_bytes()).hexdigest() + "  "
+        + p.relative_to(root).as_posix() + "\n" for p in files
+    )
+    (root / "SHA256SUMS").write_text(checksum)
+    sha = hashlib.sha256(checksum.encode()).hexdigest()
+    inspect_original_stage28b_native_sessions(
+        root, generation, expected_manifest_sha256=sha, expected_files=len(files),
+    )
+    (generation / "world" / "SHA256SUMS").write_text("altered")
+    with pytest.raises(HistoricalSessionHold):
+        inspect_original_stage28b_native_sessions(
+            root, generation, expected_manifest_sha256=sha, expected_files=len(files),
+        )
 
 
 @pytest.mark.parametrize("failure", [

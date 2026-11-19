@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import shutil
+import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -69,6 +70,22 @@ _SOURCE_COMMITTED_SHA = (
     "d1425c49a5ef0ff03486931427907aeed6eccf568494efd8177ed96d3ce3f4ee"
 )
 _FORK_BRANCH = "fork-3883122c-6edb-4017-bd82-00fc4324aded"
+
+
+async def _cleanup_native(session, report: dict[str, object]) -> None:
+    """Retire only an owned child and never hide an incomplete raw transcript."""
+    if session.process_returncode is None:
+        try:
+            await asyncio.wait_for(session.terminate(), 8.0)
+        except BaseException:
+            report["cleanup_uncertain"] = True
+    if session.process_returncode is None:
+        report["cleanup_uncertain"] = True
+    try:
+        if not session._raw_source_audit_finished:
+            session.finish_raw_source_audit()
+    except BaseException:
+        report["raw_source_audit_uncertain"] = True
 
 
 def inspect_real_recovered_sources(
@@ -157,6 +174,10 @@ async def run_restored_a_b_real_observation(
     if _world_uuid(dest / "world") != _SOURCE_WORLD:
         raise Stage28c2bRealRejoinHold("copied World UUID is not original restored World")
     evidence.mkdir(mode=0o700)
+    _write_bytes_new(
+        evidence / "execution-copy-prestart-SHA256SUMS",
+        "".join(f"{digest}  {name}\n" for name, digest in prepared.files).encode(),
+    )
     checked = check_stage24g_pinned_assets(
         paper_jar=paper_jar, plugin_jar=plugin_jar,
         scratch_parent=dest.parent, accepted_eula=True,
@@ -224,6 +245,8 @@ async def run_restored_a_b_real_observation(
             config, node_executable=node,
             startup_timeout_s=min(timeout_s / 3, 30.0),
         )
+        # Register ownership before any further operation can fail.
+        native_sessions.append(session)
         # This records the original raw stdout consumed by the existing
         # guarded bridge.login() spawn/probe path. No new native issuer.
         raw_path = evidence / (
@@ -231,7 +254,6 @@ async def run_restored_a_b_real_observation(
         )
         session.start_raw_source_audit(raw_path)
         raw_paths[config.username] = raw_path
-        native_sessions.append(session)
         return session
 
     try:
@@ -276,6 +298,16 @@ async def run_restored_a_b_real_observation(
                 history.historical_native_sessions
             ),
         )
+        for link in linked:
+            owner = prepared.recovered.owners[link.self_id]
+            observation = bridge.last_login_observations[link.self_id]
+            owner.accept_rejoined_worldbody(observation, request_id=link.native_probe_ref)
+            if owner.current_worldbody_observation is not observation:
+                raise Stage28c2bRealRejoinHold("original owner did not accept native WorldBody")
+        report["owner_worldbody_observations"] = {
+            sid: asdict(prepared.recovered.owners[sid].current_worldbody_observation)
+            for sid in ("A", "B")
+        }
         report["new_world_process_tick"] = current.world_tick
         report["fresh_body_links"] = [asdict(link) for link in linked]
         report["native_login_evidence"] = {
@@ -327,7 +359,7 @@ async def run_restored_a_b_real_observation(
                 raise Stage28c2bRealRejoinHold(
                     "original Paper JOIN/PRESENT/QUIT incomplete"
                 )
-        bridge.world_only_quiescence()
+        report["world_only_quiescence"] = asdict(bridge.world_only_quiescence())
         report["final_paper_resident_log_sha256"] = digest
         report["final_paper_resident_boot_id"] = trace.boot_id
         stopped = paper.stop_and_save()
@@ -356,27 +388,31 @@ async def run_restored_a_b_real_observation(
         raise
     finally:
         for native in native_sessions:
-            if native.process_returncode is None:
-                try:
-                    await asyncio.wait_for(native.terminate(), 8.0)
-                except BaseException:
-                    report["cleanup_uncertain"] = True
-            try:
-                native.finish_raw_source_audit()
-            except BaseException:
-                # A completed source audit is already frozen above.
-                if report["classification"] != (
-                    "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
-                ):
-                    report["raw_source_audit_uncertain"] = True
+            await _cleanup_native(native, report)
         if paper.owned_session_id is not None:
             if not paper.held_uncertain:
                 try:
                     report["paper_cleanup_stopped"] = asdict(paper.stop_and_save())
                 except BaseException:
                     report["cleanup_uncertain"] = True
-            else:
+            if paper.held_uncertain or report.get("cleanup_uncertain"):
                 report["cleanup_uncertain"] = True
+                # HOLD remains HOLD. Bound cleanup to the actual Popen owned by
+                # this invocation, including failures before Paper readiness.
+                process = paper._process
+                if process is not None:
+                    report["paper_cleanup_pid"] = process.pid
+                    try:
+                        if process.poll() is None:
+                            process.terminate()
+                            try:
+                                process.wait(timeout=8)
+                            except subprocess.TimeoutExpired:
+                                process.kill()
+                                process.wait(timeout=8)
+                        report["paper_cleanup_exit_code"] = process.poll()
+                    except (OSError, subprocess.TimeoutExpired) as exc:
+                        report["paper_cleanup_error"] = f"{type(exc).__name__}: {exc}"
         if report.get("cleanup_uncertain") or report.get("raw_source_audit_uncertain"):
             report["classification"] = "REAL_REJOIN_HOLD"
         _write_bytes_new(

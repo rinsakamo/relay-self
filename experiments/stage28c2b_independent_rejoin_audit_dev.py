@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import (
@@ -29,6 +30,7 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_paper_presence_join_dev import (
     parse_owned_paper_resident_trace,
 )
+from relay_self.stage28c2b_execution_copy_dev import _inventory
 
 
 class Stage28c2bIndependentAuditHold(RuntimeError):
@@ -132,6 +134,11 @@ def independently_audit_recovered_real_rejoin(
     original, state = inspect_real_recovered_sources(
         generation, restored, stage28b_evidence,
     )
+    inventory = "".join(
+        f"{digest}  {name}\n" for name, digest in _inventory(Path(restored))
+    ).encode()
+    if (evidence / "execution-copy-prestart-SHA256SUMS").read_bytes() != inventory:
+        raise Stage28c2bIndependentAuditHold("prestart copy or restored original differs")
     if (
         report.get("original_history") is None
         or report["original_history"]["historical_native_sessions"]
@@ -169,7 +176,8 @@ def independently_audit_recovered_real_rejoin(
     ):
         raise Stage28c2bIndependentAuditHold("original owned Paper/native receipt missing")
     if (
-        set(pids.values()) & {paper_boot["paper_pid"]}
+        len(set(pids.values())) != 2
+        or set(pids.values()) & {paper_boot["paper_pid"]}
         or any(type(pid) is not int or pid <= 0 for pid in pids.values())
     ):
         raise Stage28c2bIndependentAuditHold("native/Paper PID collision")
@@ -182,6 +190,8 @@ def independently_audit_recovered_real_rejoin(
     if (
         _sha(frozen) != report.get("final_paper_resident_log_sha256")
         or not raw_paper.startswith(frozen.read_bytes())
+        or b"Saved the game" not in raw_paper[len(frozen.read_bytes()):]
+        or b"Stopping server" not in raw_paper[len(frozen.read_bytes()):]
     ):
         raise Stage28c2bIndependentAuditHold("Paper resident source not archived")
     full = parse_owned_paper_resident_trace(
@@ -273,10 +283,21 @@ def independently_audit_recovered_real_rejoin(
             raise Stage28c2bIndependentAuditHold(
                 "exact original native request-correlated probe absent"
             )
+        canonical_probe = json.loads(json.dumps(asdict(found[0])))
+        if report.get("owner_worldbody_observations", {}).get(sid) != canonical_probe:
+            raise Stage28c2bIndependentAuditHold("owner WorldBody differs from raw native probe")
+        retirement = report["retirement_" + sid]
         if (
-            report["retirement_" + sid]["native_terminated"] is not True
-            or report["retirement_" + sid]["physical_wal_clear"] is not True
-            or report["retirement_" + sid]["physical_issuer_revoked"] is not True
+            retirement["self_id"] != sid
+            or retirement["native_session_id"] != native["native_session_id"]
+            or retirement["world_epoch"] != paper_boot["world_epoch"]
+            or retirement["native_terminated"] is not True
+            or retirement["physical_wal_clear"] is not True
+            or retirement["physical_issuer_revoked"] is not True
+            or retirement["no_physical_inflight"] is not True
+            or retirement["stale_gpu_fenced"] is not True
+            or retirement["peer_transport_drained"] is not True
+            or retirement["action_issue_authorized"] is not False
         ):
             raise Stage28c2bIndependentAuditHold(
                 "original native issuer/retirement incomplete"
@@ -296,6 +317,19 @@ def independently_audit_recovered_real_rejoin(
         PhysicalActionJournal.restore(
             Path(executable) / "selves" / sid / "physical-wal.json", self_id=sid,
         ).require_clear()
+    quiescence = report.get("world_only_quiescence")
+    if (
+        type(quiescence) is not dict
+        or quiescence.get("checked_self_ids") != ["A", "B"]
+        or quiescence.get("world_epoch") != paper_boot["world_epoch"]
+        or any(quiescence.get(key) is not True for key in (
+            "original_physical_issuer_closed", "native_sessions_absent",
+            "no_unresolved_physical_actions", "all_gpu_epochs_retired",
+            "pending_peer_messages_empty",
+        ))
+        or quiescence.get("action_issue_authorized") is not False
+    ):
+        raise Stage28c2bIndependentAuditHold("original owner quiescence incomplete")
     # Paper main-thread nonce refs and session boot must match actual log,
     # with separate Paper tick values from native World day time.
     for ref, tick in [

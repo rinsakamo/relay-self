@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.owned_native_rejoin_cohort_dev import verify_native_spawn_probe
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
@@ -165,6 +165,7 @@ class OwnedResidentPhysicalBridge:
         # Preserve the ORIGINAL verified native/Paper source claim so an
         # independent Paper log join can use it without inventing evidence.
         self.last_login_evidence: dict[str, NativeLoginEvidence] = {}
+        self.last_login_observations: dict[str, MineflayerObservation] = {}
         self._pending_login: set[str] = set()
 
     def _check_world(self) -> None:
@@ -208,8 +209,9 @@ class OwnedResidentPhysicalBridge:
                 )
 
             launched.install_effect_admission(effect)
+            observations: list[MineflayerObservation] = []
             _, _, request_id, observed_tick = await verify_native_spawn_probe(
-                launched, timeout_s=self.probe_timeout_s,
+                launched, timeout_s=self.probe_timeout_s, probe_sink=observations.append,
             )
             self._check_world()
             if self.lifecycle.world.epoch != ticket.world.epoch:
@@ -254,10 +256,14 @@ class OwnedResidentPhysicalBridge:
                 owner.fresh_native_observation_required = False
             self.sessions[self_id] = launched
             self.last_login_evidence[self_id] = evidence
+            if len(observations) != 1:
+                raise OwnedResidentBridgeError("original native probe body unavailable")
+            self.last_login_observations[self_id] = observations[0]
             self.retired.pop(self_id, None)
             return ticket
         except BaseException:
             self.last_login_evidence.pop(self_id, None)
+            self.last_login_observations.pop(self_id, None)
             # If source verification fails, NEVER grant a new issuer lease.
             # If admit succeeded before an unexpected failure, quarantine it.
             current = self.physical.current_native_sessions[self_id]
