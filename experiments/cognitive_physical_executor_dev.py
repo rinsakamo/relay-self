@@ -176,6 +176,7 @@ def begin_physical_issue_dev(
     place_motion: object | None = None,
     allow_prior_original_place_terminals: bool = False,
     place_gait_mode: str | None = None,
+    stage27j_long_place_contract: bool = False,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -200,8 +201,23 @@ def begin_physical_issue_dev(
     if place_gait_mode not in (None, "WALK", "SNEAK"):
         raise refusal("unsupported original PLACE gait selection")
     if allow_prior_original_place_terminals:
+        from relay_self.p0d_stage27j_long_move_profile_dev import (
+            STAGE27J_MAX_ACTIONS,
+            STAGE27J_MAX_DISTANCE_M,
+            STAGE27J_MAX_DURATION_MS,
+            STAGE27J_MAX_OBSERVATIONS,
+        )
         from relay_self.skill_invocation import SkillInvocation
 
+        long_budget_valid = (
+            stage27j_long_place_contract is True
+            and isinstance(place_invocation, SkillInvocation)
+            and place_invocation.budget.max_actions == STAGE27J_MAX_ACTIONS
+            and place_invocation.budget.max_duration_ms == STAGE27J_MAX_DURATION_MS
+            and place_invocation.budget.max_distance_m == STAGE27J_MAX_DISTANCE_M
+            and place_invocation.budget.max_observations == STAGE27J_MAX_OBSERVATIONS
+            and place_gait_mode in ("WALK", "SNEAK")
+        )
         if (
             type(allow_prior_original_place_terminals) is not bool
             or capability != "MOVE"
@@ -211,7 +227,10 @@ def begin_physical_issue_dev(
             or not prior_actions
             or len(prior_actions) != len(journal.records)
             or len(prior_actions) >= place_invocation.budget.max_actions
-            or place_invocation.budget.max_actions > 4
+            or (
+                place_invocation.budget.max_actions > 4
+                and not long_budget_valid
+            )
             or b.action_id in {a.action_id for a in prior_actions}
         ):
             raise refusal("original L0 multi-Action terminal history not admissible")
