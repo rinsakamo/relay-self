@@ -144,7 +144,7 @@ def inspect_d7_real_world_candidate(
             if (
                 inert.self_id != sid or cut.self_id != sid
                 or cognition.identity.self_id != sid
-                or not inert.question_refs or not inert.attempt_refs
+                or not inert.question_refs
                 or continuity is None or continuity.self_id != sid
                 or len(set(inert.question_refs)) != len(inert.question_refs)
                 or not set(inert.question_refs).issubset(cut.pending_question_refs)
@@ -180,6 +180,13 @@ def inspect_d7_real_world_candidate(
                 inert.historical_native_session_id,
                 sum(a.phase is AttemptPhase.RESERVED for a in continuity.attempts),
             ))
+        # Natural L1 may DEFER for one Self. Do not forge an ESCALATE_L2
+        # to populate the ledger; at least one *actual* historical attempt
+        # is needed to qualify the D no-retry observation objective.
+        if not all_attempts:
+            raise D7RealWorldPreflightHold(
+                "no historical L2 attempt in original two-Self cohort"
+            )
         return D7SourceCandidate(
             source.generation_id, source.world_id,
             source.source_branch_id, recovered.fork_branch_id,
