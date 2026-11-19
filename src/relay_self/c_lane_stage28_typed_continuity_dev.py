@@ -19,7 +19,7 @@ from pathlib import Path
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.intent import IntentEventKind
 from relay_self.persistent_cognition import Memory, load_persistent_cognition
-from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
+from relay_self.physical_action_journal import PhysicalJournalError, _read
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
@@ -255,22 +255,27 @@ def verify_stage27_wal_c1_across_stage28_typed_epoch(
         raise C1TypedCheckpointHold("original bounded Skill owner cut not found")
     archived_path = source_generation / "selves" / original_self_id
     copied_path = copy.directory / "selves" / original_self_id
+    # Use the original Stage27 canonical checksum+grammar reader directly.
+    # Journal.restore() creates a sibling .lock file even for reads, which
+    # would modify the *immutable COMMITTED archive*. Both files are already
+    # pinned by Stage28 verify_typed_generation / verified execution copy.
     try:
-        original_wal = PhysicalActionJournal.restore(
-            archived_path / "physical-wal.json", self_id=original_self_id,
+        original_body, original_digest = _read(
+            archived_path / "physical-wal.json",
         )
-        restored_wal = PhysicalActionJournal.restore(
-            copied_path / "physical-wal.json", self_id=original_self_id,
+        restored_body, restored_digest = _read(
+            copied_path / "physical-wal.json",
         )
-        original_wal.require_clear()
-        restored_wal.require_clear()
     except PhysicalJournalError as exc:
-        raise C1TypedCheckpointHold("original Stage27 physical WAL not canonical/clear") from exc
+        raise C1TypedCheckpointHold("original Stage27 physical WAL not canonical") from exc
+    rows = original_body["actions"]
     if (
-        original_wal.digest != restored_wal.digest
-        or original_wal.records != restored_wal.records
-        or original_wal._body["schema"] != 2
-        or not original_wal.records
+        original_digest != restored_digest
+        or original_body != restored_body
+        or original_body["self_id"] != original_self_id
+        or original_body["schema"] != 2
+        or not rows
+        or rows[-1]["status"] == "PREPARED_UNRESOLVED"
     ):
         raise C1TypedCheckpointHold("source/restored Stage27 schema-v2 WAL mismatch")
 
@@ -312,7 +317,7 @@ def verify_stage27_wal_c1_across_stage28_typed_epoch(
     ):
         raise C1TypedCheckpointHold("original C1 child Skill not terminal/committed in cut")
     selected_rows = [
-        row for row in original_wal.records
+        row for row in rows
         if row["skill_execution_id"] == key
     ]
     if (
@@ -334,7 +339,7 @@ def verify_stage27_wal_c1_across_stage28_typed_epoch(
     ):
         raise C1TypedCheckpointHold("C1 action IDs or original WAL/Target/Preset differ")
     expected_source = [
-        ["canonical-physical-wal", f"{original_wal.digest}:{aid}"]
+        ["canonical-physical-wal", f"{original_digest}:{aid}"]
         for aid in chosen_action_ids
     ]
     selected_source = [
@@ -350,7 +355,7 @@ def verify_stage27_wal_c1_across_stage28_typed_epoch(
         raise C1TypedCheckpointHold("C1 claims unverified WAL SHA/Action source")
     return C1Stage27SourceLineageWitness(
         continuity=continued,
-        physical_wal_sha256=original_wal.digest,
+        physical_wal_sha256=original_digest,
         skill_execution_id=key,
         action_ids=tuple(chosen_action_ids),
     )
