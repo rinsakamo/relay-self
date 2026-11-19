@@ -39,6 +39,11 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     submit_stage27g_original_evaluation,
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
+from relay_self.p0d_stage27i_model_http_census_dev import (
+    census_stage27i_model_http,
+    freeze_stage27i_model_http,
+    require_stage27i_two_initial_calls,
+)
 from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
@@ -733,6 +738,17 @@ async def stage27h_real_a_motor_hook(
     ):
         raise Stage27RealWorldRefusal("Stage27h original 2-Self ownership absent")
     lane.require_world_idle()
+    model_before = (
+        census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
+        if precision_stage27i else None
+    )
+    model_before_evidence = (
+        freeze_stage27i_model_http(
+            evidence, label="before", snapshot=model_before,
+        ) if model_before is not None else None
+    )
+    if model_before is not None:
+        require_stage27i_two_initial_calls(model_before)
     peer_before = _peer_snapshot(owners["B"])
     peer_before_evidence = (
         _freeze_peer_b_snapshot(
@@ -742,6 +758,18 @@ async def stage27h_real_a_motor_hook(
     if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
         if precision_stage27i:
             # Zero-effect path still saves the complete B Memory comparison.
+            lane.require_world_idle()
+            model_after = census_stage27i_model_http(
+                evidence, lane=lane, tickets=tickets,
+            )
+            model_after_evidence = freeze_stage27i_model_http(
+                evidence, label="after", snapshot=model_after,
+            )
+            require_stage27i_two_initial_calls(model_after)
+            if model_after != model_before:
+                raise Stage27RealWorldRefusal(
+                    "Stage27i additional model POST on no-MOVE path"
+                )
             peer_after = _peer_snapshot(owners["B"], allow_changed=True)
             peer_after_evidence = _freeze_peer_b_snapshot(
                 evidence, label="after", snapshot=peer_after,
@@ -766,6 +794,13 @@ async def stage27h_real_a_motor_hook(
                 "stage27h_peer_b_after": peer_after,
                 "stage27i_peer_b_before_evidence": peer_before_evidence,
                 "stage27i_peer_b_after_evidence": peer_after_evidence,
+                "stage27i_model_http_before": model_before,
+                "stage27i_model_http_after": model_after,
+                "stage27i_model_http_before_evidence": model_before_evidence,
+                "stage27i_model_http_after_evidence": model_after_evidence,
+                "stage27h_additional_model_requests": (
+                    model_after["request_count"] - model_before["request_count"]
+                ),
                 "stage27h_goal_success": False,
                 "stage27h_skill_success": False,
             }
@@ -962,6 +997,21 @@ async def stage27h_real_a_motor_hook(
     if peer_after != peer_before:
         raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
     lane.require_world_idle()
+    model_after = (
+        census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
+        if precision_stage27i else None
+    )
+    model_after_evidence = (
+        freeze_stage27i_model_http(
+            evidence, label="after", snapshot=model_after,
+        ) if model_after is not None else None
+    )
+    if model_after is not None:
+        require_stage27i_two_initial_calls(model_after)
+        if model_after != model_before:
+            raise Stage27RealWorldRefusal(
+                "Stage27i extra model POST within original L0 loop"
+            )
     stage = "27I" if precision_stage27i else "27H"
     status = {
         "L0_TARGET_REACHED_YIELD_EVALUATION":
@@ -1005,7 +1055,14 @@ async def stage27h_real_a_motor_hook(
         "stage27h_invocation_ref": handoff.invocation_ref,
         "stage27h_preset_ref": handoff.preset_ref,
         "stage27h_bound_model_initial_requests_expected": original_model_count,
-        "stage27h_additional_model_requests": 0,
+        "stage27h_additional_model_requests": (
+            0 if model_after is None or model_before is None
+            else model_after["request_count"] - model_before["request_count"]
+        ),
+        "stage27i_model_http_before": model_before,
+        "stage27i_model_http_after": model_after,
+        "stage27i_model_http_before_evidence": model_before_evidence,
+        "stage27i_model_http_after_evidence": model_after_evidence,
         "stage27h_l0_action_count": loop.action_count,
         "stage27h_l0_feedback": asdict(result),
         "stage27h_original_action_witnesses": action_receipts,
