@@ -151,9 +151,9 @@ def inspect_d7_real_world_candidate(
                 or inert.historical_native_session_id
                 != cut.former_native_session_id
                 or inert.historical_native_session_id in old_natives
-                or any(q.open and not q.question_ref in inert.question_refs
+                or any(q.open and q.question_ref not in inert.question_refs
                        for q in continuity.questions)
-                or any(not a.attempt_ref in inert.attempt_refs
+                or any(a.attempt_ref not in inert.attempt_refs
                        for a in continuity.attempts)
             ):
                 raise D7RealWorldPreflightHold(
