@@ -1,10 +1,12 @@
-"""#860 Stage22: operator-gated REAL Paper + two resident Self body presence.
+"""D Lane D9: one original-Owner real L1 choice before typed World/2Self cut.
 
-Default is native login/logout, B observation and World continuity.
-Stage23 adds explicit operator-selected B MOVE via original ActionPort,
-WAL, capability-bound native START/STOP and Paper motion witness. No GPU,
-autonomous Skill selection or Action-specific Paper causation is claimed.
-Never attaches to an existing server.
+Isolated fork of the original B Stage28b source producer. Its D9-only
+execution requires a real locally attested GGUF/llama PID/idle GPU slot,
+the actual owned Paper and Native A/B WorldBody, and a new typed World/Self
+cut. A retains one OPEN Question without a model selection; B makes exactly
+one original GPU-backed numbered choice. Only genuinely selected ESCALATE_L2
+persists a reservation. No physical MOVE, ATTACK, EAT, L2 POST or automatic
+retry is ever allowed. The report is INDEPENDENT_AUDIT_PENDING, not real QUAL.
 """
 from __future__ import annotations
 
