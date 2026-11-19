@@ -387,12 +387,10 @@ def test_stage27j_no_forward_start_ack_remains_unresolved_hold(tmp_path):
                 decision.gait_mode,
             )
         assert not any(
-            control == "forward"
-            for _action, control, _state in native.sent_commands
+            command[1] == "forward" for command in native.sent_commands
         )
         assert sum(
-            control == "clear_controls"
-            for _action, control, _state in native.sent_commands
+            command[1] == "clear_controls" for command in native.sent_commands
         ) == 1
         journal = PhysicalActionJournal.restore(
             f.owners[f.names[0]].files.physical_wal_file,
