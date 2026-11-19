@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from pathlib import Path
+from typing import Callable
 
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
@@ -35,6 +38,10 @@ class MineflayerProcessIOError(MineflayerProcessError):
     """Raised when JSONL input cannot be delivered to the child process."""
 
 
+class MineflayerEffectAdmissionError(MineflayerProcessIOError):
+    """A physical effect was refused before sending to the native bridge."""
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -46,6 +53,9 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
+        self._effect_admission: Callable[[str, str, str], None] | None = None
+        self._raw_source_audit_fd: int | None = None
+        self._raw_source_audit_finished = False
 
     @classmethod
     async def launch(
@@ -113,6 +123,67 @@ class MineflayerProcessSession:
             )
         return self._started
 
+    def install_effect_admission(
+        self, check_effect: Callable[[str, str], None],
+    ) -> None:
+        """One-way opt-in gate for ALL native effect commands on this session.
+
+        check_effect(session_id, effect, action_id) must be owned by the shared checkpoint
+        issuer. Observation and shutdown remain allowed. No gate removal API.
+        """
+        if (
+            not callable(check_effect)
+            or self._started is None
+            or getattr(self, "_effect_admission", None) is not None
+        ):
+            raise MineflayerEffectAdmissionError(
+                "native effect admission can only be installed once after startup"
+            )
+        self._effect_admission = check_effect
+
+    def start_raw_source_audit(self, path: str | Path) -> None:
+        """Capture exact native stdout JSONL bytes from THIS owned Node process.
+
+        This is a source transcript, not independent Minecraft/Paper evidence.
+        Exclusive creation and per-line fsync ensure an ACK or settle sample
+        cannot disappear behind a success-only post-hoc JSON report.
+        """
+        if (
+            self._started is None
+            or self._raw_source_audit_fd is not None
+            or self._raw_source_audit_finished
+        ):
+            raise MineflayerProcessIOError("native source audit already used/not started")
+        location = Path(path)
+        fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.fsync(fd)
+            dir_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_source_audit_fd = fd
+
+    def finish_raw_source_audit(self) -> None:
+        """Freeze a completed source transcript before checksum readback."""
+        fd = self._raw_source_audit_fd
+        if fd is None or self._raw_source_audit_finished:
+            raise MineflayerProcessIOError("native source audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_source_audit_fd = None
+        self._raw_source_audit_finished = True
+
+    @property
+    def owned_child_pid(self) -> int | None:
+        """OS PID of THIS adapter-owned native process (not source authentication)."""
+        pid = getattr(self._process, "pid", None)
+        return pid if type(pid) is int and pid > 0 else None
+
     @property
     def process_returncode(self) -> int | None:
         return self._process.returncode
@@ -127,6 +198,19 @@ class MineflayerProcessSession:
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        fd = self._raw_source_audit_fd
+        if fd is not None:
+            # Persist ORIGINAL bytes, including malformed/foreign stream
+            # messages. A failed write is fatal, never silently drops proof.
+            try:
+                written = os.write(fd, line)
+                if written != len(line):
+                    raise OSError("partial native source audit write")
+                os.fsync(fd)
+            except OSError as exc:
+                raise MineflayerProcessIOError(
+                    "native stdout evidence write failed; source held"
+                ) from exc
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError as exc:
@@ -226,6 +310,30 @@ class MineflayerProcessSession:
         return await _terminate_child(self._process)
 
     async def _send(self, line: str) -> None:
+        gate = getattr(self, "_effect_admission", None)
+        if gate is not None:
+            # Check at final native stdin, not only at send_* wrappers.
+            try:
+                command = json.loads(line)
+            except (TypeError, ValueError) as exc:
+                raise MineflayerEffectAdmissionError(
+                    "invalid command under native checkpoint admission"
+                ) from exc
+            if type(command) is not dict:
+                raise MineflayerEffectAdmissionError("invalid native command body")
+            command_type = command.get("type")
+            if command_type == "effect":
+                effect = command.get("effect")
+                if type(effect) is not str or not effect:
+                    raise MineflayerEffectAdmissionError("untyped physical effect")
+                action_id = command.get("action_id")
+                if type(action_id) is not str or not action_id:
+                    raise MineflayerEffectAdmissionError("missing physical action ID")
+                gate(self.started.session_id, effect, action_id)
+            elif command_type not in {"observe", "shutdown"}:
+                raise MineflayerEffectAdmissionError(
+                    "unknown native command during coordinated checkpoint mode"
+                )
         if self._process.returncode is not None:
             raise MineflayerProcessEnded(
                 "cannot send to ended Mineflayer bridge; "
