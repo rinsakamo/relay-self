@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from relay_self.exploration_d7_real_world_preflight_dev import (
+    D7RealWorldPreflightHold,
     D7SourceCandidate,
     inspect_d7_real_world_candidate,
 )
@@ -72,14 +73,17 @@ def inspect_d8_original_source(
     """Read exact source; B independently verifies historical native ledger."""
     if not isinstance(pins, D8OwnedSourcePins):
         raise D8PinnedSourceHold("typed original D8 source pins required")
-    candidate = inspect_d7_real_world_candidate(
-        generation, restored,
-        expected_world_id=pins.world_id,
-        expected_source_branch_id=pins.source_branch_id,
-        expected_fork_branch_id=pins.fork_branch_id,
-        expected_committed_sha256=pins.committed_sha256,
-        expected_generation_id=pins.generation_id,
-    )
+    try:
+        candidate = inspect_d7_real_world_candidate(
+            generation, restored,
+            expected_world_id=pins.world_id,
+            expected_source_branch_id=pins.source_branch_id,
+            expected_fork_branch_id=pins.fork_branch_id,
+            expected_committed_sha256=pins.committed_sha256,
+            expected_generation_id=pins.generation_id,
+        )
+    except (D7RealWorldPreflightHold, OSError, ValueError) as exc:
+        raise D8PinnedSourceHold("D7 original D Question source refused") from exc
     from relay_self.stage28c2b_historical_native_sessions_dev import (
         inspect_original_stage28b_native_sessions,
     )
