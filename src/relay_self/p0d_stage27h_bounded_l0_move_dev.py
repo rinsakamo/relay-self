@@ -22,6 +22,9 @@ from relay_self.p0d_stage27j_long_move_profile_dev import (
     STAGE27J_MAX_DURATION_MS,
     STAGE27J_MAX_OBSERVATIONS,
     STAGE27J_PRESET_ID,
+    STAGE27J_CHILD_TIME_RESERVE_MS,
+    STAGE27J_SNEAK_ACTION_RESERVE_M,
+    STAGE27J_WALK_ACTION_RESERVE_M,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
@@ -132,6 +135,13 @@ class Stage27hBoundedMoveLoop:
         self.invocation = inv
         self.world_epoch = world_epoch
         self.start_ns = start_ns
+        self.original_deadline_ns = (
+            start_ns + inv.budget.max_duration_ms * 1_000_000
+        )
+        self.stage27j_long_mode = long_stage27j
+        self._stage27j_pending_distance_m: float | None = None
+        self._stage27j_pending_deadline_ns: int | None = None
+        self._stage27j_pending_gait: str | None = None
         self.action_count = 0
         self.observation_count = 0
         self.cumulative_distance_m = 0.0
@@ -292,6 +302,55 @@ class Stage27hBoundedMoveLoop:
             raise Stage27hLoopRefusal("next native observation not after prior STOP")
         return self._assess(observed, now_ns)
 
+    def reserve_stage27j_motor_budget(
+        self, *, source_probe: MineflayerObservation,
+        gait_mode: str, now_ns: int,
+    ) -> Stage27hLoopStep | None:
+        """Reserve distance + wall-clock STOP margin BEFORE physical issue.
+
+        None means admission granted, and a terminal Step means no effect may
+        be issued. No new grant is implied by an estimated movement envelope.
+        An actual displacement above that envelope is terminal HOLD.
+        """
+        if not self.stage27j_long_mode:
+            raise Stage27hLoopRefusal("Stage27j motor reservation not applicable")
+        self._validate_owner_and_journal()
+        if (
+            gait_mode not in ("WALK", "SNEAK")
+            or type(now_ns) is not int or now_ns < self.start_ns
+            or self.terminal_status is not None
+            or not isinstance(source_probe, MineflayerObservation)
+            or self._ready_to_reserve_seq != source_probe.seq
+            or source_probe.session_id != self.prepared.native_session
+            or self._stage27j_pending_distance_m is not None
+            or self._stage27j_pending_deadline_ns is not None
+            or self._stage27j_pending_gait is not None
+            or self._settlement_reserved != 0
+        ):
+            raise Stage27hLoopRefusal("original Stage27j motor scope unavailable")
+        envelope = (
+            STAGE27J_WALK_ACTION_RESERVE_M
+            if gait_mode == "WALK" else STAGE27J_SNEAK_ACTION_RESERVE_M
+        )
+        limit = self.invocation.budget
+        if (
+            self.cumulative_distance_m + envelope
+            > limit.max_distance_m + 1e-9
+            or now_ns + STAGE27J_CHILD_TIME_RESERVE_MS * 1_000_000
+            >= self.original_deadline_ns
+        ):
+            self.terminal_status = "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+            self._ready_to_reserve_seq = None
+            return Stage27hLoopStep(
+                self.terminal_status, "OUTSIDE", None, self.action_count,
+                self.observation_count, self.cumulative_distance_m,
+                source_probe.seq, self.last_action_id, self.last_wal_digest,
+            )
+        self._stage27j_pending_distance_m = envelope
+        self._stage27j_pending_deadline_ns = self.original_deadline_ns
+        self._stage27j_pending_gait = gait_mode
+        return None
+
     def reserve_settling_observations(
         self, *, source_probe: MineflayerObservation,
     ) -> int:
@@ -311,6 +370,14 @@ class Stage27hBoundedMoveLoop:
             or self._ready_to_reserve_seq is None
             or source_probe.seq != self._ready_to_reserve_seq
             or source_probe.session_id != self.prepared.native_session
+            or (
+                self.stage27j_long_mode
+                and (
+                    self._stage27j_pending_distance_m is None
+                    or self._stage27j_pending_deadline_ns
+                    != self.original_deadline_ns
+                )
+            )
             or self.observation_count + cap
             > self.invocation.budget.max_observations
         ):
@@ -354,6 +421,14 @@ class Stage27hBoundedMoveLoop:
             or receipt.settled_probe.session_id != self.prepared.native_session
             or not math.isfinite(receipt.displacement_m)
             or receipt.displacement_m < 0
+            or (
+                self.stage27j_long_mode and (
+                    self._stage27j_pending_distance_m is None
+                    or self._stage27j_pending_deadline_ns
+                    != self.original_deadline_ns
+                    or self._stage27j_pending_gait != receipt.gait_mode
+                )
+            )
         ):
             raise Stage27hLoopRefusal("Action was not next original MOVE child")
         stop_probes = receipt.all_stop_probes
@@ -415,6 +490,23 @@ class Stage27hBoundedMoveLoop:
             or abs(row["displacement_m"] - receipt.displacement_m) > 1e-5
         ):
             raise Stage27hLoopRefusal("original terminal Action/WAL relation missing")
+        # Even terminal settled displacements must stay within the
+        # *precommitted* envelope, not merely be checked after a later MOVE.
+        # A mismatch means unmodelled World motion: fail closed and retain WAL.
+        if (
+            self.stage27j_long_mode
+            and receipt.displacement_m
+            > self._stage27j_pending_distance_m + 1e-6
+        ):
+            raise Stage27hLoopRefusal(
+                "Stage27j physical displacement exceeded preissue reserve; HOLD"
+            )
+        if (
+            self.stage27j_long_mode and now_ns > self.original_deadline_ns
+        ):
+            raise Stage27hLoopRefusal(
+                "Stage27j physical terminal returned after original deadline; HOLD"
+            )
         # The terminal Action is the last new row, but historic rows must
         # remain canonical; on any interruption this parent cannot resume.
         self.action_count += 1
@@ -428,6 +520,9 @@ class Stage27hBoundedMoveLoop:
         self.observation_count -= self._settlement_reserved - len(stop_probes)
         self._settlement_reserved = 0
         self._reserved_source_seq = None
+        self._stage27j_pending_distance_m = None
+        self._stage27j_pending_deadline_ns = None
+        self._stage27j_pending_gait = None
         if receipt.journal_status == "NATIVE_PLACE_MOVE_OVERSHOOT":
             self.terminal_status = "L0_OVERSHOOT_YIELD_EVALUATION"
         elif receipt.journal_status != "NATIVE_PLACE_MOVE_SETTLED":
