@@ -13,7 +13,6 @@ import argparse
 import hashlib
 import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import (
