@@ -238,7 +238,7 @@ def _grant(stage: PhysicalGrantStage, binding):
     )
 
 
-def _peer_snapshot(owner) -> dict[str, object]:
+def _peer_snapshot(owner, *, allow_changed: bool = False) -> dict[str, object]:
     """Content-address all original B Intent/Skill/Memory and canonical WAL.
 
     Counts alone do not detect replacement of a Memory's content/provenance.
@@ -246,7 +246,11 @@ def _peer_snapshot(owner) -> dict[str, object]:
     checkpoint or the on-disk cognition file. Freeze only digests and IDs,
     not sensitive raw Memory contents, in the DEV motor report.
     """
-    if owner.intent.current_intent is not None or owner.skills:
+    if type(allow_changed) is not bool or (
+        not allow_changed and (
+            owner.intent.current_intent is not None or owner.skills
+        )
+    ):
         raise Stage27RealWorldRefusal("peer B original Intent/Skill already mutated")
     retained = owner.retained
     if (
@@ -258,7 +262,8 @@ def _peer_snapshot(owner) -> dict[str, object]:
     journal = PhysicalActionJournal.restore(
         owner.files.physical_wal_file, self_id=owner.self_id,
     )
-    journal.require_clear()
+    if not allow_changed:
+        journal.require_clear()
 
     def digest(value: object) -> str:
         content = json.dumps(
@@ -285,6 +290,10 @@ def _peer_snapshot(owner) -> dict[str, object]:
     return {
         "intent_event_count": len(intent_events),
         "intent_events_sha256": digest(intent_events),
+        "intent_current": (
+            None if owner.intent.current_intent is None
+            else asdict(owner.intent.current_intent)
+        ),
         "skill_execution_count": len(skill_histories),
         "skill_histories_sha256": digest(skill_histories),
         "memory_count": len(memories),
@@ -292,6 +301,7 @@ def _peer_snapshot(owner) -> dict[str, object]:
         "memory_record_digests": memory_record_digests,
         "physical_wal_sha256": journal.digest,
         "physical_wal_action_rows": len(journal.records),
+        "physical_wal_unresolved": bool(journal.unresolved),
         "open_action_count": len(owner.supervisor.open_actions),
     }
 
@@ -379,7 +389,7 @@ async def stage27_real_a_motor_hook(
         original_a.selected_number != "1"
         or original_a.l1_status != "READY"
     ):
-        after_b = _peer_snapshot(owners["B"])
+        after_b = _peer_snapshot(owners["B"], allow_changed=True)
         if after_b != peer_before:
             raise Stage27RealWorldRefusal("nonready A altered original peer B")
         return {
@@ -559,7 +569,7 @@ async def stage27_real_a_motor_hook(
             "next_physical_action_authorized": False,
             "original_goal_or_skill_completed": False,
         }
-    peer_after = _peer_snapshot(owners["B"])
+    peer_after = _peer_snapshot(owners["B"], allow_changed=True)
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
     lane.require_world_idle()
@@ -732,7 +742,7 @@ async def stage27h_real_a_motor_hook(
     if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
         if precision_stage27i:
             # Zero-effect path still saves the complete B Memory comparison.
-            peer_after = _peer_snapshot(owners["B"])
+            peer_after = _peer_snapshot(owners["B"], allow_changed=True)
             peer_after_evidence = _freeze_peer_b_snapshot(
                 evidence, label="after", snapshot=peer_after,
             )
@@ -943,7 +953,7 @@ async def stage27h_real_a_motor_hook(
         result = loop.pre_action(current, now_ns=time.monotonic_ns())
     if result.status == "L0_CONTINUE_MOVE":
         raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
-    peer_after = _peer_snapshot(owners["B"])
+    peer_after = _peer_snapshot(owners["B"], allow_changed=True)
     peer_after_evidence = (
         _freeze_peer_b_snapshot(
             evidence, label="after", snapshot=peer_after,
