@@ -250,7 +250,6 @@ def test_stage27_unmerged_module_is_a_hard_hold(monkeypatch):
 
 def test_stage28_original_owner_only_proposes_memory_and_rejects_stale(monkeypatch, stub_source):
     import adapters.mineflayer.python_protocol as native
-
     from relay_self.cognitive_learning_owner_adapter import propose_existing_memory
 
     exp = assemble_stage27_c1_from_canonical_wal(**_owner_fixture(started=False))
