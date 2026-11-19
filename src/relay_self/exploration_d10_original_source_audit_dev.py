@@ -19,6 +19,8 @@ from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import parse_llama_cpp_jev_decision
 from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterErrorMessage,
+    MineflayerCommandError,
     MineflayerEffectResult,
     MineflayerObservation,
     parse_mineflayer_line,
@@ -96,6 +98,7 @@ def _json(path: Path) -> dict:
 def _native_raw(
     root: Path, report: dict, *,
     native_ids: dict[str, str], request_ids: dict[str, str],
+    expected_pids: dict[str, int] | None = None,
 ) -> tuple[tuple[str, str], ...]:
     declared = report.get("d10_original_native_sources")
     if type(declared) is not dict or set(declared) != {"A0", "A1", "B0"}:
@@ -114,6 +117,8 @@ def _native_raw(
             or entry["bytes"] <= 0
             or type(entry.get("pid")) is not int or entry["pid"] <= 1
             or entry["pid"] in pids
+            or (expected_pids is not None
+                and entry["pid"] != expected_pids.get(name))
             or path.is_symlink()
             or _sha(path) != entry["sha256"]
             or path.stat().st_size != entry["bytes"]
@@ -127,7 +132,10 @@ def _native_raw(
         if (
             not messages
             or any(x.session_id != native_ids[name] for x in messages)
-            or any(isinstance(x, MineflayerEffectResult) for x in messages)
+            or any(isinstance(
+                x, (MineflayerEffectResult, MineflayerCommandError,
+                    MineflayerAdapterErrorMessage),
+            ) for x in messages)
             or any(
                 b.seq <= a.seq for a, b in zip(messages, messages[1:])
             )
@@ -286,6 +294,11 @@ def audit_d10_original_d9_source(
             request_ids={
                 "A1": a["native_probe_request_id"],
                 "B0": b["native_probe_request_id"],
+            },
+            expected_pids={
+                "A0": trial["a_original_owned_pid"],
+                "A1": trial["a_relogin_owned_pid"],
+                "B0": trial["b_original_owned_pid"],
             },
         )
         # Independently parse the actual owned Paper stdout bytes, not a
