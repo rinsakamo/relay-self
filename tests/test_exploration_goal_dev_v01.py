@@ -72,6 +72,7 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
           curiosity=1.0, with_target=True, with_preset=True,
           hunger=20, live_intent=False, mode=SchemaMode.FULL):
     scope = ScopeRef(self_id, "world-A")
+    question_ref = "question:ridge" if self_id == "self-A" else "question:forest"
     retained = PersistentCognition(
         IdentitySpecification(self_id, ("Curious",), OWNER),
     )
@@ -92,13 +93,13 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
         three_self=projection, snapshot=snapshot,
         current_registry_revision=7,
         current_source_revision_refs=sources, frame_revision=1,
-        active_question_refs=("question:ridge",),
+        active_question_refs=(question_ref,),
         attention_refs=("attention:unfamiliar",),
         need_refs=("hunger",),
     )
     evidence = (
         ExplorationEvidence(
-            ExplorationBasis.OPEN_QUESTION, "question:ridge",
+            ExplorationBasis.OPEN_QUESTION, question_ref,
             EpistemicStatus.UNKNOWN,
         ),
         ExplorationEvidence(
@@ -118,7 +119,7 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
             three_self=projection, snapshot=snapshot,
             current_registry_revision=7, current_source_revision_refs=sources,
             frame_revision=2, signals=(need.signal,),
-            active_question_refs=("question:ridge",),
+            active_question_refs=(question_ref,),
             attention_refs=("attention:unfamiliar",), need_refs=("hunger",),
         )
     registry = initial_patterns_with_move()
@@ -402,6 +403,7 @@ def test_foreign_present_evidence_and_revision_do_not_cross_self_scope():
     assert build(a).frame.scope.self_id == "self-A"
     assert build(b).frame.scope.self_id == "self-B"
     assert build(b).frame.options == ()
+    assert a["present"].active_question_refs != b["present"].active_question_refs
     with pytest.raises(ExplorationContractError):
         form_exploration_round(
             present=a["present"], need=a["need"], snapshot=a["snapshot"],
@@ -443,3 +445,21 @@ def test_no_evidence_means_no_exploration_signal_or_automatic_goal():
     assert c["need"] is None
     assert c["present"].active_question_refs == ("question:ridge",)
     assert c["owner"].events == ()
+
+def test_unknown_attention_cannot_be_labeled_observed_by_exploration():
+    c = setup()
+    with pytest.raises(ExplorationContractError, match="only observed"):
+        propose_exploration_need(
+            present=c["present"], snapshot=c["snapshot"],
+            schema_id="exploratory",
+            evidence=(ExplorationEvidence(
+                ExplorationBasis.NOVELTY, "attention:unfamiliar",
+                EpistemicStatus.OBSERVED,
+            ),),
+            other_needs=(), disposition=ExplorationDisposition(),
+            signal_envelope=envelope(
+                c["scope"], "COGNITIVE_SIGNAL", "signal:attempted-fact",
+            ),
+            current_registry_revision=7,
+            current_source_revision_refs=c["sources"],
+        )
