@@ -110,7 +110,7 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
           curiosity=1.0, with_target=True, with_preset=True,
           hunger=20, live_intent=False, mode=SchemaMode.FULL):
     scope = ScopeRef(self_id, "world-A")
-    question_ref = "question:ridge" if self_id == "self-A" else "question:forest"
+    question_ref = "question:ridge" if self_id in ("self-A", "A") else "question:forest"
     retained = PersistentCognition(
         IdentitySpecification(self_id, ("Curious",), OWNER),
     )
@@ -1648,12 +1648,13 @@ def d5_real_b_typed_generation(tmp_path):
 
 def test_d5_real_stage28_world_a_b_typed_generation_restores_inert_d_history(tmp_path):
     import hashlib
+
+    from relay_self.checkpointed_cognitive_runtime_dev import (
+        staged_recover_cognition_cohort,
+    )
     from relay_self.self_owner_checkpoint_dev import (
         prepare_typed_owner_restore,
         verify_typed_generation,
-    )
-    from relay_self.checkpointed_cognitive_runtime_dev import (
-        staged_recover_cognition_cohort,
     )
 
     generation, restored, owners, receipt = d5_real_b_typed_generation(tmp_path)
