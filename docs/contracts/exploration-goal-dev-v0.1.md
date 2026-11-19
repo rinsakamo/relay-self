@@ -196,3 +196,71 @@ from this environment. No old L2 attempt can be replayed; a genuine DEFER
 may leave one Self with no historical attempt. Further local source
 generation and independent raw-event verification are still required.
 QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+## D9 actual original B Source Producer / one real bounded L1 (isolated DEV)
+
+D9 Draft #1035 extends D8. It is a source-owning implementation seam,
+not a completed real World/Gemma run. Original B #988, D #996, A/C, and
+main are untouched; only the isolated D9 branch contains its B source
+producer fork and B model raw entity-body adapter.
+
+- exploration_d9_original_l1_dev.py projects a new UNKNOWN exploration
+  Question from the current original Mineflayer native probe and limited
+  observational coverage. It creates Present/Need through the existing
+  innate schema and current B original PatternRegistry, not a fake Target
+  or hardcoded path. A missing original innate exploration predicate,
+  foreign native request, stale epoch or mismatched cognition is HOLD.
+  The bounded original L1 presents only ESCALATE_L2 and DEFER.
+- The production path submits one new BoundedChoiceRequest only through
+  the existing ResidentLlamaInferenceLane backed by the current original
+  ResidentCognitiveWorkOwner and the single-slot llama provider. It awaits
+  terminal actual ProviderDecision and rechecks the original owner scope
+  before adoption. It cannot dispatch L2 or physical effects.
+- retain_d9_question_without_model produces an actual owner-durable OPEN
+  Question for A, explicitly NOT an inference or fabricated DEFER. Only
+  B makes the ONE real model POST in this source trial. If the model
+  genuinely chooses ESCALATE_L2, the original Owner stores a D3 RESERVED
+  record before any hypothetical future L2. If it chooses DEFER or is
+  unresolved, no previous L2 reservation is manufactured and D7's
+  non-replay qualification remains HOLD for that source trial.
+- exploration_d9_original_source_cut_dev.py performs the original Owner
+  memory/Question/Attempt/readback/WAL comparison and then calls B's
+  unchanged Stage28b capture_retired_resident_typed_world after all
+  original native children retire. It never creates a second owner or
+  alternative WAL. The old B source branch was not modified.
+- experiments/stage28_d9_real_source_dev.py is a D9-only isolated fork
+  of B's original real Paper A/B source launcher. It forbids physical
+  MOVE/legacy B L1 modes. Before World launch it requires original
+  Stage24g GGUF bytes, llama PID, RTX 3060, live GPU-owner catalog and
+  idle singleton slot readback; actual Paper/plugin jar hashes, Java 21,
+  Node and explicit EULA/real DEV grants are still required.
+  It verifies actual Paper A/B presence before one original L1 GPU POST.
+  The B original /v1/systemone HTTP request/response entity bytes are
+  captured exactly once, with their SHA256 manifest.
+- A native quits and re-JOINs inside the original B scenario. Its new
+  Question is formed AFTER its final native reJOIN and accepted actual
+  probe; attaching the Question to the retired A native would create an
+  invalid original typed cut. B's L1 selection occurs while its original
+  native stays online.
+- The resulting new A/B typed stopped World source is classified
+  REAL_D9_SOURCE_A_B_TYPED_CUT_CAPTURED_INDEPENDENT_AUDIT_PENDING.
+  That state is a pending report, not an independently verified real
+  result. An external second process must inspect raw original
+  Paper/native/model HTTP evidence and the COMMITTED cut before any
+  promotion; the D8 old B historical manifest format cannot be reused
+  unmodified as if it described D9.
+- CPU tests use actual original B owner/cognition, actual B
+  ResidentLlamaInferenceLane and a deterministic local HTTP test server.
+  They explicitly do NOT access a real GPU, Gemma, native Paper or WSL.
+  They cover actual D4 owner Question/Cognition persistence, model
+  ESCALATE vs DEFER, model-free A, double-L1 prevention, original
+  selected L2 pre-cut provenance, missing pre-World GGUF/PID proof,
+  and failure before creating a World.
+
+The RelaySelf user's LocalCodex Minecraft EULA consent and World DEV
+approval are already given. The code has NOT run on the user's local
+hardware from this assistant. The next required gate is a new D9
+independent raw source audit + genuine operator-owned local one-shot
+Paper/Gemma run, then only a source-qualified new D8 restore/reJOIN.
+Current status: D9_CPU_OFFLINE_DEV_ONLY / REAL_WORLD_NOT_RUN /
+REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.
