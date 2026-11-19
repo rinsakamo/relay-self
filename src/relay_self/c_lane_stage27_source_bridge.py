@@ -13,6 +13,7 @@ from pathlib import Path
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.cognitive_learning_contract import (
     BeforePrediction,
+    EvidenceOrigin,
     OutcomeAssessment,
 )
 from relay_self.cognitive_learning_owner_adapter import (
@@ -214,9 +215,7 @@ def assemble_stage27_c1_from_canonical_wal(
     before = WorldBodyRead(
         scope=scope, world_id=world_id, epoch=world_epoch, source_seq=before_probe.seq,
         clock=clock(before_probe), source_refs=(before_probe.provenance,),
-        origin=__import__(
-            "relay_self.cognitive_learning_contract", fromlist=["EvidenceOrigin"]
-        ).EvidenceOrigin.WORLD_BODY_OBSERVED,
+        origin=EvidenceOrigin.WORLD_BODY_OBSERVED,
     )
     after = WorldBodyRead(
         scope=scope, world_id=world_id, epoch=world_epoch, source_seq=after_probe.seq,
