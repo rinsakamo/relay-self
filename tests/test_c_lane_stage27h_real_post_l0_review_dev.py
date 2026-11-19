@@ -24,7 +24,6 @@ from experiments.p0d_stage27_real_place_move_dev import (
     stage27h_real_a_motor_hook,
     stage27i_real_a_motor_hook,
 )
-from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.skill import SkillState
 from test_c_lane_stage27hi_multi_action_review_dev import _run_multi
