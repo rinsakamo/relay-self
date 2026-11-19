@@ -44,21 +44,15 @@ from relay_self.exploration_checkpoint_bridge_dev import (
     inspect_d4_inert_recovery,
     reserve_resident_l2,
 )
-from relay_self.exploration_stage28_fresh_gate_dev import (
-    D6FreshReconsiderationHold,
-    inspect_d6_new_exploration_reevaluation,
-)
-from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
-from relay_self.stage28_cognitive_recovery_gate_dev import (
-    Stage28ForkPaperEpoch,
-    Stage28NativePaperBodyLink,
-)
-from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
 from relay_self.exploration_continuity_dev import (
     AttemptPhase,
     ExplorationContinuityError,
     open_question_refs,
     validate_persisted_l2_reservation,
+)
+from relay_self.exploration_stage28_fresh_gate_dev import (
+    D6FreshReconsiderationHold,
+    inspect_d6_new_exploration_reevaluation,
 )
 from relay_self.persistent_cognition import (
     load_persistent_cognition,
@@ -66,6 +60,12 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
+from relay_self.stage28_cognitive_recovery_gate_dev import (
+    Stage28ForkPaperEpoch,
+    Stage28NativePaperBodyLink,
+)
+from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
 from relay_self.self_owner_checkpoint_dev import (
     verify_typed_generation,
 )
