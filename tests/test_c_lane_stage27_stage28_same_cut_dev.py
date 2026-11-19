@@ -8,6 +8,7 @@ No actual Gemma HTTP inference, C2 or physical Action is claimed.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -18,7 +19,9 @@ from relay_self.c_lane_stage27_source_bridge import (
     assemble_stage27_c1_from_canonical_wal,
 )
 from relay_self.c_lane_stage28_typed_continuity_dev import (
+    C1TypedCheckpointHold,
     verify_c1_across_stage28_typed_epoch,
+    verify_stage27_wal_c1_across_stage28_typed_epoch,
 )
 from relay_self.cognitive_learning_contract import OutcomeAssessment
 from relay_self.cognitive_learning_owner_adapter import C1AdmissionError
@@ -164,6 +167,12 @@ def test_original_stage27_v2_wal_crosses_one_stage28_world_a_b_generation(
     assert witness.memory_id == exp.memory_id
     assert witness.historical_memory_retained
     assert not witness.real_historical_world_action_attested
+    stronger = verify_stage27_wal_c1_across_stage28_typed_epoch(**args)
+    assert stronger.continuity == witness
+    assert stronger.action_ids == exp.action_ids
+    assert stronger.physical_wal_sha256 == observed["sha"]
+    assert stronger.historical_source_format_verified
+    assert not stronger.real_physical_effect_attested
     # Reopen the actual archived WAL, not a copied synthetic Memory JSON.
     source_wal = args["source_generation"] / "selves" / "A" / "physical-wal.json"
     restored_wal = args["copy"].directory / "selves" / "A" / "physical-wal.json"
@@ -221,3 +230,64 @@ def test_original_stage27_wal_read_only_assembly_rejects_foreign_source(
                 selected_invocation=inv, before_probe=first, after_probe=last,
                 world_id="world-1", world_epoch=0, selected_provenance=P,
             )
+
+
+
+@pytest.mark.parametrize("fault", [
+    "forged-wal-source", "wrong-action-id", "wrong-preset-ref",
+    "wrong-skill-id",
+])
+def test_stage28_typed_valid_c1_memory_must_still_match_stage27_original_wal(
+    tmp_path, monkeypatch, fault,
+):
+    """A *COMMITTED* Self Memory is not proof of the claimed original WAL."""
+    import test_c_lane_stage28_typed_continuity_dev as longitudinal
+
+    source_setup = longitudinal._setup
+    original_proposal = longitudinal.propose_existing_memory
+    observed = {}
+
+    def source_with_stage27(path, monkey):
+        result = source_setup(path, monkey)
+        episode, digest, _inv, _before, _after = _source_with_original_v2_wal(
+            result[0].owners["A"],
+        )
+        observed.update(exp=episode, digest=digest)
+        return result
+
+    def counterfeit_memory(cognition, experience, *, integration_provenance):
+        memory = original_proposal(
+            cognition, experience, integration_provenance=integration_provenance,
+        )
+        assert memory is not None
+        body = json.loads(memory.content)
+        if fault == "forged-wal-source":
+            body["source_refs"] = [
+                [source, "f" * 64 + ":" + observed["exp"].action_ids[0]]
+                if source == "canonical-physical-wal" else [source, reference]
+                for source, reference in body["source_refs"]
+            ]
+        elif fault == "wrong-action-id":
+            body["action_ids"] = ["counterfeit-other-action"]
+        elif fault == "wrong-preset-ref":
+            body["preset_ref"] = "skill-preset:v1@" + "f" * 64
+        else:
+            body["skill_id"] = "EAT"
+        return replace(
+            memory, content=json.dumps(body, sort_keys=True, ensure_ascii=False),
+        )
+
+    monkeypatch.setattr(longitudinal, "_setup", source_with_stage27)
+    monkeypatch.setattr(
+        longitudinal, "_historical_synthetic_c1", lambda: observed["exp"],
+    )
+    monkeypatch.setattr(
+        longitudinal, "propose_existing_memory", counterfeit_memory,
+    )
+    args, exp, _bridge, _ = _case(tmp_path, monkeypatch)
+    # The original Stage28 checkpoint correctly preserved this deliberately
+    # modified native Memory. Lineage admission MUST still reject its claim.
+    base = verify_c1_across_stage28_typed_epoch(**args)
+    assert base.memory_id == exp.memory_id
+    with pytest.raises(C1TypedCheckpointHold):
+        verify_stage27_wal_c1_across_stage28_typed_epoch(**args)
