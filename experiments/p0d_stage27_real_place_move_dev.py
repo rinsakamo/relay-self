@@ -1160,6 +1160,7 @@ async def run_stage27_real_world(
     stage27g_real_l1_evaluation: bool = False,
     stage27h_l0_move_loop: bool = False,
     stage27i_precision_gait: bool = False,
+    c_lane_stage27h_post_review: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -1170,6 +1171,8 @@ async def run_stage27_real_world(
     if (
         type(stage27h_l0_move_loop) is not bool
         or type(stage27i_precision_gait) is not bool
+        or type(c_lane_stage27h_post_review) is not bool
+        or (c_lane_stage27h_post_review and not stage27h_l0_move_loop)
         or (stage27h_l0_move_loop and stage27i_precision_gait)
         or (stage27i_precision_gait and (
             stage27e_independent_evidence or stage27f_cpu_evaluation
@@ -1183,6 +1186,14 @@ async def run_stage27_real_world(
         raise Stage27RealWorldRefusal(
             "Stage27h multi-Action mode must be the sole explicit DEV stage"
         )
+    # Separate opt-in, always using the SAME original Stage27h physical
+    # issuer and original complete Stage25 preset/rejoin parent runner.
+    # No second physical owner or automatic C1 approval is created.
+    async def _stage27h_c_lane_hook(**kwargs):
+        return await stage27h_real_a_motor_hook(
+            **kwargs, c_lane_stage27h_post_review=True,
+        )
+
     return await run_real_two_self_preset_checkpoint(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
@@ -1200,6 +1211,7 @@ async def run_stage27_real_world(
         _stage27i_precision_target=stage27i_precision_gait,
         _stage27_motor_hook=(
             stage27i_real_a_motor_hook if stage27i_precision_gait
+            else _stage27h_c_lane_hook if c_lane_stage27h_post_review
             else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
@@ -1229,6 +1241,7 @@ def main() -> int:
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
     p.add_argument("--stage27i-precision-gait", action="store_true")
+    p.add_argument("--c-lane-stage27h-post-review", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -1246,6 +1259,7 @@ def main() -> int:
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
             stage27i_precision_gait=args.stage27i_precision_gait,
+            c_lane_stage27h_post_review=args.c_lane_stage27h_post_review,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
