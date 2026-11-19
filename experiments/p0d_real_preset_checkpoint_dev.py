@@ -737,11 +737,11 @@ async def run_real_two_self_preset_checkpoint(
         raise RealPresetCheckpointRefusal(
             "Stage27 native MOVE requires a separate real bounded model hook"
         )
-    if (type(_stage27h_multi_preset) is not bool
+    if (
+        type(_stage27h_multi_preset) is not bool
         or type(_stage27i_precision_target) is not bool
         or (_stage27i_precision_target and not _stage27h_multi_preset)
-        or (
-        _stage27h_multi_preset and _stage27_motor_hook is None
+        or (_stage27h_multi_preset and _stage27_motor_hook is None)
     ):
         raise RealPresetCheckpointRefusal(
             "Stage27h multi-action budget requires explicit original motor hook"
