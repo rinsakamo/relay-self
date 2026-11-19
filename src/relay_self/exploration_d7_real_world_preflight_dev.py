@@ -181,7 +181,7 @@ def inspect_d7_real_world_candidate(
                 sum(a.phase is AttemptPhase.RESERVED for a in continuity.attempts),
             ))
         return D7SourceCandidate(
-            source.generation_id, source.source_world_id,
+            source.generation_id, source.world_id,
             source.source_branch_id, recovered.fork_branch_id,
             expected_committed_sha256, ("A", "B"), tuple(selves),
         )
