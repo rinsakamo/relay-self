@@ -34,7 +34,6 @@ from experiments.cognitive_physical_executor_dev import (
     PhysicalDevGrant,
     PhysicalGrantStage,
 )
-from experiments.stage28_d9_original_move_issue_compat_dev import ResidentMoveDevReceipt
 from experiments.p0d_real_paper_smoke_dev import (
     _bootstrap_paper,
     _free_local_port,
@@ -46,11 +45,6 @@ from experiments.p0d_real_two_native_smoke_dev import (
     preflight_two_native,
     two_native_server_properties,
 )
-from experiments.stage24b_real_l1_move_dev import (
-    require_frozen_stage24b_binding,
-    require_frozen_stage24b_choice,
-    run_stage24b_selected_b_move,
-)
 from experiments.stage24g_model_gate_dev import (
     Stage24gModelGateReceipt,
     verify_stage24g_model_gate,
@@ -58,6 +52,7 @@ from experiments.stage24g_model_gate_dev import (
 from experiments.stage24g_model_gate_dev import (
     receipt_json as stage24g_model_receipt_json,
 )
+from experiments.stage28_d9_original_move_issue_compat_dev import ResidentMoveDevReceipt
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
@@ -116,6 +111,21 @@ from relay_self.world_resident_lifecycle_dev import (
 
 class RealResidentPresenceRefusal(RuntimeError):
     """Real Paper observation or explicit operator/owner evidence not qualified."""
+
+# D9 source producer is NEVER a physical MOVE launcher. Legacy B method
+# names stay fail-closed for unreachable old branches; no Original ActionPort
+# can be reached through this isolated D9 entrypoint.
+def require_frozen_stage24b_binding(*_args, **_kwargs):
+    raise RealResidentPresenceRefusal("D9 forbids legacy physical L1/MOVE")
+
+
+def require_frozen_stage24b_choice(*_args, **_kwargs):
+    raise RealResidentPresenceRefusal("D9 forbids legacy physical L1/MOVE")
+
+
+async def run_stage24b_selected_b_move(*_args, **_kwargs):
+    raise RealResidentPresenceRefusal("D9 forbids legacy physical L1/MOVE")
+
 
 
 def _immutable_receipt(evidence_dir: Path, name: str, receipt: object) -> dict[str, str]:
@@ -915,6 +925,10 @@ async def run_real_resident_presence(
     d9_source_exploration_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
+    if d9_source_exploration_dev is not True:
+        raise RealResidentPresenceRefusal(
+            "D9 source producer is D9 ONLY, never B legacy MOVE/L1"
+        )
     if real_world_dev_grant is not True:
         raise RealResidentPresenceRefusal(
             "HOLD_REAL_WORLD_GRANT: explicit real Paper/native DEV approval required"
