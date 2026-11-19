@@ -1211,7 +1211,7 @@ def d4_owner_harness(c, tmp_path, monkeypatch):
     save_persistent_cognition(owner.files.cognition_file, owner.retained)
     resident = Stage28OriginalResidentWorkOwner(owner)
     scope = ResidentD4Scope(
-        owner.self_id, 1, "native-D4", 2,
+        owner.self_id, c["scope"].world_id, 1, "native-D4", 2,
         len(owner.intent.events), owner.intent.last_at_ns,
     )
     return owner, resident, scope
@@ -1280,6 +1280,12 @@ def test_d4_wrong_owner_native_epoch_and_unobserved_body_hold(tmp_path, monkeypa
         retain_resident_question(
             owner, resident, scope=wrong, present=c["present"],
             question_ref="question:ridge", owner_provenance=OWNER,
+        )
+    with pytest.raises(D4OwnerHold, match="foreign/unprojected"):
+        retain_resident_question(
+            owner, resident, scope=replace(lease, world_id="world-fork"),
+            present=c["present"], question_ref="question:ridge",
+            owner_provenance=OWNER,
         )
     owner.current_worldbody_observation = None
     with pytest.raises(D4OwnerHold, match="(stale|not currently admitted)"):
