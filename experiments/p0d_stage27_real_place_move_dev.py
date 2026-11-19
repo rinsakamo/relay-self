@@ -45,6 +45,9 @@ from relay_self.p0d_stage27i_model_http_census_dev import (
     require_stage27i_two_initial_calls,
 )
 from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
+from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_ACTION_IO_WATCHDOG_S,
+)
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
@@ -856,19 +859,6 @@ async def stage27h_real_a_motor_hook(
             )
             if precision_stage27i else None
         )
-        if long_stage27j:
-            # Reserve a conservative whole-pulse WALK/SNEAK displacement
-            # envelope + STOP time against the SAME 5m parent Skill BEFORE
-            # any next Physical Action. Budget exhaustion is an ordinary L0
-            # yield (no speculative attempt). Unexpected physical effects
-            # outside the reservation HOLD, not grant more motion.
-            budget_step = loop.reserve_stage27j_motor_budget(
-                source_probe=current, gait_mode=gait_choice.gait_mode,
-                now_ns=time.monotonic_ns(),
-            )
-            if budget_step is not None:
-                result = budget_step
-                break
         # Charge a complete 60-sample STOP settlement quota against the
         # immutable parent Invocation BEFORE even proposing the next Action.
         # The issuer cannot request more native probes than this reservation.
@@ -888,9 +878,6 @@ async def stage27h_real_a_motor_hook(
                 "MOVE", 1, "locomotion", "DESTINATION", True,
             ), at_ns=time.monotonic_ns(),
             provenance=Provenance("stage27h-original-l0", current.provenance.reference),
-            parent_deadline_ns=(
-                loop.original_deadline_ns if long_stage27j else None
-            ),
         )
         binding = proposal.proposal.binding
         journal = PhysicalActionJournal.restore(
@@ -911,13 +898,6 @@ async def stage27h_real_a_motor_hook(
             ))
 
         t0 = time.monotonic_ns()
-        if (
-            long_stage27j
-            and t0 + 5_000_000_000 >= loop.original_deadline_ns
-        ):
-            raise Stage27RealWorldRefusal(
-                "Stage27j original time margin expired before native effect"
-            )
         issue_operation = physical.issue_place_move(
             session, proposal=proposal.proposal,
             l0=proposal, prepared=prepared["A"],
@@ -942,20 +922,14 @@ async def stage27h_real_a_motor_hook(
             pre_native_evidence=capture_reserved,
             allow_prior_terminal_place_actions=idx > 0,
             settlement_probe_limit=stop_probe_quota,
-            parent_deadline_ns=(
-                loop.original_deadline_ns if long_stage27j else None
-            ),
         )
-        # A child cannot retain a freshly minted 45s timeout. On an
-        # overrun, cancellation triggers the existing best-effort STOP and
-        # PREPARED_UNRESOLVED path; never automatically reissue.
+        # The 45s Skill time budget is evaluated only after the complete
+        # one-shot MOVE/STOP/WAL or at the next pre-action. An independent
+        # IO watchdog still aborts stalled physical work as HOLD, never as
+        # a successful budget exit or invented forward START acknowledgement.
         receipt = (
             await asyncio.wait_for(
-                issue_operation,
-                timeout=max(
-                    0.001,
-                    (loop.original_deadline_ns - time.monotonic_ns()) / 1e9,
-                ),
+                issue_operation, timeout=STAGE27J_ACTION_IO_WATCHDOG_S,
             )
             if long_stage27j else await issue_operation
         )
