@@ -361,3 +361,52 @@ def test_stage27j_cumulative_distance_overrun_is_soft_terminal(tmp_path):
         tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
         precision=False, long_stage27j=True,
     )
+
+
+def test_stage27j_no_forward_start_ack_remains_unresolved_hold(tmp_path):
+    # A failed native forward START is an ambiguous physical outcome, NOT
+    # cognitive Budget exhaustion and NOT a fabricated no-forward terminal.
+    class NoForwardStartNative(PrecisionPlaceNative):
+        async def send_set_control(self, action_id, *, control, state):
+            if control == "forward" and state:
+                raise RuntimeError("synthetic native START unavailable")
+            return await super().send_set_control(
+                action_id, control=control, state=state,
+            )
+
+    async def scenario(f, lane, server, pre, handoff, former, current, loop):
+        step = loop.pre_action(current, now_ns=150)
+        assert step.status == "L0_CONTINUE_MOVE"
+        decision = choose_stage27i_gait(
+            loop, step, current, long_stage27j=True,
+        )
+        native = NoForwardStartNative(handoff.native_session_id)
+        with pytest.raises(RuntimeError, match="START unavailable"):
+            await _issue(
+                f, pre, handoff, loop, former, current, native,
+                decision.gait_mode,
+            )
+        assert not any(
+            control == "forward"
+            for _action, control, _state in native.sent_commands
+        )
+        assert sum(
+            control == "clear_controls"
+            for _action, control, _state in native.sent_commands
+        ) == 1
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert journal.unresolved
+        assert loop.action_count == 0
+        # Do not reinterpret uncertain PREPARED as a Budget terminal.
+        with pytest.raises(Stage27hLoopRefusal):
+            loop.pre_action(
+                replace(current, seq=current.seq + 100),
+                now_ns=loop.start_ns + STAGE27J_MAX_DURATION_MS * 1_000_000,
+            )
+    _case(
+        tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
+        precision=False, long_stage27j=True,
+    )
