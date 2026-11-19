@@ -82,6 +82,9 @@ _MOVE_PLACE_FIELDS = {
     "aim_yaw_rad", "target_position",
     "budget_actions", "budget_duration_ms", "budget_distance_m",
 }
+# Optional exact v2 MOVE_PLACE row extension; old persisted WALs have neither
+# field and MUST continue to pass readback unchanged.
+_MOVE_PLACE_GAIT_FIELDS = {"gait_mode", "gait_ack_seq"}
 
 
 def _move_pos(value: object) -> tuple[float, float, float]:
@@ -109,7 +112,11 @@ def _validate(value: object) -> dict[str, Any]:
             entry, (
                 _ROW | _ATTACK_FIELDS
                 if entry.get("capability") == "ATTACK"
-                else _ROW | _MOVE_FIELDS | _MOVE_PLACE_FIELDS
+                else (
+                    _ROW | _MOVE_FIELDS | _MOVE_PLACE_FIELDS
+                    | (_MOVE_PLACE_GAIT_FIELDS
+                       if set(entry) & _MOVE_PLACE_GAIT_FIELDS else set())
+                )
                 if entry.get("capability") == "MOVE_PLACE"
                 else _ROW | _MOVE_FIELDS
                 if entry.get("capability") == "MOVE"
@@ -170,6 +177,15 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("PLACE MOVE original Invocation/budget invalid")
             _move_pos(row["target_position"])
+            if "gait_mode" in row and (
+                row["gait_mode"] not in ("WALK", "SNEAK")
+                or ("gait_ack_seq" not in row)
+            ):
+                raise PhysicalJournalError("unrecognized original MOVE gait")
+            if "gait_mode" in row and row["gait_mode"] == "WALK" and (
+                row["gait_ack_seq"] is not None
+            ):
+                raise PhysicalJournalError("walking PLACE has no gait-mode effect")
         else:
             raise PhysicalJournalError("unknown physical Action capability")
         if row["action_id"] in seen:
@@ -180,6 +196,8 @@ def _validate(value: object) -> dict[str, Any]:
         if row["source_ref"] != f"{session}:{seq}" or seq <= max_seq.get(session, -1):
             raise PhysicalJournalReplay("stale or forged native source")
         if row["status"] == "PREPARED_UNRESOLVED":
+            if row["capability"] == "MOVE_PLACE" and row.get("gait_ack_seq") is not None:
+                raise PhysicalJournalError("unresolved gait cannot claim native effect")
             if idx != len(body["actions"]) - 1 or any(
                 row[k] is not None for k in (
                     "effect_seqs", "after_seq", "food_before", "food_after",
@@ -253,6 +271,12 @@ def _validate(value: object) -> dict[str, Any]:
             if type(child_seq) is not list or len(child_seq) != 3:
                 raise PhysicalJournalError("PLACE MOVE needs look/start/stop ACKs")
             look_seq, start_seq, stop_seq = [_number(v) for v in child_seq]
+            gait_seq = row.get("gait_ack_seq")
+            if row.get("gait_mode") == "SNEAK":
+                if gait_seq is None or not look_seq < _number(gait_seq) < start_seq:
+                    raise PhysicalJournalError("SNEAK gait ACK missing or stale")
+            elif gait_seq is not None:
+                raise PhysicalJournalError("unrequested native gait ACK")
             initial = _number(row["initial_stop_seq"])
             first = _number(row["first_stable_seq"])
             final = _number(row["after_seq"])
@@ -689,6 +713,7 @@ class PhysicalActionJournal:
     def prepare_place_move(
         self, binding: PhysicalActionBinding, probe: MineflayerObservation,
         invocation: "SkillInvocation", motion: "Stage27PlaceMotionPlan",
+        *, precision_gait: str | None = None,
     ) -> None:
         """fsync selected original PLACE/Preset BEFORE any native LOOK/effect."""
         from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
@@ -726,6 +751,7 @@ class PhysicalActionJournal:
             or motion.desired_mineflayer_yaw_rad is None
             or motion.action_granted or motion.native_effect_issued
             or motion.world_goal_succeeded
+            or precision_gait not in (None, "WALK", "SNEAK")
             or not isinstance(probe, MineflayerObservation)
             or probe.kind != "probe" or not probe.request_id
             or probe.session_id != binding.scope.world_session_id
@@ -765,6 +791,8 @@ class PhysicalActionJournal:
             "budget_actions": invocation.budget.max_actions,
             "budget_duration_ms": invocation.budget.max_duration_ms,
             "budget_distance_m": invocation.budget.max_distance_m,
+            **({"gait_mode": precision_gait, "gait_ack_seq": None}
+               if precision_gait is not None else {}),
         }], upgrade_to_v2=True)
 
     def close_place_move(
@@ -779,8 +807,9 @@ class PhysicalActionJournal:
         settled: MineflayerObservation,
         terminal: ActionLifecycle,
         supervisor: ActionSupervisor,
+        *, gait_ack: MineflayerEffectResult | None = None,
     ) -> str:
-        """Seal original LOOK/start/STOP and 8+8 native settled consequence."""
+        """Seal original LOOK/(optional SNEAK)/start/STOP native readbacks."""
         from relay_self.skill_invocation import SkillInvocation
 
         if not self.unresolved or not isinstance(binding, PhysicalActionBinding):
@@ -815,6 +844,14 @@ class PhysicalActionJournal:
             or stop_ack.effect != "clear_controls"
             or any(x.result != "applied" for x in (look_ack, start_ack, stop_ack))
             or not before.seq < look_ack.seq < start_ack.seq < stop_ack.seq
+            or (row.get("gait_mode") == "SNEAK" and (
+                not isinstance(gait_ack, MineflayerEffectResult)
+                or gait_ack.session_id != before.session_id
+                or gait_ack.action_id != binding.action_id + "-sneak"
+                or gait_ack.effect != "set_control" or gait_ack.result != "applied"
+                or not look_ack.seq < gait_ack.seq < start_ack.seq
+            ))
+            or (row.get("gait_mode") != "SNEAK" and gait_ack is not None)
             or not stop_ack.seq < initial_stop.seq < first_stable.seq < settled.seq
             or len({x.request_id for x in entries}) != 4
             or not isinstance(terminal, ActionLifecycle)
@@ -853,6 +890,8 @@ class PhysicalActionJournal:
         self._commit([*self.records[:-1], {
             **row, "status": status,
             "effect_seqs": [look_ack.seq, start_ack.seq, stop_ack.seq],
+            **({"gait_ack_seq": gait_ack.seq if gait_ack is not None else None}
+               if "gait_mode" in row else {}),
             "after_seq": settled.seq,
             "settled_position": {
                 "x": after_pos.x, "y": after_pos.y, "z": after_pos.z,

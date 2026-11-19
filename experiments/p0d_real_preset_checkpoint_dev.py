@@ -64,6 +64,7 @@ from relay_self.p0d_stage26_gemma_l1_dev import (
     prepare_restored_preset_l1,
     submit_restored_preset_l1,
 )
+from relay_self.p0d_stage27i_precision_gait_dev import STAGE27I_PRESET_ID
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -165,13 +166,14 @@ def _preserve_and_validate_stage27h_hook_return(
         before = result.get("stage27h_peer_b_before")
         after = result.get("stage27h_peer_b_after")
         action_count = result.get("stage27h_l0_action_count")
+        stage = "27I" if result.get("stage27i_precision_enabled") is True else "27H"
         expected_status = {
             "L0_TARGET_REACHED_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+                f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
             "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+                f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
             "L0_NO_PROGRESS_YIELD_EVALUATION":
-                "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
+                f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
         }
         if (
             type(action_count) is not int or not 0 <= action_count <= 4
@@ -182,7 +184,7 @@ def _preserve_and_validate_stage27h_hook_return(
             or type(actions) is not list or len(actions) != action_count
             or feedback.get("status") is None
             or classification != expected_status.get(
-                feedback["status"], "REAL_STAGE27H_L0_UNREACHED_DEV",
+                feedback["status"], f"REAL_STAGE{stage}_L0_UNREACHED_DEV",
             )
             or type(before) is not dict or type(after) is not dict
             or before != after
@@ -204,6 +206,185 @@ def _preserve_and_validate_stage27h_hook_return(
             raise RealPresetCheckpointRefusal(
                 "Stage27h motor-hook original result violates parent contract"
             )
+    if result.get("stage27i_precision_enabled") is True:
+        # Refuse an otherwise equal-looking B snapshot that omits Memory.
+        # Read back BOTH separately fsynced source snapshots, not merely the
+        # in-memory hook-return JSON written above.
+        b_before = result.get("stage27h_peer_b_before")
+        b_after = result.get("stage27h_peer_b_after")
+        if type(b_before) is not dict or type(b_after) is not dict:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original peer B evidence missing"
+            )
+        required = {
+            "intent_event_count", "intent_events_sha256", "intent_current",
+            "skill_execution_count", "skill_histories_sha256",
+            "memory_count", "memory_records_sha256", "memory_record_digests",
+            "physical_wal_sha256", "physical_wal_action_rows",
+            "physical_wal_unresolved", "open_action_count",
+        }
+        for label, snapshot in (("before", b_before), ("after", b_after)):
+            if set(snapshot) != required:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i peer B Intent/Skill/Memory/WAL fields missing"
+                )
+            digest_fields = (
+                "intent_events_sha256", "skill_histories_sha256",
+                "memory_records_sha256", "physical_wal_sha256",
+            )
+            if (
+                snapshot["intent_current"] is not None
+                or snapshot["physical_wal_unresolved"] is not False
+                or any(type(snapshot[key]) is not int or snapshot[key] < 0
+                    for key in (
+                        "intent_event_count", "skill_execution_count",
+                        "memory_count", "physical_wal_action_rows",
+                        "open_action_count",
+                    ))
+                or any(
+                    type(snapshot[key]) is not str
+                    or len(snapshot[key]) != 64
+                    or any(c not in "0123456789abcdef" for c in snapshot[key])
+                    for key in digest_fields
+                )
+                or type(snapshot["memory_record_digests"]) is not list
+                or len(snapshot["memory_record_digests"]) != snapshot["memory_count"]
+                or any(
+                    type(item) is not dict
+                    or set(item) != {"memory_id", "sha256"}
+                    or type(item["memory_id"]) is not str or not item["memory_id"]
+                    or type(item["sha256"]) is not str
+                    or len(item["sha256"]) != 64
+                    or any(c not in "0123456789abcdef" for c in item["sha256"])
+                    for item in snapshot["memory_record_digests"]
+                )
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i peer B typed Memory content witness invalid"
+                )
+            receipt = result.get(f"stage27i_peer_b_{label}_evidence")
+            expected_path = evidence / f"stage27i-peer-b-{label}.json"
+            if (
+                type(receipt) is not dict
+                or set(receipt) != {
+                    "path", "sha256", "frozen_original",
+                    "memory_content_compared_by_sha256",
+                }
+                or receipt["path"] != str(expected_path)
+                or receipt["frozen_original"] is not True
+                or receipt["memory_content_compared_by_sha256"] is not True
+                or expected_path.is_symlink() or not expected_path.is_file()
+                or file_sha256(expected_path) != receipt["sha256"]
+                or json.loads(expected_path.read_bytes()) != snapshot
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original B Memory snapshot readback mismatch"
+                )
+        if b_before != b_after:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original peer B Memory/Intent/Skill/WAL changed"
+            )
+        # Mandatory independently frozen provider HTTP source census, not
+        # merely the former literal "additional_model_requests": 0.
+        http_before = result.get("stage27i_model_http_before")
+        http_after = result.get("stage27i_model_http_after")
+        if (
+            type(http_before) is not dict or type(http_after) is not dict
+            or http_before != http_after
+            or result.get("stage27h_additional_model_requests") != 0
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original model HTTP before/after census changed"
+            )
+        model_source = evidence / "original-model-http"
+        if model_source.is_symlink() or not model_source.is_dir():
+            raise RealPresetCheckpointRefusal("Stage27i model source missing")
+        actual_names = sorted(p.name for p in model_source.iterdir())
+        expected_fields = {
+            "request_count", "response_count", "manifest_count",
+            "unexpected_files", "missing_files", "source_receipts",
+            "model_http_source", "file_names_sha256",
+        }
+        if (
+            set(http_before) != expected_fields
+            or any(type(http_before[k]) is not int or http_before[k] != 2
+                   for k in ("request_count", "response_count", "manifest_count"))
+            or http_before["unexpected_files"] != []
+            or http_before["missing_files"] != []
+            or http_before["model_http_source"] != str(model_source)
+            or type(http_before["source_receipts"]) is not dict
+            or set(http_before["source_receipts"]) != {"A", "B"}
+            or http_before["file_names_sha256"] != hashlib.sha256(
+                json.dumps(actual_names, sort_keys=True,
+                           separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+            or len(actual_names) != 6
+            or any(p.is_symlink() or not p.is_file()
+                   for p in model_source.iterdir())
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27i model HTTP source census not exactly two calls"
+            )
+        expected_names: set[str] = set()
+        for sid in ("A", "B"):
+            receipt = http_before["source_receipts"][sid]
+            if type(receipt) is not dict or set(receipt) != {
+                "request_id", "request_sha256", "response_sha256",
+                "response_bytes",
+            }:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original L1 source receipt incomplete"
+                )
+            request_id = receipt["request_id"]
+            if type(request_id) is not str or not request_id:
+                raise RealPresetCheckpointRefusal("Stage27i bad L1 request ID")
+            key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+            request_file = model_source / (key + ".request.json")
+            response_file = model_source / (key + ".response.json")
+            manifest_file = model_source / (key + ".source.sha256.json")
+            expected_names.update((
+                request_file.name, response_file.name, manifest_file.name,
+            ))
+            try:
+                model_manifest = json.loads(manifest_file.read_bytes())
+                request_hash = file_sha256(request_file)
+                response_hash = file_sha256(response_file)
+                response_size = response_file.stat().st_size
+            except (OSError, ValueError, KeyError) as exc:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original model HTTP files missing"
+                ) from exc
+            if (
+                model_manifest.get("request_id") != request_id
+                or model_manifest.get("request_sha256") != request_hash
+                or model_manifest.get("response_sha256") != response_hash
+                or model_manifest.get("response_bytes") != response_size
+                or receipt["request_sha256"] != request_hash
+                or receipt["response_sha256"] != response_hash
+                or receipt["response_bytes"] != response_size
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original model HTTP SHA evidence inconsistent"
+                )
+        if sorted(expected_names) != actual_names:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i extra or missing model HTTP request source"
+            )
+        for label, snapshot in (("before", http_before), ("after", http_after)):
+            saved = result.get(f"stage27i_model_http_{label}_evidence")
+            path = evidence / f"stage27i-model-http-{label}.json"
+            if (
+                type(saved) is not dict
+                or set(saved) != {"path", "sha256", "frozen_original"}
+                or saved["path"] != str(path)
+                or saved["frozen_original"] is not True
+                or path.is_symlink() or not path.is_file()
+                or file_sha256(path) != saved["sha256"]
+                or json.loads(path.read_bytes()) != snapshot
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i L1 HTTP census frozen readback mismatch"
+                )
     return {
         "original_hook_return_path": str(filename),
         "original_hook_return_sha256": digest,
@@ -364,6 +545,7 @@ async def _real_preset_trial(
     inference_lane: ResidentLlamaInferenceLane | None = None,
     stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
     stage27h_multi_preset: bool = False,
+    stage27i_precision_target: bool = False,
 ) -> dict[str, object]:
     """Original saved/rejoined Self cohort; Stage26 remains nonissuing by default."""
     original_world = lifecycle.world
@@ -381,7 +563,10 @@ async def _real_preset_trial(
         # Explicitly operator-accepted DEV template, not generated by Gemma:
         # actual Self-owner acceptance/authorization is not established.
         preset = SkillParameterPreset(
-            "exploration-move", "OperatorNearProbe", 1,
+            "exploration-move",
+            STAGE27I_PRESET_ID if stage27i_precision_target
+            else "OperatorNearProbe",
+            1,
             definition.definition_ref,
             SkillConstraints(), (
                 SkillBudget(4, 15000, 2.0, 256) if stage27h_multi_preset
@@ -541,6 +726,7 @@ async def _real_preset_trial(
                 self_id=sid, restored=staged_by_id[sid],
                 first=first, owner=owners[sid], lane=inference_lane,
                 definition=definition,
+                stage27i_precision_target=stage27i_precision_target,
             )
             ticket = submit_restored_preset_l1(
                 prepared, lane=inference_lane,
@@ -704,6 +890,7 @@ async def run_real_two_self_preset_checkpoint(
     gemma_l1_jev: bool = False,
     _stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
     _stage27h_multi_preset: bool = False,
+    _stage27i_precision_target: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -729,8 +916,11 @@ async def run_real_two_self_preset_checkpoint(
         raise RealPresetCheckpointRefusal(
             "Stage27 native MOVE requires a separate real bounded model hook"
         )
-    if type(_stage27h_multi_preset) is not bool or (
-        _stage27h_multi_preset and _stage27_motor_hook is None
+    if (
+        type(_stage27h_multi_preset) is not bool
+        or type(_stage27i_precision_target) is not bool
+        or (_stage27i_precision_target and not _stage27h_multi_preset)
+        or (_stage27h_multi_preset and _stage27_motor_hook is None)
     ):
         raise RealPresetCheckpointRefusal(
             "Stage27h multi-action budget requires explicit original motor hook"
@@ -885,6 +1075,7 @@ async def run_real_two_self_preset_checkpoint(
             inference_lane=lane,
             stage27_motor_hook=_stage27_motor_hook,
             stage27h_multi_preset=_stage27h_multi_preset,
+            stage27i_precision_target=_stage27i_precision_target,
         )
         report.update(trial)
     except BaseException as exc:
@@ -898,6 +1089,27 @@ async def run_real_two_self_preset_checkpoint(
             report["stage27h_hook_return_evidence"] = str(captured)
             report["stage27h_hook_return_sha256"] = file_sha256(captured)
             report["stage27h_hook_contract_valid"] = False
+        if _stage27i_precision_target:
+            # When B mutates during physical motion, its original before/after
+            # snapshots still survive even though the hook cannot return.
+            peer_evidence: dict[str, object] = {}
+            for label in ("before", "after"):
+                path = evidence / f"stage27i-peer-b-{label}.json"
+                if path.is_file() and not path.is_symlink():
+                    peer_evidence[label] = {
+                        "path": str(path), "sha256": file_sha256(path),
+                    }
+            report["stage27i_peer_b_evidence"] = peer_evidence
+            report["stage27i_peer_b_comparison_attested"] = False
+            model_files: dict[str, object] = {}
+            for label in ("before", "after"):
+                path = evidence / f"stage27i-model-http-{label}.json"
+                if path.is_file() and not path.is_symlink():
+                    model_files[label] = {
+                        "path": str(path), "sha256": file_sha256(path),
+                    }
+            report["stage27i_model_http_evidence"] = model_files
+            report["stage27i_no_extra_model_calls_attested"] = False
         if physical is not None:
             physical.hold_for_operator()
         raise
@@ -944,6 +1156,10 @@ async def run_real_two_self_preset_checkpoint(
             "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
             "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
             "REAL_STAGE27H_L0_UNREACHED_DEV",
+            "REAL_STAGE27I_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27I_L0_BUDGET_EXHAUSTED_DEV",
+            "REAL_STAGE27I_L0_NO_PROGRESS_DEV",
+            "REAL_STAGE27I_L0_UNREACHED_DEV",
         }
     else:
         expected_classifications = {expected_classification}

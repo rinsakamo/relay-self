@@ -39,6 +39,13 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     submit_stage27g_original_evaluation,
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
+from relay_self.p0d_stage27i_model_http_census_dev import (
+    census_stage27i_model_http,
+    freeze_stage27i_model_http,
+    require_stage27i_two_initial_calls,
+)
+from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
+from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -55,6 +62,7 @@ class Stage27RealWorldRefusal(RuntimeError):
 def _native_place_wire_readback(
     raw_file: Path, *, session_id: str, parent: str, new_probe_seq: int,
     ack_seqs: tuple[int, int, int], stop_probe_seqs: tuple[int, int, int],
+    sneak_ack_seq: int | None = None,
 ) -> dict[str, object]:
     """Reread exact owned native stdout bytes: no fabricated child ACK evidence."""
     if raw_file.is_symlink() or not raw_file.is_file():
@@ -78,12 +86,21 @@ def _native_place_wire_readback(
         (ack_seqs[1], parent + "-start", "set_control", "applied"),
         (ack_seqs[2], parent + "-stop", "clear_controls", "applied"),
     )
+    sneak_ack = (
+        (sneak_ack_seq, parent + "-sneak", "set_control", "applied")
+        if sneak_ack_seq is not None else None
+    )
     if (
         len(ack_seqs) != 3
         or not new_probe_seq < ack_seqs[0] < ack_seqs[1] < ack_seqs[2]
+        or (sneak_ack is not None
+            and not ack_seqs[0] < sneak_ack_seq < ack_seqs[1])
         or not ack_seqs[2] < stop_probe_seqs[0] < stop_probe_seqs[1] < stop_probe_seqs[2]
         or any(effects.count(x) != 1 for x in expected)
-        or sum(1 for x in effects if x[1].startswith(parent)) != 3
+        or (sneak_ack is not None and effects.count(sneak_ack) != 1)
+        or sum(1 for x in effects if x[1].startswith(parent)) != (
+            4 if sneak_ack is not None else 3
+        )
         or not any(x[0] == new_probe_seq for x in probes)
         or any(sum(1 for x in probes if x[0] == seq) != 1
                for seq in stop_probe_seqs)
@@ -93,7 +110,11 @@ def _native_place_wire_readback(
         "sha256": hashlib.sha256(data).hexdigest(),
         "length": len(data),
         "source": str(raw_file),
-        "exact_native_action_child_effect_results": [list(x) for x in expected],
+        "exact_native_action_child_effect_results": [
+            *[list(x) for x in expected],
+            *([list(sneak_ack)] if sneak_ack is not None else []),
+        ],
+        "precision_sneak_effect_attested": sneak_ack is not None,
         "original_native_look_start_stop_sequence_verified": True,
         "no_independent_paper_position_claim": True,
     }
@@ -222,19 +243,104 @@ def _grant(stage: PhysicalGrantStage, binding):
     )
 
 
-def _peer_snapshot(owner) -> dict[str, object]:
-    if owner.intent.current_intent is not None or owner.skills:
+def _peer_snapshot(owner, *, allow_changed: bool = False) -> dict[str, object]:
+    """Content-address all original B Intent/Skill/Memory and canonical WAL.
+
+    Counts alone do not detect replacement of a Memory's content/provenance.
+    A new hash is computed from the LIVE retained cognition, not a stale
+    checkpoint or the on-disk cognition file. Freeze only digests and IDs,
+    not sensitive raw Memory contents, in the DEV motor report.
+    """
+    if type(allow_changed) is not bool or (
+        not allow_changed and (
+            owner.intent.current_intent is not None or owner.skills
+        )
+    ):
         raise Stage27RealWorldRefusal("peer B original Intent/Skill already mutated")
+    retained = owner.retained
+    if (
+        not isinstance(retained, PersistentCognition)
+        or retained.identity.self_id != owner.self_id
+        or any(not isinstance(m, Memory) for m in retained.memories)
+    ):
+        raise Stage27RealWorldRefusal("peer B live retained Memory missing or foreign")
     journal = PhysicalActionJournal.restore(
         owner.files.physical_wal_file, self_id=owner.self_id,
     )
-    journal.require_clear()
+    if not allow_changed:
+        journal.require_clear()
+
+    def digest(value: object) -> str:
+        content = json.dumps(
+            value, sort_keys=True, ensure_ascii=False,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(content).hexdigest()
+
+    memories = [asdict(item) for item in retained.memories]
+    memory_record_digests = [
+        {"memory_id": memory["memory_id"], "sha256": digest(memory)}
+        for memory in memories
+    ]
+    intent_events = [asdict(event) for event in owner.intent.events]
+    skill_histories = [
+        {
+            "execution_id": skill.execution_id,
+            "skill_id": skill.skill_id,
+            "intent_id": skill.intent_id,
+            "events": [asdict(event) for event in skill.events],
+        }
+        for _, skill in sorted(owner.skills.items())
+    ]
     return {
-        "intent_event_count": len(owner.intent.events),
-        "skill_execution_count": len(owner.skills),
+        "intent_event_count": len(intent_events),
+        "intent_events_sha256": digest(intent_events),
+        "intent_current": (
+            None if owner.intent.current_intent is None
+            else asdict(owner.intent.current_intent)
+        ),
+        "skill_execution_count": len(skill_histories),
+        "skill_histories_sha256": digest(skill_histories),
+        "memory_count": len(memories),
+        "memory_records_sha256": digest(memories),
+        "memory_record_digests": memory_record_digests,
         "physical_wal_sha256": journal.digest,
         "physical_wal_action_rows": len(journal.records),
+        "physical_wal_unresolved": bool(journal.unresolved),
         "open_action_count": len(owner.supervisor.open_actions),
+    }
+
+
+def _freeze_peer_b_snapshot(
+    evidence: Path, *, label: str, snapshot: dict[str, object],
+) -> dict[str, object]:
+    """Write-once + fsync one B snapshot before comparing or issuing effects."""
+    if label not in ("before", "after") or type(snapshot) is not dict:
+        raise Stage27RealWorldRefusal("unknown original peer-B evidence snapshot")
+    raw = (
+        json.dumps(snapshot, sort_keys=True, indent=2, allow_nan=False)
+        + "\n"
+    ).encode("utf-8")
+    path = evidence / f"stage27i-peer-b-{label}.json"
+    if evidence.is_symlink() or not evidence.is_dir() or path.is_symlink():
+        raise Stage27RealWorldRefusal("unsafe original B evidence destination")
+    with path.open("xb") as output:
+        output.write(raw)
+        output.flush()
+        os.fsync(output.fileno())
+    directory = os.open(evidence, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+    digest = hashlib.sha256(raw).hexdigest()
+    if path.read_bytes() != raw:
+        raise Stage27RealWorldRefusal("peer B original Memory evidence readback failed")
+    return {
+        "path": str(path),
+        "sha256": digest,
+        "frozen_original": True,
+        "memory_content_compared_by_sha256": True,
     }
 
 
@@ -288,7 +394,7 @@ async def stage27_real_a_motor_hook(
         original_a.selected_number != "1"
         or original_a.l1_status != "READY"
     ):
-        after_b = _peer_snapshot(owners["B"])
+        after_b = _peer_snapshot(owners["B"], allow_changed=True)
         if after_b != peer_before:
             raise Stage27RealWorldRefusal("nonready A altered original peer B")
         return {
@@ -468,7 +574,7 @@ async def stage27_real_a_motor_hook(
             "next_physical_action_authorized": False,
             "original_goal_or_skill_completed": False,
         }
-    peer_after = _peer_snapshot(owners["B"])
+    peer_after = _peer_snapshot(owners["B"], allow_changed=True)
     if peer_before != peer_after:
         raise Stage27RealWorldRefusal("original B cognitive/WAL state changed")
     lane.require_world_idle()
@@ -615,6 +721,7 @@ def _stage27h_capture_prepared(
 async def stage27h_real_a_motor_hook(
     *, paper, bridge, physical, lane, owners, world_epoch, prepared,
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
+    precision_stage27i: bool = False,
 ) -> dict[str, object]:
     """Strict Stage27h opt-in: CPU L0 repeats ORIGINAL bounded MOVE Actions.
 
@@ -631,8 +738,72 @@ async def stage27h_real_a_motor_hook(
     ):
         raise Stage27RealWorldRefusal("Stage27h original 2-Self ownership absent")
     lane.require_world_idle()
+    model_before = (
+        census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
+        if precision_stage27i else None
+    )
+    model_before_evidence = (
+        freeze_stage27i_model_http(
+            evidence, label="before", snapshot=model_before,
+        ) if model_before is not None else None
+    )
+    if model_before is not None:
+        require_stage27i_two_initial_calls(model_before)
     peer_before = _peer_snapshot(owners["B"])
+    peer_before_evidence = (
+        _freeze_peer_b_snapshot(
+            evidence, label="before", snapshot=peer_before,
+        ) if precision_stage27i else None
+    )
     if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
+        if precision_stage27i:
+            # Zero-effect path still saves the complete B Memory comparison.
+            lane.require_world_idle()
+            model_after = census_stage27i_model_http(
+                evidence, lane=lane, tickets=tickets,
+            )
+            model_after_evidence = freeze_stage27i_model_http(
+                evidence, label="after", snapshot=model_after,
+            )
+            require_stage27i_two_initial_calls(model_after)
+            if model_after != model_before:
+                raise Stage27RealWorldRefusal(
+                    "Stage27i additional model POST on no-MOVE path"
+                )
+            peer_after = _peer_snapshot(owners["B"], allow_changed=True)
+            peer_after_evidence = _freeze_peer_b_snapshot(
+                evidence, label="after", snapshot=peer_after,
+            )
+            if peer_before != peer_after:
+                raise Stage27RealWorldRefusal(
+                    "Stage27i nonselected A changed original peer B"
+                )
+            return {
+                "classification": "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+                "stage27i_precision_enabled": True,
+                "physical_effect_observed": False,
+                "stage27_native_action_count": 0,
+                "self_a_selected_number": witnesses["A"].selected_number,
+                "self_a_status": witnesses["A"].l1_status,
+                "self_b_selected_number": witnesses["B"].selected_number,
+                "self_b_status": witnesses["B"].l1_status,
+                "stage27_a_intent_started": False,
+                "original_peer_b_before": peer_before,
+                "original_peer_b_after": peer_after,
+                "stage27h_peer_b_before": peer_before,
+                "stage27h_peer_b_after": peer_after,
+                "stage27i_peer_b_before_evidence": peer_before_evidence,
+                "stage27i_peer_b_after_evidence": peer_after_evidence,
+                "stage27i_model_http_before": model_before,
+                "stage27i_model_http_after": model_after,
+                "stage27i_model_http_before_evidence": model_before_evidence,
+                "stage27i_model_http_after_evidence": model_after_evidence,
+                "stage27h_additional_model_requests": (
+                    model_after["request_count"] - model_before["request_count"]
+                ),
+                "stage27h_goal_success": False,
+                "stage27h_skill_success": False,
+            }
         return await stage27_real_a_motor_hook(
             paper=paper, bridge=bridge, physical=physical, lane=lane,
             owners=owners, world_epoch=world_epoch, prepared=prepared,
@@ -671,6 +842,12 @@ async def stage27h_real_a_motor_hook(
         if len(action_receipts) != loop.action_count:
             raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
         idx = loop.action_count
+        # L0 can pick a gait only within the immutable operator-accepted
+        # precision Preset; L1 never runs between its physical child Actions.
+        gait_choice = (
+            choose_stage27i_gait(loop, result, current)
+            if precision_stage27i else None
+        )
         # Charge a complete 60-sample STOP settlement quota against the
         # immutable parent Invocation BEFORE even proposing the next Action.
         # The issuer cannot request more native probes than this reservation.
@@ -724,7 +901,13 @@ async def stage27h_real_a_motor_hook(
             ),
             grant_real_world=True,
             acknowledge_dev_unverified_principal=True,
-            pulse_seconds=0.15, evidence_timeout_s=15.0,
+            pulse_seconds=(
+                gait_choice.pulse_seconds if gait_choice is not None else 0.15
+            ),
+            precision_gait=(
+                gait_choice.gait_mode if gait_choice is not None else None
+            ),
+            evidence_timeout_s=15.0,
             pre_native_evidence=capture_reserved,
             allow_prior_terminal_place_actions=idx > 0,
             settlement_probe_limit=stop_probe_quota,
@@ -743,6 +926,10 @@ async def stage27h_real_a_motor_hook(
             stop_probe_seqs=(receipt.initial_stop_probe.seq,
                              receipt.first_stable_probe.seq,
                              receipt.settled_probe.seq),
+            sneak_ack_seq=(
+                receipt.gait_control_ack.seq
+                if receipt.gait_control_ack is not None else None
+            ),
         )
         all_settling_readback = _stage27h_all_settling_stdout_readback(
             native_audit, session_id=native_id,
@@ -776,6 +963,14 @@ async def stage27h_real_a_motor_hook(
             "original_native_probe_seq": current.seq,
             "settled_native_probe_seq": receipt.settled_probe.seq,
             "displacement_m": receipt.displacement_m,
+            "gait_mode": receipt.gait_mode,
+            "gait_ack_seq": (
+                receipt.gait_control_ack.seq
+                if receipt.gait_control_ack is not None else None
+            ),
+            "prebound_gait_choice": (
+                asdict(gait_choice) if gait_choice is not None else None
+            ),
             "paper_correlational_position": correlated,
             "l0_feedback": asdict(post),
             "goal_success": False,
@@ -793,18 +988,39 @@ async def stage27h_real_a_motor_hook(
         result = loop.pre_action(current, now_ns=time.monotonic_ns())
     if result.status == "L0_CONTINUE_MOVE":
         raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
-    peer_after = _peer_snapshot(owners["B"])
+    peer_after = _peer_snapshot(owners["B"], allow_changed=True)
+    peer_after_evidence = (
+        _freeze_peer_b_snapshot(
+            evidence, label="after", snapshot=peer_after,
+        ) if precision_stage27i else None
+    )
     if peer_after != peer_before:
         raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
     lane.require_world_idle()
+    model_after = (
+        census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
+        if precision_stage27i else None
+    )
+    model_after_evidence = (
+        freeze_stage27i_model_http(
+            evidence, label="after", snapshot=model_after,
+        ) if model_after is not None else None
+    )
+    if model_after is not None:
+        require_stage27i_two_initial_calls(model_after)
+        if model_after != model_before:
+            raise Stage27RealWorldRefusal(
+                "Stage27i extra model POST within original L0 loop"
+            )
+    stage = "27I" if precision_stage27i else "27H"
     status = {
         "L0_TARGET_REACHED_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
         "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+            f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
         "L0_NO_PROGRESS_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
-    }.get(result.status, "REAL_STAGE27H_L0_UNREACHED_DEV")
+            f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
+    }.get(result.status, f"REAL_STAGE{stage}_L0_UNREACHED_DEV")
     original_skill = owner.skills.get(handoff.skill_execution_id)
     if (
         original_skill is None
@@ -817,6 +1033,7 @@ async def stage27h_real_a_motor_hook(
         )
     return {
         "classification": status,
+        "stage27i_precision_enabled": precision_stage27i,
         # Explicit Stage25 parent-runner contract. A terminal Action has
         # already been observed; this flag does NOT attest Skill/Goal success.
         "physical_effect_observed": loop.action_count > 0,
@@ -838,17 +1055,33 @@ async def stage27h_real_a_motor_hook(
         "stage27h_invocation_ref": handoff.invocation_ref,
         "stage27h_preset_ref": handoff.preset_ref,
         "stage27h_bound_model_initial_requests_expected": original_model_count,
-        "stage27h_additional_model_requests": 0,
+        "stage27h_additional_model_requests": (
+            0 if model_after is None or model_before is None
+            else model_after["request_count"] - model_before["request_count"]
+        ),
+        "stage27i_model_http_before": model_before,
+        "stage27i_model_http_after": model_after,
+        "stage27i_model_http_before_evidence": model_before_evidence,
+        "stage27i_model_http_after_evidence": model_after_evidence,
         "stage27h_l0_action_count": loop.action_count,
         "stage27h_l0_feedback": asdict(result),
         "stage27h_original_action_witnesses": action_receipts,
         "stage27h_peer_b_before": peer_before,
         "stage27h_peer_b_after": peer_after,
+        "stage27i_peer_b_before_evidence": peer_before_evidence,
+        "stage27i_peer_b_after_evidence": peer_after_evidence,
         "stage27h_goal_success": False,
         "stage27h_skill_success": False,
         "stage27h_operator_dev_template_not_autonomous": True,
         "qual_and_science_attested": False,
     }
+
+
+async def stage27i_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Stage27i opt-in only: source-bound precise gait within Stage27h parent."""
+    return await stage27h_real_a_motor_hook(
+        **kwargs, precision_stage27i=True,
+    )
 
 
 async def run_stage27_real_world(
@@ -863,6 +1096,7 @@ async def run_stage27_real_world(
     stage27f_cpu_evaluation: bool = False,
     stage27g_real_l1_evaluation: bool = False,
     stage27h_l0_move_loop: bool = False,
+    stage27i_precision_gait: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -872,6 +1106,12 @@ async def run_stage27_real_world(
         raise Stage27RealWorldRefusal("original real Gemma/EULA/World DEV prerequisites missing")
     if (
         type(stage27h_l0_move_loop) is not bool
+        or type(stage27i_precision_gait) is not bool
+        or (stage27h_l0_move_loop and stage27i_precision_gait)
+        or (stage27i_precision_gait and (
+            stage27e_independent_evidence or stage27f_cpu_evaluation
+            or stage27g_real_l1_evaluation
+        ))
         or (stage27h_l0_move_loop and (
             stage27e_independent_evidence or stage27f_cpu_evaluation
             or stage27g_real_l1_evaluation
@@ -891,9 +1131,13 @@ async def run_stage27_real_world(
         real_gemma_l1=True, gemma_l1_endpoint=gemma_l1_endpoint,
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
-        _stage27h_multi_preset=stage27h_l0_move_loop,
+        _stage27h_multi_preset=(
+            stage27h_l0_move_loop or stage27i_precision_gait
+        ),
+        _stage27i_precision_target=stage27i_precision_gait,
         _stage27_motor_hook=(
-            stage27h_real_a_motor_hook if stage27h_l0_move_loop
+            stage27i_real_a_motor_hook if stage27i_precision_gait
+            else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
             else stage27e_real_a_motor_hook if stage27e_independent_evidence
@@ -921,6 +1165,7 @@ def main() -> int:
     p.add_argument("--stage27f-cpu-evaluation", action="store_true")
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
+    p.add_argument("--stage27i-precision-gait", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -937,6 +1182,7 @@ def main() -> int:
             stage27f_cpu_evaluation=args.stage27f_cpu_evaluation,
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
+            stage27i_precision_gait=args.stage27i_precision_gait,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)

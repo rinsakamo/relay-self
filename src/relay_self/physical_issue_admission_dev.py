@@ -295,7 +295,7 @@ class PhysicalIssueAdmission:
     def bind_native_children(
         self, *, self_id: str, native_session_id: str,
         lease_action_id: str, parent_action_id: str, family: str,
-        journal: Any,
+        journal: Any, allow_sneak_child: bool = False,
     ) -> None:
         """Bind the selected original Action only AFTER canonical fsynced PREPARED.
 
@@ -314,6 +314,13 @@ class PhysicalIssueAdmission:
             or rows[-1]["action_id"] != parent_action_id
             or rows[-1]["capability"] != family
             or rows[-1]["session_id"] != native_session_id
+            or type(allow_sneak_child) is not bool
+            or (allow_sneak_child and (
+                family != "MOVE_PLACE"
+                or rows[-1].get("gait_mode") != "SNEAK"
+                or rows[-1].get("gait_ack_seq") is not None
+            ))
+            or (not allow_sneak_child and rows[-1].get("gait_mode") == "SNEAK")
         ):
             raise PhysicalIssueFenceError("selected child does not match PREPARED WAL")
         with self._lock:
@@ -332,7 +339,10 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("original selected lease no longer current")
             if self._used_native_children.get(self_id):
                 raise PhysicalIssueFenceError("cannot rebind already issued native effects")
-            self._native_child_ids[self_id] = _native_children(family, parent_action_id)
+            identities = _native_children(family, parent_action_id)
+            if allow_sneak_child:
+                identities["set_control_sneak"] = parent_action_id + "-sneak"
+            self._native_child_ids[self_id] = identities
 
     def require_native_effect(
         self, *, self_id: str, native_session_id: str,
@@ -377,7 +387,15 @@ class PhysicalIssueAdmission:
             if (
                 lease is None or lease.native_session_id != native_session_id
                 or effect not in _EFFECT_FAMILIES[lease.effect_family]
-                or self._native_child_ids.get(self_id, {}).get(effect) != action_id
+                or (
+                    self._native_child_ids.get(self_id, {}).get(effect) != action_id
+                    and not (
+                        effect == "set_control"
+                        and self._native_child_ids.get(self_id, {}).get(
+                            "set_control_sneak"
+                        ) == action_id
+                    )
+                )
                 or action_id in self._used_native_children.get(self_id, set())
             ):
                 raise PhysicalIssueFenceError(
@@ -775,6 +793,7 @@ class PhysicalIssueAdmission:
                     native_session_id=session.started.session_id,
                     lease_action_id=parent, parent_action_id=selected,
                     family="MOVE_PLACE", journal=kwargs["journal"],
+                    allow_sneak_child=kwargs.get("precision_gait") == "SNEAK",
                 )
             return await issue_selected_place_move_dev(
                 session, **kwargs, bind_native_children=register,

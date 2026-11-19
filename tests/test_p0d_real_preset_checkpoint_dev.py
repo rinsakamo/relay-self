@@ -50,14 +50,16 @@ from relay_self.skill_invocation import (
 )
 
 
-def source_recovered(self_id="A", *, accepted=True, budget=None):
+def source_recovered(
+    self_id="A", *, accepted=True, budget=None, preset_id="OperatorNearProbe",
+):
     definition = next(
         d for d in initial_skill_definitions() if d.skill_id == "MOVE"
     )
     initial = initial_patterns_with_move()
     if accepted:
         preset = SkillParameterPreset(
-            "exploration-move", "OperatorNearProbe", 1,
+            "exploration-move", preset_id, 1,
             definition.definition_ref, SkillConstraints(),
             budget if budget is not None else SkillBudget(1, 1500, 2.0, 4),
             Provenance("operator-dev-proposed", f"stage25:{self_id}"),
