@@ -178,6 +178,24 @@ def propose_exploration_need(
     refs = _present_refs(present)
     if any(e.present_ref not in refs for e in evidence):
         raise ExplorationContractError("evidence is not in this Self's Present")
+    # A caller-provided interpretation may not upgrade an UNKNOWN or
+    # hypothetical Present reference into OBSERVED World evidence.
+    claim_status = {}
+    for view in (
+        present.three_self.my_self, present.three_self.self_body,
+        present.three_self.self_world,
+    ):
+        for claim in view.claims:
+            claim_status[claim.claim_key] = claim.status
+            if claim.value_ref is not None:
+                claim_status[claim.value_ref] = claim.status
+    for item in evidence:
+        if (item.present_ref in claim_status
+                and item.status is not claim_status[item.present_ref]):
+            raise ExplorationContractError("exploration evidence status differs from Present")
+        if (item.status is EpistemicStatus.OBSERVED
+                and claim_status.get(item.present_ref) is not EpistemicStatus.OBSERVED):
+            raise ExplorationContractError("only observed Present lens claims can be OBSERVED")
     eligible = check_schema_eligibility(
         snapshot, scope=present.three_self.scope, schema_id=schema_id,
         requested_mode=SchemaMode.FULL,
