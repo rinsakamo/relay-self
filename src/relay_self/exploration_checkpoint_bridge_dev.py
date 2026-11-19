@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Callable, TypeVar
 
 from relay_self.exploration_continuity_dev import (
     AttemptPhase,
-    ExplorationContinuityError,
     L2Reservation,
     open_question_refs,
     record_l2_attempt_result,
@@ -30,9 +29,8 @@ from relay_self.provenance import Provenance
 from relay_self.three_self_present import PresentFrame
 
 if TYPE_CHECKING:
-    from relay_self.cognitive_minimal_dev import Selection
+    from relay_self.cognitive_minimal_dev import Selection, WorldPercept
     from relay_self.exploration_goal_dev import L2TargetReview
-    from relay_self.cognitive_minimal_dev import WorldPercept
 
 
 class D4OwnerHold(RuntimeError):
