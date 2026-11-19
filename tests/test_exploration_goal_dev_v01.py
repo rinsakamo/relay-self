@@ -125,7 +125,7 @@ def setup(self_id="self-A", *, evidence_count=2, pressure=0.0,
     if with_preset:
         definition = DEFINITIONS[("MOVE", 1)]
         preset = SkillParameterPreset(
-            "exploration-move", "default-move", 1,
+            "exploration-move", "DefaultMove", 1,
             definition.definition_ref, SkillConstraints(),
             SkillBudget(2, 2000, max_observations=4),
             Provenance("self-schema-preset", "move-1"),
