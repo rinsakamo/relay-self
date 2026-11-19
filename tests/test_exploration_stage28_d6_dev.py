@@ -61,17 +61,15 @@ from relay_self.persistent_cognition import (
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
+from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
     Stage28NativePaperBodyLink,
 )
-from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
-from relay_self.self_owner_checkpoint_dev import (
-    verify_typed_generation,
-)
 from relay_self.stage28c2_recovered_resident_owner_dev import (
     prepare_recovered_a_b_resident_owners,
 )
+from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
 from test_exploration_goal_dev_v01 import (
     OWNER,
     build,
