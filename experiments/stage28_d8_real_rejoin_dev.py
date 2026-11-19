@@ -36,6 +36,7 @@ from relay_self.exploration_d8_owned_source_dev import (
     inspect_d8_original_source,
     load_d8_pins,
 )
+from relay_self.exploration_d8_online_owner_dev import inspect_d8_original_online_owner
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
@@ -302,6 +303,14 @@ async def run_restored_a_b_real_observation(
             owner.accept_rejoined_worldbody(observation, request_id=link.native_probe_ref)
             if owner.current_worldbody_observation is not observation:
                 raise Stage28c2bRealRejoinHold("original owner did not accept native WorldBody")
+        # Source history must still belong to THESE original, live A/B
+        # cognitive owners after actual new native/Paper WorldBody adoption.
+        # No L2/GPU/physical permission is acquired by this readback.
+        d8_owners = inspect_d8_original_online_owner(
+            prepared.recovered, candidate, world=current,
+            logins=bridge.last_login_evidence, links=linked,
+        )
+        report["d8_online_owner_readback"] = asdict(d8_owners)
         report["owner_worldbody_observations"] = {
             sid: asdict(prepared.recovered.owners[sid].current_worldbody_observation)
             for sid in ("A", "B")
