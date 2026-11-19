@@ -6,6 +6,7 @@ and stopped-Paper receipts are SYNTHETIC; no real server/model/physical run.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,16 @@ from relay_self.exploration_checkpoint_bridge_dev import (
     inspect_d4_inert_recovery,
     reserve_resident_l2,
 )
+from relay_self.exploration_stage28_fresh_gate_dev import (
+    D6FreshReconsiderationHold,
+    inspect_d6_new_exploration_reevaluation,
+)
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
+from relay_self.stage28_cognitive_recovery_gate_dev import (
+    Stage28ForkPaperEpoch,
+    Stage28NativePaperBodyLink,
+)
+from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
 from relay_self.exploration_continuity_dev import (
     AttemptPhase,
     ExplorationContinuityError,
@@ -372,3 +383,178 @@ def test_d6_missing_question_at_original_freeze_blocks_commit_and_release(tmp_pa
                     "new", "forbidden during freeze", OWNER, OWNER,
                 ),
             )
+
+
+
+def _d6_new_world_sources(plan):
+    """Synthetic exact-shape witnesses checked by the actual B Stage28 gate."""
+    world = WorldLifetime(
+        plan.source_world_id, plan.fork_branch_id, "paper-owned-d6-fork", 2, 8,
+    )
+    logins = tuple(
+        NativeLoginEvidence(
+            sid, 1, world.world_id, world.branch_id,
+            world.paper_session_id, world.epoch,
+            "new-recovery-native-" + sid, 8,
+            "d6-new-probe-" + sid,
+            True, True, True, True, True,
+        ) for sid in plan.roster
+    )
+    idle = LlamaSlotIdleReceipt(
+        "synthetic-single-backend", 0, 1, False, "synthetic GET /slots idle",
+    )
+    boot = Stage28ForkPaperEpoch(
+        plan.generation_id, plan.source_world_id, plan.source_branch_id,
+        plan.declared_world_tick, plan.fork_branch_id,
+        plan.source_committed_sha256,
+        world.paper_session_id, "d6-fork-boot",
+        world.epoch, world.world_tick,
+        "paper-main-thread:p0d:d6-fork-boot:nonce:sha256:" + "a" * 64,
+        1001,
+        tuple(sorted(dict(plan.old_native_sessions).values())),
+    )
+    links = tuple(
+        Stage28NativePaperBodyLink(
+            self_id=p.self_id,
+            native_session_id=p.native_session_id,
+            native_probe_ref=p.observation_ref,
+            native_world_time_tick=p.observed_world_tick,
+            paper_session_id=world.paper_session_id,
+            tick_boot_id=boot.paper_boot_id,
+            presence_boot_id="independent-d6-boot",
+            paper_observed_tick=world.world_tick,
+            paper_tick_source_ref=boot.paper_tick_source_ref,
+            paper_log_sha256="b" * 64,
+            paper_actor_uuid="d6-actor-" + p.self_id,
+        ) for p in logins
+    )
+    return world, logins, idle, boot, links
+
+
+def _d6_loaded_online(tmp_path):
+    (_, contexts, old_tasks, _, _, generation, fork, receipt,
+     digest) = _actual_cut_and_restore(tmp_path)
+    recovered = prepare_recovered_a_b_resident_owners(
+        generation, fork, expected_world_id="world-A",
+        expected_source_branch_id="source",
+        expected_committed_sha256=digest,
+        expected_fork_branch_id=receipt["fork_branch_id"],
+    )
+    world, logins, idle, boot, links = _d6_new_world_sources(recovered.plan)
+    for sid in ("A", "B"):
+        native = "new-recovery-native-" + sid
+        recovered.cognitive_work.bind_login(
+            self_id=sid, native_session_id=native,
+            world_epoch=world.epoch, world_tick=8,
+        )
+        probe = _synthetic_native_probe(self_id=sid, native=native, tick=8)
+        recovered.owners[sid].accept_rejoined_worldbody(
+            probe, request_id=probe.request_id,
+        )
+    return recovered, contexts, old_tasks, world, logins, idle, boot, links
+
+
+def test_d6_b_real_fresh_l1_gate_precedes_new_exploration_reconsideration(tmp_path):
+    (recovered, contexts, old_tasks, world, logins,
+     idle, boot, links) = _d6_loaded_online(tmp_path)
+    admitted = inspect_d6_new_exploration_reevaluation(
+        recovered, world=world, logins=logins, idle=idle, boot=boot, links=links,
+    )
+    assert admitted.eligibility.l1_reevaluation_eligible is True
+    assert admitted.eligibility.source_and_new_ticks_comparable is False
+    assert admitted.old_l1_decision_reusable is False
+    assert admitted.l2_model_call_authorized is False
+    assert admitted.action_issue_authorized is False
+    assert tuple(x.self_id for x in admitted.questions) == ("A", "B")
+    for q in admitted.questions:
+        sid = q.self_id
+        assert q.native_session_id == "new-recovery-native-" + sid
+        assert q.active_question_refs == ("question:ridge" if sid == "A"
+                                          else "question:forest",)
+        assert q.prior_l2_attempt_refs == (old_tasks[sid].attempt_ref,)
+        assert q.prior_l2_reissue_authorized is False
+        current = setup(sid, with_target=False, with_preset=False)
+        current["owner"] = recovered.owners[sid].intent
+        # A NEW bounded CPU-driven L1 decision, still no model/physical call:
+        fresh = build(current, owner_revision=5)
+        selected = choose(current, fresh, "ESCALATE_L2")
+        assert selected.status == "ESCALATE_L2"
+        owner = recovered.owners[sid]
+        epoch, native, world_epoch = recovered.cognitive_work.current_scope(sid)
+        assert reserve_resident_l2(
+            owner, recovered.cognitive_work,
+            scope=ResidentD4Scope(
+                sid, current["scope"].world_session_id,
+                epoch, native, world_epoch,
+                len(owner.intent.events), owner.intent.last_at_ns,
+            ),
+            round_=fresh, selection=selected,
+            owner_provenance=OWNER,
+        ) is None
+        assert owner.retained.exploration_continuity.attempts[0].phase is (
+            AttemptPhase.RESERVED
+        )
+
+
+@pytest.mark.parametrize("failure", [
+    "busy-gpu", "old-native", "missing-b", "stale-gpu",
+    "foreign-paper", "no-original-probe", "wrong-request-id",
+])
+def test_d6_b_fresh_l1_admission_rejects_stale_native_paper_gpu(
+    tmp_path, failure,
+):
+    (recovered, contexts, old_tasks, world, logins,
+     idle, boot, links) = _d6_loaded_online(tmp_path)
+    if failure == "busy-gpu":
+        idle = replace(idle, is_processing=True)
+    elif failure == "old-native":
+        logins = (
+            replace(logins[0], native_session_id="native-old-A"),
+            logins[1],
+        )
+    elif failure == "missing-b":
+        logins = (logins[0],)
+    elif failure == "stale-gpu":
+        logins = (replace(logins[0], stale_gpu_fenced=False), logins[1])
+    elif failure == "foreign-paper":
+        world = replace(world, paper_session_id="paper-forged")
+    elif failure == "no-original-probe":
+        recovered.owners["A"].current_worldbody_observation = None
+    else:
+        recovered.owners["B"].current_worldbody_observation = (
+            _synthetic_native_probe(
+                self_id="wrong", native="new-recovery-native-B", tick=8,
+            )
+        )
+    with pytest.raises(D6FreshReconsiderationHold):
+        inspect_d6_new_exploration_reevaluation(
+            recovered, world=world, logins=logins, idle=idle,
+            boot=boot, links=links,
+        )
+    assert recovered.physical.active_action_ids == ()
+    assert all(
+        recovered.owners[sid].retained.exploration_continuity.attempts[0].phase
+        is AttemptPhase.RESERVED
+        for sid in ("A", "B")
+    )
+
+
+def test_d6_b_fresh_l1_rejects_all_online_without_native_proof(tmp_path):
+    (_, _, _, _, _, generation, fork, receipt, digest) = _actual_cut_and_restore(
+        tmp_path
+    )
+    recovered = prepare_recovered_a_b_resident_owners(
+        generation, fork, expected_world_id="world-A",
+        expected_source_branch_id="source",
+        expected_committed_sha256=digest,
+        expected_fork_branch_id=receipt["fork_branch_id"],
+    )
+    world, logins, idle, boot, links = _d6_new_world_sources(recovered.plan)
+    # Dataclasses bearing 'verified' flags are not proof that the actual
+    # resident has even rejoined. All Self remain OFFLINE here.
+    with pytest.raises(D6FreshReconsiderationHold):
+        inspect_d6_new_exploration_reevaluation(
+            recovered, world=world, logins=logins, idle=idle,
+            boot=boot, links=links,
+        )
+    assert recovered.physical.all_residents_offline
