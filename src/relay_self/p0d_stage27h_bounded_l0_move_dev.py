@@ -174,6 +174,7 @@ class Stage27hBoundedMoveLoop:
                 or row["intent_id"] != handoff.intent_id
                 or row["skill_execution_id"] != handoff.skill_execution_id
                 or row["session_id"] != prep.native_session
+                or row.get("gait_mode", "WALK") not in ("WALK", "SNEAK")
                 or row["after_seq"] is None
                 or idx and row["probe_seq"] <= journal.records[idx-1]["after_seq"]
             ):
@@ -375,6 +376,11 @@ class Stage27hBoundedMoveLoop:
             or row["probe_seq"] != source_probe.seq
             or row["probe_request_id"] != source_probe.request_id
             or row["after_seq"] != receipt.settled_probe.seq
+            or row.get("gait_mode", "WALK") != receipt.gait_mode
+            or row.get("gait_ack_seq") != (
+                receipt.gait_control_ack.seq
+                if receipt.gait_control_ack is not None else None
+            )
             or journal.digest != receipt.journal_sha256
             or action.state is not ActionState.OUTCOME
             or not action.is_current_snapshot
