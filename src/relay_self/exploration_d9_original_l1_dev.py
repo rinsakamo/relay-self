@@ -233,7 +233,6 @@ def form_d9_native_exploration_round(
         hunger=int(food) if food is not None and float(food).is_integer() else None,
         fatigue_high=None, targets=(),
         exploration_need=True,
-        oxygen_reserve=probe.snapshot.oxygen_level,
         threat_cue=any(x.name == "zombie" for x in probe.snapshot.nearby_entities),
     )
     round_ = form_exploration_round(
