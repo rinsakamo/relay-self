@@ -143,7 +143,7 @@ def test_stage28c2c_independent_model_audit_rejects_forgery(
         prompt_tokens=27, completion_tokens=8,
     )
     evidence = tmp_path / "evidence"
-    evidence.mkdir()
+    evidence.mkdir(exist_ok=True)  # original _ready fixture owns this root
     dest = evidence / "stage28c2c-llama-original"
     raw.rename(dest)
     report = {
@@ -220,7 +220,7 @@ def test_stage28c2c_independent_original_model_synthetic_ok(
         prompt_tokens=27, completion_tokens=8,
     )
     evidence = tmp_path / "evidence"
-    evidence.mkdir()
+    evidence.mkdir(exist_ok=True)  # original _ready fixture owns this root
     dest = evidence / "stage28c2c-llama-original"
     raw.rename(dest)
     report = {
