@@ -95,7 +95,6 @@ async def issue_selected_place_move_dev(
     allow_prior_terminal_place_actions: bool = False,
     settlement_probe_limit: int | None = None,
     precision_gait: str | None = None,
-    parent_deadline_ns: int | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -112,13 +111,6 @@ async def issue_selected_place_move_dev(
         or not math.isfinite(pulse_seconds)
         or type(allow_prior_terminal_place_actions) is not bool
         or precision_gait not in (None, "WALK", "SNEAK")
-        or (
-            parent_deadline_ns is not None
-            and (
-                type(parent_deadline_ns) is not int
-                or parent_deadline_ns <= at_ns + 2
-            )
-        )
         or (settlement_probe_limit is not None and (
             type(settlement_probe_limit) is not int
             or not 3 <= settlement_probe_limit <= 4096
@@ -228,21 +220,10 @@ async def issue_selected_place_move_dev(
             for entry in owner.pattern_registry.accepted_presets
         )
     )
-    if (
-        parent_deadline_ns is not None
-        and (
-            not accepted_stage27j
-            or l0.cursor.deadline_ns != parent_deadline_ns
-            or at_ns + 5_000_000_000 >= parent_deadline_ns
-        )
-    ):
-        raise Stage27PlaceMoveRefusal(
-            "Stage27j child deadline is not original 45s parent clock"
-        )
-    if accepted_stage27j and parent_deadline_ns is None:
-        raise Stage27PlaceMoveRefusal(
-            "Stage27j accepted long MOVE missing shared parent deadline"
-        )
+    # Do not interpret the Stage27j cognitive elapsed-time estimate as an
+    # in-flight physical deadline. After PREPARED, only native ACK, bounded
+    # pulse, STOP, and canonical WAL determine physical terminalization.
+    # IO timeout still fails closed and never fabricates a START ACK.
     begin_physical_issue_dev(
         session, capability="MOVE", proposal=proposal,
         current_probe=current_probe, propose_grant=propose_grant,
