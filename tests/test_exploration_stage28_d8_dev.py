@@ -10,15 +10,15 @@ import pytest
 
 from experiments import stage28_d8_independent_rejoin_audit_dev as auditor
 from experiments import stage28_d8_real_rejoin_dev as runner
+from relay_self.exploration_d8_online_owner_dev import (
+    D8OriginalOwnerHold,
+    inspect_d8_original_online_owner,
+)
 from relay_self.exploration_d8_owned_source_dev import (
     D8OwnedSourcePins,
     D8PinnedSourceHold,
     inspect_d8_original_source,
     load_d8_pins,
-)
-from relay_self.exploration_d8_online_owner_dev import (
-    D8OriginalOwnerHold,
-    inspect_d8_original_online_owner,
 )
 from test_exploration_stage28_d7_dev import _fixture
 
