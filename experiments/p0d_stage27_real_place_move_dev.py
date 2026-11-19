@@ -730,6 +730,35 @@ async def stage27h_real_a_motor_hook(
         ) if precision_stage27i else None
     )
     if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
+        if precision_stage27i:
+            # Zero-effect path still saves the complete B Memory comparison.
+            peer_after = _peer_snapshot(owners["B"])
+            peer_after_evidence = _freeze_peer_b_snapshot(
+                evidence, label="after", snapshot=peer_after,
+            )
+            if peer_before != peer_after:
+                raise Stage27RealWorldRefusal(
+                    "Stage27i nonselected A changed original peer B"
+                )
+            return {
+                "classification": "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
+                "stage27i_precision_enabled": True,
+                "physical_effect_observed": False,
+                "stage27_native_action_count": 0,
+                "self_a_selected_number": witnesses["A"].selected_number,
+                "self_a_status": witnesses["A"].l1_status,
+                "self_b_selected_number": witnesses["B"].selected_number,
+                "self_b_status": witnesses["B"].l1_status,
+                "stage27_a_intent_started": False,
+                "original_peer_b_before": peer_before,
+                "original_peer_b_after": peer_after,
+                "stage27h_peer_b_before": peer_before,
+                "stage27h_peer_b_after": peer_after,
+                "stage27i_peer_b_before_evidence": peer_before_evidence,
+                "stage27i_peer_b_after_evidence": peer_after_evidence,
+                "stage27h_goal_success": False,
+                "stage27h_skill_success": False,
+            }
         return await stage27_real_a_motor_hook(
             paper=paper, bridge=bridge, physical=physical, lane=lane,
             owners=owners, world_epoch=world_epoch, prepared=prepared,
