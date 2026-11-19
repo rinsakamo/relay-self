@@ -5,21 +5,27 @@ import asyncio
 import json
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from experiments.cognitive_physical_move_issue_dev import PhysicalMoveRefusal
+from experiments.p0d_real_preset_checkpoint_dev import RealPresetCheckpointRefusal
 from experiments.p0d_real_preset_checkpoint_dev import (
     _preserve_and_validate_stage27h_hook_return,
 )
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
+    _freeze_peer_b_snapshot,
+    _peer_snapshot,
     _native_place_wire_readback,
     run_stage27_real_world,
     stage27i_real_a_motor_hook,
 )
+from relay_self.action_supervision import ActionSupervisor
+from relay_self.intent import IntentCommitment
 from relay_self.p0d_stage26_gemma_l1_dev import prepare_restored_preset_l1
 from relay_self.p0d_stage27b_place_motion_dev import resolve_stage27_place_motion
 from relay_self.p0d_stage27c_l0_place_proposal_dev import (
@@ -31,6 +37,11 @@ from relay_self.p0d_stage27i_precision_gait_dev import (
     STAGE27I_PRESET_ID,
     Stage27iGaitRefusal,
     choose_stage27i_gait,
+)
+from relay_self.persistent_cognition import (
+    IdentitySpecification,
+    Memory,
+    PersistentCognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
@@ -79,6 +90,64 @@ class PrecisionPlaceNative(ScriptedPlaceNative):
     async def send_clear_controls(self, action_id):
         await super().send_clear_controls(action_id)
         self.sneak_active = False
+
+
+def _original_peer_b(tmp_path):
+    """A real-shaped Self-owned WAL and retained Memory; no live World."""
+    folder = tmp_path / "peer-B"
+    folder.mkdir()
+    journal = folder / "physical-wal.json"
+    PhysicalActionJournal.create(journal, self_id="B")
+    identity_source = Provenance("test-original-identity", "peer-B")
+    original_memory = Memory(
+        "memory-1", "the remembered location is east",
+        Provenance("worldbody", "old-session:22"),
+        Provenance("memory-owner", "original-B"),
+    )
+    owner = SimpleNamespace(
+        self_id="B",
+        intent=IntentCommitment(),
+        skills={},
+        retained=PersistentCognition(
+            IdentitySpecification(
+                "B", ("Preserve original Self memories.",), identity_source,
+            ),
+            memories=(original_memory,),
+        ),
+        files=SimpleNamespace(physical_wal_file=journal),
+        supervisor=ActionSupervisor(),
+    )
+    return owner
+
+
+def _stage27i_parent_report(tmp_path, original_b, *, mutate_memory=False):
+    before = _peer_snapshot(original_b)
+    frozen_before = _freeze_peer_b_snapshot(
+        tmp_path, label="before", snapshot=before,
+    )
+    if mutate_memory:
+        old = original_b.retained.memories[0]
+        original_b.retained = replace(
+            original_b.retained, memories=(replace(
+                old, content="the remembered location is west",
+            ),),
+        )
+    after = _peer_snapshot(original_b, allow_changed=True)
+    frozen_after = _freeze_peer_b_snapshot(
+        tmp_path, label="after", snapshot=after,
+    )
+    summary = _one_action_hook_result()
+    summary["stage27i_precision_enabled"] = True
+    summary["classification"] = (
+        "REAL_STAGE27I_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV"
+    )
+    for key in ("stage27h_peer_b_before", "original_peer_b_before"):
+        summary[key] = before
+    for key in ("stage27h_peer_b_after", "original_peer_b_after"):
+        summary[key] = after
+    summary["stage27i_peer_b_before_evidence"] = frozen_before
+    summary["stage27i_peer_b_after_evidence"] = frozen_after
+    return summary
 
 
 def _case(tmp_path, scenario, *, preset_id=STAGE27I_PRESET_ID, precision=True):
@@ -320,12 +389,16 @@ def test_stage27i_new_runner_mode_exclusive_before_world(tmp_path):
 
 
 def test_stage27i_parent_aggregation_one_action_contract_is_durable(tmp_path):
-    """The old Stage27h post-MOVE KeyError must not recur for Stage27i."""
-    summary = _one_action_hook_result()
-    summary["stage27i_precision_enabled"] = True
-    summary["classification"] = (
-        "REAL_STAGE27I_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV"
-    )
+    """The old Stage27h post-MOVE KeyError and missing B Memory cannot recur."""
+    peer = _original_peer_b(tmp_path)
+    summary = _stage27i_parent_report(tmp_path, peer)
+    before = summary["stage27h_peer_b_before"]
+    assert before["memory_count"] == 1
+    assert len(before["memory_record_digests"]) == 1
+    assert before["memory_record_digests"][0]["memory_id"] == "memory-1"
+    assert len(before["memory_records_sha256"]) == 64
+    assert "the remembered location is east" not in json.dumps(before)
+    assert before == summary["stage27h_peer_b_after"]
     report = _preserve_and_validate_stage27h_hook_return(
         summary, evidence=tmp_path,
     )
@@ -375,3 +448,76 @@ def test_precision_bad_sneak_ack_retains_unresolved_original_wal(tmp_path):
         assert len(server.calls) == model_count
         assert not native.sneak_active
     _case(tmp_path, scenario)
+
+
+def test_stage27i_memory_content_change_same_count_is_detected_and_preserved(
+    tmp_path,
+):
+    """Memory content revision is caught even when B's record IDs/count match."""
+    peer = _original_peer_b(tmp_path)
+    summary = _stage27i_parent_report(tmp_path, peer, mutate_memory=True)
+    before, after = (
+        summary["stage27h_peer_b_before"], summary["stage27h_peer_b_after"],
+    )
+    assert before["memory_count"] == after["memory_count"] == 1
+    assert before["memory_record_digests"][0]["memory_id"] == (
+        after["memory_record_digests"][0]["memory_id"]
+    )
+    assert before["intent_events_sha256"] == after["intent_events_sha256"]
+    assert before["skill_histories_sha256"] == after["skill_histories_sha256"]
+    assert before["physical_wal_sha256"] == after["physical_wal_sha256"]
+    assert before["memory_records_sha256"] != after["memory_records_sha256"]
+    with pytest.raises(
+        RealPresetCheckpointRefusal, match="motor-hook|peer B",
+    ):
+        _preserve_and_validate_stage27h_hook_return(
+            summary, evidence=tmp_path,
+        )
+    for name in (
+        "stage27i-peer-b-before.json", "stage27i-peer-b-after.json",
+        "stage27h-original-motor-hook-return.json",
+    ):
+        assert (tmp_path / name).is_file()
+
+
+@pytest.mark.parametrize("missing", [
+    "memory_count", "memory_records_sha256", "memory_record_digests",
+])
+def test_stage27i_parent_rejects_missing_B_Memory_fields_after_freezing(
+    tmp_path, missing,
+):
+    peer = _original_peer_b(tmp_path)
+    summary = _stage27i_parent_report(tmp_path, peer)
+    for key in ("stage27h_peer_b_before", "original_peer_b_before"):
+        summary[key] = dict(summary[key])
+        del summary[key][missing]
+    for key in ("stage27h_peer_b_after", "original_peer_b_after"):
+        summary[key] = dict(summary[key])
+        del summary[key][missing]
+    with pytest.raises(RealPresetCheckpointRefusal, match="Memory/WAL fields"):
+        _preserve_and_validate_stage27h_hook_return(summary, evidence=tmp_path)
+    assert (tmp_path / "stage27h-original-motor-hook-return.json").is_file()
+
+
+def test_stage27i_memory_source_provenance_change_is_detected(tmp_path):
+    peer = _original_peer_b(tmp_path)
+    before = _peer_snapshot(peer)
+    old = peer.retained.memories[0]
+    peer.retained = replace(
+        peer.retained, memories=(replace(
+            old, integration_provenance=Provenance(
+                "memory-owner", "different-parent-event",
+            ),
+        ),),
+    )
+    after = _peer_snapshot(peer, allow_changed=True)
+    assert before["memory_count"] == after["memory_count"]
+    assert before["memory_records_sha256"] != after["memory_records_sha256"]
+
+
+def test_stage27i_B_peer_snapshot_files_are_write_once(tmp_path):
+    peer = _original_peer_b(tmp_path)
+    snapshot = _peer_snapshot(peer)
+    _freeze_peer_b_snapshot(tmp_path, label="before", snapshot=snapshot)
+    with pytest.raises(FileExistsError):
+        _freeze_peer_b_snapshot(tmp_path, label="before", snapshot=snapshot)
