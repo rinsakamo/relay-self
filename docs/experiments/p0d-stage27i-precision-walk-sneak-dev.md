@@ -83,6 +83,33 @@ earlier real runner flags still use the previous semantics.
 Real Source/Gemma/Paper validation and precision arrival remain
 **NOT RUN / NOT ATTESTED** pending another, separate one-shot trial.
 
+## Mandatory source-derived L1 HTTP count audit
+
+The original Stage27i hook result had
+`stage27h_additional_model_requests: 0` as a literal, which cannot
+prove there were no real model HTTP calls. New code reads the original
+owned Stage26 provider `evidence/original-model-http` directory:
+
+- The exactly two accepted **A and B** original request IDs must have
+  their `.request.json`, `.response.json`, and
+  `.source.sha256.json` raw sources, rechecked through the existing
+  provider receipt.
+- Take `stage27i-model-http-before.json` after initial A/B L1 results
+  and **before the first A physical Action**.
+- Recount and freeze `stage27i-model-http-after.json` after the L0
+  loop, before parent aggregation; also do this on nonselected A.
+- Both source-derived snapshots must be identical and contain exactly
+  **2 requests, 2 responses, 2 manifests**. Any third `.request.json`
+  counts as an attempted HTTP call, even without a corresponding
+  response. Do not replace real counts with a hard-coded zero.
+- Parent independently verifies the source files and SHA manifests,
+  before/after frozen snapshots, receipt IDs, and final counted
+  `stage27h_additional_model_requests == 0`. Preserve original raw
+  files and independently frozen census in HOLD.
+- This attests the **owned audited provider** only. The real llama.cpp
+  server PID/load log should be compared as an independent witness
+  in LocalCodex. Do not infer external global HTTP traffic absence.
+
 ## Real runner / experiment boundary
 
 Do not run a real World until the exact-HEAD GitHub Actions suite, focused
