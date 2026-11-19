@@ -1073,3 +1073,57 @@ def test_d3_schema_codec_exact_fields_and_readonly_decoding():
     assert state.questions[0].origin == OWNER
     with pytest.raises(ExplorationContinuityError, match="foreign"):
         decode_exploration_continuity(obj, expected_self_id="self-B")
+
+
+def test_d3_positive_l2_target_audit_rechecks_current_world_and_does_not_close_question():
+    c = setup(with_target=False)
+    d3_question(c)
+    updated, reservation = d3_reserved(c)
+    actual = Target("destination:ridge", "DESTINATION", SOURCE, "world-A", 13)
+    live = replace(c["percept"], targets=(actual,))
+    typed = review_l2_target_reference(
+        task=reservation.task,
+        result_status="RESOLVED",
+        result_text=json.dumps({
+            "kind": "TARGET_REFERENCE",
+            "question_ref": "question:ridge",
+            "target_ref": "destination:ridge",
+            "target_kind": "DESTINATION",
+        }),
+        result_provenance=OWNER, percept=live,
+        current_source_revision_refs=c["sources"],
+    )
+    assert typed.target == actual
+    with pytest.raises(ExplorationContinuityError, match="current World review"):
+        record_l2_attempt_result(
+            updated, reservation=reservation,
+            phase=AttemptPhase.REFERENCED_OBSERVED_TARGET,
+            reviewed_target=typed, expected_revision=2,
+        )
+    with pytest.raises(ExplorationContinuityError, match="current World review"):
+        record_l2_attempt_result(
+            updated, reservation=reservation,
+            phase=AttemptPhase.REFERENCED_OBSERVED_TARGET,
+            reviewed_target=typed, current_percept=replace(live, targets=()),
+            current_source_revision_refs=c["sources"], expected_revision=2,
+        )
+    with pytest.raises(ExplorationContinuityError, match="current World review"):
+        record_l2_attempt_result(
+            updated, reservation=reservation,
+            phase=AttemptPhase.REFERENCED_OBSERVED_TARGET,
+            reviewed_target=typed, current_percept=live,
+            current_source_revision_refs=("later-source",), expected_revision=2,
+        )
+    accepted = record_l2_attempt_result(
+        updated, reservation=reservation,
+        phase=AttemptPhase.REFERENCED_OBSERVED_TARGET,
+        reviewed_target=typed, current_percept=live,
+        current_source_revision_refs=c["sources"], expected_revision=2,
+    )
+    assert accepted.exploration_continuity.attempts[0].phase is (
+        AttemptPhase.REFERENCED_OBSERVED_TARGET
+    )
+    assert open_question_refs(accepted, expected_self_id="self-A") == (
+        "question:ridge",
+    )
+    assert c["owner"].events == ()
