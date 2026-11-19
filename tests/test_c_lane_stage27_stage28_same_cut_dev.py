@@ -135,7 +135,7 @@ def _source_with_original_v2_wal(a):
     assert exp is not None
     assert exp.target_outcome is OutcomeAssessment.SUCCESS
     assert exp.action_ids == (closed.action_id,)
-    return exp, readback.digest
+    return exp, readback.digest, invocation, first, last
 
 
 def test_original_stage27_v2_wal_crosses_one_stage28_world_a_b_generation(
@@ -150,7 +150,7 @@ def test_original_stage27_v2_wal_crosses_one_stage28_world_a_b_generation(
     def original_plus_v2(path, monkey):
         source = source_setup(path, monkey)
         a = source[0].owners["A"]
-        exp, digest = _source_with_original_v2_wal(a)
+        exp, digest, _inv, _first, _last = _source_with_original_v2_wal(a)
         observed.update(exp=exp, sha=digest)
         return source
 
@@ -184,7 +184,7 @@ def test_original_stage27_wal_read_only_assembly_rejects_foreign_source(
 
     source, _paper, _store, _evidence = _setup(tmp_path, monkeypatch)
     a = source.owners["A"]
-    exp, digest = _source_with_original_v2_wal(a)
+    exp, digest, inv, first, last = _source_with_original_v2_wal(a)
     assert exp is not None
     # Source readback is verified by original Stage27, but no claim of real
     # physical Action causality is made about the synthetic fixture.
@@ -195,15 +195,18 @@ def test_original_stage27_wal_read_only_assembly_rejects_foreign_source(
         with pytest.raises(Exception):
             PhysicalActionJournal.restore(a.files.physical_wal_file, self_id="A")
     elif fault == "wrong-target":
-        assert journal.records[0]["target_contract_ref"].startswith("target-contract:v1@")
-        with pytest.raises(C1AdmissionError, match="typed original"):
+        altered_invocation = replace(
+            inv, parameter_preset_ref="skill-preset:v1@" + "f" * 64,
+        )
+        with pytest.raises(C1AdmissionError, match="lineage mismatch"):
             assemble_stage27_c1_from_canonical_wal(
                 cognition=a.retained, intent=a.intent,
                 skill=a.skills["stage27-child-skill-A"],
                 actions=(a.supervisor.get("stage27-synthetic-action-A"),),
                 journal_path=a.files.physical_wal_file,
                 original_wal_sha256=journal.digest,
-                selected_invocation=None, before_probe=None, after_probe=None,
+                selected_invocation=altered_invocation,
+                before_probe=first, after_probe=last,
                 world_id="world-1", world_epoch=0, selected_provenance=P,
             )
     else:
@@ -215,6 +218,6 @@ def test_original_stage27_wal_read_only_assembly_rejects_foreign_source(
                 actions=(a.supervisor.get("stage27-synthetic-action-A"),),
                 journal_path=a.files.physical_wal_file,
                 original_wal_sha256="f" * 64,
-                selected_invocation=None, before_probe=None, after_probe=None,
+                selected_invocation=inv, before_probe=first, after_probe=last,
                 world_id="world-1", world_epoch=0, selected_provenance=P,
             )
