@@ -9,6 +9,7 @@ from dataclasses import replace
 
 from relay_self.c_lane_stage27_source_bridge import assemble_stage27_c1_from_canonical_wal
 from relay_self.cognitive_learning_contract import (
+    CurrentCue,
     OutcomeAssessment,
     RetainedRevisionRead,
 )
@@ -30,8 +31,6 @@ from test_p0d_stage27h_bounded_l0_move_dev import (
     _issue,
     _start,
 )
-
-from relay_self.cognitive_learning_contract import CurrentCue
 
 
 P = Provenance("c-lane-integration-test", "owner-selected-training")
