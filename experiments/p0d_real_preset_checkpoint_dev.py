@@ -217,11 +217,11 @@ def _preserve_and_validate_stage27h_hook_return(
                 "Stage27i original peer B evidence missing"
             )
         required = {
-            "intent_event_count", "intent_events_sha256",
+            "intent_event_count", "intent_events_sha256", "intent_current",
             "skill_execution_count", "skill_histories_sha256",
             "memory_count", "memory_records_sha256", "memory_record_digests",
             "physical_wal_sha256", "physical_wal_action_rows",
-            "open_action_count",
+            "physical_wal_unresolved", "open_action_count",
         }
         for label, snapshot in (("before", b_before), ("after", b_after)):
             if set(snapshot) != required:
@@ -233,7 +233,9 @@ def _preserve_and_validate_stage27h_hook_return(
                 "memory_records_sha256", "physical_wal_sha256",
             )
             if (
-                any(type(snapshot[key]) is not int or snapshot[key] < 0
+                snapshot["intent_current"] is not None
+                or snapshot["physical_wal_unresolved"] is not False
+                or any(type(snapshot[key]) is not int or snapshot[key] < 0
                     for key in (
                         "intent_event_count", "skill_execution_count",
                         "memory_count", "physical_wal_action_rows",
