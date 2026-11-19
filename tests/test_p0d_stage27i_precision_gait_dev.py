@@ -226,7 +226,10 @@ def _stage27i_parent_report(tmp_path, original_b, *, mutate_memory=False):
     return summary
 
 
-def _case(tmp_path, scenario, *, preset_id=STAGE27I_PRESET_ID, precision=True):
+def _case(
+    tmp_path, scenario, *, preset_id=STAGE27I_PRESET_ID,
+    precision=True, long_stage27j=False,
+):
     server = _SyntheticLlamaServer()
     server.choice_id = "1"
     endpoint = server.start()
@@ -234,7 +237,10 @@ def _case(tmp_path, scenario, *, preset_id=STAGE27I_PRESET_ID, precision=True):
         tmp_path, 2, cognitive_work=True, allow_resident_move=True,
     )
     lane = _attach_and_audit(fixture, endpoint, tmp_path)
-    budget = SkillBudget(4, 15000, 2.0, 256)
+    budget = (
+        SkillBudget(12, 45000, 6.0, 1024) if long_stage27j
+        else SkillBudget(4, 15000, 2.0, 256)
+    )
 
     def original(self_id="A"):
         return source_recovered(self_id, budget=budget, preset_id=preset_id)
@@ -242,6 +248,7 @@ def _case(tmp_path, scenario, *, preset_id=STAGE27I_PRESET_ID, precision=True):
     def prepare(*args, **kwargs):
         return prepare_restored_preset_l1(
             *args, **kwargs, stage27i_precision_target=precision,
+            stage27j_long_target=long_stage27j,
         )
 
     async def inner():
