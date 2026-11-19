@@ -428,8 +428,8 @@ async def _owned_resident_trial(
 
     paper_session = paper.owned_session_id
     assert paper_session is not None
-    original_a = await bridge.login("A")
-    original_b = await bridge.login("B")
+    initial_a_login = await bridge.login("A")
+    initial_b_login = await bridge.login("B")
     old_a = bridge.sessions["A"].started.session_id
     a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
@@ -602,8 +602,8 @@ async def _owned_resident_trial(
         "paper_boot": trace.boot_id,
         "world_uuid": world_uuid,
         "paper_session_id": paper_session,
-        "a_original_ticket": asdict(original_a),
-        "b_original_ticket": asdict(original_b),
+        "a_original_ticket": asdict(initial_a_login),
+        "b_original_ticket": asdict(initial_b_login),
         "a_original_native_session": old_a,
         "a_original_owned_pid": a_initial_pid,
         "b_original_owned_pid": b_initial_pid,
