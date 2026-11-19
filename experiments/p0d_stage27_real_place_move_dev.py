@@ -722,6 +722,7 @@ async def stage27h_real_a_motor_hook(
     *, paper, bridge, physical, lane, owners, world_epoch, prepared,
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
     precision_stage27i: bool = False,
+    c_lane_stage27h_post_review: bool = False,
 ) -> dict[str, object]:
     """Strict Stage27h opt-in: CPU L0 repeats ORIGINAL bounded MOVE Actions.
 
@@ -729,6 +730,13 @@ async def stage27h_real_a_motor_hook(
     physical issuer for EACH short Action. There is only one initial real L1
     choice and no model evaluation inside the L0 MOVE loop.
     """
+    if (
+        type(c_lane_stage27h_post_review) is not bool
+        or (c_lane_stage27h_post_review and precision_stage27i)
+    ):
+        raise Stage27RealWorldRefusal(
+            "C Stage27h post-L0 L1 is incompatible with Stage27i two-POST census"
+        )
     if (
         set(prepared) != {"A", "B"} or set(tickets) != {"A", "B"}
         or set(witnesses) != {"A", "B"} or set(refreshed) != {"A", "B"}
@@ -837,6 +845,8 @@ async def stage27h_real_a_motor_hook(
     if current.seq <= previous.seq or current.session_id != native_id:
         raise Stage27RealWorldRefusal("Stage27h first post-L1 native source stale")
     result = loop.pre_action(current, now_ns=time.monotonic_ns())
+    first_action_probe = current
+    last_settled_probe = None
     action_receipts: list[dict[str, object]] = []
     while result.status == "L0_CONTINUE_MOVE":
         if len(action_receipts) != loop.action_count:
@@ -976,6 +986,7 @@ async def stage27h_real_a_motor_hook(
             "goal_success": False,
             "skill_success": False,
         })
+        last_settled_probe = receipt.settled_probe
         result = post
         if result.status != "L0_CONTINUE_MOVE":
             break
@@ -1012,6 +1023,16 @@ async def stage27h_real_a_motor_hook(
             raise Stage27RealWorldRefusal(
                 "Stage27i extra model POST within original L0 loop"
             )
+    if c_lane_stage27h_post_review and (
+        result.status != "L0_TARGET_REACHED_YIELD_EVALUATION"
+        or loop.action_count < 2
+        or last_settled_probe is None
+    ):
+        # Source remains on disk; no MODEL review on non-arrival.
+        # Do not automatically reissue even a terminal Action.
+        raise Stage27RealWorldRefusal(
+            "C Stage27h L0 not at bounded Target: hold without model/Skill adoption"
+        )
     stage = "27I" if precision_stage27i else "27H"
     status = {
         "L0_TARGET_REACHED_YIELD_EVALUATION":
@@ -1031,7 +1052,7 @@ async def stage27h_real_a_motor_hook(
         raise Stage27RealWorldRefusal(
             "Stage27h original Intent/Skill not retained for final hook result"
         )
-    return {
+    original_result = {
         "classification": status,
         "stage27i_precision_enabled": precision_stage27i,
         # Explicit Stage25 parent-runner contract. A terminal Action has
@@ -1075,6 +1096,48 @@ async def stage27h_real_a_motor_hook(
         "stage27h_operator_dev_template_not_autonomous": True,
         "qual_and_science_attested": False,
     }
+    if not c_lane_stage27h_post_review:
+        return original_result
+    # OPT-IN: original bounded L0 ended; unlike Stage27i, a separate
+    # read-only L1 review is permitted ONLY AFTER the original full WAL is
+    # terminal. A durable pre-review source is frozen before model POST.
+    from experiments.c_lane_stage27h_real_post_l0_review_dev import (
+        capture_stage27h_real_post_l0_readonly_review,
+    )
+
+    assert last_settled_probe is not None
+    review = await capture_stage27h_real_post_l0_readonly_review(
+        loop=loop, step=result,
+        first_action_probe=first_action_probe,
+        last_settled_probe=last_settled_probe,
+        physical=physical, lane=lane, bridge=bridge,
+        evidence=evidence, world_uuid=world_uuid,
+        original_native_stdout=native_audit,
+        fresh_probe=lambda: _bounded_b_probe(session),
+    )
+    if (
+        review["original_wal_sha256"] != loop.last_wal_digest
+        or review["original_skill_state"] != "started"
+        or review["original_action_ids"] != [
+            r["action"] for r in action_receipts
+        ]
+        or owners["A"].skills[handoff.skill_execution_id].state.value != "started"
+        or review["c1_memory_written"] is not False
+        or review["action_issue_authorized"] is not False
+    ):
+        raise Stage27RealWorldRefusal(
+            "post-L0 bounded review cannot change original Skill/WAL/authority"
+        )
+    peer_final = _peer_snapshot(owners["B"], allow_changed=True)
+    if peer_final != peer_before:
+        raise Stage27RealWorldRefusal(
+            "post-L0 model review changed original peer B"
+        )
+    return {
+        **original_result,
+        "stage27h_additional_model_requests": 1,
+        "c_lane_stage27h_post_l0_review": review,
+    }
 
 
 async def stage27i_real_a_motor_hook(**kwargs) -> dict[str, object]:
@@ -1097,6 +1160,7 @@ async def run_stage27_real_world(
     stage27g_real_l1_evaluation: bool = False,
     stage27h_l0_move_loop: bool = False,
     stage27i_precision_gait: bool = False,
+    c_lane_stage27h_post_review: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -1107,6 +1171,8 @@ async def run_stage27_real_world(
     if (
         type(stage27h_l0_move_loop) is not bool
         or type(stage27i_precision_gait) is not bool
+        or type(c_lane_stage27h_post_review) is not bool
+        or (c_lane_stage27h_post_review and not stage27h_l0_move_loop)
         or (stage27h_l0_move_loop and stage27i_precision_gait)
         or (stage27i_precision_gait and (
             stage27e_independent_evidence or stage27f_cpu_evaluation
@@ -1120,6 +1186,14 @@ async def run_stage27_real_world(
         raise Stage27RealWorldRefusal(
             "Stage27h multi-Action mode must be the sole explicit DEV stage"
         )
+    # Separate opt-in, always using the SAME original Stage27h physical
+    # issuer and original complete Stage25 preset/rejoin parent runner.
+    # No second physical owner or automatic C1 approval is created.
+    async def _stage27h_c_lane_hook(**kwargs):
+        return await stage27h_real_a_motor_hook(
+            **kwargs, c_lane_stage27h_post_review=True,
+        )
+
     return await run_real_two_self_preset_checkpoint(
         paper_jar=paper_jar, paper_sha256=paper_sha256,
         plugin_jar=plugin_jar, plugin_sha256=plugin_sha256,
@@ -1137,6 +1211,7 @@ async def run_stage27_real_world(
         _stage27i_precision_target=stage27i_precision_gait,
         _stage27_motor_hook=(
             stage27i_real_a_motor_hook if stage27i_precision_gait
+            else _stage27h_c_lane_hook if c_lane_stage27h_post_review
             else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
@@ -1166,6 +1241,7 @@ def main() -> int:
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
     p.add_argument("--stage27i-precision-gait", action="store_true")
+    p.add_argument("--c-lane-stage27h-post-review", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -1183,6 +1259,7 @@ def main() -> int:
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
             stage27i_precision_gait=args.stage27i_precision_gait,
+            c_lane_stage27h_post_review=args.c_lane_stage27h_post_review,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
