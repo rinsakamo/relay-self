@@ -280,6 +280,11 @@ def _case(
 
 async def _issue(f, pre, handoff, loop, former, current, native, gait_mode):
     owner = f.owners[f.names[0]]
+    if loop.stage27j_long_mode:
+        assert loop.reserve_stage27j_motor_budget(
+            source_probe=current, gait_mode=gait_mode,
+            now_ns=150 + loop.action_count * 500000000,
+        ) is None
     plan = resolve_stage27_place_motion(
         pre, handoff, current, owner=owner,
         physical=f.physical, world_epoch=pre.world_epoch,
@@ -292,6 +297,9 @@ async def _issue(f, pre, handoff, loop, former, current, native, gait_mode):
         ),
         at_ns=200 + loop.action_count * 20,
         provenance=Provenance("stage27i-synthetic", current.provenance.reference),
+        parent_deadline_ns=(
+            loop.original_deadline_ns if loop.stage27j_long_mode else None
+        ),
     )
     native.seq = current.seq
     native.tick = 1213 + current.seq * 9
@@ -307,6 +315,9 @@ async def _issue(f, pre, handoff, loop, former, current, native, gait_mode):
         source_probe=current,
     )
     args["precision_gait"] = gait_mode
+    args["parent_deadline_ns"] = (
+        loop.original_deadline_ns if loop.stage27j_long_mode else None
+    )
     return await f.physical.issue_place_move(native, **args)
 
 
