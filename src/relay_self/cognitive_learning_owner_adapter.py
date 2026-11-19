@@ -18,10 +18,10 @@ from enum import Enum
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.cognitive_learning_contract import (
     BeforePrediction,
-    EvidenceOrigin,
-    OutcomeAssessment,
     ConditionalReuseCandidate,
     CurrentCue,
+    EvidenceOrigin,
+    OutcomeAssessment,
     RetainedRevisionRead,
     ReuseStage,
     assess_conditional_reuse,
@@ -31,7 +31,7 @@ from relay_self.intent import IntentCommitment, IntentEventKind
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, CognitionDatum
-from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill import SkillExecution
 from relay_self.three_self_present import EpistemicStatus, Lens
 
 
