@@ -161,3 +161,38 @@ The user has already granted continuing Minecraft EULA consent and real World DE
 7. Cleanly terminate original owned Paper and Native children. Preserve original process, Paper stdout, native JSONL, model/GGUF and WAL hashes, verify in a SECOND Python process, and report real UUID/PID/session receipts and exact PASS/HOLD. Never auto-retry ambiguous trial or cleanup.
 
 BLOCKER: B #988 runner has no D source-journal integration or new source-pin support yet. Therefore D7 remains PRE_WORLD_CANDIDATE_ONLY / REAL_WORLD_NOT_RUN / REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN. A read-only source candidate must never be upgraded to real evidence by its own receipt.
+
+## D8 original B Paper/Native runner with D exploration source pins
+
+D8 Draft #1031 is an isolated integration stacked on D7. It imports B
+Stage28c2b's original Paper/Native ownership components without changing
+B #988, D #996 or main.
+
+New modules and contracts:
+
+- exploration_d8_owned_source_dev.py demands exact original World,
+  source/fork branches, generation, COMMITTED SHA256 and historical evidence
+  SHA256 plus actual file count. It rechecks D7 original typed A/B/D history
+  and the original B Stage28b full historical Native source inventory.
+  Old fixed B source pins are not reused.
+- stage28_d8_assets_dev.py preserves original Paper/plugin binary SHA pins.
+- stage28_d8_real_rejoin_dev.py adapts original B one-shot real Paper and A/B
+  Native observer to source-specific D8 pins. It keeps observation-only
+  physical admission, original ownership, cleanup and raw evidence capture.
+- exploration_d8_online_owner_dev.py checks the actual recovered Owner A/B
+  current native/Paper links, D OPEN Questions, historical L2 attempts,
+  canonical cognition file and original WAL under B's shared lock.
+- stage28_d8_independent_rejoin_audit_dev.py independently rechecks original
+  D source pins, raw Paper and Native witnesses, plus the original Owner's
+  post-rejoin Question/attempt readback. This is a separate audit process.
+- The inspect-only mode never starts Paper. The execute-once mode requires
+  a new source-specific D8 manifest and original B local execution gates.
+
+**Verification limitations:** All GitHub CI tests remain CPU offline. The
+original real Stage28b producer has not yet generated a newly observed
+D Question/L2-bearing source generation. The prior B-only checkpoint does
+not qualify for D8. There has been no local Paper, Native or Gemma run
+from this environment. No old L2 attempt can be replayed; a genuine DEFER
+may leave one Self with no historical attempt. Further local source
+generation and independent raw-event verification are still required.
+QUAL_NO_GO / SCIENCE_NOT_RUN.
