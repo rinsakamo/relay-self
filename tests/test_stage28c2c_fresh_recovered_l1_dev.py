@@ -5,6 +5,7 @@ Physical Action, start a Skill, commit an Intent, or claim a real Gemma POST.
 """
 from __future__ import annotations
 
+import asyncio
 import threading
 from dataclasses import replace
 from types import SimpleNamespace
@@ -29,6 +30,7 @@ from relay_self.resident_llama_inference_lane_dev import (
 from relay_self.stage28c2c_fresh_recovered_l1_dev import (
     Stage28c2cL1Hold,
     prepare_fresh_original_l1_turn,
+    run_one_fresh_original_bounded_choice,
     validate_fresh_original_l1_result,
 )
 from test_p0d_resident_move_issuer_dev import _probe
@@ -318,3 +320,54 @@ def test_attach_gpu_lane_fails_if_original_body_missing(tmp_path, monkeypatch):
     lane.bind_login = lambda _sid: pytest.fail("missing B Body admitted GPU")
     with pytest.raises(OwnedResidentBridgeError):
         bridge.attach_observation_only_bounded_l1(lane)
+
+
+def test_actual_lane_one_bounded_submit_only_returns_nonmotor_choice(
+    tmp_path, monkeypatch,
+):
+    case = _ready(tmp_path, monkeypatch)
+    turn = _prepare(case)
+    lane, token = _fake_l1(case, turn, choice="2")
+    calls = []
+    def submit(sid, *, work_ref, request, mode):
+        calls.append((sid, work_ref, request, mode))
+        return token
+    async def await_result(ticket, *, timeout_s):
+        assert ticket is token
+        assert timeout_s == 10
+        return ProviderDecision.resolved("2")
+    lane.submit = submit
+    lane.await_result = await_result
+    original = case[1].owners["A"].retained
+    receipt = asyncio.run(run_one_fresh_original_bounded_choice(
+        bridge=case[1], boot=case[2], turn=turn,
+        lane=lane, timeout_s=10,
+    ))
+    assert len(calls) == 1
+    assert calls[0][0] == "A"
+    assert calls[0][1].startswith("stage28c2c:")
+    assert calls[0][2] is turn.request
+    assert calls[0][3] is CognitionMode.BOUNDED
+    assert receipt.selection_status == "DEFER"
+    assert not receipt.action_issued
+    assert not receipt.skill_started
+    assert not receipt.intent_committed
+    assert case[1].owners["A"].retained is original
+
+
+def test_late_provider_result_cannot_cross_original_owner_body_epoch(
+    tmp_path, monkeypatch,
+):
+    case = _ready(tmp_path, monkeypatch)
+    turn = _prepare(case)
+    lane, token = _fake_l1(case, turn, choice="1")
+    lane.submit = lambda sid, *, work_ref, request, mode: token
+    async def await_stale(ticket, *, timeout_s):
+        case[1].owners["A"].current_worldbody_observation = None
+        return ProviderDecision.resolved("1")
+    lane.await_result = await_stale
+    with pytest.raises(Stage28c2cL1Hold, match="stale"):
+        asyncio.run(run_one_fresh_original_bounded_choice(
+            bridge=case[1], boot=case[2], turn=turn,
+            lane=lane,
+        ))
