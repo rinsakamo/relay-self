@@ -12,6 +12,7 @@ from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
     run_stage27_real_world,
 )
+from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hLoopRefusal
 from relay_self.p0d_stage27i_precision_gait_dev import (
     Stage27iGaitRefusal,
     choose_stage27i_gait,
@@ -190,3 +191,17 @@ def test_stage27j_runner_isolated_flag_and_real_world_not_started():
                 stage27j=True, stage27i=(other == "stage27i"),
                 stage27h=(other == "stage27h"),
             ))
+
+
+def test_stage27j_12_actions_refused_for_non_long_accepted_preset(tmp_path):
+    # Budget and target flag do not grant the older Stage27i Preset 12
+    # Actions. This must fail at the original loop admission gate.
+    async def should_never_issue(*_args):
+        raise AssertionError("unexpected physical issue")
+    with pytest.raises(Stage27hLoopRefusal, match="bounded multi-Action"):
+        _case(
+            tmp_path, should_never_issue,
+            preset_id="OperatorPrecisionWalkSneakAt075",
+            precision=False,
+            long_stage27j=True,
+        )
