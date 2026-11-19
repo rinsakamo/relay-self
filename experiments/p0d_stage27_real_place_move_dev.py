@@ -39,6 +39,7 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
     submit_stage27g_original_evaluation,
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
+from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -55,6 +56,7 @@ class Stage27RealWorldRefusal(RuntimeError):
 def _native_place_wire_readback(
     raw_file: Path, *, session_id: str, parent: str, new_probe_seq: int,
     ack_seqs: tuple[int, int, int], stop_probe_seqs: tuple[int, int, int],
+    sneak_ack_seq: int | None = None,
 ) -> dict[str, object]:
     """Reread exact owned native stdout bytes: no fabricated child ACK evidence."""
     if raw_file.is_symlink() or not raw_file.is_file():
@@ -78,12 +80,21 @@ def _native_place_wire_readback(
         (ack_seqs[1], parent + "-start", "set_control", "applied"),
         (ack_seqs[2], parent + "-stop", "clear_controls", "applied"),
     )
+    sneak_ack = (
+        (sneak_ack_seq, parent + "-sneak", "set_control", "applied")
+        if sneak_ack_seq is not None else None
+    )
     if (
         len(ack_seqs) != 3
         or not new_probe_seq < ack_seqs[0] < ack_seqs[1] < ack_seqs[2]
+        or (sneak_ack is not None
+            and not ack_seqs[0] < sneak_ack_seq < ack_seqs[1])
         or not ack_seqs[2] < stop_probe_seqs[0] < stop_probe_seqs[1] < stop_probe_seqs[2]
         or any(effects.count(x) != 1 for x in expected)
-        or sum(1 for x in effects if x[1].startswith(parent)) != 3
+        or (sneak_ack is not None and effects.count(sneak_ack) != 1)
+        or sum(1 for x in effects if x[1].startswith(parent)) != (
+            4 if sneak_ack is not None else 3
+        )
         or not any(x[0] == new_probe_seq for x in probes)
         or any(sum(1 for x in probes if x[0] == seq) != 1
                for seq in stop_probe_seqs)
@@ -93,7 +104,11 @@ def _native_place_wire_readback(
         "sha256": hashlib.sha256(data).hexdigest(),
         "length": len(data),
         "source": str(raw_file),
-        "exact_native_action_child_effect_results": [list(x) for x in expected],
+        "exact_native_action_child_effect_results": [
+            *[list(x) for x in expected],
+            *([list(sneak_ack)] if sneak_ack is not None else []),
+        ],
+        "precision_sneak_effect_attested": sneak_ack is not None,
         "original_native_look_start_stop_sequence_verified": True,
         "no_independent_paper_position_claim": True,
     }
