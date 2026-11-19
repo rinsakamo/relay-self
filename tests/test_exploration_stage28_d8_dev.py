@@ -280,6 +280,25 @@ def _actual_d8_online_owner_fixture(tmp_path):
     return recovered, candidate, world, {p.self_id: p for p in logins}, links
 
 
+
+
+def test_d8_real_report_json_roundtrip_preserves_nested_d_source_identity(tmp_path):
+    generation, fork, _, pins = _fixture(tmp_path)
+    from relay_self.exploration_d7_real_world_preflight_dev import (
+        inspect_d7_real_world_candidate,
+    )
+
+    candidate = inspect_d7_real_world_candidate(generation, fork, **pins)
+    report_wire = json.loads(json.dumps(asdict(candidate)))
+    assert report_wire["owner_roster"] == ["A", "B"]
+    assert [s["question_refs"] for s in report_wire["selves"]] == [
+        ["question:ridge"], ["question:forest"],
+    ]
+    assert report_wire != asdict(candidate)  # tuple/list types differ
+    assert report_wire == json.loads(json.dumps(asdict(candidate)))
+    assert report_wire["l2_dispatch_authorized"] is False
+
+
 def test_d8_real_b_original_owner_a_b_retains_d_journal_on_new_probe(tmp_path):
     recovered, candidate, world, logins, links = _actual_d8_online_owner_fixture(
         tmp_path
