@@ -30,8 +30,12 @@ class D8OwnedSourcePins:
     fork_branch_id: str
     committed_sha256: str
     stage28b_evidence_sha256: str
+    stage28b_evidence_files: int
 
     def __post_init__(self) -> None:
+        if (type(self.stage28b_evidence_files) is not int
+                or not 1 <= self.stage28b_evidence_files <= 100000):
+            raise D8PinnedSourceHold("bounded original evidence inventory count required")
         for field in (
             "generation_id", "world_id", "source_branch_id",
             "fork_branch_id", "committed_sha256",
@@ -84,6 +88,7 @@ def inspect_d8_original_source(
         historical = inspect_original_stage28b_native_sessions(
             stage28b_evidence, generation,
             expected_manifest_sha256=pins.stage28b_evidence_sha256,
+            expected_files=pins.stage28b_evidence_files,
         )
     except (OSError, ValueError, RuntimeError, TypeError) as exc:
         raise D8PinnedSourceHold("B original historical source not qualified") from exc
