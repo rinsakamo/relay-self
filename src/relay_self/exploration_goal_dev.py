@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Mapping
 
 from relay_self.cognitive_minimal_dev import (
-    Goal, L1Round, Option, PatternRegistry, SchemaFrame, Target, WorldPercept,
+    Goal, L1Round, Option, PatternRegistry, SchemaFrame, Selection, Target, WorldPercept,
     assemble_l1_select, cpu_schema_epoch,
 )
 from relay_self.common_io import CommonEnvelope, ScopeRef
@@ -314,7 +314,7 @@ class ExplorationL2Task:
 def prepare_exploration_l2(
     round_: ExplorationRound,
     *,
-    l1_escalation_selected: bool,
+    selection: Selection,
     current_owner_revision: int,
     attempted_keys: frozenset[str],
 ) -> ExplorationL2Task | None:
@@ -325,7 +325,9 @@ def prepare_exploration_l2(
     """
     if current_owner_revision != round_.owner_revision:
         raise ExplorationContractError("stale Intent/Goal owner revision")
-    if not l1_escalation_selected:
+    if (not isinstance(selection, Selection)
+            or selection.status != "ESCALATE_L2"
+            or selection.reason != "L1 requested cognitive escalation"):
         return None
     unresolved = tuple(p for p in round_.proposals if p.route == "NEEDS_L2")
     if not unresolved:
