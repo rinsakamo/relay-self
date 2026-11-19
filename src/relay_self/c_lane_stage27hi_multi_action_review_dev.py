@@ -37,6 +37,8 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
+from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
@@ -120,12 +122,25 @@ def _original_source(
     *,
     physical: PhysicalIssueAdmission,
     lane: ResidentLlamaInferenceLane,
+    bridge: OwnedResidentPhysicalBridge,
 ) -> tuple[CheckpointedCognitiveOwner, PhysicalActionJournal]:
     if (
         not isinstance(loop, Stage27hBoundedMoveLoop)
         or not isinstance(physical, PhysicalIssueAdmission)
         or not isinstance(lane, ResidentLlamaInferenceLane)
         or loop.physical is not physical
+        or not isinstance(bridge, OwnedResidentPhysicalBridge)
+        or bridge.physical is not physical
+        or bridge.owners.get(loop.owner.self_id) is not loop.owner
+        or bridge.cognitive_work is not lane.cognitive_work
+        or bridge.lifecycle.world.epoch != loop.world_epoch
+        or bridge.paper.owned_session_id
+        != bridge.lifecycle.world.paper_session_id
+        or bridge.paper.world_id != bridge.lifecycle.world.world_id
+        or bridge.paper.branch_id != bridge.lifecycle.world.branch_id
+        or loop.owner.self_id not in bridge.sessions
+        or bridge.sessions[loop.owner.self_id].started.session_id
+        != loop.owner.native_session_id
         or lane.cognitive_work.owners.get(loop.owner.self_id) is not loop.owner
         or loop.owner.cohort is not lane.cognitive_work
         or loop.prepared.original_owner is not loop.owner
@@ -134,10 +149,14 @@ def _original_source(
         or loop._settlement_reserved != 0
         or loop._reserved_source_seq is not None
         or loop.owner.fresh_native_observation_required
-        or lane.cognitive_work.current_scope(loop.owner.self_id)[1:]
-        != (loop.prepared.native_session, loop.world_epoch)
     ):
         raise C1OwnerReviewHold("original terminal multi-child cognitive scope absent")
+    try:
+        scope = lane.cognitive_work.current_scope(loop.owner.self_id)
+    except ResidentCognitiveWorkError as exc:
+        raise C1OwnerReviewHold("original Self cognitive epoch is fenced") from exc
+    if scope[1:] != (loop.prepared.native_session, loop.world_epoch):
+        raise C1OwnerReviewHold("original native/World cognitive scope changed")
     try:
         journal = loop._validate_owner_and_journal()
         journal.require_clear()
@@ -179,15 +198,17 @@ def prepare_stage27hi_multi_review(
     *,
     physical: PhysicalIssueAdmission,
     lane: ResidentLlamaInferenceLane,
+    bridge: OwnedResidentPhysicalBridge,
     first_action_probe: MineflayerObservation,
     last_settled_probe: MineflayerObservation,
     world_id: str,
 ) -> Stage27MultiReviewFrame:
     """One new finite-choice L1 review, not a new MOVE authorization."""
-    owner, journal = _original_source(loop, physical=physical, lane=lane)
+    owner, journal = _original_source(loop, physical=physical, lane=lane, bridge=bridge)
     rows = journal.records
     if (
         not isinstance(step, Stage27hLoopStep)
+        or world_id != bridge.lifecycle.world.world_id
         or not isinstance(first_action_probe, MineflayerObservation)
         or not isinstance(last_settled_probe, MineflayerObservation)
         or type(world_id) is not str or not world_id
@@ -288,7 +309,7 @@ def submit_stage27hi_multi_review(
 ) -> ResidentInferenceTicket:
     current = prepare_stage27hi_multi_review(
         loop, frame_to_step(frame, loop),
-        physical=physical, lane=lane,
+        physical=physical, lane=lane, bridge=bridge,
         first_action_probe=first_action_probe,
         last_settled_probe=last_settled_probe,
         world_id=frame.world_id,
@@ -351,6 +372,7 @@ async def finish_stage27hi_multi_review(
         raise C1OwnerReviewHold("foreign post-L0 original model ticket")
     current = prepare_stage27hi_multi_review(
         loop, frame_to_step(frame, loop), physical=physical, lane=lane,
+        bridge=bridge,
         first_action_probe=first_action_probe,
         last_settled_probe=last_settled_probe, world_id=frame.world_id,
     )
@@ -390,7 +412,7 @@ async def finish_stage27hi_multi_review(
         or after.snapshot.health <= 0
     ):
         raise C1OwnerReviewHold("original post-model native source is stale/foreign")
-    _original_source(loop, physical=physical, lane=lane)
+    _original_source(loop, physical=physical, lane=lane, bridge=bridge)
     if lane.result(ticket) != result:
         raise C1OwnerReviewHold("L1 result lost original GPU scope")
     contract = loop.invocation.target.contract
@@ -441,10 +463,10 @@ def accept_stage27hi_original_c1(
         raise C1OwnerReviewHold("independent original Self terminal adoption not supplied")
     owner = loop.owner
     with owner._mutating():
-        _original_source(loop, physical=physical, lane=lane)
+        _original_source(loop, physical=physical, lane=lane, bridge=bridge)
         current = prepare_stage27hi_multi_review(
             loop, frame_to_step(witness.frame, loop),
-            physical=physical, lane=lane,
+            physical=physical, lane=lane, bridge=bridge,
             first_action_probe=first_action_probe,
             last_settled_probe=last_settled_probe, world_id=witness.frame.world_id,
         )
