@@ -13,6 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from relay_self.cognitive_minimal_dev import WorldPercept
 from relay_self.common_io import ScopeRef
 from relay_self.exploration_goal_dev import (
     ExplorationL2Task,
@@ -337,6 +338,8 @@ def record_l2_attempt_result(
     phase: AttemptPhase,
     expected_revision: int,
     reviewed_target: L2TargetReview | None = None,
+    current_percept: WorldPercept | None = None,
+    current_source_revision_refs: tuple[str, ...] = (),
 ) -> PersistentCognition:
     """Owner-mediated terminal audit, without closing the Question.
 
@@ -354,11 +357,20 @@ def record_l2_attempt_result(
         if (not isinstance(reviewed_target, L2TargetReview)
                 or reviewed_target.status != "REFERENCED_OBSERVED_TARGET"
                 or reviewed_target.target is None
-                or reviewed_target.question_ref != reservation.task.question_ref):
+                or reviewed_target.question_ref != reservation.task.question_ref
+                or not isinstance(current_percept, WorldPercept)
+                or current_percept.scope != reservation.task.scope
+                or current_source_revision_refs != reservation.task.source_revision_refs
+                or not any(
+                    t == reviewed_target.target and t.live
+                    and t.observed_sequence <= current_percept.sequence
+                    for t in current_percept.targets
+                )):
             raise ExplorationContinuityError(
                 "resolved reference requires prior typed current World review"
             )
-    elif reviewed_target is not None:
+    elif (reviewed_target is not None or current_percept is not None
+          or current_source_revision_refs):
         raise ExplorationContinuityError("unresolved result cannot cite a target")
     index = next((i for i, a in enumerate(state.attempts)
                   if a.attempt_ref == reservation.attempt_ref), None)
