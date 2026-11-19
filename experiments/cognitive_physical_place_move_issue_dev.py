@@ -196,6 +196,30 @@ async def issue_selected_place_move_dev(
         capability="MOVE", target_kind="DESTINATION",
         refusal=Stage27PlaceMoveRefusal,
     )
+    # The extended physical issuer cap is available only if THIS original
+    # Self actually accepted the frozen Stage27j Preset before L1 selection.
+    # A caller-provided 12-action Invocation alone cannot elevate authority.
+    from relay_self.p0d_stage27j_long_move_profile_dev import (
+        STAGE27J_MAX_ACTIONS,
+        STAGE27J_MAX_DISTANCE_M,
+        STAGE27J_MAX_DURATION_MS,
+        STAGE27J_MAX_OBSERVATIONS,
+        STAGE27J_PRESET_ID,
+    )
+
+    accepted_stage27j = (
+        precision_gait in ("WALK", "SNEAK")
+        and invocation.budget.max_actions == STAGE27J_MAX_ACTIONS
+        and invocation.budget.max_duration_ms == STAGE27J_MAX_DURATION_MS
+        and invocation.budget.max_distance_m == STAGE27J_MAX_DISTANCE_M
+        and invocation.budget.max_observations == STAGE27J_MAX_OBSERVATIONS
+        and any(
+            entry.receipt.self_id == owner.self_id
+            and entry.preset.preset_ref == invocation.parameter_preset_ref
+            and entry.preset.preset_id == STAGE27J_PRESET_ID
+            for entry in owner.pattern_registry.accepted_presets
+        )
+    )
     begin_physical_issue_dev(
         session, capability="MOVE", proposal=proposal,
         current_probe=current_probe, propose_grant=propose_grant,
@@ -206,6 +230,7 @@ async def issue_selected_place_move_dev(
         place_invocation=invocation, place_motion=motion,
         allow_prior_original_place_terminals=allow_prior_terminal_place_actions,
         place_gait_mode=precision_gait,
+        stage27j_long_place_contract=accepted_stage27j,
     )
     parent = proposal.binding.action_id
     # Optional operator DEV evidence tap runs only after the original fsynced
