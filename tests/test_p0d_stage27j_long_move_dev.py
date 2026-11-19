@@ -12,10 +12,6 @@ from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
     run_stage27_real_world,
 )
-from relay_self.p0d_stage27h_bounded_l0_move_dev import (
-    Stage27hBoundedMoveLoop,
-    Stage27hLoopRefusal,
-)
 from relay_self.p0d_stage27i_precision_gait_dev import (
     Stage27iGaitRefusal,
     choose_stage27i_gait,
