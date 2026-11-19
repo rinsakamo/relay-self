@@ -284,6 +284,107 @@ def _preserve_and_validate_stage27h_hook_return(
             raise RealPresetCheckpointRefusal(
                 "Stage27i original peer B Memory/Intent/Skill/WAL changed"
             )
+        # Mandatory independently frozen provider HTTP source census, not
+        # merely the former literal "additional_model_requests": 0.
+        http_before = result.get("stage27i_model_http_before")
+        http_after = result.get("stage27i_model_http_after")
+        if (
+            type(http_before) is not dict or type(http_after) is not dict
+            or http_before != http_after
+            or result.get("stage27h_additional_model_requests") != 0
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original model HTTP before/after census changed"
+            )
+        model_source = evidence / "original-model-http"
+        if model_source.is_symlink() or not model_source.is_dir():
+            raise RealPresetCheckpointRefusal("Stage27i model source missing")
+        actual_names = sorted(p.name for p in model_source.iterdir())
+        expected_fields = {
+            "request_count", "response_count", "manifest_count",
+            "unexpected_files", "missing_files", "source_receipts",
+            "model_http_source", "file_names_sha256",
+        }
+        if (
+            set(http_before) != expected_fields
+            or any(type(http_before[k]) is not int or http_before[k] != 2
+                   for k in ("request_count", "response_count", "manifest_count"))
+            or http_before["unexpected_files"] != []
+            or http_before["missing_files"] != []
+            or http_before["model_http_source"] != str(model_source)
+            or type(http_before["source_receipts"]) is not dict
+            or set(http_before["source_receipts"]) != {"A", "B"}
+            or http_before["file_names_sha256"] != hashlib.sha256(
+                json.dumps(actual_names, sort_keys=True,
+                           separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+            or len(actual_names) != 6
+            or any(p.is_symlink() or not p.is_file()
+                   for p in model_source.iterdir())
+        ):
+            raise RealPresetCheckpointRefusal(
+                "Stage27i model HTTP source census not exactly two calls"
+            )
+        expected_names: set[str] = set()
+        for sid in ("A", "B"):
+            receipt = http_before["source_receipts"][sid]
+            if type(receipt) is not dict or set(receipt) != {
+                "request_id", "request_sha256", "response_sha256",
+                "response_bytes",
+            }:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original L1 source receipt incomplete"
+                )
+            request_id = receipt["request_id"]
+            if type(request_id) is not str or not request_id:
+                raise RealPresetCheckpointRefusal("Stage27i bad L1 request ID")
+            key = hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+            request_file = model_source / (key + ".request.json")
+            response_file = model_source / (key + ".response.json")
+            manifest_file = model_source / (key + ".source.sha256.json")
+            expected_names.update((
+                request_file.name, response_file.name, manifest_file.name,
+            ))
+            try:
+                model_manifest = json.loads(manifest_file.read_bytes())
+                request_hash = file_sha256(request_file)
+                response_hash = file_sha256(response_file)
+                response_size = response_file.stat().st_size
+            except (OSError, ValueError, KeyError) as exc:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original model HTTP files missing"
+                ) from exc
+            if (
+                model_manifest.get("request_id") != request_id
+                or model_manifest.get("request_sha256") != request_hash
+                or model_manifest.get("response_sha256") != response_hash
+                or model_manifest.get("response_bytes") != response_size
+                or receipt["request_sha256"] != request_hash
+                or receipt["response_sha256"] != response_hash
+                or receipt["response_bytes"] != response_size
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original model HTTP SHA evidence inconsistent"
+                )
+        if sorted(expected_names) != actual_names:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i extra or missing model HTTP request source"
+            )
+        for label, snapshot in (("before", http_before), ("after", http_after)):
+            saved = result.get(f"stage27i_model_http_{label}_evidence")
+            path = evidence / f"stage27i-model-http-{label}.json"
+            if (
+                type(saved) is not dict
+                or set(saved) != {"path", "sha256", "frozen_original"}
+                or saved["path"] != str(path)
+                or saved["frozen_original"] is not True
+                or path.is_symlink() or not path.is_file()
+                or file_sha256(path) != saved["sha256"]
+                or json.loads(path.read_bytes()) != snapshot
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i L1 HTTP census frozen readback mismatch"
+                )
     return {
         "original_hook_return_path": str(filename),
         "original_hook_return_sha256": digest,
@@ -1000,6 +1101,15 @@ async def run_real_two_self_preset_checkpoint(
                     }
             report["stage27i_peer_b_evidence"] = peer_evidence
             report["stage27i_peer_b_comparison_attested"] = False
+            model_files: dict[str, object] = {}
+            for label in ("before", "after"):
+                path = evidence / f"stage27i-model-http-{label}.json"
+                if path.is_file() and not path.is_symlink():
+                    model_files[label] = {
+                        "path": str(path), "sha256": file_sha256(path),
+                    }
+            report["stage27i_model_http_evidence"] = model_files
+            report["stage27i_no_extra_model_calls_attested"] = False
         if physical is not None:
             physical.hold_for_operator()
         raise
