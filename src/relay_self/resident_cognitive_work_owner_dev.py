@@ -152,6 +152,7 @@ class ResidentCognitiveWorkOwner:
             owner = self.owners[self_id]
             owner.native_session_id = native_session_id
             owner.last_observed_tick = world_tick
+            owner.current_worldbody_observation = None
             owner.fresh_native_observation_required = False
 
     def current_scope(self, self_id: str) -> tuple[int, str, int]:

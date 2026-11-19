@@ -426,6 +426,7 @@ class CheckpointedCognitiveOwner:
         self.peer_deliveries = {x.message_id: x for x in peer_deliveries}
         self.pending_questions = set(pending_questions)
         self.fresh_native_observation_required = False
+        self.current_worldbody_observation = None
         self.cohort: CognitionOwnerCohort | None = None
 
     @property
@@ -454,6 +455,24 @@ class CheckpointedCognitiveOwner:
                 raise LiveCognitionCheckpointError("old session/future epoch observation")
             self.last_observed_tick = world_tick
             self.fresh_native_observation_required = False
+
+    def accept_rejoined_worldbody(self, observation, *, request_id: str) -> None:
+        """Attach the verified new native probe to this existing online owner."""
+        from adapters.mineflayer.python_protocol import MineflayerObservation
+
+        with self._mutating():
+            self._eligible()
+            if (
+                not isinstance(observation, MineflayerObservation)
+                or observation.kind != "probe"
+                or observation.session_id != self.native_session_id
+                or observation.request_id != request_id or not request_id
+                or observation.snapshot.time is None
+                or observation.snapshot.time.day * 24000
+                + observation.snapshot.time.time_of_day != self.last_observed_tick
+            ):
+                raise LiveCognitionCheckpointError("foreign or stale native WorldBody probe")
+            self.current_worldbody_observation = observation
 
     def retain_memory(self, memory: Memory) -> None:
         with self._mutating():

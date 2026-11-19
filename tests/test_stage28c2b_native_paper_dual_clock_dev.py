@@ -27,11 +27,31 @@ from relay_self.world_resident_lifecycle_dev import (
     WorldLifetime,
     WorldResidentLifecycle,
 )
+from test_p0d_resident_move_issuer_dev import _probe
 from test_stage28c2b_fork_paper_epoch_dev import (
     _boot,
     _owned_paper_from_synthetic_log,
     _source,
 )
+
+
+def test_original_online_owner_receives_only_matching_native_probe(tmp_path, monkeypatch):
+    from relay_self.checkpointed_cognitive_runtime_dev import LiveCognitionCheckpointError
+
+    copy, _, _, _, _ = _clock_context(tmp_path, monkeypatch, native_time=123)
+    owner = copy.recovered.owners["A"]
+    probe = _probe("new-session-A", 12, "request-A", 123, 4.5)
+    owner.accept_rejoined_worldbody(probe, request_id="request-A")
+    assert owner.current_worldbody_observation is probe
+    assert owner.current_worldbody_observation.snapshot.position.x == 4.5
+    for invalid, request in (
+        (_probe("new-session-B", 12, "request-A", 123, 4.5), "request-A"),
+        (probe, "wrong-request"),
+        (_probe("new-session-A", 12, "request-A", 124, 4.5), "request-A"),
+    ):
+        with pytest.raises(LiveCognitionCheckpointError):
+            owner.accept_rejoined_worldbody(invalid, request_id=request)
+        assert owner.current_worldbody_observation is probe
 
 
 def _clock_context(tmp_path, monkeypatch, *, native_time=0, two=True):
