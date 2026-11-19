@@ -1409,6 +1409,13 @@ def test_d4_stub_stage28_plan_requires_same_commit_roster_and_pending_refs(
     marker = tmp_path / "COMMITTED.json"
     marker.write_bytes(b'{"generation_id":"g-000000000001"}')
     digest = hashlib.sha256(marker.read_bytes()).hexdigest()
+    # D5 requires archive/restored Self file equality. This synthetic plan
+    # uses one directory for both, with explicitly bounded mock copies.
+    for sid in ("self-A", "self-B"):
+        self_root = tmp_path / "selves" / sid
+        self_root.mkdir(parents=True)
+        for name in ("cognition.json", "owner-state.json", "physical-wal.json"):
+            (self_root / name).write_text("synthetic-typed:" + sid + ":" + name)
 
     def staged(c, pending):
         sid = c["scope"].self_id
@@ -1688,7 +1695,7 @@ def test_d5_real_stage28_world_a_b_typed_generation_restores_inert_d_history(tmp
         )
     assert owners["A"].pending_questions == {"question:ridge"}
     assert owners["B"].pending_questions == {"question:forest"}
-    assert (generation / "world" / "level.dat").read_bytes() == b"synthetic-W110"
+    assert (restored / "world" / "level.dat").read_bytes() == b"synthetic-W110"
 
 
 def test_d5_real_stage28_rejects_corrupted_restored_self_or_wrong_commit(tmp_path):
