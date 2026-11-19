@@ -26,6 +26,7 @@ from relay_self.c_lane_stage27g_original_owner_review_dev import (
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.cognitive_learning_contract import OutcomeAssessment
 from relay_self.cognitive_learning_owner_adapter import propose_existing_memory
+from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.p0d_stage27h_bounded_l0_move_dev import (
     Stage27hBoundedMoveLoop,
     Stage27hLoopRefusal,
@@ -37,8 +38,6 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
-from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
@@ -47,6 +46,7 @@ from relay_self.relay_engine import (
     DecisionStatus,
     ProviderDecision,
 )
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.resident_llama_inference_lane_dev import (
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
