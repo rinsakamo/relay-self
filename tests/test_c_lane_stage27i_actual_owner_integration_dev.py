@@ -23,7 +23,6 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice
 from relay_self.skill import SkillState
 from relay_self.three_self_present import EpistemicStatus
-
 from test_cognitive_learning_owner_adapter import _c3_candidate
 from test_p0d_stage27h_bounded_l0_move_dev import (
     SlowPlaceNative,
@@ -31,7 +30,6 @@ from test_p0d_stage27h_bounded_l0_move_dev import (
     _issue,
     _start,
 )
-
 
 P = Provenance("c-lane-integration-test", "owner-selected-training")
 
