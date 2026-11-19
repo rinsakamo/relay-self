@@ -40,6 +40,7 @@ from relay_self.p0d_stage27g_real_l1_evaluation_dev import (
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
 from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
+from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
@@ -238,18 +239,93 @@ def _grant(stage: PhysicalGrantStage, binding):
 
 
 def _peer_snapshot(owner) -> dict[str, object]:
+    """Content-address all original B Intent/Skill/Memory and canonical WAL.
+
+    Counts alone do not detect replacement of a Memory's content/provenance.
+    A new hash is computed from the LIVE retained cognition, not a stale
+    checkpoint or the on-disk cognition file. Freeze only digests and IDs,
+    not sensitive raw Memory contents, in the DEV motor report.
+    """
     if owner.intent.current_intent is not None or owner.skills:
         raise Stage27RealWorldRefusal("peer B original Intent/Skill already mutated")
+    retained = owner.retained
+    if (
+        not isinstance(retained, PersistentCognition)
+        or retained.identity.self_id != owner.self_id
+        or any(not isinstance(m, Memory) for m in retained.memories)
+    ):
+        raise Stage27RealWorldRefusal("peer B live retained Memory missing or foreign")
     journal = PhysicalActionJournal.restore(
         owner.files.physical_wal_file, self_id=owner.self_id,
     )
     journal.require_clear()
+
+    def digest(value: object) -> str:
+        content = json.dumps(
+            value, sort_keys=True, ensure_ascii=False,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(content).hexdigest()
+
+    memories = [asdict(item) for item in retained.memories]
+    memory_record_digests = [
+        {"memory_id": memory["memory_id"], "sha256": digest(memory)}
+        for memory in memories
+    ]
+    intent_events = [asdict(event) for event in owner.intent.events]
+    skill_histories = [
+        {
+            "execution_id": skill.execution_id,
+            "skill_id": skill.skill_id,
+            "intent_id": skill.intent_id,
+            "events": [asdict(event) for event in skill.events],
+        }
+        for _, skill in sorted(owner.skills.items())
+    ]
     return {
-        "intent_event_count": len(owner.intent.events),
-        "skill_execution_count": len(owner.skills),
+        "intent_event_count": len(intent_events),
+        "intent_events_sha256": digest(intent_events),
+        "skill_execution_count": len(skill_histories),
+        "skill_histories_sha256": digest(skill_histories),
+        "memory_count": len(memories),
+        "memory_records_sha256": digest(memories),
+        "memory_record_digests": memory_record_digests,
         "physical_wal_sha256": journal.digest,
         "physical_wal_action_rows": len(journal.records),
         "open_action_count": len(owner.supervisor.open_actions),
+    }
+
+
+def _freeze_peer_b_snapshot(
+    evidence: Path, *, label: str, snapshot: dict[str, object],
+) -> dict[str, object]:
+    """Write-once + fsync one B snapshot before comparing or issuing effects."""
+    if label not in ("before", "after") or type(snapshot) is not dict:
+        raise Stage27RealWorldRefusal("unknown original peer-B evidence snapshot")
+    raw = (
+        json.dumps(snapshot, sort_keys=True, indent=2, allow_nan=False)
+        + "\n"
+    ).encode("utf-8")
+    path = evidence / f"stage27i-peer-b-{label}.json"
+    if evidence.is_symlink() or not evidence.is_dir() or path.is_symlink():
+        raise Stage27RealWorldRefusal("unsafe original B evidence destination")
+    with path.open("xb") as output:
+        output.write(raw)
+        output.flush()
+        os.fsync(output.fileno())
+    directory = os.open(evidence, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+    digest = hashlib.sha256(raw).hexdigest()
+    if path.read_bytes() != raw:
+        raise Stage27RealWorldRefusal("peer B original Memory evidence readback failed")
+    return {
+        "path": str(path),
+        "sha256": digest,
+        "frozen_original": True,
+        "memory_content_compared_by_sha256": True,
     }
 
 
@@ -648,6 +724,11 @@ async def stage27h_real_a_motor_hook(
         raise Stage27RealWorldRefusal("Stage27h original 2-Self ownership absent")
     lane.require_world_idle()
     peer_before = _peer_snapshot(owners["B"])
+    peer_before_evidence = (
+        _freeze_peer_b_snapshot(
+            evidence, label="before", snapshot=peer_before,
+        ) if precision_stage27i else None
+    )
     if witnesses["A"].selected_number != "1" or witnesses["A"].l1_status != "READY":
         return await stage27_real_a_motor_hook(
             paper=paper, bridge=bridge, physical=physical, lane=lane,
@@ -834,6 +915,11 @@ async def stage27h_real_a_motor_hook(
     if result.status == "L0_CONTINUE_MOVE":
         raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
     peer_after = _peer_snapshot(owners["B"])
+    peer_after_evidence = (
+        _freeze_peer_b_snapshot(
+            evidence, label="after", snapshot=peer_after,
+        ) if precision_stage27i else None
+    )
     if peer_after != peer_before:
         raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
     lane.require_world_idle()
@@ -886,6 +972,8 @@ async def stage27h_real_a_motor_hook(
         "stage27h_original_action_witnesses": action_receipts,
         "stage27h_peer_b_before": peer_before,
         "stage27h_peer_b_after": peer_after,
+        "stage27i_peer_b_before_evidence": peer_before_evidence,
+        "stage27i_peer_b_after_evidence": peer_after_evidence,
         "stage27h_goal_success": False,
         "stage27h_skill_success": False,
         "stage27h_operator_dev_template_not_autonomous": True,
