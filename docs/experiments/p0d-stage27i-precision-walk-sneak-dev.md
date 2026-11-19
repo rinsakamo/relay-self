@@ -44,6 +44,45 @@ and original native stdout must attest an exact-once `-sneak` ACK
 between LOOK and forward for a SNEAK row. Failure/unconfirmed STOP
 retains unresolved WAL and prevents repeated physical actions.
 
+## Mandatory original Self B retained Memory audit
+
+The initial Stage27i exact-HEAD preflight at
+`4d13c70bd660cbf84e760d0fcdffbf327f539006` correctly stopped
+with `PRE_WORLD_HOLD`: `_peer_snapshot` tracked only Intent/Skill counts
+and physical WAL, not `owner.retained.memories`. That was a missing
+audit, **not** evidence that B Memory actually changed. No World was
+started, no Gemma or Mineflayer process ran, and the old Stage27h World
+was not replayed.
+
+The updated source-qualified B snapshot is computed from the **live**
+`owner.retained.memories` tuple. It records the ordered list of Memory
+IDs and individual SHA256 digests covering **content and both provenance
+fields**, and a SHA256 digest of the whole ordered tuple, along with
+Intent event-history digest, Skill history digest, original WAL digest
+and unresolved status. Memory text is not exposed in the motor summary;
+the digest is an evidence fingerprint, not a complete independent
+recovery of Memory content. Identity mismatch and foreign/invalid
+retained cognition are rejected.
+
+For Stage27i, write-once and fsync two independent JSON files:
+
+- `evidence/stage27i-peer-b-before.json`: *before any A physical Action*
+- `evidence/stage27i-peer-b-after.json`: *after final A L0 decision*,
+  and **before** peer comparison, logout and final report aggregation
+
+Read back both files and SHA256 digests in the original parent runner
+as part of the typed Stage27i result contract. Missing Memory fields,
+different content with an unchanged record count, stale/mismatched
+evidence, mutated B Intent/Skill/WAL, or missing source -> explicit
+HOLD. If a mutation is detected after irreversible A movement,
+preserve the separate before/after snapshots in the HOLD audit; never
+retry the original Action. The parent frozen hook return file remains
+write-once and separate from these snapshots. Stage27h and all
+earlier real runner flags still use the previous semantics.
+
+Real Source/Gemma/Paper validation and precision arrival remain
+**NOT RUN / NOT ATTESTED** pending another, separate one-shot trial.
+
 ## Real runner / experiment boundary
 
 Do not run a real World until the exact-HEAD GitHub Actions suite, focused
