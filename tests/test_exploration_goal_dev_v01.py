@@ -826,7 +826,7 @@ def d3_reserved(c, *, owner_revision=4, native_session_ref="native-A"):
         c["retained"], round_=r, selection=selection,
         expected_revision=c["retained"].exploration_continuity.revision,
         current_intent_owner_revision=owner_revision,
-        native_session_ref=native_session_ref,
+        native_session_ref=native_session_ref, owner_provenance=OWNER,
     )
 
 
@@ -927,7 +927,7 @@ def test_d3_crash_after_reserved_rejoin_never_auto_retries_same_evidence(tmp_pat
     same, second = reserve_exploration_l2(
         c["retained"], round_=r, selection=selection,
         expected_revision=2, current_intent_owner_revision=5,
-        native_session_ref="native-REJOIN",
+        native_session_ref="native-REJOIN", owner_provenance=OWNER,
     )
     assert same is c["retained"] and second is None
     assert c["retained"].exploration_continuity.attempts[0].phase is AttemptPhase.RESERVED
