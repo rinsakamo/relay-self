@@ -8,7 +8,6 @@ import asyncio
 import hashlib
 import json
 import sys
-import urllib.error
 from dataclasses import asdict, replace
 from types import SimpleNamespace
 
@@ -23,11 +22,10 @@ from relay_self.relay_engine import (
     CognitionMode,
     ProviderDecision,
 )
-from relay_self.stage28_cognitive_recovery_gate_dev import Stage28ForkPaperEpoch
-from test_stage28c2c_fresh_recovered_l1_dev import _fake_l1, _prepare, _ready
 from relay_self.stage28c2c_fresh_recovered_l1_dev import (
     validate_fresh_original_l1_result,
 )
+from test_stage28c2c_fresh_recovered_l1_dev import _fake_l1, _prepare, _ready
 
 
 class _FakeHTTP:
