@@ -345,7 +345,9 @@ def test_precision_bad_sneak_ack_retains_unresolved_original_wal(tmp_path):
             )
             if control == "sneak":
                 current = self.events[-1]
-                self.events[-1] = replace(current, result="rejected")
+                self.events[-1] = replace(
+                    current, result="rejected", error="synthetic refused gait"
+                )
 
     async def scenario(f, lane, server, pre, handoff, former, current, loop):
         initial = current.snapshot.position
