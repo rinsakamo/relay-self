@@ -436,6 +436,7 @@ async def _owned_resident_trial(
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
     d9_original_outcomes = None
+    d9_original_b = None
     if d9_source_exploration_dev:
         if bridge.cognitive_work is None or bridge.inference_lane is None:
             raise RealResidentPresenceRefusal("D9 original GPU/Owner lane missing")
@@ -463,20 +464,15 @@ async def _owned_resident_trial(
             original.accept_rejoined_worldbody(
                 probe, request_id=bridge.last_login_evidence[sid].observation_ref,
             )
-        original_a = retain_d9_question_without_model(
-            bridge.owners["A"], bridge.cognitive_work,
-            bridge.last_login_observations["A"],
-            world_session_id=paper_session,
-        )
         # Exactly ONE genuine B-owned single-slot GPU call this World.
-        # A's Question is UNKNOWN/OPEN but NOT mislabeled a model DEFER.
+        # A's Question will be adopted on A's FINAL native reJOIN below;
+        # it must not be attributed to an already-retired old native ID.
         original_b = await run_d9_original_bounded_l1(
             bridge.owners["B"], bridge.cognitive_work,
             bridge.inference_lane, bridge.last_login_observations["B"],
             world_session_id=paper_session,
         )
-        d9_original_outcomes = (original_a, original_b)
-        _immutable_receipt(evidence_dir, "D9-A-question-only", original_a)
+        d9_original_b = original_b
         _immutable_receipt(evidence_dir, "D9-B-original-bounded-L1", original_b)
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
@@ -540,6 +536,22 @@ async def _owned_resident_trial(
     a_relogin_ticket = await bridge.login("A")
     a_relogin = bridge.last_login_evidence["A"]
     a_relogin_pid = bridge.sessions["A"].owned_child_pid
+    if d9_source_exploration_dev:
+        # Original A changed native epochs. Its OWN newly observed Question
+        # belongs to the FINAL A Owner/native session, not the retired A0.
+        if bridge.cognitive_work is None or d9_original_b is None:
+            raise RealResidentPresenceRefusal("D9 B model result missing at A reJOIN")
+        a_probe = bridge.last_login_observations["A"]
+        bridge.owners["A"].accept_rejoined_worldbody(
+            a_probe,
+            request_id=a_relogin.observation_ref,
+        )
+        original_a = retain_d9_question_without_model(
+            bridge.owners["A"], bridge.cognitive_work, a_probe,
+            world_session_id=paper_session,
+        )
+        d9_original_outcomes = (original_a, d9_original_b)
+        _immutable_receipt(evidence_dir, "D9-A-question-only", original_a)
     if a_relogin.native_session_id == old_a:
         raise RealResidentPresenceRefusal("A reused native process")
     await asyncio.sleep(1.0)
