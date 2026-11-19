@@ -167,7 +167,10 @@ def test_original_stage27_v2_wal_crosses_one_stage28_world_a_b_generation(
     assert witness.memory_id == exp.memory_id
     assert witness.historical_memory_retained
     assert not witness.real_historical_world_action_attested
+    archived_dir = args["source_generation"] / "selves" / "A"
+    original_inventory = tuple(sorted(p.name for p in archived_dir.iterdir()))
     stronger = verify_stage27_wal_c1_across_stage28_typed_epoch(**args)
+    assert tuple(sorted(p.name for p in archived_dir.iterdir())) == original_inventory
     assert stronger.continuity == witness
     assert stronger.action_ids == exp.action_ids
     assert stronger.physical_wal_sha256 == observed["sha"]
