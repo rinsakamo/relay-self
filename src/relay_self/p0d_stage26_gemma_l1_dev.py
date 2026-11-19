@@ -32,6 +32,7 @@ from relay_self.cognitive_minimal_dev import (
 from relay_self.common_io import ScopeRef
 from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.intent import IntentCommitment
+from relay_self.p0d_stage27j_long_move_profile_dev import STAGE27J_TARGET_DISTANCE_M
 from relay_self.relay_engine import (
     CognitionMode,
     ProviderDecision,
@@ -41,7 +42,6 @@ from relay_self.resident_llama_inference_lane_dev import (
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
 )
-from relay_self.p0d_stage27j_long_move_profile_dev import STAGE27J_TARGET_DISTANCE_M
 from relay_self.skill_invocation import SkillDefinition
 from relay_self.target_contract import (
     ArrivalCondition,
