@@ -893,6 +893,13 @@ async def stage27h_real_a_motor_hook(
     }
 
 
+async def stage27i_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Stage27i opt-in only: source-bound precise gait within Stage27h parent."""
+    return await stage27h_real_a_motor_hook(
+        **kwargs, precision_stage27i=True,
+    )
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -905,6 +912,7 @@ async def run_stage27_real_world(
     stage27f_cpu_evaluation: bool = False,
     stage27g_real_l1_evaluation: bool = False,
     stage27h_l0_move_loop: bool = False,
+    stage27i_precision_gait: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -914,6 +922,12 @@ async def run_stage27_real_world(
         raise Stage27RealWorldRefusal("original real Gemma/EULA/World DEV prerequisites missing")
     if (
         type(stage27h_l0_move_loop) is not bool
+        or type(stage27i_precision_gait) is not bool
+        or (stage27h_l0_move_loop and stage27i_precision_gait)
+        or (stage27i_precision_gait and (
+            stage27e_independent_evidence or stage27f_cpu_evaluation
+            or stage27g_real_l1_evaluation
+        ))
         or (stage27h_l0_move_loop and (
             stage27e_independent_evidence or stage27f_cpu_evaluation
             or stage27g_real_l1_evaluation
@@ -933,9 +947,13 @@ async def run_stage27_real_world(
         real_gemma_l1=True, gemma_l1_endpoint=gemma_l1_endpoint,
         gemma_l1_model=gemma_l1_model,
         gemma_l1_jev=False,
-        _stage27h_multi_preset=stage27h_l0_move_loop,
+        _stage27h_multi_preset=(
+            stage27h_l0_move_loop or stage27i_precision_gait
+        ),
+        _stage27i_precision_target=stage27i_precision_gait,
         _stage27_motor_hook=(
-            stage27h_real_a_motor_hook if stage27h_l0_move_loop
+            stage27i_real_a_motor_hook if stage27i_precision_gait
+            else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
             else stage27e_real_a_motor_hook if stage27e_independent_evidence
@@ -963,6 +981,7 @@ def main() -> int:
     p.add_argument("--stage27f-cpu-evaluation", action="store_true")
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
+    p.add_argument("--stage27i-precision-gait", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -979,6 +998,7 @@ def main() -> int:
             stage27f_cpu_evaluation=args.stage27f_cpu_evaluation,
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
+            stage27i_precision_gait=args.stage27i_precision_gait,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
