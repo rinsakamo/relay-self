@@ -113,6 +113,7 @@ def prepare_restored_preset_l1(
     owner: CheckpointedCognitiveOwner,
     lane: ResidentLlamaInferenceLane,
     definition: SkillDefinition | None = None,
+    stage27i_precision_target: bool = False,
 ) -> PreparedStage26L1:
     """Prepare the complete numbered choices under the *original* owner gate."""
     if (
@@ -134,6 +135,7 @@ def prepare_restored_preset_l1(
         or restored.semantic.old_skill_resume_authorized
         or restored.semantic.new_physical_action_issue_authorized
         or owner.fresh_native_observation_required
+        or type(stage27i_precision_target) is not bool
         or restored.retained.identity.self_id != self_id
         or restored.retained.pattern_registry != restored.semantic.pattern_registry
         or owner.retained != restored.retained
@@ -166,9 +168,14 @@ def prepare_restored_preset_l1(
         target_ref=target_ref, kind=TargetKind.PLACE,
         reference_frame=ReferenceFrame.WORLD,
         provenance=first.provenance,
-        condition=ArrivalCondition(0.0, 0.6, 1.0),
+        condition=ArrivalCondition(
+            0.0, 0.15 if stage27i_precision_target else 0.6, 1.0,
+        ),
         bound_seq=first.seq,
-        anchor=MineflayerPosition(here.x + 1.0, here.y, here.z),
+        anchor=MineflayerPosition(
+            here.x + (1.5 if stage27i_precision_target else 1.0),
+            here.y, here.z,
+        ),
     )
     target = Target(
         target_ref, "DESTINATION", first.provenance, first.session_id,
