@@ -304,6 +304,7 @@ def submit_stage27hi_multi_review(
     *,
     physical: PhysicalIssueAdmission,
     lane: ResidentLlamaInferenceLane,
+    bridge: OwnedResidentPhysicalBridge,
     first_action_probe: MineflayerObservation,
     last_settled_probe: MineflayerObservation,
 ) -> ResidentInferenceTicket:
@@ -352,6 +353,7 @@ async def finish_stage27hi_multi_review(
     ticket: ResidentInferenceTicket,
     physical: PhysicalIssueAdmission,
     lane: ResidentLlamaInferenceLane,
+    bridge: OwnedResidentPhysicalBridge,
     first_action_probe: MineflayerObservation,
     last_settled_probe: MineflayerObservation,
     fresh_probe: Callable[[], Awaitable[MineflayerObservation]],
@@ -440,6 +442,7 @@ def accept_stage27hi_original_c1(
     loop: Stage27hBoundedMoveLoop,
     physical: PhysicalIssueAdmission,
     lane: ResidentLlamaInferenceLane,
+    bridge: OwnedResidentPhysicalBridge,
     first_action_probe: MineflayerObservation,
     last_settled_probe: MineflayerObservation,
     post_model_probe: MineflayerObservation,
