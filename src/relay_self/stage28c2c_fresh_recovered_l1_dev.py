@@ -440,3 +440,51 @@ def validate_fresh_original_l1_result(
         provider.call_facts.prompt_tokens,
         provider.call_facts.completion_tokens,
     )
+
+
+async def run_one_fresh_original_bounded_choice(
+    *, bridge: OwnedResidentPhysicalBridge,
+    boot: Stage28ForkPaperEpoch,
+    turn: Stage28c2cFreshTurn,
+    lane: ResidentLlamaInferenceLane,
+    timeout_s: float = 60.0,
+) -> Stage28c2cL1Result:
+    """One actual owned L1 BOUNDED provider POST, zero physical Actions.
+
+    No retries. On timeout the provider thread may still own GPU resources;
+    leave the existing lane in HOLD until its actual future and /slots idle
+    have been proven terminal. The bridge must own this same lane for logout.
+    """
+    if (
+        not isinstance(turn, Stage28c2cFreshTurn)
+        or not isinstance(lane, ResidentLlamaInferenceLane)
+        or bridge.inference_lane is not lane
+        or lane.cognitive_work is not bridge.cognitive_work
+        or not bridge.physical.observation_only
+        or bridge.physical.active_action_ids
+        or bridge.paper.owned_session_id != boot.paper_session_id
+        or turn.paper_session_id != boot.paper_session_id
+        or turn.paper_boot_id != boot.paper_boot_id
+        or turn.old_decision_reusable
+        or turn.physical_action_issue_authorized
+        or turn.request.think_allowed
+        or turn.original_probe is not (
+            bridge.owners[turn.self_id].current_worldbody_observation
+        )
+        or bridge.cognitive_work.current_scope(turn.self_id)
+        != turn.owner_scope
+        or _freeze_hash(
+            turn.self_id, turn.owner_scope, turn.request, boot,
+            turn.original_probe, turn.pattern_registry_revision,
+            turn.presets,
+        ) != turn.candidate_set_sha256
+    ):
+        raise Stage28c2cL1Hold("fresh owned bounded L1 pre-submit scope is stale")
+    ticket = lane.submit(
+        turn.self_id, work_ref="stage28c2c:" + turn.request.request_id,
+        request=turn.request, mode=CognitionMode.BOUNDED,
+    )
+    await lane.await_result(ticket, timeout_s=timeout_s)
+    return validate_fresh_original_l1_result(
+        bridge=bridge, boot=boot, turn=turn, lane=lane, ticket=ticket,
+    )
