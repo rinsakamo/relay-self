@@ -18,13 +18,13 @@ from relay_self.p0d_stage27i_precision_gait_dev import (
     choose_stage27i_gait,
 )
 from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_ACTION_IO_WATCHDOG_S,
     STAGE27J_MAX_ACTIONS,
     STAGE27J_MAX_DISTANCE_M,
     STAGE27J_MAX_DURATION_MS,
     STAGE27J_MAX_OBSERVATIONS,
     STAGE27J_PRESET_ID,
     STAGE27J_TARGET_DISTANCE_M,
-    stage27j_can_reserve_action,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.skill_invocation import SkillBudget
@@ -208,49 +208,67 @@ def test_stage27j_12_actions_refused_for_non_long_accepted_preset(tmp_path):
         )
 
 
-@pytest.mark.parametrize(
-    "gait,already_m,now_ms,allowed",
-    [
-        ("WALK", 5.25, 0, True),       # 5.25 + 0.75 = 6.00
-        ("WALK", 5.26, 0, False),      # no one-pulse space
-        ("SNEAK", 5.75, 0, True),      # 5.75 + 0.25 = 6.00
-        ("SNEAK", 5.76, 0, False),
-        ("WALK", 0.0, 39999, True),   # 5s margin still reserved
-        ("WALK", 0.0, 40000, False),
-        ("WALK", 0.0, 45000, False),
-    ],
-)
-def test_stage27j_preissue_distance_and_time_envelope(
-    gait, already_m, now_ms, allowed,
-):
-    assert stage27j_can_reserve_action(
-        gait_mode=gait, cumulative_m=already_m,
-        max_distance_m=6.0,
-        now_ns=now_ms * 1_000_000,
-        deadline_ns=45_000_000_000,
-    ) is allowed
 
-
-def test_stage27j_no_action_when_not_enough_shared_time(tmp_path):
+def test_stage27j_elapsed_budget_before_action_issues_nothing(tmp_path):
     async def scenario(f, lane, server, pre, handoff, former, current, loop):
-        step = loop.pre_action(current, now_ns=150)
-        assert step.status == "L0_CONTINUE_MOVE"
-        result = loop.reserve_stage27j_motor_budget(
-            source_probe=current, gait_mode="WALK",
-            now_ns=loop.original_deadline_ns - 4_999_999_999,
+        step = loop.pre_action(
+            current,
+            now_ns=loop.start_ns + STAGE27J_MAX_DURATION_MS * 1_000_000,
         )
-        assert result is not None
-        assert result.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
-        assert loop.action_count == 0
-        assert loop._stage27j_pending_distance_m is None
+        assert step.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        assert step.action_count == 0
         assert not f.owners[f.names[0]].supervisor.recorded_actions
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert not journal.records and not journal.unresolved
+        assert loop.terminal_status == step.status
     _case(
         tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
         precision=False, long_stage27j=True,
     )
 
 
-def test_stage27j_unexpected_over_envelope_action_fails_closed(tmp_path):
+def test_stage27j_action_crosses_soft_time_budget_settles_then_yields(tmp_path):
+    async def scenario(f, lane, server, pre, handoff, former, current, loop):
+        step = loop.pre_action(current, now_ns=loop.start_ns + 1000)
+        assert step.status == "L0_CONTINUE_MOVE"
+        native = PrecisionPlaceNative(handoff.native_session_id)
+        decision = choose_stage27i_gait(
+            loop, step, current, long_stage27j=True,
+        )
+        receipt = await _issue(
+            f, pre, handoff, loop, former, current, native,
+            decision.gait_mode,
+        )
+        assert receipt.start_ack.result == "applied"
+        assert receipt.stop_ack.result == "applied"
+        assert receipt.journal_status == "NATIVE_PLACE_MOVE_SETTLED"
+        post = loop.observe_terminal_action(
+            receipt, source_probe=current,
+            now_ns=loop.start_ns + (STAGE27J_MAX_DURATION_MS + 250) * 1_000_000,
+        )
+        assert post.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        assert post.action_count == 1
+        assert post.cumulative_distance_m == pytest.approx(0.65)
+        assert STAGE27J_ACTION_IO_WATCHDOG_S > 0
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert len(journal.records) == 1
+        assert journal.records[0]["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+        assert not journal.unresolved
+        assert len(server.calls) == 1
+        assert loop.terminal_status == post.status
+    _case(
+        tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
+        precision=False, long_stage27j=True,
+    )
+
+
+def test_stage27j_actual_pulse_above_old_reserve_is_not_fabricated_hold(tmp_path):
     class UnplannedFastNative(PrecisionPlaceNative):
         async def send_set_control(self, action_id, *, control, state):
             await super().send_set_control(
@@ -261,7 +279,6 @@ def test_stage27j_unexpected_over_envelope_action_fails_closed(tmp_path):
 
     async def scenario(f, lane, server, pre, handoff, former, current, loop):
         step = loop.pre_action(current, now_ns=150)
-        assert step.status == "L0_CONTINUE_MOVE"
         decision = choose_stage27i_gait(
             loop, step, current, long_stage27j=True,
         )
@@ -270,19 +287,76 @@ def test_stage27j_unexpected_over_envelope_action_fails_closed(tmp_path):
             f, pre, handoff, loop, former, current, native,
             decision.gait_mode,
         )
-        assert receipt.displacement_m > 0.75
-        with pytest.raises(Stage27hLoopRefusal, match="preissue reserve"):
-            loop.observe_terminal_action(
-                receipt, source_probe=current, now_ns=1000,
-            )
-        # The already-issued Action retains canonical terminal WAL evidence,
-        # but L0 refuses any next Action and cannot silently refund the cap.
+        assert receipt.displacement_m == pytest.approx(0.85)
+        post = loop.observe_terminal_action(
+            receipt, source_probe=current, now_ns=1000,
+        )
+        assert post.status == "L0_CONTINUE_MOVE"
+        assert post.cumulative_distance_m == pytest.approx(0.85)
         journal = PhysicalActionJournal.restore(
             f.owners[f.names[0]].files.physical_wal_file,
             self_id=f.names[0],
         )
         assert len(journal.records) == 1 and not journal.unresolved
-        assert loop._stage27j_pending_distance_m == 0.75
+    _case(
+        tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
+        precision=False, long_stage27j=True,
+    )
+
+
+def test_stage27j_cumulative_distance_overrun_is_soft_terminal(tmp_path):
+    class UnexpectedImpulseNative(PrecisionPlaceNative):
+        def __init__(self, native):
+            super().__init__(native)
+            self.forward_count = 0
+
+        async def send_set_control(self, action_id, *, control, state):
+            await super().send_set_control(
+                action_id, control=control, state=state,
+            )
+            if control == "forward" and state:
+                self.forward_count += 1
+                if self.forward_count == 8:
+                    self.x += 2.0
+
+    async def scenario(f, lane, server, pre, handoff, former, current, loop):
+        native = UnexpectedImpulseNative(handoff.native_session_id)
+        receipts = []
+        for i in range(12):
+            step = loop.pre_action(current, now_ns=150 + 1_000_000_000 * i)
+            if step.status != "L0_CONTINUE_MOVE":
+                break
+            decision = choose_stage27i_gait(
+                loop, step, current, long_stage27j=True,
+            )
+            receipt = await _issue(
+                f, pre, handoff, loop, former, current, native,
+                decision.gait_mode,
+            )
+            receipts.append(receipt)
+            post = loop.observe_terminal_action(
+                receipt, source_probe=current,
+                now_ns=200 + 1_000_000_000 * i,
+            )
+            if post.status != "L0_CONTINUE_MOVE":
+                break
+            former = receipt.settled_probe
+            current = replace(
+                former, seq=former.seq + 1,
+                request_id=f"stage27j-soft-distance-{i}",
+            )
+        assert len(receipts) == 8
+        assert receipts[-1].journal_status == "NATIVE_PLACE_MOVE_SETTLED"
+        assert post.cumulative_distance_m > STAGE27J_MAX_DISTANCE_M
+        assert post.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        journal = PhysicalActionJournal.restore(
+            f.owners[f.names[0]].files.physical_wal_file,
+            self_id=f.names[0],
+        )
+        assert len(journal.records) == 8 and not journal.unresolved
+        assert all(row["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+                   for row in journal.records)
+        assert not post.skill_succeeded and not post.goal_succeeded
     _case(
         tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
         precision=False, long_stage27j=True,
