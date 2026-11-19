@@ -49,6 +49,9 @@ verified native session and their **exact** source-qualified
   trusting a supplied choice. Normalizes the *already returned* model
   decision locally with `RelayEngine` (no second GPU POST).
   Readback returns a non-motor `Stage28c2cL1Result` only.
+  `run_one_fresh_original_bounded_choice` performs the **single actual**
+  `lane.submit`/`await_result`/source-check sequence when invoked by a real
+  owner runner; no hidden THINK retry and no native issue on any choice.
 - `OwnedResidentPhysicalBridge.attach_observation_only_bounded_l1` permits
   attaching the original single-slot GPU lane *after* source-linked A/B
   WorldBody adoption, and only when there are no Actions and
