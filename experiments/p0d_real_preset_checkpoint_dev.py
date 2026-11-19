@@ -206,6 +206,82 @@ def _preserve_and_validate_stage27h_hook_return(
             raise RealPresetCheckpointRefusal(
                 "Stage27h motor-hook original result violates parent contract"
             )
+    if result.get("stage27i_precision_enabled") is True:
+        # Refuse an otherwise equal-looking B snapshot that omits Memory.
+        # Read back BOTH separately fsynced source snapshots, not merely the
+        # in-memory hook-return JSON written above.
+        b_before = result.get("stage27h_peer_b_before")
+        b_after = result.get("stage27h_peer_b_after")
+        if type(b_before) is not dict or type(b_after) is not dict:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original peer B evidence missing"
+            )
+        required = {
+            "intent_event_count", "intent_events_sha256",
+            "skill_execution_count", "skill_histories_sha256",
+            "memory_count", "memory_records_sha256", "memory_record_digests",
+            "physical_wal_sha256", "physical_wal_action_rows",
+            "open_action_count",
+        }
+        for label, snapshot in (("before", b_before), ("after", b_after)):
+            if set(snapshot) != required:
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i peer B Intent/Skill/Memory/WAL fields missing"
+                )
+            digest_fields = (
+                "intent_events_sha256", "skill_histories_sha256",
+                "memory_records_sha256", "physical_wal_sha256",
+            )
+            if (
+                any(type(snapshot[key]) is not int or snapshot[key] < 0
+                    for key in (
+                        "intent_event_count", "skill_execution_count",
+                        "memory_count", "physical_wal_action_rows",
+                        "open_action_count",
+                    ))
+                or any(
+                    type(snapshot[key]) is not str
+                    or len(snapshot[key]) != 64
+                    or any(c not in "0123456789abcdef" for c in snapshot[key])
+                    for key in digest_fields
+                )
+                or type(snapshot["memory_record_digests"]) is not list
+                or len(snapshot["memory_record_digests"]) != snapshot["memory_count"]
+                or any(
+                    type(item) is not dict
+                    or set(item) != {"memory_id", "sha256"}
+                    or type(item["memory_id"]) is not str or not item["memory_id"]
+                    or type(item["sha256"]) is not str
+                    or len(item["sha256"]) != 64
+                    or any(c not in "0123456789abcdef" for c in item["sha256"])
+                    for item in snapshot["memory_record_digests"]
+                )
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i peer B typed Memory content witness invalid"
+                )
+            receipt = result.get(f"stage27i_peer_b_{label}_evidence")
+            expected_path = evidence / f"stage27i-peer-b-{label}.json"
+            if (
+                type(receipt) is not dict
+                or set(receipt) != {
+                    "path", "sha256", "frozen_original",
+                    "memory_content_compared_by_sha256",
+                }
+                or receipt["path"] != str(expected_path)
+                or receipt["frozen_original"] is not True
+                or receipt["memory_content_compared_by_sha256"] is not True
+                or expected_path.is_symlink() or not expected_path.is_file()
+                or file_sha256(expected_path) != receipt["sha256"]
+                or json.loads(expected_path.read_bytes()) != snapshot
+            ):
+                raise RealPresetCheckpointRefusal(
+                    "Stage27i original B Memory snapshot readback mismatch"
+                )
+        if b_before != b_after:
+            raise RealPresetCheckpointRefusal(
+                "Stage27i original peer B Memory/Intent/Skill/WAL changed"
+            )
     return {
         "original_hook_return_path": str(filename),
         "original_hook_return_sha256": digest,
@@ -910,6 +986,18 @@ async def run_real_two_self_preset_checkpoint(
             report["stage27h_hook_return_evidence"] = str(captured)
             report["stage27h_hook_return_sha256"] = file_sha256(captured)
             report["stage27h_hook_contract_valid"] = False
+        if _stage27i_precision_target:
+            # When B mutates during physical motion, its original before/after
+            # snapshots still survive even though the hook cannot return.
+            peer_evidence: dict[str, object] = {}
+            for label in ("before", "after"):
+                path = evidence / f"stage27i-peer-b-{label}.json"
+                if path.is_file() and not path.is_symlink():
+                    peer_evidence[label] = {
+                        "path": str(path), "sha256": file_sha256(path),
+                    }
+            report["stage27i_peer_b_evidence"] = peer_evidence
+            report["stage27i_peer_b_comparison_attested"] = False
         if physical is not None:
             physical.hold_for_operator()
         raise
