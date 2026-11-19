@@ -37,7 +37,6 @@ from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.skill_invocation import SkillBudget
 from test_p0d_real_preset_checkpoint_dev import native_probe, source_recovered
-from test_p0d_stage27h_bounded_l0_move_dev import _one_action_hook_result
 from test_p0d_resident_llama_slot_owner_dev import (
     ResidentFixture,
     _SyntheticLlamaServer,
@@ -48,6 +47,7 @@ from test_p0d_stage27c_place_move_wal_issuer_dev import (
     ScriptedPlaceNative,
     _args,
 )
+from test_p0d_stage27h_bounded_l0_move_dev import _one_action_hook_result
 
 
 class PrecisionPlaceNative(ScriptedPlaceNative):
