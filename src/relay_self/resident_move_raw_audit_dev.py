@@ -17,7 +17,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     parse_mineflayer_line,
 )
-from experiments.cognitive_physical_move_issue_dev import ResidentMoveDevReceipt
+from experiments.stage28_d9_original_move_issue_compat_dev import ResidentMoveDevReceipt
 from relay_self.physical_action_journal import PhysicalActionJournal
 
 
