@@ -23,6 +23,7 @@ from relay_self.c_lane_stage27hi_multi_action_review_dev import (
     prepare_stage27hi_multi_review,
     submit_stage27hi_multi_review,
 )
+from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.p0d_stage27h_bounded_l0_move_dev import (
     Stage27hBoundedMoveLoop,
     Stage27hLoopStep,
@@ -30,7 +31,6 @@ from relay_self.p0d_stage27h_bounded_l0_move_dev import (
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
-from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
 from relay_self.skill import SkillState
 
