@@ -43,6 +43,7 @@ def _ready(tmp_path, monkeypatch, *, bread=False, omega=0):
         tmp_path, monkeypatch, native_time=0,
     )
     world, links = _link(copy, paper, boot, bridge, monkeypatch)
+    bridge.last_login_observations = {}
     for sid in ("A", "B"):
         native = bridge.last_login_evidence[sid]
         actual = _probe(
