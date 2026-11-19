@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.exploration_continuity_dev import open_question_refs
+from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
     Stage28FreshL1Eligibility,
@@ -17,7 +18,6 @@ from relay_self.stage28_cognitive_recovery_gate_dev import (
     stage28_require_fresh_l1_eligibility,
 )
 from relay_self.stage28c2_recovered_resident_owner_dev import Stage28c2aOfflineOwners
-from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from relay_self.world_resident_lifecycle_dev import NativeLoginEvidence, WorldLifetime
 
 
