@@ -17,8 +17,8 @@ from relay_self.common_io import ScopeRef
 from relay_self.exploration_goal_dev import (
     ExplorationL2Task,
     ExplorationRound,
-    prepare_exploration_l2,
     L2TargetReview,
+    prepare_exploration_l2,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import OpenCognitionRequest
