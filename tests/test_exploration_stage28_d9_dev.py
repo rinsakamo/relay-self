@@ -24,7 +24,12 @@ from relay_self.exploration_continuity_dev import (
 from relay_self.exploration_d9_original_l1_dev import (
     D9OriginalL1Hold,
     form_d9_native_exploration_round,
+    retain_d9_question_without_model,
     run_d9_original_bounded_l1,
+)
+from relay_self.exploration_d9_original_source_cut_dev import (
+    D9SourceCutHold,
+    verify_d9_original_owner_sources,
 )
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.resident_llama_inference_lane_dev import (
@@ -269,3 +274,135 @@ def test_d9_same_question_old_attempt_blocks_second_gpu_model_call(
         assert len(state.exploration_continuity.attempts) == 1
     finally:
         backend.close()
+
+
+
+def test_d9_original_a_question_only_b_real_bounded_source_cut(tmp_path):
+    owners, resident, probes = _fixture(tmp_path)
+    a = retain_d9_question_without_model(
+        owners["A"], resident, probes["A"],
+        world_session_id="paper-owned-d9",
+    )
+    assert a.l1_model_invoked is False
+    backend = _D9SyntheticBackend(choice="1")
+    endpoint = backend.start()
+    try:
+        b = asyncio.run(run_d9_original_bounded_l1(
+            owners["B"], resident, _lane(resident, endpoint),
+            probes["B"], world_session_id="paper-owned-d9",
+            timeout_s=8.0,
+        ))
+        assert len(backend.posts) == 1
+        result = verify_d9_original_owner_sources(owners, (a, b))
+        assert tuple(x.self_id for x in result) == ("A", "B")
+        assert result[0].l1_selected_status == "NOT_INFERRED"
+        assert result[0].l1_model_invoked is False
+        assert result[0].genuine_attempt_refs == ()
+        assert result[1].l1_selected_status == "ESCALATE_L2"
+        assert result[1].l1_model_invoked is True
+        assert result[1].genuine_attempt_refs == (b.attempted_l2_ref,)
+        assert all(not x.physical_action_issue_authorized for x in result)
+    finally:
+        backend.close()
+
+
+@pytest.mark.parametrize("choice", ["2", "1"])
+def test_d9_before_typed_paper_cut_holds_b_defer_or_changed_source(
+    tmp_path, choice,
+):
+    owners, resident, probes = _fixture(tmp_path)
+    a = retain_d9_question_without_model(
+        owners["A"], resident, probes["A"],
+        world_session_id="paper-owned-d9",
+    )
+    fake = _D9SyntheticBackend(choice=choice)
+    endpoint = fake.start()
+    try:
+        b = asyncio.run(run_d9_original_bounded_l1(
+            owners["B"], resident, _lane(resident, endpoint),
+            probes["B"], world_session_id="paper-owned-d9",
+            timeout_s=8.0,
+        ))
+        if choice == "2":
+            with pytest.raises(D9SourceCutHold, match="no original Self"):
+                verify_d9_original_owner_sources(owners, (a, b))
+            assert owners["B"].retained.exploration_continuity.attempts == ()
+        else:
+            owners["B"].pending_questions.clear()
+            with pytest.raises(D9SourceCutHold, match="Question"):
+                verify_d9_original_owner_sources(owners, (a, b))
+        assert len(fake.posts) == 1
+    finally:
+        fake.close()
+
+
+def test_d9_real_paper_source_producer_requires_model_preflight_before_world(
+    tmp_path, monkeypatch,
+):
+    from experiments import stage28_d9_real_source_dev as producer
+
+    kw = {
+        "paper_jar": tmp_path / "paper.jar",
+        "paper_sha256": "a" * 64,
+        "plugin_jar": tmp_path / "plugin.jar",
+        "plugin_sha256": "b" * 64,
+        "scratch_parent": tmp_path,
+        "accepted_eula": True,
+        "real_world_dev_grant": True,
+        "d9_source_exploration_dev": True,
+        "typed_owner_cut_dev": True,
+        "real_llm_grant": True,
+        "llama_endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+        "systemone_endpoint": "http://127.0.0.1:8080/v1/systemone",
+        "model_name": "synthetic-test-not-real-gemma",
+    }
+    def forbidden(**_kwargs):
+        pytest.fail("World PRE_WORLD HOLD bypassed and attempted Paper preflight")
+    monkeypatch.setattr(producer, "preflight_two_native", forbidden)
+    with pytest.raises(producer.RealResidentPresenceRefusal, match="GGUF/GPU proof"):
+        asyncio.run(producer.run_real_resident_presence(**kw))
+    assert list(tmp_path.iterdir()) == []
+
+    # Controlled, synthetic typed receipt only proves that the pre-World
+    # conditional can reach the next original B source preflight. It is NOT
+    # an attested GPU model or permission to create an actual World.
+    from experiments.stage24g_model_gate_dev import Stage24gModelGateReceipt
+
+    class PreflightReached(Exception):
+        pass
+
+    def blocked(**_kwargs):
+        raise PreflightReached
+
+    monkeypatch.setattr(producer, "preflight_two_native", blocked)
+    receipt = Stage24gModelGateReceipt(
+        5555, kw["model_name"], "/synthetic/fake.gguf", "c" * 64,
+        "synthetic RTX", "d" * 64, "e" * 64, 0, 1, "f" * 64,
+    )
+    with pytest.raises(PreflightReached):
+        asyncio.run(producer.run_real_resident_presence(
+            **kw, stage24g_model_receipt=receipt,
+        ))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_d9_source_runner_main_with_no_actual_model_refuses_before_world(
+    tmp_path, monkeypatch,
+):
+    import sys
+
+    from experiments import stage28_d9_real_source_dev as producer
+
+    monkeypatch.setattr(sys, "argv", [
+        "D9",
+        "--paper-jar", str(tmp_path / "paper.jar"),
+        "--paper-sha256", "a" * 64,
+        "--plugin-jar", str(tmp_path / "plugin.jar"),
+        "--plugin-sha256", "b" * 64,
+        "--scratch-parent", str(tmp_path),
+        "--eula-accepted", "--real-world-dev-grant",
+        "--grant-real-llm", "--d9-source-exploration-dev",
+        "--typed-owner-cut-dev",
+    ])
+    assert producer.main() == 2
+    assert list(tmp_path.iterdir()) == []
