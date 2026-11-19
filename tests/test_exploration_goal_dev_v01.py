@@ -762,3 +762,24 @@ def test_d2_original_owner_revision_and_question_cannot_be_skipped():
             available_skills=ALLOWED, at_ns=120, provenance=OWNER,
         )
     assert c["owner"].events == ()
+
+
+@pytest.mark.parametrize("incumbent,changed,policy,reason", [
+    (None, 1, GoalReviewPolicy(min_hold_ns=0, switch_margin=0.1),
+     "INCUMBENT_STRENGTH_UNKNOWN"),
+    (0.1, None, GoalReviewPolicy(min_hold_ns=10, switch_margin=0.1),
+     "GOAL_TENURE_UNKNOWN"),
+])
+def test_d2_unknown_owner_goal_strength_or_tenure_never_means_zero(
+    incumbent, changed, policy, reason,
+):
+    c = setup()
+    project_owner_goal(c, ("BUILD_SHELTER",))
+    r = build(c)
+    review = goal_review(
+        c, r, incumbent="BUILD_SHELTER", intensity=incumbent,
+        changed=changed, policy=policy,
+    )
+    assert review.status is GoalReviewStatus.HELD
+    assert review.reason == reason
+    assert c["owner"].events == ()
