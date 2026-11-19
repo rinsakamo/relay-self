@@ -152,7 +152,7 @@ def review_exploration_goal(
         or present.registry_revision != current_schema_revision
         or present.three_self.source_revision_refs != current_source_revision_refs
         or round_.frame.scope != scope
-        or round_.frame.source != round_.need.signal.envelope.source_refs[0]
+        or round_.frame.source not in round_.need.signal.envelope.source_refs
         or round_.need.signal.envelope.event_id not in {
             s.envelope.event_id for s in present.signals
         }
@@ -186,9 +186,16 @@ def review_exploration_goal(
         elif current is not None and current.objective != goal_ref:
             reason = "INCUMBENT_INTENT_MUST_BE_RECONSIDERED"
         elif (owner.incumbent_goal_ref is not None
+              and policy.min_hold_ns > 0
+              and owner.last_goal_transition_ns is None):
+            reason = "GOAL_TENURE_UNKNOWN"
+        elif (owner.incumbent_goal_ref is not None
               and owner.last_goal_transition_ns is not None
               and now_ns - owner.last_goal_transition_ns < policy.min_hold_ns):
             reason = "GOAL_HYSTERESIS_HOLD"
+        elif (owner.incumbent_goal_ref is not None
+              and owner.incumbent_intensity is None):
+            reason = "INCUMBENT_STRENGTH_UNKNOWN"
         elif (owner.incumbent_goal_ref is not None
               and owner.incumbent_intensity is not None
               and candidate.intensity < owner.incumbent_intensity + policy.switch_margin):
