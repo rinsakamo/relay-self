@@ -15,3 +15,11 @@ STAGE27J_MAX_ACTIONS = 12
 STAGE27J_MAX_DURATION_MS = 45000
 STAGE27J_MAX_DISTANCE_M = 6.0
 STAGE27J_MAX_OBSERVATIONS = 1024
+
+# Empirical one-pulse admission envelopes, not guarantees against external
+# World forces. A larger real displacement must HOLD, never reissue.
+STAGE27J_WALK_ACTION_RESERVE_M = 0.75
+STAGE27J_SNEAK_ACTION_RESERVE_M = 0.25
+# Reserving time alone does not bound slow or blocked IO. The issued child
+# must also carry the original absolute deadline (and be cancellable).
+STAGE27J_CHILD_TIME_RESERVE_MS = 5000
