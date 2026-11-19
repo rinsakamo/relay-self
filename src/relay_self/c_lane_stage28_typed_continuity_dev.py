@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from relay_self.intent import IntentEventKind
 from relay_self.persistent_cognition import Memory, load_persistent_cognition
+from relay_self.physical_action_journal import PhysicalJournalError, _read
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
@@ -209,4 +211,151 @@ def verify_c1_across_stage28_typed_epoch(
         new_native_session_id=new_session,
         new_world_epoch=eligibility.world_epoch,
         new_native_seq=new_probe.seq,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class C1Stage27SourceLineageWitness:
+    """Canonical original source consistency; NOT native/Paper causal proof."""
+
+    continuity: C1TypedContinuityWitness
+    physical_wal_sha256: str
+    skill_execution_id: str
+    action_ids: tuple[str, ...]
+    historical_source_format_verified: bool = True
+    real_physical_effect_attested: bool = False
+    old_action_replayed: bool = False
+    physical_issue_authorized: bool = False
+
+
+def verify_stage27_wal_c1_across_stage28_typed_epoch(
+    *,
+    source_generation: Path,
+    copy: ExecutionCopy,
+    eligibility: Stage28FreshL1Eligibility,
+    boot: Stage28ForkPaperEpoch,
+    original_self_id: str,
+    memory_id: str,
+    new_probe: MineflayerObservation,
+) -> C1Stage27SourceLineageWitness:
+    """Check original Stage27 v2 WAL, accepted C1 and Stage28 typed SelfCut.
+
+    This is explicitly a stronger *format/lineage consistency* contract than
+    a standalone C1 Memory readback. It does NOT independently authenticate
+    Mineflayer transport, the issuer's real physical effect or Paper causality.
+    """
+    continued = verify_c1_across_stage28_typed_epoch(
+        source_generation=source_generation, copy=copy, eligibility=eligibility,
+        boot=boot, original_self_id=original_self_id,
+        memory_id=memory_id, new_probe=new_probe,
+    )
+    cuts = verify_typed_generation(source_generation)
+    cut = next((x for x in cuts if x.self_id == original_self_id), None)
+    if cut is None:
+        raise C1TypedCheckpointHold("original bounded Skill owner cut not found")
+    archived_path = source_generation / "selves" / original_self_id
+    copied_path = copy.directory / "selves" / original_self_id
+    # Use the original Stage27 canonical checksum+grammar reader directly.
+    # Journal.restore() creates a sibling .lock file even for reads, which
+    # would modify the *immutable COMMITTED archive*. Both files are already
+    # pinned by Stage28 verify_typed_generation / verified execution copy.
+    try:
+        original_body, original_digest = _read(
+            archived_path / "physical-wal.json",
+        )
+        restored_body, restored_digest = _read(
+            copied_path / "physical-wal.json",
+        )
+    except PhysicalJournalError as exc:
+        raise C1TypedCheckpointHold("original Stage27 physical WAL not canonical") from exc
+    rows = original_body["actions"]
+    if (
+        original_digest != restored_digest
+        or original_body != restored_body
+        or original_body["self_id"] != original_self_id
+        or original_body["schema"] != 2
+        or not rows
+        or rows[-1]["status"] == "PREPARED_UNRESOLVED"
+    ):
+        raise C1TypedCheckpointHold("source/restored Stage27 schema-v2 WAL mismatch")
+
+    historic = load_persistent_cognition(archived_path / "cognition.json")
+    matches = [x for x in historic.memories if x.memory_id == memory_id]
+    if len(matches) != 1:
+        raise C1TypedCheckpointHold("original C1 Memory not in committed owner")
+    try:
+        content = json.loads(matches[0].content)
+        episode = content["episode_key"]
+        chosen_action_ids = content["action_ids"]
+        recorded_refs = content["source_refs"]
+    except (ValueError, TypeError, KeyError) as exc:
+        raise C1TypedCheckpointHold("malformed original C1 physical lineage") from exc
+    if (
+        type(episode) is not list or len(episode) != 3
+        or episode[:2] != [original_self_id, cut.former_native_session_id]
+        or type(chosen_action_ids) is not list or not chosen_action_ids
+        or any(type(v) is not str or not v for v in chosen_action_ids)
+        or len(set(chosen_action_ids)) != len(chosen_action_ids)
+        or type(recorded_refs) is not list
+    ):
+        raise C1TypedCheckpointHold("C1 episode/source scope or Action set invalid")
+    key = episode[2]
+    matching_skills = [
+        s for s in cut.skill_executions if s.execution_id == key
+    ]
+    if (
+        len(matching_skills) != 1
+        or not matching_skills[0].is_current_snapshot
+        or not matching_skills[0].is_terminal
+        or matching_skills[0].skill_id != content.get("skill_id")
+        or matching_skills[0].intent_id != content.get("intent_id")
+        or not any(
+            e.intent_id == matching_skills[0].intent_id
+            and e.kind is IntentEventKind.COMMITTED
+            for e in cut.intent_events
+        )
+    ):
+        raise C1TypedCheckpointHold("original C1 child Skill not terminal/committed in cut")
+    selected_rows = [
+        row for row in rows
+        if row["skill_execution_id"] == key
+    ]
+    if (
+        len(selected_rows) != len(chosen_action_ids)
+        or [r["action_id"] for r in selected_rows] != chosen_action_ids
+        or any(
+            row["capability"] != "MOVE_PLACE"
+            or row["session_id"] != cut.former_native_session_id
+            or row["intent_id"] != matching_skills[0].intent_id
+            or row["target_ref"] != content.get("target_ref")
+            or row["preset_ref"] != content.get("preset_ref")
+            or row["status"] not in {
+                "NATIVE_PLACE_MOVE_SETTLED",
+                "NATIVE_PLACE_MOVE_NO_PROGRESS",
+                "NATIVE_PLACE_MOVE_OVERSHOOT",
+            }
+            for row in selected_rows
+        )
+    ):
+        raise C1TypedCheckpointHold("C1 action IDs or original WAL/Target/Preset differ")
+    expected_source = [
+        ["canonical-physical-wal", f"{original_digest}:{aid}"]
+        for aid in chosen_action_ids
+    ]
+    selected_source = [
+        ref for ref in recorded_refs
+        if type(ref) is list and len(ref) == 2
+        and ref[0] == "canonical-physical-wal"
+    ]
+    if (
+        len(selected_source) != len(expected_source)
+        or sorted(selected_source) != sorted(expected_source)
+        or content.get("world_id") != continued.source_world_id
+    ):
+        raise C1TypedCheckpointHold("C1 claims unverified WAL SHA/Action source")
+    return C1Stage27SourceLineageWitness(
+        continuity=continued,
+        physical_wal_sha256=original_digest,
+        skill_execution_id=key,
+        action_ids=tuple(chosen_action_ids),
     )

@@ -239,12 +239,12 @@ def test_unknown_target_is_not_fabricated_success(stub_source, monkeypatch):
     assert exp.target_outcome is OutcomeAssessment.UNKNOWN
 
 
-def test_stage27_unmerged_module_is_a_hard_hold(monkeypatch):
-    # Without the source branch stacked in CI, we must not fake verification.
+def test_stage27_original_module_is_available_in_integration_branch():
+    # Original Stage27 source is present here; no real World source is implied.
     import relay_self.c_lane_stage27_source_bridge as bridge
+    from relay_self.physical_action_journal import PhysicalActionJournal
 
-    with pytest.raises(C1AdmissionError, match="STAGE27_DEPENDENCY_NOT_MERGED"):
-        bridge._original_stage27_types()
+    assert bridge._original_stage27_types()[1] is PhysicalActionJournal
 
 
 def test_stage28_original_owner_only_proposes_memory_and_rejects_stale(monkeypatch, stub_source):
