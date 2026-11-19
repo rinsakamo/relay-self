@@ -123,7 +123,7 @@ def independently_audit_recovered_real_rejoin(
         or report.get("classification") != expected
         or report.get("independent_audit_pass") is not False
         or report.get("d8_source_pins") != asdict(pins)
-        or report.get("d8_cognitive_candidate") != asdict(candidate)
+        or report.get("d8_cognitive_candidate") != json.loads(json.dumps(asdict(candidate)))
         or report.get("original_generation") != pins.generation_id
         or report.get("original_world_uuid") != pins.world_id
         or report.get("original_committed_sha256") != pins.committed_sha256
@@ -394,7 +394,7 @@ def independently_audit_recovered_real_rejoin(
     return {
         "classification": "REAL_D_QUESTION_SOURCE_A_B_NATIVE_REJOIN_WORLDBODY_DEV",
         "d8_source_pins": asdict(pins),
-        "d8_cognitive_candidate": asdict(candidate),
+        "d8_cognitive_candidate": json.loads(json.dumps(asdict(candidate))),
         "generation_id": report["original_generation"],
         "world_id": pins.world_id, "fork_branch_id": pins.fork_branch_id,
         "paper_session_id": paper_session,
