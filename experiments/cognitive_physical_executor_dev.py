@@ -175,6 +175,7 @@ def begin_physical_issue_dev(
     place_invocation: object | None = None,
     place_motion: object | None = None,
     allow_prior_original_place_terminals: bool = False,
+    place_gait_mode: str | None = None,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -196,6 +197,8 @@ def begin_physical_issue_dev(
     # preceding children of the SAME original Invocation/Intent/Skill/Target.
     # Default Stage27g and EAT/ATTACK/RELATIVE still reject ANY history.
     prior_actions = supervisor.recorded_actions
+    if place_gait_mode not in (None, "WALK", "SNEAK"):
+        raise refusal("unsupported original PLACE gait selection")
     if allow_prior_original_place_terminals:
         from relay_self.skill_invocation import SkillInvocation
 
@@ -293,6 +296,7 @@ def begin_physical_issue_dev(
         elif place_invocation is not None and place_motion is not None:
             journal.prepare_place_move(
                 b, current_probe, place_invocation, place_motion,
+                precision_gait=place_gait_mode,
             )
         else:
             raise refusal("partial PLACE original issuer plan is invalid")
