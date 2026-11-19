@@ -32,8 +32,19 @@ class D8OwnedSourcePins:
     committed_sha256: str
     stage28b_evidence_sha256: str
     stage28b_evidence_files: int
+    d10_source_audit_sha256: str | None = None
 
     def __post_init__(self) -> None:
+        if (
+            self.d10_source_audit_sha256 is not None
+            and (
+                type(self.d10_source_audit_sha256) is not str
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", self.d10_source_audit_sha256,
+                ) is None
+            )
+        ):
+            raise D8PinnedSourceHold("D10 independent evidence SHA256 required")
         if (type(self.stage28b_evidence_files) is not int
                 or not 1 <= self.stage28b_evidence_files <= 100000):
             raise D8PinnedSourceHold("bounded original evidence inventory count required")
@@ -59,7 +70,9 @@ def load_d8_pins(path: Path) -> D8OwnedSourcePins:
     try:
         payload = json.loads(path.read_bytes())
         fields = set(D8OwnedSourcePins.__dataclass_fields__)
-        if type(payload) is not dict or set(payload) != fields:
+        if type(payload) is not dict or set(payload) not in (
+            fields, fields - {"d10_source_audit_sha256"},
+        ):
             raise D8PinnedSourceHold("strict source-pin JSON fields required")
         return D8OwnedSourcePins(**payload)
     except (OSError, UnicodeError, ValueError, TypeError) as exc:
@@ -89,13 +102,52 @@ def inspect_d8_original_source(
     )
 
     try:
+        historical_kwargs = {
+            "expected_manifest_sha256": pins.stage28b_evidence_sha256,
+            "expected_files": pins.stage28b_evidence_files,
+        }
+        if pins.d10_source_audit_sha256 is not None:
+            historical_kwargs["expected_report_classification"] = (
+                "REAL_D9_SOURCE_A_B_TYPED_CUT_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+            )
+        # Preserve ORIGINAL B exact call signature for historic B sources.
+        # Only D10 explicitly opts in to the new D9 source classification.
         historical = inspect_original_stage28b_native_sessions(
-            stage28b_evidence, generation,
-            expected_manifest_sha256=pins.stage28b_evidence_sha256,
-            expected_files=pins.stage28b_evidence_files,
+            stage28b_evidence, generation, **historical_kwargs,
         )
+        if pins.d10_source_audit_sha256 is not None:
+            # The D10 audit was made in a SECOND process, OUTSIDE the
+            # immutable source manifest. Recalculate all original sources
+            # rather than trusting its filename, success bit, or HASH alone.
+            import hashlib
+            from dataclasses import asdict
+
+            from relay_self.exploration_d10_original_source_audit_dev import (
+                audit_d10_original_d9_source,
+            )
+
+            audit_file = (
+                Path(stage28b_evidence).parent / "d10-independent-audit.json"
+            )
+            if audit_file.is_symlink() or not audit_file.is_file():
+                raise D8PinnedSourceHold("original independent D10 audit unavailable")
+            raw = audit_file.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != pins.d10_source_audit_sha256:
+                raise D8PinnedSourceHold("D10 independent audit digest differs")
+            verified = audit_d10_original_d9_source(
+                stage28b_evidence, generation,
+                expected_manifest_sha256=pins.stage28b_evidence_sha256,
+                expected_files=pins.stage28b_evidence_files,
+                expected_world_id=pins.world_id,
+                expected_source_branch_id=pins.source_branch_id,
+                expected_committed_sha256=pins.committed_sha256,
+            )
+            if json.loads(raw) != json.loads(json.dumps(asdict(verified))):
+                raise D8PinnedSourceHold(
+                    "original independent D10 raw proof differs from current files"
+                )
     except (OSError, ValueError, RuntimeError, TypeError) as exc:
-        raise D8PinnedSourceHold("B original historical source not qualified") from exc
+        raise D8PinnedSourceHold("B/D10 original historical source not qualified") from exc
     if (
         candidate.source_kind != "STRUCTURAL_TYPED_CUT_ONLY"
         or candidate.real_world_attested

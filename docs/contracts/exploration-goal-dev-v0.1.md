@@ -264,3 +264,102 @@ independent raw source audit + genuine operator-owned local one-shot
 Paper/Gemma run, then only a source-qualified new D8 restore/reJOIN.
 Current status: D9_CPU_OFFLINE_DEV_ONLY / REAL_WORLD_NOT_RUN /
 REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+## D10 — original source seal, independent audit, D8 pin handoff
+
+D10 isolated Draft PR #1039 adds a SOURCE-BYTES audit, not a new Owner
+or a direct real Paper qualification. Original B #988, D #996 and A/C/main
+are unchanged. This branch uses B's original Mineflayer process adapter,
+because the D9 integration-only branch accidentally retained an older
+adapter that lacked effect admission, owned native PID and raw stdout
+auditing. Without this correction D9 CPU tests could pass while REAL
+original B OwnedResidentPhysicalBridge.login would fail.
+
+### Production D9 source recording
+
+- D9 original A0/B0/A1 native launched processes now each start exclusive,
+  line-fsynced original JSONL immediately AFTER the adapter_started message
+  consumed by launch, and BEFORE original B verify_native_spawn_probe.
+  That startup attestation is not claimed to be included in JSONL. Only
+  actual subsequent messages are included. Each source is frozen after
+  all its original children have exited and records original PID, native
+  session ID, file SHA256 and byte count.
+- D9 original first A/B login tickets are now stored independently;
+  they cannot be overwritten by later Question and L1 outcome variables.
+  A's final OPEN Question still uses A's final native reJOIN session.
+- No modification enables physical Action, model-driven MOVE, L2 POST,
+  synthetic result adoption or ambiguous automatic retry.
+
+### Source proof sequence — LOCAL operator, one original World trial maximum
+
+1. Start the ALREADY-approved original D9 one-shot source producer from
+   its isolated D9/D10 branch, using original approved EULA, real World
+   DEV and real model grant, exact Stage24g GGUF/PID/RTX3060/idle slot,
+   official pinned Paper/plugin binaries and the source producer D9-only
+   --d9-source-exploration-dev --typed-owner-cut-dev.
+   The model may naturally choose DEFER: if so the source may be held
+   and its history must not be changed to ESCALATE by the operator.
+2. After all native children and owned Paper stop, identify the actual
+   evidence directory and the ORIGINAL
+   typed-world-self-generations/g-XXXXXXXXXXXX cut. No previous B-only
+   World or historical COMMITTED marker is interchangeable.
+3. Run
+   python -m experiments.stage28_d10_seal_original_dev
+   --evidence-dir /absolute/original/evidence
+   --generation /absolute/original/evidence/typed-world-self-generations/g-...
+   --world-id ACTUAL_ORIGINAL_UUID
+   --source-branch ACTUAL_ORIGINAL_BRANCH
+
+   The sealer verifies the complete three-Paper-dimension typed A/B
+   source, stopped-cut report and the exact A/B/Jev/Node files. It writes
+   SHA256SUMS once using exclusive create and fsync, and prints the new
+   manifest SHA and file count. No mutable or untracked file after this
+   sealing may be accepted. Re-running seal is HOLD, not an overwrite.
+4. In a NEW independent Python process, run
+   python -m experiments.stage28_d10_independent_source_audit_dev
+   --evidence-dir SAME_SEALED_ORIGINAL_EVIDENCE
+   --generation SAME_ORIGINAL_TYPED_GENERATION
+   --manifest-sha256 EXACT_SEALED_SHA
+   --manifest-files EXACT_FILE_COUNT
+   --world-id ACTUAL_ORIGINAL_UUID
+   --source-branch ACTUAL_ORIGINAL_BRANCH
+   --committed-sha256 EXACT_ORIGINAL_COMMITTED_SHA
+
+   This re-hashes the whole source and all three Paper dimensional
+   manifests, checks B's original A0/A1/B0 Native lineage and individual
+   owned Node source raw logs, parses full Paper A-first-QUIT/B-continued/
+   A-reJOIN ordered main-thread events, independently parses one original
+   Jev/SystemOne HTTP request/response entity-body selection (must be
+   original bounded number 1, not an invented reservation), checks
+   pre-World GGUF SHA and RTX3060 single slot metadata, original A/B
+   cognition/Question/RESERVED/Owner and clear physical WAL.
+   Output is exclusive d10-independent-audit.json OUTSIDE sealed evidence.
+   It is SOURCE_BYTES_CORRELATED_DEV, not direct Paper/Gemma execution proof.
+5. A NEW D8 source-pins JSON (same previous 7 mandatory fields plus
+   d10_source_audit_sha256 containing SHA of this external independent
+   audit file) names the exact D9 original committed generation,
+   source/fork World IDs, the sealed evidence SHA and file count. D8
+   inspect_real_recovered_sources will rerun the D7 typed source and
+   full D10 original raw proof; it compares the external audit file
+   contents with its independent recalculation. Old B original
+   historical check keeps its old call signature and classification,
+   but D10 explicitly demands D9's INDEPENDENT_AUDIT_PENDING report.
+6. Only after BOTH source proof and D7 restored fork match can original
+   B-owned D8 native/Paper reJOIN be started, for at most one real DEV
+   attempt, followed by its separate independent process audit. Old
+   L2 RESERVED is inert source history, never re-POSTed automatically;
+   no real physical Action or L1 automatic replay permission follows.
+
+### Limits and evidence policy
+
+All tests performed in GitHub Actions are CPU/synthetic data tests,
+including adapter, stub and synthetic typed World source fixtures. No
+external tool in this D10 conversation can access the user's actual
+WSL2 Paper process, native Node children, RTX3060 or Gemma model.
+The audit detects altered/missing original files and internally inconsistent
+model/native/Paper source but cannot cryptographically prove the origin
+of a fully fabricated self-consistent source directory. A qualified real
+World classification additionally requires operator-owned process and
+independent raw witness observations at local DEV time. D10 must remain
+REAL_WORLD_NOT_RUN / REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN
+until that separate source review is actually performed.

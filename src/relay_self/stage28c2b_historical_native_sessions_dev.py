@@ -48,6 +48,7 @@ def inspect_original_stage28b_native_sessions(
     evidence_root: Path, generation: Path, *,
     expected_manifest_sha256: str,
     expected_files: int = 285,
+    expected_report_classification: str = "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
 ) -> HistoricalNativeSessionReceipt:
     """Verify every original file, then recover the complete real A/B history.
 
@@ -127,8 +128,11 @@ def inspect_original_stage28b_native_sessions(
         report_file = root / candidates[0]
         report = json.loads(report_file.read_bytes())
         if (
-            report.get("classification")
-            != "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV"
+            expected_report_classification not in (
+                "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
+                "REAL_D9_SOURCE_A_B_TYPED_CUT_CAPTURED_INDEPENDENT_AUDIT_PENDING",
+            )
+            or report.get("classification") != expected_report_classification
             or type(report.get("steps")) is not list
             or len(report["steps"]) != 1
         ):

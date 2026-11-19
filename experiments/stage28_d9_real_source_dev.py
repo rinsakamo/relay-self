@@ -428,8 +428,8 @@ async def _owned_resident_trial(
 
     paper_session = paper.owned_session_id
     assert paper_session is not None
-    original_a = await bridge.login("A")
-    original_b = await bridge.login("B")
+    initial_a_login = await bridge.login("A")
+    initial_b_login = await bridge.login("B")
     old_a = bridge.sessions["A"].started.session_id
     a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
@@ -602,8 +602,8 @@ async def _owned_resident_trial(
         "paper_boot": trace.boot_id,
         "world_uuid": world_uuid,
         "paper_session_id": paper_session,
-        "a_original_ticket": asdict(original_a),
-        "b_original_ticket": asdict(original_b),
+        "a_original_ticket": asdict(initial_a_login),
+        "b_original_ticket": asdict(initial_b_login),
         "a_original_native_session": old_a,
         "a_original_owned_pid": a_initial_pid,
         "b_original_owned_pid": b_initial_pid,
@@ -1050,6 +1050,8 @@ async def run_real_resident_presence(
     owner = None
     bridge = None
     physical = None
+    original_native_sources: dict[str, tuple[MineflayerProcessSession, Path]] = {}
+    native_launch_counts = {"A": 0, "B": 0}
     try:
         bootstrap = _bootstrap_paper(
             world_root=root, launch=launch_command, timeout_s=timeout_s,
@@ -1160,10 +1162,26 @@ async def run_real_resident_presence(
         )
 
         async def native_factory(config: MineflayerLaunchConfig):
-            return await MineflayerProcessSession.launch(
+            launched = await MineflayerProcessSession.launch(
                 config, node_executable=node,
                 startup_timeout_s=min(30.0, timeout_s / 3),
             )
+            # D10 captures ORIGINAL bytes from the exact native child,
+            # before B's original bridge issues its first requested probe.
+            # Initial adapter_started was consumed by launch itself, and
+            # is NOT falsely claimed as captured in this raw JSONL.
+            if d9_source_exploration_dev:
+                sid = config.username.removeprefix("Relay")
+                if sid not in ("A", "B") or native_launch_counts[sid] > 1:
+                    raise RealResidentPresenceRefusal(
+                        "D10 native roster or retry count is not A0/B0/A1"
+                    )
+                label = sid + str(native_launch_counts[sid])
+                native_launch_counts[sid] += 1
+                native_path = evidence / ("D10-original-native-" + label + ".jsonl")
+                launched.start_raw_source_audit(native_path)
+                original_native_sources[label] = (launched, native_path)
+            return launched
 
         bridge = OwnedResidentPhysicalBridge(
             lifecycle=lifecycle, physical=physical, paper=owner,
@@ -1184,6 +1202,28 @@ async def run_real_resident_presence(
             typed_owner_cut_dev=typed_owner_cut_dev,
             d9_source_exploration_dev=d9_source_exploration_dev,
         )
+        if d9_source_exploration_dev:
+            if set(original_native_sources) != {"A0", "A1", "B0"}:
+                raise RealResidentPresenceRefusal(
+                    "D10 full original A0/A1/B0 native source absent"
+                )
+            frozen_natives: dict[str, dict[str, object]] = {}
+            for label, (session, source_path) in sorted(
+                original_native_sources.items()
+            ):
+                if session.process_returncode is None:
+                    raise RealResidentPresenceRefusal(
+                        "D10 original native source not terminal"
+                    )
+                session.finish_raw_source_audit()
+                frozen_natives[label] = {
+                    "session_id": session.started.session_id,
+                    "pid": session.owned_child_pid,
+                    "source_name": source_path.name,
+                    "sha256": file_sha256(source_path),
+                    "bytes": source_path.stat().st_size,
+                }
+            report["d10_original_native_sources"] = frozen_natives
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
         _adopt_verified_trial_report(
