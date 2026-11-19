@@ -24,6 +24,7 @@ from experiments.p0d_stage27_real_place_move_dev import (
     stage27h_real_a_motor_hook,
     stage27i_real_a_motor_hook,
 )
+from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.skill import SkillState
 from test_c_lane_stage27hi_multi_action_review_dev import _run_multi
@@ -171,7 +172,10 @@ def test_source_gate_rejects_nonmatching_real_runner_context_before_model(
             opts["step"] = replace(step, status="L0_CONTINUE_MOVE")
         elif fault == "foreign-peer-world":
             opts["bridge"] = object()
-        with pytest.raises((CStage27RealReadOnlyHold, AttributeError, ValueError)):
+        with pytest.raises((
+            CStage27RealReadOnlyHold, C1OwnerReviewHold,
+            AttributeError, ValueError,
+        )):
             await capture_stage27h_real_post_l0_readonly_review(**opts)
         assert len(server.calls) == initial_calls
         assert not (tmp_path / "c-stage27h-post-l0-l1-witness.json").exists()
