@@ -10,7 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from relay_self.exploration_continuity_dev import AttemptPhase, open_question_refs
-from relay_self.exploration_d9_original_l1_dev import D9OriginalL1Outcome
+from relay_self.exploration_d9_original_l1_dev import (
+    D9OriginalL1Outcome,
+    D9OriginalQuestionOnly,
+)
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
@@ -31,12 +34,14 @@ class D9SourceSelectionReadback:
     open_question_refs: tuple[str, ...]
     genuine_attempt_refs: tuple[str, ...]
     l1_selected_status: str
+    l1_model_invoked: bool = False
     no_l2_post_attested: bool = False
     physical_action_issue_authorized: bool = False
 
 
 def verify_d9_original_owner_sources(
-    owners: dict, outcomes: tuple[D9OriginalL1Outcome, ...],
+    owners: dict,
+    outcomes: tuple[D9OriginalL1Outcome | D9OriginalQuestionOnly, ...],
 ) -> tuple[D9SourceSelectionReadback, ...]:
     """Owner+disk equality, real L1 result semantics and no invented L2 ref."""
     from relay_self.checkpointed_cognitive_runtime_dev import (
@@ -47,7 +52,8 @@ def verify_d9_original_owner_sources(
         type(owners) is not dict or set(owners) != {"A", "B"}
         or type(outcomes) is not tuple or len(outcomes) != 2
         or {out.self_id for out in outcomes
-            if isinstance(out, D9OriginalL1Outcome)} != {"A", "B"}
+            if isinstance(out, (D9OriginalL1Outcome, D9OriginalQuestionOnly))}
+            != {"A", "B"}
     ):
         raise D9SourceCutHold("two original A/B Self and completed L1 receipts required")
     by_self = {out.self_id: out for out in outcomes}
@@ -56,17 +62,22 @@ def verify_d9_original_owner_sources(
     for sid in ("A", "B"):
         owner = owners[sid]
         out = by_self[sid]
+        actual_l1 = isinstance(out, D9OriginalL1Outcome)
         if (
             not isinstance(owner, CheckpointedCognitiveOwner)
             or owner.self_id != sid
             or owner.native_session_id != out.old_native_session_id
             or not out.question_ref or not out.native_probe_request_id
-            or not out.l1_request_id or not out.work_ref
-            or not out.backend_ref
-            or out.l1_model_invoked is not True
+            or (actual_l1 and (
+                not out.l1_request_id or not out.work_ref
+                or not out.backend_ref or out.l1_model_invoked is not True
+                or out.selected_status not in (
+                    "DEFER", "ESCALATE_L2", "RECONSIDER"
+                )
+            ))
+            or (not actual_l1 and out.l1_model_invoked is not False)
             or out.l2_model_invoked is not False
             or out.physical_action_issue_authorized is not False
-            or out.selected_status not in ("DEFER", "ESCALATE_L2", "RECONSIDER")
             or owner.supervisor.open_actions
             or owner.files.cognition_file.is_symlink()
         ):
@@ -90,7 +101,7 @@ def verify_d9_original_owner_sources(
             or len(attempts) > 256
         ):
             raise D9SourceCutHold("original Source Question/attempt differs from Owner")
-        if out.selected_status == "ESCALATE_L2":
+        if actual_l1 and out.selected_status == "ESCALATE_L2":
             if (
                 out.attempted_l2_ref is None
                 or out.attempted_l2_ref not in attempts
@@ -102,25 +113,30 @@ def verify_d9_original_owner_sources(
             ):
                 raise D9SourceCutHold("model-selected L2 not durably RESERVED")
             any_reserved = True
-        elif out.attempted_l2_ref is not None:
+        elif actual_l1 and out.attempted_l2_ref is not None:
             raise D9SourceCutHold("DEFER/RECONSIDER may not invent L2 attempt")
+        elif not actual_l1 and any(
+            a.question_ref == out.question_ref for a in state.attempts
+        ):
+            raise D9SourceCutHold("question-only Self has fabricated model history")
         readouts.append(D9SourceSelectionReadback(
             sid, out.old_native_session_id, question_refs, attempts,
-            out.selected_status,
+            out.selected_status if actual_l1 else "NOT_INFERRED",
+            l1_model_invoked=actual_l1,
         ))
-    # Do NOT convert genuine two-Self DEFER into an artificial L2 reservation.
+    # Do NOT convert natural DEFER/QUESTION_ONLY into a fake L2 reservation.
     # It is a valid observational outcome but does not qualify the D7
     # previous-reservation non-replay experiment.
     if not any_reserved:
         raise D9SourceCutHold(
-            "both original Self legitimately deferred; D7 old-L2 trial is HOLD"
+            "no original Self actually reserved L2; D7 non-replay trial HOLD"
         )
     return tuple(readouts)
 
 
 def capture_d9_retired_source(
     *, bridge, paper, store: Path, evidence_dir: Path,
-    outcomes: tuple[D9OriginalL1Outcome, ...],
+    outcomes: tuple[D9OriginalL1Outcome | D9OriginalQuestionOnly, ...],
 ) -> Stage28bRetiredCutResult:
     """Same ORIGINAL B paper/native/owner/physical freeze with D source proof.
 
