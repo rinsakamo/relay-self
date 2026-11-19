@@ -277,7 +277,7 @@ def test_model_readback_refuses_foreign_or_replayed_result(
     elif failure == "tampered-Preset":
         turn = replace(turn, presets=(("MOVE@1", "fake"),))
     elif failure == "physical-gate":
-        bridge.physical.observation_only = False
+        bridge.physical._observation_only = False
     else:
         token = replace(token, backend_ref="different-backend")
     with pytest.raises(Stage28c2cL1Hold):
@@ -313,6 +313,7 @@ def test_attach_gpu_lane_fails_if_original_body_missing(tmp_path, monkeypatch):
     lane = object.__new__(ResidentLlamaInferenceLane)
     lane.cognitive_work = bridge.cognitive_work
     lane._uncertain = False
+    lane._lock = threading.RLock()
     lane.witness = SimpleNamespace(require_idle=lambda: None)
     lane.bind_login = lambda _sid: pytest.fail("missing B Body admitted GPU")
     with pytest.raises(OwnedResidentBridgeError):
