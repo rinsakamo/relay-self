@@ -11,7 +11,7 @@ The integration test branch overlays **exact** source files from Stage27i HEAD `
 - `src/relay_self/target_contract.py`
 - `src/relay_self/p0d_stage27b_place_motion_dev.py` (unmodified original source dependency; no real issuer invoked)
 
-The overlay is **not a recommended merge plan**: Stage27/Stage28 production owners must reconcile their shared WAL module and test migration before merging; do not resolve their branch differences by silently replacing files.
+Stage28 also contains a newer **NATIVE_MOVE_NO_NET_DISPLACEMENT** terminal outcome for original relative MOVE that Stage27's WAL file did not include. The integration-only WAL reconciles that explicit terminal behavior into Stage27's additive v2 implementation; zero displacement still does **not** count as a successful move. Both source branches remain unmodified.\n\nThe overlay is **not a recommended merge plan**: Stage27/Stage28 production owners must reconcile their shared WAL module and test migration before merging; do not resolve their branch differences by silently replacing files.
 
 ## One synthetic original-source cross-cut scenario
 
@@ -29,3 +29,9 @@ The overlay is **not a recommended merge plan**: Stage27/Stage28 production owne
 Next real-world qualification must retrieve **the same operator-owned World UUID** from original Stage27 exact terminal WAL/native process and Stage28 COMMITTED full A/B world cut, then prove new-session native/Paper links and bounded L1 decisions. Never infer actual learning improvement from C3 context presence.
 
 **Classification:** DEV_SYNTHETIC_SOURCE_SCHEMA_V2_CROSS_BRANCH_CHECK / REAL_WORLD_C1_NOT_ATTESTED / QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+## Independent C1-to-original WAL and Skill lineage admission
+
+The C-specific `verify_stage27_wal_c1_across_stage28_typed_epoch` read-only verifier now checks that C1's claimed source WAL digest+Action IDs are **exactly** the canonical Stage27 source journal in the very same Stage28 A/B typed COMMITTED cut. It also checks original terminal child SkillExecution and committed Intent in SelfOwnerCut, original native session, target/preset/action links and byte-identical restored WAL. Its `C1Stage27SourceLineageWitness` explicitly disclaims real physical-effect attestation. A formally correct Memory with forged WAL provenance or wrong Action/Skill/Preset is held, even though it survived the Checkpoint itself.
+
+It calls the original Stage27 journal's pure internal canonical `_read` (checks v2 grammar/checksum) rather than `PhysicalActionJournal.restore` on the immutable COMMITTED archive: the latter can create a sibling `.lock` file, making an otherwise read-only verification mutate the archived directory. Tests enforce archive file inventory unchanged.
