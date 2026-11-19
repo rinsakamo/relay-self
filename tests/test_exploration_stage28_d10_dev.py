@@ -19,16 +19,16 @@ from experiments.stage28_d10_seal_original_dev import (
     D10SealHold,
     seal_d10_stopped_original,
 )
-from relay_self.exploration_d10_original_source_audit_dev import (
-    D10OriginalAuditHold,
-    _native_raw,
-    audit_d10_original_d9_source,
-)
 from relay_self.exploration_d8_owned_source_dev import (
     D8OwnedSourcePins,
     D8PinnedSourceHold,
     inspect_d8_original_source,
     load_d8_pins,
+)
+from relay_self.exploration_d10_original_source_audit_dev import (
+    D10OriginalAuditHold,
+    _native_raw,
+    audit_d10_original_d9_source,
 )
 from test_exploration_stage28_d7_dev import _fixture
 from test_mineflayer_adapter import observation_line
@@ -122,7 +122,9 @@ def test_d10_original_native_hostile_source_refuses(malice, tmp_path):
 
 
 def test_d10_seal_refuses_pre_world_incomplete_source_without_manifest(tmp_path):
-    gen, _, _, pins = _fixture(tmp_path / "world-candidate")
+    candidate_root = tmp_path / "world-candidate"
+    candidate_root.mkdir()
+    gen, _, _, pins = _fixture(candidate_root)
     root = tmp_path / "synthetic-evidence"
     root.mkdir()
     dest = root / "typed-world-self-generations" / gen.name
