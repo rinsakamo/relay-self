@@ -16,6 +16,14 @@ from relay_self.p0d_stage27h_bounded_l0_move_dev import (
     Stage27hBoundedMoveLoop,
     Stage27hLoopStep,
 )
+from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_ARRIVAL_M,
+    STAGE27J_MAX_ACTIONS,
+    STAGE27J_MAX_DISTANCE_M,
+    STAGE27J_MAX_DURATION_MS,
+    STAGE27J_MAX_OBSERVATIONS,
+    STAGE27J_PRESET_ID,
+)
 
 # Name, target radius and threshold are an indivisible operator DEV profile.
 # This is NOT a universal hardcoded skill or a learned self-adopted Preset.
@@ -48,10 +56,13 @@ def choose_stage27i_gait(
     loop: Stage27hBoundedMoveLoop,
     step: Stage27hLoopStep,
     probe: MineflayerObservation,
+    *,
+    long_stage27j: bool = False,
 ) -> Stage27iGaitDecision:
     """Select a *prebound* physical gait; no tuning, new Target or GPU call."""
     if (
-        not isinstance(loop, Stage27hBoundedMoveLoop)
+        type(long_stage27j) is not bool
+        or not isinstance(loop, Stage27hBoundedMoveLoop)
         or not isinstance(step, Stage27hLoopStep)
         or not isinstance(probe, MineflayerObservation)
         or step.status != "L0_CONTINUE_MOVE"
@@ -73,13 +84,29 @@ def choose_stage27i_gait(
         and x.preset.preset_ref == loop.invocation.parameter_preset_ref
     ]
     if (
-        len(accepted) != 1 or accepted[0].preset_id != STAGE27I_PRESET_ID
+        len(accepted) != 1
         or target.condition.min_horizontal_m != 0.0
-        or target.condition.max_horizontal_m != STAGE27I_ARRIVAL_M
-        or loop.invocation.budget.max_actions != 4
-        or loop.invocation.budget.max_duration_ms != 15000
-        or loop.invocation.budget.max_distance_m != 2.0
-        or loop.invocation.budget.max_observations != 256
+        or target.condition.max_horizontal_m != (
+            STAGE27J_ARRIVAL_M if long_stage27j else STAGE27I_ARRIVAL_M
+        )
+        or (
+            long_stage27j and (
+                accepted[0].preset_id != STAGE27J_PRESET_ID
+                or loop.invocation.budget.max_actions != STAGE27J_MAX_ACTIONS
+                or loop.invocation.budget.max_duration_ms != STAGE27J_MAX_DURATION_MS
+                or loop.invocation.budget.max_distance_m != STAGE27J_MAX_DISTANCE_M
+                or loop.invocation.budget.max_observations != STAGE27J_MAX_OBSERVATIONS
+            )
+        )
+        or (
+            not long_stage27j and (
+                accepted[0].preset_id != STAGE27I_PRESET_ID
+                or loop.invocation.budget.max_actions != 4
+                or loop.invocation.budget.max_duration_ms != 15000
+                or loop.invocation.budget.max_distance_m != 2.0
+                or loop.invocation.budget.max_observations != 256
+            )
+        )
     ):
         raise Stage27iGaitRefusal("precision gait not bound to original Preset")
     start, end = probe.snapshot.position, target.anchor
@@ -93,7 +120,8 @@ def choose_stage27i_gait(
         raise Stage27iGaitRefusal("original TargetAssessment inconsistent")
     return Stage27iGaitDecision(
         "SNEAK" if distance <= STAGE27I_SNEAK_WITHIN_M else "WALK",
-        STAGE27I_PULSE_S, distance, STAGE27I_ARRIVAL_M,
+        STAGE27I_PULSE_S, distance,
+        STAGE27J_ARRIVAL_M if long_stage27j else STAGE27I_ARRIVAL_M,
         STAGE27I_SNEAK_WITHIN_M, target.contract_ref,
         loop.invocation.parameter_preset_ref or "", probe.seq,
     )
