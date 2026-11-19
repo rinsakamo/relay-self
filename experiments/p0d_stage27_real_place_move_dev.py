@@ -630,6 +630,7 @@ def _stage27h_capture_prepared(
 async def stage27h_real_a_motor_hook(
     *, paper, bridge, physical, lane, owners, world_epoch, prepared,
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
+    precision_stage27i: bool = False,
 ) -> dict[str, object]:
     """Strict Stage27h opt-in: CPU L0 repeats ORIGINAL bounded MOVE Actions.
 
@@ -686,6 +687,12 @@ async def stage27h_real_a_motor_hook(
         if len(action_receipts) != loop.action_count:
             raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
         idx = loop.action_count
+        # L0 can pick a gait only within the immutable operator-accepted
+        # precision Preset; L1 never runs between its physical child Actions.
+        gait_choice = (
+            choose_stage27i_gait(loop, result, current)
+            if precision_stage27i else None
+        )
         # Charge a complete 60-sample STOP settlement quota against the
         # immutable parent Invocation BEFORE even proposing the next Action.
         # The issuer cannot request more native probes than this reservation.
@@ -739,7 +746,13 @@ async def stage27h_real_a_motor_hook(
             ),
             grant_real_world=True,
             acknowledge_dev_unverified_principal=True,
-            pulse_seconds=0.15, evidence_timeout_s=15.0,
+            pulse_seconds=(
+                gait_choice.pulse_seconds if gait_choice is not None else 0.15
+            ),
+            precision_gait=(
+                gait_choice.gait_mode if gait_choice is not None else None
+            ),
+            evidence_timeout_s=15.0,
             pre_native_evidence=capture_reserved,
             allow_prior_terminal_place_actions=idx > 0,
             settlement_probe_limit=stop_probe_quota,
@@ -758,6 +771,10 @@ async def stage27h_real_a_motor_hook(
             stop_probe_seqs=(receipt.initial_stop_probe.seq,
                              receipt.first_stable_probe.seq,
                              receipt.settled_probe.seq),
+            sneak_ack_seq=(
+                receipt.gait_control_ack.seq
+                if receipt.gait_control_ack is not None else None
+            ),
         )
         all_settling_readback = _stage27h_all_settling_stdout_readback(
             native_audit, session_id=native_id,
@@ -791,6 +808,14 @@ async def stage27h_real_a_motor_hook(
             "original_native_probe_seq": current.seq,
             "settled_native_probe_seq": receipt.settled_probe.seq,
             "displacement_m": receipt.displacement_m,
+            "gait_mode": receipt.gait_mode,
+            "gait_ack_seq": (
+                receipt.gait_control_ack.seq
+                if receipt.gait_control_ack is not None else None
+            ),
+            "prebound_gait_choice": (
+                asdict(gait_choice) if gait_choice is not None else None
+            ),
             "paper_correlational_position": correlated,
             "l0_feedback": asdict(post),
             "goal_success": False,
@@ -812,14 +837,15 @@ async def stage27h_real_a_motor_hook(
     if peer_after != peer_before:
         raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
     lane.require_world_idle()
+    stage = "27I" if precision_stage27i else "27H"
     status = {
         "L0_TARGET_REACHED_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
         "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_BUDGET_EXHAUSTED_DEV",
+            f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
         "L0_NO_PROGRESS_YIELD_EVALUATION":
-            "REAL_STAGE27H_L0_NO_PROGRESS_DEV",
-    }.get(result.status, "REAL_STAGE27H_L0_UNREACHED_DEV")
+            f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
+    }.get(result.status, f"REAL_STAGE{stage}_L0_UNREACHED_DEV")
     original_skill = owner.skills.get(handoff.skill_execution_id)
     if (
         original_skill is None
@@ -832,6 +858,7 @@ async def stage27h_real_a_motor_hook(
         )
     return {
         "classification": status,
+        "stage27i_precision_enabled": precision_stage27i,
         # Explicit Stage25 parent-runner contract. A terminal Action has
         # already been observed; this flag does NOT attest Skill/Goal success.
         "physical_effect_observed": loop.action_count > 0,
