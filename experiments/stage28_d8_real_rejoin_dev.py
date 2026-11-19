@@ -221,7 +221,7 @@ async def run_restored_a_b_real_observation(
         "classification": "REAL_REJOIN_HOLD",
         "schema": 1,
         "d8_source_pins": asdict(pins),
-        "d8_cognitive_candidate": asdict(candidate),
+        "d8_cognitive_candidate": json.loads(json.dumps(asdict(candidate))),
         "original_generation": prepared.recovered.plan.generation_id,
         "original_world_uuid": pins.world_id,
         "original_committed_sha256": pins.committed_sha256,
