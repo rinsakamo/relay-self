@@ -40,6 +40,43 @@ remains UNATTESTED; QUIT-position equality is not Action causality.
 - **One new isolated World maximum** and `--stage27j-long-move` is mutually
   exclusive with `--stage27i-precision-gait`, Stage27h and older modes
 
+## PRE_WORLD_HOLD from first long-MOVE attempt (A Lane)
+
+Exact HEAD `16ef730c35e769addabf24614e1402488c987037`
+was stopped at **PRE_WORLD_HOLD before any Paper or Self process started**:
+it checked cumulative distance and 45s elapsed after effects, while the
+child Interpreter recreated a fresh 45s deadline each Action. This was a
+missing **preissue invariant**, not observed overshoot. The attempted World
+count stayed **zero**, so do not reclassify the previous report.
+
+The corrected *A Lane* Stage27j source now:
+
+- Reserves a **WALK 0.75m** or **SNEAK 0.25m** conservative *one-pulse
+  displacement envelope* before the physical effect. If the sum of accepted
+  terminal distances and the next envelope exceeds **6.0m**, yield
+  `L0_BUDGET_EXHAUSTED_YIELD_EVALUATION` **without issuing**.
+- Reserves at least **5,000ms** of the same original parent 45,000ms time
+  budget before child issuance. No 5s STOP margin -> yield before issuing.
+- Passes the **original absolute parent deadline** into the child finite
+  Interpreter and physical issuer. The child cannot mint a fresh 45s clock.
+  The physical runner uses the remaining deadline for a cancellable await;
+  cancellation or uncertain STOP remains HOLD, not permission to retry.
+- Reconciles each actual terminal native displacement with the **previously
+  reserved gait envelope**. If it exceeds that envelope, HOLD with terminal
+  WAL evidence and no next Action; do not pass as an acceptable over-budget
+  result. Terminal observed after the root deadline also HOLD.
+- Shares the Stage27i 60-probe STOP accounting and existing B Memory,
+  original-model HTTP and WAL source contracts.
+
+**Physical boundary:** WALK/SNEAK envelope values are conservative
+*observed DEV admission assumptions*, not physical laws; external forces,
+lag and uncontrolled server conditions can exceed them. Therefore the
+preissue proof is that **no Action is knowingly authorized beyond reserved
+resources under this profile**, not an unconditional guarantee about what
+Minecraft physics or a stalled STOP can do. Such excursions must fail
+closed and remain visible as HOLD. Do not add Paper precision measurement
+to solve this budget issue.
+
 ## Real-world qualification boundary
 
 Run `experiments/p0d_stage27_real_place_move_dev.py --stage27j-long-move`
