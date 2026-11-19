@@ -102,14 +102,17 @@ async def capture_stage27h_real_post_l0_readonly_review(
         or original_native_stdout.is_symlink()
         or not original_native_stdout.is_file()
         or not callable(fresh_probe)
-        or loop.owner.self_id != "A"
+        or not isinstance(bridge, OwnedResidentPhysicalBridge)
+        or loop.owner.self_id != bridge.lifecycle.self_roster[0]
+        or len(bridge.lifecycle.self_roster) != 2
+        or bridge.owners.get(loop.owner.self_id) is not loop.owner
         or bridge.lifecycle.world.world_id != world_uuid
         or loop.terminal_status != "L0_TARGET_REACHED_YIELD_EVALUATION"
         or not 2 <= loop.action_count <= 4
         or loop.owner.skills[loop.handoff.skill_execution_id].state
         is not SkillState.STARTED
         or loop.owner.retained.memories
-        or bridge.sessions["A"].process_returncode is not None
+        or bridge.sessions[loop.owner.self_id].process_returncode is not None
     ):
         raise CStage27RealReadOnlyHold(
             "original Stage27h target/Owner/native review unavailable"
