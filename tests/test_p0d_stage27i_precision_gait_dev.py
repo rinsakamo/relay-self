@@ -12,15 +12,15 @@ import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from experiments.cognitive_physical_move_issue_dev import PhysicalMoveRefusal
-from experiments.p0d_real_preset_checkpoint_dev import RealPresetCheckpointRefusal
 from experiments.p0d_real_preset_checkpoint_dev import (
+    RealPresetCheckpointRefusal,
     _preserve_and_validate_stage27h_hook_return,
 )
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
     _freeze_peer_b_snapshot,
-    _peer_snapshot,
     _native_place_wire_readback,
+    _peer_snapshot,
     run_stage27_real_world,
     stage27i_real_a_motor_hook,
 )
