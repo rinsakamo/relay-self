@@ -136,6 +136,12 @@ def _original_b_cohort(tmp_path: Path, *, bad_a_pending: bool = False):
     (world / "level.dat").write_bytes(b"W110-local-synthetic")
     (world / "entities").mkdir()
     (world / "entities" / "r.0.0.mca").write_bytes(b"zombie-still-alive")
+    # Stage28c2 requires the ACTUAL B typed three-dimension Paper layout.
+    for dimension_name in ("world_nether", "world_the_end"):
+        dimension = tmp_path / dimension_name
+        dimension.mkdir()
+        (dimension / "region").mkdir()
+        (dimension / "region" / "r.0.0.mca").write_bytes(b"saved-synthetic")
     store = tmp_path / "generations"
     store.mkdir()
 
@@ -158,7 +164,7 @@ def _original_b_cohort(tmp_path: Path, *, bad_a_pending: bool = False):
         participants=cohort.participant_hooks(),
         world=WorldRuntimeHooks(stop_world, restart_world),
         admission=cohort.admission_hooks(),
-        strict_typed_owner_cut=True,
+        strict_typed_owner_cut=True, paper_layout=True,
         freeze_workers=2,
     )
     return owners, original, old_tasks, cohort, autosave, status
