@@ -42,7 +42,6 @@ from relay_self.relay_engine import BoundedChoice
 from relay_self.skill import SkillExecution
 from relay_self.three_self_present import EpistemicStatus, Lens
 
-
 P = Provenance("test-owner", "original-readout")
 SHA = "a" * 64
 
