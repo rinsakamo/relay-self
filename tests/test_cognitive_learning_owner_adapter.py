@@ -6,19 +6,35 @@ import pytest
 
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.cognitive_learning_contract import (
-    BeforePrediction, Comparison, ConditionalReuseCandidate, CurrentCue,
-    EvidenceOrigin, GuardCondition, OutcomeAssessment, RetainedRevisionRead,
-    RevisionTarget, UnderstandingProposal,
+    BeforePrediction,
+    Comparison,
+    ConditionalReuseCandidate,
+    CurrentCue,
+    EvidenceOrigin,
+    GuardCondition,
+    OutcomeAssessment,
+    RetainedRevisionRead,
+    RevisionTarget,
+    UnderstandingProposal,
 )
 from relay_self.cognitive_learning_owner_adapter import (
-    BoundedSkillRead, C1AdmissionError, TargetRead, WalActionRead,
-    WalDisposition, WorldBodyRead, assemble_bounded_skill_experience,
-    c3_shadow_l1_context, propose_c2_understanding, propose_existing_memory,
+    BoundedSkillRead,
+    C1AdmissionError,
+    TargetRead,
+    WalActionRead,
+    WalDisposition,
+    WorldBodyRead,
+    assemble_bounded_skill_experience,
+    c3_shadow_l1_context,
+    propose_c2_understanding,
+    propose_existing_memory,
 )
 from relay_self.common_io import Clock, ClockStamp, ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.persistent_cognition import (
-    IdentitySpecification, PersistentCognition, load_persistent_cognition,
+    IdentitySpecification,
+    PersistentCognition,
+    load_persistent_cognition,
     save_persistent_cognition,
 )
 from relay_self.provenance import Provenance
