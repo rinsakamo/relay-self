@@ -14,13 +14,13 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from relay_self.exploration_d10_original_source_audit_dev import (
-    audit_d10_original_d9_source,
-)
 from relay_self.exploration_d8_owned_source_dev import (
     D8OwnedSourcePins,
     inspect_d8_original_source,
     load_d8_pins,
+)
+from relay_self.exploration_d10_original_source_audit_dev import (
+    audit_d10_original_d9_source,
 )
 from relay_self.stage28c1_inert_restore_dev import (
     inspect_stage28c_source,
