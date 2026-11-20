@@ -45,6 +45,12 @@ from relay_self.p0d_stage27i_model_http_census_dev import (
     require_stage27i_two_initial_calls,
 )
 from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
+from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_ACTION_IO_WATCHDOG_S,
+    STAGE27J_MAX_ACTIONS,
+    STAGE27J_MAX_DISTANCE_M,
+    STAGE27J_MAX_DURATION_MS,
+)
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalCapability
@@ -668,18 +674,35 @@ async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
 
 def _stage27h_capture_prepared(
     journal: PhysicalActionJournal, evidence: Path, *,
-    action_id: str, action_index: int,
+    action_id: str, action_index: int, self_id: str,
+    long_stage27j: bool = False,
 ) -> dict[str, object]:
-    """Freeze a complete canonical WAL with the LAST row still PREPARED.
+    """Freeze complete original WAL before *any* native effect for one child.
 
-    Stage27e's original one-row evidence collector remains intentionally
-    unchanged. Stage27h snapshots distinct WAL versions for each child.
+    Stage27e's one-row collector remains untouched. Stage27h/i retain their
+    original four-row evidence cap. Only the accepted Stage27j 12-action
+    Invocation may extend the evidence collector to its own bound; this
+    does not authorize or issue a physical Action.
     """
     if (
         not isinstance(journal, PhysicalActionJournal)
         or not journal.unresolved or evidence.is_symlink()
-        or type(action_index) is not int or not 0 <= action_index < 4
+        or type(self_id) is not str or not self_id
+        or journal._body.get("self_id") != self_id
+        or type(long_stage27j) is not bool
+        or type(action_index) is not int or not 0 <= action_index < (
+            STAGE27J_MAX_ACTIONS if long_stage27j else 4
+        )
         or len(journal.records) != action_index + 1
+        or (
+            long_stage27j and (
+                journal.records[-1].get("budget_actions") != STAGE27J_MAX_ACTIONS
+                or journal.records[-1].get("budget_duration_ms")
+                != STAGE27J_MAX_DURATION_MS
+                or journal.records[-1].get("budget_distance_m")
+                != STAGE27J_MAX_DISTANCE_M
+            )
+        )
         or any(row["status"] != "NATIVE_PLACE_MOVE_SETTLED"
                for row in journal.records[:-1])
         or journal.records[-1]["status"] != "PREPARED_UNRESOLVED"
@@ -690,7 +713,7 @@ def _stage27h_capture_prepared(
         raise Stage27RealWorldRefusal("Stage27h original per-Action PREPARED invalid")
     raw = journal.path.read_bytes()
     if PhysicalActionJournal.restore(
-        journal.path, self_id="A",
+        journal.path, self_id=self_id,
     ).digest != journal.digest:
         raise Stage27RealWorldRefusal("Stage27h original PREPARED WAL changed")
     dest = evidence / f"stage27h-A-PREPARED-{action_index + 1}.json"
@@ -705,7 +728,7 @@ def _stage27h_capture_prepared(
         os.close(folder_fd)
     if dest.read_bytes() != raw:
         raise Stage27RealWorldRefusal("Stage27h immutable PREPARED source mismatch")
-    frozen = PhysicalActionJournal.restore(dest, self_id="A")
+    frozen = PhysicalActionJournal.restore(dest, self_id=self_id)
     if frozen.digest != journal.digest or not frozen.unresolved:
         raise Stage27RealWorldRefusal("Stage27h PREPARED independent readback failed")
     return {
@@ -722,6 +745,7 @@ async def stage27h_real_a_motor_hook(
     *, paper, bridge, physical, lane, owners, world_epoch, prepared,
     tickets, witnesses, refreshed, evidence, world_uuid, native_audit,
     precision_stage27i: bool = False,
+    long_stage27j: bool = False,
 ) -> dict[str, object]:
     """Strict Stage27h opt-in: CPU L0 repeats ORIGINAL bounded MOVE Actions.
 
@@ -729,6 +753,10 @@ async def stage27h_real_a_motor_hook(
     physical issuer for EACH short Action. There is only one initial real L1
     choice and no model evaluation inside the L0 MOVE loop.
     """
+    if long_stage27j and not precision_stage27i:
+        raise Stage27RealWorldRefusal(
+            "Stage27j requires original Stage27i source and gait audits"
+        )
     if (
         set(prepared) != {"A", "B"} or set(tickets) != {"A", "B"}
         or set(witnesses) != {"A", "B"} or set(refreshed) != {"A", "B"}
@@ -781,6 +809,7 @@ async def stage27h_real_a_motor_hook(
             return {
                 "classification": "REAL_STAGE27_A_MOVE_NOT_SELECTED_NO_PHYSICAL_DEV",
                 "stage27i_precision_enabled": True,
+                "stage27j_long_move_enabled": long_stage27j,
                 "physical_effect_observed": False,
                 "stage27_native_action_count": 0,
                 "self_a_selected_number": witnesses["A"].selected_number,
@@ -845,7 +874,9 @@ async def stage27h_real_a_motor_hook(
         # L0 can pick a gait only within the immutable operator-accepted
         # precision Preset; L1 never runs between its physical child Actions.
         gait_choice = (
-            choose_stage27i_gait(loop, result, current)
+            choose_stage27i_gait(
+                loop, result, current, long_stage27j=long_stage27j,
+            )
             if precision_stage27i else None
         )
         # Charge a complete 60-sample STOP settlement quota against the
@@ -884,10 +915,12 @@ async def stage27h_real_a_motor_hook(
         def capture_reserved(source, action):
             original_prepared.update(_stage27h_capture_prepared(
                 source, evidence, action_id=action, action_index=idx,
+                self_id=owner.self_id,
+                long_stage27j=long_stage27j and loop.stage27j_long_mode,
             ))
 
         t0 = time.monotonic_ns()
-        receipt = await physical.issue_place_move(
+        issue_operation = physical.issue_place_move(
             session, proposal=proposal.proposal,
             l0=proposal, prepared=prepared["A"],
             handoff=handoff, motion=plan,
@@ -911,6 +944,16 @@ async def stage27h_real_a_motor_hook(
             pre_native_evidence=capture_reserved,
             allow_prior_terminal_place_actions=idx > 0,
             settlement_probe_limit=stop_probe_quota,
+        )
+        # The 45s Skill time budget is evaluated only after the complete
+        # one-shot MOVE/STOP/WAL or at the next pre-action. An independent
+        # IO watchdog still aborts stalled physical work as HOLD, never as
+        # a successful budget exit or invented forward START acknowledgement.
+        receipt = (
+            await asyncio.wait_for(
+                issue_operation, timeout=STAGE27J_ACTION_IO_WATCHDOG_S,
+            )
+            if long_stage27j else await issue_operation
         )
         if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
             raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
@@ -1012,7 +1055,10 @@ async def stage27h_real_a_motor_hook(
             raise Stage27RealWorldRefusal(
                 "Stage27i extra model POST within original L0 loop"
             )
-    stage = "27I" if precision_stage27i else "27H"
+    stage = (
+        "27J" if long_stage27j
+        else "27I" if precision_stage27i else "27H"
+    )
     status = {
         "L0_TARGET_REACHED_YIELD_EVALUATION":
             f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
@@ -1034,6 +1080,7 @@ async def stage27h_real_a_motor_hook(
     return {
         "classification": status,
         "stage27i_precision_enabled": precision_stage27i,
+        "stage27j_long_move_enabled": long_stage27j,
         # Explicit Stage25 parent-runner contract. A terminal Action has
         # already been observed; this flag does NOT attest Skill/Goal success.
         "physical_effect_observed": loop.action_count > 0,
@@ -1084,6 +1131,13 @@ async def stage27i_real_a_motor_hook(**kwargs) -> dict[str, object]:
     )
 
 
+async def stage27j_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Stage27j DEV long-range MOVE, preserving Stage27i source audits."""
+    return await stage27h_real_a_motor_hook(
+        **kwargs, precision_stage27i=True, long_stage27j=True,
+    )
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -1097,6 +1151,7 @@ async def run_stage27_real_world(
     stage27g_real_l1_evaluation: bool = False,
     stage27h_l0_move_loop: bool = False,
     stage27i_precision_gait: bool = False,
+    stage27j_long_move: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -1107,7 +1162,12 @@ async def run_stage27_real_world(
     if (
         type(stage27h_l0_move_loop) is not bool
         or type(stage27i_precision_gait) is not bool
-        or (stage27h_l0_move_loop and stage27i_precision_gait)
+        or type(stage27j_long_move) is not bool
+        or sum((
+            stage27h_l0_move_loop, stage27i_precision_gait, stage27j_long_move,
+            stage27e_independent_evidence, stage27f_cpu_evaluation,
+            stage27g_real_l1_evaluation,
+        )) > 1
         or (stage27i_precision_gait and (
             stage27e_independent_evidence or stage27f_cpu_evaluation
             or stage27g_real_l1_evaluation
@@ -1133,10 +1193,13 @@ async def run_stage27_real_world(
         gemma_l1_jev=False,
         _stage27h_multi_preset=(
             stage27h_l0_move_loop or stage27i_precision_gait
+            or stage27j_long_move
         ),
         _stage27i_precision_target=stage27i_precision_gait,
+        _stage27j_long_target=stage27j_long_move,
         _stage27_motor_hook=(
-            stage27i_real_a_motor_hook if stage27i_precision_gait
+            stage27j_real_a_motor_hook if stage27j_long_move
+            else stage27i_real_a_motor_hook if stage27i_precision_gait
             else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
             else stage27f_real_a_motor_hook if stage27f_cpu_evaluation
@@ -1166,6 +1229,7 @@ def main() -> int:
     p.add_argument("--stage27g-real-l1-evaluation", action="store_true")
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
     p.add_argument("--stage27i-precision-gait", action="store_true")
+    p.add_argument("--stage27j-long-move", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -1183,6 +1247,7 @@ def main() -> int:
             stage27g_real_l1_evaluation=args.stage27g_real_l1_evaluation,
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
             stage27i_precision_gait=args.stage27i_precision_gait,
+            stage27j_long_move=args.stage27j_long_move,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)

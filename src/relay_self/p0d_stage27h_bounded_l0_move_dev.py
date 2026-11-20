@@ -16,6 +16,13 @@ from relay_self.action import ActionState
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.p0d_stage26_gemma_l1_dev import PreparedStage26L1
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
+from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_MAX_ACTIONS,
+    STAGE27J_MAX_DISTANCE_M,
+    STAGE27J_MAX_DURATION_MS,
+    STAGE27J_MAX_OBSERVATIONS,
+    STAGE27J_PRESET_ID,
+)
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.skill import SkillState
@@ -83,6 +90,16 @@ class Stage27hBoundedMoveLoop:
         ):
             raise Stage27hLoopRefusal("original bounded MOVE scope unavailable")
         inv = prepared.round.frame.options[0].invocation
+        long_stage27j = (
+            isinstance(inv, SkillInvocation)
+            and inv.parameter_preset_ref is not None
+            and any(
+                row.receipt.self_id == owner.self_id
+                and row.preset.preset_ref == inv.parameter_preset_ref
+                and row.preset.preset_id == STAGE27J_PRESET_ID
+                for row in owner.pattern_registry.accepted_presets
+            )
+        )
         if (
             not isinstance(inv, SkillInvocation)
             or inv.skill_id != "MOVE" or inv.goal_id != "EXPLORE_WORLD"
@@ -90,7 +107,16 @@ class Stage27hBoundedMoveLoop:
             or inv.parameter_preset_ref is None
             or inv.invocation_ref != handoff.invocation_ref
             or inv.parameter_preset_ref != handoff.preset_ref
-            or inv.budget.max_actions not in (2, 3, 4)
+            or not (
+                (inv.budget.max_actions in (2, 3, 4) and not long_stage27j)
+                or (
+                    long_stage27j
+                    and inv.budget.max_actions == STAGE27J_MAX_ACTIONS
+                    and inv.budget.max_duration_ms == STAGE27J_MAX_DURATION_MS
+                    and inv.budget.max_distance_m == STAGE27J_MAX_DISTANCE_M
+                    and inv.budget.max_observations == STAGE27J_MAX_OBSERVATIONS
+                )
+            )
             or inv.budget.max_distance_m is None
             or inv.budget.max_observations < inv.budget.max_actions * (
                 1 + STAGE27H_SETTLING_PROBE_RESERVATION
@@ -106,6 +132,7 @@ class Stage27hBoundedMoveLoop:
         self.invocation = inv
         self.world_epoch = world_epoch
         self.start_ns = start_ns
+        self.stage27j_long_mode = long_stage27j
         self.action_count = 0
         self.observation_count = 0
         self.cumulative_distance_m = 0.0
@@ -389,6 +416,10 @@ class Stage27hBoundedMoveLoop:
             or abs(row["displacement_m"] - receipt.displacement_m) > 1e-5
         ):
             raise Stage27hLoopRefusal("original terminal Action/WAL relation missing")
+        # Distance and elapsed time are cognitive continuation budgets:
+        # a completed physical pulse remains a real terminal Action even if
+        # its actual displacement/settling crosses an estimate. The next
+        # decision must yield; it must not reclassify settled WAL as HOLD.
         # The terminal Action is the last new row, but historic rows must
         # remain canonical; on any interruption this parent cannot resume.
         self.action_count += 1
@@ -407,7 +438,13 @@ class Stage27hBoundedMoveLoop:
         elif receipt.journal_status != "NATIVE_PLACE_MOVE_SETTLED":
             self.terminal_status = "L0_NO_PROGRESS_YIELD_EVALUATION"
         elif self.cumulative_distance_m > self.invocation.budget.max_distance_m + 1e-6:
-            self.terminal_status = "L0_CUMULATIVE_OVERSHOOT_YIELD_EVALUATION"
+            # Stage27j distance is not a hard physical envelope. Record the
+            # observed overrun faithfully, then stop issuing more Actions.
+            self.terminal_status = (
+                "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+                if self.stage27j_long_mode
+                else "L0_CUMULATIVE_OVERSHOOT_YIELD_EVALUATION"
+            )
         if self.terminal_status is not None:
             return Stage27hLoopStep(
                 self.terminal_status, "UNASSESSED", None, self.action_count,

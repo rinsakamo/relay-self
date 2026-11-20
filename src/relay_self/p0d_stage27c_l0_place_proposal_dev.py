@@ -160,6 +160,9 @@ def propose_stage27c_original_place_move(
     )
     interpreter = FiniteSkillInterpreter()
     current_skill = owner.skills[handoff.skill_execution_id]
+    # Finite child interpreter uses its existing local deadline. The parent
+    # L0 Budget is a between-Action continuation decision, not a deadline
+    # that invalidates an already begun MOVE/STOP/WAL sequence.
     deadline_ns = at_ns + invocation.budget.max_duration_ms * 1_000_000
     cursor = interpreter.begin(
         choice, ir=ir, intent_owner=owner.intent,

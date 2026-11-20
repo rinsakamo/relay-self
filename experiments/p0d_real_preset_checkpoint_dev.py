@@ -65,6 +65,13 @@ from relay_self.p0d_stage26_gemma_l1_dev import (
     submit_restored_preset_l1,
 )
 from relay_self.p0d_stage27i_precision_gait_dev import STAGE27I_PRESET_ID
+from relay_self.p0d_stage27j_long_move_profile_dev import (
+    STAGE27J_MAX_ACTIONS,
+    STAGE27J_MAX_DISTANCE_M,
+    STAGE27J_MAX_DURATION_MS,
+    STAGE27J_MAX_OBSERVATIONS,
+    STAGE27J_PRESET_ID,
+)
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -166,7 +173,11 @@ def _preserve_and_validate_stage27h_hook_return(
         before = result.get("stage27h_peer_b_before")
         after = result.get("stage27h_peer_b_after")
         action_count = result.get("stage27h_l0_action_count")
-        stage = "27I" if result.get("stage27i_precision_enabled") is True else "27H"
+        stage = (
+            "27J" if result.get("stage27j_long_move_enabled") is True
+            else "27I" if result.get("stage27i_precision_enabled") is True
+            else "27H"
+        )
         expected_status = {
             "L0_TARGET_REACHED_YIELD_EVALUATION":
                 f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
@@ -176,7 +187,9 @@ def _preserve_and_validate_stage27h_hook_return(
                 f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
         }
         if (
-            type(action_count) is not int or not 0 <= action_count <= 4
+            type(action_count) is not int or not 0 <= action_count <= (
+                STAGE27J_MAX_ACTIONS if stage == "27J" else 4
+            )
             or result["physical_effect_observed"] != (action_count > 0)
             or result.get("stage27_native_action_count") != action_count
             or type(feedback) is not dict
@@ -546,6 +559,7 @@ async def _real_preset_trial(
     stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
     stage27h_multi_preset: bool = False,
     stage27i_precision_target: bool = False,
+    stage27j_long_target: bool = False,
 ) -> dict[str, object]:
     """Original saved/rejoined Self cohort; Stage26 remains nonissuing by default."""
     original_world = lifecycle.world
@@ -564,17 +578,23 @@ async def _real_preset_trial(
         # actual Self-owner acceptance/authorization is not established.
         preset = SkillParameterPreset(
             "exploration-move",
-            STAGE27I_PRESET_ID if stage27i_precision_target
+            STAGE27J_PRESET_ID if stage27j_long_target
+            else STAGE27I_PRESET_ID if stage27i_precision_target
             else "OperatorNearProbe",
             1,
             definition.definition_ref,
             SkillConstraints(), (
-                SkillBudget(4, 15000, 2.0, 256) if stage27h_multi_preset
+                SkillBudget(
+                    STAGE27J_MAX_ACTIONS, STAGE27J_MAX_DURATION_MS,
+                    STAGE27J_MAX_DISTANCE_M, STAGE27J_MAX_OBSERVATIONS,
+                ) if stage27j_long_target
+                else SkillBudget(4, 15000, 2.0, 256) if stage27h_multi_preset
                 else SkillBudget(1, 1500, 2.0, 4)
             ),
             Provenance("operator-dev-proposed", f"stage25:{sid}"),
             expected_cost=(
-                SkillCostEstimate(4, 8000, 1.0) if stage27h_multi_preset
+                SkillCostEstimate(11, 30000, 5.0) if stage27j_long_target
+                else SkillCostEstimate(4, 8000, 1.0) if stage27h_multi_preset
                 else SkillCostEstimate(1, 1200, 1.0)
             ),
         )
@@ -727,6 +747,7 @@ async def _real_preset_trial(
                 first=first, owner=owners[sid], lane=inference_lane,
                 definition=definition,
                 stage27i_precision_target=stage27i_precision_target,
+                stage27j_long_target=stage27j_long_target,
             )
             ticket = submit_restored_preset_l1(
                 prepared, lane=inference_lane,
@@ -891,6 +912,7 @@ async def run_real_two_self_preset_checkpoint(
     _stage27_motor_hook: Callable[..., Awaitable[dict[str, object]]] | None = None,
     _stage27h_multi_preset: bool = False,
     _stage27i_precision_target: bool = False,
+    _stage27j_long_target: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -919,7 +941,12 @@ async def run_real_two_self_preset_checkpoint(
     if (
         type(_stage27h_multi_preset) is not bool
         or type(_stage27i_precision_target) is not bool
-        or (_stage27i_precision_target and not _stage27h_multi_preset)
+        or type(_stage27j_long_target) is not bool
+        or (_stage27i_precision_target and _stage27j_long_target)
+        or (
+            (_stage27i_precision_target or _stage27j_long_target)
+            and not _stage27h_multi_preset
+        )
         or (_stage27h_multi_preset and _stage27_motor_hook is None)
     ):
         raise RealPresetCheckpointRefusal(
@@ -1076,6 +1103,7 @@ async def run_real_two_self_preset_checkpoint(
             stage27_motor_hook=_stage27_motor_hook,
             stage27h_multi_preset=_stage27h_multi_preset,
             stage27i_precision_target=_stage27i_precision_target,
+            stage27j_long_target=_stage27j_long_target,
         )
         report.update(trial)
     except BaseException as exc:
@@ -1089,7 +1117,7 @@ async def run_real_two_self_preset_checkpoint(
             report["stage27h_hook_return_evidence"] = str(captured)
             report["stage27h_hook_return_sha256"] = file_sha256(captured)
             report["stage27h_hook_contract_valid"] = False
-        if _stage27i_precision_target:
+        if _stage27i_precision_target or _stage27j_long_target:
             # When B mutates during physical motion, its original before/after
             # snapshots still survive even though the hook cannot return.
             peer_evidence: dict[str, object] = {}
@@ -1160,6 +1188,10 @@ async def run_real_two_self_preset_checkpoint(
             "REAL_STAGE27I_L0_BUDGET_EXHAUSTED_DEV",
             "REAL_STAGE27I_L0_NO_PROGRESS_DEV",
             "REAL_STAGE27I_L0_UNREACHED_DEV",
+            "REAL_STAGE27J_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "REAL_STAGE27J_L0_BUDGET_EXHAUSTED_DEV",
+            "REAL_STAGE27J_L0_NO_PROGRESS_DEV",
+            "REAL_STAGE27J_L0_UNREACHED_DEV",
         }
     else:
         expected_classifications = {expected_classification}
