@@ -123,6 +123,7 @@ def prepare_d11_inert_handoff(
         or restored.exists() or restored.is_symlink()
         or pins_path.exists() or pins_path.is_symlink()
         or pins_path.parent.is_symlink() or not pins_path.parent.is_dir()
+        or pins_path.parent.resolve(strict=True) != pins_path.parent.absolute()
         or not _outside(restored, evidence_dir)
         or not _outside(pins_path, evidence_dir)
         or not _outside(pins_path, restored)
