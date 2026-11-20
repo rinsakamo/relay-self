@@ -86,11 +86,10 @@ messages are unchanged.
   cannot be read. Empty shape array is only known empty when the block
   observation itself is valid. Local shape overhangs (e.g., fence height
   1.5) are retained within a bounded [-1,2] local range rather than dropped.
-- When Mineflayer provides validated `bot.entity.width/height`, the same
-  local observation carries a computed body AABB, current native position,
-  optional pose/dimension, native monotonic sample clock, known-count and
-  complete flag. Missing dimensions yield null AABB, **never** a default 0.6m
-  body. Local Node monotonic time is not Paper time.
+- The observation carries current native position, optional pose/dimension,
+  native monotonic sample clock, known-count and complete flag. Body AABB is
+  UNKNOWN: entity width/height do not establish a pose-specific physical
+  hitbox. Local Node monotonic time is not Paper time.
 - `protocol.mjs`, `bridge.mjs`, `python_protocol.py` and
   `process_session.py` add one exact request/response pair; the
   coordinated original final-stdin admission explicitly permits this

@@ -24,18 +24,6 @@ function localShapes (block) {
   return result
 }
 
-function bodyAabb (entity, position) {
-  const width = entity.width
-  const height = entity.height
-  if (!finite(width) || !finite(height) ||
-      width <= 0 || width > 4 || height <= 0 || height > 4) return null
-  const half = width / 2
-  return [
-    position.x - half, position.y, position.z - half,
-    position.x + half, position.y + height, position.z + half
-  ]
-}
-
 export function captureSenseTerrain (bot) {
   if (!bot || !bot.entity || !bot.entity.position ||
       typeof bot.entity.position.floored !== 'function' ||
@@ -48,7 +36,6 @@ export function captureSenseTerrain (bot) {
   }
   const center = position.floored()
   const origin = { x: position.x, y: position.y, z: position.z }
-  const aabb = bodyAabb(bot.entity, position)
   const cells = []
   let known = 0
   for (let dx = -SENSE_RADIUS; dx <= SENSE_RADIUS; dx++) {
@@ -86,7 +73,9 @@ export function captureSenseTerrain (bot) {
     position: origin,
     dimension: typeof bot.game?.dimension === 'string' ? bot.game.dimension : null,
     body_pose: typeof bot.entity.pose === 'string' ? bot.entity.pose : null,
-    body_aabb: aabb,
+    // Entity dimensions do not attest the pose-specific physical hitbox.
+    // Mineflayer does not expose a source-qualified server AABB here.
+    body_aabb: null,
     radius: SENSE_RADIUS,
     dy_min: SENSE_DY_MIN,
     dy_max: SENSE_DY_MAX,

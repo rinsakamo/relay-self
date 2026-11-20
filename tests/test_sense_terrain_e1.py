@@ -8,8 +8,8 @@ import pytest
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterProtocolError,
     MineflayerPosition,
-    MineflayerTerrainObservation,
     MineflayerStreamDecoder,
+    MineflayerTerrainObservation,
     encode_sense_terrain,
     parse_mineflayer_line,
 )

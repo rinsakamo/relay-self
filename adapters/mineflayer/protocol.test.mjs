@@ -604,7 +604,7 @@ test('E1 sense_terrain is a read-only correlated command, not physical LOOK', ()
   }), /request_id/)
 })
 
-test('E1 SENSE returns 100 bounded world-coordinate cells with observed AABB', () => {
+test('E1 SENSE returns 100 bounded cells without inventing an AABB', () => {
   class Position {
     constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
     floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
@@ -633,7 +633,7 @@ test('E1 SENSE returns 100 bounded world-coordinate cells with observed AABB', (
   assert(calls.every(c => c.extraInfos === false))
   assert.equal(t.known_cells, 99)
   assert.equal(t.complete, false)
-  assert.deepEqual(t.body_aabb, [0.2, 64, 0.2, 0.8, 65.8, 0.8])
+  assert.equal(t.body_aabb, null)
   const wall = t.cells.find(c => c.position.join(',') === '1,64,0')
   assert.deepEqual(wall.shapes, [[1, 64, 0, 2, 65, 1]])
   const missing = t.cells.find(c => c.position.join(',') === '2,65,2')
