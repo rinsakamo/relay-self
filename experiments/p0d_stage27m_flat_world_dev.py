@@ -20,6 +20,13 @@ def flat_world_properties(base: str) -> str:
             + 'spawn-animals=false\nspawn-monsters=false\nspawn-npcs=false\n')
 
 
+def paper_fixture_passed(log: bytes, marker: str) -> bool:
+    """Require Paper's chat output, not its echoed input command."""
+    if not marker.isalnum():
+        raise ValueError('marker must be alphanumeric')
+    return ('[RelayA] ' + marker).encode() in log
+
+
 def fixture_command(marker: str) -> str:
     """Check support, air and nearby entities in a coarse eastward corridor."""
     if not marker.isalnum():
@@ -49,7 +56,7 @@ async def check_flat_fixture(paper, evidence: Path) -> None:
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         log = paper.read_owned_log(session)
-        if marker.encode() in log[len(before):]:
+        if paper_fixture_passed(log[len(before):], marker):
             (evidence / 'stage27m-flat-check.txt').write_text(
                 command + '\n' + log[len(before):].decode(errors='replace'))
             return

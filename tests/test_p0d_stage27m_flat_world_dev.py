@@ -3,6 +3,7 @@ import pytest
 from experiments.p0d_stage27m_flat_world_dev import (
     fixture_command,
     flat_world_properties,
+    paper_fixture_passed,
 )
 
 
@@ -24,3 +25,8 @@ def test_corridor_check_covers_support_clearance_and_entity():
     assert command.endswith('run say MARK123')
     with pytest.raises(ValueError):
         fixture_command('invalid marker')
+
+
+def test_paper_response_must_not_be_echoed_command():
+    assert not paper_fixture_passed(b'> execute run say MARK123', 'MARK123')
+    assert paper_fixture_passed(b'[INFO]: [Not Secure] [RelayA] MARK123', 'MARK123')
