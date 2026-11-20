@@ -649,7 +649,7 @@ test('E1 invalid shapes and missing body are explicit UNKNOWN, never air/CLEAR',
   }
   const bot = {
     entity: { position: new Position(0, 64, 0) },
-    blockAt: () => ({ name: 'fence', shapes: [[0, 0, 0, 2, 1, 1]] })
+    blockAt: () => ({ name: 'fence', shapes: [[0, 0, 0, 3, 1, 1]] })
   }
   const t = captureSenseTerrain(bot)
   assert.equal(t.body_aabb, null)
