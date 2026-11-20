@@ -1,6 +1,5 @@
 from experiments.stage27l3a_capture_validation import validate_capture
 
-
 ID = "12345678-1234-4234-8234-123456789abc"
 
 
