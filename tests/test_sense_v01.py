@@ -15,7 +15,6 @@ from adapters.mineflayer.python_protocol import (
 )
 from relay_self.common_io import ScopeRef
 from relay_self.sense import (
-    SenseMoveInput,
     SenseRefusal,
     sense_for_l0_move,
     sense_for_self_world,
