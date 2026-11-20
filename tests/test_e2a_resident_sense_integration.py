@@ -51,7 +51,8 @@ def test_resident_login_dispatches_same_stream_to_owner_and_sense(tmp_path, monk
             original_write(data)
             command = json.loads(data)
             if command["type"] == "observe":
-                process.stdout.queue.put_nowait(observation(2, "probe", 1, command["request_id"]))
+                seq = 4 if command["request_id"] == "owner-probe" else 2
+                process.stdout.queue.put_nowait(observation(seq, "probe", seq, command["request_id"]))
 
         process.stdin.write = write
         session = MineflayerProcessSession(process)
@@ -70,13 +71,12 @@ def test_resident_login_dispatches_same_stream_to_owner_and_sense(tmp_path, monk
             assert fixture.bridge.current_sense(sid) is None
             await fixture.bridge.logout(sid)
             return
-        for value in (
-            observation(3, "move", 3),
-            observation(4, "probe", 4, "owner-probe"),
-            row({"type": "effect_result", "session_id": session_id, "seq": 5,
-                 "action_id": "stop-1", "effect": "clear_controls", "result": "applied", "error": None}),
-        ):
-            process.stdout.queue.put_nowait(value)
+        process.stdout.queue.put_nowait(observation(3, "move", 3))
+        await session.send_observe("owner-probe")
+        process.stdout.queue.put_nowait(row({
+            "type": "effect_result", "session_id": session_id, "seq": 5,
+            "action_id": "stop-1", "effect": "clear_controls", "result": "applied", "error": None,
+        }))
         probe = await _receive_matched(session, session_id=session_id, kind="probe",
                                        identity="owner-probe", timeout_s=1)
         assert probe.seq == 4
