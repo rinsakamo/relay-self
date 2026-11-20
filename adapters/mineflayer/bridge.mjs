@@ -10,6 +10,8 @@ import {
   probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { captureSenseTerrain } from './sense_terrain.mjs'
+
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -309,6 +311,27 @@ async function handleLine (line) {
       }
     }
     emitObservation('probe', command.request_id)
+    return
+  }
+
+  if (command.type === 'sense_terrain') {
+    if (!spawned) {
+      emit('command_error', { message: 'sense_before_spawn' })
+      return
+    }
+    if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+      emit('command_error', { message: 'duplicate_probe_request_id' })
+      return
+    }
+    try {
+      const terrain = captureSenseTerrain(bot)
+      emit('terrain_observation', {
+        request_id: command.request_id,
+        terrain
+      })
+    } catch (error) {
+      emitAdapterError(error)
+    }
     return
   }
 
