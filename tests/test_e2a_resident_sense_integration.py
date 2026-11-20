@@ -202,3 +202,101 @@ def test_resident_stalled_owner_coalesces_then_preserves_stop(tmp_path):
         asyncio.run(scenario())
     finally:
         fixture.stop_paper()
+
+
+def test_two_residents_rejoin_and_stream_failure_invalidate_sense(tmp_path):
+    fixture = ResidentFixture(tmp_path, 2, enable_sense=True)
+    processes = {}
+    generation = 0
+
+    def row(value):
+        return (json.dumps(value) + "\n").encode()
+
+    def observation(native, seq, kind, request_id=None):
+        value = json.loads(observation_line())
+        value.update(session_id=native, seq=seq, kind=kind)
+        value["snapshot"]["position"]["x"] = seq
+        if request_id:
+            value["request_id"] = request_id
+        return row(value)
+
+    class Stream:
+        def __init__(self):
+            self.queue = asyncio.Queue()
+
+        async def readline(self):
+            return await self.queue.get()
+
+    async def launch(config):
+        nonlocal generation
+        generation += 1
+        native = f"{config.username}-{generation}"
+        process = FakeProcess([])
+        process.stdout = Stream()
+        process.stdout.queue.put_nowait(row({
+            "type": "adapter_started", "session_id": native, "seq": 0,
+            "mineflayer_version": "4.39.0",
+            "config": {"host": config.host, "port": config.port,
+                       "username": config.username, "version": config.version},
+        }))
+        process.stdout.queue.put_nowait(observation(native, 1, "spawn"))
+        original_write = process.stdin.write
+
+        def write(data):
+            original_write(data)
+            command = json.loads(data)
+            if command["type"] == "observe":
+                process.stdout.queue.put_nowait(observation(native, 2, "probe", command["request_id"]))
+
+        process.stdin.write = write
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        processes[config.username] = (process, session, native)
+        return session
+
+    async def wait_until(predicate):
+        async with asyncio.timeout(2):
+            while not predicate():
+                await asyncio.sleep(0)
+
+    async def scenario():
+        fixture.bridge.launch = launch
+        a, b = fixture.names
+        await fixture.bridge.login(a)
+        await fixture.bridge.login(b)
+        pa, sa, na = processes[a]
+        pb, sb, nb = processes[b]
+        pa.stdout.queue.put_nowait(observation(na, 3, "move"))
+        pb.stdout.queue.put_nowait(observation(nb, 3, "entities"))
+        await wait_until(lambda: fixture.bridge.current_sense(a) is not None
+                         and fixture.bridge.current_sense(b) is not None)
+        frame_a = fixture.bridge.current_sense(a)
+        frame_b = fixture.bridge.current_sense(b)
+        assert frame_a.scope.self_id == a and frame_b.scope.self_id == b
+        assert frame_a.observation.session_id == na and frame_b.observation.session_id == nb
+        await fixture.bridge.logout(a)
+        assert fixture.bridge.current_sense(a) is None
+        assert fixture.bridge.current_sense(b) == frame_b
+        await fixture.bridge.login(a)
+        pa2, sa2, na2 = processes[a]
+        assert na2 != na and fixture.bridge.current_sense(a) is None
+        sa._dispatch_observer(frame_a.observation)
+        assert fixture.bridge.current_sense(a) is None
+        pa2.stdout.queue.put_nowait(observation(na2, 3, "move"))
+        await wait_until(lambda: fixture.bridge.current_sense(a) is not None)
+        new_frame = fixture.bridge.current_sense(a)
+        sa._dispatch_observer(frame_a.observation)
+        assert fixture.bridge.current_sense(a) == new_frame
+        pa2.stdout.queue.put_nowait(observation(na2, 5, "move"))
+        await wait_until(lambda: sa2._dispatch_error is not None)
+        assert fixture.bridge.current_sense(a) is None
+        assert fixture.bridge.current_sense(b) == frame_b
+        pb.stdout.queue.put_nowait(b"")
+        await wait_until(lambda: sb._dispatch_error is not None)
+        assert fixture.bridge.current_sense(b) is None
+        await fixture.bridge.logout(a)
+        await fixture.bridge.logout(b)
+    try:
+        asyncio.run(scenario())
+    finally:
+        fixture.stop_paper()

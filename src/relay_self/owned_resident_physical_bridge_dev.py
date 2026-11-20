@@ -294,7 +294,8 @@ class OwnedResidentPhysicalBridge:
             if not isinstance(message, MineflayerObservation) or message.kind == "probe":
                 return
             if not self._sense_current(self_id, session, ticket):
-                self._sense.pop(self_id, None)
+                if self.sessions.get(self_id) is session:
+                    self._sense.pop(self_id, None)
                 return
             try:
                 frame = sense_from_native(
