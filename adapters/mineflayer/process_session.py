@@ -335,7 +335,7 @@ class MineflayerProcessSession:
                 if type(action_id) is not str or not action_id:
                     raise MineflayerEffectAdmissionError("missing physical action ID")
                 gate(self.started.session_id, effect, action_id)
-            elif command_type not in {"observe", "shutdown"}:
+            elif command_type not in {"observe", "sense_terrain", "shutdown"}:
                 raise MineflayerEffectAdmissionError(
                     "unknown native command during coordinated checkpoint mode"
                 )
