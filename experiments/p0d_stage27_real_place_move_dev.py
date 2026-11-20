@@ -1093,14 +1093,10 @@ async def stage27h_real_a_motor_hook(
                     "Stage27i extra model POST within original L0 loop"
                 )
         if c_lane_stage27h_post_review and (
-            result.status != "L0_TARGET_REACHED_YIELD_EVALUATION"
-            or loop.action_count < 2
-            or last_settled_probe is None
+            loop.action_count < 1 or last_settled_probe is None
         ):
-            # Source remains on disk; no MODEL review on non-arrival.
-            # Do not automatically reissue even a terminal Action.
             raise Stage27RealWorldRefusal(
-                "C Stage27h L0 not at bounded Target: hold without model/Skill adoption"
+                "C Stage27h has no settled Action for bounded review"
             )
         stage = "27I" if precision_stage27i else "27H"
         status = {
