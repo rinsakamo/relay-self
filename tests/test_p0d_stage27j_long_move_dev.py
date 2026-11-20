@@ -461,7 +461,7 @@ def test_stage27j_original_prepared_evidence_all_twelve_actions(tmp_path):
                 )
                 frozen = _stage27h_capture_prepared(
                     journal, evidence, action_id=action,
-                    action_index=i, long_stage27j=True,
+                    action_index=i, self_id=owner.self_id, long_stage27j=True,
                 )
                 assert frozen["before_any_native_effect"] is True
                 snapshots.append(frozen)
@@ -531,7 +531,7 @@ def test_stage27j_original_prepared_evidence_all_twelve_actions(tmp_path):
         with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
             _stage27h_capture_prepared(
                 fifth, tmp_path, action_id=fifth.records[-1]["action_id"],
-                action_index=4,
+                action_index=4, self_id=owner.self_id,
             )
         twelfth = PhysicalActionJournal.restore(
             evidence / "stage27h-A-PREPARED-12.json", self_id=owner.self_id,
@@ -540,24 +540,30 @@ def test_stage27j_original_prepared_evidence_all_twelve_actions(tmp_path):
             _stage27h_capture_prepared(
                 twelfth, tmp_path,
                 action_id=twelfth.records[-1]["action_id"],
-                action_index=12, long_stage27j=True,
+                action_index=12, self_id=owner.self_id, long_stage27j=True,
             )
         with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
             _stage27h_capture_prepared(
                 fifth, tmp_path, action_id="forged-action",
-                action_index=4, long_stage27j=True,
+                action_index=4, self_id=owner.self_id, long_stage27j=True,
             )
         with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
             _stage27h_capture_prepared(
                 fifth, tmp_path,
                 action_id=fifth.records[-1]["action_id"],
-                action_index=4, long_stage27j=1,
+                action_index=4, self_id=peer.self_id, long_stage27j=True,
+            )
+        with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
+            _stage27h_capture_prepared(
+                fifth, tmp_path,
+                action_id=fifth.records[-1]["action_id"],
+                action_index=4, self_id=owner.self_id, long_stage27j=1,
             )
         with pytest.raises(FileExistsError):
             _stage27h_capture_prepared(
                 fifth, evidence,
                 action_id=fifth.records[-1]["action_id"],
-                action_index=4, long_stage27j=True,
+                action_index=4, self_id=owner.self_id, long_stage27j=True,
             )
 
     _case(
