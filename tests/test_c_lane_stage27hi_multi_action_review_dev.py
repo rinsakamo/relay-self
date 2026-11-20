@@ -285,3 +285,40 @@ def test_multi_child_review_is_one_new_l1_call_no_physical_extra(tmp_path):
         assert not loop.physical.active_action_ids
         assert loop.owner.skills[loop.handoff.skill_execution_id].state is SkillState.STARTED
     _fixture(tmp_path, scenario)
+
+
+def test_one_settled_action_budget_stop_allows_partial_review_not_success(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, former, observed, loop = await _start(f, lane)
+        native = SlowPlaceNative(handoff.native_session_id)
+        assert loop.pre_action(observed, now_ns=150).status == "L0_CONTINUE_MOVE"
+        receipt = await _issue(f, pre, handoff, loop, former, observed, native)
+        step = loop.observe_terminal_action(
+            receipt, source_probe=observed,
+            now_ns=loop.start_ns + loop.invocation.budget.max_duration_ms * 1_000_000,
+        )
+        assert step.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        common = dict(
+            physical=f.physical, lane=lane, bridge=f.bridge,
+            first_action_probe=observed, last_settled_probe=receipt.settled_probe,
+        )
+        frame = prepare_stage27hi_multi_review(
+            loop, step, world_id=f.lifecycle.world.world_id, **common,
+        )
+        assert len(frame.action_ids) == 1
+        assert not frame.completion_review_offered
+        assert "EVALUATE_PARTIAL" in frame.request.choices[1].description
+        server.choice_id = "2"
+        ticket = submit_stage27hi_multi_review(frame, loop, **common)
+
+        async def fresh_probe():
+            return _new_probe(receipt)
+
+        witness, _ = await finish_stage27hi_multi_review(
+            frame, loop, ticket=ticket, fresh_probe=fresh_probe, **common,
+        )
+        assert witness.choice_number == "2"
+        assert not witness.review_completion_selected
+        assert loop.owner.retained.memories == ()
+        assert loop.owner.skills[handoff.skill_execution_id].state is SkillState.STARTED
+    _fixture(tmp_path, scenario)
