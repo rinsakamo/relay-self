@@ -76,7 +76,7 @@ final class WorldSnapshot {
         int y0 = (int)Math.floor(b.getMinY())-2, y1 = (int)Math.ceil(b.getMaxY())+1;
         if (y0 < w.getMinHeight() || y1 > w.getMaxHeight() || (long)(x1-x0)*(y1-y0)*(z1-z0)>MAX_BLOCKS)
             throw new IllegalArgumentException("capture bounds");
-        int start = Bukkit.getCurrentTick(), count = 0;
+        int start = Bukkit.getCurrentTick();
         JsonObject out = new JsonObject(); out.addProperty("request_id", id); out.addProperty("boot_id", boot.toString());
         out.addProperty("world_uuid", w.getUID().toString()); out.addProperty("dimension", w.getKey().toString());
         out.addProperty("environment", w.getEnvironment().name()); out.addProperty("capture_time", Instant.now().toString());
@@ -87,34 +87,39 @@ final class WorldSnapshot {
         out.addProperty("sneaking", player.isSneaking()); out.addProperty("sprinting", player.isSprinting());
         out.addProperty("flying", player.isFlying()); out.addProperty("yaw", loc.getYaw()); out.addProperty("pitch", loc.getPitch());
         JsonArray bounds = new JsonArray(); for (int n : new int[]{x0,y0,z0,x1,y1,z1}) bounds.add(n); out.add("bounds_exclusive", bounds);
-        JsonArray cells = new JsonArray(); boolean complete = true;
-        outer: for (int x=x0; x<x1; x++) for (int z=z0; z<z1; z++) for (int y=y0; y<y1; y++) {
-            JsonObject cell = new JsonObject(); cell.addProperty("x",x); cell.addProperty("y",y); cell.addProperty("z",z);
-            boolean loaded = w.isChunkLoaded(x >> 4,z >> 4); cell.addProperty("chunk_loaded",loaded);
-            if (!loaded) { complete=false; cells.add(cell); continue; }
-            try {
-                var block = w.getBlockAt(x,y,z); cell.addProperty("block_state",block.getBlockData().getAsString());
-                JsonArray boxes = new JsonArray();
-                for (BoundingBox shape : block.getCollisionShape().getBoundingBoxes()) {
-                    if (++count > MAX_BOXES) { complete=false; break outer; }
-                    boxes.add(box(shape,x,y,z));
-                }
-                cell.add("collision_boxes_world", boxes); cell.addProperty("read_ok",true);
-            } catch (RuntimeException e) { complete=false; cell.addProperty("read_ok",false); }
-            cells.add(cell);
+        // A loaded target chunk alone does not establish that shape evaluation
+        // cannot read a neighbouring unloaded chunk. Do not call either API
+        // until a non-loading implementation is established and tested.
+        JsonArray chunks = new JsonArray();
+        for (int cx = x0 >> 4; cx <= (x1-1) >> 4; cx++) {
+            for (int cz = z0 >> 4; cz <= (z1-1) >> 4; cz++) {
+                JsonObject chunk = new JsonObject(); chunk.addProperty("x", cx); chunk.addProperty("z", cz);
+                chunk.addProperty("loaded_before", w.isChunkLoaded(cx, cz));
+                chunks.add(chunk);
+            }
         }
-        out.add("cells",cells); out.addProperty("terrain_complete",complete);
+        out.add("chunks", chunks); out.add("cells", new JsonArray());
+        out.addProperty("terrain_complete",false);
+        out.addProperty("terrain_reason", "SHAPE_READ_NON_LOADING_NOT_ESTABLISHED");
+        out.addProperty("cell_count", 0); out.addProperty("cell_limit", MAX_BLOCKS);
+        out.addProperty("box_limit", MAX_BOXES); out.addProperty("entity_limit", MAX_ENTITIES);
         JsonArray entities = new JsonArray();
+        boolean truncated = false;
         for (Entity e : w.getNearbyEntities(new BoundingBox(x0,y0,z0,x1,y1,z1))) {
             if (e.getUniqueId().equals(player.getUniqueId())) continue;
-            if (entities.size() >= MAX_ENTITIES) break;
+            if (entities.size() >= MAX_ENTITIES) { truncated = true; break; }
             JsonObject item = new JsonObject(); item.addProperty("uuid",e.getUniqueId().toString());
             item.addProperty("type",e.getType().name()); item.addProperty("valid",e.isValid());
             item.addProperty("dead",e.isDead()); item.add("aabb",box(e.getBoundingBox(),0,0,0)); entities.add(item);
         }
         out.add("entities",entities);
+        out.addProperty("entity_count", entities.size()); out.addProperty("entity_truncated", truncated);
         // API explicitly allows implementation search restrictions, so absence cannot prove coverage.
         out.addProperty("entity_coverage_complete",false);
+        for (var element : chunks) {
+            JsonObject chunk = element.getAsJsonObject();
+            chunk.addProperty("loaded_after", w.isChunkLoaded(chunk.get("x").getAsInt(), chunk.get("z").getAsInt()));
+        }
         out.addProperty("end_tick", Bukkit.getCurrentTick());
         Path temp = output.resolve(id + ".tmp");
         Files.writeString(temp,out.toString(),StandardCharsets.UTF_8,StandardOpenOption.CREATE_NEW);
