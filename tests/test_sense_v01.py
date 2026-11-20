@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from relay_self.common_io import ScopeRef
 from relay_self.sense import (
+    SenseMoveInput,
     SenseRefusal,
     sense_for_l0_move,
     sense_for_self_world,
@@ -67,6 +68,8 @@ def test_one_native_event_feeds_move_and_self_world_without_any_action():
     assert move.source_revision_ref == frame.source_revision_ref
     assert move.route_status == "UNKNOWN"
     assert "collision_shapes" in move.missing
+    with pytest.raises(SenseRefusal, match="cannot grant route clearance"):
+        replace(move, route_status="CLEAR")
     assert len(move.nearby_entities) == 1
 
     view = LensView(
