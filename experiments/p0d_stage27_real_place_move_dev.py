@@ -1138,6 +1138,14 @@ async def stage27j_real_a_motor_hook(**kwargs) -> dict[str, object]:
     )
 
 
+async def stage27m_real_a_motor_hook(**kwargs) -> dict[str, object]:
+    """Check the disposable flat fixture before invoking the original loop."""
+    from experiments.p0d_stage27m_flat_world_dev import check_flat_fixture
+
+    await check_flat_fixture(kwargs["paper"], kwargs["evidence"])
+    return await stage27j_real_a_motor_hook(**kwargs)
+
+
 async def run_stage27_real_world(
     *, paper_jar: Path, paper_sha256: str,
     plugin_jar: Path, plugin_sha256: str,
@@ -1152,6 +1160,7 @@ async def run_stage27_real_world(
     stage27h_l0_move_loop: bool = False,
     stage27i_precision_gait: bool = False,
     stage27j_long_move: bool = False,
+    stage27m_flat_world: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -1163,6 +1172,8 @@ async def run_stage27_real_world(
         type(stage27h_l0_move_loop) is not bool
         or type(stage27i_precision_gait) is not bool
         or type(stage27j_long_move) is not bool
+        or type(stage27m_flat_world) is not bool
+        or (stage27m_flat_world and not stage27j_long_move)
         or sum((
             stage27h_l0_move_loop, stage27i_precision_gait, stage27j_long_move,
             stage27e_independent_evidence, stage27f_cpu_evaluation,
@@ -1197,8 +1208,10 @@ async def run_stage27_real_world(
         ),
         _stage27i_precision_target=stage27i_precision_gait,
         _stage27j_long_target=stage27j_long_move,
+        _stage27m_flat_world=stage27m_flat_world,
         _stage27_motor_hook=(
-            stage27j_real_a_motor_hook if stage27j_long_move
+            stage27m_real_a_motor_hook if stage27m_flat_world
+            else stage27j_real_a_motor_hook if stage27j_long_move
             else stage27i_real_a_motor_hook if stage27i_precision_gait
             else stage27h_real_a_motor_hook if stage27h_l0_move_loop
             else stage27g_real_a_motor_hook if stage27g_real_l1_evaluation
@@ -1230,6 +1243,7 @@ def main() -> int:
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
     p.add_argument("--stage27i-precision-gait", action="store_true")
     p.add_argument("--stage27j-long-move", action="store_true")
+    p.add_argument("--stage27m-flat-world", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -1248,6 +1262,7 @@ def main() -> int:
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
             stage27i_precision_gait=args.stage27i_precision_gait,
             stage27j_long_move=args.stage27j_long_move,
+            stage27m_flat_world=args.stage27m_flat_world,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
