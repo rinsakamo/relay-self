@@ -377,8 +377,15 @@ class MineflayerProcessSession:
 
     async def terminate(self) -> int:
         """Terminate the owned child without retrying or launching a replacement."""
-
-        return await _terminate_child(self._process)
+        try:
+            return await _terminate_child(self._process)
+        finally:
+            if self._dispatch_task is not None and not self._dispatch_task.done():
+                self._dispatch_task.cancel()
+                try:
+                    await self._dispatch_task
+                except asyncio.CancelledError:
+                    pass
 
     async def _send(self, line: str) -> None:
         gate = getattr(self, "_effect_admission", None)

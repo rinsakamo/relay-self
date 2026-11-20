@@ -134,3 +134,21 @@ and observation stop at the queue bound. Thus continuous perception during
 L1/L2 and request/ACK coexistence have not been demonstrated. Do not enable
 this prototype as a production perception path. SelfWorld and L0 MOVE remain
 unconnected. No real World qualification is implied.
+# Resident owner dispatcher (E2a-3A)
+
+`OwnedResidentPhysicalBridge(enable_sense=True)` starts the existing session
+dispatcher only after its original spawn/probe, World epoch, WAL and owner
+login checks succeed. The ordered bounded queue remains the sole source for
+the original `receive()` callers, including correlated probes and effect
+results. Passive observations additionally replace one in-memory SENSE frame;
+probes and effect results do not update that frame. The Paper session and Self
+scope come from the verified login, not from the callback. Access is fenced by
+the current owner/session/World state and logout or quarantine clears the frame.
+This does not authenticate a Paper World UUID or establish freshness by time.
+
+The owner queue is loss-preserving and applies backpressure when full. It can
+therefore stop further native reading and SENSE updates: continuous perception
+under owner stalls remains HOLD. The latest frame is bounded, is not persistent
+Memory or a consumer integration, and does not establish a physical body AABB
+or route clearance. Rejoin/restore paths outside this opt-in resident login
+have not been integrated or qualified.
