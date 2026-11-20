@@ -197,16 +197,15 @@ def _encode_accepted_registry(cut: SelfOwnerCut) -> dict[str, Any]:
 
 
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
-    if cut.pattern_registry.accepted_presets and (
+    schema2 = cut.cognition_sha256 is not None or bool(cut.pattern_registry.accepted_presets)
+    if schema2 and (
         type(cut.cognition_sha256) is not str
         or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
     ):
         raise SelfOwnerCheckpointError("cannot encode accepted Presets without cognition digest")
-    if not cut.pattern_registry.accepted_presets and cut.cognition_sha256 is not None:
-        raise SelfOwnerCheckpointError("schema 1 cannot encode cognition digest")
     return {
-        **({"cognition_sha256": cut.cognition_sha256} if cut.pattern_registry.accepted_presets else {}),
-        "schema": 2 if cut.pattern_registry.accepted_presets else 1,
+        **({"cognition_sha256": cut.cognition_sha256} if schema2 else {}),
+        "schema": 2 if schema2 else 1,
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -232,7 +231,7 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
         ],
         "pattern_registry": (
             _encode_accepted_registry(cut)
-            if cut.pattern_registry.accepted_presets else {
+            if schema2 else {
             "revision": cut.pattern_registry.revision,
             "patterns": [
                 {
@@ -333,8 +332,6 @@ def _deserialize(value: object) -> SelfOwnerCut:
                     payload["pattern_registry"],
                     expected_self_id=payload["self_id"],
                 )
-                if not pattern_registry.accepted_presets:
-                    raise SelfOwnerCheckpointError("schema 2 requires accepted Presets")
             except PresetCheckpointRefusal as exc:
                 raise SelfOwnerCheckpointError(
                     "invalid Self-accepted owner Preset registry"
@@ -521,7 +518,7 @@ def _load_copied_cohort(
         from relay_self.persistent_cognition import load_persistent_cognition
 
         cognition_path = generation / "selves" / sid / "cognition.json"
-        if cut.pattern_registry.accepted_presets and (
+        if cut.cognition_sha256 is not None and (
             type(cut.cognition_sha256) is not str
             or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
             or hashlib.sha256(cognition_path.read_bytes()).hexdigest() != cut.cognition_sha256
@@ -531,7 +528,7 @@ def _load_copied_cohort(
         if cognition.identity.self_id != sid or (
             cognition.pattern_registry is not None
             and cognition.pattern_registry != cut.pattern_registry
-        ) or (cut.pattern_registry.accepted_presets and cognition.pattern_registry is None):
+        ) or (cut.cognition_sha256 is not None and cognition.pattern_registry is None):
             raise SelfOwnerCheckpointError("same-generation cognition/owner registry mismatch")
         cuts.append(cut)
     cohort = tuple(cuts)
