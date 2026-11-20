@@ -3,9 +3,13 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.python_protocol import (
-    MineflayerNearbyEntitiesCoverage, MineflayerObservation, MineflayerPosition,
-    MineflayerSnapshot, MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
-    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE, MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerNearbyEntitiesCoverage,
+    MineflayerObservation,
+    MineflayerPosition,
+    MineflayerSnapshot,
 )
 from experiments.stage27l_observation_preflight import inspect_native_probe
 
@@ -51,6 +55,7 @@ def test_refusals(observation, kwargs, reason):
 def test_capture_uses_only_observe_and_preserves_correlation():
     import asyncio
     from types import SimpleNamespace
+
     from experiments.stage27l_observation_preflight import capture_native_probe
 
     class Session:
