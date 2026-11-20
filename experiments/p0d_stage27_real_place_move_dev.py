@@ -59,6 +59,65 @@ class Stage27RealWorldRefusal(RuntimeError):
     """A source-qualified one-shot real A physical action did not qualify."""
 
 
+def _freeze_stage27h_l0_diagnostic(
+    evidence: Path, loop: Stage27hBoundedMoveLoop, step, *,
+    world_uuid: str, error: BaseException | None,
+    filename: str = "c-stage27h-l0-diagnostic.json",
+) -> None:
+    """Preserve observed state, including incomplete reservations, without inference."""
+    now_ns = time.monotonic_ns()
+    budget = loop.invocation.budget
+    wal = loop.owner.files.physical_wal_file
+    try:
+        wal_sha = hashlib.sha256(wal.read_bytes()).hexdigest()
+        wal_error = None
+    except OSError as exc:
+        wal_sha = None
+        wal_error = f"{type(exc).__name__}: {exc}"
+    payload = {
+        "classification": "C_STAGE27H_L0_DIAGNOSTIC_DEV",
+        "world_uuid": world_uuid,
+        "self_id": loop.owner.self_id,
+        "native_session_id": loop.prepared.native_session,
+        "last_step": asdict(step) if step is not None else None,
+        "terminal_status": loop.terminal_status,
+        "action_count": loop.action_count,
+        "last_action_id": loop.last_action_id,
+        "last_native_seq": loop.last_native_seq,
+        "last_assessed_native_seq": loop._source_seq,
+        "last_validated_wal_sha256": loop.last_wal_digest or None,
+        "raw_wal_sha256": wal_sha,
+        "raw_wal_read_error": wal_error,
+        "elapsed_ms": (now_ns - loop.start_ns) / 1_000_000,
+        "remaining_duration_ms": max(
+            0, budget.max_duration_ms - (now_ns - loop.start_ns) / 1_000_000,
+        ),
+        "remaining_actions": budget.max_actions - loop.action_count,
+        "observation_count": loop.observation_count,
+        "remaining_observations": budget.max_observations - loop.observation_count,
+        "settling_observations_reserved": loop._settlement_reserved,
+        "reserved_source_seq": loop._reserved_source_seq,
+        "cumulative_distance_m": loop.cumulative_distance_m,
+        "remaining_distance_m": budget.max_distance_m - loop.cumulative_distance_m,
+        "error_type": type(error).__name__ if error is not None else None,
+        "error": str(error) if error is not None else None,
+        "physical_state_certified": False,
+    }
+    raw = (json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
+    path = evidence / filename
+    with path.open("xb") as out:
+        out.write(raw)
+        out.flush()
+        os.fsync(out.fileno())
+    fd = os.open(evidence, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    if path.is_symlink() or path.read_bytes() != raw:
+        raise Stage27RealWorldRefusal("L0 diagnostic readback failed")
+
+
 def _native_place_wire_readback(
     raw_file: Path, *, session_id: str, parent: str, new_probe_seq: int,
     ack_seqs: tuple[int, int, int], stop_probe_seqs: tuple[int, int, int],
@@ -840,304 +899,321 @@ async def stage27h_real_a_motor_hook(
         prepared["A"], handoff, owner=owner, physical=physical,
         world_epoch=world_epoch, start_ns=time.monotonic_ns(),
     )
-    previous = refreshed["A"]
-    current = await _bounded_b_probe(session)
-    if current.seq <= previous.seq or current.session_id != native_id:
-        raise Stage27RealWorldRefusal("Stage27h first post-L1 native source stale")
-    result = loop.pre_action(current, now_ns=time.monotonic_ns())
-    first_action_probe = current
-    last_settled_probe = None
-    action_receipts: list[dict[str, object]] = []
-    while result.status == "L0_CONTINUE_MOVE":
-        if len(action_receipts) != loop.action_count:
-            raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
-        idx = loop.action_count
-        # L0 can pick a gait only within the immutable operator-accepted
-        # precision Preset; L1 never runs between its physical child Actions.
-        gait_choice = (
-            choose_stage27i_gait(loop, result, current)
+    last_step = None
+    try:
+        previous = refreshed["A"]
+        current = await _bounded_b_probe(session)
+        if current.seq <= previous.seq or current.session_id != native_id:
+            raise Stage27RealWorldRefusal("Stage27h first post-L1 native source stale")
+        result = loop.pre_action(current, now_ns=time.monotonic_ns())
+        last_step = result
+        first_action_probe = current
+        last_settled_probe = None
+        action_receipts: list[dict[str, object]] = []
+        while result.status == "L0_CONTINUE_MOVE":
+            if len(action_receipts) != loop.action_count:
+                raise Stage27RealWorldRefusal("Stage27h multi-Action record count diverged")
+            idx = loop.action_count
+            # L0 can pick a gait only within the immutable operator-accepted
+            # precision Preset; L1 never runs between its physical child Actions.
+            gait_choice = (
+                choose_stage27i_gait(loop, result, current)
+                if precision_stage27i else None
+            )
+            # Charge a complete 60-sample STOP settlement quota against the
+            # immutable parent Invocation BEFORE even proposing the next Action.
+            # The issuer cannot request more native probes than this reservation.
+            stop_probe_quota = loop.reserve_settling_observations(
+                source_probe=current,
+            )
+            # Native target geometry is recalculated from the SAME frozen Target.
+            # No new L1 choice, no new invocation, no parameter/preset tuning.
+            plan = resolve_stage27_place_motion(
+                prepared["A"], handoff, current, owner=owner,
+                physical=physical, world_epoch=world_epoch,
+            )
+            proposal = propose_stage27c_original_place_move(
+                prepared["A"], handoff, plan, current, owner=owner,
+                physical=physical, world_epoch=world_epoch,
+                capability=PhysicalCapability(
+                    "MOVE", 1, "locomotion", "DESTINATION", True,
+                ), at_ns=time.monotonic_ns(),
+                provenance=Provenance("stage27h-original-l0", current.provenance.reference),
+            )
+            binding = proposal.proposal.binding
+            journal = PhysicalActionJournal.restore(
+                owner.files.physical_wal_file, self_id="A",
+            )
+            journal.require_clear()
+            if len(journal.records) != idx:
+                raise Stage27RealWorldRefusal("Stage27h pre-Action journal row count wrong")
+            paper_before = paper.read_owned_log(paper.owned_session_id)
+            _freeze_owned_paper_source(
+                evidence, f"stage27h-Paper-pre-{idx + 1}.log", paper_before,
+            )
+            original_prepared: dict[str, object] = {}
+
+            def capture_reserved(source, action):
+                original_prepared.update(_stage27h_capture_prepared(
+                    source, evidence, action_id=action, action_index=idx,
+                ))
+
+            t0 = time.monotonic_ns()
+            receipt = await physical.issue_place_move(
+                session, proposal=proposal.proposal,
+                l0=proposal, prepared=prepared["A"],
+                handoff=handoff, motion=plan,
+                previous_probe=previous, current_probe=current,
+                owner=owner, physical=physical,
+                propose_grant=_grant(PhysicalGrantStage.PROPOSE, binding),
+                issue_grant=_grant(PhysicalGrantStage.ISSUE, binding),
+                journal=journal, at_ns=t0 + 3,
+                provenance=Provenance(
+                    "stage27h-original-physical", current.provenance.reference,
+                ),
+                grant_real_world=True,
+                acknowledge_dev_unverified_principal=True,
+                pulse_seconds=(
+                    gait_choice.pulse_seconds if gait_choice is not None else 0.15
+                ),
+                precision_gait=(
+                    gait_choice.gait_mode if gait_choice is not None else None
+                ),
+                evidence_timeout_s=15.0,
+                pre_native_evidence=capture_reserved,
+                allow_prior_terminal_place_actions=idx > 0,
+                settlement_probe_limit=stop_probe_quota,
+            )
+            if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
+                raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
+            # Original WAL closes before a second Action can ever be proposed.
+            post = loop.observe_terminal_action(
+                receipt, source_probe=current, now_ns=time.monotonic_ns(),
+            )
+            last_step = post
+            readback = _native_place_wire_readback(
+                native_audit, session_id=native_id, parent=binding.action_id,
+                new_probe_seq=current.seq,
+                ack_seqs=(receipt.look_ack.seq, receipt.start_ack.seq,
+                          receipt.stop_ack.seq),
+                stop_probe_seqs=(receipt.initial_stop_probe.seq,
+                                 receipt.first_stable_probe.seq,
+                                 receipt.settled_probe.seq),
+                sneak_ack_seq=(
+                    receipt.gait_control_ack.seq
+                    if receipt.gait_control_ack is not None else None
+                ),
+            )
+            all_settling_readback = _stage27h_all_settling_stdout_readback(
+                native_audit, session_id=native_id,
+                stop_seq=receipt.stop_ack.seq,
+                probes=receipt.all_stop_probes,
+            )
+            paper_after = paper.read_owned_log(paper.owned_session_id)
+            _freeze_owned_paper_source(
+                evidence, f"stage27h-Paper-post-{idx + 1}.log", paper_after,
+            )
+            p0, p1 = current.snapshot.position, receipt.settled_probe.snapshot.position
+            correlated = correlate_owned_paper_position(
+                before=paper_before, after=paper_after,
+                paper_session_id=paper.owned_session_id, world_uuid=world_uuid,
+                native_start_xyz=(p0.x, p0.y, p0.z),
+                native_settled_xyz=(p1.x, p1.y, p1.z),
+            )
+            action_receipts.append({
+                "action": receipt.action_id,
+                "invocation_ref": receipt.original_invocation_ref,
+                "preset_ref": receipt.original_preset_ref,
+                "target_contract_ref": receipt.target_contract_ref,
+                "native_source": readback,
+                "all_stop_probes_native_stdout": all_settling_readback,
+                "stop_probe_reserved": stop_probe_quota,
+                "stop_probe_actual": len(receipt.all_stop_probes),
+                "observation_count_after_settlement": loop.observation_count,
+                "prepared_source": original_prepared,
+                "terminal_wal_status": receipt.journal_status,
+                "terminal_wal_digest": receipt.journal_sha256,
+                "original_native_probe_seq": current.seq,
+                "settled_native_probe_seq": receipt.settled_probe.seq,
+                "displacement_m": receipt.displacement_m,
+                "gait_mode": receipt.gait_mode,
+                "gait_ack_seq": (
+                    receipt.gait_control_ack.seq
+                    if receipt.gait_control_ack is not None else None
+                ),
+                "prebound_gait_choice": (
+                    asdict(gait_choice) if gait_choice is not None else None
+                ),
+                "paper_correlational_position": correlated,
+                "l0_feedback": asdict(post),
+                "goal_success": False,
+                "skill_success": False,
+            })
+            last_settled_probe = receipt.settled_probe
+            result = post
+            if result.status != "L0_CONTINUE_MOVE":
+                break
+            previous = receipt.settled_probe
+            current = await _bounded_b_probe(session)
+            if current.session_id != native_id or current.seq <= previous.seq:
+                raise Stage27RealWorldRefusal(
+                    "Stage27h fresh next-motor WorldBody observation unavailable"
+                )
+            result = loop.pre_action(current, now_ns=time.monotonic_ns())
+            last_step = result
+        if c_lane_stage27h_post_review:
+            _freeze_stage27h_l0_diagnostic(
+                evidence, loop, last_step, world_uuid=world_uuid, error=None,
+                filename="c-stage27h-l0-terminal.json",
+            )
+        if result.status == "L0_CONTINUE_MOVE":
+            raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
+        peer_after = _peer_snapshot(owners["B"], allow_changed=True)
+        peer_after_evidence = (
+            _freeze_peer_b_snapshot(
+                evidence, label="after", snapshot=peer_after,
+            ) if precision_stage27i else None
+        )
+        if peer_after != peer_before:
+            raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
+        lane.require_world_idle()
+        model_after = (
+            census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
             if precision_stage27i else None
         )
-        # Charge a complete 60-sample STOP settlement quota against the
-        # immutable parent Invocation BEFORE even proposing the next Action.
-        # The issuer cannot request more native probes than this reservation.
-        stop_probe_quota = loop.reserve_settling_observations(
-            source_probe=current,
+        model_after_evidence = (
+            freeze_stage27i_model_http(
+                evidence, label="after", snapshot=model_after,
+            ) if model_after is not None else None
         )
-        # Native target geometry is recalculated from the SAME frozen Target.
-        # No new L1 choice, no new invocation, no parameter/preset tuning.
-        plan = resolve_stage27_place_motion(
-            prepared["A"], handoff, current, owner=owner,
-            physical=physical, world_epoch=world_epoch,
-        )
-        proposal = propose_stage27c_original_place_move(
-            prepared["A"], handoff, plan, current, owner=owner,
-            physical=physical, world_epoch=world_epoch,
-            capability=PhysicalCapability(
-                "MOVE", 1, "locomotion", "DESTINATION", True,
-            ), at_ns=time.monotonic_ns(),
-            provenance=Provenance("stage27h-original-l0", current.provenance.reference),
-        )
-        binding = proposal.proposal.binding
-        journal = PhysicalActionJournal.restore(
-            owner.files.physical_wal_file, self_id="A",
-        )
-        journal.require_clear()
-        if len(journal.records) != idx:
-            raise Stage27RealWorldRefusal("Stage27h pre-Action journal row count wrong")
-        paper_before = paper.read_owned_log(paper.owned_session_id)
-        _freeze_owned_paper_source(
-            evidence, f"stage27h-Paper-pre-{idx + 1}.log", paper_before,
-        )
-        original_prepared: dict[str, object] = {}
-
-        def capture_reserved(source, action):
-            original_prepared.update(_stage27h_capture_prepared(
-                source, evidence, action_id=action, action_index=idx,
-            ))
-
-        t0 = time.monotonic_ns()
-        receipt = await physical.issue_place_move(
-            session, proposal=proposal.proposal,
-            l0=proposal, prepared=prepared["A"],
-            handoff=handoff, motion=plan,
-            previous_probe=previous, current_probe=current,
-            owner=owner, physical=physical,
-            propose_grant=_grant(PhysicalGrantStage.PROPOSE, binding),
-            issue_grant=_grant(PhysicalGrantStage.ISSUE, binding),
-            journal=journal, at_ns=t0 + 3,
-            provenance=Provenance(
-                "stage27h-original-physical", current.provenance.reference,
-            ),
-            grant_real_world=True,
-            acknowledge_dev_unverified_principal=True,
-            pulse_seconds=(
-                gait_choice.pulse_seconds if gait_choice is not None else 0.15
-            ),
-            precision_gait=(
-                gait_choice.gait_mode if gait_choice is not None else None
-            ),
-            evidence_timeout_s=15.0,
-            pre_native_evidence=capture_reserved,
-            allow_prior_terminal_place_actions=idx > 0,
-            settlement_probe_limit=stop_probe_quota,
-        )
-        if not original_prepared or original_prepared["original_action_id"] != binding.action_id:
-            raise Stage27RealWorldRefusal("Stage27h original PREPARED missing")
-        # Original WAL closes before a second Action can ever be proposed.
-        post = loop.observe_terminal_action(
-            receipt, source_probe=current, now_ns=time.monotonic_ns(),
-        )
-        readback = _native_place_wire_readback(
-            native_audit, session_id=native_id, parent=binding.action_id,
-            new_probe_seq=current.seq,
-            ack_seqs=(receipt.look_ack.seq, receipt.start_ack.seq,
-                      receipt.stop_ack.seq),
-            stop_probe_seqs=(receipt.initial_stop_probe.seq,
-                             receipt.first_stable_probe.seq,
-                             receipt.settled_probe.seq),
-            sneak_ack_seq=(
-                receipt.gait_control_ack.seq
-                if receipt.gait_control_ack is not None else None
-            ),
-        )
-        all_settling_readback = _stage27h_all_settling_stdout_readback(
-            native_audit, session_id=native_id,
-            stop_seq=receipt.stop_ack.seq,
-            probes=receipt.all_stop_probes,
-        )
-        paper_after = paper.read_owned_log(paper.owned_session_id)
-        _freeze_owned_paper_source(
-            evidence, f"stage27h-Paper-post-{idx + 1}.log", paper_after,
-        )
-        p0, p1 = current.snapshot.position, receipt.settled_probe.snapshot.position
-        correlated = correlate_owned_paper_position(
-            before=paper_before, after=paper_after,
-            paper_session_id=paper.owned_session_id, world_uuid=world_uuid,
-            native_start_xyz=(p0.x, p0.y, p0.z),
-            native_settled_xyz=(p1.x, p1.y, p1.z),
-        )
-        action_receipts.append({
-            "action": receipt.action_id,
-            "invocation_ref": receipt.original_invocation_ref,
-            "preset_ref": receipt.original_preset_ref,
-            "target_contract_ref": receipt.target_contract_ref,
-            "native_source": readback,
-            "all_stop_probes_native_stdout": all_settling_readback,
-            "stop_probe_reserved": stop_probe_quota,
-            "stop_probe_actual": len(receipt.all_stop_probes),
-            "observation_count_after_settlement": loop.observation_count,
-            "prepared_source": original_prepared,
-            "terminal_wal_status": receipt.journal_status,
-            "terminal_wal_digest": receipt.journal_sha256,
-            "original_native_probe_seq": current.seq,
-            "settled_native_probe_seq": receipt.settled_probe.seq,
-            "displacement_m": receipt.displacement_m,
-            "gait_mode": receipt.gait_mode,
-            "gait_ack_seq": (
-                receipt.gait_control_ack.seq
-                if receipt.gait_control_ack is not None else None
-            ),
-            "prebound_gait_choice": (
-                asdict(gait_choice) if gait_choice is not None else None
-            ),
-            "paper_correlational_position": correlated,
-            "l0_feedback": asdict(post),
-            "goal_success": False,
-            "skill_success": False,
-        })
-        last_settled_probe = receipt.settled_probe
-        result = post
-        if result.status != "L0_CONTINUE_MOVE":
-            break
-        previous = receipt.settled_probe
-        current = await _bounded_b_probe(session)
-        if current.session_id != native_id or current.seq <= previous.seq:
+        if model_after is not None:
+            require_stage27i_two_initial_calls(model_after)
+            if model_after != model_before:
+                raise Stage27RealWorldRefusal(
+                    "Stage27i extra model POST within original L0 loop"
+                )
+        if c_lane_stage27h_post_review and (
+            result.status != "L0_TARGET_REACHED_YIELD_EVALUATION"
+            or loop.action_count < 2
+            or last_settled_probe is None
+        ):
+            # Source remains on disk; no MODEL review on non-arrival.
+            # Do not automatically reissue even a terminal Action.
             raise Stage27RealWorldRefusal(
-                "Stage27h fresh next-motor WorldBody observation unavailable"
+                "C Stage27h L0 not at bounded Target: hold without model/Skill adoption"
             )
-        result = loop.pre_action(current, now_ns=time.monotonic_ns())
-    if result.status == "L0_CONTINUE_MOVE":
-        raise Stage27RealWorldRefusal("Stage27h L0 loop ended without evaluation")
-    peer_after = _peer_snapshot(owners["B"], allow_changed=True)
-    peer_after_evidence = (
-        _freeze_peer_b_snapshot(
-            evidence, label="after", snapshot=peer_after,
-        ) if precision_stage27i else None
-    )
-    if peer_after != peer_before:
-        raise Stage27RealWorldRefusal("Stage27h mutated original peer B")
-    lane.require_world_idle()
-    model_after = (
-        census_stage27i_model_http(evidence, lane=lane, tickets=tickets)
-        if precision_stage27i else None
-    )
-    model_after_evidence = (
-        freeze_stage27i_model_http(
-            evidence, label="after", snapshot=model_after,
-        ) if model_after is not None else None
-    )
-    if model_after is not None:
-        require_stage27i_two_initial_calls(model_after)
-        if model_after != model_before:
+        stage = "27I" if precision_stage27i else "27H"
+        status = {
+            "L0_TARGET_REACHED_YIELD_EVALUATION":
+                f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
+            "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
+                f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
+            "L0_NO_PROGRESS_YIELD_EVALUATION":
+                f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
+        }.get(result.status, f"REAL_STAGE{stage}_L0_UNREACHED_DEV")
+        original_skill = owner.skills.get(handoff.skill_execution_id)
+        if (
+            original_skill is None
+            or owner.intent.current_intent is None
+            or owner.intent.current_intent.intent_id != handoff.intent_id
+            or original_skill.intent_id != handoff.intent_id
+        ):
             raise Stage27RealWorldRefusal(
-                "Stage27i extra model POST within original L0 loop"
+                "Stage27h original Intent/Skill not retained for final hook result"
             )
-    if c_lane_stage27h_post_review and (
-        result.status != "L0_TARGET_REACHED_YIELD_EVALUATION"
-        or loop.action_count < 2
-        or last_settled_probe is None
-    ):
-        # Source remains on disk; no MODEL review on non-arrival.
-        # Do not automatically reissue even a terminal Action.
-        raise Stage27RealWorldRefusal(
-            "C Stage27h L0 not at bounded Target: hold without model/Skill adoption"
+        original_result = {
+            "classification": status,
+            "stage27i_precision_enabled": precision_stage27i,
+            # Explicit Stage25 parent-runner contract. A terminal Action has
+            # already been observed; this flag does NOT attest Skill/Goal success.
+            "physical_effect_observed": loop.action_count > 0,
+            "stage27_native_action_count": loop.action_count,
+            "self_a_selected_number": witnesses["A"].selected_number,
+            "self_a_status": witnesses["A"].l1_status,
+            "self_b_selected_number": witnesses["B"].selected_number,
+            "self_b_status": witnesses["B"].l1_status,
+            "original_peer_b_before": peer_before,
+            "original_peer_b_after": peer_after,
+            "stage27h_self_a_intent_current": owner.intent.current_intent.intent_id,
+            "stage27h_self_a_skill_state": original_skill.state.value,
+            "stage27h_elapsed_ms": (time.monotonic_ns() - loop.start_ns) / 1_000_000,
+            "original_world_uuid": world_uuid,
+            "original_world_epoch": world_epoch,
+            "original_paper_session": paper.owned_session_id,
+            "stage27h_original_intent": handoff.intent_id,
+            "stage27h_original_skill": handoff.skill_execution_id,
+            "stage27h_invocation_ref": handoff.invocation_ref,
+            "stage27h_preset_ref": handoff.preset_ref,
+            "stage27h_bound_model_initial_requests_expected": original_model_count,
+            "stage27h_additional_model_requests": (
+                0 if model_after is None or model_before is None
+                else model_after["request_count"] - model_before["request_count"]
+            ),
+            "stage27i_model_http_before": model_before,
+            "stage27i_model_http_after": model_after,
+            "stage27i_model_http_before_evidence": model_before_evidence,
+            "stage27i_model_http_after_evidence": model_after_evidence,
+            "stage27h_l0_action_count": loop.action_count,
+            "stage27h_l0_feedback": asdict(result),
+            "stage27h_original_action_witnesses": action_receipts,
+            "stage27h_peer_b_before": peer_before,
+            "stage27h_peer_b_after": peer_after,
+            "stage27i_peer_b_before_evidence": peer_before_evidence,
+            "stage27i_peer_b_after_evidence": peer_after_evidence,
+            "stage27h_goal_success": False,
+            "stage27h_skill_success": False,
+            "stage27h_operator_dev_template_not_autonomous": True,
+            "qual_and_science_attested": False,
+        }
+        if not c_lane_stage27h_post_review:
+            return original_result
+        # OPT-IN: original bounded L0 ended; unlike Stage27i, a separate
+        # read-only L1 review is permitted ONLY AFTER the original full WAL is
+        # terminal. A durable pre-review source is frozen before model POST.
+        from experiments.c_lane_stage27h_real_post_l0_review_dev import (
+            capture_stage27h_real_post_l0_readonly_review,
         )
-    stage = "27I" if precision_stage27i else "27H"
-    status = {
-        "L0_TARGET_REACHED_YIELD_EVALUATION":
-            f"REAL_STAGE{stage}_L0_TARGET_REACHED_NATIVE_OBSERVED_DEV",
-        "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION":
-            f"REAL_STAGE{stage}_L0_BUDGET_EXHAUSTED_DEV",
-        "L0_NO_PROGRESS_YIELD_EVALUATION":
-            f"REAL_STAGE{stage}_L0_NO_PROGRESS_DEV",
-    }.get(result.status, f"REAL_STAGE{stage}_L0_UNREACHED_DEV")
-    original_skill = owner.skills.get(handoff.skill_execution_id)
-    if (
-        original_skill is None
-        or owner.intent.current_intent is None
-        or owner.intent.current_intent.intent_id != handoff.intent_id
-        or original_skill.intent_id != handoff.intent_id
-    ):
-        raise Stage27RealWorldRefusal(
-            "Stage27h original Intent/Skill not retained for final hook result"
-        )
-    original_result = {
-        "classification": status,
-        "stage27i_precision_enabled": precision_stage27i,
-        # Explicit Stage25 parent-runner contract. A terminal Action has
-        # already been observed; this flag does NOT attest Skill/Goal success.
-        "physical_effect_observed": loop.action_count > 0,
-        "stage27_native_action_count": loop.action_count,
-        "self_a_selected_number": witnesses["A"].selected_number,
-        "self_a_status": witnesses["A"].l1_status,
-        "self_b_selected_number": witnesses["B"].selected_number,
-        "self_b_status": witnesses["B"].l1_status,
-        "original_peer_b_before": peer_before,
-        "original_peer_b_after": peer_after,
-        "stage27h_self_a_intent_current": owner.intent.current_intent.intent_id,
-        "stage27h_self_a_skill_state": original_skill.state.value,
-        "stage27h_elapsed_ms": (time.monotonic_ns() - loop.start_ns) / 1_000_000,
-        "original_world_uuid": world_uuid,
-        "original_world_epoch": world_epoch,
-        "original_paper_session": paper.owned_session_id,
-        "stage27h_original_intent": handoff.intent_id,
-        "stage27h_original_skill": handoff.skill_execution_id,
-        "stage27h_invocation_ref": handoff.invocation_ref,
-        "stage27h_preset_ref": handoff.preset_ref,
-        "stage27h_bound_model_initial_requests_expected": original_model_count,
-        "stage27h_additional_model_requests": (
-            0 if model_after is None or model_before is None
-            else model_after["request_count"] - model_before["request_count"]
-        ),
-        "stage27i_model_http_before": model_before,
-        "stage27i_model_http_after": model_after,
-        "stage27i_model_http_before_evidence": model_before_evidence,
-        "stage27i_model_http_after_evidence": model_after_evidence,
-        "stage27h_l0_action_count": loop.action_count,
-        "stage27h_l0_feedback": asdict(result),
-        "stage27h_original_action_witnesses": action_receipts,
-        "stage27h_peer_b_before": peer_before,
-        "stage27h_peer_b_after": peer_after,
-        "stage27i_peer_b_before_evidence": peer_before_evidence,
-        "stage27i_peer_b_after_evidence": peer_after_evidence,
-        "stage27h_goal_success": False,
-        "stage27h_skill_success": False,
-        "stage27h_operator_dev_template_not_autonomous": True,
-        "qual_and_science_attested": False,
-    }
-    if not c_lane_stage27h_post_review:
-        return original_result
-    # OPT-IN: original bounded L0 ended; unlike Stage27i, a separate
-    # read-only L1 review is permitted ONLY AFTER the original full WAL is
-    # terminal. A durable pre-review source is frozen before model POST.
-    from experiments.c_lane_stage27h_real_post_l0_review_dev import (
-        capture_stage27h_real_post_l0_readonly_review,
-    )
 
-    assert last_settled_probe is not None
-    review = await capture_stage27h_real_post_l0_readonly_review(
-        loop=loop, step=result,
-        first_action_probe=first_action_probe,
-        last_settled_probe=last_settled_probe,
-        physical=physical, lane=lane, bridge=bridge,
-        evidence=evidence, world_uuid=world_uuid,
-        original_native_stdout=native_audit,
-        fresh_probe=lambda: _bounded_b_probe(session),
-    )
-    if (
-        review["original_wal_sha256"] != loop.last_wal_digest
-        or review["original_skill_state"] != "started"
-        or review["original_action_ids"] != [
-            r["action"] for r in action_receipts
-        ]
-        or owners["A"].skills[handoff.skill_execution_id].state.value != "started"
-        or review["c1_memory_written"] is not False
-        or review["action_issue_authorized"] is not False
-    ):
-        raise Stage27RealWorldRefusal(
-            "post-L0 bounded review cannot change original Skill/WAL/authority"
+        assert last_settled_probe is not None
+        review = await capture_stage27h_real_post_l0_readonly_review(
+            loop=loop, step=result,
+            first_action_probe=first_action_probe,
+            last_settled_probe=last_settled_probe,
+            physical=physical, lane=lane, bridge=bridge,
+            evidence=evidence, world_uuid=world_uuid,
+            original_native_stdout=native_audit,
+            fresh_probe=lambda: _bounded_b_probe(session),
         )
-    peer_final = _peer_snapshot(owners["B"], allow_changed=True)
-    if peer_final != peer_before:
-        raise Stage27RealWorldRefusal(
-            "post-L0 model review changed original peer B"
-        )
-    return {
-        **original_result,
-        "stage27h_additional_model_requests": 1,
-        "c_lane_stage27h_post_l0_review": review,
-    }
+        if (
+            review["original_wal_sha256"] != loop.last_wal_digest
+            or review["original_skill_state"] != "started"
+            or review["original_action_ids"] != [
+                r["action"] for r in action_receipts
+            ]
+            or owners["A"].skills[handoff.skill_execution_id].state.value != "started"
+            or review["c1_memory_written"] is not False
+            or review["action_issue_authorized"] is not False
+        ):
+            raise Stage27RealWorldRefusal(
+                "post-L0 bounded review cannot change original Skill/WAL/authority"
+            )
+        peer_final = _peer_snapshot(owners["B"], allow_changed=True)
+        if peer_final != peer_before:
+            raise Stage27RealWorldRefusal(
+                "post-L0 model review changed original peer B"
+            )
+        return {
+            **original_result,
+            "stage27h_additional_model_requests": 1,
+            "c_lane_stage27h_post_l0_review": review,
+        }
+
+    finally:
+        if c_lane_stage27h_post_review:
+            _freeze_stage27h_l0_diagnostic(
+                evidence, loop, last_step, world_uuid=world_uuid,
+                error=sys.exc_info()[1],
+            )
 
 
 async def stage27i_real_a_motor_hook(**kwargs) -> dict[str, object]:
