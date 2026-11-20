@@ -354,9 +354,9 @@ class MineflayerTerrainCell:
             if (
                 not isinstance(box, tuple) or len(box) != 6
                 or any(type(v) not in (int, float) or not math.isfinite(v) for v in box)
-                or not (x <= box[0] < box[3] <= x + 1)
-                or not (y <= box[1] < box[4] <= y + 1)
-                or not (z <= box[2] < box[5] <= z + 1)
+                or not (x - 1 <= box[0] < box[3] <= x + 2)
+                or not (y - 1 <= box[1] < box[4] <= y + 2)
+                or not (z - 1 <= box[2] < box[5] <= z + 2)
             ):
                 raise MineflayerAdapterProtocolError("invalid SENSE collision box")
 
