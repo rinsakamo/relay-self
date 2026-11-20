@@ -76,6 +76,8 @@ from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
+    load_persistent_cognition,
+    save_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import (
@@ -152,6 +154,16 @@ def _immutable_cognition(
     if path.read_bytes() != original or file_sha256(path) != file_sha256(source):
         raise RealResidentPresenceRefusal("first cognition snapshot readback mismatch")
     return {"path": str(path), "sha256": file_sha256(path)}
+
+
+def _initialize_d9_cognition(owner: CheckpointedCognitiveOwner) -> None:
+    """Persist a newly created original Owner before its first D9 round."""
+    path = owner.files.cognition_file
+    if path.exists() or path.is_symlink():
+        raise RealResidentPresenceRefusal("D9 initial cognition already exists")
+    save_persistent_cognition(path, owner.retained)
+    if path.is_symlink() or load_persistent_cognition(path) != owner.retained:
+        raise RealResidentPresenceRefusal("D9 initial cognition readback mismatch")
 
 
 async def _bounded_b_probe(
@@ -1129,6 +1141,8 @@ async def run_real_resident_presence(
                 ),
                 physical_supervisor=ActionSupervisor(),
             )
+            if d9_source_exploration_dev:
+                _initialize_d9_cognition(originals[sid])
         cognition = ResidentCognitiveWorkOwner(originals)
         lane = None
         if b_autonomous_l1_dev or d9_source_exploration_dev:

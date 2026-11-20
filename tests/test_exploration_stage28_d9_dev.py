@@ -439,3 +439,25 @@ def test_d9_pre_inference_gate_runs_after_logout_and_b_probe():
     assert line_for_name("_bounded_b_probe") < line_for_name(
         "require_pre_inference_resident_presence"
     ) < line_for_name("run_d9_original_bounded_l1")
+
+
+def test_new_d9_owner_persists_initial_state_before_first_round(tmp_path):
+    from experiments.stage28_d9_real_source_dev import (
+        RealResidentPresenceRefusal,
+        _initialize_d9_cognition,
+    )
+
+    owners, resident, probes = _fixture(tmp_path)
+    owner = owners["B"]
+    owner.files.cognition_file.unlink()
+    with pytest.raises(D9OriginalL1Hold, match="source stale"):
+        form_d9_native_exploration_round(
+            owner, resident, probes["B"], world_session_id="paper-owned-d9",
+        )
+    _initialize_d9_cognition(owner)
+    assert load_persistent_cognition(owner.files.cognition_file) == owner.retained
+    form_d9_native_exploration_round(
+        owner, resident, probes["B"], world_session_id="paper-owned-d9",
+    )
+    with pytest.raises(RealResidentPresenceRefusal, match="already exists"):
+        _initialize_d9_cognition(owner)
