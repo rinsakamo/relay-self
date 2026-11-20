@@ -17,10 +17,10 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     LiveCognitionCheckpointError,
 )
-from relay_self.persistent_cognition import Memory
 from relay_self.cognitive_minimal_dev import PatternKind, Predicate
-from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
 from relay_self.common_io import ScopeRef
+from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
+from relay_self.persistent_cognition import Memory
 
 
 class ResidentCognitiveWorkError(RuntimeError):

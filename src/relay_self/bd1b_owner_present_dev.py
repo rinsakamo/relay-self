@@ -6,7 +6,11 @@ from relay_self.common_io import ScopeRef
 from relay_self.innate_schema import SchemaSnapshot
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.three_self_present import (
-    EpistemicStatus, Lens, LensClaim, PresentFrame, project_present_frame,
+    EpistemicStatus,
+    Lens,
+    LensClaim,
+    PresentFrame,
+    project_present_frame,
     project_three_self,
 )
 

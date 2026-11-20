@@ -8,7 +8,10 @@ from relay_self.bd1b_owner_source_dev import BD1bSourceHold
 from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
 from relay_self.innate_schema import SchemaActivation, SchemaMode, SchemaModuleSpec, SchemaSnapshot
 from relay_self.provenance import Provenance
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError, ResidentCognitiveWorkOwner
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from test_bd1b_owner_source_dev import _files, _read
 from test_stage28c2c_fresh_recovered_l1_dev import _ready
 
