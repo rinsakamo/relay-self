@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -10,6 +12,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerDecodedMessage,
     MineflayerLaunchConfig,
+    MineflayerObservation,
     MineflayerStreamDecoder,
     encode_attack_entity,
     encode_clear_controls,
@@ -43,6 +46,22 @@ class MineflayerEffectAdmissionError(MineflayerProcessIOError):
     """A physical effect was refused before sending to the native bridge."""
 
 
+@dataclass(frozen=True, slots=True)
+class PassiveAggregation:
+    """Cumulative omission bounds; timestamps are local receipt, not native time.
+
+    The sequence interval may contain delivered messages; only the count is
+    exact. Neither this summary nor the latest snapshot reconstructs history.
+    """
+    source: str
+    first_replaced_seq: int
+    last_replaced_seq: int
+    latest_seq: int
+    replaced_count: int
+    first_received_monotonic: float
+    latest_received_monotonic: float
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -63,6 +82,11 @@ class MineflayerProcessSession:
         self._dispatch_observer: Callable[[MineflayerDecodedMessage], None] | None = None
         self._dispatch_error: Exception | None = None
         self.observer_error: Exception | None = None
+        self._compact_safe: Callable[[], bool] | None = None
+        self._preserve_all = False
+        self.backpressure_hold = False
+        self.passive_aggregation: PassiveAggregation | None = None
+        self._tail_received_monotonic = 0.0
 
     @classmethod
     async def launch(
@@ -227,6 +251,7 @@ class MineflayerProcessSession:
 
     def start_dispatcher(
         self, observer: Callable[[MineflayerDecodedMessage], None], *, capacity: int = 256,
+        compact_safe: Callable[[], bool] | None = None,
     ) -> None:
         """Start one reader; backpressure preserves every owner message in order.
 
@@ -235,25 +260,67 @@ class MineflayerProcessSession:
         """
         if (self._started is None or self._dispatch_task is not None
                 or self._receive_active or not callable(observer)
-                or type(capacity) is not int or capacity < 1):
+                or type(capacity) is not int or capacity < 1
+                or (compact_safe is not None and not callable(compact_safe))):
             raise MineflayerProcessIOError("invalid or already active native dispatcher")
         self._dispatch_queue = asyncio.Queue(maxsize=capacity)
         self._dispatch_observer = observer
+        self._compact_safe = compact_safe
         self._dispatch_task = asyncio.create_task(self._dispatch())
 
     async def _dispatch(self) -> None:
         assert self._dispatch_queue is not None
         assert self._dispatch_observer is not None
+        batch = 0
         try:
             while True:
                 message = await self._read_native()
+                received_at = time.monotonic()
+                batch += 1
+                if batch == 64:
+                    batch = 0
+                    await asyncio.sleep(0)
                 try:
                     self._dispatch_observer(message)
                 except Exception as exc:
                     self.observer_error = exc
-                await self._dispatch_queue.put(message)
+                if self._dispatch_queue.full() and self._can_compact(message):
+                    tail = self._dispatch_queue._queue[-1]
+                    if self._passive(tail):
+                        prior = self.passive_aggregation
+                        self.passive_aggregation = PassiveAggregation(
+                            source=message.session_id,
+                            first_replaced_seq=prior.first_replaced_seq if prior else tail.seq,
+                            last_replaced_seq=tail.seq, latest_seq=message.seq,
+                            replaced_count=(prior.replaced_count if prior else 0) + 1,
+                            first_received_monotonic=(prior.first_received_monotonic if prior
+                                                      else self._tail_received_monotonic),
+                            latest_received_monotonic=received_at,
+                        )
+                        self._dispatch_queue._queue[-1] = message
+                        self._tail_received_monotonic = received_at
+                        continue
+                self.backpressure_hold = self._dispatch_queue.full()
+                try:
+                    await self._dispatch_queue.put(message)
+                    self._tail_received_monotonic = received_at
+                finally:
+                    self.backpressure_hold = False
         except Exception as exc:
             self._dispatch_error = exc
+
+    @staticmethod
+    def _passive(message: object) -> bool:
+        return (isinstance(message, MineflayerObservation)
+                and message.kind in {"move", "entities"} and message.request_id is None)
+
+    def _can_compact(self, message: object) -> bool:
+        if self._preserve_all or self._compact_safe is None or not self._passive(message):
+            return False
+        if not self._compact_safe():
+            self._preserve_all = True
+            return False
+        return True
 
     async def _read_native(self) -> MineflayerDecodedMessage:
         """The only JSONL decoder and raw-source-audit path."""
@@ -388,6 +455,13 @@ class MineflayerProcessSession:
                     pass
 
     async def _send(self, line: str) -> None:
+        # Even without the optional admission gate, a native effect ends the
+        # passive-only period permanently for this session.
+        try:
+            if json.loads(line).get("type") == "effect":
+                self._preserve_all = True
+        except (ValueError, AttributeError):
+            pass
         gate = getattr(self, "_effect_admission", None)
         if gate is not None:
             # Check at final native stdin, not only at send_* wrappers.
@@ -408,6 +482,8 @@ class MineflayerProcessSession:
                 if type(action_id) is not str or not action_id:
                     raise MineflayerEffectAdmissionError("missing physical action ID")
                 gate(self.started.session_id, effect, action_id)
+                # Keep every subsequent observation, including delayed settling.
+                self._preserve_all = True
             elif command_type not in {"observe", "sense_terrain", "shutdown"}:
                 raise MineflayerEffectAdmissionError(
                     "unknown native command during coordinated checkpoint mode"

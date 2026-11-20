@@ -306,7 +306,11 @@ class OwnedResidentPhysicalBridge:
             previous_seq = message.seq
             self._sense[self_id] = frame
 
-        session.start_dispatcher(observe)
+        session.start_dispatcher(
+            observe,
+            compact_safe=lambda: (not self.physical.closed
+                                  and not self.physical.active_action_ids),
+        )
 
     def _sense_current(self, self_id: str, session: MineflayerProcessSession, ticket: LoginTicket) -> bool:
         view = self.lifecycle.view(self_id)
@@ -338,6 +342,7 @@ class OwnedResidentPhysicalBridge:
         world = self.lifecycle.world
         view = self.lifecycle.view(self_id)
         if (view.status is not Presence.ONLINE or session.process_returncode is not None
+                or session.observer_error is not None or session._dispatch_error is not None
                 or view.native_session_id != session.started.session_id
                 or self.owners[self_id].native_session_id != session.started.session_id
                 or self.owners[self_id].fresh_native_observation_required

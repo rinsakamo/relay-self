@@ -146,9 +146,36 @@ scope come from the verified login, not from the callback. Access is fenced by
 the current owner/session/World state and logout or quarantine clears the frame.
 This does not authenticate a Paper World UUID or establish freshness by time.
 
-The owner queue is loss-preserving and applies backpressure when full. It can
-therefore stop further native reading and SENSE updates: continuous perception
-under owner stalls remains HOLD. The latest frame is bounded, is not persistent
+The E2a-3A owner queue was loss-preserving and stopped native reading when full.
+The E2a-3B change below introduces limited passive aggregation. The latest frame is bounded, is not persistent
 Memory or a consumer integration, and does not establish a physical body AABB
 or route clearance. Rejoin/restore paths outside this opt-in resident login
 have not been integrated or qualified.
+
+## E2a-3B bounded dispatch (CPU/offline)
+
+The opt-in resident dispatcher keeps one native reader and the original strict
+sequence decoder and raw source audit. Its 256-entry owner queue may replace
+only the trailing uncorrelated `move` or `entities` snapshot when full, while
+the shared physical admission has no active lease and is open. Other messages
+retain their original order. Before a physical effect is sent, and permanently
+thereafter for that native session, all messages are preserved; encountering an
+active lease or closed admission at a compaction boundary also permanently
+disables compaction. This conservative boundary includes STOP and settling; it
+does not attempt to infer when Action evidence is no longer needed.
+
+`passive_aggregation` is a bounded cumulative summary: source session, first
+and last replaced sequence, latest retained sequence, number replaced, and
+local monotonic receipt times. The sequence bounds need not be contiguous and
+cannot reconstruct the discarded events. The native protocol supplies no
+observation timestamp; receipt time is not World time. The full raw stream is
+preserved only when the existing raw source audit is enabled. SENSE retains one
+latest frame. A callback failure or dispatcher failure invalidates current
+SENSE. Queue saturation on a non-compactable message sets `backpressure_hold`
+while the one reader waits; the pending decoded message is retained. Sustained
+lossless operation beyond that boundary is not claimed. Native pipe and child
+buffers are outside the Python queue bound.
+
+The offline integration exercises 1,000 rapid passive events with 256 owner
+slots, 744 replacements, a correlated probe and STOP ACK. This is a finite
+synthetic stream, not a duration, CPU utilization or real World qualification.

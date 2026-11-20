@@ -653,3 +653,23 @@ def test_dispatcher_reports_sequence_gap_after_delivering_prior_message() -> Non
             await session.receive()
 
     asyncio.run(scenario())
+
+
+def test_dispatcher_stops_coalescing_when_action_is_active() -> None:
+    async def scenario() -> None:
+        rows = []
+        for seq in range(1, 6):
+            item = json.loads(observation_line())
+            item.update(seq=seq, kind="move")
+            rows.append((json.dumps(item) + "\n").encode())
+        process = FakeProcess([started_line(), *rows])
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        session.start_dispatcher(lambda _: None, capacity=2, compact_safe=lambda: False)
+        await asyncio.sleep(0)
+        assert session.backpressure_hold
+        assert session.passive_aggregation is None
+        assert [(await session.receive()).seq for _ in rows] == list(range(1, 6))
+        assert session._preserve_all
+
+    asyncio.run(scenario())
