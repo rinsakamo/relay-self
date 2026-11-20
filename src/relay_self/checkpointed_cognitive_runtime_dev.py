@@ -246,6 +246,10 @@ class CognitionOwnerCohort:
                     pending_question_refs=tuple(sorted(owner.pending_questions)),
                 )
                 retained = owner.retained
+                if retained.exploration_continuity is not None:
+                    questions = {q.question_ref for q in retained.exploration_continuity.questions if q.open}
+                    if not questions.issubset(owner.pending_questions):
+                        raise LiveCognitionCheckpointError("open exploration Question missing from owner cut")
                 if retained.pattern_registry is not None and retained.pattern_registry != cut.pattern_registry:
                     raise LiveCognitionCheckpointError("cognition/owner registry mismatch")
                 retained = replace(retained, pattern_registry=cut.pattern_registry)
@@ -265,7 +269,7 @@ class CognitionOwnerCohort:
             save_persistent_cognition(owner.files.cognition_file, retained)
             if load_persistent_cognition(owner.files.cognition_file) != retained:
                 raise LiveCognitionCheckpointError("cognition write/readback mismatch")
-            if cut.pattern_registry.accepted_presets:
+            if cut.pattern_registry.accepted_presets or retained.exploration_continuity is not None:
                 cut = replace(cut, cognition_sha256=hashlib.sha256(
                     owner.files.cognition_file.read_bytes()).hexdigest())
             save_self_owner_cut(owner_path, cut)

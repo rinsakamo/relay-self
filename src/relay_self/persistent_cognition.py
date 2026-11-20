@@ -6,9 +6,6 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from relay_self.cognitive_minimal_dev import PatternRegistry
-
 from relay_self.appraisal import (
     AppraisalAspect,
     AppraisalBias,
@@ -18,7 +15,12 @@ from relay_self.appraisal import (
 )
 from relay_self.provenance import InvalidProvenanceData, Provenance
 
+if TYPE_CHECKING:
+    from relay_self.cognitive_minimal_dev import PatternRegistry
+    from relay_self.exploration_continuity_dev import ExplorationContinuity
+
 CURRENT_SCHEMA_VERSION = 3
+EXPLORATION_SCHEMA_VERSION = 4  # opt-in D3; historic v3 byte layout unchanged
 APPRAISAL_SCHEMA_VERSION = 2
 LEGACY_SCHEMA_VERSION = 1
 
@@ -97,6 +99,7 @@ class PersistentCognition:
     memories: tuple[Memory, ...] = ()
     appraisal_dispositions: tuple[AppraisalDisposition, ...] = ()
     pattern_registry: PatternRegistry | None = None
+    exploration_continuity: "ExplorationContinuity | None" = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, IdentitySpecification):
@@ -137,7 +140,6 @@ class PersistentCognition:
                     f"{disposition.key}"
                 )
             appraisal_seen.add(disposition.key)
-
         if self.pattern_registry is not None:
             from relay_self.preset_registry_checkpoint import (
                 PresetCheckpointRefusal,
@@ -152,6 +154,15 @@ class PersistentCognition:
                 raise InvalidPersistentCognitionData(
                     "foreign or malformed persisted Self Schema registry"
                 ) from exc
+        if self.exploration_continuity is not None:
+            from relay_self.exploration_continuity_dev import ExplorationContinuity
+
+            if (not isinstance(self.exploration_continuity, ExplorationContinuity)
+                    or self.exploration_continuity.self_id != self.identity.self_id):
+                raise InvalidPersistentCognitionData(
+                    "foreign or malformed Self-owned exploration continuity"
+                )
+
     def retain_schema_registry(
         self, registry: PatternRegistry, *,
         expected_revision: int | None = None,
@@ -174,6 +185,29 @@ class PersistentCognition:
         if self.pattern_registry is None and expected_revision not in (None, -1):
             raise InvalidPersistentCognitionData("unexpected initial Schema revision")
         return replace(self, pattern_registry=registry)
+
+    def retain_exploration_continuity(
+        self, state: "ExplorationContinuity", *, expected_revision: int,
+    ) -> "PersistentCognition":
+        """Owner CAS on the EXISTING cognition snapshot, never a second writer.
+
+        The existing resident owner serializes this revision with its other
+        cognition writes and persists via save_persistent_cognition. No GPU or
+        physical request is permitted by merely retaining Question history.
+        """
+        from relay_self.exploration_continuity_dev import ExplorationContinuity
+
+        previous = self.exploration_continuity
+        old_revision = 0 if previous is None else previous.revision
+        if (not isinstance(state, ExplorationContinuity)
+                or state.self_id != self.identity.self_id
+                or type(expected_revision) is not int
+                or expected_revision != old_revision
+                or state.revision != old_revision + 1):
+            raise InvalidPersistentCognitionData(
+                "stale or foreign exploration continuity owner revision"
+            )
+        return replace(self, exploration_continuity=state)
 
     def retain_memory(self, memory: Memory) -> "PersistentCognition":
         """Return a new snapshot after an already-governed Memory is accepted."""
@@ -306,8 +340,11 @@ def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, An
     from relay_self.preset_registry_checkpoint import encode_pattern_registry
 
     return {
-        "schema_version": (CURRENT_SCHEMA_VERSION if cognition.pattern_registry is not None
-                           else APPRAISAL_SCHEMA_VERSION),
+        "schema_version": (
+            EXPLORATION_SCHEMA_VERSION if cognition.exploration_continuity is not None
+            else CURRENT_SCHEMA_VERSION if cognition.pattern_registry is not None
+            else APPRAISAL_SCHEMA_VERSION
+        ),
         "identity": {
             "self_id": cognition.identity.self_id,
             "directives": list(cognition.identity.directives),
@@ -328,20 +365,39 @@ def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, An
             _encode_appraisal_disposition(disposition)
             for disposition in cognition.appraisal_dispositions
         ],
-        **({} if cognition.pattern_registry is None else {
-            "pattern_registry": encode_pattern_registry(
+        **({} if cognition.pattern_registry is None and cognition.exploration_continuity is None else {
+            "pattern_registry": None if cognition.pattern_registry is None else encode_pattern_registry(
                 cognition.pattern_registry, self_id=cognition.identity.self_id),
+        }),
+        **({} if cognition.exploration_continuity is None else {
+            "exploration_continuity": _encode_exploration_continuity(
+                cognition.exploration_continuity,
+            ),
         }),
     }
 
 
+def _encode_exploration_continuity(state: "ExplorationContinuity") -> dict[str, Any]:
+    from relay_self.exploration_continuity_dev import encode_exploration_continuity
+
+    return encode_exploration_continuity(state)
+
+
 def _decode_persistent_cognition(value: object) -> PersistentCognition:
+    from relay_self.preset_registry_checkpoint import (
+        PresetCheckpointRefusal,
+        decode_pattern_registry,
+    )
+
     payload = _require_mapping("persistent cognition snapshot", value)
 
     version = payload.get("schema_version")
     if type(version) is not int:
         raise InvalidPersistentCognitionData("schema_version must be an integer")
-    if version not in {LEGACY_SCHEMA_VERSION, APPRAISAL_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION}:
+    if version not in {
+        LEGACY_SCHEMA_VERSION, APPRAISAL_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION,
+        EXPLORATION_SCHEMA_VERSION,
+    }:
         raise UnsupportedPersistentCognitionVersion(
             f"unsupported persistent cognition schema version: {version}"
         )
@@ -351,6 +407,8 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
         expected_keys.add("appraisal_dispositions")
     if version >= CURRENT_SCHEMA_VERSION:
         expected_keys.add("pattern_registry")
+    if version == EXPLORATION_SCHEMA_VERSION:
+        expected_keys.add("exploration_continuity")
     _require_exact_keys(
         "persistent cognition snapshot",
         payload,
@@ -382,19 +440,35 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
 
     registry = None
     if version >= CURRENT_SCHEMA_VERSION and payload["pattern_registry"] is not None:
-        from relay_self.preset_registry_checkpoint import (
-            PresetCheckpointRefusal,
-            decode_pattern_registry,
-        )
         try:
-            registry = decode_pattern_registry(payload["pattern_registry"], expected_self_id=identity.self_id)
+            registry = decode_pattern_registry(
+                payload["pattern_registry"], expected_self_id=identity.self_id,
+            )
         except PresetCheckpointRefusal as exc:
-            raise InvalidPersistentCognitionData("invalid persisted Self Schema registry") from exc
+            raise InvalidPersistentCognitionData(
+                "invalid persisted Self Schema registry"
+            ) from exc
+    continuity = None
+    if version == EXPLORATION_SCHEMA_VERSION:
+        from relay_self.exploration_continuity_dev import (
+            ExplorationContinuityError,
+            decode_exploration_continuity,
+        )
+
+        try:
+            continuity = decode_exploration_continuity(
+                payload["exploration_continuity"], expected_self_id=identity.self_id,
+            )
+        except ExplorationContinuityError as exc:
+            raise InvalidPersistentCognitionData(
+                "invalid Self-owned Question/L2 continuation"
+            ) from exc
     return PersistentCognition(
         identity=identity,
         memories=memories,
         appraisal_dispositions=appraisal_dispositions,
         pattern_registry=registry,
+        exploration_continuity=continuity,
     )
 
 def _decode_identity(value: object) -> IdentitySpecification:

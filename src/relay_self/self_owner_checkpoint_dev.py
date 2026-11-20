@@ -530,6 +530,12 @@ def _load_copied_cohort(
             and cognition.pattern_registry != cut.pattern_registry
         ) or (cut.cognition_sha256 is not None and cognition.pattern_registry is None):
             raise SelfOwnerCheckpointError("same-generation cognition/owner registry mismatch")
+        if cognition.exploration_continuity is not None:
+            if cut.cognition_sha256 is None:
+                raise SelfOwnerCheckpointError("exploration cognition requires schema2 owner cut")
+            open_questions = {q.question_ref for q in cognition.exploration_continuity.questions if q.open}
+            if not open_questions.issubset(cut.pending_question_refs):
+                raise SelfOwnerCheckpointError("open exploration Question missing from owner cut")
         cuts.append(cut)
     cohort = tuple(cuts)
     verify_peer_cohort(
