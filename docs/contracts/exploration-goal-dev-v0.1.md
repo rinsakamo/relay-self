@@ -363,3 +363,81 @@ World classification additionally requires operator-owned process and
 independent raw witness observations at local DEV time. D10 must remain
 REAL_WORLD_NOT_RUN / REAL_GEMMA_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN
 until that separate source review is actually performed.
+
+## D11 — source-qualified inert restore handoff, then LOCAL real World DEV
+
+D11 adds `experiments/stage28_d11_prepare_inert_handoff_dev.py` to
+connect the existing D10 **external, second-process** audit to the
+original D8 B-owned restored World/A+B reJOIN runner. It is a CPU-only
+inert fork handoff. It launches **no** Paper, Node, GPU model, L2 or Action.
+D10's original raw sources and external independent audit are recomputed
+**before** any restore directory is created. New D8 eight-field pins are
+published **only after** D8 itself validates the newly restored cohort.
+Every output is exclusive-create; failed restores are frozen rather than
+silently deleted or retried. This is not SCIENCE/QUAL authorization.
+
+### Local operator sequence (new D9 source, then D11)
+
+Use the exact D10/D11 stacked branch and verify its exact HEAD and CI.
+The user's Minecraft EULA and real World DEV grants are already approved.
+Use the previously successful Stage24g llama-server bootstrap procedure:
+discover/check real GGUF SHA, resident owned PID, RTX3060 GPU mapping,
+listening HTTP endpoint and **one idle slot**; start the owner-matched
+server yourself if necessary. Never infer actual PID/GPU from CLI flags.
+Use official pinned Paper 1.21.8 build 60, pinned plugin and current
+original B Native/Owner. An unavailable or busy GPU results in
+`PRE_WORLD_HOLD`, not a model substitute.
+
+1. Run exactly one D9 source producer with
+   `--d9-source-exploration-dev --typed-owner-cut-dev --grant-real-llm`
+   and `--eula-accepted --real-world-dev-grant`; pass verified
+   `--gguf-path --llama-pid --llama-endpoint --systemone-endpoint --model`
+   as well as pinned `--paper-jar --paper-sha256 --plugin-jar
+   --plugin-sha256 --scratch-parent`. Do **not** pass the B legacy MOVE
+   or autonomous-L1 flags. Record real PID/source/GPU/HTTP/Paper native
+   raw output in the original evidence directory and stop all children.
+2. Run D10 `stage28_d10_seal_original_dev` once on the original
+   `typed-world-self-generations/g-...` with actual World UUID and source
+   branch. Then run D10 `stage28_d10_independent_source_audit_dev` in a
+   **new process** using the emitted SHA256SUMS digest, file count and
+   real original COMMITTED digest. It must produce an external,
+   unmodified `d10-independent-audit.json` and its SHA256.
+   If the model selected DEFER/UNRESOLVED, keep that result and HOLD.
+   Never manufacture an L2 reservation to pass the D7/D10 gate.
+3. In another new Python process, inspect the sealed source using
+   `python -m experiments.stage28_d11_prepare_inert_handoff_dev`
+   with `--inspect-only --evidence-dir EVIDENCE --generation GENERATION
+   --manifest-sha256 SEALED_SHA --manifest-files SEALED_COUNT
+   --world-id WORLD_UUID --source-branch ORIGINAL_BRANCH
+   --committed-sha256 ORIGINAL_COMMITTED_SHA`. No output directories
+   or World processes may be created at this step.
+4. Repeat the same command with `--prepare-once` instead of
+   `--inspect-only`, and add `--restored FRESH_EXTERNAL_FORK
+   --restore-id NEW_UNIQUE_RESTORE_ID
+   --source-pins-json FRESH_EXTERNAL_PINS_JSON`. This rechecks D10 bytes
+   and external audit first, creates the inert World+3 Paper dimensions+
+   A/B cognitive cohort **once**, and only publishes the D8 source
+   pins after successful D8 original-source inspection.
+5. Run `python -m experiments.stage28_d8_real_rejoin_dev --inspect-only`
+   with `--generation GENERATION --restored FRESH_EXTERNAL_FORK
+   --stage28b-evidence EVIDENCE --source-pins-json FRESH_EXTERNAL_PINS_JSON
+   --paper-jar PAPER_JAR --plugin-jar PLUGIN_JAR --eula-accepted`.
+   Only if that read-only command passes, invoke the **same** original
+   D8 runner with `--execute-once --real-world-dev-grant`, plus fresh
+   `--execution-dir` and `--evidence-dir`; this is a NEW isolated
+   restored Paper/native A/B real World DEV attempt, no model POST/Action.
+6. Once the runner has exited and all its owned processes are stopped,
+   execute `python -m experiments.stage28_d8_independent_rejoin_audit_dev`
+   in a new independent process with `--result` (actual captured
+   run receipt), `--generation`, `--restored`, `--stage28b-evidence`,
+   `--source-pins-json` and `--execution-dir`. Save final audit raw
+   output, SHA256, PID/session/world/clock receipts and classifications.
+
+D11 is **not** permission for prior L2 replay, physical issue, a new
+post-reJOIN L1 request, synthetic reservation, automatic retry or a
+60-second live autosave claim. D9 selection 1 and D8 reJOIN are distinct
+observations, with model and World process provenance individually
+reported. No GitHub Actions success is equivalent to a real Paper/Gemma
+measurement. Any incomplete raw witness, stale epoch, mismatched
+manifest/PID, nonterminal native process, expired GPU slot, or uncertain
+cleanup is `HOLD` without relabeling history.
