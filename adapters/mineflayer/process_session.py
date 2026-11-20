@@ -276,6 +276,7 @@ class MineflayerProcessSession:
             while True:
                 message = await self._read_native()
                 received_at = time.monotonic()
+                self._observer_received_monotonic = received_at
                 batch += 1
                 if batch == 64:
                     batch = 0

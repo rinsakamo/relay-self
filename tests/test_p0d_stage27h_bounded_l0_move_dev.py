@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -93,6 +94,40 @@ async def _start(f, lane):
         physical=f.physical, world_epoch=pre.world_epoch, start_ns=100,
     )
     return pre, handoff, former, current, loop
+
+
+def test_stage27h_reads_owner_sense_without_granting_action(tmp_path):
+    async def scenario(f, lane, server):
+        f.bridge.enable_sense = True
+        launch = f.bridge.launch
+
+        async def launch_with_dispatch(config):
+            session = await launch(config)
+            session.observer_error = None
+            session._dispatch_error = None
+
+            def start_dispatcher(observer, *, compact_safe):
+                session.observer = observer
+
+            session.start_dispatcher = start_dispatcher
+            return session
+
+        f.bridge.launch = launch_with_dispatch
+        pre, handoff, former, current, loop = await _start(f, lane)
+        session = f.bridge.sessions[f.names[0]]
+        session._observer_received_monotonic = time.monotonic()
+        session.observer(session._observation("move", None))
+        loop.sense_bridge = f.bridge
+        step = loop.pre_action(current, now_ns=150)
+        assert step.status == "L0_CONTINUE_MOVE"
+        assert loop.last_sense_input.position.x == 1
+        assert loop.last_sense_input.route_status == "UNKNOWN"
+        assert "body_aabb" in loop.last_sense_input.missing
+        assert not step.extra_physical_authority
+        for sid in f.names:
+            await f.bridge.logout(sid)
+
+    _fixture(tmp_path, scenario)
 
 
 async def _issue(f, pre, handoff, loop, previous, observed, native):

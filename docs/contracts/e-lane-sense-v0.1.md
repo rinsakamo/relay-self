@@ -179,3 +179,20 @@ buffers are outside the Python queue bound.
 The offline integration exercises 1,000 rapid passive events with 256 owner
 slots, 744 replacements, a correlated probe and STOP ACK. This is a finite
 synthetic stream, not a duration, CPU utilization or real World qualification.
+
+# E2b integration status (partial)
+
+The resident bridge can construct an existing SelfWorld LensView from its
+current passive observation and retained cognition. The Stage27h pre-action
+loop can read the same bridge via an optional read-only input. Neither is a
+physical-action grant. The native receive monotonic clock bounds time since
+the Python reader decoded a message; it is not Paper time or a bound on time
+spent in the native process or OS pipe. Old saved LensViews and MOVE inputs
+must not be treated as current without revalidation against the bridge.
+
+This is not E2b PASS: ordinary Present adoption, entity and lifecycle
+adversarial tests through that consumer, and end-to-end ActionPort/STOP/WAL
+with SENSE enabled remain outstanding. The real Stage27 setup currently leaves
+SENSE disabled by default. E2a-3B post-action stall and CPU/total memory HOLDs
+remain unchanged. No collision avoidance, physical STOP, route qualification,
+real World, QUAL or SCIENCE is claimed.

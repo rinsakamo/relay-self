@@ -11,6 +11,7 @@ import math
 from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.sense_projection import sense_for_l0_move
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
 from relay_self.action import ActionState
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
@@ -77,6 +78,7 @@ class Stage27hBoundedMoveLoop:
         physical: PhysicalIssueAdmission,
         world_epoch: int,
         start_ns: int,
+        sense_bridge=None,
     ) -> None:
         if (
             not isinstance(prepared, PreparedStage26L1)
@@ -132,6 +134,8 @@ class Stage27hBoundedMoveLoop:
         self.invocation = inv
         self.world_epoch = world_epoch
         self.start_ns = start_ns
+        self.sense_bridge = sense_bridge
+        self.last_sense_input = None
         self.stage27j_long_mode = long_stage27j
         self.action_count = 0
         self.observation_count = 0
@@ -289,6 +293,15 @@ class Stage27hBoundedMoveLoop:
                 "L0 settling reservation unresolved: no second MOVE"
             )
         self._validate_owner_and_journal()
+        self.last_sense_input = None
+        if self.sense_bridge is not None:
+            bridge = self.sense_bridge
+            if (bridge.owners.get(self.owner.self_id) is self.owner
+                    and bridge.physical is self.physical
+                    and bridge.lifecycle.world.epoch == self.world_epoch):
+                frame = bridge.current_sense(self.owner.self_id)
+                if frame is not None:
+                    self.last_sense_input = sense_for_l0_move(frame)
         if self.last_native_seq >= 0 and observed.seq <= self.last_native_seq:
             raise Stage27hLoopRefusal("next native observation not after prior STOP")
         return self._assess(observed, now_ns)

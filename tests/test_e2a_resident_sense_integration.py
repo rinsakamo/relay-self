@@ -81,6 +81,9 @@ def test_resident_login_dispatches_same_stream_to_owner_and_sense(tmp_path, monk
                                        identity="owner-probe", timeout_s=1)
         assert probe.seq == 4
         assert fixture.bridge.current_sense(sid).position.x == 3
+        lens = fixture.bridge.current_self_world(sid)
+        assert lens.read("sense.position").value_ref.endswith(":3:position")
+        assert lens.read("sense.terrain_collision").status.value == "UNKNOWN"
         ack = await _receive_matched(session, session_id=session_id, kind="stop_ack",
                                      identity="stop-1", timeout_s=1)
         assert ack.seq == 5
@@ -90,6 +93,8 @@ def test_resident_login_dispatches_same_stream_to_owner_and_sense(tmp_path, monk
         assert last.seq == 6
         frame = fixture.bridge.current_sense(sid)
         assert frame.position.x == 6 and frame.nearby_entities == ()
+        assert fixture.bridge.current_self_world(sid).source_revision_refs != lens.source_revision_refs
+        assert fixture.bridge.current_sense(sid, max_age_s=0.000000001) is None
         session._dispatch_observer(replace(last, session_id="foreign", seq=7))
         assert fixture.bridge.current_sense(sid) == frame
         monkeypatch.setattr("relay_self.owned_resident_physical_bridge_dev.sense_from_native",

@@ -860,6 +860,7 @@ async def stage27h_real_a_motor_hook(
     loop = Stage27hBoundedMoveLoop(
         prepared["A"], handoff, owner=owner, physical=physical,
         world_epoch=world_epoch, start_ns=time.monotonic_ns(),
+        sense_bridge=bridge,
     )
     previous = refreshed["A"]
     current = await _bounded_b_probe(session)
