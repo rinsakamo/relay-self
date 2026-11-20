@@ -13,13 +13,13 @@ from adapters.mineflayer.python_protocol import (
     MineflayerPosition,
     MineflayerSnapshot,
 )
-from relay_self.common_io import ScopeRef
 from adapters.mineflayer.sense_projection import (
     SenseRefusal,
     sense_for_l0_move,
     sense_for_self_world,
     sense_from_native,
 )
+from relay_self.common_io import ScopeRef
 from relay_self.three_self_present import (
     EpistemicStatus,
     Lens,
