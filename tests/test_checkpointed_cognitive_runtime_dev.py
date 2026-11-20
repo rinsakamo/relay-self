@@ -985,6 +985,7 @@ def test_exploration_schema4_is_bound_to_original_owner_cut(tmp_path):
     import hashlib
     import json
     from dataclasses import replace
+
     from relay_self.exploration_continuity_dev import ExplorationContinuity, QuestionRecord
     from relay_self.persistent_cognition import load_persistent_cognition
     from relay_self.self_owner_checkpoint_dev import load_self_owner_cut
@@ -1007,11 +1008,18 @@ def test_exploration_schema4_is_bound_to_original_owner_cut(tmp_path):
 def test_schema4_attempt_digest_tampering_is_rejected(tmp_path):
     import json
     from dataclasses import replace
+
     from relay_self.exploration_continuity_dev import (
-        AttemptPhase, AttemptRecord, ExplorationContinuity, QuestionRecord, _attempt_ref,
+        AttemptPhase,
+        AttemptRecord,
+        ExplorationContinuity,
+        QuestionRecord,
+        _attempt_ref,
     )
     from relay_self.persistent_cognition import (
-        InvalidPersistentCognitionData, load_persistent_cognition, save_persistent_cognition,
+        InvalidPersistentCognitionData,
+        load_persistent_cognition,
+        save_persistent_cognition,
     )
     f = RuntimeFixture(tmp_path)
     owner = f.owners[0]

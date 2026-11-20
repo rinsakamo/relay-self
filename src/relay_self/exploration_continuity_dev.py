@@ -1,11 +1,14 @@
 """Self-owned exploration continuity and strict offline codec."""
 from __future__ import annotations
+
 import hashlib
 import json
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+
 from relay_self.provenance import Provenance
+
 
 class ExplorationContinuityError(ValueError):
     """Refuse inconsistent, stale or potentially replayed owner cognition."""
