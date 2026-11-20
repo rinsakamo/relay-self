@@ -105,6 +105,7 @@ def _verify_main_thread_ack(
 def independently_audit_recovered_real_rejoin(
     result_path: Path, *, generation: Path, restored: Path,
     stage28b_evidence: Path, executable: Path,
+    expected_gemma_posts: int = 0,
 ) -> dict:
     """Audit frozen stdout/probes/WAL, *not* only success summary booleans."""
     path = Path(result_path)
@@ -121,11 +122,13 @@ def independently_audit_recovered_real_rejoin(
         or report.get("original_committed_sha256") != _SOURCE_COMMITTED_SHA
         or report.get("fork_branch_id") != _FORK_BRANCH
         or report.get("real_world_trials") != 1
-        or report.get("real_gemma_post") != 0
+        or type(expected_gemma_posts) is not int
+        or expected_gemma_posts not in (0, 2)
+        or report.get("real_gemma_post") != expected_gemma_posts
         or report.get("real_action_issued") != 0
         or report.get("real_peer_sent") != 0
         or report.get("physical_action_issue_authorized") is not False
-        or report.get("fresh_l1_run") is not False
+        or report.get("fresh_l1_run") is not (expected_gemma_posts == 2)
         or report.get("cleanup_uncertain")
         or report.get("raw_source_audit_uncertain")
         or report.get("original_stage28b_reverified") is not True
@@ -350,8 +353,9 @@ def independently_audit_recovered_real_rejoin(
         "paper_session_id": paper_session,
         "verified_native_sessions": sorted(live_ids),
         "native_world_time_is_not_paper_tick": True,
-        "real_gemma_post": 0, "real_action_issued": 0,
-        "fresh_l1_run": False, "physical_action_issue_authorized": False,
+        "real_gemma_post": expected_gemma_posts, "real_action_issued": 0,
+        "fresh_l1_run": expected_gemma_posts == 2,
+        "physical_action_issue_authorized": False,
         "60s_autosave_attested": False,
         "qual_go": False, "science_run": False,
     }
