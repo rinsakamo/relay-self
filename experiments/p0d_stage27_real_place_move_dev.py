@@ -47,6 +47,9 @@ from relay_self.p0d_stage27i_model_http_census_dev import (
 from relay_self.p0d_stage27i_precision_gait_dev import choose_stage27i_gait
 from relay_self.p0d_stage27j_long_move_profile_dev import (
     STAGE27J_ACTION_IO_WATCHDOG_S,
+    STAGE27J_MAX_ACTIONS,
+    STAGE27J_MAX_DISTANCE_M,
+    STAGE27J_MAX_DURATION_MS,
 )
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.physical_action_journal import PhysicalActionJournal
@@ -671,18 +674,32 @@ async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
 
 def _stage27h_capture_prepared(
     journal: PhysicalActionJournal, evidence: Path, *,
-    action_id: str, action_index: int,
+    action_id: str, action_index: int, long_stage27j: bool = False,
 ) -> dict[str, object]:
-    """Freeze a complete canonical WAL with the LAST row still PREPARED.
+    """Freeze complete original WAL before *any* native effect for one child.
 
-    Stage27e's original one-row evidence collector remains intentionally
-    unchanged. Stage27h snapshots distinct WAL versions for each child.
+    Stage27e's one-row collector remains untouched. Stage27h/i retain their
+    original four-row evidence cap. Only the accepted Stage27j 12-action
+    Invocation may extend the evidence collector to its own bound; this
+    does not authorize or issue a physical Action.
     """
     if (
         not isinstance(journal, PhysicalActionJournal)
         or not journal.unresolved or evidence.is_symlink()
-        or type(action_index) is not int or not 0 <= action_index < 4
+        or type(long_stage27j) is not bool
+        or type(action_index) is not int or not 0 <= action_index < (
+            STAGE27J_MAX_ACTIONS if long_stage27j else 4
+        )
         or len(journal.records) != action_index + 1
+        or (
+            long_stage27j and (
+                journal.records[-1].get("budget_actions") != STAGE27J_MAX_ACTIONS
+                or journal.records[-1].get("budget_duration_ms")
+                != STAGE27J_MAX_DURATION_MS
+                or journal.records[-1].get("budget_distance_m")
+                != STAGE27J_MAX_DISTANCE_M
+            )
+        )
         or any(row["status"] != "NATIVE_PLACE_MOVE_SETTLED"
                for row in journal.records[:-1])
         or journal.records[-1]["status"] != "PREPARED_UNRESOLVED"
@@ -895,6 +912,7 @@ async def stage27h_real_a_motor_hook(
         def capture_reserved(source, action):
             original_prepared.update(_stage27h_capture_prepared(
                 source, evidence, action_id=action, action_index=idx,
+                long_stage27j=long_stage27j and loop.stage27j_long_mode,
             ))
 
         t0 = time.monotonic_ns()
