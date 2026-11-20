@@ -39,25 +39,98 @@ L2, no Physical Action, no Skill start, no Intent commit, no peer send.
 Model residency may persist; actual /slots idle is attested after calls
 and during normal original A/B retirement. No 60s autosave claim.
 
-### Source model preflight
+### Model ownership: LocalCodex MUST launch the shared WSL llama-server
 
-Use the *already loaded* llama.cpp Gemma-4-12B-it Q4_K_M process, actual
-GGUF (not filename guess), one RTX3060 owned PID, mapped model bytes
-pinned to Stage24g SHA256
-`c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`,
-`/v1/models` alias, loopback socket owned by that PID, GPU PID from
-`nvidia-smi`, and exactly one idle `/slots` slot. The original endpoint
-must be `http://127.0.0.1:<actual-port>/v1/chat/completions`.
-Model gate uses identical local endpoint for its two read-only arguments
-but the actual provider is **ordinary strict JSON BOUNDED**, not a JEV call.
-Do not change the pinned GGUF digest or fake slot evidence to satisfy the gate.
+**Corrects the 2026-11-20 PRE_WORLD_HOLD (0 World, 0 POST)**: the Stage28c2c
+LocalCodex must not assume someone else left a llama-server running, or
+infer a failure just because `nvidia-smi` has ~696 MiB base VRAM usage
+without a compute PID. The proven WSL physical-owner contract is in
+`experiments/mineflayer_cognition_llama_cpp_transaction.md` and
+`experiments/mineflayer_cognition_llama_cpp_transaction.py`. **Reuse its
+launch and ownership process, NOT the old full cognition transaction**
+(which would submit unrelated model requests).
+
+Shared host resources (read/verify; do not rebuild/replace by guess):
+
+```text
+LLAMA_CPP_ROOT=$HOME/src/llama.cpp
+LLAMA_SERVER=$HOME/src/llama.cpp/build/bin/llama-server
+GGUF=$HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf
+MODEL_SHA256=c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed
+HOST=127.0.0.1
+PORT=1234
+```
+
+Use **one persistent owner process / shell transaction** that retains
+`llama-server`'s actual child PID until **after** the independent real
+audit; a command issued in a shell that exits while the model is still
+needed is not a valid server launch. Require the port to be free; do
+not reuse or kill a foreign listener. Record the command, current
+llama.cpp git revision, `llama-server --version` (the previous successful
+reference was build10874, but never fabricate the current build),
+pre/post GPU snapshots, server stdout/stderr and model-load logfile.
+
+```bash
+"$HOME/src/llama.cpp/build/bin/llama-server" \
+  -m "$HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf" \
+  --host 127.0.0.1 --port 1234 \
+  -ngl 999 -c 8192 -np 1 --no-context-shift \
+  -lv 4 --log-timestamps \
+  --log-file "$NEW_OWNED_MODEL_EVIDENCE/llama-server.log" \
+  >"$NEW_OWNED_MODEL_EVIDENCE/llama-stdout.log" 2>&1 &
+OWNED_LLAMA_PID=$!
+```
+
+`NEW_OWNED_MODEL_EVIDENCE` must be a newly created, **never previously
+existing** directory, created atomically with exclusive permissions.
+Use `set -euo pipefail` and a scoped exit trap in the same owning shell,
+or implement an equivalent Python `Popen` supervisor; do not
+create log files in any existing evidence directory. Never write evidence
+after an already-failed `mkdir`. The previous
+`stage28c2c-preworld-hold-20261120` evidence directory suffered
+irrecoverable overwrites of `gpu.txt` and `processes.txt`; preserve
+it unmodified and report the incident independently. New evidence from
+that PRE_WORLD_HOLD remains source-specific and is not a replacement.
+
+Poll owned PID liveness and `GET /health` (up to 120s), then verify
+`GET /v1/models`, `GET /props`, `GET /slots`, exactly one idle slot
+(context 8192), unique correct model alias, context shift OFF and the
+actual mapped GGUF. The Stage24g read-only source gate MUST independently
+recheck the **operator-owned launched PID**, GGUF SHA256 and mmap, RTX3060
+compute ownership via `nvidia-smi`, PID-owned loopback socket and
+single `/slots` idle. A WSL GPU PID attribution gap, socket visibility
+gap, or missing source log is HOLD, not permission to weaken a gate.
+
+Export verified values from **this launch only**:
+
+```bash
+ORIGINAL_LOADED_GEMMA_GGUF="$HOME/models/gguf/gemma-4-12B-it-Q4_K_M.gguf"
+ACTUAL_LLAMA_PID="$OWNED_LLAMA_PID"
+ACTUAL_GEMMA_MODEL_ALIAS="<exact single GET /v1/models id>"
+OWNED_LLAMA_CHAT_COMPLETIONS_URL="http://127.0.0.1:1234/v1/chat/completions"
+```
+
+Derive the model alias from observed `/v1/models`, not from a
+guessed filename. Run inspection, optionally one new real World and
+exactly two original A/B BOUNDED Gemma POSTs, and independent separate
+Python auditor **within the same owner transaction while the model PID
+remains live**. Terminate/reap only `OWNED_LLAMA_PID` on exit and
+capture exit code, GPU/port absence, model stdout/log SHA256. An HTTP
+client timeout is not evidence that the provider has stopped; keep HOLD
+if backend idle/termination is uncertain. A missing or failed
+`/health`, PID, model alias, socket or independent gate means **NO
+World launch**.
+
+Model gate uses identical local endpoint for its two read-only arguments;
+actual execution is **ordinary strict-JSON BOUNDED**, not Jev.
+Do not change pinned hashes to satisfy a gate.
 
 Preinstall locked Mineflayer and oxygen owner patch **before inspection**,
 run targeted existing Stage28 tests, and verify Java21 and Node22.
 Both source World jars must match Stage24g pinned SHA.
 
-Read-only inspection (NO World, no model POST; actual model is already loaded
-by operator):
+Read-only inspection (NO World, no model POST; owned server already started
+by this same LocalCodex transaction):
 
 ```bash
 PYTHONPATH=src:. python3 -m experiments.stage28c2c_real_original_l1_dev \
