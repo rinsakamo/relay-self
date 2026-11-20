@@ -112,6 +112,10 @@ class SenseMoveInput:
         "loaded_chunk_coverage", "observation_atomicity",
     )
 
+    def __post_init__(self) -> None:
+        if self.route_status != "UNKNOWN":
+            raise SenseRefusal("SENSE cannot grant route clearance")
+
 
 def sense_for_l0_move(frame: SenseFrame) -> SenseMoveInput:
     """No MOVE selection, motor call, STOP, or synthetic traversability grant."""
