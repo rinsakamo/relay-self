@@ -406,3 +406,13 @@ def test_d9_source_runner_main_with_no_actual_model_refuses_before_world(
     ])
     assert producer.main() == 2
     assert list(tmp_path.iterdir()) == []
+
+
+def test_d9_resident_trial_hashlib_does_not_depend_on_legacy_move_branch():
+    """D9 hashes the Paper source before the optional legacy MOVE branch."""
+    from experiments.stage28_d9_real_source_dev import _owned_resident_trial
+
+    assert "hashlib" not in _owned_resident_trial.__code__.co_varnames
+    assert _owned_resident_trial.__globals__["hashlib"].sha256(b"paper").hexdigest() == (
+        "382635c9325bf3273d195ff1b8a44e5b11afd7d97addeb8863ea35feb98c1a07"
+    )

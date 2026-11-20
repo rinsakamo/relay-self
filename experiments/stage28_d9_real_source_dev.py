@@ -499,8 +499,6 @@ async def _owned_resident_trial(
         # no P0D_RESIDENT. Prove the independent Paper observer is actually
         # producing its own records BEFORE the one-shot Gemma choice/MOVE.
         # This is not a Body oxygen/health/World permission gate.
-        import hashlib
-
         pre_inference_source = paper.read_owned_log(paper_session)
         pre_inference_hash = hashlib.sha256(pre_inference_source).hexdigest()
         _write_bytes_new(
@@ -559,8 +557,6 @@ async def _owned_resident_trial(
     await asyncio.sleep(1.0)
     # This reads ONLY the explicitly owned Paper Popen stdout log.
     source = paper.read_owned_log(paper_session)
-    import hashlib
-
     source_ref = (
         f"paper-owned-log:{paper_session}:sha256:"
         f"{hashlib.sha256(source).hexdigest()}"
