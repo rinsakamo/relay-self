@@ -116,3 +116,21 @@ candidate**, not an A Stage27l preflight qualification.
 **Current classification:** E1_OFFLINE_IMPLEMENTATION_UNVERIFIED /
 NATIVE_TERRAIN_READONLY_ADAPTER / ROUTE_CLEARANCE_UNKNOWN /
 SELFWORLD_REFERENCE_ONLY / REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+### E2a-1 receiver prototype (HOLD)
+
+`MineflayerProcessSession.start_dispatcher` is an opt-in, single stdout
+reader with a bounded ordered owner queue. A full queue applies backpressure;
+no action/audit message is discarded. The existing decoder and raw source
+transcript remain on the read path. Concurrent calls to `receive` are refused.
+Observer exceptions are exposed through `observer_error` and do not remove
+messages from the owner queue.
+
+This is a prototype, not an operational SENSE integration. It is not enabled
+by the resident owner, does not validate owner identity, world generation,
+login/retirement or checkpoint restore, and does not invoke the SENSE
+converters. In particular, if the owner does not drain its queue, reception
+and observation stop at the queue bound. Thus continuous perception during
+L1/L2 and request/ACK coexistence have not been demonstrated. Do not enable
+this prototype as a production perception path. SelfWorld and L0 MOVE remain
+unconnected. No real World qualification is implied.

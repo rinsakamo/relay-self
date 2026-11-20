@@ -57,6 +57,12 @@ class MineflayerProcessSession:
         self._effect_admission: Callable[[str, str, str], None] | None = None
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
+        self._receive_active = False
+        self._dispatch_task: asyncio.Task[None] | None = None
+        self._dispatch_queue: asyncio.Queue[object] | None = None
+        self._dispatch_observer: Callable[[MineflayerDecodedMessage], None] | None = None
+        self._dispatch_error: Exception | None = None
+        self.observer_error: Exception | None = None
 
     @classmethod
     async def launch(
@@ -191,6 +197,66 @@ class MineflayerProcessSession:
 
     async def receive(self) -> MineflayerDecodedMessage:
         """Read and validate exactly one target-local JSONL message."""
+
+        if self._receive_active:
+            raise MineflayerProcessIOError("concurrent native receive is forbidden")
+        self._receive_active = True
+        try:
+            if self._dispatch_queue is None:
+                return await self._read_native()
+            while True:
+                if not self._dispatch_queue.empty():
+                    return self._dispatch_queue.get_nowait()  # type: ignore[return-value]
+                if self._dispatch_error is not None:
+                    raise self._dispatch_error
+                if self._dispatch_task is not None and self._dispatch_task.done():
+                    raise MineflayerProcessEnded("native dispatcher stopped")
+                getter = asyncio.create_task(self._dispatch_queue.get())
+                assert self._dispatch_task is not None
+                try:
+                    done, _ = await asyncio.wait(
+                        (getter, self._dispatch_task), return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    if getter in done:
+                        return getter.result()  # type: ignore[return-value]
+                finally:
+                    if not getter.done():
+                        getter.cancel()
+        finally:
+            self._receive_active = False
+
+    def start_dispatcher(
+        self, observer: Callable[[MineflayerDecodedMessage], None], *, capacity: int = 256,
+    ) -> None:
+        """Start one reader; backpressure preserves every owner message in order.
+
+        The observer is a best-effort read-only notification, not World authority.
+        A full owner queue pauses reading; no audit event is discarded.
+        """
+        if (self._started is None or self._dispatch_task is not None
+                or self._receive_active or not callable(observer)
+                or type(capacity) is not int or capacity < 1):
+            raise MineflayerProcessIOError("invalid or already active native dispatcher")
+        self._dispatch_queue = asyncio.Queue(maxsize=capacity)
+        self._dispatch_observer = observer
+        self._dispatch_task = asyncio.create_task(self._dispatch())
+
+    async def _dispatch(self) -> None:
+        assert self._dispatch_queue is not None
+        assert self._dispatch_observer is not None
+        try:
+            while True:
+                message = await self._read_native()
+                try:
+                    self._dispatch_observer(message)
+                except Exception as exc:
+                    self.observer_error = exc
+                await self._dispatch_queue.put(message)
+        except Exception as exc:
+            self._dispatch_error = exc
+
+    async def _read_native(self) -> MineflayerDecodedMessage:
+        """The only JSONL decoder and raw-source-audit path."""
 
         assert self._process.stdout is not None
         line = await self._process.stdout.readline()
