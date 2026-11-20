@@ -913,6 +913,7 @@ async def run_real_two_self_preset_checkpoint(
     _stage27h_multi_preset: bool = False,
     _stage27i_precision_target: bool = False,
     _stage27j_long_target: bool = False,
+    _stage27m_flat_world: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -939,7 +940,9 @@ async def run_real_two_self_preset_checkpoint(
             "Stage27 native MOVE requires a separate real bounded model hook"
         )
     if (
-        type(_stage27h_multi_preset) is not bool
+        type(_stage27m_flat_world) is not bool
+        or (_stage27m_flat_world and not _stage27j_long_target)
+        or type(_stage27h_multi_preset) is not bool
         or type(_stage27i_precision_target) is not bool
         or type(_stage27j_long_target) is not bool
         or (_stage27i_precision_target and _stage27j_long_target)
@@ -989,9 +992,12 @@ async def run_real_two_self_preset_checkpoint(
     shutil.copyfile(plugin_src, plugins / "P0BRecorder.jar")
     _write_bytes_new(root / "eula.txt", b"eula=true\n")
     port = _free_local_port()
-    _write_bytes_new(
-        root / "server.properties", two_native_server_properties(port).encode(),
-    )
+    properties = two_native_server_properties(port)
+    if _stage27m_flat_world:
+        from experiments.p0d_stage27m_flat_world_dev import flat_world_properties
+
+        properties = flat_world_properties(properties)
+    _write_bytes_new(root / "server.properties", properties.encode())
     launch = (
         java, "-Xms512M", f"-Xmx{heap_mb}M",
         "-jar", str(root / "paper.jar"), "--nogui",
