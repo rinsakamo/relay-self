@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from adapters.llama_cpp.relay_engine import LlamaCppProviderError
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.c_lane_stage27_source_bridge import (
@@ -506,7 +507,10 @@ def accept_stage27hi_original_c1(
         ):
             raise C1OwnerReviewHold("original bounded GPU ticket scope altered")
         result = lane.result(witness.ticket)
-        raw = lane.provider.stage26_raw_receipt(witness.ticket.request_id)
+        try:
+            raw = lane.provider.stage26_raw_receipt(witness.ticket.request_id)
+        except (LlamaCppProviderError, OSError, ValueError) as exc:
+            raise C1OwnerReviewHold("original model HTTP evidence unavailable or altered") from exc
         if (
             not isinstance(result, ProviderDecision)
             or result.status is not DecisionStatus.RESOLVED

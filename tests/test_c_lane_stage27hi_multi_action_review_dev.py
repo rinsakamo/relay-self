@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -28,6 +29,7 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
 from relay_self.provenance import Provenance
+from relay_self.resident_llama_inference_lane_dev import ResidentGpuLaneError
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
     load_self_owner_cut,
@@ -215,7 +217,8 @@ def test_original_three_actions_review_then_separate_self_c1_approval(tmp_path):
 @pytest.mark.parametrize("fault", [
     "missing-approval", "foreign-self", "stale-native", "http-hash",
     "wrong-skill", "altered-wal", "fenced-self", "model-defer", "moved-away",
-    "wrong-c1-world", "altered-proposal",
+    "wrong-c1-world", "altered-proposal", "response-bytes", "current-changed",
+    "gpu-result-fenced",
 ])
 def test_original_multi_action_c1_rejects_foreign_or_stale_sources(
     tmp_path, fault,
@@ -257,7 +260,14 @@ def test_original_multi_action_c1_rejects_foreign_or_stale_sources(
                     witness.frame, action_ids=("forged-action",),
                 ),
             )
-        with pytest.raises((C1OwnerReviewHold, PhysicalJournalError)):
+        elif fault == "response-bytes":
+            raw = lane.provider.stage26_raw_receipt(witness.ticket.request_id)
+            Path(raw.response_path).write_bytes(b"altered model response")
+        elif fault == "current-changed":
+            owner.current_worldbody_observation = replace(fresh, seq=fresh.seq + 1)
+        elif fault == "gpu-result-fenced":
+            lane.fence_self(owner.self_id)
+        with pytest.raises((C1OwnerReviewHold, PhysicalJournalError, ResidentGpuLaneError)):
             accept_stage27hi_original_c1(**args)
         assert owner.skills[loop.handoff.skill_execution_id].state is SkillState.STARTED
         assert owner.retained.memories == ()
