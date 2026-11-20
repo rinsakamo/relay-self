@@ -259,3 +259,38 @@ def test_stage27_real_a_nonready_choice_never_grants_motor(tmp_path, number, sta
         asyncio.run(scenario())
     finally:
         f.stop_paper()
+
+
+def test_c_lane_l0_diagnostic_preserves_uncertain_state(tmp_path):
+    from experiments.p0d_stage27_real_place_move_dev import (
+        _freeze_stage27h_l0_diagnostic,
+    )
+
+    wal = tmp_path / "wal"
+    wal.write_bytes(b"unresolved WAL bytes")
+    loop = SimpleNamespace(
+        invocation=SimpleNamespace(budget=SimpleNamespace(
+            max_duration_ms=15000, max_actions=4,
+            max_observations=256, max_distance_m=2.0,
+        )),
+        owner=SimpleNamespace(self_id="A", files=SimpleNamespace(physical_wal_file=wal)),
+        prepared=SimpleNamespace(native_session="native-A"),
+        start_ns=0, terminal_status=None, action_count=0, last_action_id=None,
+        last_native_seq=-1, _source_seq=7, last_wal_digest="", observation_count=61,
+        _settlement_reserved=60, _reserved_source_seq=7, cumulative_distance_m=0.0,
+    )
+    _freeze_stage27h_l0_diagnostic(
+        tmp_path, loop, None, world_uuid="world", error=RuntimeError("uncertain"),
+    )
+    data = json.loads((tmp_path / "c-stage27h-l0-diagnostic.json").read_text())
+    assert data["settling_observations_reserved"] == 60
+    assert data["remaining_observations"] == 195
+    assert data["last_step"] is None
+    assert data["last_validated_wal_sha256"] is None
+    assert data["raw_wal_sha256"] is not None
+    assert data["physical_state_certified"] is False
+    assert data["error"] == "uncertain"
+    with pytest.raises(FileExistsError):
+        _freeze_stage27h_l0_diagnostic(
+            tmp_path, loop, None, world_uuid="world", error=None,
+        )
