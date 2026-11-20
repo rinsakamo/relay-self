@@ -16,9 +16,9 @@ function localShapes (block) {
   for (const shape of block.shapes) {
     if (!Array.isArray(shape) || shape.length !== 6 ||
         !shape.every(finite) ||
-        !(0 <= shape[0] && shape[0] < shape[3] && shape[3] <= 1) ||
-        !(0 <= shape[1] && shape[1] < shape[4] && shape[4] <= 1) ||
-        !(0 <= shape[2] && shape[2] < shape[5] && shape[5] <= 1)) return null
+        !(-1 <= shape[0] && shape[0] < shape[3] && shape[3] <= 2) ||
+        !(-1 <= shape[1] && shape[1] < shape[4] && shape[4] <= 2) ||
+        !(-1 <= shape[2] && shape[2] < shape[5] && shape[5] <= 2)) return null
     result.push(shape)
   }
   return result
