@@ -658,3 +658,21 @@ test('E1 invalid shapes and missing body are explicit UNKNOWN, never air/CLEAR',
   assert(t.cells.every(c => c.shapes === null))
   assert.throws(() => captureSenseTerrain({}), /live entity/)
 })
+
+test('E1 overhanging fence collision geometry survives instead of becoming air', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return this }
+    offset (dx, dy, dz) { return new Position(this.x + dx, this.y + dy, this.z + dz) }
+  }
+  const bot = {
+    entity: { position: new Position(0, 64, 0), width: 0.6, height: 1.8 },
+    blockAt: (pos) => pos.x === 1 && pos.y === 64 && pos.z === 0
+      ? { name: 'oak_fence', shapes: [[0.375, 0, 0.375, 0.625, 1.5, 0.625]] }
+      : { name: 'air', shapes: [] }
+  }
+  const terrain = captureSenseTerrain(bot)
+  assert.equal(terrain.complete, true)
+  const fence = terrain.cells.find(c => c.position.join(',') === '1,64,0')
+  assert.deepEqual(fence.shapes, [[1.375, 64, 0.375, 1.625, 65.5, 0.625]])
+})
