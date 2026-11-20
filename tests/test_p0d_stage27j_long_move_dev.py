@@ -10,6 +10,7 @@ import pytest
 
 from experiments.p0d_stage27_real_place_move_dev import (
     Stage27RealWorldRefusal,
+    _stage27h_capture_prepared,
     run_stage27_real_world,
 )
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hLoopRefusal
@@ -404,6 +405,161 @@ def test_stage27j_no_forward_start_ack_remains_unresolved_hold(tmp_path):
                 replace(current, seq=current.seq + 100),
                 now_ns=loop.start_ns + STAGE27J_MAX_DURATION_MS * 1_000_000,
             )
+    _case(
+        tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
+        precision=False, long_stage27j=True,
+    )
+
+
+def test_stage27j_original_prepared_evidence_all_twelve_actions(tmp_path):
+    """Exercise the real pre-native callback on all 12 source-shaped children.
+
+    Regression: the real Paper run settled four WALK Actions, then refused
+    Action index 4 *after* fsyncing its fifth PREPARED row. This test checks
+    that fifth, ninth and twelfth snapshots before any current native effect.
+    It does not constitute an additional real World attempt.
+    """
+    class TwelveActionNative(PrecisionPlaceNative):
+        async def send_set_control(self, action_id, *, control, state):
+            previous = self.x
+            await super().send_set_control(
+                action_id, control=control, state=state,
+            )
+            if control == "forward" and state and not self.sneak_active:
+                self.x = previous + 0.42
+
+    async def scenario(f, lane, server, pre, handoff, former, current, loop):
+        owner = f.owners[f.names[0]]
+        peer = f.owners[f.names[1]]
+        before_peer = (
+            peer.intent.events, tuple(peer.skills.items()), peer.retained,
+            PhysicalActionJournal.restore(
+                peer.files.physical_wal_file, self_id=peer.self_id,
+            ).digest,
+        )
+        evidence = tmp_path / "stage27j-prepared-snapshots"
+        evidence.mkdir()
+        native = TwelveActionNative(handoff.native_session_id)
+        snapshots = []
+        original_l1_calls = len(server.calls)
+        for i in range(STAGE27J_MAX_ACTIONS):
+            step = loop.pre_action(
+                current, now_ns=150 + i * 500_000_000,
+            )
+            assert step.status == "L0_CONTINUE_MOVE"
+            gait = choose_stage27i_gait(
+                loop, step, current, long_stage27j=True,
+            )
+
+            def capture(journal, action):
+                assert journal.unresolved
+                assert len(journal.records) == i + 1
+                assert journal.records[-1]["status"] == "PREPARED_UNRESOLVED"
+                assert all(
+                    command[0] != action + "-look"
+                    for command in native.sent_commands
+                )
+                frozen = _stage27h_capture_prepared(
+                    journal, evidence, action_id=action,
+                    action_index=i, long_stage27j=True,
+                )
+                assert frozen["before_any_native_effect"] is True
+                snapshots.append(frozen)
+
+            receipt = await _issue(
+                f, pre, handoff, loop, former, current, native,
+                gait.gait_mode, pre_native_evidence=capture,
+            )
+            assert receipt.journal_status == "NATIVE_PLACE_MOVE_SETTLED"
+            assert len(snapshots) == i + 1
+            feedback = loop.observe_terminal_action(
+                receipt, source_probe=current,
+                now_ns=200 + i * 500_000_000,
+            )
+            former = receipt.settled_probe
+            if i < STAGE27J_MAX_ACTIONS - 1:
+                assert feedback.status == "L0_CONTINUE_MOVE"
+                current = replace(
+                    former, seq=former.seq + 1,
+                    request_id=f"stage27j-prepared-step-{i + 1}",
+                )
+        assert feedback.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        assert loop.action_count == STAGE27J_MAX_ACTIONS
+        assert len(snapshots) == STAGE27J_MAX_ACTIONS
+        assert [row["action_number"] for row in snapshots] == list(
+            range(1, STAGE27J_MAX_ACTIONS + 1)
+        )
+        assert all(
+            (evidence / f"stage27h-A-PREPARED-{k}.json").is_file()
+            for k in range(1, STAGE27J_MAX_ACTIONS + 1)
+        )
+        for k in (5, 9, 12):
+            original = PhysicalActionJournal.restore(
+                evidence / f"stage27h-A-PREPARED-{k}.json",
+                self_id=owner.self_id,
+            )
+            assert len(original.records) == k
+            assert original.unresolved
+            assert original.records[-1]["status"] == "PREPARED_UNRESOLVED"
+            assert all(
+                row["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+                for row in original.records[:-1]
+            )
+            assert original.digest == snapshots[k - 1]["journal_digest"]
+        terminal = PhysicalActionJournal.restore(
+            owner.files.physical_wal_file, self_id=owner.self_id,
+        )
+        assert len(terminal.records) == STAGE27J_MAX_ACTIONS
+        assert not terminal.unresolved
+        assert all(
+            row["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+            for row in terminal.records
+        )
+        assert len(server.calls) == original_l1_calls
+        assert (
+            peer.intent.events, tuple(peer.skills.items()), peer.retained,
+            PhysicalActionJournal.restore(
+                peer.files.physical_wal_file, self_id=peer.self_id,
+            ).digest,
+        ) == before_peer
+
+        # Failing boundary controls: an older Stage27h/i evidence cap cannot
+        # adopt child 5, and child 13 must never be accepted for Stage27j.
+        fifth = PhysicalActionJournal.restore(
+            evidence / "stage27h-A-PREPARED-5.json", self_id=owner.self_id,
+        )
+        with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
+            _stage27h_capture_prepared(
+                fifth, tmp_path, action_id=fifth.records[-1]["action_id"],
+                action_index=4,
+            )
+        twelfth = PhysicalActionJournal.restore(
+            evidence / "stage27h-A-PREPARED-12.json", self_id=owner.self_id,
+        )
+        with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
+            _stage27h_capture_prepared(
+                twelfth, tmp_path,
+                action_id=twelfth.records[-1]["action_id"],
+                action_index=12, long_stage27j=True,
+            )
+        with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
+            _stage27h_capture_prepared(
+                fifth, tmp_path, action_id="forged-action",
+                action_index=4, long_stage27j=True,
+            )
+        with pytest.raises(Stage27RealWorldRefusal, match="PREPARED invalid"):
+            _stage27h_capture_prepared(
+                fifth, tmp_path,
+                action_id=fifth.records[-1]["action_id"],
+                action_index=4, long_stage27j=1,
+            )
+        with pytest.raises(FileExistsError):
+            _stage27h_capture_prepared(
+                fifth, evidence,
+                action_id=fifth.records[-1]["action_id"],
+                action_index=4, long_stage27j=True,
+            )
+
     _case(
         tmp_path, scenario, preset_id=STAGE27J_PRESET_ID,
         precision=False, long_stage27j=True,
