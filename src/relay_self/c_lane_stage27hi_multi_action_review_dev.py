@@ -1,6 +1,6 @@
-"""C Lane Stage27h/i: terminal multi-MOVE L0 -> original bounded L1 review -> C1.
+"""C Lane Stage27h/i: settled MOVE L0 -> original bounded L1 review -> C1.
 
-The original L0 parent admits 2–4 terminal physical children but does NOT
+The original L0 parent admits up to four terminal physical children but does NOT
 call the single-child Stage27g review. Here a new bounded *read-only* L1
 request is built from the exact original WAL and L0 terminal parent.
 The separate, explicit Self acceptance is never inferred from model number 2.
@@ -146,7 +146,7 @@ def _original_source(
         or loop.owner.cohort is not lane.cognitive_work
         or loop.prepared.original_owner is not loop.owner
         or loop.terminal_status is None
-        or loop.action_count < 2 or loop.action_count > 4
+        or loop.action_count < 1 or loop.action_count > 4
         or loop._settlement_reserved != 0
         or loop._reserved_source_seq is not None
         or loop.owner.fresh_native_observation_required
@@ -204,7 +204,11 @@ def prepare_stage27hi_multi_review(
     last_settled_probe: MineflayerObservation,
     world_id: str,
 ) -> Stage27MultiReviewFrame:
-    """One new finite-choice L1 review, not a new MOVE authorization."""
+    """One finite-choice review of settled evidence, without MOVE authority.
+
+    Partial review is not an independent Self adoption decision and does not
+    authorize the existing success-only C1 retention path.
+    """
     owner, journal = _original_source(loop, physical=physical, lane=lane, bridge=bridge)
     rows = journal.records
     if (
@@ -214,7 +218,14 @@ def prepare_stage27hi_multi_review(
         or not isinstance(last_settled_probe, MineflayerObservation)
         or type(world_id) is not str or not world_id
         or step.status != loop.terminal_status
-        or step.status != "L0_TARGET_REACHED_YIELD_EVALUATION"
+        or step.status not in {
+            "L0_TARGET_REACHED_YIELD_EVALUATION",
+            "L0_WORLD_CONDITION_YIELD_EVALUATION",
+            "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION",
+            "L0_OVERSHOOT_YIELD_EVALUATION",
+            "L0_NO_PROGRESS_YIELD_EVALUATION",
+            "L0_CUMULATIVE_OVERSHOOT_YIELD_EVALUATION",
+        }
         or step.action_count != loop.action_count
         or step.last_action_id != loop.last_action_id
         or step.terminal_wal_sha256 != journal.digest
@@ -241,8 +252,10 @@ def prepare_stage27hi_multi_review(
         provenance=last_settled_probe.provenance,
         position=last_settled_probe.snapshot.position,
     ))
-    if assessment.status is not TargetConditionStatus.CONDITION_OBSERVED:
-        raise C1OwnerReviewHold("multi-Action Target no longer observed")
+    observed_reached = assessment.status is TargetConditionStatus.CONDITION_OBSERVED
+    reached = step.status == "L0_TARGET_REACHED_YIELD_EVALUATION" and observed_reached
+    if step.status == "L0_TARGET_REACHED_YIELD_EVALUATION" and not observed_reached:
+        raise C1OwnerReviewHold("terminal Target observation changed")
     ids = tuple(r["action_id"] for r in rows)
     request = BoundedChoiceRequest(
         request_id=(
@@ -250,8 +263,8 @@ def prepare_stage27hi_multi_review(
             f"{last_settled_probe.seq}"
         ),
         instruction=(
-            "Original bounded MOVE Skill completed multiple physical children. "
-            "Choose only a numbered evaluation recommendation. Reached Target "
+            "Original bounded MOVE Skill executed physical children. "
+            "Choose only a numbered evaluation recommendation. A Target status "
             "is a WorldBody observation, NOT Goal or Skill completion. "
             "Do not issue an Action, set a parameter or grant success."
         ),
@@ -259,7 +272,11 @@ def prepare_stage27hi_multi_review(
         focus="POST_MULTI_ACTION_SKILL_EVALUATION",
         choices=(
             BoundedChoice("1", "CONTINUE_INTENT: gather new WorldBody, no Action"),
-            BoundedChoice("2", "REVIEW_COMPLETION: only consider owner terminal review"),
+            BoundedChoice("2", (
+                "REVIEW_COMPLETION: only consider owner terminal review" if reached
+                else "EVALUATE_PARTIAL: consider progress, effectiveness, information, "
+                "applicability, failure conditions and uncertainty; do not infer success"
+            )),
             BoundedChoice("3", "ESCALATE_L2: deliberate without Action authority"),
             BoundedChoice("4", "DEFER: leave original Skill STARTED"),
         ),
@@ -282,6 +299,9 @@ def prepare_stage27hi_multi_review(
                 "gait_modes": [r.get("gait_mode", "WALK") for r in rows],
                 "last_native_seq": last_settled_probe.seq,
                 "target_status": assessment.status.value,
+                "target_gap_m": assessment.gap_to_envelope_m,
+                "executed_actions": list(rows),
+                "unexecuted_actions": "UNKNOWN; not evidence of failure",
                 "skill_success_attested": False,
                 "goal_success_attested": False,
                 "next_physical_action_authorized": False,
@@ -295,7 +315,7 @@ def prepare_stage27hi_multi_review(
         first_action_probe.seq, last_settled_probe.seq,
         last_settled_probe.request_id, journal.digest,
         loop.invocation.invocation_ref, contract.contract_ref,
-        loop.terminal_status, True, request,
+        loop.terminal_status, reached, request,
     )
 
 
@@ -429,7 +449,8 @@ async def finish_stage27hi_multi_review(
         raise C1OwnerReviewHold("model selected unoffered post-L0 choice")
     witness = Stage27MultiReviewWitness(
         frame, ticket, selected,
-        selected == "2" and target.status is TargetConditionStatus.CONDITION_OBSERVED,
+        frame.completion_review_offered and selected == "2"
+        and target.status is TargetConditionStatus.CONDITION_OBSERVED,
         raw.request_sha256, raw.response_sha256,
         after.session_id, after.seq, after.request_id,
     )
