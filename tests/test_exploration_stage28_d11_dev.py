@@ -53,7 +53,9 @@ def _synthetic_after_audit(monkeypatch):
 
 
 def test_d11_unsealed_synthetic_d7_cannot_pass_real_d10_source(tmp_path):
-    generation, _, _, expected = _fixture(tmp_path)
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    generation, _, _, expected = _fixture(scenario)
     evidence_dir = generation.parent.parent
     with pytest.raises(d11.D11HandoffHold):
         d11.inspect_d11_source(
@@ -63,7 +65,9 @@ def test_d11_unsealed_synthetic_d7_cannot_pass_real_d10_source(tmp_path):
 
 
 def test_d11_fork_is_inert_and_pins_exact_audit_once(tmp_path, monkeypatch):
-    generation, _, _, expected = _fixture(tmp_path)
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    generation, _, _, expected = _fixture(scenario)
     calls = _synthetic_after_audit(monkeypatch)
     recovered = tmp_path / "recovered-d11"
     pins_file = tmp_path / "new-d11-pins.json"
@@ -113,7 +117,9 @@ def test_d11_fork_is_inert_and_pins_exact_audit_once(tmp_path, monkeypatch):
 def test_d11_unsafe_output_paths_hold_before_any_restore(
     tmp_path, monkeypatch, invalid,
 ):
-    generation, _, _, expected = _fixture(tmp_path)
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    generation, _, _, expected = _fixture(scenario)
     calls = _synthetic_after_audit(monkeypatch)
     evidence = generation.parent.parent
     restored = tmp_path / "fresh-d11"
@@ -144,7 +150,9 @@ def test_d11_unsafe_output_paths_hold_before_any_restore(
 
 
 def test_d11_no_publish_when_postrestore_d8_rejects(tmp_path, monkeypatch):
-    generation, _, _, expected = _fixture(tmp_path)
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    generation, _, _, expected = _fixture(scenario)
     _synthetic_after_audit(monkeypatch)
     def refuse(*args, **kwargs):
         raise D8PinnedSourceHold("deliberately tampered original native history")
@@ -163,7 +171,9 @@ def test_d11_no_publish_when_postrestore_d8_rejects(tmp_path, monkeypatch):
 
 
 def test_d11_cli_inspect_only_never_makes_fork(tmp_path, monkeypatch, capsys):
-    gen, _, _, expected = _fixture(tmp_path)
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    gen, _, _, expected = _fixture(scenario)
     calls = _synthetic_after_audit(monkeypatch)
     args = [
         "d11", "--inspect-only", "--evidence-dir",
