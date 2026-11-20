@@ -19,6 +19,14 @@ class EvaluationAxis(str, Enum):
     EVIDENCE_UNCERTAINTY = "evidence_uncertainty"
 
 
+class AxisStatus(str, Enum):
+    RESOLVED = "resolved"
+    UNKNOWN = "unknown"
+    UNRESOLVED = "unresolved"
+    CANCELLED = "cancelled"
+    STALE = "stale"
+
+
 @dataclass(frozen=True, slots=True)
 class EvaluationCandidate:
     choice: BoundedChoice
@@ -60,7 +68,22 @@ class AxisReadout:
     choice_id: str | None
     selected_description: str | None
     evidence_refs: tuple[str, ...]
-    unresolved: bool
+    status: AxisStatus
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.axis, EvaluationAxis) or not isinstance(self.status, AxisStatus):
+            raise ValueError("typed axis and status required")
+        if self.status in (AxisStatus.RESOLVED, AxisStatus.UNKNOWN):
+            if not self.choice_id or not self.selected_description:
+                raise ValueError("selected status requires original choice")
+            if self.status is AxisStatus.RESOLVED and not self.evidence_refs:
+                raise ValueError("resolved choice requires evidence")
+        elif self.choice_id is not None or self.selected_description is not None or self.evidence_refs:
+            raise ValueError("unusable result cannot select a candidate")
+
+    @property
+    def unresolved(self) -> bool:
+        return self.status is AxisStatus.UNRESOLVED
 
 
 def interpret_evaluation_step(
@@ -76,7 +99,7 @@ def interpret_evaluation_step(
     if status is DecisionStatus.UNRESOLVED:
         if choice_id is not None:
             raise ValueError("unresolved output cannot select a candidate")
-        return AxisReadout(step.axis, None, None, (), True)
+        return AxisReadout(step.axis, None, None, (), AxisStatus.UNRESOLVED)
     matches = [candidate for candidate in step.candidates
                if candidate.choice.choice_id == choice_id]
     if len(matches) != 1:
@@ -84,7 +107,8 @@ def interpret_evaluation_step(
     selected = matches[0]
     return AxisReadout(
         step.axis, selected.choice.choice_id, selected.choice.description,
-        selected.evidence_refs, selected.choice.choice_id == step.unknown_choice_id,
+        selected.evidence_refs, (AxisStatus.UNKNOWN if selected.choice.choice_id
+                                 == step.unknown_choice_id else AxisStatus.RESOLVED),
     )
 
 
@@ -98,6 +122,10 @@ class EvaluationReadout:
     action_ids: tuple[str, ...]
     wal_sha256: str
     axes: tuple[AxisReadout, ...]
+
+    @property
+    def complete(self) -> bool:
+        return all(a.status in (AxisStatus.RESOLVED, AxisStatus.UNKNOWN) for a in self.axes)
 
     def __post_init__(self) -> None:
         if any(not isinstance(v, str) or not v.strip() for v in (

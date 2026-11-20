@@ -165,7 +165,10 @@ async def execute_evaluation(frame, loop, *, physical, lane, bridge,
         )
         lane.require_world_idle()
         ticket = lane.submit(frame.self_id, work_ref=ref, request=request, mode=CognitionMode.BOUNDED)
-        if (ticket.self_id != frame.self_id or ticket.native_session_id != frame.native_session_id
+        if (ticket.self_id != frame.self_id or ticket.request_id != ref
+                or ticket.work_ref != ref or ticket.backend_ref != lane.backend_ref
+                or ticket.mode is not CognitionMode.BOUNDED
+                or ticket.native_session_id != frame.native_session_id
                 or ticket.world_epoch != frame.world_epoch or ticket.action_issue_authorized):
             raise C1OwnerReviewHold("foreign evaluation ticket")
         result = await lane.await_result(ticket, timeout_s=min(120.0, (deadline - now) / 1e9))

@@ -12,11 +12,19 @@ uncertainty. A positive recorded displacement offers a movement observation, not
 Skill or Goal success. Every axis offers UNKNOWN. The executor neither issues a
 physical Action nor adopts a Skill, Intent or Memory.
 
+Axis status distinguishes selected UNKNOWN from an invalid or absent model
+selection (UNRESOLVED). An aggregate with any UNRESOLVED axis is not complete;
+the other axes and their evidence remain in the aggregate. CANCELLED and STALE
+are represented but a fenced execution currently raises HOLD rather than
+returning partial receipts.
+
 **Incomplete; not an acceptance or qualification pass.** This experiment does
 not recover already-settled rows from an unresolved WAL, demonstrate all requested
-adversarial cases, or establish the requested mixed UNKNOWN/UNRESOLVED behavior
-through synthetic HTTP. Candidate coverage and independent CURRENT expiry need
-further review. It is not connected to the original motor hook. No real World or
+adversarial cases, or establish mixed UNKNOWN/UNRESOLVED behavior through
+synthetic HTTP. The alternatives are still limited interpretations, not the full
+requested range of distinct assessments. Independent CURRENT expiry and partial
+receipt retention on interruption need further review. It is not connected to
+the original motor hook. No real World or
 real Gemma trial is claimed. The synthetic tests exercise the existing resident
 lane and HTTP test server; they are not real-model evidence.
 
