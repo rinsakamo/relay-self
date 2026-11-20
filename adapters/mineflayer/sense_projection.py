@@ -6,8 +6,8 @@ The existing owner must separately authenticate native/World association.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
