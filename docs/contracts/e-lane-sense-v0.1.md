@@ -69,3 +69,51 @@ native observation records become OBSERVED; passive absence is not safety.
 
 **Classification:** SENSE_MINIMAL_OFFLINE_SEAM_ONLY / L0_MOVE_CLEARANCE_UNKNOWN /
 SELF_WORLD_LENS_OFFLINE / NO_REAL_WORLD / NO_GEMMA / QUAL_NO_GO / SCIENCE_NOT_RUN.
+
+## E1 incremental implementation — bounded native terrain (offline only)
+
+A new **opt-in** `sense_terrain` command uses the original Mineflayer process
+stdin/stdout and the same sequence-validated `MineflayerStreamDecoder`.
+No automatically running scanner, second socket, camera `LOOK`, physical
+effect or new receive-stream owner is created. Normal native observation
+messages are unchanged.
+
+- `adapters/mineflayer/sense_terrain.mjs` synchronously reads an
+  intentionally small **5×5×4 = 100-cell** region around the *client-side*
+  Self position using `bot.blockAt(..., false)`. The sensor sends each cell's
+  block name and Prismarine BlockState collision boxes translated to world
+  coordinates, or **null/UNKNOWN** if the block is unloaded, malformed or
+  cannot be read. Empty shape array is only known empty when the block
+  observation itself is valid. Local shape overhangs (e.g., fence height
+  1.5) are retained within a bounded [-1,2] local range rather than dropped.
+- When Mineflayer provides validated `bot.entity.width/height`, the same
+  local observation carries a computed body AABB, current native position,
+  optional pose/dimension, native monotonic sample clock, known-count and
+  complete flag. Missing dimensions yield null AABB, **never** a default 0.6m
+  body. Local Node monotonic time is not Paper time.
+- `protocol.mjs`, `bridge.mjs`, `python_protocol.py` and
+  `process_session.py` add one exact request/response pair; the
+  coordinated original final-stdin admission explicitly permits this
+  read-only command. Physical `effect` admission is unchanged.
+- `sense_projection.py` exposes a bounded `SenseTerrainMoveInput` to
+  original L0 MOVE and source-qualified `LensClaim` for SelfWorld.
+  A conservative <=1m level swept-envelope helper may return
+  `POTENTIAL_COLLISION` (advisory), but the route remains **UNKNOWN** and
+  no motor action, STOP, retarget, pathfinding, clearance, or Memory mutation
+  is performed. A complete client-side snapshot alone NEVER proves safe
+  passage; dynamics, support, Paper equality, control and actual collision
+  still require their original Owner validation.
+- Standalone Node and Python synthetic tests verify valid blocks, unloaded
+  cells, malformed shapes, fence overhang, incomplete AABB, source request,
+  duplicate/stale sequence, false CLEAR refusal, and SelfWorld UNKNOWN.
+
+**Not yet done:** an actual event-loop consumer / recurring SENSE L0 cycle,
+original certified World/Paper UUID-generation/currentness readback,
+full physics/pose source correlation, original L0 MOVE native STOP integration,
+original durable Log adoption, Real-World/Gemma DEV, independent outcome audit
+or any QUAL/SCIENCE claim. E1 is a read-only **transport and projection
+candidate**, not an A Stage27l preflight qualification.
+
+**Current classification:** E1_OFFLINE_IMPLEMENTATION_UNVERIFIED /
+NATIVE_TERRAIN_READONLY_ADAPTER / ROUTE_CLEARANCE_UNKNOWN /
+SELFWORLD_REFERENCE_ONLY / REAL_WORLD_NOT_RUN / QUAL_NO_GO / SCIENCE_NOT_RUN.
