@@ -278,7 +278,10 @@ def _case(
         server.stop()
 
 
-async def _issue(f, pre, handoff, loop, former, current, native, gait_mode):
+async def _issue(
+    f, pre, handoff, loop, former, current, native, gait_mode,
+    *, pre_native_evidence=None,
+):
     owner = f.owners[f.names[0]]
     plan = resolve_stage27_place_motion(
         pre, handoff, current, owner=owner,
@@ -307,6 +310,8 @@ async def _issue(f, pre, handoff, loop, former, current, native, gait_mode):
         source_probe=current,
     )
     args["precision_gait"] = gait_mode
+    if pre_native_evidence is not None:
+        args["pre_native_evidence"] = pre_native_evidence
     return await f.physical.issue_place_move(native, **args)
 
 
