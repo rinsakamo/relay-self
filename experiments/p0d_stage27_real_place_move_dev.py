@@ -674,7 +674,8 @@ async def stage27g_real_a_motor_hook(**kwargs) -> dict[str, object]:
 
 def _stage27h_capture_prepared(
     journal: PhysicalActionJournal, evidence: Path, *,
-    action_id: str, action_index: int, long_stage27j: bool = False,
+    action_id: str, action_index: int, self_id: str,
+    long_stage27j: bool = False,
 ) -> dict[str, object]:
     """Freeze complete original WAL before *any* native effect for one child.
 
@@ -686,6 +687,8 @@ def _stage27h_capture_prepared(
     if (
         not isinstance(journal, PhysicalActionJournal)
         or not journal.unresolved or evidence.is_symlink()
+        or type(self_id) is not str or not self_id
+        or journal._body.get("self_id") != self_id
         or type(long_stage27j) is not bool
         or type(action_index) is not int or not 0 <= action_index < (
             STAGE27J_MAX_ACTIONS if long_stage27j else 4
@@ -710,7 +713,7 @@ def _stage27h_capture_prepared(
         raise Stage27RealWorldRefusal("Stage27h original per-Action PREPARED invalid")
     raw = journal.path.read_bytes()
     if PhysicalActionJournal.restore(
-        journal.path, self_id="A",
+        journal.path, self_id=self_id,
     ).digest != journal.digest:
         raise Stage27RealWorldRefusal("Stage27h original PREPARED WAL changed")
     dest = evidence / f"stage27h-A-PREPARED-{action_index + 1}.json"
@@ -725,7 +728,7 @@ def _stage27h_capture_prepared(
         os.close(folder_fd)
     if dest.read_bytes() != raw:
         raise Stage27RealWorldRefusal("Stage27h immutable PREPARED source mismatch")
-    frozen = PhysicalActionJournal.restore(dest, self_id="A")
+    frozen = PhysicalActionJournal.restore(dest, self_id=self_id)
     if frozen.digest != journal.digest or not frozen.unresolved:
         raise Stage27RealWorldRefusal("Stage27h PREPARED independent readback failed")
     return {
@@ -912,6 +915,7 @@ async def stage27h_real_a_motor_hook(
         def capture_reserved(source, action):
             original_prepared.update(_stage27h_capture_prepared(
                 source, evidence, action_id=action, action_index=idx,
+                self_id=owner.self_id,
                 long_stage27j=long_stage27j and loop.stage27j_long_mode,
             ))
 
