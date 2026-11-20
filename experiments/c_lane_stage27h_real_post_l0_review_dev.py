@@ -7,6 +7,7 @@ completion, Memory write, physical Action or Stage28 checkpoint here.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -107,15 +108,13 @@ async def capture_stage27h_real_post_l0_readonly_review(
         or len(bridge.lifecycle.self_roster) != 2
         or bridge.owners.get(loop.owner.self_id) is not loop.owner
         or bridge.lifecycle.world.world_id != world_uuid
-        or loop.terminal_status != "L0_TARGET_REACHED_YIELD_EVALUATION"
-        or not 2 <= loop.action_count <= 4
+        or not 1 <= loop.action_count <= 4
         or loop.owner.skills[loop.handoff.skill_execution_id].state
         is not SkillState.STARTED
-        or loop.owner.retained.memories
         or bridge.sessions[loop.owner.self_id].process_returncode is not None
     ):
         raise CStage27RealReadOnlyHold(
-            "original Stage27h target/Owner/native review unavailable"
+            "original Stage27h Action/Owner/native review unavailable"
         )
 
     owner = loop.owner
@@ -123,10 +122,10 @@ async def capture_stage27h_real_post_l0_readonly_review(
         owner.files.physical_wal_file, self_id=owner.self_id,
     )
     journal.require_clear()
-    original_memory = owner.retained
-    original_intent = tuple(owner.intent.events)
-    original_skill = owner.skills[loop.handoff.skill_execution_id]
-    original_actions = tuple(journal.records)
+    original_memory = copy.deepcopy(owner.retained)
+    original_intent = copy.deepcopy(tuple(owner.intent.events))
+    original_skill = copy.deepcopy(owner.skills[loop.handoff.skill_execution_id])
+    original_actions = copy.deepcopy(tuple(journal.records))
     first_frame = prepare_stage27hi_multi_review(
         loop, step, physical=physical, lane=lane, bridge=bridge,
         first_action_probe=first_action_probe,
@@ -146,6 +145,14 @@ async def capture_stage27h_real_post_l0_readonly_review(
         "canonical_wal_sha256": journal.digest,
         "canonical_action_ids": list(first_frame.action_ids),
         "original_l0_terminal": asdict(step),
+        "target_gap_m": step.target_gap_m,
+        "action_count": loop.action_count,
+        "budget": asdict(loop.invocation.budget),
+        "observations_used": loop.observation_count,
+        "distance_used_m": loop.cumulative_distance_m,
+        "settling_observations_reserved": loop._settlement_reserved,
+        "evaluation_scope": "settled terminal WAL actions only; unexecuted work UNKNOWN",
+        "evaluation_recommendation_only": True,
         "original_post_action_native_seq": last_settled_probe.seq,
         "l1_request_id": first_frame.request.request_id,
         "c1_memory_retained": False,

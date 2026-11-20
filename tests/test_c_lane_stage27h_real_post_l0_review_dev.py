@@ -27,9 +27,9 @@ from experiments.p0d_stage27_real_place_move_dev import (
 from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.skill import SkillState
-from test_c_lane_stage27hi_multi_action_review_dev import _run_multi
+from test_c_lane_stage27hi_multi_action_review_dev import _issue, _run_multi, _start
 from test_p0d_stage27g_real_l1_evaluation_dev import _new_probe
-from test_p0d_stage27h_bounded_l0_move_dev import _fixture
+from test_p0d_stage27h_bounded_l0_move_dev import SlowPlaceNative, _fixture
 
 
 def _setup(stdout: Path, probe):
@@ -39,6 +39,38 @@ def _setup(stdout: Path, probe):
         "seq": probe.seq, "request_id": probe.request_id,
     }
     stdout.write_bytes((json.dumps(event, sort_keys=True) + "\n").encode())
+
+
+def test_real_review_entry_accepts_one_settled_budget_stop(tmp_path):
+    async def scenario(f, lane, server):
+        pre, handoff, former, observed, loop = await _start(f, lane)
+        native = SlowPlaceNative(handoff.native_session_id)
+        assert loop.pre_action(observed, now_ns=150).status == "L0_CONTINUE_MOVE"
+        receipt = await _issue(f, pre, handoff, loop, former, observed, native)
+        step = loop.observe_terminal_action(
+            receipt, source_probe=observed,
+            now_ns=loop.start_ns + loop.invocation.budget.max_duration_ms * 1_000_000,
+        )
+        assert step.status == "L0_BUDGET_EXHAUSTED_YIELD_EVALUATION"
+        post = _new_probe(receipt)
+        stdout = tmp_path / "native.jsonl"
+        _setup(stdout, post)
+        server.choice_id = "2"
+        result = await capture_stage27h_real_post_l0_readonly_review(
+            loop=loop, step=step, first_action_probe=observed,
+            last_settled_probe=receipt.settled_probe, physical=f.physical,
+            lane=lane, bridge=f.bridge, evidence=tmp_path,
+            world_uuid=f.lifecycle.world.world_id, original_native_stdout=stdout,
+            fresh_probe=lambda: asyncio.sleep(0, result=post),
+        )
+        assert result["original_model_choice_number"] == "2"
+        assert not result["review_completion_selected"]
+        assert not result["c1_memory_written"]
+        assert loop.owner.skills[handoff.skill_execution_id].state is SkillState.STARTED
+        before = json.loads((tmp_path / "c-stage27h-before-post-l0-l1.json").read_text())
+        assert before["action_count"] == 1
+        assert before["settling_observations_reserved"] == 0
+    _fixture(tmp_path, scenario)
 
 
 def test_original_stage27h_live_hook_optin_performs_only_readonly_l1(tmp_path):
