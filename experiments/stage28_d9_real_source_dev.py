@@ -442,40 +442,12 @@ async def _owned_resident_trial(
     if d9_source_exploration_dev:
         if bridge.cognitive_work is None or bridge.inference_lane is None:
             raise RealResidentPresenceRefusal("D9 original GPU/Owner lane missing")
-        # Before the ONE new bounded GPU POST, require both original players
-        # PRESENT in independent owned Paper source and actual Native probe.
-        pre_model = paper.read_owned_log(paper_session)
-        pre_model_sha = hashlib.sha256(pre_model).hexdigest()
-        _write_bytes_new(
-            evidence_dir / "d9-pre-inference-paper-resident-owned.log", pre_model,
-        )
-        trace_before = parse_owned_paper_resident_trace(
-            owned_paper_session_id=paper_session,
-            expected_world_uuid=world_uuid,
-            owned_paper_log=pre_model,
-            log_ref=(
-                f"paper-owned-pre-d9:{paper_session}:sha256:{pre_model_sha}"
-            ),
-        )
-        require_pre_inference_resident_presence(
-            trace_before, a_name="RelayA", b_name="RelayB",
-        )
         for sid in ("A", "B"):
             original = bridge.owners[sid]
             probe = bridge.last_login_observations[sid]
             original.accept_rejoined_worldbody(
                 probe, request_id=bridge.last_login_evidence[sid].observation_ref,
             )
-        # Exactly ONE genuine B-owned single-slot GPU call this World.
-        # A's Question will be adopted on A's FINAL native reJOIN below;
-        # it must not be attributed to an already-retired old native ID.
-        original_b = await run_d9_original_bounded_l1(
-            bridge.owners["B"], bridge.cognitive_work,
-            bridge.inference_lane, bridge.last_login_observations["B"],
-            world_session_id=paper_session,
-        )
-        d9_original_b = original_b
-        _immutable_receipt(evidence_dir, "D9-B-original-bounded-L1", original_b)
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
         raise RealResidentPresenceRefusal("A native terminal source mismatch")
@@ -493,6 +465,36 @@ async def _owned_resident_trial(
         or bridge.sessions["B"].started.session_id != original_b_native
     ):
         raise RealResidentPresenceRefusal("B changed original native owner after A quit")
+    if d9_source_exploration_dev:
+        if bridge.cognitive_work is None or bridge.inference_lane is None:
+            raise RealResidentPresenceRefusal("D9 original GPU/Owner lane missing")
+        # Require A quit and continued B presence before the one GPU POST.
+        pre_model = paper.read_owned_log(paper_session)
+        pre_model_sha = hashlib.sha256(pre_model).hexdigest()
+        _write_bytes_new(
+            evidence_dir / "d9-pre-inference-paper-resident-owned.log", pre_model,
+        )
+        trace_before = parse_owned_paper_resident_trace(
+            owned_paper_session_id=paper_session,
+            expected_world_uuid=world_uuid,
+            owned_paper_log=pre_model,
+            log_ref=(
+                f"paper-owned-pre-d9:{paper_session}:sha256:{pre_model_sha}"
+            ),
+        )
+        require_pre_inference_resident_presence(
+            trace_before, a_name="RelayA", b_name="RelayB",
+        )
+        # Exactly ONE genuine B-owned single-slot GPU call this World.
+        # A's Question will be adopted on A's FINAL native reJOIN below;
+        # it must not be attributed to an already-retired old native ID.
+        original_b = await run_d9_original_bounded_l1(
+            bridge.owners["B"], bridge.cognitive_work,
+            bridge.inference_lane, bridge.last_login_observations["B"],
+            world_session_id=paper_session,
+        )
+        d9_original_b = original_b
+        _immutable_receipt(evidence_dir, "D9-B-original-bounded-L1", original_b)
     b_move = None
     if b_autonomous_l1_dev:
         # Stage24f's pinned plugin emitted P0B_PLAYER/P0D_TICK_READY but
