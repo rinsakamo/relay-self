@@ -185,6 +185,11 @@ def _replay_intent(events: tuple[IntentEvent, ...]) -> IntentCommitment:
 
 
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
+    # Schema 1 has no representation for accepted Presets.  Keep this guard
+    # even while the B registry has no such field: an extended registry must
+    # never silently lose accepted owner knowledge at this boundary.
+    if getattr(cut.pattern_registry, "accepted_presets", ()):
+        raise SelfOwnerCheckpointError("schema 1 cannot encode accepted Presets")
     return {
         "schema": 1,
         "generation_id": cut.generation_id, "self_id": cut.self_id,

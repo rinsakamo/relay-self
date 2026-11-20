@@ -189,6 +189,19 @@ class RuntimeFixture:
         ))
 
 
+def test_owner_rejects_duplicate_pending_questions_before_set_conversion(tmp_path):
+    fixture = RuntimeFixture(tmp_path)
+    owner = fixture.owners[0]
+    with pytest.raises(LiveCognitionCheckpointError, match="duplicate pending Question"):
+        CheckpointedCognitiveOwner(
+            retained=owner.retained, intent=owner.intent,
+            pattern_registry=owner.pattern_registry,
+            native_session_id=owner.native_session_id,
+            last_observed_tick=owner.last_observed_tick, files=owner.files,
+            physical_supervisor=owner.supervisor, pending_questions=("q", "q"),
+        )
+
+
 def test_existing_a_b_cognitive_owners_snapshot_and_whole_rollback(tmp_path):
     f = RuntimeFixture(tmp_path)
     f.baseline()

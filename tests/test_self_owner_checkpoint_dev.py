@@ -139,6 +139,13 @@ def _capture(world: Path, store: Path, sources, *, sequence: int = 1):
     )
 
 
+def test_schema1_refuses_registry_with_accepted_presets(tmp_path: Path, monkeypatch):
+    _, _, _, cuts = _fixture(tmp_path)
+    monkeypatch.setattr(type(cuts[0].pattern_registry), "accepted_presets", (object(),), raising=False)
+    with pytest.raises(SelfOwnerCheckpointError, match="cannot encode accepted Presets"):
+        save_self_owner_cut(tmp_path / "unsafe.json", cuts[0])
+
+
 def test_typed_two_self_generation_and_inert_restore(tmp_path: Path):
     world, store, specs, cuts = _fixture(tmp_path)
     assert cuts[0].pattern_registry.revision == 1

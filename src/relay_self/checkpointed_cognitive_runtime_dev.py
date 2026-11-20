@@ -415,6 +415,12 @@ class CheckpointedCognitiveOwner:
         )
         if len({x.execution_id for x in skills}) != len(skills):
             raise LiveCognitionCheckpointError("duplicate Skill histories")
+        if len({x.message_id for x in peer_deliveries}) != len(peer_deliveries):
+            raise LiveCognitionCheckpointError("duplicate peer delivery")
+        if (type(pending_questions) is not tuple
+                or any(type(q) is not str or not q.strip() for q in pending_questions)
+                or len(set(pending_questions)) != len(pending_questions)):
+            raise LiveCognitionCheckpointError("invalid or duplicate pending Question")
         self.retained = retained
         self.intent = intent
         self.pattern_registry = pattern_registry
