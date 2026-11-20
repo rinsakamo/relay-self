@@ -17,6 +17,7 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_look,
     encode_observe,
+    encode_sense_terrain,
     encode_set_control,
     encode_shutdown,
 )
@@ -284,6 +285,10 @@ class MineflayerProcessSession:
     async def send_observe(self, request_id: str | None = None) -> None:
         """Backwards-compatible native probe, optionally correlated by ID."""
         await self._send(encode_observe(request_id))
+
+    async def send_sense_terrain(self, request_id: str) -> None:
+        """Read-only bounded terrain request on the original owned stream."""
+        await self._send(encode_sense_terrain(request_id))
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
