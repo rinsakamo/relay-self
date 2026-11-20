@@ -109,6 +109,7 @@ def test_d11_fork_is_inert_and_pins_exact_audit_once(tmp_path, monkeypatch):
     "pins_inside_evidence",
     "restored_inside_evidence",
     "pins_inside_restored",
+    "pins_via_ancestor_symlink",
     "existing_pins",
     "existing_restored",
     "missing_restore_id",
@@ -131,6 +132,11 @@ def test_d11_unsafe_output_paths_hold_before_any_restore(
     elif invalid == "pins_inside_restored":
         restored.mkdir()
         pins_file = restored / "nested.json"
+    elif invalid == "pins_via_ancestor_symlink":
+        (evidence / "nested").mkdir()
+        alias = tmp_path / "alias-to-sealed-source"
+        alias.symlink_to(evidence, target_is_directory=True)
+        pins_file = alias / "nested" / "pins.json"
     elif invalid == "existing_pins":
         pins_file.write_text("do not overwrite")
     elif invalid == "existing_restored":
