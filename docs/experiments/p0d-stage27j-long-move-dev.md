@@ -89,6 +89,47 @@ Actions**. Do not retroactively mark them successful.
   independently nonempty B Memory preservation, Goal/Skill success,
   QUAL or SCIENCE.
 
+## First real World: HOLD after four settled WALK Actions (2026-11-20)
+
+Original execution HEAD `27426c029c5ee1b390bbe797e82b3278ca651294`,
+isolated World UUID `39be3e79-61f8-43d2-b6a7-c4737c5b346b`.
+One World trial, no retries. Original real Gemma A/B both selected #1,
+with two initial recorded provider requests (post-loop HTTP census did not
+complete). Four distinct WALK Actions used the original native LOOK/START/STOP
+ACK, settling and terminal WAL:
+
+| Action | Native settled displacement |
+| --- | ---: |
+| 1 | 0.641819m |
+| 2 | 0.641819m |
+| 3 | 0.641819m |
+| 4 | 0.426891m |
+
+Cumulative 2.352347m; native Target residual 2.647653m. The fifth
+`stage27c-A-229` was **PREPARED_UNRESOLVED** after fsync but before native
+LOOK/START, because the read-only evidence callback
+`_stage27h_capture_prepared` still refused `action_index >= 4`.
+This was a missed pre-World source guard and a **HOLD**, not a move failure,
+Target arrival, or ordinary Budget exhaustion. No attempt is made to reuse
+or silently close this WAL. The exception prevented completed post-loop B
+Intent/Skill/Memory comparison, owner model HTTP census, and L0 time/observation
+readback. B WAL was empty, but B full cognitive preservation is unqualified.
+A/B QUIT, Paper save/stop and process/GPU cleanup were verified by LocalCodex;
+183 evidence files passed SHA256 readback. No SNEAK or Goal/Skill success
+was observed.
+
+**A Lane evidence correction, future Worlds only:** The original collector
+keeps Stage27h/i 4-child maximum. Stage27j's immutable, original accepted
+12-Action Preset is the *only* caller that may pass
+`long_stage27j=True`, and then the collector also requires the original
+PREPARED WAL row to carry its exact 12 Action/45,000ms/6.0m Budget.
+The collector only copies an fsynced canonical WAL, before any native
+effect; it does **not** grant motor authority. A source-shaped integration
+test now drives all 12 children through the original issuer and checks the
+fifth, ninth and twelfth PREPARED readbacks, reject-old-cap control,
+index-13 rejection, forged action and write-once no-replay.
+The original fifth PREPARED remains unresolved in the old World.
+
 ## Real World DEV follow-up
 
 Read current PR and exact-HEAD CI first; independently inspect original
