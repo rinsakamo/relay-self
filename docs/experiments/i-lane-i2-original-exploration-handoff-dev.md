@@ -11,7 +11,7 @@ I2 exposes a coherent **candidate-only** envelope with the current original Owne
 The handoff has two mutually exclusive, source-qualified outcomes:
 
 - `EXPLORATION_GOAL_UNRESOLVED_TARGET`: original B registered Schema has a matching retained exploration Pattern, original B Present has a valid exploratory Need and bounded coverage inquiry, and the original CPU matcher created exactly one unresolved `EXPLORE_WORLD` Goal. This is a **candidate**, not adoption.
-- `NO_QUALIFIED_EXPLORATION_GOAL`: saved original Self has no eligible exploration Pattern/Need, and no Question/Goal is manufactured. This is the expected conservative state of the previously audited I1 restored A/B with empty registries; it is not an instruction to mutate old owner patterns.
+- `NO_QUALIFIED_EXPLORATION_GOAL`: saved original Self has no eligible exploration Pattern/Need, and no Question/Goal is manufactured. This is the expected conservative state of the previously audited I1 restored A/B without an eligible exploration Pattern (while retaining homeostatic and defensive innate Patterns); it is not an instruction to mutate old owner patterns.
 
 `verify_i2_original_goal_handoff` re-runs the full original B/E/I1 source projection with the frozen request ID, recomputes its canonical request and local fingerprint, and rejects a foreign Self, missing or changed source, altered Question/Need/Goal, request content/identity changes, changed original Owner Intent/Registry, stale Paper/ACK, expired Native observed probe or retired Self. This is necessary **before any future GPU submission**, and a real model POST would still require the original exclusive single-slot GGUF/PID/GPU and ticket/result readbacks. Revalidation alone never licenses action.
 
