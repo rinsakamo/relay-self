@@ -122,3 +122,20 @@ def test_actual_checkpoint_recovery_holds_before_login_without_modification(tmp_
     with pytest.raises(Stage28c2OwnerHold, match="not recorded"):
         _reattach(generation, restored, prepared, schema_bootstrap=SchemaBootstrapConfig(True))
     assert before == {p.relative_to(restored): p.read_bytes() for p in restored.rglob("*") if p.is_file()}
+
+
+def test_pattern_presence_does_not_enable_schema_and_forged_pattern_rejected(tmp_path):
+    resident = make_resident(tmp_path, initial_patterns_with_relative_move())
+    bootstrap_fresh_schemas(resident, SchemaBootstrapConfig(True))
+    snapshot = resident._present_schemas.pop("A")[0]
+    off = replace(snapshot, modules=(replace(snapshot.modules[0], mode=SchemaMode.OFF),))
+    resident.register_present_schema("A", off)
+    assert resident._present_schemas["A"][0].get("exploratory").mode is SchemaMode.OFF
+    del resident._present_schemas["A"]
+    owner = resident.owners["A"]
+    pattern = owner.pattern_registry.patterns[-1]
+    owner.pattern_registry = replace(owner.pattern_registry, patterns=(
+        *owner.pattern_registry.patterns[:-1], replace(pattern, goal_id="FORGED"),
+    ))
+    with pytest.raises(ResidentCognitiveWorkError, match="mapping"):
+        resident.register_present_schema("A", snapshot)
