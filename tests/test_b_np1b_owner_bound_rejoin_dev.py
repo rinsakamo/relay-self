@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 import pytest
 
 from relay_self.b_np1b_current_composite_source_dev import build_current_composite_source
+from relay_self.b_np1b_initial_source_dev import _revision
 from relay_self.b_np1b_owner_bound_rejoin_dev import (
     OwnerBoundRejoinHold,
     build_owner_bound_rejoin_paper,
@@ -104,20 +105,23 @@ def test_original_bridge_rejoin_is_bound_to_owned_paper(rejoined):
 @pytest.mark.parametrize("fault", [
     "old_logout", "old_owner", "new_login", "native_probe", "b_session",
     "paper_quit", "a_present", "b_quit", "actor", "tick_ack", "paper_session",
-    "old_receipt", "log_growth", "native_during_paper", "paper_pid",
+    "old_receipt", "forged_old_request", "log_growth", "native_during_paper", "paper_pid",
 ])
 def test_owner_bound_rejoin_rejects_foreign_and_changing_sources(rejoined, monkeypatch, fault):
     f, initial, _, _, old_a_session, logout, _ = rejoined
     bridge = f.bridge
     paper = f.paper
     if fault == "old_logout":
-        proof, scope, owner = bridge._b_np1b_retired_login["A"]
+        proof, scope, owner, prior_login, prior_probe = bridge._b_np1b_retired_login["A"]
         bridge._b_np1b_retired_login["A"] = (
             replace(proof, native_session_id="foreign-native"), scope, owner,
+            prior_login, prior_probe,
         )
     elif fault == "old_owner":
-        proof, scope, owner = bridge._b_np1b_retired_login["A"]
-        bridge._b_np1b_retired_login["A"] = (proof, scope, bridge.owners["B"])
+        proof, scope, owner, prior_login, prior_probe = bridge._b_np1b_retired_login["A"]
+        bridge._b_np1b_retired_login["A"] = (
+            proof, scope, bridge.owners["B"], prior_login, prior_probe,
+        )
     elif fault == "new_login":
         bridge.last_login_evidence["A"] = replace(
             bridge.last_login_evidence["A"], native_session_id=old_a_session,
@@ -145,6 +149,16 @@ def test_owner_bound_rejoin_rejects_foreign_and_changing_sources(rejoined, monke
         paper._session_id = "foreign-paper"
     elif fault == "old_receipt":
         initial = (replace(initial[0], native_session_id="foreign"), initial[1])
+    elif fault == "forged_old_request":
+        forged = replace(initial[0], native_request_id="forged-original-request")
+        values = asdict(forged)
+        keys = (
+            "self_id", "owner_identity", "resident_epoch", "world_id", "branch_id",
+            "world_epoch", "native_session_id", "native_request_id", "native_sequence",
+            "native_source_ref", "native_world_time",
+        )
+        forged = replace(forged, native_revision=_revision({k: values[k] for k in keys}))
+        initial = (forged, initial[1])
     elif fault == "log_growth":
         read = paper.read_owned_log
         reads = [0]
