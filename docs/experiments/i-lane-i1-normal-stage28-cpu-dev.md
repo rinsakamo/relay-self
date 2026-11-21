@@ -191,8 +191,23 @@ producer linkage. Foreign session, swapped Self, stale Native, changed
 actor/nonce or incomplete ACK also HOLD. No plugin/Paper stdout mutation,
 new Owner, model, physical Action or auditor relaxation is permitted.
 
-Any future fresh isolated World run must save exact raw failure-time
-source and an explicit predicate classification if BD1b still HOLDs.
+For a new I1 BD1b HOLD, the source reader now attaches the exact
+**single owned-Paper read() byte string** and its original full-log /
+completed-prefix SHA256 values to the escaping exception. Only the
+**original Stage28 Runner** may freeze that attached read into the
+exclusive new artifact
+`i1-bd1b-failure-time-owned-paper-readback.log`, with SHA256, byte
+count, original session, A/B link SHA and phase in the existing terminal
+HOLD report. It does not reread the growing Paper log after the
+failure or use this diagnostic to authorize cognition, Paper/PID trust,
+an independent audit or a classification change. Failure to freeze
+is explicitly reported as diagnostic uncertainty; no old result is
+promoted by the frozen bytes. Ordinary B does not attach/freeze these
+I1-only diagnostics.
+
+Any future fresh isolated World run must retain the failed readback
+and the remaining original sources if BD1b still HOLDs; do not
+substitute a later post-STOP Paper log for failure-time evidence.
 This fix is CPU/offline only until an entirely new actual trial passes
 the unchanged independent I1 auditor. Historic failures cannot be
 reclassified or rewritten.
