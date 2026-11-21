@@ -159,8 +159,8 @@ class ResidentCognitiveWorkOwner:
         by re-reading the original current Native/Paper sources under this lock.
         Neither path grants a new capability or persists cognition.
         """
-        from relay_self.bd1b_owner_present_dev import build_bd1b_owner_present
         from relay_self.b_np1b_rejoin_present_dev import build_rejoined_owner_present
+        from relay_self.bd1b_owner_present_dev import build_bd1b_owner_present
 
         with self.lock:
             if bridge.cognitive_work is not self or bridge.owners.get(self_id) is not self.owners.get(self_id):
