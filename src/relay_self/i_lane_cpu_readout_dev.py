@@ -30,7 +30,8 @@ class I0OwnerCPUReadout:
     model_invoked: bool = False
 
 
-def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str) -> I0OwnerCPUReadout:
+def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str,
+                      i1_complete_paper_prefix: bool = False) -> I0OwnerCPUReadout:
     """Bundle B's original Present and inquiry at one guarded source revision.
 
     All source checks and projections go through the original resident. A
@@ -44,13 +45,16 @@ def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str) -> I0OwnerCPU
     with resident.lock:
         before = resident.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_complete_paper_prefix=i1_complete_paper_prefix,
         )
         inquiry = build_coverage_inquiry(
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=self_id, readout=before,
+            i1_complete_paper_prefix=i1_complete_paper_prefix,
         )
         after = resident.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_complete_paper_prefix=i1_complete_paper_prefix,
         )
         revisions = before.present.three_self.source_revision_refs
         if (
