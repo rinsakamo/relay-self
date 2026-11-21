@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from adapters.mineflayer.process_session import MineflayerProcessSession
 from experiments.cognitive_physical_executor_dev import PhysicalGrantStage
 from relay_self.action import ActionState
 from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
@@ -147,6 +148,37 @@ def test_s2_original_issuer_rejects_modified_historic_sha_after_rechecksum(tmp_p
             reserve_s2_first_original_move_synthetic_dev(
                 native, candidate, **args,
             )
+        assert candidate.action_id not in {
+            action.action_id for action in loop.owner.supervisor.recorded_actions
+        }
+    _fixture(tmp_path, scenario)
+
+
+def test_i4a_synthetic_s2_rejects_live_native_before_wal_or_lease(tmp_path):
+    async def scenario(f, lane, server):
+        loop, witness, boundary, observed = await _first_s2(f, lane, server)
+        candidate = _propose(f, lane, witness, boundary, observed)
+        scripted, args = _prepare(f, lane, candidate, witness)
+        prior = loop.owner.files.physical_wal_file.read_bytes()
+        actions = loop.owner.supervisor.recorded_actions
+
+        # A real MineflayerProcessSession is process-backed and does not
+        # become a synthetic source just because the same DEV grants exist.
+        process_session = object.__new__(MineflayerProcessSession)
+        with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+            reserve_s2_first_original_move_synthetic_dev(
+                process_session, candidate, **args,
+            )
+        # A subclass of MineflayerProcessSession that carries real process
+        # resources is likewise not accepted, even with scripted methods.
+        scripted._process = object()
+        with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+            reserve_s2_first_original_move_synthetic_dev(
+                scripted, candidate, **args,
+            )
+        assert loop.owner.files.physical_wal_file.read_bytes() == prior
+        assert loop.owner.supervisor.recorded_actions == actions
+        assert f.physical.active_action_ids == ()
         assert candidate.action_id not in {
             action.action_id for action in loop.owner.supervisor.recorded_actions
         }
