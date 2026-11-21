@@ -139,7 +139,7 @@ def test_current_original_b_rejects_tampered_fresh_adoption(pair, monkeypatch, f
     elif fault == "pending":
         bridge._fresh_native_pending["B"] = object()
     elif fault == "decoder":
-        bridge.sessions["B"]._decoder.next_seq += 1
+        bridge.sessions["B"]._decoder._next_seq += 1
     elif fault == "last_login":
         bridge.last_login_evidence["B"] = replace(
             bridge.last_login_evidence["B"], observation_ref="foreign",
@@ -171,14 +171,20 @@ def test_current_original_b_rejects_tampered_fresh_adoption(pair, monkeypatch, f
             lambda: type("ChangedPaper", (), {"pid": process().pid + 1})(),
         )
 
-    with pytest.raises((FreshNativeHold, RuntimeError, ValueError)):
-        read_continuing_b_native_revision(
-            bridge=bridge, initial_receipt=initial[1],
-        ) if fault not in ("paper_log", "paper_pid") else (
+    if fault == "paper_pid":
+        # The A verifier independently requires the original owned Paper PID.
+        with pytest.raises((RejoinCompositeHold, RuntimeError)):
             build_rejoined_composite_source(
                 bridge=bridge, initial_receipts=initial, historical_composite=history,
             )
-        )
+    elif fault != "paper_log":
+        # B Native provenance is independently validated without Paper bytes.
+        with pytest.raises((FreshNativeHold, RuntimeError, ValueError)):
+            read_continuing_b_native_revision(
+                bridge=bridge, initial_receipt=initial[1],
+            )
+    # A alone may recognize the old Paper ACK despite a later log append;
+    # the paired B source MUST reject a log without a latest terminal ACK.
     with pytest.raises((NormalPresentPollHold, RuntimeError, ValueError)):
         bridge.poll_normal_present_cpu()
 
