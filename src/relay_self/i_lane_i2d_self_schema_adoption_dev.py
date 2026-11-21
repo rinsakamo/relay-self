@@ -12,6 +12,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 
+from relay_self.common_io import ScopeRef
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
@@ -63,6 +64,7 @@ class I2dL2ProposalWork:
     handoff: I2OriginalGoalHandoff
     request: OpenCognitionRequest
     ticket: ResidentInferenceTicket
+    request_sha256: str
     consumed: bool = field(default=False, init=False)
 
 
@@ -72,6 +74,7 @@ class I2dL1AcceptanceWork:
     pattern: SchemaPattern
     request: BoundedChoiceRequest
     ticket: ResidentInferenceTicket
+    request_sha256: str
     consumed: bool = field(default=False, init=False)
 
 
@@ -224,7 +227,7 @@ def submit_i2d_original_l2(
             mode=CognitionMode.OPEN, work_ref=request.request_id,
         ):
             raise I2dOriginalHold("original L2 ticket not source-bound")
-        return I2dL2ProposalWork(handoff, request, ticket)
+        return I2dL2ProposalWork(handoff, request, ticket, _fingerprint(request))
 
 
 def submit_i2d_original_l1_acceptance(
@@ -238,10 +241,11 @@ def submit_i2d_original_l1_acceptance(
         h = proposed.handoff
         _current(bridge=bridge, lane=lane, boot=boot, world=world,
                  links=links, handoff=h)
-        if not _ticket_valid(
+        if (proposed.request_sha256 != _fingerprint(proposed.request)
+                or not _ticket_valid(
             lane, proposed.ticket, handoff=h, request=proposed.request,
             mode=CognitionMode.OPEN, work_ref=proposed.request.request_id,
-        ):
+        )):
             raise I2dOriginalHold("foreign or tampered L2 proposal request")
         result = _job_result(lane, proposed.ticket, CognitionMode.OPEN)
         if type(result) is not ProviderExpression:
@@ -303,7 +307,7 @@ def submit_i2d_original_l1_acceptance(
         ):
             raise I2dOriginalHold("foreign or tampered Self acceptance ticket")
         proposed.consumed = True
-        return I2dL1AcceptanceWork(proposed, pattern, request, ticket)
+        return I2dL1AcceptanceWork(proposed, pattern, request, ticket, _fingerprint(request))
 
 
 def finish_i2d_self_adoption(
@@ -323,6 +327,8 @@ def finish_i2d_self_adoption(
         _current(bridge=bridge, lane=lane, boot=boot, world=world,
                  links=links, handoff=h)
         if (not proposed.consumed
+                or proposed.request_sha256 != _fingerprint(proposed.request)
+                or accepted.request_sha256 != _fingerprint(accepted.request)
                 or not _ticket_valid(
                     lane, proposed.ticket, handoff=h, request=proposed.request,
                     mode=CognitionMode.OPEN, work_ref=proposed.request.request_id,
@@ -379,7 +385,7 @@ def finish_i2d_self_adoption(
         )
         snapshot = SchemaSnapshot(h.self_id, registry.revision, (activation,))
         if not check_schema_eligibility(
-            snapshot, scope=__import__("relay_self.common_io", fromlist=["ScopeRef"]).ScopeRef(h.self_id, None),
+            snapshot, scope=ScopeRef(h.self_id, None),
             schema_id="exploratory", requested_mode=SchemaMode.FULL,
             current_registry_revision=registry.revision,
         ).allowed:
