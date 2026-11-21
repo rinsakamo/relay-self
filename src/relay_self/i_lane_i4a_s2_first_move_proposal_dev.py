@@ -25,6 +25,7 @@ from relay_self.initial_skill_ir import (
     SkillCursor,
     compile_invoked_skill,
 )
+from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import (
     PhysicalActionBinding,
@@ -59,6 +60,7 @@ class I4AS2FirstMoveProposal:
     source_probe: MineflayerObservation
     action_id: str
     invocation_ref: str
+    motion: Stage27PlaceMotionPlan
     ir: PhysicalSkillIR
     cursor: SkillCursor
     interpreter: FiniteSkillInterpreter
@@ -210,11 +212,38 @@ def propose_s2_first_original_place_move(
                     "locomotion", option.target_kind, option.target_ref,
                     native.seq, native.request_id, native.provenance,
                 )
+                motion = Stage27PlaceMotionPlan(
+                    self_id=owner.self_id,
+                    native_session_id=boundary.native_session_id,
+                    world_epoch=boundary.world_epoch,
+                    native_probe_request_id=native.request_id,
+                    native_probe_seq=native.seq,
+                    inference_request_id=boundary.decision_request_id,
+                    intent_id=boundary.new_intent_id,
+                    skill_execution_id=boundary.new_skill_id,
+                    invocation_ref=invocation.invocation_ref,
+                    parameter_preset_ref=invocation.parameter_preset_ref,
+                    target_contract_ref=contract.contract_ref,
+                    target_ref=option.target_ref,
+                    gap_to_arrival_envelope_m=assessment.gap_to_envelope_m,
+                    horizontal_distance_m=math.hypot(target.x-pos.x, target.z-pos.z),
+                    desired_mineflayer_yaw_rad=mineflayer_yaw_to_target(pos, target),
+                    observation_status="OUTSIDE",
+                    next_step=(
+                        "NATIVE_LOOK_AND_BOUNDED_MOVE_RESOLUTION_REQUIRED_NOT_ISSUABLE"
+                    ),
+                    preset_max_distance_m=invocation.budget.max_distance_m,
+                    full_envelope_reachable_within_distance_budget=(
+                        assessment.gap_to_envelope_m
+                        <= invocation.budget.max_distance_m
+                    ),
+                )
                 step = interpreter.propose(
                     cursor, binding=binding, capability=capability,
                     readback=readback, intent_owner=owner.intent,
                     skill_execution=skill, supervisor=owner.supervisor,
                     at_ns=at_ns+1, provenance=provenance,
+                    place_motion=motion,
                 )
                 proposal = step.proposal
                 if (
@@ -228,7 +257,7 @@ def propose_s2_first_original_place_move(
                     )
                 return I4AS2FirstMoveProposal(
                     boundary, native, action_id, invocation.invocation_ref,
-                    ir, step.cursor, interpreter, proposal,
+                    motion, ir, step.cursor, interpreter, proposal,
                 )
         except (PhysicalIssueFenceError, I4AS2RunBoundaryHold) as exc:
             raise I4AS2MotorProposalHold("original issuer or WAL source not clear") from exc
