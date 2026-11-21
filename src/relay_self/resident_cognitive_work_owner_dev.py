@@ -216,6 +216,23 @@ class ResidentCognitiveWorkOwner:
                 self_id=self_id, readout=readout,
             )
 
+    def bind_normal_rejoin_source_cpu(
+        self, *, bridge, initial_receipts, historical_composite,
+    ) -> None:
+        """Once-only original history binding; full current A/B revalidation."""
+        from relay_self.b_np1b_normal_present_poll_dev import bind_normal_rejoin_source_cpu
+
+        return bind_normal_rejoin_source_cpu(
+            resident=self, bridge=bridge, initial_receipts=initial_receipts,
+            historical_composite=historical_composite,
+        )
+
+    def poll_normal_present_cpu(self, *, bridge):
+        """Ordinary original resident CPU caller; no GPU or physical work."""
+        from relay_self.b_np1b_normal_present_poll_dev import poll_normal_present_cpu
+
+        return poll_normal_present_cpu(resident=self, bridge=bridge)
+
     def _state(self, self_id: str) -> _ResidentState:
         try:
             return self._states[self_id]
