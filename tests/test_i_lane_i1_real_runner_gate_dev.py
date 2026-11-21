@@ -71,3 +71,39 @@ def test_i1_cannot_run_an_unreviewed_combined_gpu_and_cpu_loop(tmp_path, monkeyp
             java="java", node="node", on_reconnected=external_gpu_cognition,
             i1_original_cpu_sense=True,
         ))
+
+
+@pytest.mark.parametrize("mode", [False, True])
+def test_i1_vs_legacy_capture_requires_its_own_pending_audit_class(mode):
+    expected = (
+        "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if mode else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+    )
+    report = {
+        "classification": expected,
+        "i1_original_cpu_sense_enabled": mode,
+        "i1_normal_continuous_native_observed": mode,
+    }
+    if mode:
+        report["i1_cpu_epochs"] = {"epochs": []}
+    runner.require_stage28_capture_classification(
+        report, i1_original_cpu_sense=mode,
+    )
+    for bad in (
+        {**report, "classification": "REAL_REJOIN_HOLD"},
+        {**report, "i1_original_cpu_sense_enabled": not mode},
+        {**report, "classification": (
+            "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+            if mode else "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        )},
+    ):
+        with pytest.raises(runner.Stage28c2bRealRejoinHold):
+            runner.require_stage28_capture_classification(
+                bad, i1_original_cpu_sense=mode,
+            )
+    if mode:
+        with pytest.raises(runner.Stage28c2bRealRejoinHold):
+            runner.require_stage28_capture_classification(
+                {**report, "i1_normal_continuous_native_observed": False},
+                i1_original_cpu_sense=True,
+            )
