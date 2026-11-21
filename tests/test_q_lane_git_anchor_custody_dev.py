@@ -195,3 +195,35 @@ def test_q1c_compromised_git_root_and_pins_do_not_authenticate_producer(tmp_path
     assert receipt["external_root_origin_authenticated"] is False
     assert receipt["anchor_producer_authenticated"] is False
     assert receipt["real_pre_s2_capture_time_verified"] is False
+
+
+def test_q1c_merge_history_rejected_even_when_files_and_sha_agree(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    pre = kwargs["pre_s2_anchor_commit"]
+    _cmd(root, "checkout", "-q", "-b", "other", pre)
+    _write(root, "another.txt", b"other source\n")
+    _commit(root, "other source branch")
+    _cmd(root, "checkout", "-q", "-b", "mainline", pre)
+    _write(root, "own.txt", b"local source\n")
+    _commit(root, "local source branch")
+    subprocess.run(
+        ["git", "-C", str(root), "merge", "--no-ff", "-m", "merge two branches", "other"],
+        check=True, capture_output=True,
+    )
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2 after merge")
+    with pytest.raises(QGitCustodyHold, match="linear non-merge"):
+        _verify(root, kwargs)
+
+
+def test_q1c_overlarge_anchor_object_is_not_loaded(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    oversized = b"X" * (2 * 1024 * 1024 + 1)
+    _write(root, ANCHOR, oversized)
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "oversized pre-anchor")
+    kwargs["expected_anchor_sha256"] = hashlib.sha256(oversized).hexdigest()
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "later S2")
+    with pytest.raises(QGitCustodyHold, match="oversized"):
+        _verify(root, kwargs)
