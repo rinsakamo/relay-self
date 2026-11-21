@@ -7,12 +7,10 @@ and explicitly selected by a later separate BOUNDED L1 model result.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 from dataclasses import dataclass, field
 
-from relay_self.common_io import ScopeRef
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
@@ -21,6 +19,7 @@ from relay_self.cognitive_minimal_dev import (
     accept_learned_pattern,
     parse_l2_pattern_proposal,
 )
+from relay_self.common_io import ScopeRef
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
     I2OriginalGoalHandoff,
     prepare_i2_original_goal_handoff,
