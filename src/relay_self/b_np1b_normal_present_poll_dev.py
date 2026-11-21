@@ -13,8 +13,8 @@ from relay_self.b_np1b_continuing_b_composite_dev import ContinuingCompositeSour
 from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
 from relay_self.b_np1b_initial_source_dev import InitialSourceReceipt, _revision
 from relay_self.b_np1b_rejoin_composite_source_dev import RejoinedCompositeSourceReceipt
-from relay_self.bd1b_owner_present_dev import BD1bOwnerPresent
 from relay_self.bd1b_coverage_inquiry_dev import CoverageInquiryProposal
+from relay_self.bd1b_owner_present_dev import BD1bOwnerPresent
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 
 
@@ -96,7 +96,10 @@ def bind_normal_rejoin_source_cpu(
         ):
             raise NormalPresentPollHold("immutable original A/B history required")
         cut = _RejoinSourceCut(bridge, initial_receipts, historical_composite)
-        _frames(resident, cut)
+        try:
+            _frames(resident, cut)
+        except (ValueError, RuntimeError, KeyError, TypeError, AttributeError, OSError) as exc:
+            raise NormalPresentPollHold("original A/B reJOIN history not current") from exc
         # No side effects except an immutable historical selector on the
         # existing original resident. Never cache a current source qualification.
         resident._normal_rejoin_source_cut = cut
