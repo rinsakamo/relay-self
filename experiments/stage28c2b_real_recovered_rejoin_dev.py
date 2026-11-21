@@ -34,6 +34,11 @@ from experiments.p0d_real_two_native_smoke_dev import (
 from experiments.stage24g_pinned_assets_launch_dev import (
     check_stage24g_pinned_assets,
 )
+from relay_self.i_lane_i1_normal_runtime_dev import (
+    install_i1_original_schema_bootstrap,
+    prepare_i1_original_schema_bootstrap,
+    sample_i1_original_cpu_epochs,
+)
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
@@ -129,6 +134,7 @@ async def run_restored_a_b_real_observation(
     plugin_jar: Path, java: str, node: str,
     timeout_s: float = 120, presence_timeout_s: float = 12.0,
     on_reconnected: Callable[..., Awaitable[None]] | None = None,
+    i1_original_cpu_sense: bool = False,
 ) -> Path:
     """One real Paper/native A/B trial, no auto retries; no model by default.
 
@@ -142,6 +148,8 @@ async def run_restored_a_b_real_observation(
         or not math.isfinite(presence_timeout_s)
         or not 1 <= presence_timeout_s <= 30
         or presence_timeout_s > timeout_s / 2
+        or type(i1_original_cpu_sense) is not bool
+        or (i1_original_cpu_sense and on_reconnected is not None)
     ):
         raise Stage28c2bRealRejoinHold("bounded real-run/presence timeout required")
     _verify_local_runtime(java, node)
@@ -153,6 +161,10 @@ async def run_restored_a_b_real_observation(
         and source.receipt.fork_branch_id == _FORK_BRANCH
     ):
         raise Stage28c2bRealRejoinHold("original historical Self receipt mismatched")
+    if i1_original_cpu_sense:
+        # Fail pre-copy/pre-World if the original restored registry cannot
+        # be reconfigured without inventing a new Pattern or capability.
+        prepare_i1_original_schema_bootstrap(source.cognitive_work)
     # Refuse even equivalent nested/overlapping paths for mutable execution.
     roots = [Path(x).resolve(strict=True) for x in (
         generation, restored, stage28b_evidence,
@@ -178,6 +190,8 @@ async def run_restored_a_b_real_observation(
         expected_committed_sha256=_SOURCE_COMMITTED_SHA,
         expected_fork_branch_id=_FORK_BRANCH,
     )
+    if i1_original_cpu_sense:
+        install_i1_original_schema_bootstrap(prepared.recovered.cognitive_work)
     if _world_uuid(dest / "world") != _SOURCE_WORLD:
         raise Stage28c2bRealRejoinHold("copied World UUID is not original restored World")
     evidence.mkdir(mode=0o700)
@@ -244,6 +258,8 @@ async def run_restored_a_b_real_observation(
         "physical_action_issue_authorized": False,
         "fresh_l1_run": False,
         "independent_audit_pass": False,
+        "i1_original_cpu_sense_enabled": i1_original_cpu_sense,
+        "i1_normal_continuous_native_observed": False,
     }
     report_path = evidence / "stage28c2b-recovered-world-result.json"
 
@@ -295,6 +311,7 @@ async def run_restored_a_b_real_observation(
                 history.historical_native_sessions
             ),
             probe_timeout_s=min(timeout_s / 3, 30.0),
+            enable_sense=i1_original_cpu_sense,
         )
         await bridge.login("A")
         await bridge.login("B")
@@ -349,6 +366,37 @@ async def run_restored_a_b_real_observation(
             PhysicalActionJournal.restore(
                 owner.files.physical_wal_file, self_id=sid,
             ).require_clear()
+        if i1_original_cpu_sense:
+            # Same original A/B dispatcher/owner; two distinct read-only
+            # native observations and independently refreshed Paper receipts.
+            # No GPU, Goal/Intent admission, Physical Action or Memory write.
+            async def refresh_original_native():
+                for sid in ("A", "B"):
+                    await bridge.refresh_i1_read_only_sense(sid, timeout_s=2.0)
+
+            def refresh_original_paper():
+                return link_recovered_a_b_native_paper_body(
+                    bridge=bridge, paper=paper, boot=boot,
+                    forbidden_native_sessions=frozenset(
+                        history.historical_native_sessions
+                    ),
+                )
+
+            observed = await sample_i1_original_cpu_epochs(
+                bridge=bridge, boot=boot, world=current, links=linked,
+                refresh_native_source=refresh_original_native,
+                refresh_paper_source=refresh_original_paper, timeout_s=8.0,
+            )
+            report["i1_cpu_epochs"] = asdict(observed)
+            report["i1_normal_continuous_native_observed"] = (
+                observed.continuous_native_updates_observed
+            )
+            if (not observed.continuous_native_updates_observed
+                    or observed.model_invoked or observed.action_issue_authorized
+                    or any(count != 2 for _, count in observed.per_self_counts)):
+                raise Stage28c2bRealRejoinHold(
+                    "normal I1 A/B repeated Native/CPU epochs incomplete"
+                )
         if on_reconnected is not None:
             # Stage28c2c explicitly opts into an already verified original
             # A/B source-linked Body. Default Stage28c2b remains model-free.
@@ -463,6 +511,7 @@ def main() -> int:
     parser.add_argument("--real-world-dev-grant", action="store_true")
     parser.add_argument("--timeout-s", type=float, default=120.0)
     parser.add_argument("--presence-timeout-s", type=float, default=12.0)
+    parser.add_argument("--i1-original-cpu-sense", action="store_true")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--inspect-only", action="store_true")
     modes.add_argument("--execute-once", action="store_true")
@@ -473,6 +522,7 @@ def main() -> int:
         if args.inspect_only and (
             args.real_world_dev_grant or args.execution_dir is not None
             or args.evidence_dir is not None
+            or args.i1_original_cpu_sense
         ):
             raise Stage28c2bRealRejoinHold("inspect-only may not activate a World")
         if args.execute_once and (
@@ -511,6 +561,7 @@ def main() -> int:
             paper_jar=checked.paper_jar, plugin_jar=checked.plugin_jar,
             java=args.java, node=args.node, timeout_s=args.timeout_s,
             presence_timeout_s=args.presence_timeout_s,
+            i1_original_cpu_sense=args.i1_original_cpu_sense,
         ))
         print(f"STAGE28C2B_CAPTURED_UNAUDITED={result}", flush=True)
         return 0
