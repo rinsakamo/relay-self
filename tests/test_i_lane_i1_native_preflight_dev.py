@@ -30,7 +30,12 @@ def local_native(tmp_path: Path) -> Path:
     )
     (root / "oxygen_owner_patch.mjs").write_bytes(actual_script.read_bytes())
     (root / "node_modules" / "mineflayer" / "package.json").write_text(
-        '{"version":"4.39.0"}\n', encoding="utf-8",
+        '{"version":"4.39.0","main":"index.js"}\n', encoding="utf-8",
+    )
+    # A read-only require() does not create a bot or World connection.
+    (root / "node_modules" / "mineflayer" / "index.js").write_text(
+        "module.exports = {createBot(){throw new Error('bot launch prohibited')}};\n",
+        encoding="utf-8",
     )
     (root / "node_modules" / "mineflayer" / "lib" / "plugins" / "entities.js").write_text(
         "      " + SELF_OWNED + "\n", encoding="utf-8",
@@ -44,12 +49,14 @@ def test_i1_preflight_node_inspector_exact_real_regular_files(local_native):
     assert receipt.mineflayer_version == "4.39.0"
     assert len(receipt.entities_sha256) == 64
     assert receipt.node_inspector_verified and receipt.no_symlink_ancestors
+    assert receipt.native_module_import_verified
     assert not receipt.world_started
 
 
 @pytest.mark.parametrize("kind", [
     "linked-node-modules", "linked-package-directory", "linked-source",
     "missing-source", "unpatched-source", "unsupported-version",
+    "missing-module-entry", "broken-module-entry", "malformed-module-api",
 ])
 def test_i1_preflight_rejects_bad_real_dependency_tree_before_world(
     local_native, tmp_path, kind, monkeypatch,
@@ -72,6 +79,16 @@ def test_i1_preflight_rejects_bad_real_dependency_tree_before_world(
         source.symlink_to(relocated)
     elif kind == "missing-source":
         source.unlink()
+    elif kind == "missing-module-entry":
+        (local_native / "node_modules" / "mineflayer" / "index.js").unlink()
+    elif kind == "broken-module-entry":
+        (local_native / "node_modules" / "mineflayer" / "index.js").write_text(
+            "require('not-installed-transitive-package');\n", encoding="utf-8",
+        )
+    elif kind == "malformed-module-api":
+        (local_native / "node_modules" / "mineflayer" / "index.js").write_text(
+            "module.exports = {createBot: 12};\n", encoding="utf-8",
+        )
     elif kind == "unpatched-source":
         source.write_text(source.read_text().replace(
             "metas.air_supply != null && entity.id === bot.entity?.id",
