@@ -111,7 +111,7 @@ def test_two_qualified_native_versions_for_each_self_without_action_or_memory(
             frame = bridge._sense[sid]
             bridge._sense[sid] = replace(
                 frame, observation=replace(
-                    frame.observation, seq=3 + rounds,
+                    frame.observation, seq=3 + rounds, kind="probe",
                     request_id=f"i1-original-sense-{rounds:031x}{int(sid == 'B'):x}",
                     snapshot=replace(frame.observation.snapshot, food=float(8 + rounds)),
                 ),
