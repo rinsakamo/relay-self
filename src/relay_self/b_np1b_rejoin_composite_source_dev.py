@@ -157,6 +157,7 @@ def build_rejoined_composite_source(
                         key: value for key, value in asdict(native).items()
                         if key != "native_revision"
                     })
+                    or scope_a[0] != prior_scope[0] + 2
                     or scope_b != (originals["B"].resident_epoch,
                                    originals["B"].native_session_id,
                                    originals["B"].world_epoch)
