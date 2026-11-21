@@ -12,15 +12,20 @@ from dataclasses import replace
 import pytest
 
 from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
-from relay_self.innate_schema import (
-    SchemaActivation, SchemaMode, SchemaModuleSpec, SchemaSnapshot,
-)
 from relay_self.i_lane_i2c_original_schema_restore_dev import (
     I2cRestoredSchemaHold,
     bootstrap_original_recorded_a_b_schemas,
 )
 from relay_self.i_lane_i2c_recorded_schema_dev import (
-    RecordedSchemaHold, decode_recorded_schema, encode_recorded_schema,
+    RecordedSchemaHold,
+    decode_recorded_schema,
+    encode_recorded_schema,
+)
+from relay_self.innate_schema import (
+    SchemaActivation,
+    SchemaMode,
+    SchemaModuleSpec,
+    SchemaSnapshot,
 )
 from relay_self.persistent_cognition import save_persistent_cognition
 from relay_self.provenance import Provenance
