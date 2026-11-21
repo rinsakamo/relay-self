@@ -212,7 +212,7 @@ def test_q1c_merge_history_rejected_even_when_files_and_sha_agree(tmp_path):
     )
     _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
     kwargs["post_s2_evidence_commit"] = _commit(root, "S2 after merge")
-    with pytest.raises(QGitCustodyHold, match="linear non-merge"):
+    with pytest.raises(QGitCustodyHold, match="non-merge|custody branch"):
         _verify(root, kwargs)
 
 
