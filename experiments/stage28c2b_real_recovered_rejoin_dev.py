@@ -84,6 +84,50 @@ _SOURCE_COMMITTED_SHA = (
 _FORK_BRANCH = "fork-3883122c-6edb-4017-bd82-00fc4324aded"
 
 
+def freeze_i1_bd1b_hold_readback(
+    *, exception: BaseException, evidence: Path, report: dict[str, object],
+) -> bool:
+    """Freeze exactly the original BD1b failed read, not a later Paper reread.
+
+    Failure evidence only: it never affects original-owner source validation,
+    independent audit, World lifecycle or success classification. The original
+    BD1b reader remains read-only and attaches its actual read bytes to HOLD.
+    """
+    cause = exception
+    for _ in range(5):
+        raw = getattr(cause, "i1_original_paper_readback", None)
+        facts = getattr(cause, "i1_source_debug", None)
+        if type(raw) is bytes and type(facts) is dict:
+            digest = hashlib.sha256(raw).hexdigest()
+            if (len(raw) > 64 * 1024 * 1024
+                    or facts.get("raw_sha256") != digest
+                    or facts.get("raw_size") != len(raw)):
+                report["i1_bd1b_failure_capture_uncertain"] = True
+                return False
+            name = "i1-bd1b-failure-time-owned-paper-readback.log"
+            try:
+                _write_bytes_new(evidence / name, raw)
+                report["i1_bd1b_failure_readback"] = {
+                    **facts,
+                    "filename": name,
+                    "sha256": digest,
+                    "bytes": len(raw),
+                    "diagnostic_only": True,
+                    "independent_audit_pass": False,
+                }
+                return True
+            except (OSError, ValueError) as capture_error:
+                report["i1_bd1b_failure_capture_error"] = (
+                    f"{type(capture_error).__name__}: {capture_error}"
+                )
+                return False
+        next_cause = cause.__cause__
+        if next_cause is None or next_cause is cause:
+            break
+        cause = next_cause
+    return False
+
+
 async def _cleanup_native(session, report: dict[str, object]) -> None:
     """Retire only an owned child and never hide an incomplete raw transcript."""
     if session.process_returncode is None:
@@ -519,35 +563,12 @@ async def run_restored_a_b_real_observation(
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if i1_original_cpu_sense:
-            # Capture only a genuine exception-attached read from the
-            # original BD1b owner source consumer. A new read after failure
-            # would be a DIFFERENT Paper source and cannot prove the predicate
-            # that failed. This is diagnostic-only, never an adoption receipt.
-            cause = exc
-            for _ in range(5):
-                raw = getattr(cause, "i1_original_paper_readback", None)
-                facts = getattr(cause, "i1_source_debug", None)
-                if type(raw) is bytes and type(facts) is dict:
-                    name = "i1-bd1b-failure-time-owned-paper-readback.log"
-                    try:
-                        _write_bytes_new(evidence / name, raw)
-                        report["i1_bd1b_failure_readback"] = {
-                            **facts,
-                            "filename": name,
-                            "sha256": hashlib.sha256(raw).hexdigest(),
-                            "bytes": len(raw),
-                            "diagnostic_only": True,
-                            "independent_audit_pass": False,
-                        }
-                    except OSError as capture_error:
-                        report["i1_bd1b_failure_capture_error"] = (
-                            f"{type(capture_error).__name__}: {capture_error}"
-                        )
-                    break
-                candidate = cause.__cause__
-                if candidate is None or candidate is cause:
-                    break
-                cause = candidate
+            # Original read bytes are retained ONLY on an I1 BD1b failure.
+            # Never reread a changing Paper log after an exception and pretend
+            # the new bytes prove the exact earlier mismatch.
+            freeze_i1_bd1b_hold_readback(
+                exception=exc, evidence=evidence, report=report,
+            )
         physical.hold_for_operator()
         raise
     finally:
