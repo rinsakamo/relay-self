@@ -12,13 +12,13 @@ import time
 from collections.abc import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from adapters.mineflayer.sense_projection import (
     SenseFrame,
     SenseRefusal,
     sense_for_self_world,
     sense_from_native,
 )
-from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.common_io import ScopeRef
 from relay_self.owned_native_rejoin_cohort_dev import verify_native_spawn_probe
