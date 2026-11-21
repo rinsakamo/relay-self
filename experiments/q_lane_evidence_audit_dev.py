@@ -239,6 +239,33 @@ def _optional(raw: dict[str, bytes], source: dict[str, Any], self_id: str) -> No
             raise QEvidenceHold("replayed/foreign GPU ticket")
 
 
+
+def build_untrusted_file_inventory(
+    evidence_dir: Path, role_paths: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    """Read-only manifest file-index generation; NEVER provenance/authentication.
+
+    Identity/source claims must come from the original producer and independent
+    trusted pins from a *separately controlled* boundary. This inventory alone
+    must never be accepted as any proof of World/Owner/Action.
+    """
+    if type(role_paths) is not dict or not _REQUIRED.issubset(role_paths):
+        raise QEvidenceHold("original evidence inventory roles missing")
+    root = evidence_dir.resolve(strict=True)
+    seen: set[str] = set()
+    entries: list[dict[str, Any]] = []
+    for role, path in sorted(role_paths.items()):
+        if role not in _ROLES or path in seen:
+            raise QEvidenceHold("duplicate/unknown evidence inventory role or file")
+        seen.add(path)
+        raw = _raw_file(root, path)
+        entries.append({
+            "role": role, "path": path,
+            "size": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    return entries
+
+
 def verify_evidence(
     evidence_dir: Path, manifest: Mapping[str, Any], external_pins: Mapping[str, Any],
 ) -> dict[str, Any]:
