@@ -17,6 +17,56 @@ Owner: Issue #1061 / Draft PR #1062; architecture #828 §27; B+D #1047; E #1054.
 - `I1_REAL_WORLD_HOLD` until one isolated actual Paper 1.21.8 execution, genuine native/Paper raw source captures and independent review of newly added `i1_cpu_epochs` and requests. **Do not promote from CI**. `i1_normal_continuous_native_observed` is only the runner's claim until independently audited. A seed or one single Body snapshot is NOT sufficient to prove ongoing updates.
 - `L1/GEMMA_NOT_RUN`, `PHYSICAL_ACTION_NOT_ISSUED`, `C1_LEARNING_NOT_RUN`, `QUAL_NO_GO`, `SCIENCE_NOT_RUN`.
 
+## I1 native dependencies: required **before** Paper startup
+
+The single isolated real-World attempt at exact HEAD
+`e1b779812271df9b29be5315af441439b1db226d` correctly remained
+`I1_REAL_WORLD_HOLD`: the worktree's borrowed `node_modules` was a
+**symlink**, which the Node `oxygen_owner_patch.mjs` inspector rejected
+only after Paper was already running. Its SHA/capture report does not
+attest any A/B Native login, CPU epoch, outbound command or successful
+independent audit. Paper exited cleanly; do not relabel or overwrite
+those original HOLD files.
+
+New `require_i1_native_preflight` checks **all** worktree-local path
+ancestors (`node_modules`, `mineflayer`, `lib`, `plugins`), the exact
+version and regular files, then executes the **same original Node**
+`oxygen_owner_patch.mjs --inspect-only` validator that gates the Native
+bridge. It compares the reported original `entities.js` SHA256 with
+the locally read file. It never installs dependencies, patches code
+or starts Paper/Native/Gemma; any missing file, symlink, unowned
+oxygen patch, version discrepancy, malformed Node report or digest
+mismatch is **PRE_WORLD_HOLD**.
+
+The original worktree must contain **genuine regular files** installed
+under `adapters/mineflayer/node_modules`; copying a symlink or setting
+`NODE_PATH` does not qualify. An operator may install the exact
+package-lock dependencies with `npm ci --prefix adapters/mineflayer`
+and, only if the regular installed source is the exact unmodified
+vulnerable version, explicitly apply the already reviewed Stage24d
+backport with `node adapters/mineflayer/oxygen_owner_patch.mjs --apply`.
+Neither action is automatic. Verify read-only first with:
+
+```bash
+node adapters/mineflayer/oxygen_owner_patch.mjs --inspect-only
+python -m experiments.stage28c2b_real_recovered_rejoin_dev \
+  --generation "$GENERATION" --restored "$RESTORED" \
+  --stage28b-evidence "$STAGE28B_EVIDENCE" \
+  --paper-jar "$PAPER_JAR" --plugin-jar "$PLUGIN_JAR" \
+  --eula-accepted --i1-original-cpu-sense --inspect-only
+```
+
+The second command now explicitly accepts the I1 flag in inspect-only
+mode; **it refuses** a World grant, execution/evidence directories or
+any Paper/Native startup. It emits
+`I1_NATIVE_DEPENDENCIES_PRE_WORLD_PASS` with the exact source SHA256
+only if the worktree passes. The **direct Python runner** repeats the
+same check before its first execution-copy creation; a successful
+CLI-only check is never taken as authority after source changes.
+Keep old Stage28 default mode unchanged. Even after this preflight
+PASS, the previously failed real-World attempt stays HOLD; only a
+separately initiated fresh isolation can generate a new trial result.
+
 ## Existing local DEV invocation (operator LocalCodex only)
 
 Preserve the previously approved Minecraft EULA agreement and ongoing isolated real-World DEV consent. The runner intentionally still takes the explicit CLI flags; no new human approval prompt is necessary. Find and hash-verify the pinned **actual** Stage28b source, restored fork and Paper/plugin builds; never invent paths or hashes. With those established, invoke once:
