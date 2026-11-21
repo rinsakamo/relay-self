@@ -57,9 +57,24 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str) -> 
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         )
         owner = bridge.owners[self_id]
-        observation = owner.current_worldbody_observation
-        if not isinstance(observation, MineflayerObservation):
+        original_probe = owner.current_worldbody_observation
+        if not isinstance(original_probe, MineflayerObservation):
             raise I1CPUProbeHold("original native WorldBody observation required")
+        sense = bridge.current_sense(self_id)
+        # E is a native observation and must share the exact B Present revision.
+        # It cannot authorize a Target or physical Action; it can update
+        # the *current* CPU percept without rewriting the original login probe.
+        if sense is None:
+            if len(original.source_revision_refs) != 2:
+                raise I1CPUProbeHold("SENSE lost after original Present projection")
+            observation = original_probe
+        else:
+            if (len(original.source_revision_refs) != 3
+                    or original.source_revision_refs[-1] != sense.source_revision_ref
+                    or sense.scope != original.present.present.three_self.scope
+                    or sense.observation.session_id != original.present.source.native_session_id):
+                raise I1CPUProbeHold("current SENSE and qualified B Present disagree")
+            observation = sense.observation
         snapshot = observation.snapshot
         # A recognized native entity is a possible defensive cue only;
         # it is NOT a Target, Action capability, or verified physical threat.
@@ -89,6 +104,8 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str) -> 
         after = read_i0_owner_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         )
-        if after != original or owner.current_worldbody_observation is not observation:
-            raise I1CPUProbeHold("original WorldBody/Present changed during CPU probe")
+        if (after != original
+                or owner.current_worldbody_observation is not original_probe
+                or bridge.current_sense(self_id) is not sense):
+            raise I1CPUProbeHold("original WorldBody/SENSE/Present changed during CPU probe")
         return I1CPUProbe(original, percept, schema, l1_proposal)
