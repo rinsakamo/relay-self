@@ -121,19 +121,30 @@ def test_non_adopt_choices_are_pure(tmp_path, monkeypatch, choice):
 
 
 def test_two_distinct_tickets_cannot_adopt_same_inquiry(tmp_path, monkeypatch):
+    from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
     from relay_self.bd1b_coverage_adoption_turn_dev import prepare_coverage_adoption_turn
-    case, turns, lane = setup(tmp_path, monkeypatch, ProviderDecision.resolved("1"))
+    from test_bd1b_owner_present_dev import _configured
+    from test_bd1b_post_gpu_source_dev import attach
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    a = prepare_coverage_adoption_turn(**arguments(case, "A"))
+    b = prepare_coverage_adoption_turn(**arguments(case, "A"))
+    assert a.inquiry == b.inquiry and a.request.request_id != b.request.request_id
+    monkeypatch.setattr(
+        LlamaCppRelayProvider, "__call__",
+        lambda self, request, mode: ProviderDecision.resolved("1"),
+    )
+    lane = attach(case[1], monkeypatch)
     try:
-        # A second turn was prepared before attachment and targets the same inquiry.
-        # The public preflight refuses attached lanes: re-use two independently
-        # registered turns prepared by the original resident before attachment.
-        first = turns[0]
-        ticket = submit(lane, first)
-        assert commit(case, lane, first, ticket) == "ADOPT"
+        ta = submit(lane, a)
+        tb = submit(lane, b)
+        assert commit(case, lane, a, ta) == "ADOPT"
         before = snapshot(case)
         with pytest.raises((ValueError, RuntimeError)):
-            commit(case, lane, first, ticket)
+            commit(case, lane, b, tb)
         assert snapshot(case) == before
+        assert lane._jobs[("A", b.work_ref)].question_adoption_state == "unused"
+        assert len(a.owner.retained.exploration_continuity.questions) == 1
     finally:
         lane._pool.shutdown(wait=True)
 
