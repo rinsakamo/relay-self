@@ -263,9 +263,9 @@ def accept_learned_pattern(
             raise MinimalCognitionError("exploration learning cannot grant Skill")
     elif proposed.schema_id not in {"homeostatic", "defensive", "body"}:
         raise MinimalCognitionError("unknown owning schema")
-    if proposed.kind is PatternKind.GOAL and (
-        proposed.skill_id, proposed.skill_version
-    ) not in allowed_skills:
+    if (proposed.kind is PatternKind.GOAL
+            and proposed.schema_id != "exploration"
+            and (proposed.skill_id, proposed.skill_version) not in allowed_skills):
         raise MinimalCognitionError("unavailable physical skill capability")
     if any(p.pattern_id == proposed.pattern_id for p in registry.patterns):
         raise MinimalCognitionError("pattern ID already registered; retain old versions")
