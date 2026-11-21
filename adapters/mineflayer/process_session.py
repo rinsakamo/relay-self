@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -10,6 +12,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerDecodedMessage,
     MineflayerLaunchConfig,
+    MineflayerObservation,
     MineflayerStreamDecoder,
     encode_attack_entity,
     encode_clear_controls,
@@ -17,6 +20,7 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_look,
     encode_observe,
+    encode_sense_terrain,
     encode_set_control,
     encode_shutdown,
 )
@@ -42,6 +46,22 @@ class MineflayerEffectAdmissionError(MineflayerProcessIOError):
     """A physical effect was refused before sending to the native bridge."""
 
 
+@dataclass(frozen=True, slots=True)
+class PassiveAggregation:
+    """Cumulative omission bounds; timestamps are local receipt, not native time.
+
+    The sequence interval may contain delivered messages; only the count is
+    exact. Neither this summary nor the latest snapshot reconstructs history.
+    """
+    source: str
+    first_replaced_seq: int
+    last_replaced_seq: int
+    latest_seq: int
+    replaced_count: int
+    first_received_monotonic: float
+    latest_received_monotonic: float
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -56,6 +76,17 @@ class MineflayerProcessSession:
         self._effect_admission: Callable[[str, str, str], None] | None = None
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
+        self._receive_active = False
+        self._dispatch_task: asyncio.Task[None] | None = None
+        self._dispatch_queue: asyncio.Queue[object] | None = None
+        self._dispatch_observer: Callable[[MineflayerDecodedMessage], None] | None = None
+        self._dispatch_error: Exception | None = None
+        self.observer_error: Exception | None = None
+        self._compact_safe: Callable[[], bool] | None = None
+        self._preserve_all = False
+        self.backpressure_hold = False
+        self.passive_aggregation: PassiveAggregation | None = None
+        self._tail_received_monotonic = 0.0
 
     @classmethod
     async def launch(
@@ -191,6 +222,110 @@ class MineflayerProcessSession:
     async def receive(self) -> MineflayerDecodedMessage:
         """Read and validate exactly one target-local JSONL message."""
 
+        if self._receive_active:
+            raise MineflayerProcessIOError("concurrent native receive is forbidden")
+        self._receive_active = True
+        try:
+            if self._dispatch_queue is None:
+                return await self._read_native()
+            while True:
+                if not self._dispatch_queue.empty():
+                    return self._dispatch_queue.get_nowait()  # type: ignore[return-value]
+                if self._dispatch_error is not None:
+                    raise self._dispatch_error
+                if self._dispatch_task is not None and self._dispatch_task.done():
+                    raise MineflayerProcessEnded("native dispatcher stopped")
+                getter = asyncio.create_task(self._dispatch_queue.get())
+                assert self._dispatch_task is not None
+                try:
+                    done, _ = await asyncio.wait(
+                        (getter, self._dispatch_task), return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    if getter in done:
+                        return getter.result()  # type: ignore[return-value]
+                finally:
+                    if not getter.done():
+                        getter.cancel()
+        finally:
+            self._receive_active = False
+
+    def start_dispatcher(
+        self, observer: Callable[[MineflayerDecodedMessage], None], *, capacity: int = 256,
+        compact_safe: Callable[[], bool] | None = None,
+    ) -> None:
+        """Start one reader; backpressure preserves every owner message in order.
+
+        The observer is a best-effort read-only notification, not World authority.
+        A full owner queue pauses reading; no audit event is discarded.
+        """
+        if (self._started is None or self._dispatch_task is not None
+                or self._receive_active or not callable(observer)
+                or type(capacity) is not int or capacity < 1
+                or (compact_safe is not None and not callable(compact_safe))):
+            raise MineflayerProcessIOError("invalid or already active native dispatcher")
+        self._dispatch_queue = asyncio.Queue(maxsize=capacity)
+        self._dispatch_observer = observer
+        self._compact_safe = compact_safe
+        self._dispatch_task = asyncio.create_task(self._dispatch())
+
+    async def _dispatch(self) -> None:
+        assert self._dispatch_queue is not None
+        assert self._dispatch_observer is not None
+        batch = 0
+        try:
+            while True:
+                message = await self._read_native()
+                received_at = time.monotonic()
+                self._observer_received_monotonic = received_at
+                batch += 1
+                if batch == 64:
+                    batch = 0
+                    await asyncio.sleep(0)
+                try:
+                    self._dispatch_observer(message)
+                except Exception as exc:
+                    self.observer_error = exc
+                if self._dispatch_queue.full() and self._can_compact(message):
+                    tail = self._dispatch_queue._queue[-1]
+                    if self._passive(tail):
+                        prior = self.passive_aggregation
+                        self.passive_aggregation = PassiveAggregation(
+                            source=message.session_id,
+                            first_replaced_seq=prior.first_replaced_seq if prior else tail.seq,
+                            last_replaced_seq=tail.seq, latest_seq=message.seq,
+                            replaced_count=(prior.replaced_count if prior else 0) + 1,
+                            first_received_monotonic=(prior.first_received_monotonic if prior
+                                                      else self._tail_received_monotonic),
+                            latest_received_monotonic=received_at,
+                        )
+                        self._dispatch_queue._queue[-1] = message
+                        self._tail_received_monotonic = received_at
+                        continue
+                self.backpressure_hold = self._dispatch_queue.full()
+                try:
+                    await self._dispatch_queue.put(message)
+                    self._tail_received_monotonic = received_at
+                finally:
+                    self.backpressure_hold = False
+        except Exception as exc:
+            self._dispatch_error = exc
+
+    @staticmethod
+    def _passive(message: object) -> bool:
+        return (isinstance(message, MineflayerObservation)
+                and message.kind in {"move", "entities"} and message.request_id is None)
+
+    def _can_compact(self, message: object) -> bool:
+        if self._preserve_all or self._compact_safe is None or not self._passive(message):
+            return False
+        if not self._compact_safe():
+            self._preserve_all = True
+            return False
+        return True
+
+    async def _read_native(self) -> MineflayerDecodedMessage:
+        """The only JSONL decoder and raw-source-audit path."""
+
         assert self._process.stdout is not None
         line = await self._process.stdout.readline()
         if not line:
@@ -285,6 +420,10 @@ class MineflayerProcessSession:
         """Backwards-compatible native probe, optionally correlated by ID."""
         await self._send(encode_observe(request_id))
 
+    async def send_sense_terrain(self, request_id: str) -> None:
+        """Read-only bounded terrain request on the original owned stream."""
+        await self._send(encode_sense_terrain(request_id))
+
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
 
@@ -306,10 +445,24 @@ class MineflayerProcessSession:
 
     async def terminate(self) -> int:
         """Terminate the owned child without retrying or launching a replacement."""
-
-        return await _terminate_child(self._process)
+        try:
+            return await _terminate_child(self._process)
+        finally:
+            if self._dispatch_task is not None and not self._dispatch_task.done():
+                self._dispatch_task.cancel()
+                try:
+                    await self._dispatch_task
+                except asyncio.CancelledError:
+                    pass
 
     async def _send(self, line: str) -> None:
+        # Even without the optional admission gate, a native effect ends the
+        # passive-only period permanently for this session.
+        try:
+            if json.loads(line).get("type") == "effect":
+                self._preserve_all = True
+        except (ValueError, AttributeError):
+            pass
         gate = getattr(self, "_effect_admission", None)
         if gate is not None:
             # Check at final native stdin, not only at send_* wrappers.
@@ -330,7 +483,9 @@ class MineflayerProcessSession:
                 if type(action_id) is not str or not action_id:
                     raise MineflayerEffectAdmissionError("missing physical action ID")
                 gate(self.started.session_id, effect, action_id)
-            elif command_type not in {"observe", "shutdown"}:
+                # Keep every subsequent observation, including delayed settling.
+                self._preserve_all = True
+            elif command_type not in {"observe", "sense_terrain", "shutdown"}:
                 raise MineflayerEffectAdmissionError(
                     "unknown native command during coordinated checkpoint mode"
                 )

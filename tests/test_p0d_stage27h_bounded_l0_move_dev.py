@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerPosition, MineflayerTime
 from experiments.cognitive_physical_move_issue_dev import (
     PhysicalMoveRefusal,
@@ -41,6 +43,7 @@ from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillState
 from relay_self.skill_invocation import SkillBudget
+from test_mineflayer_process_session import FakeProcess, observation_line
 from test_p0d_real_preset_checkpoint_dev import native_probe, source_recovered
 from test_p0d_resident_llama_slot_owner_dev import (
     ResidentFixture,
@@ -93,6 +96,121 @@ async def _start(f, lane):
         physical=f.physical, world_epoch=pre.world_epoch, start_ns=100,
     )
     return pre, handoff, former, current, loop
+
+
+def test_stage27h_reads_owner_sense_without_granting_action(tmp_path):
+    async def scenario(f, lane, server):
+        f.bridge.enable_sense = True
+        launch = f.bridge.launch
+
+        async def launch_with_dispatch(config):
+            session = await launch(config)
+            session.observer_error = None
+            session._dispatch_error = None
+
+            def start_dispatcher(observer, *, compact_safe):
+                session.observer = observer
+
+            session.start_dispatcher = start_dispatcher
+            return session
+
+        f.bridge.launch = launch_with_dispatch
+        pre, handoff, former, current, loop = await _start(f, lane)
+        session = f.bridge.sessions[f.names[0]]
+        session._observer_received_monotonic = time.monotonic()
+        session.observer(session._observation("move", None))
+        loop.sense_bridge = f.bridge
+        step = loop.pre_action(current, now_ns=150)
+        assert step.status == "L0_CONTINUE_MOVE"
+        assert loop.last_sense_input.position.x == 1
+        assert loop.last_sense_input.route_status == "UNKNOWN"
+        assert "body_aabb" in loop.last_sense_input.missing
+        assert not step.extra_physical_authority
+        for sid in f.names:
+            await f.bridge.logout(sid)
+
+    _fixture(tmp_path, scenario)
+
+
+def test_stage27h_reads_decoded_original_session_observations(tmp_path):
+    async def scenario(f, lane, server):
+        f.bridge.enable_sense = True
+        streams = {}
+
+        class Stream:
+            def __init__(self):
+                self.queue = asyncio.Queue()
+
+            async def readline(self):
+                return await self.queue.get()
+
+        async def launch(config):
+            native = f"native-{config.username}"
+            process = FakeProcess([])
+            process.stdout = Stream()
+            seq = 0
+
+            def put(value):
+                process.stdout.queue.put_nowait((json.dumps(value) + "\n").encode())
+
+            def emit(kind, x, request_id=None):
+                nonlocal seq
+                seq += 1
+                value = json.loads(observation_line())
+                value.update(session_id=native, seq=seq, kind=kind)
+                value["snapshot"]["position"]["x"] = x
+                if request_id is not None:
+                    value["request_id"] = request_id
+                put(value)
+
+            put({"type": "adapter_started", "session_id": native, "seq": 0,
+                 "mineflayer_version": "4.39.0", "config": {
+                     "host": config.host, "port": config.port,
+                     "username": config.username, "version": config.version}})
+            emit("spawn", 1)
+            write = process.stdin.write
+
+            def respond(data):
+                write(data)
+                command = json.loads(data)
+                if command["type"] == "observe":
+                    emit("probe", 1, command["request_id"])
+
+            process.stdin.write = respond
+            session = MineflayerProcessSession(process)
+            session._started = await session.receive()
+            streams[config.username] = (session, emit)
+            return session
+
+        f.bridge.launch = launch
+        pre, handoff, former, current, loop = await _start(f, lane)
+        sid = f.names[0]
+        session, emit = streams[f.configs[sid].username]
+        emit("move", 3)
+        await session.receive()
+        loop.sense_bridge = f.bridge
+        loop.pre_action(current, now_ns=150)
+        value = loop.last_sense_input
+        assert value.scope.self_id == sid
+        assert value.scope.world_session_id == f.lifecycle.world.paper_session_id
+        assert value.source_revision_ref == f"mineflayer:{session.started.session_id}:3"
+        assert value.position.x == 3 and value.nearby_entities == ()
+        assert value.nearby_coverage.candidate_count == 0
+        assert value.route_status == "UNKNOWN" and "body_aabb" in value.missing
+        assert 0 <= time.monotonic() - f.bridge._sense_received_at[sid] <= 2
+        emit("move", 4)
+        await session.receive()
+        current = native_probe(sid, current.seq + 1, session=handoff.native_session_id)
+        loop.pre_action(current, now_ns=151)
+        assert loop.last_sense_input.position.x == 4
+        f.bridge._sense_received_at[sid] -= 3
+        current = native_probe(sid, current.seq + 1, session=handoff.native_session_id)
+        loop.pre_action(current, now_ns=152)
+        assert loop.last_sense_input is None
+        for resident in f.names:
+            await f.bridge.logout(resident)
+
+    _fixture(tmp_path, scenario)
 
 
 async def _issue(f, pre, handoff, loop, previous, observed, native):
@@ -253,6 +371,11 @@ def test_stage27h_uses_explicit_original_multi_preset_only(tmp_path):
         assert actual.await_args.kwargs["_stage27_motor_hook"] is (
             stage27h_real_a_motor_hook
         )
+        assert actual.await_args.kwargs["_stage27_enable_sense"] is False
+        asyncio.run(run_stage27_real_world(
+            **kwargs, stage27h_l0_move_loop=True, stage27_enable_sense=True,
+        ))
+        assert actual.await_args.kwargs["_stage27_enable_sense"] is True
         actual.reset_mock()
         asyncio.run(run_stage27_real_world(**kwargs))
         assert actual.await_args.kwargs["_stage27h_multi_preset"] is False

@@ -913,6 +913,7 @@ async def run_real_two_self_preset_checkpoint(
     _stage27h_multi_preset: bool = False,
     _stage27i_precision_target: bool = False,
     _stage27j_long_target: bool = False,
+    _stage27_enable_sense: bool = False,
 ) -> Path:
     """Never launches Paper absent explicit EULA/World DEV flags and pinned jars."""
     if accepted_eula is not True or real_world_dev_grant is not True:
@@ -940,6 +941,8 @@ async def run_real_two_self_preset_checkpoint(
         )
     if (
         type(_stage27h_multi_preset) is not bool
+        or type(_stage27_enable_sense) is not bool
+        or (_stage27_enable_sense and not _stage27h_multi_preset)
         or type(_stage27i_precision_target) is not bool
         or type(_stage27j_long_target) is not bool
         or (_stage27i_precision_target and _stage27j_long_target)
@@ -1093,6 +1096,7 @@ async def run_real_two_self_preset_checkpoint(
             configs=configs, owners=originals,
             launch=launch_owned, cognitive_work=work,
             inference_lane=lane,
+            enable_sense=_stage27_enable_sense,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _real_preset_trial(

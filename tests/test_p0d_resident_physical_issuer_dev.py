@@ -156,11 +156,13 @@ class FakeNativeResident:
 class ResidentFixture:
     def __init__(
         self, root: Path, n: int, *, cognitive_work: bool = False,
-        allow_resident_move: bool = False,
+        allow_resident_move: bool = False, enable_sense: bool = False,
+        names: tuple[str, ...] | None = None,
     ):
         self.paper = _fake_paper(root)
         paper_session = self.paper.start_owned()
-        self.names = tuple(f"S{i:03d}" for i in range(n))
+        self.names = names if names is not None else tuple(f"S{i:03d}" for i in range(n))
+        assert len(self.names) == n and len(set(self.names)) == n
         self.original_ids = {
             sid: f"offline-born-{sid}" for sid in self.names
         }
@@ -222,7 +224,7 @@ class ResidentFixture:
         self.bridge = OwnedResidentPhysicalBridge(
             lifecycle=self.lifecycle, physical=self.physical,
             paper=self.paper, configs=self.configs, owners=self.owners,
-            launch=launch, cognitive_work=self.cognitive,
+            launch=launch, cognitive_work=self.cognitive, enable_sense=enable_sense,
         )
 
     def stop_paper(self):

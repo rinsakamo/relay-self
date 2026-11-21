@@ -576,3 +576,100 @@ def test_real_python_native_send_allows_exact_precheckpoint_stop_only(
         assert physical.closed
 
     asyncio.run(exercise())
+
+
+def test_dispatcher_fanout_preserves_order_and_bounded_owner_queue() -> None:
+    async def scenario() -> None:
+        rows = []
+        for seq in range(1, 31):
+            item = json.loads(observation_line())
+            item['seq'] = seq
+            rows.append((json.dumps(item) + '\n').encode())
+        process = FakeProcess([started_line(), *rows])
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        seen = []
+        session.start_dispatcher(seen.append, capacity=2)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert session._dispatch_queue.qsize() == 2
+        assert len(seen) == 3  # one validated item awaits queue capacity
+        received = [await session.receive() for _ in rows]
+        assert [item.seq for item in received] == list(range(1, 31))
+        assert [item.seq for item in seen] == list(range(1, 31))
+        with pytest.raises(MineflayerProcessEnded):
+            await session.receive()
+
+    asyncio.run(scenario())
+
+
+def test_dispatcher_observer_failure_does_not_lose_owner_message() -> None:
+    async def scenario() -> None:
+        process = FakeProcess([started_line(), observation_line()])
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+
+        def broken(_message):
+            raise ValueError('observer failure')
+
+        session.start_dispatcher(broken, capacity=1)
+        assert (await session.receive()).seq == 1
+        assert isinstance(session.observer_error, ValueError)
+
+    asyncio.run(scenario())
+
+
+def test_concurrent_receive_is_rejected_without_consuming_stream() -> None:
+    class BlockingStdout:
+        async def readline(self):
+            await asyncio.Event().wait()
+
+    async def scenario() -> None:
+        process = FakeProcess([])
+        process.stdout = BlockingStdout()
+        session = MineflayerProcessSession(process)
+        reader = asyncio.create_task(session.receive())
+        await asyncio.sleep(0)
+        with pytest.raises(Exception, match='concurrent native receive'):
+            await session.receive()
+        reader.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await reader
+
+    asyncio.run(scenario())
+
+
+def test_dispatcher_reports_sequence_gap_after_delivering_prior_message() -> None:
+    async def scenario() -> None:
+        bad = json.loads(observation_line())
+        bad['seq'] = 3
+        process = FakeProcess([started_line(), observation_line(),
+                               (json.dumps(bad) + '\n').encode()])
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        session.start_dispatcher(lambda _: None, capacity=2)
+        assert (await session.receive()).seq == 1
+        with pytest.raises(ValueError, match='sequence mismatch'):
+            await session.receive()
+
+    asyncio.run(scenario())
+
+
+def test_dispatcher_stops_coalescing_when_action_is_active() -> None:
+    async def scenario() -> None:
+        rows = []
+        for seq in range(1, 6):
+            item = json.loads(observation_line())
+            item.update(seq=seq, kind="move")
+            rows.append((json.dumps(item) + "\n").encode())
+        process = FakeProcess([started_line(), *rows])
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        session.start_dispatcher(lambda _: None, capacity=2, compact_safe=lambda: False)
+        await asyncio.sleep(0)
+        assert session.backpressure_hold
+        assert session.passive_aggregation is None
+        assert [(await session.receive()).seq for _ in rows] == list(range(1, 6))
+        assert session._preserve_all
+
+    asyncio.run(scenario())

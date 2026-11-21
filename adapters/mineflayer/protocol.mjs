@@ -211,6 +211,14 @@ export function parseCommand (raw) {
     return Object.freeze({ type: 'observe' })
   }
 
+  if (value.type === 'sense_terrain') {
+    requireExactKeys('sense_terrain command', value, ['type', 'request_id'])
+    return Object.freeze({
+      type: 'sense_terrain',
+      request_id: requireProbeRequestId(value.request_id)
+    })
+  }
+
   if (value.type === 'shutdown') {
     requireExactKeys('shutdown command', value, ['type'])
     return Object.freeze({ type: 'shutdown' })
