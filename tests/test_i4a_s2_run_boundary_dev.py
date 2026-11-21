@@ -5,6 +5,11 @@ from dataclasses import replace
 
 import pytest
 
+from relay_self.i_lane_i4a_s2_owner_handoff_dev import (
+    begin_live_s2_owner_handoff,
+    finish_live_s2_l1,
+    submit_live_s2_l1,
+)
 from relay_self.i_lane_i4a_s2_run_boundary_dev import (
     I4AS2RunBoundaryHold,
     attest_i4a_s2_empty_run_boundary,
@@ -18,11 +23,6 @@ from test_i4a_s2_owner_handoff_dev import (
     _obs_new,
     _prepared,
     _return,
-)
-from relay_self.i_lane_i4a_s2_owner_handoff_dev import (
-    begin_live_s2_owner_handoff,
-    finish_live_s2_l1,
-    submit_live_s2_l1,
 )
 
 
