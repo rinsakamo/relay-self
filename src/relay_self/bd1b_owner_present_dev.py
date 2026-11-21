@@ -40,7 +40,8 @@ class BD1bOwnerPresent:
 
 def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
                              i1_complete_paper_prefix: bool = False,
-                             i1_require_correlated_sense: bool = False):
+                             i1_require_correlated_sense: bool = False,
+                             i2b_read_attached_lane: bool = False):
     """Revalidate the live source and project solely from current owner state."""
     if bridge.cognitive_work is None:
         raise BD1bPresentHold("original resident required")
@@ -48,6 +49,7 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
         source = build_bd1b_owner_source(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=i1_complete_paper_prefix,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         try:
             schema = bridge.cognitive_work.present_schema(self_id)
@@ -132,7 +134,8 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
         # native/owner identity after projection before exposing the result.
         if (build_bd1b_owner_source(bridge=bridge, boot=boot, world=world,
                                     links=links, self_id=self_id,
-                                    i1_complete_paper_prefix=i1_complete_paper_prefix) != source
+                                    i1_complete_paper_prefix=i1_complete_paper_prefix,
+                                    i2b_read_attached_lane=i2b_read_attached_lane) != source
                 or bridge.cognitive_work.present_schema(self_id) != schema
                 or owner.current_worldbody_observation is not probe
                 or (bridge.current_i1_correlated_sense(self_id)
