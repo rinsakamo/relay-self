@@ -34,6 +34,7 @@ def build(rejoined):
 
 
 def test_full_original_bridge_cycle_creates_current_immutable_receipt(rejoined):
+    assert current_fixture is not None
     f, initial, native_old, historical, old_session, logout, b_before = rejoined
     files_before = files(f)
     cognition_before = {
