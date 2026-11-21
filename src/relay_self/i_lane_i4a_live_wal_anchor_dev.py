@@ -16,9 +16,9 @@ from relay_self.physical_issue_admission_dev import (
     PhysicalIssueAdmission,
     PhysicalIssueFenceError,
 )
+from relay_self.provenance import Provenance
 from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
 from relay_self.skill import SkillState
-from relay_self.provenance import Provenance
 
 
 class I4ALiveAnchorHold(RuntimeError):
