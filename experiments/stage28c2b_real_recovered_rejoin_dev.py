@@ -128,6 +128,23 @@ def inspect_real_recovered_sources(
     return history, state
 
 
+def require_stage28_capture_classification(report: dict, *, i1_original_cpu_sense: bool) -> None:
+    """Distinct original Stage28 and new I1 pending-audit statuses."""
+    expected_classification = (
+        "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if i1_original_cpu_sense
+        else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+    )
+    if (type(i1_original_cpu_sense) is not bool
+            or report.get("classification") != expected_classification
+            or report.get("i1_original_cpu_sense_enabled") is not i1_original_cpu_sense
+            or (i1_original_cpu_sense and (
+                report.get("i1_normal_continuous_native_observed") is not True
+                or type(report.get("i1_cpu_epochs")) is not dict
+            ))):
+        raise Stage28c2bRealRejoinHold("original Paper/native/I1 capture incomplete")
+
+
 async def run_restored_a_b_real_observation(
     *, generation: Path, restored: Path, stage28b_evidence: Path,
     execution_dir: Path, evidence_dir: Path, paper_jar: Path,
@@ -495,13 +512,9 @@ async def run_restored_a_b_real_observation(
             report_path, (json.dumps(report, sort_keys=True, indent=2) + "\n").encode(),
         )
         print(f"STAGE28C2B_REAL_CAPTURE={report_path}", file=sys.stderr, flush=True)
-    expected_classification = (
-        "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
-        if i1_original_cpu_sense
-        else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+    require_stage28_capture_classification(
+        report, i1_original_cpu_sense=i1_original_cpu_sense,
     )
-    if report["classification"] != expected_classification:
-        raise Stage28c2bRealRejoinHold("original real Paper/native/I1 source unavailable")
     return report_path
 
 
