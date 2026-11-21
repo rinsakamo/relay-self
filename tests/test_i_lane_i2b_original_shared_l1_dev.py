@@ -66,12 +66,23 @@ def _fixture(tmp_path, monkeypatch, *, exploration=True, selection="1",
         return ProviderDecision.resolved(selection)
     lane.witness.require_idle = mock_idle
     lane.provider = mock_provider
-    bridge.inference_lane = lane  # simulated prior original bridge attachment
+    # The original I2 CPU-only entry must still run before lane attachment.
+    # _prepared below simulates the existing bridge's owned attach transition.
     return case, lane
 
 
+def _prepared(case, lane, sid="A"):
+    attached = case[1].inference_lane is lane
+    h = prepare_i2_original_goal_handoff(
+        **_args(case, sid), i2b_read_attached_lane=attached,
+    )
+    if not attached:
+        case[1].inference_lane = lane  # synthetic prior bridge attachment
+    return h
+
+
 def _submit(case, lane, sid="A"):
-    h = prepare_i2_original_goal_handoff(**_args(case, sid))
+    h = _prepared(case, lane, sid)
     return submit_i2b_original_shared_l1(
         **{k: v for k, v in _args(case, sid).items() if k != "self_id"},
         handoff=h, lane=lane,
@@ -101,7 +112,7 @@ def test_i2b_real_shared_lane_methods_bound_to_source_and_no_adoption(
                 case[1].owners[s].pattern_registry)
             for s in ("A", "B")
         }
-        h = prepare_i2_original_goal_handoff(**_args(case, "A"))
+        h = _prepared(case, lane)
         out = asyncio.run(run_i2b_original_shared_l1(
             bridge=case[1], boot=case[2], world=case[3],
             links=case[4], handoff=h, lane=lane, timeout_s=3.0,
@@ -217,7 +228,7 @@ def test_i2b_preflight_refuses_unqualified_model_submission(
         busy=fault == "busy-slot",
     )
     try:
-        h = prepare_i2_original_goal_handoff(**_args(case, "A"))
+        h = _prepared(case, lane)
         if fault == "no-bridge-attachment":
             case[1].inference_lane = None
         elif fault == "different-owner":
@@ -248,7 +259,7 @@ def test_i2b_logout_during_actual_shared_provider_discards_late_result(
     )
     try:
         async def scenario():
-            h = prepare_i2_original_goal_handoff(**_args(case, "A"))
+            h = _prepared(case, lane)
             pending = asyncio.create_task(run_i2b_original_shared_l1(
                 bridge=case[1], boot=case[2], world=case[3],
                 links=case[4], handoff=h, lane=lane, timeout_s=3.0,
@@ -274,7 +285,7 @@ def test_i2b_timeout_never_resubmits_or_adopts(
         tmp_path, monkeypatch, entered=entered, released=release,
     )
     try:
-        h = prepare_i2_original_goal_handoff(**_args(case, "A"))
+        h = _prepared(case, lane)
         with pytest.raises(I2bSharedL1Hold, match="timeout"):
             asyncio.run(run_i2b_original_shared_l1(
                 bridge=case[1], boot=case[2], world=case[3],
