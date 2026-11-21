@@ -44,12 +44,14 @@ async def _s2_bound(f, lane, server):
 
 def test_s2_authenticated_empty_scope_retains_s1_history_and_peer(tmp_path):
     async def scenario(f, lane, server):
+        loop, boundary = await _s2_bound(f, lane, server)
+        # Existing Stage26 A/B restore legitimately changes peer during S1
+        # setup. Only compare after the original S2 boundary is established.
         peer = f.owners[f.names[1]]
         before = (
             peer.retained, peer.intent.events, dict(peer.skills),
             peer.files.physical_wal_file.read_bytes(),
         )
-        loop, boundary = await _s2_bound(f, lane, server)
         assert boundary.prefix_count == 3
         assert boundary.new_skill_id != boundary.old_skill_id
         assert boundary.new_intent_id != boundary.old_intent_id
