@@ -27,12 +27,43 @@ class Stage28NativePaperLinkHold(RuntimeError):
     """Independent native/Paper presence provenance incomplete: HOLD."""
 
 
+def i1_complete_owned_paper_prefix(raw: bytes, *, ack_marker: bytes) -> bytes:
+    """Project ONLY a full-line immutable Paper stdout prefix for I1 DEV.
+
+    The original owned Paper log remains untouched. Its live last bytes can
+    contain a console prompt without a newline after the ACK. Those bytes
+    are NOT line-complete evidence and must not be hashed as an I1 Paper
+    observation. The existing independent auditor continues to require a
+    digest of a complete newline-terminated raw byte prefix.
+
+    The projection never fabricates a newline, normalizes whitespace,
+    edits ACK bytes or searches across the incomplete suffix. An ACK still
+    being written is HOLD, even if its text occurs in the raw live log.
+    """
+    if type(raw) is not bytes or type(ack_marker) is not bytes or not ack_marker:
+        raise Stage28NativePaperLinkHold("original I1 Paper log/ACK bytes required")
+    if len(raw) > 64 * 1024 * 1024:
+        raise Stage28NativePaperLinkHold("I1 Paper stdout source unbounded")
+    last_line_end = raw.rfind(b"\n")
+    if last_line_end < 0:
+        raise Stage28NativePaperLinkHold("I1 Paper witness lacks any complete line")
+    prefix = raw[:last_line_end + 1]
+    if ack_marker not in prefix:
+        raise Stage28NativePaperLinkHold(
+            "I1 Paper ACK not wholly observed within a complete stdout line"
+        )
+    # Non-terminated suffix is deliberately not consumed as evidence. It
+    # remains frozen byte-for-byte in the owned original log at STOP.
+    return prefix
+
+
 def link_recovered_a_b_native_paper_body(
     *,
     bridge: OwnedResidentPhysicalBridge,
     paper: OwnedPaperWorld,
     boot: Stage28ForkPaperEpoch,
     forbidden_native_sessions: frozenset[str],
+    i1_require_complete_paper_prefix: bool = False,
 ) -> tuple[WorldLifetime, tuple[Stage28NativePaperBodyLink, ...]]:
     """Read *live owned* Paper + original A/B native sources, no physical issue.
 
@@ -51,6 +82,7 @@ def link_recovered_a_b_native_paper_body(
         not isinstance(bridge, OwnedResidentPhysicalBridge)
         or not isinstance(paper, OwnedPaperWorld)
         or not isinstance(boot, Stage28ForkPaperEpoch)
+        or type(i1_require_complete_paper_prefix) is not bool
         or type(forbidden_native_sessions) is not frozenset
         or any(type(s) is not str or not s for s in forbidden_native_sessions)
         or not set(boot.historical_native_sessions).issubset(
@@ -133,6 +165,14 @@ def link_recovered_a_b_native_paper_body(
         f"session={boot.paper_session_id} world={boot.source_world_id} "
         f"tick={tick.tick} source=PAPER_MAIN_THREAD"
     )
+    if i1_require_complete_paper_prefix:
+        # The original Paper Popen is already verified, and the original
+        # bytes remain in its attached .log. Only the I1 bounded read-only
+        # CPU path requires a line-complete digest for independent replay.
+        # Default Stage28 linkage stays byte-identical.
+        log = i1_complete_owned_paper_prefix(
+            log, ack_marker=marker.encode("utf-8"),
+        )
     if marker not in log.decode("utf-8", errors="replace"):
         raise Stage28NativePaperLinkHold("new Paper post-native ACK missing from owned log")
     digest = hashlib.sha256(log).hexdigest()
