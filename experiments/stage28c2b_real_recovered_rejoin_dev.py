@@ -462,8 +462,15 @@ async def run_restored_a_b_real_observation(
             # native observations and independently refreshed Paper receipts.
             # No GPU, Goal/Intent admission, Physical Action or Memory write.
             async def refresh_original_native():
+                # Preserve the exact matched Native reply per Self from the
+                # original session; an intervening passive move/entities
+                # notification must never satisfy the I1 CPU correlation.
+                observed = {}
                 for sid in ("A", "B"):
-                    await bridge.refresh_i1_read_only_sense(sid, timeout_s=2.0)
+                    observed[sid] = await bridge.refresh_i1_read_only_sense(
+                        sid, timeout_s=2.0,
+                    )
+                return observed
 
             def refresh_original_paper():
                 return link_recovered_a_b_native_paper_body(
@@ -563,6 +570,9 @@ async def run_restored_a_b_real_observation(
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if i1_original_cpu_sense:
+            correlation = getattr(exc, "i1_correlated_cpu_readback", None)
+            if type(correlation) is dict:
+                report["i1_native_cpu_correlation_hold"] = correlation
             # Original read bytes are retained ONLY on an I1 BD1b failure.
             # Never reread a changing Paper log after an exception and pretend
             # the new bytes prove the exact earlier mismatch.
