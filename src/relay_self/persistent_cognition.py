@@ -449,7 +449,8 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
     continuity = None
     if version == EXPLORATION_SCHEMA_VERSION:
         from relay_self.exploration_continuity_dev import (
-            ExplorationContinuityError, decode_exploration_continuity,
+            ExplorationContinuityError,
+            decode_exploration_continuity,
         )
         try:
             continuity = decode_exploration_continuity(
