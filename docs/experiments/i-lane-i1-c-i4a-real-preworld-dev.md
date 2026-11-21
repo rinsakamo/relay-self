@@ -1,0 +1,30 @@
+# I1 + C + I4a dedicated PRE_WORLD runner inventory (HOLD)
+
+Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
+inventory, **not** an executing real-World or real-Gemma runner. Its one
+CLI mode performs a Git exact-HEAD check and hashes five original code files;
+it returns exit 2 **even when EULA and real-World DEV grant are provided**.
+The optional World directory is never touched.
+
+The existing `issue_s2_first_original_place_move_synthetic_dev` remains
+strictly synthetic; this new entrypoint does not import or call it. No
+new Physical lease, WAL reservation, Owner, model POST, CPU eligibility, or
+World authorization is created.
+
+Before any real-World runner becomes executable, it must independently bind
+the original Native stdin/stdout and request/seq/provenance/SENSE revision,
+same-world Paper boot/session/UUID/ticks and ACKs, real GGUF/PID/GPU/single
+slot, original S1 authenticated WAL anchor and S2 new-run boundary, sole
+issuer's PREPARED/STOP/settling path, intact peer Self and independently
+source-qualified T1 and T2 five-axis assessments. A missing witness must
+leave the canonical WAL unresolved if a PREPARED Action exists; it must
+never retry or reissue it.
+
+This manifest checks only local code identity; it **does not authenticate**
+any of the above live evidence. A future separately implemented real-S2
+issuer must satisfy those gates without relaxing the synthetic process
+refusal or promoting I1's independent World evidence into I4a evidence.
+
+Offline negative controls: fake/foreign HEAD, EULA+grant without launch,
+non-created World directory, and rejection of process-backed sessions in
+the synthetic S2 interface. No real World and no real Gemma were run.

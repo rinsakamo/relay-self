@@ -1,0 +1,91 @@
+"""Adversarial PRE_WORLD-only controls for the future I1+C+I4a runner."""
+import json
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from experiments.i_lane_i1_c_i4a_real_runner_dev import (
+    I1CI4APreWorldHold,
+    inspect_i1_c_i4a_preworld,
+    main,
+)
+from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
+    I4AS2FirstReservationHold,
+    require_i4a_offline_scripted_native,
+)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _exact_head():
+    return subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+
+
+def test_preworld_inventory_is_never_world_or_model_admission():
+    report = inspect_i1_c_i4a_preworld(
+        repo_root=ROOT, expected_head=_exact_head(),
+    )
+    assert report.classification == "I1_C_I4A_PRE_WORLD_HOLD"
+    assert len(report.source_sha256) == 5
+    assert report.blockers
+    assert "live_original_s2_issuer_not_integrated" in report.blockers
+    assert report.world_started is False
+    assert report.model_posts == 0
+    assert report.physical_actions == 0
+    assert report.live_admission is False
+
+
+@pytest.mark.parametrize("head", ["", "0" * 40, "a" * 39, "not-a-head"])
+def test_preworld_rejects_foreign_or_malformed_integration_head(head):
+    with pytest.raises(I1CI4APreWorldHold):
+        inspect_i1_c_i4a_preworld(repo_root=ROOT, expected_head=head)
+
+
+def test_preworld_cli_grants_do_not_create_world_or_issue_actions(tmp_path, capsys):
+    world = tmp_path / "world-must-not-start"
+    code = main([
+        "--repo-root", str(ROOT),
+        "--expected-head", _exact_head(),
+        "--world-dir", str(world),
+        "--real-world-dev-grant", "--accepted-eula",
+    ])
+    assert code == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["classification"] == "I1_C_I4A_PRE_WORLD_HOLD"
+    assert report["live_admission"] is False
+    assert not world.exists()
+    assert not list(tmp_path.iterdir())
+
+
+def test_preworld_cli_wrong_head_never_touches_world_dir(tmp_path, capsys):
+    world = tmp_path / "no-world"
+    code = main([
+        "--repo-root", str(ROOT),
+        "--expected-head", "0" * 40,
+        "--world-dir", str(world),
+        "--real-world-dev-grant", "--accepted-eula",
+    ])
+    assert code == 2
+    assert "HEAD" in capsys.readouterr().err
+    assert not world.exists()
+
+
+def test_preworld_does_not_repurpose_s2_synthetic_issuer_for_real_process():
+    with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+        require_i4a_offline_scripted_native(
+            object.__new__(MineflayerProcessSession),
+        )
+
+    class ProcessBackedNative(MineflayerProcessSession):
+        pass
+
+    disguised = object.__new__(ProcessBackedNative)
+    disguised._process = object()
+    with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+        require_i4a_offline_scripted_native(disguised)
