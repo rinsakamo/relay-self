@@ -5,6 +5,40 @@ from relay_self.skill import SkillState
 from test_c_lane_stage27hi_multi_action_review_dev import _fixture, _run_multi
 
 
+def test_source_admission_and_bounded_uncertainty(tmp_path):
+    from dataclasses import replace
+
+    import pytest
+
+    from relay_self.c_lane_l1_evaluation_engine_dev import build_evaluation_steps
+    from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last,
+                      world_id=f.lifecycle.world.world_id)
+        frame = prepare_stage27hi_multi_review(loop, step, **common)
+        steps = build_evaluation_steps(frame)
+        assert len(steps) == 5
+        assert all(any(c.choice.description == "UNKNOWN" for c in s.candidates) for s in steps)
+        assert "novelty is unknown" in steps[2].candidates[0].choice.description
+        assert "not established" in steps[1].candidates[0].choice.description
+        assert "cause is not established" in steps[3].candidates[0].choice.description
+        position = replace(last.snapshot.position, x=last.snapshot.position.x + 1)
+        for bad_first, bad_last in (
+            (replace(first, session_id="foreign"), last),
+            (first, replace(last, session_id="foreign")),
+            (first, replace(last, snapshot=replace(last.snapshot, position=position))),
+        ):
+            with pytest.raises(C1OwnerReviewHold):
+                prepare_stage27hi_multi_review(
+                    loop, step, **{**common, "first_action_probe": bad_first,
+                                   "last_settled_probe": bad_last})
+    _fixture(tmp_path, scenario)
+
+
 def test_five_axes_use_resident_lane_and_preserve_owner(tmp_path):
     async def scenario(f, lane, server):
         loop, step, first, receipts, before = await _run_multi(f, lane, server)
@@ -98,6 +132,30 @@ def test_changed_current_during_inference_holds(tmp_path, monkeypatch):
         assert len(failure.value.evaluation_audit.receipts) == 3
         assert len(failure.value.evaluation_audit.axes) == 2
         assert loop.owner.skills[frame.skill_execution_id].state is SkillState.STARTED
+        assert loop.owner.retained.memories == ()
+        assert len(loop._seen_action_ids) == 3
+    _fixture(tmp_path, scenario)
+
+
+def test_new_current_alone_cannot_requalify_old_settled_run(tmp_path):
+    import pytest
+
+    from relay_self.c_lane_l1_evaluation_engine_dev import EvaluationSourceStale
+    from test_p0d_stage27g_real_l1_evaluation_dev import _new_probe
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last)
+        frame = prepare_stage27hi_multi_review(loop, step, world_id=frame_world(f), **common)
+        fresh = _new_probe(actions[-1])
+        loop.owner.observe_world_tick(session_id=fresh.session_id, world_tick=(
+            fresh.snapshot.time.day * 24000 + fresh.snapshot.time.time_of_day))
+        loop.owner.accept_rejoined_worldbody(fresh, request_id=fresh.request_id)
+        with pytest.raises(EvaluationSourceStale) as failure:
+            await execute_evaluation(frame, loop, task_id="new-current-old-run", **common)
+        assert failure.value.evaluation_audit.receipts == ()
         assert loop.owner.retained.memories == ()
         assert len(loop._seen_action_ids) == 3
     _fixture(tmp_path, scenario)
