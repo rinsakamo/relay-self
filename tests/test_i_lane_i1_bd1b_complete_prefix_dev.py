@@ -109,4 +109,4 @@ def test_i1_current_readback_does_not_promote_observation_or_action(tmp_path, mo
             bridge.owners[sid].pattern_registry,
         ) for sid in ("A", "B")
     )
-    assert bridge.physical.active_action_ids == frozenset()
+    assert bridge.physical.active_action_ids == ()
