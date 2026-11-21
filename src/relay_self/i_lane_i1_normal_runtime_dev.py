@@ -36,6 +36,12 @@ class I1OriginalCPUEpoch:
     native_session_id: str
     native_seq: int
     sense_revision: str
+    native_request_id: str | None
+    native_observation_ref: str
+    paper_tick: int
+    paper_tick_source_ref: str
+    paper_log_sha256: str
+    paper_actor_uuid: str
     source_revision_refs: tuple[str, ...]
     schema_revision: int
     goal_ids: tuple[str, ...]
@@ -133,6 +139,12 @@ def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str) -> I
             native_session_id=current.observation.session_id,
             native_seq=current.observation.seq,
             sense_revision=current.source_revision_ref,
+            native_request_id=current.observation.request_id,
+            native_observation_ref=current.provenance.reference,
+            paper_tick=world.world_tick,
+            paper_tick_source_ref=probe.original.present.source.paper_tick_source_ref,
+            paper_log_sha256=probe.original.present.source.paper_log_sha256,
+            paper_actor_uuid=probe.original.present.source.paper_actor_uuid,
             source_revision_refs=refs,
             schema_revision=probe.original.present.schema.revision,
             goal_ids=tuple(goal.goal_id for goal in probe.schema.goals),
@@ -193,6 +205,14 @@ async def sample_i1_original_cpu_epochs(
                     bridge=bridge, boot=boot, world=fresh_world,
                     links=fresh_links, self_id=sid,
                 )
+                if (refresh_native_source is not None
+                        and (type(row.native_request_id) is not str
+                             or not row.native_request_id.startswith(
+                                 "i1-original-sense-"
+                             ))):
+                    raise I1NormalRuntimeHold(
+                        "read-only Native request correlation lost before CPU adoption"
+                    )
                 if row.sense_revision != last[sid]:
                     epochs.append(row)
                     last[sid] = row.sense_revision
