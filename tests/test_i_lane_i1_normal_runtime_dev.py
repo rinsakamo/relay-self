@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.i_lane_i1_normal_runtime_dev import (
     I1NormalRuntimeHold,
     install_i1_original_schema_bootstrap,
@@ -13,11 +14,15 @@ from relay_self.i_lane_i1_normal_runtime_dev import (
     read_i1_original_cpu_epoch,
     sample_i1_original_cpu_epochs,
 )
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from test_bd1b_owner_present_dev import _configured
 from test_bd1b_owner_source_dev import _files
 from test_i_lane_e2c_original_present_dev import _inject
 from test_stage28c2_recovered_resident_owner_dev import _context, _reattach
+from test_stage28c2c_fresh_recovered_l1_dev import _ready
 
 
 def test_restored_A_B_without_explore_bootstraps_only_existing_cpu_patterns(
@@ -151,3 +156,39 @@ def test_fenced_owner_stops_current_normal_readout(tmp_path, monkeypatch):
         read_i1_original_cpu_epoch(
             bridge=bridge, boot=boot, world=world, links=links, self_id="A",
         )
+
+
+def test_old_original_registry_without_explore_projects_live_body_and_sense(
+    tmp_path, monkeypatch,
+):
+    original_bind = ResidentCognitiveWorkOwner.bind_login
+
+    def bind_config_only(resident, *, self_id, **kwargs):
+        owner = resident.owners[self_id]
+        assert not any(p.schema_id == "exploration" for p in owner.pattern_registry.patterns)
+        resident.register_present_schema(
+            self_id, SchemaSnapshot(self_id, owner.pattern_registry.revision, ()),
+        )
+        return original_bind(resident, self_id=self_id, **kwargs)
+
+    monkeypatch.setattr(ResidentCognitiveWorkOwner, "bind_login", bind_config_only)
+    case = _ready(tmp_path, monkeypatch)
+    _, bridge, boot, world, links, _ = case
+    original_registries = {sid: bridge.owners[sid].pattern_registry for sid in ("A", "B")}
+    before = _files(bridge)
+    from relay_self.i_lane_cpu_readout_dev import read_i0_owner_cpu
+
+    args = dict(bridge=bridge, boot=boot, world=world, links=links, self_id="A")
+    baseline = read_i0_owner_cpu(**args)
+    assert baseline.coverage_inquiry is None
+    assert baseline.present.exploration_need is None
+    assert baseline.present.schema.modules == ()
+    frame = _inject(bridge, world)
+    fresh = read_i1_original_cpu_epoch(**args)
+    assert fresh.sense_revision == frame.source_revision_ref
+    assert fresh.inquiry_ref is None
+    assert "EXPLORE_WORLD" not in fresh.goal_ids
+    assert fresh.l1_descriptions == ("ESCALATE_L2", "DEFER")
+    assert all(bridge.owners[sid].pattern_registry is original_registries[sid]
+               for sid in ("A", "B"))
+    assert _files(bridge) == before
