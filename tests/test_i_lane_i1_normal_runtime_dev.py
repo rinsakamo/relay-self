@@ -101,15 +101,18 @@ def test_two_qualified_native_versions_for_each_self_without_action_or_memory(
     for sid in ("A", "B"):
         _inject(bridge, world, sid)
     rounds = 0
+    bridge._i1_correlated_sense = {}
+    bridge._i1_correlated_received_at = {}
 
     async def refresh_native():
         nonlocal rounds
         rounds += 1
-        # Synthetic native updates still pass the *real* original B source
-        # qualification, because the login Body remains untouched.
+        # Synthetic original single-session matched probes are separate from
+        # passive SENSE. No new source Owner, launcher, or Action is installed.
+        observed = {}
         for sid in ("A", "B"):
             frame = bridge._sense[sid]
-            bridge._sense[sid] = replace(
+            matched = replace(
                 frame, observation=replace(
                     frame.observation, seq=3 + rounds, kind="probe",
                     request_id=f"i1-original-sense-{rounds:031x}{int(sid == 'B'):x}",
@@ -117,7 +120,12 @@ def test_two_qualified_native_versions_for_each_self_without_action_or_memory(
                 ),
                 source_revision_ref=f"mineflayer:{frame.observation.session_id}:{3 + rounds}",
             )
+            bridge._sense[sid] = matched
             bridge._sense_received_at[sid] = time.monotonic()
+            bridge._i1_correlated_sense[sid] = matched
+            bridge._i1_correlated_received_at[sid] = time.monotonic()
+            observed[sid] = matched
+        return observed
 
     result = asyncio.run(sample_i1_original_cpu_epochs(
         bridge=bridge, boot=boot, world=world, links=links,
