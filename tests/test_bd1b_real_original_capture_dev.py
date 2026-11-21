@@ -2,6 +2,7 @@
 
 The mocked urllib response is NOT real Gemma, despite raw HTTP fixture files.
 """
+
 import asyncio
 import json
 from pathlib import Path
@@ -19,8 +20,12 @@ from relay_self.resident_llama_inference_lane_dev import (
 from test_bd1b_owner_present_dev import _configured
 from test_bd1b_owner_source_dev import _files
 
-
 _REAL_CALL = LlamaCppRelayProvider.__call__
+
+
+def _setup_case(tmp_path, monkeypatch):
+    (tmp_path / "self").mkdir()
+    return _configured(tmp_path / "self", monkeypatch, need=True)
 
 
 def _args(case, evidence_dir):
@@ -72,7 +77,7 @@ def _wire(monkeypatch, choice):
 @pytest.mark.parametrize("choice,expected", [("1", "ADOPT"), ("2", "HOLD"), ("3", "DECLINE")])
 def test_original_raw_http_one_post_and_memory_boundary(tmp_path, monkeypatch,
                                                         choice, expected):
-    case = _configured(tmp_path / "self", monkeypatch, need=True)
+    case = _setup_case(tmp_path, monkeypatch)
     bridge = case[1]
     before = _files(bridge)
     _wire(monkeypatch, choice)
@@ -108,7 +113,7 @@ def test_original_raw_http_one_post_and_memory_boundary(tmp_path, monkeypatch,
 
 
 def test_uncertified_restored_schema_refuses_before_evidence_or_post(tmp_path, monkeypatch):
-    case = _configured(tmp_path / "self", monkeypatch, need=True)
+    case = _setup_case(tmp_path, monkeypatch)
     case[1].cognitive_work._present_schemas.clear()
     _wire(monkeypatch, "1")
     root = tmp_path / "capture"
@@ -120,7 +125,7 @@ def test_uncertified_restored_schema_refuses_before_evidence_or_post(tmp_path, m
 
 
 def test_evidence_replay_refused_before_model(tmp_path, monkeypatch):
-    case = _configured(tmp_path / "self", monkeypatch, need=True)
+    case = _setup_case(tmp_path, monkeypatch)
     root = tmp_path / "capture"
     root.mkdir()
     with pytest.raises(preflight.BD1bRealIssuerHold):
@@ -129,7 +134,7 @@ def test_evidence_replay_refused_before_model(tmp_path, monkeypatch):
 
 
 def test_invalid_choice_does_not_write_question(tmp_path, monkeypatch):
-    case = _configured(tmp_path / "self", monkeypatch, need=True)
+    case = _setup_case(tmp_path, monkeypatch)
     bridge = case[1]
     before = _files(bridge)
     _wire(monkeypatch, "99")
@@ -145,7 +150,7 @@ def test_invalid_choice_does_not_write_question(tmp_path, monkeypatch):
 
 
 def test_model_http_failure_leaves_hold_and_fences_real_owner(tmp_path, monkeypatch):
-    case = _configured(tmp_path / "self", monkeypatch, need=True)
+    case = _setup_case(tmp_path, monkeypatch)
     _wire(monkeypatch, "1")
     from experiments import stage28c2c_real_original_l1_dev as raw_module
 
