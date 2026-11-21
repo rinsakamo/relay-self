@@ -137,7 +137,7 @@ def require_i1_native_preflight(
             "original Mineflayer module import preflight unavailable"
         ) from exc
     if (loaded.returncode != 0
-            or loaded.stdout != "I1_NATIVE_MODULE_LOAD_OK\\n"
+            or loaded.stdout != "I1_NATIVE_MODULE_LOAD_OK\n"
             or loaded.stderr.strip()):
         raise I1NativePreflightHold(
             "original worktree-local Mineflayer module cannot load fully "
