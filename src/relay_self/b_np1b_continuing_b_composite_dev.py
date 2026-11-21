@@ -7,6 +7,7 @@ pre-logout B initial receipt stays history, not an admission credential.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import asdict, dataclass
 
 from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
@@ -91,6 +92,21 @@ def build_continuing_b_composite_source(
                     or paper._assert_owned() is not process
                     or process.pid != a.paper_pid):
                 raise ContinuingCompositeHold("Paper changed after A reJOIN attestation")
+            # A recent Paper ACK is the cut boundary for *both* Selves.
+            # A growing log without a newer ACK must not silently promote B.
+            match = re.fullmatch(
+                r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
+                a.paper_tick_ref,
+            )
+            if match is None or not log.splitlines():
+                raise ContinuingCompositeHold("current Paper tick source absent")
+            ack = (
+                f"P0D_TICK_ACK nonce={match.group(2)} boot={match.group(1)} "
+                f"session={a.paper_session_id} world={world.world_id} "
+                f"tick={a.paper_tick} source=PAPER_MAIN_THREAD"
+            ).encode()
+            if ack not in log.splitlines()[-1]:
+                raise ContinuingCompositeHold("Paper log grew after current main-thread ACK")
             trace = parse_owned_paper_resident_trace(
                 owned_paper_session_id=world.paper_session_id,
                 expected_world_uuid=world.world_id,
