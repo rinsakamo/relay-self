@@ -232,6 +232,12 @@ def prepare_stage27hi_multi_review(
         or step.last_native_seq != loop.last_native_seq
         or first_action_probe.seq != rows[0]["probe_seq"]
         or first_action_probe.request_id != rows[0]["probe_request_id"]
+        or first_action_probe.kind != "probe"
+        or first_action_probe.provenance.source != "mineflayer"
+        or first_action_probe.provenance.reference
+        != f"{owner.native_session_id}:{first_action_probe.seq}"
+        or any(getattr(first_action_probe.snapshot.position, coord) !=
+               rows[0]["started_position"][coord] for coord in ("x", "y", "z"))
         or last_settled_probe.seq != rows[-1]["after_seq"]
         or last_settled_probe.session_id != owner.native_session_id
         or first_action_probe.session_id != owner.native_session_id
@@ -242,6 +248,8 @@ def prepare_stage27hi_multi_review(
         or last_settled_probe.provenance.source != "mineflayer"
         or last_settled_probe.provenance.reference
         != f"{owner.native_session_id}:{last_settled_probe.seq}"
+        or any(getattr(last_settled_probe.snapshot.position, coord) !=
+               rows[-1]["settled_position"][coord] for coord in ("x", "y", "z"))
     ):
         raise C1OwnerReviewHold("last L0 status/native source not terminal or foreign")
     contract = loop.invocation.target.contract
@@ -251,6 +259,11 @@ def prepare_stage27hi_multi_review(
         seq=last_settled_probe.seq,
         provenance=last_settled_probe.provenance,
         position=last_settled_probe.snapshot.position,
+    ))
+    initial_assessment = evaluate_target(contract, TargetBodyObservation(
+        scope=loop.invocation.scope, seq=first_action_probe.seq,
+        provenance=first_action_probe.provenance,
+        position=first_action_probe.snapshot.position,
     ))
     observed_reached = assessment.status is TargetConditionStatus.CONDITION_OBSERVED
     reached = step.status == "L0_TARGET_REACHED_YIELD_EVALUATION" and observed_reached
@@ -299,7 +312,9 @@ def prepare_stage27hi_multi_review(
                 "gait_modes": [r.get("gait_mode", "WALK") for r in rows],
                 "last_native_seq": last_settled_probe.seq,
                 "target_status": assessment.status.value,
+                "initial_target_status": initial_assessment.status.value,
                 "target_gap_m": assessment.gap_to_envelope_m,
+                "initial_target_gap_m": initial_assessment.gap_to_envelope_m,
                 "executed_actions": list(rows),
                 "unexecuted_actions": "UNKNOWN; not evidence of failure",
                 "skill_success_attested": False,
