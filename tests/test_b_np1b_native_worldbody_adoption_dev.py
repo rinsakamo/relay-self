@@ -17,8 +17,8 @@ from relay_self.schema_bootstrap_dev import (
 from test_p0d_resident_physical_issuer_dev import ResidentFixture
 
 
-def fixture(tmp_path):
-    f = ResidentFixture(tmp_path, 2)
+def fixture(tmp_path, **kwargs):
+    f = ResidentFixture(tmp_path, 2, **kwargs)
     config = SchemaBootstrapConfig(True)
     owners = {}
     for sid, old in f.owners.items():

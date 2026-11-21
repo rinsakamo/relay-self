@@ -396,6 +396,7 @@ async def _owned_resident_trial(
     b_autonomous_l1_dev: bool = False,
     real_llm_granted: bool = False,
     typed_owner_cut_dev: bool = False,
+    initial_source_dev: bool = False,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -420,6 +421,17 @@ async def _owned_resident_trial(
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
+    initial_source = None
+    if initial_source_dev:
+        from relay_self.b_np1b_initial_source_dev import build_initial_source_receipts
+
+        initial_tick = paper.tick_readback(paper_session)
+        initial_source = [asdict(item) for item in build_initial_source_receipts(
+            bridge=bridge, tick=initial_tick,
+        )]
+        _write_bytes_new(evidence_dir / "initial-native-paper-source.json",
+                         (json.dumps(initial_source, sort_keys=True) + "\n").encode())
+        bridge.adopt_login_worldbody_dev = False
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
         raise RealResidentPresenceRefusal("A native terminal source mismatch")
@@ -609,6 +621,8 @@ async def _owned_resident_trial(
             result_world.new_world.paper_session_id
         )
         result_data["world_only_new_epoch"] = result_world.new_world.epoch
+    if initial_source is not None:
+        result_data["initial_native_paper_source"] = initial_source
     return result_data
 
 
@@ -851,6 +865,7 @@ async def run_real_resident_presence(
     stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
     typed_owner_cut_dev: bool = False,
     exploration_schema_dev: bool = False,
+    initial_source_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     schema_config = SchemaBootstrapConfig(exploration_schema_dev)
@@ -962,6 +977,7 @@ async def run_real_resident_presence(
             expected_world_uuid=world_uuid,
             read_owned_log=lambda sess: holder["paper"].read_owned_log(sess),
             timeout_seconds=min(15.0, timeout_s / 3),
+            allow_repeated_same_boot=initial_source_dev,
         )
         owner = OwnedPaperWorld(
             server_dir=root, world_dir=root / "world",
@@ -1065,6 +1081,7 @@ async def run_real_resident_presence(
             configs=configs, owners=originals,
             launch=native_factory, cognitive_work=cognition,
             inference_lane=lane,
+            adopt_login_worldbody_dev=initial_source_dev,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _owned_resident_trial(
@@ -1077,6 +1094,7 @@ async def run_real_resident_presence(
             b_autonomous_l1_dev=b_autonomous_l1_dev,
             real_llm_granted=real_llm_grant,
             typed_owner_cut_dev=typed_owner_cut_dev,
+            initial_source_dev=initial_source_dev,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1163,6 +1181,7 @@ def main() -> int:
     parser.add_argument("--world-only", action="store_true")
     parser.add_argument("--typed-owner-cut-dev", action="store_true")
     parser.add_argument("--exploration-schema-dev", action="store_true")
+    parser.add_argument("--initial-source-dev", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     parser.add_argument("--b-autonomous-l1-dev", action="store_true")
@@ -1189,6 +1208,7 @@ def main() -> int:
             model_name=args.model,
             typed_owner_cut_dev=args.typed_owner_cut_dev,
             exploration_schema_dev=args.exploration_schema_dev,
+            initial_source_dev=args.initial_source_dev,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)

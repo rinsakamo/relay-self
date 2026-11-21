@@ -48,6 +48,49 @@ def paper_tick_ack_matches(*, source_ref: str, boot_id: str, session_id: str,
     return marker in log.decode("utf-8", errors="replace")
 
 
+def verify_paper_a_b_presence(*, bridge, paper_session_id, world_id, tick, log, minimum_tick=0):
+    """Share recovery-independent Paper actor and ordering checks."""
+    digest = hashlib.sha256(log).hexdigest()
+    try:
+        trace = parse_owned_paper_resident_trace(
+            owned_paper_session_id=paper_session_id,
+            expected_world_uuid=world_id,
+            owned_paper_log=log,
+            log_ref=(
+                "paper-owned-log:" + paper_session_id
+                + ":sha256:" + digest
+            ),
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise Stage28NativePaperLinkHold("Paper resident provenance cannot be parsed") from exc
+    # Independent resident plugin uses a different plugin-boot UUID than
+    # TickWitness. Both come from the SAME owned Paper Popen stdout.
+    if not trace.boot_id or trace.paper_session_id != paper_session_id:
+        raise Stage28NativePaperLinkHold("foreign Paper resident boot")
+    found = {}
+    actors: set[str] = set()
+    for sid in ("A", "B"):
+        expected_name = bridge.configs[sid].username
+        events = [event for event in trace.events if event.name == expected_name]
+        if (
+            not events or events[0].event != "JOIN"
+            or len([event for event in events if event.event == "JOIN"]) != 1
+            or any(event.event == "QUIT" for event in events)
+            or not any(event.event in ("PRESENT", "MOVE")
+                       and event.line > events[0].line for event in events)
+            or len({event.actor_uuid for event in events}) != 1
+            or events[0].actor_uuid in actors
+            or events[0].tick < minimum_tick
+            or events[-1].tick > tick.tick
+        ):
+            raise Stage28NativePaperLinkHold(
+                "Paper independent JOIN/PRESENT clock/order incomplete"
+            )
+        actors.add(events[0].actor_uuid)
+        found[sid] = events
+    return digest, trace, found
+
+
 def link_recovered_a_b_native_paper_body(
     *,
     bridge: OwnedResidentPhysicalBridge,
@@ -149,43 +192,13 @@ def link_recovered_a_b_native_paper_body(
         tick=tick.tick, log=log,
     ):
         raise Stage28NativePaperLinkHold("new Paper post-native ACK missing from owned log")
-    digest = hashlib.sha256(log).hexdigest()
-    try:
-        trace = parse_owned_paper_resident_trace(
-            owned_paper_session_id=boot.paper_session_id,
-            expected_world_uuid=boot.source_world_id,
-            owned_paper_log=log,
-            log_ref=(
-                "paper-owned-log:" + boot.paper_session_id
-                + ":sha256:" + digest
-            ),
-        )
-    except (ValueError, RuntimeError) as exc:
-        raise Stage28NativePaperLinkHold("Paper resident provenance cannot be parsed") from exc
-    # Independent resident plugin uses a different plugin-boot UUID than
-    # TickWitness. Both come from the SAME owned Paper Popen stdout.
-    if not trace.boot_id or trace.paper_session_id != boot.paper_session_id:
-        raise Stage28NativePaperLinkHold("foreign Paper resident boot")
+    digest, trace, found = verify_paper_a_b_presence(
+        bridge=bridge, paper_session_id=boot.paper_session_id,
+        world_id=boot.source_world_id, tick=tick, log=log, minimum_tick=boot.boot_tick,
+    )
     links: list[Stage28NativePaperBodyLink] = []
-    actors: set[str] = set()
     for sid in ("A", "B"):
-        expected_name = bridge.configs[sid].username
-        events = [event for event in trace.events if event.name == expected_name]
-        if (
-            not events or events[0].event != "JOIN"
-            or len([event for event in events if event.event == "JOIN"]) != 1
-            or any(event.event == "QUIT" for event in events)
-            or not any(event.event in ("PRESENT", "MOVE")
-                       and event.line > events[0].line for event in events)
-            or len({event.actor_uuid for event in events}) != 1
-            or events[0].actor_uuid in actors
-            or events[0].tick < boot.boot_tick
-            or events[-1].tick > tick.tick
-        ):
-            raise Stage28NativePaperLinkHold(
-                "Paper independent JOIN/PRESENT clock/order incomplete"
-            )
-        actors.add(events[0].actor_uuid)
+        events = found[sid]
         native = bridge.last_login_evidence[sid]
         links.append(Stage28NativePaperBodyLink(
             self_id=sid,
