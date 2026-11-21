@@ -98,6 +98,7 @@ def _require_current(*, bridge, boot, world, links, handoff, lane) -> None:
         verify_i2_original_goal_handoff(
             bridge=bridge, boot=boot, world=world, links=links,
             handoff=handoff,
+            i2b_read_attached_lane=True,
         )
     except (RuntimeError, ValueError, KeyError, AttributeError, TypeError) as exc:
         raise I2bSharedL1Hold("original B/E/Schema source no longer current") from exc
