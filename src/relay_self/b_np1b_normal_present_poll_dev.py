@@ -31,7 +31,7 @@ class _RejoinSourceCut:
 
 @dataclass(frozen=True, slots=True)
 class NormalPresentCpuPoll:
-    """Atomic A/B original-owner readout; no lasting Present authorization."""
+    """A/B readout from one verified Paper cut; no cross-clock simultaneity or lease."""
 
     a_present: BD1bOwnerPresent
     b_present: BD1bOwnerPresent
