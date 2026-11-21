@@ -53,7 +53,10 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
         if need is None:
             return None
         refs = current.present.three_self.source_revision_refs
-        claims = current.present.three_self.self_world.claims
+        claims = tuple(
+            claim for claim in current.present.three_self.self_world.claims
+            if len(need.basis) == 1 and claim.claim_key == need.basis[0].present_ref
+        )
         if (current.present.signals != (need.signal,)
                 or need.signal.signal_kind != "EXPLORATION_NEED"
                 or need.signal.source_revision_refs != refs

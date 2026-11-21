@@ -51,6 +51,19 @@ def test_absent_coverage_with_eligible_schema(tmp_path, monkeypatch):
     assert _inquire(case, "A", _project(case)) is None
 
 
+def test_inquiry_selects_its_coverage_among_other_world_claims(tmp_path, monkeypatch):
+    case = _configured(tmp_path, monkeypatch, need=True)
+    readout = _project(case)
+    three = readout.present.three_self
+    view = three.self_world
+    extra = replace(view.claims[0], claim_key="other-world-evidence", coverage_ref=None)
+    augmented = replace(readout, present=replace(
+        readout.present, three_self=replace(three, self_world=replace(
+            view, claims=(*view.claims, extra)))))
+    monkeypatch.setattr(case[1].cognitive_work, "read_present_cpu", lambda **kwargs: augmented)
+    assert _inquire(case, "A", augmented).coverage_claim_ref == view.claims[0].claim_key
+
+
 @pytest.mark.parametrize("variant", ["foreign", "forged", "observed", "stale_schema"])
 def test_altered_readout_rejected(tmp_path, monkeypatch, variant):
     case = _configured(tmp_path, monkeypatch, need=True)
