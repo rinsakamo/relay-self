@@ -176,6 +176,9 @@ def begin_physical_issue_dev(
     place_motion: object | None = None,
     allow_prior_original_place_terminals: bool = False,
     place_gait_mode: str | None = None,
+    i4a_s2_boundary: object | None = None,
+    i4a_s2_owner: object | None = None,
+    i4a_s2_physical: object | None = None,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -245,6 +248,79 @@ def begin_physical_issue_dev(
             >= place_invocation.budget.max_distance_m
         ):
             raise refusal("original closed multi-MOVE lineage altered or exhausted")
+    elif i4a_s2_boundary is not None:
+        # This opt-in first S2 Action may follow an *authenticated* terminal
+        # S1 prefix only. It requires the SAME participating original Owner,
+        # PhysicalAdmission and a live atomic issue window. No arbitrary
+        # prefix offset or boolean bypasses the complete canonical journal.
+        from relay_self.checkpointed_cognitive_runtime_dev import (
+            CheckpointedCognitiveOwner,
+        )
+        from relay_self.i_lane_i4a_s2_run_boundary_dev import I4AS2EmptyRunBoundary
+        from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
+        from relay_self.skill_invocation import SkillInvocation
+
+        boundary = i4a_s2_boundary
+        original_owner = i4a_s2_owner
+        physical = i4a_s2_physical
+        if (
+            not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(original_owner, CheckpointedCognitiveOwner)
+            or not isinstance(physical, PhysicalIssueAdmission)
+            or boundary.owner is not original_owner
+            or boundary.new_action_authorized
+            or original_owner.cohort is None
+            or original_owner.intent is not intent_owner
+            or original_owner.supervisor is not supervisor
+            or original_owner.skills.get(boundary.new_skill_id) is not skill_execution
+            or original_owner.files.physical_wal_file.resolve() != journal.path.resolve()
+            or original_owner.native_session_id != boundary.native_session_id
+            or original_owner.current_worldbody_observation is not current_probe
+            or getattr(original_owner, "_i4a_s2_empty_run_boundary", None)
+            is not boundary
+            or getattr(original_owner, "_i4a_live_wal_anchor", None)
+            is not boundary.anchor
+            or capability != "MOVE"
+            or not isinstance(place_invocation, SkillInvocation)
+            or place_invocation.target.contract is None
+            or place_invocation.invocation_ref != boundary.invocation_ref
+            or place_invocation.parameter_preset_ref != boundary.preset_ref
+            or place_invocation.target.ref != boundary.target_ref
+            or place_motion is None
+            or b.intent_id != boundary.new_intent_id
+            or b.skill_execution_id != boundary.new_skill_id
+            or b.target_ref != boundary.target_ref
+            or b.scope.self_id != boundary.self_id
+            or b.scope.world_session_id != boundary.native_session_id
+            or len(prior_actions) != boundary.prefix_count
+            or len(journal.records) != boundary.prefix_count
+            or journal.digest != boundary.prefix_digest
+            or tuple(row["action_id"] for row in journal.records)
+            != boundary.prefix_action_ids
+            or {a.action_id for a in prior_actions}
+            != set(boundary.prefix_action_ids)
+            or any(
+                a.state is not ActionState.OUTCOME or not a.is_current_snapshot
+                or a.intent_id != boundary.old_intent_id
+                or a.skill_execution_id != boundary.old_skill_id
+                for a in prior_actions
+            )
+            or any(
+                row["capability"] != "MOVE_PLACE"
+                or row["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+                or row["intent_id"] != boundary.old_intent_id
+                or row["skill_execution_id"] != boundary.old_skill_id
+                or row["session_id"] != boundary.native_session_id
+                or row["after_seq"] is None
+                or row["after_seq"] >= current_probe.seq
+                for row in journal.records
+            )
+        ):
+            raise refusal("certified S2 physical issuer full-prefix history invalid")
+        # No alternate principal can invoke this mode using a typed copy.
+        physical.require_original_i4a_s2_wal_window(
+            owner=original_owner, boundary=boundary, action_id=b.action_id,
+        )
     elif type(allow_prior_original_place_terminals) is not bool:
         raise refusal("typed multi-Action issuer mode required")
     owner = intent_owner.current_intent
@@ -261,7 +337,9 @@ def begin_physical_issue_dev(
         or skill_execution.skill_id != capability
         or skill_execution.intent_id != b.intent_id
         or supervisor.open_actions
-        or (supervisor.recorded_actions and not allow_prior_original_place_terminals)
+        or (supervisor.recorded_actions and not (
+            allow_prior_original_place_terminals or i4a_s2_boundary is not None
+        ))
         or proposal.proposal.action_id != b.action_id
         or not proposal.proposal.is_current_snapshot
     ):

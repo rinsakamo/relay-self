@@ -157,6 +157,7 @@ class PhysicalIssueAdmission:
         # Admission is not a second Action owner: this map only gates exact
         # native child IDs belonging to the already-selected original Action.
         self._native_child_ids: dict[str, dict[str, str]] = {}
+        self._i4a_s2_issue_window: tuple[Any, Any, str] | None = None
         self._used_native_children: dict[str, set[str]] = {}
         self._closed = False
         self._poisoned = False
@@ -191,6 +192,80 @@ class PhysicalIssueAdmission:
                     "original physical issuer cannot attest quiescent history"
                 )
             yield
+
+    @contextmanager
+    def original_i4a_s2_first_wal_window(
+        self, *, owner: Any, boundary: Any, lane: Any, action_id: str,
+    ) -> Iterator[None]:
+        """Synchronous DEV-only original Owner→issuer→WAL issue transaction.
+
+        This is NOT a native-effect lease spanning async IO: it admits at most
+        one initial S2 PREPARED reservation under an unchanged certified S1
+        prefix, then releases all locks and *does not* bind native children.
+        The unresolved WAL must subsequently HOLD, never be retried. No
+        caller may await or send native controls inside this critical section.
+        """
+        from relay_self.checkpointed_cognitive_runtime_dev import (
+            CheckpointedCognitiveOwner,
+        )
+        from relay_self.i_lane_i4a_s2_run_boundary_dev import (
+            I4AS2EmptyRunBoundary,
+            verify_i4a_s2_empty_run_boundary,
+        )
+        from relay_self.resident_llama_inference_lane_dev import (
+            ResidentLlamaInferenceLane,
+        )
+
+        if (
+            not isinstance(owner, CheckpointedCognitiveOwner)
+            or owner.cohort is None
+            or not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(lane, ResidentLlamaInferenceLane)
+            or boundary.owner is not owner
+            or type(action_id) is not str or not action_id
+        ):
+            raise PhysicalIssueFenceError("certified original S2 scope required")
+        with owner.cohort.lock:
+            with self.quiescent_wal_history_window(
+                self_id=owner.self_id, native_session_id=boundary.native_session_id,
+            ):
+                verify_i4a_s2_empty_run_boundary(
+                    boundary, physical=self, lane=lane,
+                )
+                with self.lease(
+                    self_id=owner.self_id,
+                    native_session_id=boundary.native_session_id,
+                    action_id=action_id,
+                    effect_family="MOVE_PLACE",
+                ):
+                    if self._i4a_s2_issue_window is not None:
+                        raise PhysicalIssueFenceError(
+                            "nested certified S2 physical reservation refused"
+                        )
+                    self._i4a_s2_issue_window = (owner, boundary, action_id)
+                    try:
+                        yield
+                    finally:
+                        self._i4a_s2_issue_window = None
+
+    def require_original_i4a_s2_wal_window(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Only the original participating issuer may assert S2 prefix mode."""
+        with self._lock:
+            window = self._i4a_s2_issue_window
+            active = self._active.get(getattr(owner, "self_id", ""))
+            if (
+                window is None or window[0] is not owner
+                or window[1] is not boundary or window[2] != action_id
+                or active is None or active.action_id != action_id
+                or active.effect_family != "MOVE_PLACE"
+                or active.native_session_id != boundary.native_session_id
+                or self._closed or self._poisoned or self._neutralizing
+            ):
+                raise PhysicalIssueFenceError(
+                    "original S2 issuer prefix not certified in atomic window"
+                )
 
     @property
     def resident_mode(self) -> bool:
