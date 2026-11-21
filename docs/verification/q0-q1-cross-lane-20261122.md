@@ -18,14 +18,14 @@ All listed PRs are unmerged experimental branches; their code is **not** in main
 | I1 #1062 | a69f4304c2d7e4ec6807d83b0857a9672b0b49f2 | [44914269595](https://github.com/rinsakamo/relay-self/actions/runs/44914269595) success; I1 original independent World audit *reported*, not newly repeated by Q |
 | I2 #1080 | 33c5a5d970bc2190b88230ba1009e1150e589900 | [44923222497](https://github.com/rinsakamo/relay-self/actions/runs/44923222497) verified five successful jobs; controlled CPU provider, not real Gemma |
 | I4a #1067 | 72c1b09e1b6039f894b0d42f1db29a575239d44e | [44915987448](https://github.com/rinsakamo/relay-self/actions/runs/44915987448) success; synthetic S1/S2, real SkillRun HOLD |
-| I1+C+I4a #1076 | 5aa94d39f10559614395f9244404eff5e644b3e3 | [44921975743](https://github.com/rinsakamo/relay-self/actions/runs/44921975743) **2,641 PASS / 2 FAIL**, four other jobs pass, PRE_WORLD_NO_GO |
+| I1+C+I4a #1076 | a710d6534423e63d2c703779fd08fa42ab1d7f3f | [44923902340](https://github.com/rinsakamo/relay-self/actions/runs/44923902340) **5/5 SUCCESS**; earlier 5aa94d39 was 2,641 PASS / 2 FAIL; PRE_WORLD_NO_GO remains |
 
 A green CI is not original evidence, real World execution, autonomous closed-loop
 qualification or independent source attestation. The private WSL original archives
 have not been made available through this GitHub connection. Q records **HOLD**
 for new independent source qualifications pending independently provided originals.
 
-## Q0-A exact latest #1076 failure diagnosis
+## Q0-A #1076: reproduced historic failures, then verified upstream fix
 
 1. **No-motion uncertain MOVE: HOLD / contract versus fixture or safety defect.**
    The failing test is
@@ -35,9 +35,9 @@ for new independent source qualifications pending independently provided origina
    qualified STOP/settling. The test expects PhysicalMoveRefusal or
    PhysicalJournalError but neither occurs. Whether this is a fixture that
    confuses valid no-net terminal with unresolved motion, or a true unsafe
-   terminal/WAL release, is **UNRESOLVED** without the focused STOP and WAL replay.
+   terminal/WAL release, is **UNRESOLVED at historic 5aa94d39**, before the focused fix.
    Do NOT just delete the negative assertion or weaken an issuer fence.
-   **Owner: I and A.** Minimal action: independently test validated STOP,
+   **Owner: I and A.** Fixed in new a710d653 with separate settled-no-net and wrong-STOP tests; independently test validated STOP,
    all settlement observations and WAL close vs actual ambiguous/failed STOP.
 2. **Receipt timing API incompatibility: confirmed.**
    tests/test_stage24b_resident_real_l1_integration_dev.py::
@@ -45,13 +45,18 @@ for new independent source qualifications pending independently provided origina
    raises AttributeError: the caller experiments/stage24b_real_l1_move_dev.py
    accesses receipt.native_start_dispatch_monotonic_ns, which is **absent** from
    ResidentMoveDevReceipt in experiments/cognitive_physical_move_issue_dev.py.
-   **Category: producer/consumer API incompatibility**, not a model failure.
-   **Owner: I.** Smallest safe fix: either remove the unsupported metric or
+   **Category: producer/consumer API incompatibility on old HEAD**, not a model failure.
+   **Owner: I.** Resolved at a710d653: capture the actual sender monotonic timestamp within the original issuer and validate chronology in the caller; the alternative would have been to
    capture actual dispatch monotonic time inside the one original Native issuer
    and return it through a typed receipt; no invented caller clock value.
 
-The previous 496 test failures and 14 collection errors are historic, not the
-latest state. #1076 has zero actual integrated real World launches/Gemma POST.
+The previous 496 test failures, 14 collection errors and the 2,641 PASS / 2 FAIL
+run are historical. **At HEAD a710d653, exact-HEAD CI 44923902340 succeeds
+5/5**. Commit diff touches only the original MOVE issuer receipt, its
+Stage24b reader and two test files; it adds real sender-side chronology and
+separates no-net settled outcome from ambiguous STOP. No owner/physical WAL
+fence relaxation was observed in this diff. It is still a code-stage success:
+**zero integrated real World launches/Gemma POST, I4A_PRE_WORLD_NO_GO**.
 
 ## Q0-A #1080 Source mismatch diagnosis
 
@@ -80,8 +85,8 @@ Owners B (Source) / I2 (fixture and handoff); never relax BD1bSourceHold.
 | Mineflayer process_session, Native probe and SENSE revision | B/E/I1/I2 | duplicated source authority; old request/seq or stale passive SENSE | Keep original decoder and exact-current source/Scope; **B/I/E** | I1 source auditor exists on #1062; Q1 raw link checks only |
 | Resident Owner, source, Present and Registry | B/D/E/I1/I2 | divergent branch signatures and alternative Owner bootstraps | Same original Owner + lock and rechecks, no new cognition owner; **B/I** | CPU tests pass, real restoration HOLD |
 | Paper ACK/prefix and World clocks | B/I1/I2 | growing complete log versus frozen link; Paper vs Native time | Relink producer to complete original ACK and do not equate clocks; **B/I** | Q1 synthetic ACK negative; original audit not rerun |
-| Physical ActionPort/STOP/Supervisor/WAL | A/C/I4a/I | no-net vs uncertain action/retirement ambiguity | Keep PREPARED quarantine and a single issuer; **I/A** | #1076 failing case HOLD |
-| ResidentMoveDevReceipt | A/I | caller demands absent monotonic dispatch field | Owner-side actual timestamp or remove unsupported field; **I** | #1076 confirmed API FAIL |
+| Physical ActionPort/STOP/Supervisor/WAL | A/C/I4a/I | no-net vs uncertain action/retirement ambiguity | Keep PREPARED quarantine and a single issuer; **I/A** | historic failure corrected in a710d653; real World HOLD |
+| ResidentMoveDevReceipt | A/I | caller demands absent monotonic dispatch field | Owner-side actual timestamp or remove unsupported field; **I** | API fixed in a710d653, exact CI 5/5; real capture HOLD |
 | C1/T1/T2/SkillRun original WAL | C/I4a/I | stale T1 evidence, incorrect source admission | Separate same-Intent vs new-task source, no success promotion; **C/I** | synthetic test only, durable S1 anchor HOLD |
 | Exploration Question candidate versus ADOPT and ticket | B/D/I2 | fake target, duplicate ADOPT or reused GPU ticket | B-owned single transaction; no candidate adoption by Q; **B/D/I2** | #1080 offline, original readback HOLD |
 | Checkpointed generation and historical S1 | B/I4a/I | recomputed action ID + SHA masquerades as original | Trustworthy independent prior Owner boundary/anchor; **B/I** | Q1 hash pin cannot authenticate both attacker-owned copies |
@@ -108,5 +113,5 @@ owner_checkpoint_semantics_attested=false. If the alleged external pins can
 also be rewritten by an adversary, both copies can be forged. A secure
 earlier source/Owner anchor remains required.
 
-Q overall: **DEV_ONLY / HOLD on real integrated source evidence /
+Q overall: **DEV_ONLY / latest #1076 CI PASS, HOLD on real integrated source evidence /
 QUAL_NO_GO / SCIENCE_NOT_RUN.**
