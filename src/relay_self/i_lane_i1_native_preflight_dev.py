@@ -29,12 +29,46 @@ class I1NativePreflightReceipt:
     native_module_import_verified: bool = True
     no_symlink_ancestors: bool = True
     world_started: bool = False
+    node_module_warning_code: str | None = None
+    node_module_stderr_sha256: str = ""
+    node_module_stderr_raw: str = ""
 
 
 _NODE_OK = re.compile(
     r"STAGE24D_MINEFLAYER_OWNER_PATCH_OK original=4\.39\.0 "
     r"source_sha256=([0-9a-f]{64})\n?\Z"
 )
+
+
+# Only the exact, observed Node 22.x two-line DEP0040 diagnostic is
+# qualified. Never pass arbitrary stderr, --no-deprecation, NODE_NO_WARNINGS,
+# alternate error output or any additional warning/stack trace.
+_NODE_PUNYCODE_DEP0040 = re.compile(
+    r"\\(node:[1-9][0-9]{0,9}\\) \\[DEP0040\\] DeprecationWarning: "
+    r"The `punycode` module is deprecated\\. Please use a userland alternative instead\\.\\r?\\n"
+    r"\\(Use `node --trace-deprecation \\.\\.\\.` to show where the warning was created\\)\\r?\\n?\\Z"
+)
+
+
+def qualify_i1_node_module_stderr(stderr: str) -> str | None:
+    """Classify exact bounded runtime diagnostic; never silence stderr.
+
+    Return one known warning code or None for a genuinely empty stderr.
+    Unknown diagnostics, duplicates, trace stacks, spoofed banners and
+    downstream import errors are HOLD with their original bytes visible.
+    """
+    if type(stderr) is not str:
+        raise I1NativePreflightHold("original Node stderr unavailable or malformed")
+    if stderr == "":
+        return None
+    raw = stderr.encode("utf-8")
+    digest = hashlib.sha256(raw).hexdigest()
+    if len(raw) <= 512 and _NODE_PUNYCODE_DEP0040.fullmatch(stderr):
+        return "DEP0040"
+    raise I1NativePreflightHold(
+        "unqualified original Node module stderr sha256=" + digest
+        + " raw=" + repr(stderr[:1024])
+    )
 
 
 def require_i1_native_preflight(
@@ -137,10 +171,21 @@ def require_i1_native_preflight(
             "original Mineflayer module import preflight unavailable"
         ) from exc
     if (loaded.returncode != 0
-            or loaded.stdout != "I1_NATIVE_MODULE_LOAD_OK\n"
-            or loaded.stderr.strip()):
+            or loaded.stdout != "I1_NATIVE_MODULE_LOAD_OK\n"):
         raise I1NativePreflightHold(
             "original worktree-local Mineflayer module cannot load fully "
-            "before Paper boot; npm-ci source is incomplete or foreign"
+            "before Paper boot; returncode=" + str(loaded.returncode)
+            + " stdout=" + repr(loaded.stdout[:1024])
+            + " stderr=" + repr(loaded.stderr[:1024])
         )
-    return I1NativePreflightReceipt("4.39.0", source_sha)
+    # A warning is not an import failure. Allow only the exact known Node
+    # diagnostic, preserving its bytes and SHA in the original capture.
+    warning = qualify_i1_node_module_stderr(loaded.stderr)
+    return I1NativePreflightReceipt(
+        "4.39.0", source_sha,
+        node_module_warning_code=warning,
+        node_module_stderr_sha256=hashlib.sha256(
+            loaded.stderr.encode("utf-8")
+        ).hexdigest(),
+        node_module_stderr_raw=loaded.stderr,
+    )
