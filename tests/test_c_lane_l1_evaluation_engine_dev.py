@@ -279,3 +279,210 @@ def test_progress_candidates_follow_comparable_observations():
         assert fragment in choices[0]
         assert choices[1] == "UNKNOWN"
     assert "arrival condition observed" in descriptions(3, 0, reached=True)[0]
+
+
+def test_failure_positions_preserve_only_completed_axes(tmp_path, monkeypatch):
+    import pytest
+
+    from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
+
+    original = ResidentLlamaInferenceLane.await_result
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        loop.owner.observe_world_tick(session_id=last.session_id, world_tick=(
+            last.snapshot.time.day * 24000 + last.snapshot.time.time_of_day))
+        loop.owner.accept_rejoined_worldbody(last, request_id=last.request_id)
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last)
+        frame = prepare_stage27hi_multi_review(loop, step, world_id=frame_world(f), **common)
+        original_wal = loop.owner.files.physical_wal_file.read_bytes()
+        skills, intents, retained = (dict(loop.owner.skills), loop.owner.intent.events,
+                                     loop.owner.retained)
+        server.choice_id = "1"
+        for fail_at in (1, 3, 5):
+            count = 0
+
+            async def fail(self, ticket, **kwargs):
+                nonlocal count
+                count += 1
+                if count == fail_at:
+                    await original(self, ticket, **kwargs)
+                    raise RuntimeError("synthetic inference resource loss")
+                return await original(self, ticket, **kwargs)
+
+            monkeypatch.setattr(ResidentLlamaInferenceLane, "await_result", fail)
+            with pytest.raises(RuntimeError, match="resource loss") as exc:
+                await execute_evaluation(frame, loop, task_id=f"failure-{fail_at}", **common)
+            audit = exc.value.evaluation_audit
+            assert audit.status == "INTERRUPTED"
+            assert len(audit.axes) == len(audit.receipts) == fail_at - 1
+            assert loop.owner.skills == skills and loop.owner.intent.events == intents
+            assert loop.owner.retained == retained and len(loop._seen_action_ids) == 3
+            assert loop.owner.files.physical_wal_file.read_bytes() == original_wal
+    _fixture(tmp_path, scenario)
+
+
+def frame_world(f):
+    return f.lifecycle.world.world_id
+
+
+def test_scope_and_http_tampering_interrupt_evaluation(tmp_path, monkeypatch):
+    from dataclasses import replace
+    from pathlib import Path
+
+    import pytest
+
+    from adapters.llama_cpp.relay_engine import LlamaCppProviderError
+    from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
+    from relay_self.relay_engine import CognitionMode
+    from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
+
+    original_await = ResidentLlamaInferenceLane.await_result
+    original_submit = ResidentLlamaInferenceLane.submit
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        loop.owner.observe_world_tick(session_id=last.session_id, world_tick=(
+            last.snapshot.time.day * 24000 + last.snapshot.time.time_of_day))
+        loop.owner.accept_rejoined_worldbody(last, request_id=last.request_id)
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last)
+        frame = prepare_stage27hi_multi_review(loop, step, world_id=frame_world(f), **common)
+        wal = loop.owner.files.physical_wal_file.read_bytes()
+        skills, intents, retained = (dict(loop.owner.skills), loop.owner.intent.events,
+                                     loop.owner.retained)
+        other = f.owners[f.names[1]]
+        other_state = (dict(other.skills), other.intent.events, other.retained)
+        server.choice_id = "2"
+        foreign_request = replace(frame.request, request_id="foreign-self-work")
+        foreign_ticket = original_submit(lane, other.self_id, work_ref="foreign-self-work",
+                                         request=foreign_request, mode=CognitionMode.BOUNDED)
+        foreign_result = await original_await(lane, foreign_ticket)
+        server.choice_id = "1"
+        for case in ("session", "epoch", "current-final", "foreign", "foreign-result",
+                     "request", "response", "old-response"):
+            count = 0
+            first_ref = None
+            submitted = []
+
+            def submit(self, *args, **kwargs):
+                nonlocal count, first_ref
+                ticket = original_submit(self, *args, **kwargs)
+                submitted.append(ticket)
+                count += 1
+                if count == 1:
+                    first_ref = ticket.request_id
+                if count == 3 and case == "foreign":
+                    return foreign_ticket
+                return ticket
+
+            async def altered(self, ticket, **kwargs):
+                result = await original_await(self, ticket, **kwargs)
+                if case == "current-final" and count == 5:
+                    loop.owner.current_worldbody_observation = replace(last, seq=last.seq + 1)
+                if count == 3:
+                    if case == "foreign-result":
+                        return foreign_result
+                    if case == "session":
+                        loop.owner.native_session_id = "foreign-session"
+                    elif case == "epoch":
+                        object.__setattr__(f.lifecycle.world, "epoch", frame.world_epoch + 1)
+                    elif case in ("request", "response", "old-response"):
+                        ref = first_ref if case == "old-response" else ticket.request_id
+                        raw = self.provider.stage26_raw_receipt(ref)
+                        path = raw.request_path if case == "request" else raw.response_path
+                        Path(path).write_bytes(b"tampered")
+                return result
+
+            monkeypatch.setattr(ResidentLlamaInferenceLane, "submit", submit)
+            monkeypatch.setattr(ResidentLlamaInferenceLane, "await_result", altered)
+            with pytest.raises((C1OwnerReviewHold, LlamaCppProviderError)) as exc:
+                await execute_evaluation(frame, loop, task_id=f"adversary-{case}", **common)
+            audit = exc.value.evaluation_audit
+            if case == "foreign":
+                await original_await(lane, submitted[-1])
+            assert len(audit.axes) == (5 if case == "old-response" else
+                                       4 if case == "current-final" else 2)
+            assert len(audit.receipts) == (5 if case in ("old-response", "current-final") else
+                                           3 if case in ("session", "epoch") else 2)
+            if case == "current-final":
+                loop.owner.current_worldbody_observation = last
+            if case == "session":
+                loop.owner.native_session_id = frame.native_session_id
+            if case == "epoch":
+                object.__setattr__(f.lifecycle.world, "epoch", frame.world_epoch)
+            assert loop.owner.skills == skills and loop.owner.intent.events == intents
+            assert loop.owner.retained == retained and len(loop._seen_action_ids) == 3
+            assert (dict(other.skills), other.intent.events, other.retained) == other_state
+            assert loop.owner.files.physical_wal_file.read_bytes() == wal
+    _fixture(tmp_path, scenario)
+
+
+def test_candidate_options_remain_bounded_by_observed_motion_and_sources():
+    import json
+    from types import SimpleNamespace
+
+    from relay_self.c_lane_l1_evaluation_engine_dev import build_evaluation_steps
+
+    for movement, before, after in ((0, 2, 1), (1, 2, 1), (1, None, 1)):
+        facts = {"original_action_ids": ["a"], "initial_target_gap_m": before,
+                 "target_gap_m": after, "executed_actions": [{"displacement_m": movement}]}
+        frame = SimpleNamespace(
+            request=SimpleNamespace(context=[SimpleNamespace(value_json=json.dumps(facts))]),
+            wal_digest="a" * 64, native_session_id="session", last_probe_seq=2,
+            target_contract_ref="target", terminal_status="budget", action_ids=("a",),
+            completion_review_offered=False,
+        )
+        steps = build_evaluation_steps(frame)
+        assert all(any(c.choice.description == "UNKNOWN" and not c.evidence_refs
+                       for c in step.candidates) for step in steps)
+        skill = [c.choice.description for c in steps[1].candidates]
+        assert ("No movement was measured" in skill[2]) == (movement == 0)
+        assert (len(skill) == 4) == (movement > 0 and before is not None and after < before)
+        assert "success is not established" in skill[0]
+        assert "novelty is unknown" in steps[2].candidates[0].choice.description
+        assert "cause is not established" in steps[3].candidates[0].choice.description
+        assert all(c.evidence_refs for step in steps for c in step.candidates
+                   if c.choice.description != "UNKNOWN")
+
+
+def test_provider_inference_error_preserves_completed_receipts(tmp_path, monkeypatch):
+    import pytest
+
+    from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+
+    original = LlamaCppRelayProvider.__call__
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        loop.owner.observe_world_tick(session_id=last.session_id, world_tick=(
+            last.snapshot.time.day * 24000 + last.snapshot.time.time_of_day))
+        loop.owner.accept_rejoined_worldbody(last, request_id=last.request_id)
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last)
+        frame = prepare_stage27hi_multi_review(loop, step, world_id=frame_world(f), **common)
+        wal = loop.owner.files.physical_wal_file.read_bytes()
+        skills, intent, retained = dict(loop.owner.skills), loop.owner.intent.events, loop.owner.retained
+        count = 0
+
+        def failed_provider(self, request, **kwargs):
+            nonlocal count
+            count += 1
+            if count == 3:
+                raise RuntimeError("injected provider inference error")
+            return original(self, request, **kwargs)
+
+        monkeypatch.setattr(LlamaCppRelayProvider, "__call__", failed_provider)
+        server.choice_id = "1"
+        with pytest.raises(RuntimeError, match="injected provider") as exc:
+            await execute_evaluation(frame, loop, task_id="provider-failure", **common)
+        assert len(exc.value.evaluation_audit.axes) == 2
+        assert len(exc.value.evaluation_audit.receipts) == 2
+        assert loop.owner.skills == skills and loop.owner.intent.events == intent
+        assert loop.owner.retained == retained and len(loop._seen_action_ids) == 3
+        assert loop.owner.files.physical_wal_file.read_bytes() == wal
+    _fixture(tmp_path, scenario)
