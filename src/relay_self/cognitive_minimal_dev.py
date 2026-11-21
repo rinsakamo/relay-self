@@ -217,6 +217,23 @@ def initial_patterns_with_move() -> PatternRegistry:
     return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
 
 
+def initial_patterns_with_relative_move() -> PatternRegistry:
+    """Opt-in Stage24a Goal/Skill pair for existing native relative controls.
+
+    Unlike DESTINATION navigation, RELATIVE MOVE means a bounded control
+    pulse only. This data registration never issues an Action or grants
+    physical permission; the original Stage23b issuer remains the sole port.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (
+        SchemaPattern(
+            "exploration-relative-move", 1, "exploration", PatternKind.GOAL,
+            Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "RELATIVE",
+            Origin.INNATE, Provenance("innate-schema", "stage24a-relative-dev"),
+        ),
+    ))
+
+
 def accept_learned_pattern(
     registry: PatternRegistry,
     proposed: SchemaPattern,

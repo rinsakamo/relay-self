@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -609,6 +610,38 @@ def _adopt_verified_trial_report(
     report["real_b_physical_wal_outcome"] = terminal
     report["native_move_raw_source_attested"] = moved
     report["classification"] = classification
+
+
+def _require_stage24g_systemone_capture(evidence: Path) -> dict[str, object]:
+    """Verify original one-POST evidence before promoting any integrated result."""
+    folder = evidence / "stage24g-systemone-http"
+    try:
+        request = (folder / "systemone-request-body.bin").read_bytes()
+        response = (folder / "systemone-response-body.bin").read_bytes()
+        manifest = json.loads((folder / "systemone-http-evidence.json").read_bytes())
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        raise RealResidentPresenceRefusal(
+            "Stage24g SystemOne original HTTP evidence unavailable"
+        ) from exc
+    if (
+        type(manifest) is not dict
+        or manifest.get("capture_type") != "urllib_http_entity_bodies_not_wire_headers"
+        or manifest.get("http_status") != 200
+        or manifest.get("request_body_sha256") != hashlib.sha256(request).hexdigest()
+        or manifest.get("response_body_sha256") != hashlib.sha256(response).hexdigest()
+        or manifest.get("request_body_bytes") != len(request)
+        or manifest.get("response_body_bytes") != len(response)
+    ):
+        raise RealResidentPresenceRefusal(
+            "Stage24g actual SystemOne HTTP body/status digest mismatch"
+        )
+    return {
+        "model_http_entity_bodies_archived": True,
+        "model_http_wire_headers_archived": False,
+        "model_http_status_attested": 200,
+        "model_http_request_sha256": manifest["request_body_sha256"],
+        "model_http_response_sha256": manifest["response_body_sha256"],
+    }
 
 
 async def run_real_resident_presence(
