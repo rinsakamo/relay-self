@@ -7,7 +7,7 @@ without it: an EMPTY SchemaSnapshot means no exploration Need, not OFF evidence.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from relay_self.cognitive_minimal_dev import PatternKind, Predicate
@@ -144,7 +144,8 @@ def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str) -> I
 
 async def sample_i1_original_cpu_epochs(
     *, bridge, boot, world, links, refresh_paper_source: Callable,
-    timeout_s: float = 2.0, poll_s: float = 0.05,
+    refresh_native_source: Callable[[], Awaitable[None]] | None = None,
+    timeout_s: float = 5.0, poll_s: float = 0.05,
     per_self_limit: int = 2,
 ) -> I1OriginalCPUResult:
     """Run a bounded event-driven *read* after real original A/B login.
@@ -157,6 +158,7 @@ async def sample_i1_original_cpu_epochs(
     if (not isinstance(bridge.cognitive_work, ResidentCognitiveWorkOwner)
             or getattr(bridge, "enable_sense", False) is not True
             or not callable(refresh_paper_source)
+            or (refresh_native_source is not None and not callable(refresh_native_source))
             or type(per_self_limit) is not int or per_self_limit != 2
             or type(timeout_s) not in (int, float) or not 0 < timeout_s <= 10
             or type(poll_s) not in (int, float) or not 0 < poll_s <= 1
@@ -167,7 +169,15 @@ async def sample_i1_original_cpu_epochs(
     last: dict[str, str | None] = {"A": None, "B": None}
     counts = {"A": 0, "B": 0}
     epochs: list[I1OriginalCPUEpoch] = []
+    refresh_rounds = 0
     while event_loop.time() < deadline and not all(v == per_self_limit for v in counts.values()):
+        # Explicit caller-owned read-only Native probes ensure a stationary
+        # Self can be reobserved without fabricating passive movement.
+        if (refresh_native_source is not None
+                and refresh_rounds < per_self_limit
+                and all(n == refresh_rounds for n in counts.values())):
+            await refresh_native_source()
+            refresh_rounds += 1
         changed = [
             sid for sid in ("A", "B")
             if counts[sid] < per_self_limit
