@@ -62,7 +62,11 @@ def read_issuer_result(*, bridge, lane, boot, world, links, turn, ticket):
             or before.candidate_set_sha256 != turn.candidate_set_sha256
         ):
             raise BD1bSourceHold("ticket or source does not match prepared turn")
-        decision = lane.verify_submitted_bounded_request(ticket, turn.request)
+        with lane._lock:
+            job = lane._require_current_job(ticket)
+            if job.ticket is not ticket:
+                raise BD1bSourceHold("original issued ticket required")
+            decision = lane.verify_submitted_bounded_request(ticket, turn.request)
         digest = _request_sha256(turn.request, ticket.mode)
         # This provider returns only the already completed decision. No inference occurs.
         normalized = RelayEngine(lambda request, mode: decision)(turn.request)

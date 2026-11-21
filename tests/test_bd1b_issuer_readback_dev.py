@@ -85,6 +85,7 @@ def test_completed_job_readonly(tmp_path, monkeypatch, sid, decision, selection)
     "variant",
     [
         "unregistered",
+        "copied_ticket",
         "self",
         "work",
         "request",
@@ -108,7 +109,9 @@ def test_reject_job_and_source_tampering(tmp_path, monkeypatch, variant):
         turn = turns[0]
         ticket = submit(lane, turn)
         job = lane._jobs[(turn.self_id, turn.work_ref)]
-        if variant == "unregistered":
+        if variant == "copied_ticket":
+            ticket = replace(ticket)
+        elif variant == "unregistered":
             ticket = replace(ticket, work_ref="unregistered")
         elif variant == "self":
             ticket = replace(ticket, self_id="B")
