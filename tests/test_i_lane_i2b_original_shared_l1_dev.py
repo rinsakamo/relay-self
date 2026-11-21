@@ -330,3 +330,32 @@ def test_i2b_explicit_attached_read_preserves_original_cpu_only_gate(
         assert case[1].physical.active_action_ids == ()
     finally:
         lane._pool.shutdown(wait=True)
+
+
+def test_i2b_same_intent_id_but_new_reconsideration_event_is_stale(
+    tmp_path, monkeypatch,
+):
+    case, lane = _fixture(tmp_path, monkeypatch)
+    try:
+        intent = case[1].owners["A"].intent
+        assert intent.current_intent is None
+        start = (intent.last_at_ns or 0) + 1
+        provenance = Provenance("synthetic", "intent-event-lifecycle")
+        intent.commit(
+            "i2b-existing-intent", objective="existing intent",
+            at_ns=start, provenance=provenance,
+        )
+        item = _submit(case, lane)
+        asyncio.run(lane.await_result(item.ticket, timeout_s=3.0))
+        # No new Intent ID: a pending reconsideration of the very same
+        # CurrentIntent must still invalidate the frozen earlier L1 request.
+        intent.request_reconsideration(
+            "i2b-existing-intent", reason="body changed",
+            at_ns=start + 1, provenance=provenance,
+        )
+        assert intent.current_intent.intent_id == "i2b-existing-intent"
+        with pytest.raises(I2bSharedL1Hold):
+            _read(case, lane, item)
+        assert case[1].physical.active_action_ids == ()
+    finally:
+        lane._pool.shutdown(wait=True)
