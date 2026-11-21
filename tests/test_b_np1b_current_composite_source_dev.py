@@ -119,7 +119,7 @@ def test_hostile_sources_hold(current, monkeypatch, case):
     f, initial, native, tick = current
     paper, bridge = f.paper, f.bridge
     if case == 'stale':
-        native = replace(native, native_revision='sha256:stale')
+        asyncio.run(update_fresh_native(bridge=bridge, self_id='A', initial_receipt=initial[0]))
     elif case == 'pending':
         bridge._fresh_native_pending.add('A')
     elif case in ('boot', 'session', 'nonce'):
@@ -133,7 +133,7 @@ def test_hostile_sources_hold(current, monkeypatch, case):
         if case == 'missing_ack':
             log = log.replace('nonce=77777777', 'nonce=88888888')
         elif case == 'observation':
-            log = log.replace('event=MOVE boot=' + PRESENCE + ' tick=15', 'event=JOIN boot=' + PRESENCE + ' tick=15')
+            log = ''.join(line for line in log.splitlines(keepends=True) if 'tick=15' not in line)
         elif case == 'duplicate':
             log = log.replace(ACTORS[1], ACTORS[0])
         elif case == 'replace':
