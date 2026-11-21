@@ -50,7 +50,8 @@ def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str,
         inquiry = build_coverage_inquiry(
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=self_id, readout=before,
-            i1_complete_paper_prefix=i1_complete_paper_prefix,
+            **({"i1_complete_paper_prefix": True}
+               if i1_complete_paper_prefix else {}),
         )
         after = resident.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
