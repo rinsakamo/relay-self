@@ -27,6 +27,27 @@ class Stage28NativePaperLinkHold(RuntimeError):
     """Independent native/Paper presence provenance incomplete: HOLD."""
 
 
+def paper_tick_ack_matches(*, source_ref: str, boot_id: str, session_id: str,
+                           world_id: str, tick: int, log: bytes) -> bool:
+    """Match the receipt nonce and exact tick against the owned Paper log."""
+    if (type(source_ref) is not str or type(boot_id) is not str
+            or type(session_id) is not str or type(world_id) is not str
+            or type(tick) is not int or type(log) is not bytes):
+        return False
+    nonce = re.fullmatch(
+        r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
+        source_ref,
+    )
+    if nonce is None or nonce.group(1) != boot_id:
+        return False
+    marker = (
+        f"P0D_TICK_ACK nonce={nonce.group(2)} boot={boot_id} "
+        f"session={session_id} world={world_id} "
+        f"tick={tick} source=PAPER_MAIN_THREAD"
+    )
+    return marker in log.decode("utf-8", errors="replace")
+
+
 def link_recovered_a_b_native_paper_body(
     *,
     bridge: OwnedResidentPhysicalBridge,
@@ -122,18 +143,11 @@ def link_recovered_a_b_native_paper_body(
         or process.pid != boot.paper_pid
     ):
         raise Stage28NativePaperLinkHold("Paper tick not from original new boot")
-    nonce = re.fullmatch(
-        r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
-        tick.source_ref,
-    )
-    if nonce is None or nonce.group(1) != boot.paper_boot_id:
-        raise Stage28NativePaperLinkHold("new Paper tick nonce source invalid")
-    marker = (
-        f"P0D_TICK_ACK nonce={nonce.group(2)} boot={boot.paper_boot_id} "
-        f"session={boot.paper_session_id} world={boot.source_world_id} "
-        f"tick={tick.tick} source=PAPER_MAIN_THREAD"
-    )
-    if marker not in log.decode("utf-8", errors="replace"):
+    if not paper_tick_ack_matches(
+        source_ref=tick.source_ref, boot_id=boot.paper_boot_id,
+        session_id=boot.paper_session_id, world_id=boot.source_world_id,
+        tick=tick.tick, log=log,
+    ):
         raise Stage28NativePaperLinkHold("new Paper post-native ACK missing from owned log")
     digest = hashlib.sha256(log).hexdigest()
     try:

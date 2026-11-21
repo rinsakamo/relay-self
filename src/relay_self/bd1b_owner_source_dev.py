@@ -6,7 +6,6 @@ This readout neither attests a real trial nor authorizes subsequent work.
 from __future__ import annotations
 
 import hashlib
-import re
 from dataclasses import dataclass
 
 from relay_self import stage28c2b_native_paper_body_link_dev as paper_link
@@ -76,17 +75,12 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                 log_ref="paper-owned-log:" + boot.paper_session_id + ":sha256:" + digest,
             )
             first = by_self["A"]
-            match = re.fullmatch(
-                r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
-                first.paper_tick_source_ref,
-            )
-            if (process.pid != boot.paper_pid or match is None
-                or match.group(1) != boot.paper_boot_id
+            if (process.pid != boot.paper_pid
                 or not trace.boot_id or trace.paper_session_id != boot.paper_session_id
-                or f"P0D_TICK_ACK nonce={match.group(2)} boot={boot.paper_boot_id} "
-                   f"session={boot.paper_session_id} world={boot.source_world_id} "
-                   f"tick={world.world_tick} source=PAPER_MAIN_THREAD"
-                   not in log.decode("utf-8", errors="replace")):
+                or not paper_link.paper_tick_ack_matches(
+                    source_ref=first.paper_tick_source_ref, boot_id=boot.paper_boot_id,
+                    session_id=boot.paper_session_id, world_id=boot.source_world_id,
+                    tick=world.world_tick, log=log)):
                 raise BD1bSourceHold("owned Paper source or ACK mismatch")
             actors = set()
             sessions = set()

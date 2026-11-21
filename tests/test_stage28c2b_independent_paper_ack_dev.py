@@ -69,3 +69,20 @@ def test_stage28c2b_forged_ack_never_qualifies(tmp_path, failure):
         arguments["paper_session"] = "paper-owned-foreign"
     with pytest.raises(Stage28c2bIndependentAuditHold):
         _verify_main_thread_ack(**arguments)
+
+
+def test_shared_owned_log_ack_matches_receipt_nonce():
+    from relay_self.stage28c2b_native_paper_body_link_dev import paper_tick_ack_matches
+
+    ref = "paper-main-thread:p0d:boot-123:nonce-456:sha256:" + "a" * 64
+    log = (b"P0D_TICK_ACK nonce=nonce-456 boot=boot-123 session=paper-789 "
+           b"world=world-1 tick=17 source=PAPER_MAIN_THREAD\n")
+    args = dict(source_ref=ref, boot_id="boot-123", session_id="paper-789",
+                world_id="world-1", tick=17, log=log)
+    assert paper_tick_ack_matches(**args)
+    for field, value in (
+        ("source_ref", ref.replace("nonce-456", "nonce-other")),
+        ("boot_id", "boot-other"), ("session_id", "paper-other"),
+        ("world_id", "world-other"), ("tick", 18), ("log", b""),
+    ):
+        assert not paper_tick_ack_matches(**{**args, field: value})
