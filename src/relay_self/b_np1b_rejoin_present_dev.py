@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from relay_self.b_np1b_continuing_b_composite_dev import build_continuing_b_composite_source
 from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
 from relay_self.b_np1b_initial_source_dev import InitialSourceReceipt
 from relay_self.b_np1b_rejoin_composite_source_dev import (
@@ -24,7 +25,7 @@ from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalB
 class RejoinedOwnerSource(BD1bOwnerSource):
     """Present-compatible source with the *whole* current composite proof."""
 
-    composite_receipt: RejoinedCompositeSourceReceipt
+    composite_receipt: CompositeSourceReceipt
 
 
 def build_rejoined_owner_source(
@@ -34,21 +35,30 @@ def build_rejoined_owner_source(
     historical_composite: CompositeSourceReceipt,
 ) -> RejoinedOwnerSource:
     """Revalidate the original current Native/Paper source, never use the old source."""
-    if (self_id != "A" or not isinstance(bridge, OwnedResidentPhysicalBridge)
+    if (self_id not in ("A", "B") or not isinstance(bridge, OwnedResidentPhysicalBridge)
             or bridge.cognitive_work is None):
-        raise ValueError("qualified original rejoined A only")
+        raise ValueError("qualified original rejoined A / continuing B only")
     with bridge.cognitive_work.lock:
-        receipt = build_rejoined_composite_source(
-            bridge=bridge, initial_receipts=initial_receipts,
-            historical_composite=historical_composite,
-        )
-        if type(receipt) is not RejoinedCompositeSourceReceipt or receipt.self_id != self_id:
-            raise ValueError("original reJOIN composite unavailable")
-        # The composite verifier binds the given historical A/B receipts to
-        # the original Owner and checks the original Paper presence boot.
+        if self_id == "A":
+            receipt = build_rejoined_composite_source(
+                bridge=bridge, initial_receipts=initial_receipts,
+                historical_composite=historical_composite,
+            )
+            if type(receipt) is not RejoinedCompositeSourceReceipt:
+                raise ValueError("original A reJOIN composite unavailable")
+        else:
+            receipt = build_continuing_b_composite_source(
+                bridge=bridge, initial_receipts=initial_receipts,
+                historical_composite=historical_composite,
+            )
+        if receipt.self_id != self_id:
+            raise ValueError("foreign composite Self")
+        # The original verifier binds A/B initial receipts and retained logout
+        # to the original live Owner; B additionally requires a post-reJOIN
+        # Paper PRESENT from the unchanged original B native session.
         original = next(
             r for r in initial_receipts
-            if type(r) is InitialSourceReceipt and r.self_id == "A"
+            if type(r) is InitialSourceReceipt and r.self_id == self_id
         )
         return RejoinedOwnerSource(
             self_id=receipt.self_id, world_id=receipt.world_id,
