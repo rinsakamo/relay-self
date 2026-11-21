@@ -42,7 +42,6 @@ def test_atomic_original_terminal_anchors_then_current_s2_readonly(tmp_path):
         seq = last.seq + 1
         next_probe = replace(
             last, seq=seq, request_id="i4a-s2-current",
-            provenance=Provenance("mineflayer", f"{last.session_id}:{seq}"),
         )
         owner.observe_world_tick(
             session_id=next_probe.session_id,
@@ -97,10 +96,6 @@ def test_stale_and_foreign_s2_current_rejected(tmp_path):
         new_probe = replace(
             receipts[-1].settled_probe, seq=seq,
             request_id="i4a-new-probe",
-            provenance=Provenance(
-                "mineflayer",
-                f"{owner.native_session_id}:{seq}",
-            ),
         )
         owner.observe_world_tick(
             session_id=new_probe.session_id,

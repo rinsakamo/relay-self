@@ -25,7 +25,6 @@ def _obs_new(last, inc, request):
     seq = last.seq + inc
     return replace(
         last, seq=seq, request_id=request,
-        provenance=Provenance("mineflayer", f"{last.session_id}:{seq}"),
     )
 
 
