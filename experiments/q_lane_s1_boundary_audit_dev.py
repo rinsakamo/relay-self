@@ -130,9 +130,12 @@ def verify_s1_s2_anchor(
         raise QS1BoundaryHold("S1 Action count missing")
 
     root = evidence_dir.resolve(strict=True)
-    old_raw = _raw_file(root, s1_wal_path)
-    checkpoint_raw = _raw_file(root, s1_checkpoint_path)
-    new_raw = _raw_file(root, s2_wal_path)
+    try:
+        old_raw = _raw_file(root, s1_wal_path)
+        checkpoint_raw = _raw_file(root, s1_checkpoint_path)
+        new_raw = _raw_file(root, s2_wal_path)
+    except QEvidenceHold as exc:
+        raise QS1BoundaryHold("Original S1/S2 artifact missing or untrusted") from exc
     if (
         _sha(old_raw) != _digest(anchor["s1_wal_sha256"])
         or _sha(checkpoint_raw) != _digest(anchor["s1_checkpoint_sha256"])
