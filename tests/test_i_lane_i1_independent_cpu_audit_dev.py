@@ -26,7 +26,6 @@ from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.intent import IntentCommitment
 from test_mineflayer_process_session import observation_line
 
-
 _BOOT = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
 _ACTORS = {
     "A": "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
