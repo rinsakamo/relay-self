@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 
 from relay_self.b_np1b_fresh_native_update_dev import (
     NativeRevision,
+    read_continuing_b_native_revision,
     read_rejoined_native_revision,
 )
 from relay_self.b_np1b_initial_source_dev import InitialSourceReceipt, _revision
@@ -33,6 +34,7 @@ class OwnerBoundRejoinPaperEvidence:
     old_native_session_id: str
     native_session_id: str
     native_revision: str
+    b_native_revision: str
     old_logout_source_ref: str
     historical_initial_ref: str
     paper_session_id: str
@@ -157,7 +159,6 @@ def _owner_snapshot(bridge, originals):
             or bridge.physical.current_native_sessions["A"] != scope_a[1]
             or bridge.physical.current_native_sessions["B"] != scope_b[1]
             or probe_a is not oa.current_worldbody_observation
-            or probe_b is not ob.current_worldbody_observation
             or probe_a.session_id != scope_a[1]
             or probe_a.request_id != login_a.observation_ref
             or probe_b.session_id != scope_b[1]
@@ -168,6 +169,15 @@ def _owner_snapshot(bridge, originals):
             or native.native_session_id != scope_a[1]
             or native.native_request_id != probe_a.request_id):
         raise OwnerBoundRejoinHold("rejoined Native revision is not current")
+    b_native = read_continuing_b_native_revision(
+        bridge=bridge, initial_receipt=b,
+    )
+    if (type(b_native) is not NativeRevision or b_native.self_id != "B"
+            or b_native.resident_epoch != scope_b[0]
+            or b_native.native_session_id != scope_b[1]
+            or b_native.native_sequence < probe_b.seq
+            or b_native.native_world_time < b.native_world_time):
+        raise OwnerBoundRejoinHold("B original session / fresh Native adoption invalid")
     paper = bridge.paper
     process = paper._assert_owned()
     if process.pid != a.paper_pid:
@@ -195,6 +205,9 @@ def build_owner_bound_rejoin_paper(
         resident = bridge.cognitive_work
         with resident.lock:
             before = _owner_snapshot(bridge, originals)
+            before_b_native = read_continuing_b_native_revision(
+                bridge=bridge, initial_receipt=originals["B"],
+            )
         (world, _oa, _ob, _sa, _sb, scope_a, _scope_b, login_a, _login_b,
          _probe_a, _probe_b, logout, prior_scope, native, paper, process,
          _old_login, _old_probe) = before
@@ -215,7 +228,11 @@ def build_owner_bound_rejoin_paper(
         )
         with resident.lock:
             after = _owner_snapshot(bridge, originals)
-            if (any(after[i] is not before[i]
+            after_b_native = read_continuing_b_native_revision(
+                bridge=bridge, initial_receipt=originals["B"],
+            )
+            if (after_b_native != before_b_native
+                    or any(after[i] is not before[i]
                     for i in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17))
                     or any(after[i] != before[i] for i in (0, 5, 6, 12, 13))
                     or paper._assert_owned() is not process
@@ -228,6 +245,7 @@ def build_owner_bound_rejoin_paper(
             old_native_session_id=logout.native_session_id,
             native_session_id=native.native_session_id,
             native_revision=native.native_revision,
+            b_native_revision=before_b_native.native_revision,
             old_logout_source_ref=logout.source_ref,
             historical_initial_ref=_revision(asdict(originals["A"])),
             paper_session_id=world.paper_session_id,

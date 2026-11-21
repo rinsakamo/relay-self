@@ -10,7 +10,11 @@ import hashlib
 from dataclasses import asdict, dataclass
 
 from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
-from relay_self.b_np1b_fresh_native_update_dev import NativeRevision, read_rejoined_native_revision
+from relay_self.b_np1b_fresh_native_update_dev import (
+    NativeRevision,
+    read_continuing_b_native_revision,
+    read_rejoined_native_revision,
+)
 from relay_self.b_np1b_initial_source_dev import InitialSourceReceipt, _revision
 from relay_self.b_np1b_owner_bound_rejoin_dev import (
     OwnerBoundRejoinPaperEvidence,
@@ -130,13 +134,17 @@ def build_rejoined_composite_source(
             if provisional.self_id != "A" or historical_composite.self_id != "A":
                 raise RejoinCompositeHold("only the rejoined original A is qualified")
             native = read_rejoined_native_revision(bridge=bridge, self_id="A")
-            if type(native) is not NativeRevision:
+            b_native = read_continuing_b_native_revision(
+                bridge=bridge, initial_receipt=originals["B"],
+            )
+            if type(native) is not NativeRevision or type(b_native) is not NativeRevision:
                 raise RejoinCompositeHold("new Native revision unavailable")
             # No stale caller-provided evidence may substitute for this call.
             verified = build_owner_bound_rejoin_paper(
                 bridge=bridge, initial_receipts=initial_receipts,
             )
-            if provisional != verified or verified.native_revision != native.native_revision:
+            if (provisional != verified or verified.native_revision != native.native_revision
+                    or verified.b_native_revision != b_native.native_revision):
                 raise RejoinCompositeHold("reJOIN source changed across verification")
             world, owner_a, owner_b, _, _, scope_a, scope_b, login_a, login_b, (
                 probe_a
@@ -150,7 +158,7 @@ def build_rejoined_composite_source(
                     or native.native_request_id != probe_a.request_id
                     or native.native_sequence != probe_a.seq
                     or bridge.sessions["A"]._decoder.next_seq != probe_a.seq + 1
-                    or bridge.sessions["B"]._decoder.next_seq != probe_b.seq + 1
+                    or bridge.sessions["B"]._decoder.next_seq != b_native.native_sequence + 1
                     or native.native_source_ref != probe_a.provenance.reference
                     or native.native_world_time != owner_a.last_observed_tick
                     or native.native_revision != _revision({
@@ -191,9 +199,11 @@ def build_rejoined_composite_source(
             b_continuity = _revision(dict(
                 self_id="B", owner_identity=str(owner_b.files.self_root),
                 resident_epoch=scope_b[0], native_session_id=scope_b[1],
-                native_request_id=probe_b.request_id,
-                native_sequence=probe_b.seq,
-                native_source_ref=probe_b.provenance.reference,
+                native_request_id=b_native.native_request_id,
+                native_sequence=b_native.native_sequence,
+                native_source_ref=b_native.native_source_ref,
+                native_world_time=b_native.native_world_time,
+                native_revision=b_native.native_revision,
                 historical_initial_ref=_revision(asdict(originals["B"])),
                 paper_actor_uuid=originals["B"].paper_actor_uuid,
                 paper_present_line=verified.paper_evidence.b_present_line,
@@ -216,6 +226,9 @@ def build_rejoined_composite_source(
                     1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17))
                     or any(after[i] != before[i] for i in (0, 5, 6, 12, 13))
                     or read_rejoined_native_revision(bridge=bridge, self_id="A") != native
+                    or read_continuing_b_native_revision(
+                        bridge=bridge, initial_receipt=originals["B"],
+                    ) != b_native
                     or paper.read_owned_log(world.paper_session_id) != log
                     or paper._assert_owned() is not process
                     or process.pid != verified.paper_pid):
