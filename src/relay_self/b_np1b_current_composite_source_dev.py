@@ -50,6 +50,7 @@ def _native(bridge, sid, revision, initial):
     if (sid in getattr(bridge, '_fresh_native_pending', set())
             or type(revision) is not NativeRevision
             or type(initial) is not InitialSourceReceipt
+            or getattr(bridge, '_fresh_native_initial', {}).get(sid) != initial
             or getattr(bridge, '_fresh_native_current', {}).get(sid) != (probe, revision)
             or probe is not bridge._fresh_native_current[sid][0]):
         raise CompositeSourceHold('native revision is stale or receiving')

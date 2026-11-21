@@ -96,6 +96,9 @@ async def update_fresh_native(*, bridge: OwnedResidentPhysicalBridge, self_id: s
                         world.branch_id, world.epoch, scope[1], initial.request_id,
                         initial.seq, initial.provenance.reference, evidence.observed_world_tick)):
                 raise FreshNativeHold('initial receipt does not bind original session')
+            bound_initial = getattr(bridge, '_fresh_native_initial', {}).get(self_id)
+            if bound_initial is not None and bound_initial != initial_receipt:
+                raise FreshNativeHold('initial receipt changed')
             previous = getattr(bridge, '_fresh_native_current', {}).get(self_id)
             if ((previous is None and current is not initial)
                     or (previous is not None and (previous[0] is not current
@@ -150,6 +153,9 @@ async def update_fresh_native(*, bridge: OwnedResidentPhysicalBridge, self_id: s
                 if not hasattr(bridge, '_fresh_native_current'):
                     bridge._fresh_native_current = {}
                 bridge._fresh_native_current[self_id] = (probe, revision)
+                if not hasattr(bridge, '_fresh_native_initial'):
+                    bridge._fresh_native_initial = {}
+                bridge._fresh_native_initial[self_id] = initial_receipt
             except BaseException:
                 resident.fence_self(self_id)
                 raise
