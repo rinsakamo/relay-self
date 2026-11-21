@@ -159,7 +159,8 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("schema unregistered or registry changed")
             return registration[0]
 
-    def read_present_cpu(self, *, bridge, boot, world, links, self_id):
+    def read_present_cpu(self, *, bridge, boot, world, links, self_id,
+                         i1_complete_paper_prefix: bool = False):
         """Project current qualified evidence on the original resident CPU path.
 
         The result is ephemeral; a later consumer must revalidate it under this
@@ -172,6 +173,7 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("foreign resident bridge")
             return build_bd1b_owner_present(
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+                i1_complete_paper_prefix=i1_complete_paper_prefix,
             )
 
     def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):
