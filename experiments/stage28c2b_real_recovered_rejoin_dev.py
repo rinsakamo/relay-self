@@ -374,6 +374,7 @@ async def run_restored_a_b_real_observation(
             forbidden_native_sessions=frozenset(
                 history.historical_native_sessions
             ),
+            i1_require_complete_paper_prefix=i1_original_cpu_sense,
         )
         for link in linked:
             owner = prepared.recovered.owners[link.self_id]
@@ -426,6 +427,7 @@ async def run_restored_a_b_real_observation(
                     forbidden_native_sessions=frozenset(
                         history.historical_native_sessions
                     ),
+                    i1_require_complete_paper_prefix=True,
                 )
 
             observed = await sample_i1_original_cpu_epochs(
