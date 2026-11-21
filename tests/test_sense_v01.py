@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
 )
 from adapters.mineflayer.sense_projection import (
     SenseRefusal,
+    sense_for_composite_source,
     sense_for_l0_move,
     sense_for_self_world,
     sense_from_native,
@@ -140,3 +141,24 @@ def test_no_unqualified_world_claim_or_mutation_from_non_frame():
         sense_for_l0_move(None)
     with pytest.raises(SenseRefusal):
         sense_for_self_world(None)
+
+
+def test_composite_revision_retains_independent_native_provenance_and_unknowns():
+    frame = project(native(with_entity=False))
+    owner_refs = ("native:qualified-probe", "paper:qualified-log")
+    refs, claims = sense_for_composite_source(frame, owner_source_refs=owner_refs)
+    view = LensView(frame.scope, "epoch", Lens.SELF_WORLD, refs, claims)
+    assert refs == (*owner_refs, "mineflayer:native-a:7")
+    assert view.read("sense.position").source_refs == (frame.provenance,)
+    assert view.read("sense.position").value_ref == "mineflayer:native-a:7:position"
+    assert view.read("sense.nearby_entities_coverage").status is EpistemicStatus.OBSERVED
+    assert view.read("sense.entity.19").status is EpistemicStatus.UNKNOWN
+    assert view.read("sense.terrain_collision").status is EpistemicStatus.UNKNOWN
+    newer = project(native(seq=8), previous_seq=7)
+    new_refs, new_claims = sense_for_composite_source(newer, owner_source_refs=owner_refs)
+    with pytest.raises(PresentContractError, match="stale"):
+        LensView(frame.scope, "epoch", Lens.SELF_WORLD, new_refs, claims)
+    assert LensView(frame.scope, "epoch", Lens.SELF_WORLD, new_refs, new_claims).read(
+        "sense.position").value_ref.endswith(":8:position")
+    with pytest.raises(SenseRefusal):
+        sense_for_composite_source(frame, owner_source_refs=(frame.source_revision_ref,))

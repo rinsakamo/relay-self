@@ -355,6 +355,12 @@ class OwnedResidentPhysicalBridge:
         view = self.lifecycle.view(self_id)
         if (view.status is not Presence.ONLINE or session.process_returncode is not None
                 or session.observer_error is not None or session._dispatch_error is not None
+                or frame.scope != ScopeRef(self_id, world.paper_session_id)
+                or evidence.self_id != self_id
+                or evidence.native_session_id != session.started.session_id
+                or frame.observation.session_id != session.started.session_id
+                or frame.source_revision_ref != (f"mineflayer:{session.started.session_id}:"
+                                                 f"{frame.observation.seq}")
                 or view.native_session_id != session.started.session_id
                 or self.owners[self_id].native_session_id != session.started.session_id
                 or self.owners[self_id].fresh_native_observation_required

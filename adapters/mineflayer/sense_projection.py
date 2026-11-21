@@ -7,7 +7,7 @@ The existing owner must separately authenticate native/World association.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
@@ -174,6 +174,39 @@ def sense_for_self_world(frame: SenseFrame) -> tuple[LensClaim, ...]:
         )
     )
     return tuple(claims)
+
+
+def sense_for_composite_source(
+    frame: SenseFrame, *, owner_source_refs: tuple[str, ...],
+) -> tuple[tuple[str, ...], tuple[LensClaim, ...]]:
+    """Bind native claims to a caller-qualified composite projection revision.
+
+    The caller must independently qualify the owner sources and current frame
+    under the same owner lock. This function is not source qualification.
+    The native claim provenance and value refs remain native, not Paper facts.
+    """
+    if (not isinstance(frame, SenseFrame) or type(owner_source_refs) is not tuple
+            or not owner_source_refs or any(type(ref) is not str or not ref for ref in owner_source_refs)
+            or len(set(owner_source_refs)) != len(owner_source_refs)
+            or frame.source_revision_ref in owner_source_refs):
+        raise SenseRefusal("distinct qualified owner and native revisions required")
+    refs = (*owner_source_refs, frame.source_revision_ref)
+    claims = tuple(
+        replace(claim, source_revision_refs=refs)
+        if claim.status is EpistemicStatus.OBSERVED else claim
+        for claim in sense_for_self_world(frame)
+    )
+    coverage = frame.nearby_coverage
+    coverage_value = (
+        f"{frame.source_revision_ref}:entities-coverage:scope:{coverage.source_scope}:"
+        f"max-distance:{coverage.max_distance}:max-entities:{coverage.max_entities}:"
+        f"candidates:{coverage.candidate_count}:truncated:{coverage.truncated}"
+    )
+    return refs, (*claims, LensClaim(
+        frame.scope, Lens.SELF_WORLD, "sense.nearby_entities_coverage",
+        EpistemicStatus.OBSERVED, (frame.provenance,), refs, coverage_value,
+        coverage_value,
+    ))
 
 
 @dataclass(frozen=True, slots=True)

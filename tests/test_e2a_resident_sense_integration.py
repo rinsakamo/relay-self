@@ -6,6 +6,7 @@ import pytest
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from relay_self.checkpoint_stop_neutralization_dev import _receive_matched
+from relay_self.common_io import ScopeRef
 from test_mineflayer_process_session import FakeProcess, observation_line
 from test_p0d_resident_physical_issuer_dev import ResidentFixture
 
@@ -93,6 +94,14 @@ def test_resident_login_dispatches_same_stream_to_owner_and_sense(tmp_path, monk
         assert last.seq == 6
         frame = fixture.bridge.current_sense(sid)
         assert frame.position.x == 6 and frame.nearby_entities == ()
+        for forged in (
+            replace(frame, scope=ScopeRef("foreign", frame.scope.world_session_id)),
+            replace(frame, source_revision_ref="mineflayer:foreign:6"),
+            replace(frame, observation=replace(frame.observation, session_id="foreign")),
+        ):
+            fixture.bridge._sense[sid] = forged
+            assert fixture.bridge.current_sense(sid) is None
+        fixture.bridge._sense[sid] = frame
         assert fixture.bridge.current_self_world(sid).source_revision_refs != lens.source_revision_refs
         assert fixture.bridge.current_sense(sid, max_age_s=0.000000001) is None
         session._dispatch_observer(replace(last, session_id="foreign", seq=7))
