@@ -518,6 +518,36 @@ async def run_restored_a_b_real_observation(
         )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
+        if i1_original_cpu_sense:
+            # Capture only a genuine exception-attached read from the
+            # original BD1b owner source consumer. A new read after failure
+            # would be a DIFFERENT Paper source and cannot prove the predicate
+            # that failed. This is diagnostic-only, never an adoption receipt.
+            cause = exc
+            for _ in range(5):
+                raw = getattr(cause, "i1_original_paper_readback", None)
+                facts = getattr(cause, "i1_source_debug", None)
+                if type(raw) is bytes and type(facts) is dict:
+                    name = "i1-bd1b-failure-time-owned-paper-readback.log"
+                    try:
+                        _write_bytes_new(evidence / name, raw)
+                        report["i1_bd1b_failure_readback"] = {
+                            **facts,
+                            "filename": name,
+                            "sha256": hashlib.sha256(raw).hexdigest(),
+                            "bytes": len(raw),
+                            "diagnostic_only": True,
+                            "independent_audit_pass": False,
+                        }
+                    except OSError as capture_error:
+                        report["i1_bd1b_failure_capture_error"] = (
+                            f"{type(capture_error).__name__}: {capture_error}"
+                        )
+                    break
+                candidate = cause.__cause__
+                if candidate is None or candidate is cause:
+                    break
+                cause = candidate
         physical.hold_for_operator()
         raise
     finally:
