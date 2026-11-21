@@ -84,3 +84,32 @@ def test_settled_evaluated_and_cancelled_run_still_blocks_next_handoff(tmp_path)
         assert (peer.intent.events, dict(peer.skills), peer.retained,
                 peer.files.physical_wal_file.read_bytes()) == peer_before
     _fixture(tmp_path, scenario)
+
+
+def test_recomputed_wal_checksum_is_not_historical_authentication(tmp_path):
+    """A valid readback alone cannot prove the prior Owner's settled history."""
+    import hashlib
+    import json
+
+    async def scenario(f, lane, server):
+        loop, _, _, _, _ = await _run_multi(f, lane, server)
+        owner = loop.owner
+        path = owner.files.physical_wal_file
+        original = PhysicalActionJournal.restore(path, self_id=owner.self_id)
+        assert len(original.records) == 3
+        original.require_clear()
+        envelope = json.loads(path.read_bytes())
+        envelope["body"]["actions"][0]["action_id"] = "forged-action-id"
+        canonical = json.dumps(
+            envelope["body"], ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        envelope["sha256"] = hashlib.sha256(canonical).hexdigest()
+        path.write_text(json.dumps(envelope), encoding="utf-8")
+        changed = PhysicalActionJournal.restore(path, self_id=owner.self_id)
+        changed.require_clear()
+        assert changed.digest != original.digest
+        assert changed.records[0]["action_id"] == "forged-action-id"
+        assert changed.records[0]["action_id"] != original.records[0]["action_id"]
+
+    _fixture(tmp_path, scenario)
