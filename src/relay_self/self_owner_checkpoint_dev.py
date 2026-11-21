@@ -27,6 +27,7 @@ from relay_self.coordinated_checkpoint_dev import (
     capture_generation,
     verify_generation,
 )
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.intent import (
     IntentCommitment,
     IntentEvent,
@@ -107,7 +108,7 @@ class SelfOwnerCut:
     pending_question_refs: tuple[str, ...] = ()
     cognition_sha256: str | None = None
     # Optional FUTURE committed cut only; absent in all historical generations.
-    recorded_schema: "SchemaSnapshot | None" = None
+    recorded_schema: SchemaSnapshot | None = None
 
     def __post_init__(self) -> None:
         for name in ("generation_id", "self_id", "world_id", "branch_id",
