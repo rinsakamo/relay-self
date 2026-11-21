@@ -13,6 +13,7 @@ from dataclasses import replace
 
 import pytest
 
+from relay_self import i_lane_i2d_self_schema_adoption_dev as i2d
 from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
@@ -22,7 +23,6 @@ from relay_self.cognitive_minimal_dev import (
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
     prepare_i2_original_goal_handoff,
 )
-from relay_self import i_lane_i2d_self_schema_adoption_dev as i2d
 from relay_self.i_lane_i2d_self_schema_adoption_dev import (
     I2dOriginalHold,
     finish_i2d_self_adoption,
@@ -35,16 +35,16 @@ from relay_self.persistent_cognition import (
     save_persistent_cognition,
 )
 from relay_self.provenance import Provenance
+from relay_self.relay_engine import (
+    CognitionMode,
+    ProviderDecision,
+    ProviderExpression,
+)
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
     load_self_owner_cut,
     rehydrate_self_owner,
     save_self_owner_cut,
-)
-from relay_self.relay_engine import (
-    CognitionMode,
-    ProviderDecision,
-    ProviderExpression,
 )
 from test_bd1b_owner_source_dev import _files
 from test_i_lane_i2_original_exploration_handoff_dev import _args
