@@ -8,7 +8,6 @@ from dataclasses import replace
 import pytest
 
 import relay_self.bd1b_question_store_dev as storage
-from relay_self.bd1b_adopt_commit_dev import commit_issuer_adoption
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 from test_bd1b_adopt_commit_dev import commit
