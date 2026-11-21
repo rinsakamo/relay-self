@@ -89,3 +89,28 @@ def test_stale_and_tampered_turns_refused(tmp_path, monkeypatch, variant):
         bridge.inference_lane = object()
     with pytest.raises((ValueError, RuntimeError)):
         check(kw, turn)
+
+
+def test_retired_owner_refuses(tmp_path, monkeypatch):
+    import asyncio
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    kw = arguments(case)
+    turn = prepare_coverage_adoption_turn(**kw)
+    resident = case[1].cognitive_work
+    resident.fence_self('A')
+    receipt = asyncio.run(resident.retire_self('A'))
+    resident.mark_offline(receipt)
+    with pytest.raises((ValueError, RuntimeError)):
+        check(kw, turn)
+    with pytest.raises((ValueError, RuntimeError)):
+        prepare_coverage_adoption_turn(**kw)
+
+
+def test_no_coverage_no_inquiry(tmp_path, monkeypatch):
+    import relay_self.bd1b_owner_present_dev as present
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    monkeypatch.setattr(present, 'MineflayerNearbyEntitiesCoverage', type(None))
+    with pytest.raises(CoverageAdoptionTurnHold):
+        prepare_coverage_adoption_turn(**arguments(case))
