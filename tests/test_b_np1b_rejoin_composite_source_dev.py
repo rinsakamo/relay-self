@@ -20,10 +20,10 @@ from relay_self.b_np1b_rejoin_composite_source_dev import (
     build_rejoined_composite_source,
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
-from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_current_composite_source_dev import current as current_fixture
-from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
+from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE
+from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
 
 
 def build(rejoined):
