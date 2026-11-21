@@ -46,14 +46,19 @@ class BD1bOwnerSource:
 def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                             boot: Stage28ForkPaperEpoch, world: WorldLifetime,
                             links: tuple[Stage28NativePaperBodyLink, ...],
-                            self_id: str) -> BD1bOwnerSource:
+                            self_id: str,
+                            i1_complete_paper_prefix: bool = False) -> BD1bOwnerSource:
     """Reconcile both sources under the existing resident lock, without writes.
 
-    The owned log must still match the producer's snapshot; later log growth
-    conservatively requires a new producer receipt. Paper and native clocks
-    are never compared to each other.
+    Normal B requires the full owned log's SHA, unchanged. Explicit I1-only
+    readback requires the current owned stream's LAST exact LF-terminated
+    prefix SHA to equal the freshly linked producer SHA; a trailing partial
+    Paper console prompt is not an ACK or evidence. Later *complete* lines
+    force a new producer link. Paper/native clocks remain independent.
     """
-    if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
+    if (not isinstance(bridge, OwnedResidentPhysicalBridge)
+            or bridge.cognitive_work is None
+            or type(i1_complete_paper_prefix) is not bool):
         raise BD1bSourceHold("original resident bridge required")
     with bridge.cognitive_work.lock:
         try:
@@ -67,7 +72,29 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                 raise BD1bSourceHold("exact A/B links and roster required")
             by_self = {link.self_id: link for link in links}
             process = bridge.paper._assert_owned()
-            log = bridge.paper.read_owned_log(boot.paper_session_id)
+            raw_log = bridge.paper.read_owned_log(boot.paper_session_id)
+            first = by_self["A"]
+            match = re.fullmatch(
+                r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
+                first.paper_tick_source_ref,
+            )
+            if (process.pid != boot.paper_pid or match is None
+                    or match.group(1) != boot.paper_boot_id):
+                raise BD1bSourceHold("owned Paper source or ACK mismatch")
+            marker = (
+                f"P0D_TICK_ACK nonce={match.group(2)} boot={boot.paper_boot_id} "
+                f"session={boot.paper_session_id} world={boot.source_world_id} "
+                f"tick={world.world_tick} source=PAPER_MAIN_THREAD"
+            )
+            # The exact same trusted original Paper Popen is read back.
+            # I1 projects only its last completed original line, requiring
+            # the fresh ACK within that original prefix. Normal B continues
+            # to check the entire raw log byte-for-byte, as before.
+            log = (
+                paper_link.i1_complete_owned_paper_prefix(
+                    raw_log, ack_marker=marker.encode("utf-8"),
+                ) if i1_complete_paper_prefix else raw_log
+            )
             digest = hashlib.sha256(log).hexdigest()
             trace = paper_link.parse_owned_paper_resident_trace(
                 owned_paper_session_id=boot.paper_session_id,
@@ -75,18 +102,8 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                 owned_paper_log=log,
                 log_ref="paper-owned-log:" + boot.paper_session_id + ":sha256:" + digest,
             )
-            first = by_self["A"]
-            match = re.fullmatch(
-                r"paper-main-thread:p0d:([A-Za-z0-9-]+):([A-Za-z0-9-]+):sha256:[a-f0-9]{64}",
-                first.paper_tick_source_ref,
-            )
-            if (process.pid != boot.paper_pid or match is None
-                or match.group(1) != boot.paper_boot_id
-                or not trace.boot_id or trace.paper_session_id != boot.paper_session_id
-                or f"P0D_TICK_ACK nonce={match.group(2)} boot={boot.paper_boot_id} "
-                   f"session={boot.paper_session_id} world={boot.source_world_id} "
-                   f"tick={world.world_tick} source=PAPER_MAIN_THREAD"
-                   not in log.decode("utf-8", errors="replace")):
+            if (not trace.boot_id or trace.paper_session_id != boot.paper_session_id
+                    or marker not in log.decode("utf-8", errors="replace")):
                 raise BD1bSourceHold("owned Paper source or ACK mismatch")
             actors = set()
             sessions = set()
