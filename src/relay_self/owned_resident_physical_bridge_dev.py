@@ -32,6 +32,7 @@ from relay_self.physical_issue_admission_dev import (
     ResidentIssuerRetired,
 )
 from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
     ResidentCognitiveWorkOwner,
 )
 from relay_self.resident_llama_inference_lane_dev import (
@@ -345,8 +346,14 @@ class OwnedResidentPhysicalBridge:
         )
 
     def _sense_current(self, self_id: str, session: MineflayerProcessSession, ticket: LoginTicket) -> bool:
+        try:
+            _, native, epoch = self.cognitive_work.current_scope(self_id)
+        except ResidentCognitiveWorkError:
+            return False
         view = self.lifecycle.view(self_id)
         return (
+            native == session.started.session_id
+            and epoch == ticket.world.epoch
             self.sessions.get(self_id) is session
             and session.process_returncode is None
             and (self.lifecycle.world.world_id, self.lifecycle.world.branch_id,
@@ -369,6 +376,14 @@ class OwnedResidentPhysicalBridge:
         if self.cognitive_work is None or not getattr(self, "enable_sense", False):
             return None
         with self.cognitive_work.lock:
+            try:
+                _, resident_native, resident_world_epoch = (
+                    self.cognitive_work.current_scope(self_id)
+                )
+            except ResidentCognitiveWorkError:
+                self._sense.pop(self_id, None)
+                self._sense_received_at.pop(self_id, None)
+                return None
             frame = self._sense.get(self_id)
             session = self.sessions.get(self_id)
             evidence = self.last_login_evidence.get(self_id)
@@ -379,7 +394,10 @@ class OwnedResidentPhysicalBridge:
                 return None
             world = self.lifecycle.world
             view = self.lifecycle.view(self_id)
-            if (view.status is not Presence.ONLINE or session.process_returncode is not None
+            if (resident_native != session.started.session_id
+                    or resident_world_epoch != world.epoch
+                    or view.status is not Presence.ONLINE
+                    or session.process_returncode is not None
                     or session.observer_error is not None or session._dispatch_error is not None
                     or frame.scope != ScopeRef(self_id, world.paper_session_id)
                     or evidence.self_id != self_id
