@@ -13,7 +13,7 @@ from relay_self.b_np1b_owner_bound_rejoin_dev import (
     build_owner_bound_rejoin_paper,
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
-from test_b_np1b_current_composite_source_dev import current
+from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE, WORLD
 
 
@@ -27,8 +27,8 @@ def _paper_line(event, tick, sid):
 
 
 @pytest.fixture
-def rejoined(current, monkeypatch):
-    f, initial, native, _ = current
+def rejoined(current_fixture, monkeypatch):
+    f, initial, native, _ = current_fixture
     old_composite = build_current_composite_source(
         bridge=f.bridge, self_id="A", native_revision=native, initial_receipts=initial,
     )
