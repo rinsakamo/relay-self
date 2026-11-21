@@ -33,10 +33,17 @@ ancestors (`node_modules`, `mineflayer`, `lib`, `plugins`), the exact
 version and regular files, then executes the **same original Node**
 `oxygen_owner_patch.mjs --inspect-only` validator that gates the Native
 bridge. It compares the reported original `entities.js` SHA256 with
-the locally read file. It never installs dependencies, patches code
-or starts Paper/Native/Gemma; any missing file, symlink, unowned
-oxygen patch, version discrepancy, malformed Node report or digest
-mismatch is **PRE_WORLD_HOLD**.
+the locally read file. It ALSO does one read-only Node `require('mineflayer')`
+from that exact worktree, checks the resolved entry remains inside the
+owned Mineflayer package and checks for the `createBot` API **without
+calling it**. This catches absent or broken entrypoints and missing
+transitive npm dependencies, which previously might have failed only
+after Paper had started. The fixed `createBot` probe cannot create a
+game bot, and no Native bridge, socket or Minecraft World is started.
+It never installs dependencies, patches code or starts Paper/Native/Gemma;
+any missing file, symlink, unowned oxygen patch, version discrepancy,
+malformed Node result, digest mismatch, incomplete package import or
+unexpected module API is **PRE_WORLD_HOLD**.
 
 The original worktree must contain **genuine regular files** installed
 under `adapters/mineflayer/node_modules`; copying a symlink or setting
