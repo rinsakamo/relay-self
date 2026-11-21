@@ -54,17 +54,19 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
             return None
         refs = current.present.three_self.source_revision_refs
         claims = current.present.three_self.self_world.claims
+        # E may add independent SENSE claims at the same composite revision.
+        # The *original* B coverage claim remains the sole inquiry basis.
+        matching = tuple(c for c in claims if c.claim_key == need.basis[0].present_ref)
         if (current.present.signals != (need.signal,)
                 or need.signal.signal_kind != "EXPLORATION_NEED"
                 or need.signal.source_revision_refs != refs
                 or len(need.basis) != 1
                 or need.basis[0].kind is not ExplorationBasis.EXPERIENCE_GAP
                 or need.basis[0].status is not EpistemicStatus.INFERRED
-                or len(claims) != 1
-                or claims[0].claim_key != need.basis[0].present_ref
-                or claims[0].coverage_ref != claims[0].claim_key
-                or claims[0].status is not EpistemicStatus.INFERRED
-                or claims[0].source_revision_refs != refs):
+                or len(matching) != 1
+                or matching[0].coverage_ref != matching[0].claim_key
+                or matching[0].status is not EpistemicStatus.INFERRED
+                or matching[0].source_revision_refs != refs):
             raise CoverageInquiryHold("Need and bounded coverage disagree")
         source = current.source
         parts = [self_id, source.world_id, source.branch_id, source.world_epoch,
