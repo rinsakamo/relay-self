@@ -236,6 +236,15 @@ def audit_adopt_bundle(directory: str | Path) -> dict:
     without["schema_version"] = before["schema_version"]
     earlier = dict(before)
     earlier.pop("exploration_continuity", None)
+    # Opting into v4 writes the explicit nullable registry key. An older v2
+    # original did not contain that key; only the None representation is an
+    # allowed schema-encoding difference, never an installed registry.
+    if "pattern_registry" not in earlier:
+        _require(
+            "pattern_registry" in without and without["pattern_registry"] is None,
+            "unexpected Schema registry installation",
+        )
+        without.pop("pattern_registry")
     _require(without == earlier, "unrelated cognition fields changed")
     old_pending = evidence["pending_before"]
     new_pending = evidence["pending_after"]

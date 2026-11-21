@@ -1,4 +1,5 @@
 """Generate faithful CPU synthetic ADOPT originals and audit in another process."""
+
 import hashlib
 import json
 import os
@@ -144,7 +145,7 @@ def test_actual_cpu_adoption_bundle_passes_separate_process(tmp_path, monkeypatc
     "missing", "truncated", "request", "ticket", "source", "candidate",
     "submitted_digest", "binding", "consumption", "readback",
     "pending", "wal", "question", "origin", "provider", "registry",
-    "duplicate_json",
+    "duplicate_json", "symlink_manifest", "symlink_evidence", "registry_install",
 ])
 def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
     (tmp_path / "self").mkdir()
@@ -155,6 +156,13 @@ def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     if variant == "missing":
         (altered / "physical.after.wal").unlink()
+    elif variant == "symlink_manifest":
+        manifest_file.unlink()
+        manifest_file.symlink_to(bundle / "manifest.json")
+    elif variant == "symlink_evidence":
+        after_wal = altered / "physical.after.wal"
+        after_wal.unlink()
+        after_wal.symlink_to(altered / "physical.before.wal")
     elif variant == "truncated":
         (altered / "cognition.after.json").write_text('{"invalid"', encoding="utf-8")
     elif variant == "wal":
@@ -165,14 +173,16 @@ def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
         manifest_file.write_text(
             raw[:-1] + ', "version": 1}', encoding="utf-8",
         )
-    elif variant in ("question", "origin"):
+    elif variant in ("question", "origin", "registry_install"):
         path = altered / "cognition.after.json"
         post = json.loads(path.read_text(encoding="utf-8"))
         q = post["exploration_continuity"]["questions"][-1]
         if variant == "question":
             q["question_ref"] = "foreign-inquiry"
-        else:
+        elif variant == "origin":
             q["origin"]["reference"] = '{"choice_id":"2"}'
+        else:
+            post["pattern_registry"] = {"revision": 999}
         raw = (json.dumps(post, sort_keys=True, ensure_ascii=False) + "\n").encode()
         path.write_bytes(raw)
         manifest["file_sha256"]["cognition.after.json"] = _sha(raw)
