@@ -436,6 +436,20 @@ class PhysicalActionJournal:
     def records(self) -> tuple[dict[str, Any], ...]:
         return tuple(dict(x) for x in self._body["actions"])
 
+    def certified_prefix_digest(self, count: int) -> str:
+        """Revalidate a historical prefix against the canonical WAL schema.
+
+        This does NOT authenticate history by itself: compare the digest to
+        an earlier Owner-held witness. Recomputing the checksum of the full
+        journal cannot repair a changed historical prefix under that witness.
+        """
+        if type(count) is not int or not 0 < count <= len(self._body["actions"]):
+            raise PhysicalJournalError("nonempty canonical WAL prefix required")
+        prefix = _validate({
+            **self._body, "actions": self._body["actions"][:count],
+        })
+        return _digest(prefix)
+
     @property
     def unresolved(self) -> bool:
         return bool(

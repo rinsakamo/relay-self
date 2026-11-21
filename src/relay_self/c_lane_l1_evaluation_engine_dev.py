@@ -136,27 +136,41 @@ def build_evaluation_steps(frame):
 
 async def _execute_evaluation(frame, loop, *, physical, lane, bridge,
                              first_action_probe, last_settled_probe,
-                             task_id, budget_s=60.0, _receipts, _axes):
+                             task_id, budget_s=60.0, _receipts, _axes,
+                             _source_validator=None):
     """Run serial bounded L1 choices; source loss raises HOLD without adoption."""
     if not isinstance(task_id, str) or not task_id.strip() or not 0 < budget_s <= 120:
         raise ValueError("unique task ID and bounded budget required")
     common = dict(physical=physical, lane=lane, bridge=bridge,
                   first_action_probe=first_action_probe,
                   last_settled_probe=last_settled_probe, world_id=frame.world_id)
-    baseline_current = getattr(loop.owner, "current_worldbody_observation", None)
-    if baseline_current != last_settled_probe:
-        raise EvaluationSourceStale("settled native probe is not CURRENT")
-    baseline_tick = loop.owner.last_observed_tick
+    if _source_validator is None:
+        baseline_current = getattr(loop.owner, "current_worldbody_observation", None)
+        if baseline_current != last_settled_probe:
+            raise EvaluationSourceStale("settled native probe is not CURRENT")
+        baseline_tick = loop.owner.last_observed_tick
 
-    def validate():
-        try:
-            current = prepare_stage27hi_multi_review(loop, frame_to_step(frame, loop), **common)
-        except C1OwnerReviewHold as exc:
-            raise EvaluationSourceStale("evaluation source is no longer qualified") from exc
-        if (current != frame
-                or getattr(loop.owner, "current_worldbody_observation", None) != baseline_current
-                or loop.owner.last_observed_tick != baseline_tick):
-            raise EvaluationSourceStale("evaluation source or CURRENT changed")
+        def validate():
+            try:
+                current = prepare_stage27hi_multi_review(
+                    loop, frame_to_step(frame, loop), **common,
+                )
+            except C1OwnerReviewHold as exc:
+                raise EvaluationSourceStale(
+                    "evaluation source is no longer qualified"
+                ) from exc
+            if (
+                current != frame
+                or getattr(loop.owner, "current_worldbody_observation", None)
+                != baseline_current
+                or loop.owner.last_observed_tick != baseline_tick
+            ):
+                raise EvaluationSourceStale("evaluation source or CURRENT changed")
+    else:
+        # Internal I4a bridge only: every axis/HTTP receipt revalidates the
+        # original Owner's certified old prefix AND the new S2 suffix.
+        # A caller-supplied model frame alone must never grant source validity.
+        validate = _source_validator
 
     validate()
     steps = build_evaluation_steps(frame)
