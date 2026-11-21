@@ -13,7 +13,8 @@ from experiments.q_lane_evidence_audit_dev import QEvidenceHold, verify_evidence
 _HEAD = "a" * 40
 _WORLD = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
 _BOOT = "cccccccc-cccc-4ccc-cccc-cccccccccccc"
-_SHA = lambda data: hashlib.sha256(data).hexdigest()
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def _line(row: dict) -> bytes:
@@ -22,7 +23,7 @@ def _line(row: dict) -> bytes:
 
 def _fixture(tmp_path: Path):
     root = tmp_path / "original"
-    root.mkdir()
+    root.mkdir(parents=True)
     source = {
         "native_request_id": "observe-A-1",
         "native_seq": 7,
@@ -82,7 +83,7 @@ def _fixture(tmp_path: Path):
     for role, raw in data.items():
         path = role + ".evidence"
         (root / path).write_bytes(raw)
-        digest = _SHA(raw)
+        digest = _sha(raw)
         manifest["files"].append({
             "role": role, "path": path, "size": len(raw), "sha256": digest,
         })
@@ -95,10 +96,10 @@ def _change(root, manifest, pins, role, transform, *, repin=False):
     path = root / entry["path"]
     data = transform(path.read_bytes())
     path.write_bytes(data)
-    entry["sha256"] = _SHA(data)
+    entry["sha256"] = _sha(data)
     entry["size"] = len(data)
     if repin:
-        pins["sha256"][role] = _SHA(data)
+        pins["sha256"][role] = _sha(data)
 
 
 def test_q1_limited_read_only_consistency_not_real_attestation(tmp_path):
