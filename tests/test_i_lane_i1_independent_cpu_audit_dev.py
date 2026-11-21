@@ -278,3 +278,41 @@ def test_legacy_stage28_auditor_refuses_to_promote_i1_report(tmp_path):
             result, generation=tmp_path, restored=tmp_path,
             stage28b_evidence=tmp_path, executable=tmp_path,
         )
+
+
+def test_i1_independent_rejects_changed_paper_ack_file_even_with_valid_manifest(
+    tmp_path,
+):
+    report, evidence, executable, owners = _fixture(tmp_path)
+    ref = report["i1_cpu_epochs"]["epochs"][0]["paper_tick_source_ref"]
+    nonce = ref.split(":")[-3]
+    path = executable / "plugins" / "P0BRecorder" / "p0d-ticks" / "acks" / (
+        nonce + ".ack"
+    )
+    assert path.is_file()
+    path.write_bytes(path.read_bytes() + b"forged=1\\n")
+    with pytest.raises(I1IndependentAuditHold, match="Paper ACK/prefix"):
+        _audit_i1_epochs(
+            report=report, evidence=evidence, executable=executable,
+            owners=owners,
+        )
+
+
+def test_i1_base_auditor_cannot_claim_old_stage28_promotion(tmp_path, monkeypatch):
+    from experiments import i_lane_i1_independent_cpu_audit_dev as audit
+
+    captured = []
+
+    def base(result_path, **kwargs):
+        captured.append(kwargs)
+        return {"classification": "REAL_RESTORED_WORLD_ORIGINAL_A_B_NATIVE_REJOIN_WORLDBODY_DEV"}
+
+    monkeypatch.setattr(audit, "independently_audit_recovered_real_rejoin", base)
+    with pytest.raises(I1IndependentAuditHold, match="base not qualified"):
+        audit.independently_audit_i1_original_cpu(
+            tmp_path / "no-source.json",
+            generation=tmp_path, restored=tmp_path,
+            stage28b_evidence=tmp_path, executable=tmp_path,
+        )
+    assert captured[0]["expected_i1_cpu_sense"] is True
+    assert captured[0]["expected_gemma_posts"] == 0
