@@ -256,6 +256,7 @@ async def run_restored_a_b_real_observation(
     holder["paper"] = paper
     native_sessions = []
     raw_paths: dict[str, Path] = {}
+    command_paths: dict[str, Path] = {}
     bridge: OwnedResidentPhysicalBridge | None = None
     physical = prepared.recovered.physical
     report: dict[str, object] = {
@@ -294,6 +295,13 @@ async def run_restored_a_b_real_observation(
         )
         session.start_raw_source_audit(raw_path)
         raw_paths[config.username] = raw_path
+        if i1_original_cpu_sense:
+            command_path = evidence / (
+                "native-commands-" + config.username + "-" +
+                session.started.session_id + ".jsonl"
+            )
+            session.start_raw_command_audit(command_path)
+            command_paths[config.username] = command_path
         return session
 
     try:
@@ -457,6 +465,8 @@ async def run_restored_a_b_real_observation(
         report["paper_stopped"] = asdict(stopped)
         for native in native_sessions:
             native.finish_raw_source_audit()
+            if i1_original_cpu_sense:
+                native.finish_raw_command_audit()
         report["original_stage28b_reverified"] = (
             inspect_original_stage28b_native_sessions(
                 stage28b_evidence, generation,
@@ -470,6 +480,14 @@ async def run_restored_a_b_real_observation(
         report["raw_native_file_sha256"] = {
             name: file_sha256(path) for name, path in raw_paths.items()
         }
+        if i1_original_cpu_sense:
+            if set(command_paths) != {"RelayA", "RelayB"}:
+                raise Stage28c2bRealRejoinHold(
+                    "original A/B Native command transcript incomplete"
+                )
+            report["raw_native_command_file_sha256"] = {
+                name: file_sha256(path) for name, path in command_paths.items()
+            }
         report["classification"] = (
             "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
             if i1_original_cpu_sense
