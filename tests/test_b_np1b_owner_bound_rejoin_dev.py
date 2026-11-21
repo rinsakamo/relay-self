@@ -14,7 +14,7 @@ from relay_self.b_np1b_owner_bound_rejoin_dev import (
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
 from test_b_np1b_current_composite_source_dev import current
-from test_b_np1b_initial_source_dev import ACTORS, BOOT, NONCE, PRESENCE, WORLD
+from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE, WORLD
 
 
 def _paper_line(event, tick, sid):
