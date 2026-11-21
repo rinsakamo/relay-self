@@ -45,6 +45,37 @@ any missing file, symlink, unowned oxygen patch, version discrepancy,
 malformed Node result, digest mismatch, incomplete package import or
 unexpected module API is **PRE_WORLD_HOLD**.
 
+### Known Node 22 punycode warning: narrowly classified, never suppressed
+
+A later real WSL/Node 22.22.2 I1 **pre-World** attempt at HEAD
+`22f083865dad9d31c95325af4b67bd35ebc13a85` reported
+`I1_NATIVE_DEPENDENCY_PRE_WORLD_HOLD` because `require('mineflayer')`
+completed successfully yet emitted the Node runtime's native
+`[DEP0040] DeprecationWarning` for `punycode` to **stderr**. That
+execution created **zero** new Worlds, made **zero** Gemma/Physical
+calls and did not run an independent auditor. No old HOLD receipt is
+promoted by the following fix.
+
+I1 now qualifies **only** the exact two-line Node 22
+`(node:<PID>) [DEP0040] DeprecationWarning: The \`punycode\` module is deprecated...`
+diagnostic including Node's standard `--trace-deprecation` hint
+and its precise punctuation. A genuine empty stderr also qualifies;
+nonzero exit, unexpected stdout, any *other* warning (including
+additional or duplicated DEP0040), error stack, ANSI, extra log line,
+alternate wording or oversized stderr **remains PRE_WORLD_HOLD**.
+No `--no-warnings`, `NODE_NO_WARNINGS`, muted logger, patched
+dependency or dependency version change is introduced.
+
+The verdict retains the exact original Node warning text and SHA256 in
+the I1 preflight receipt (`i1_native_preflight.node_module_stderr_raw`
+and `node_module_stderr_sha256` in terminal real-run evidence). I1
+inspect-only explicitly **reprints the original warning to stderr**
+alongside its classification and digest, and stdout reports
+`node_warning=DEP0040`. This is narrowly recognizing a known
+runtime diagnostic rather than silently accepting arbitrary stderr.
+Keep the console/terminal capture with the source evidence; only
+a separate new isolated trial can change the real-World status.
+
 The original worktree must contain **genuine regular files** installed
 under `adapters/mineflayer/node_modules`; copying a symlink or setting
 `NODE_PATH` does not qualify. An operator may install the exact
