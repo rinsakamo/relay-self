@@ -148,29 +148,69 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("schema unregistered or registry changed")
             return registration[0]
 
-    def read_present_cpu(self, *, bridge, boot, world, links, self_id):
-        """Project current qualified evidence on the original resident CPU path.
+    def read_present_cpu(
+        self, *, bridge, self_id, boot=None, world=None, links=None,
+        initial_receipts=None, historical_composite=None,
+    ):
+        """Read current original-owner Present, including a qualified reJOIN source.
 
-        The result is ephemeral; a later consumer must revalidate it under this
-        lock. Future SENSE composition belongs inside this same snapshot boundary.
+        The historical Stage28 source keeps its original verifier. A reJOIN
+        requires BOTH immutable historical receipts, but is qualified solely
+        by re-reading the original current Native/Paper sources under this lock.
+        Neither path grants a new capability or persists cognition.
         """
         from relay_self.bd1b_owner_present_dev import build_bd1b_owner_present
+        from relay_self.b_np1b_rejoin_present_dev import build_rejoined_owner_present
 
         with self.lock:
             if bridge.cognitive_work is not self or bridge.owners.get(self_id) is not self.owners.get(self_id):
                 raise ResidentCognitiveWorkError("foreign resident bridge")
+            rejoin = initial_receipts is not None or historical_composite is not None
+            if rejoin:
+                if (initial_receipts is None or historical_composite is None
+                        or any(value is not None for value in (boot, world, links))):
+                    raise ResidentCognitiveWorkError("ambiguous mixed Stage28/reJOIN source")
+                return build_rejoined_owner_present(
+                    bridge=bridge, self_id=self_id,
+                    initial_receipts=initial_receipts,
+                    historical_composite=historical_composite,
+                )
+            if any(value is None for value in (boot, world, links)):
+                raise ResidentCognitiveWorkError("Stage28 source witnesses required")
             return build_bd1b_owner_present(
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             )
 
-    def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):
-        """Run the existing read-only inquiry consumer against current Present."""
-        from relay_self.bd1b_coverage_inquiry_dev import build_coverage_inquiry
+    def read_coverage_inquiry_cpu(
+        self, *, bridge, self_id, boot=None, world=None, links=None,
+        initial_receipts=None, historical_composite=None,
+    ):
+        """Consume the same current Present through the original Inquiry contract."""
+        from relay_self.bd1b_coverage_inquiry_dev import (
+            _build_inquiry,
+            build_coverage_inquiry,
+        )
 
         with self.lock:
             readout = self.read_present_cpu(
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+                initial_receipts=initial_receipts,
+                historical_composite=historical_composite,
             )
+            if initial_receipts is not None:
+                # The shared Inquiry consumer rebuilds, compares and validates
+                # Need/coverage, now using the exact same reJOIN source path.
+                def present_reader(**_ignored):
+                    return self.read_present_cpu(
+                        bridge=bridge, self_id=self_id,
+                        initial_receipts=initial_receipts,
+                        historical_composite=historical_composite,
+                    )
+
+                return _build_inquiry(
+                    bridge=bridge, boot=None, world=None, links=None,
+                    self_id=self_id, readout=readout, present_reader=present_reader,
+                )
             return build_coverage_inquiry(
                 bridge=bridge, boot=boot, world=world, links=links,
                 self_id=self_id, readout=readout,
