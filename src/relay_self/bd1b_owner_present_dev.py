@@ -107,6 +107,13 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
         # The existing bridge does not retain an attested, available action
         # catalogue. A PhysicalCapability value alone is only a reference and
         # cannot establish that an action is currently available.
+        # Paper is external to the resident lock. Recheck its receipt and the
+        # native/owner identity after projection before exposing the result.
+        if (build_bd1b_owner_source(bridge=bridge, boot=boot, world=world,
+                                    links=links, self_id=self_id) != source
+                or bridge.cognitive_work.present_schema(self_id) != schema
+                or owner.current_worldbody_observation is not probe):
+            raise BD1bPresentHold("source changed during projection")
         return BD1bOwnerPresent(source, schema, present,
                                "NO_VERIFIED_ACTION_CATALOG", need,
                                None if need else ("NO_COVERAGE_EVIDENCE" if coverage_key is None

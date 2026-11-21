@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import ClassVar
 
-from relay_self.bd1b_owner_present_dev import BD1bOwnerPresent, build_bd1b_owner_present
+from relay_self.bd1b_owner_present_dev import BD1bOwnerPresent
 from relay_self.exploration_need_dev import ExplorationBasis
 from relay_self.three_self_present import EpistemicStatus
 
@@ -44,7 +44,7 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
     if bridge.cognitive_work is None:
         raise CoverageInquiryHold("original resident required")
     with bridge.cognitive_work.lock:
-        current = build_bd1b_owner_present(
+        current = bridge.cognitive_work.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         )
         if type(readout) is not BD1bOwnerPresent or readout != current:

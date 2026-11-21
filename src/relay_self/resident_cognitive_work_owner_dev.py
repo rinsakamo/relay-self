@@ -148,6 +148,34 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("schema unregistered or registry changed")
             return registration[0]
 
+    def read_present_cpu(self, *, bridge, boot, world, links, self_id):
+        """Project current qualified evidence on the original resident CPU path.
+
+        The result is ephemeral; a later consumer must revalidate it under this
+        lock. Future SENSE composition belongs inside this same snapshot boundary.
+        """
+        from relay_self.bd1b_owner_present_dev import build_bd1b_owner_present
+
+        with self.lock:
+            if bridge.cognitive_work is not self or bridge.owners.get(self_id) is not self.owners.get(self_id):
+                raise ResidentCognitiveWorkError("foreign resident bridge")
+            return build_bd1b_owner_present(
+                bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            )
+
+    def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):
+        """Run the existing read-only inquiry consumer against current Present."""
+        from relay_self.bd1b_coverage_inquiry_dev import build_coverage_inquiry
+
+        with self.lock:
+            readout = self.read_present_cpu(
+                bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            )
+            return build_coverage_inquiry(
+                bridge=bridge, boot=boot, world=world, links=links,
+                self_id=self_id, readout=readout,
+            )
+
     def _state(self, self_id: str) -> _ResidentState:
         try:
             return self._states[self_id]
