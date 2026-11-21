@@ -10,13 +10,14 @@ from experiments import stage28c2b_real_recovered_rejoin_dev as runner
 from test_stage28c2b_real_rejoin_launcher_dev import _args
 
 
-def test_i1_inspect_mode_cannot_implicitly_activate_real_native(tmp_path, monkeypatch):
+def test_i1_inspect_mode_cannot_accept_world_grant(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runner, "run_restored_a_b_real_observation",
         lambda **_kwargs: pytest.fail("inspect mode started a World"),
     )
     monkeypatch.setattr(sys, "argv", [
         *_args(tmp_path), "--inspect-only", "--i1-original-cpu-sense",
+        "--real-world-dev-grant",
     ])
     assert runner.main() == 2
     assert not (tmp_path / "new-world").exists()
@@ -38,6 +39,9 @@ def test_i1_explicit_execute_once_flag_is_passed_without_extra_grants(
 
     monkeypatch.setattr(runner, "check_stage24g_pinned_assets", stub_assets)
     monkeypatch.setattr(runner, "_verify_local_runtime", lambda *_args: None)
+    monkeypatch.setattr(runner, "require_i1_native_preflight",
+                        lambda **_kw: SimpleNamespace(mineflayer_version="4.39.0",
+                                                     entities_sha256="f" * 64))
     monkeypatch.setattr(runner, "inspect_real_recovered_sources",
                         lambda *_args: (SimpleNamespace(historical_native_sessions=()),
                                         SimpleNamespace(owners={"A": None, "B": None})))
