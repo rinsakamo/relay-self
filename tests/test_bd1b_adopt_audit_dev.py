@@ -99,6 +99,7 @@ def _fixture_bundle(tmp_path, monkeypatch):
             "candidate_input": freeze,
             "candidate_set_sha256": turn.candidate_set_sha256,
             "readback": asdict(readback),
+            "provider_decision": asdict(job.future.result()),
             "job_binding": {
                 "ticket": asdict(final_binding[0]),
                 "work_ref": final_binding[1],
@@ -142,7 +143,8 @@ def test_actual_cpu_adoption_bundle_passes_separate_process(tmp_path, monkeypatc
 @pytest.mark.parametrize("variant", [
     "missing", "truncated", "request", "ticket", "source", "candidate",
     "submitted_digest", "binding", "consumption", "readback",
-    "pending", "wal", "question", "origin", "duplicate_json",
+    "pending", "wal", "question", "origin", "provider", "registry",
+    "duplicate_json",
 ])
 def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
     (tmp_path / "self").mkdir()
@@ -192,6 +194,10 @@ def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
             manifest["job_state_after"] = "unused"
         elif variant == "readback":
             manifest["readback"]["selection"] = "DECLINE"
+        elif variant == "provider":
+            manifest["provider_decision"]["choice_id"] = "2"
+        elif variant == "registry":
+            manifest["candidate_input"]["registry_revision"] = 77
         elif variant == "pending":
             manifest["pending_after"] = []
         _write_json(manifest_file, manifest)
