@@ -22,6 +22,8 @@ from test_bd1b_issuer_readback_dev import setup, snapshot, submit
     "request_digest", "probe", "paper_session", "paper_log", "paper_ack",
     "other_self_epoch", "registry", "continuity", "intent", "lane_detached",
     "gpu_uncertain", "gpu_unfinished", "gpu_no_idle", "fence",
+    "request_provenance", "native", "paper_nonce", "paper_pid", "actor",
+    "world", "lane_resident", "physical_action",
 ])
 def test_hostile_adopt_never_publishes(tmp_path, monkeypatch, variant):
     case, turns, lane = setup(tmp_path, monkeypatch, ProviderDecision.resolved("1"))
@@ -57,16 +59,34 @@ def test_hostile_adopt_never_publishes(tmp_path, monkeypatch, variant):
             job.request = replace(turn.request, identity_context=None)
         elif variant == "request_digest":
             job.request_sha256 = "0" * 64
+        elif variant == "request_provenance":
+            from relay_self.provenance import Provenance
+            forged = replace(turn.request.context[0],
+                             provenance=Provenance("forged", "foreign-inquiry"))
+            job.request = replace(turn.request, context=(forged,))
         elif variant == "probe":
             owner.current_worldbody_observation = replace(owner.current_worldbody_observation)
         elif variant == "paper_session":
             bridge.paper._session_id = "changed"
-        elif variant in ("paper_log", "paper_ack"):
+        elif variant == "native":
+            bridge.sessions["A"].started.session_id = "changed"
+        elif variant == "paper_pid":
+            case = (*case[:2], replace(case[2], paper_pid=case[2].paper_pid + 1),
+                    *case[3:])
+        elif variant == "actor":
+            case = (*case[:4], (replace(case[4][0], paper_actor_uuid="foreign"),
+                                case[4][1]), *case[5:])
+        elif variant == "world":
+            case = (*case[:3], replace(case[3], epoch=case[3].epoch + 1),
+                    *case[4:])
+        elif variant in ("paper_log", "paper_ack", "paper_nonce"):
             original = bridge.paper.read_owned_log
             def changed(sid):
                 raw = original(sid)
                 if variant == "paper_log":
                     return raw + b"unexpected-growth\\n"
+                if variant == "paper_nonce":
+                    return raw.replace(b"nonce=next-nonce", b"nonce=foreign")
                 return raw.replace(b"P0D_TICK_ACK", b"P0D_TICK_BAD")
             monkeypatch.setattr(bridge.paper, "read_owned_log", changed)
         elif variant == "other_self_epoch":
@@ -82,6 +102,10 @@ def test_hostile_adopt_never_publishes(tmp_path, monkeypatch, variant):
                                 provenance=Provenance("test", "hostile-intent"))
         elif variant == "lane_detached":
             bridge.inference_lane = None
+        elif variant == "lane_resident":
+            lane.cognitive_work = object()
+        elif variant == "physical_action":
+            bridge.physical._observation_only = False
         elif variant == "gpu_uncertain":
             lane._uncertain = True
         elif variant == "gpu_unfinished":

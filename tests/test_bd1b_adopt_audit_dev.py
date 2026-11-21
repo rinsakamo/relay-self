@@ -16,7 +16,6 @@ from relay_self.relay_engine import ProviderDecision
 from test_bd1b_adopt_commit_dev import commit
 from test_bd1b_issuer_readback_dev import read, setup, submit
 
-
 _FILES = (
     "cognition.before.json", "cognition.after.json",
     "physical.before.wal", "physical.after.wal",
@@ -136,9 +135,11 @@ def test_actual_cpu_adoption_bundle_passes_separate_process(tmp_path, monkeypatc
     bundle = _fixture_bundle(tmp_path, monkeypatch)
     result = audit_adopt_bundle(bundle)
     assert result["classification"] == "CPU_SYNTHETIC_ADOPT_BUNDLE_CONSISTENT"
+    before_audit = {p.name: p.read_bytes() for p in bundle.iterdir()}
     proc = _subprocess_audit(bundle)
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["inquiry_ref"] == result["inquiry_ref"]
+    assert {p.name: p.read_bytes() for p in bundle.iterdir()} == before_audit
 
 
 @pytest.mark.parametrize("variant", [
