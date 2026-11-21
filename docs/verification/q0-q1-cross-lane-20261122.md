@@ -93,6 +93,11 @@ Owners B (Source) / I2 (fixture and handoff); never relax BD1bSourceHold.
 
 ## Q1 limited independent evidence gate
 
+The Q1 module also provides build_untrusted_file_inventory: it reads file bytes,
+returns deterministic role/path/size/SHA metadata and writes nothing. That
+inventory is **self-calculated and unauthenticated**; a modified WAL plus
+recomputed inventory cannot pass independently held earlier pins.
+
 The new experiments/q_lane_evidence_audit_dev.py checks external pins versus
 captured original byte hashes (not merely self-declared SHA), exact HEAD /
 Self / Owner / World / native session / checkpoint generation, original
