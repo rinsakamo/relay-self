@@ -24,6 +24,7 @@ class BD1bOwnerPresent:
     source: BD1bOwnerSource
     schema: SchemaSnapshot
     present: PresentFrame
+    no_candidate_reason: str
 
 
 def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
@@ -57,4 +58,8 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
             current_registry_revision=owner.pattern_registry.revision,
             current_source_revision_refs=refs, frame_revision=source.resident_epoch,
         )
-        return BD1bOwnerPresent(source, schema, present)
+        # The existing bridge does not retain an attested, available action
+        # catalogue. A PhysicalCapability value alone is only a reference and
+        # cannot establish that an action is currently available.
+        return BD1bOwnerPresent(source, schema, present,
+                               "NO_VERIFIED_ACTION_CATALOG")

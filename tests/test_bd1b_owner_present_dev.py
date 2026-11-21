@@ -53,6 +53,7 @@ def test_original_both_selves_read_only(tmp_path, monkeypatch):
         assert result.present.registry_revision == bridge.owners[sid].pattern_registry.revision
         assert result.source.native_probe_ref in result.present.three_self.source_revision_refs[0]
         assert not result.present.signals
+        assert result.no_candidate_reason == "NO_VERIFIED_ACTION_CATALOG"
     assert _files(bridge) == before
     assert all((o.retained, o.intent, o.skills, o.pending_questions) == state[sid]
                for sid, o in bridge.owners.items())
