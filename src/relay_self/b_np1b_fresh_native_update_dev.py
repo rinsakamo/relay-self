@@ -195,3 +195,84 @@ def read_rejoined_native_revision(*, bridge: OwnedResidentPhysicalBridge,
         raise
     except (KeyError, AttributeError, RuntimeError, ValueError, TypeError) as exc:
         raise FreshNativeHold('rejoined native source unavailable') from exc
+
+
+def read_continuing_b_native_revision(
+    *, bridge: OwnedResidentPhysicalBridge,
+    initial_receipt: InitialSourceReceipt,
+) -> NativeRevision:
+    """Read original B's unchanged session and latest proven Owner-adopted probe.
+
+    B may have received new Native observations through update_fresh_native,
+    but must retain its original login, original issuer, Owner and session.
+    A caller's detached NativeRevision is never a current source credential.
+    """
+    if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
+        raise FreshNativeHold("original resident bridge required for B")
+    try:
+        with bridge.cognitive_work.lock:
+            owner, world, session, evidence, initial, scope, current, tick, _ = (
+                _snapshot(bridge, "B")
+            )
+            data_initial = dict(
+                self_id="B", owner_identity=str(owner.files.self_root),
+                resident_epoch=scope[0], world_id=world.world_id,
+                branch_id=world.branch_id, world_epoch=world.epoch,
+                native_session_id=scope[1],
+                native_request_id=initial.request_id, native_sequence=initial.seq,
+                native_source_ref=initial.provenance.reference,
+                native_world_time=evidence.observed_world_tick,
+            )
+            if (
+                type(initial_receipt) is not InitialSourceReceipt
+                or any(getattr(initial_receipt, key) != value
+                       for key, value in data_initial.items())
+                or initial_receipt.native_revision != _revision(data_initial)
+                or initial.kind != "probe"
+                or initial.session_id != scope[1]
+                or evidence.observation_ref != initial.request_id
+                or scope[0] != initial_receipt.resident_epoch
+                or "B" in getattr(bridge, "_fresh_native_pending", {})
+            ):
+                raise FreshNativeHold("original B Native history not owned")
+            current_record = getattr(bridge, "_fresh_native_current", {}).get("B")
+            bound_initial = getattr(bridge, "_fresh_native_initial", {}).get("B")
+            if current is initial:
+                if (
+                    current_record is not None or bound_initial is not None
+                    or tick != initial_receipt.native_world_time
+                    or session._decoder.next_seq != initial.seq + 1
+                ):
+                    raise FreshNativeHold("B initial Native source is not current")
+                return NativeRevision(**data_initial,
+                                      native_revision=initial_receipt.native_revision)
+            if (
+                type(current_record) is not tuple or len(current_record) != 2
+                or current_record[0] is not current
+                or type(current_record[1]) is not NativeRevision
+                or bound_initial != initial_receipt
+                or current.request_id == initial.request_id
+                or not current.request_id.startswith("p0d-update-")
+                or current.seq <= initial.seq
+                or session._decoder.next_seq != current.seq + 1
+                or current.snapshot.time is None
+                or tick < initial_receipt.native_world_time
+            ):
+                raise FreshNativeHold("B fresh Native update provenance missing")
+            adopted = current_record[1]
+            data = dict(
+                self_id="B", owner_identity=str(owner.files.self_root),
+                resident_epoch=scope[0], world_id=world.world_id,
+                branch_id=world.branch_id, world_epoch=world.epoch,
+                native_session_id=scope[1],
+                native_request_id=current.request_id, native_sequence=current.seq,
+                native_source_ref=current.provenance.reference,
+                native_world_time=tick,
+            )
+            if adopted != NativeRevision(**data, native_revision=_revision(data)):
+                raise FreshNativeHold("B update differs from adopted original Owner source")
+            return adopted
+    except FreshNativeHold:
+        raise
+    except (KeyError, AttributeError, RuntimeError, ValueError, TypeError) as exc:
+        raise FreshNativeHold("original B Native update unavailable") from exc
