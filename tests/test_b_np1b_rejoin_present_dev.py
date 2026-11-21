@@ -12,34 +12,23 @@ import pytest
 import relay_self.bd1b_owner_present_dev as projection
 from relay_self.b_np1b_rejoin_composite_source_dev import RejoinCompositeHold
 from relay_self.b_np1b_rejoin_present_dev import RejoinedOwnerSource
-from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
-from relay_self.resident_cognitive_work_owner_dev import (
-    ResidentCognitiveWorkError,
-    ResidentCognitiveWorkOwner,
-)
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
-from test_bd1b_owner_present_dev import _schema
 
 
 @pytest.fixture
-def rejoined_present(request, monkeypatch):
-    """Register the original exploration Schema BEFORE actual initial login."""
+def rejoined_present(request):
+    """Reuse original Fresh Schema bootstrap performed before first Bridge login."""
     assert current_fixture is not None and rejoined is not None
-    original = ResidentCognitiveWorkOwner.bind_login
-
-    def bind(resident, *, self_id, **kwargs):
-        if resident._states[self_id].epoch == 0:
-            owner = resident.owners[self_id]
-            owner.pattern_registry = initial_patterns_with_relative_move()
-            resident.register_present_schema(
-                self_id, _schema(self_id, owner.pattern_registry.revision, need=True),
-            )
-        return original(resident, self_id=self_id, **kwargs)
-
-    monkeypatch.setattr(ResidentCognitiveWorkOwner, "bind_login", bind)
-    return request.getfixturevalue("rejoined")
+    f = request.getfixturevalue("rejoined")
+    assert all(
+        f[0].cognitive.present_schema(sid).revision
+        == f[0].owners[sid].pattern_registry.revision
+        for sid in ("A", "B")
+    )
+    return f
 
 
 def arguments(rejoined_present):
