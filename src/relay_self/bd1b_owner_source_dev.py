@@ -159,7 +159,46 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                 scope[0], scope[1], probe.request_id, probe.seq,
                 probe.provenance.reference, link.native_world_time_tick,
             )
-        except BD1bSourceHold:
+        except BD1bSourceHold as exc:
+            # On the explicit I1 DEV path, retain the *actual read() bytes* in
+            # the escaping exception for the original Runner to freeze on
+            # failure. Merely rereading the growing Paper log in the Runner
+            # cannot reconstruct these failure-time bytes. Do not write here:
+            # this source reconciliation remains strictly read-only.
+            if i1_complete_paper_prefix and "raw_log" in locals():
+                exc.i1_original_paper_readback = raw_log
+                exc.i1_source_debug = {
+                    "phase": "bd1b_source_hold",
+                    "self_id": self_id,
+                    "raw_sha256": hashlib.sha256(raw_log).hexdigest(),
+                    "raw_size": len(raw_log),
+                    "projection_sha256": (
+                        hashlib.sha256(log).hexdigest()
+                        if "log" in locals() else None
+                    ),
+                    "projection_size": len(log) if "log" in locals() else None,
+                    "link_sha256_A": by_self["A"].paper_log_sha256,
+                    "link_sha256_B": by_self["B"].paper_log_sha256,
+                    "paper_session_id": boot.paper_session_id,
+                }
             raise
         except (ValueError, RuntimeError, KeyError, AttributeError, TypeError, OSError) as exc:
-            raise BD1bSourceHold("original source unavailable or stale") from exc
+            failure = BD1bSourceHold("original source unavailable or stale")
+            if i1_complete_paper_prefix and "raw_log" in locals():
+                failure.i1_original_paper_readback = raw_log
+                failure.i1_source_debug = {
+                    "phase": "bd1b_source_exception",
+                    "self_id": self_id,
+                    "source_type": type(exc).__name__,
+                    "raw_sha256": hashlib.sha256(raw_log).hexdigest(),
+                    "raw_size": len(raw_log),
+                    "projection_sha256": (
+                        hashlib.sha256(log).hexdigest()
+                        if "log" in locals() else None
+                    ),
+                    "projection_size": len(log) if "log" in locals() else None,
+                    "link_sha256_A": by_self["A"].paper_log_sha256,
+                    "link_sha256_B": by_self["B"].paper_log_sha256,
+                    "paper_session_id": boot.paper_session_id,
+                }
+            raise failure from exc
