@@ -75,6 +75,8 @@ class MineflayerProcessSession:
         self._effect_admission: Callable[[str, str, str], None] | None = None
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
+        self._raw_command_audit_fd: int | None = None
+        self._raw_command_audit_finished = False
         self._receive_active = False
         self._dispatch_task: asyncio.Task[None] | None = None
         self._dispatch_queue: asyncio.Queue[object] | None = None
@@ -207,6 +209,41 @@ class MineflayerProcessSession:
         os.close(fd)
         self._raw_source_audit_fd = None
         self._raw_source_audit_finished = True
+
+    def start_raw_command_audit(self, path: str | Path) -> None:
+        """Opt-in exact native stdin journal (predefined DEV observer only).
+
+        This records the bytes actually passed through the original session
+        after stdin.drain(), without adding a second native writer or issuer.
+        Source evidence is independent from stdout: neither log alone proves
+        the underlying game World.
+        """
+        if (self._started is None or self._raw_command_audit_fd is not None
+                or self._raw_command_audit_finished):
+            raise MineflayerProcessIOError("native command source audit already used")
+        location = Path(path)
+        fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.fsync(fd)
+            dir_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_command_audit_fd = fd
+
+    def finish_raw_command_audit(self) -> None:
+        """Freeze opt-in original stdin commands before SHA256 calculation."""
+        fd = self._raw_command_audit_fd
+        if fd is None or self._raw_command_audit_finished:
+            raise MineflayerProcessIOError("native command source audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_command_audit_fd = None
+        self._raw_command_audit_finished = True
 
     @property
     def owned_child_pid(self) -> int | None:
@@ -498,6 +535,19 @@ class MineflayerProcessSession:
             raise MineflayerProcessIOError(
                 "could not write to Mineflayer bridge stdin"
             ) from exc
+        fd = self._raw_command_audit_fd
+        if fd is not None:
+            # Loss of command evidence AFTER delivery is an unresolved
+            # observation, not permission to claim a clean successful trial.
+            try:
+                raw = line.encode("utf-8")
+                if os.write(fd, raw) != len(raw):
+                    raise OSError("partial Native command evidence write")
+                os.fsync(fd)
+            except OSError as exc:
+                raise MineflayerProcessIOError(
+                    "original Native stdin command evidence unavailable"
+                ) from exc
 
 
 async def _terminate_child(process: asyncio.subprocess.Process) -> int:
