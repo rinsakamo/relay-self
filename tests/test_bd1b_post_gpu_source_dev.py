@@ -169,3 +169,22 @@ def test_log_changes_between_reads_hold(tmp_path, monkeypatch):
     monkeypatch.setattr(bridge.paper, "read_owned_log", changing)
     with pytest.raises(BD1bSourceHold):
         verify_post_gpu_source(**kw, lane=lane, turn=turn)
+
+
+def test_lane_from_another_real_resident_holds(tmp_path):
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+    first_root.mkdir()
+    second_root.mkdir()
+    with pytest.MonkeyPatch.context() as patch:
+        first = _configured(first_root, patch, need=True)
+        turn = prepare_coverage_adoption_turn(**arguments(first))
+        lane = attach(first[1], patch)
+    with pytest.MonkeyPatch.context() as patch:
+        second = _configured(second_root, patch, need=True)
+        other_lane = attach(second[1], patch)
+        kw = arguments(first)
+        kw.pop("self_id")
+        assert other_lane.cognitive_work is not lane.cognitive_work
+        with pytest.raises(BD1bSourceHold):
+            verify_post_gpu_source(**kw, lane=other_lane, turn=turn)
