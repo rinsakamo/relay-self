@@ -17,6 +17,7 @@ from experiments.cognitive_physical_place_move_issue_dev import (
 from relay_self.i_lane_i4a_s2_first_move_proposal_dev import I4AS2FirstMoveProposal
 from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
     I4AS2FirstReservationHold,
+    require_i4a_offline_scripted_native,
     reserve_s2_first_original_move_synthetic_dev,
 )
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
@@ -49,9 +50,9 @@ async def issue_s2_first_original_place_move_synthetic_dev(
     The cognitive and physical admission locks are released before awaits.
     The original physical lease is retained until STOP/settling finishes.
     """
+    require_i4a_offline_scripted_native(session)
     if (
-        not isinstance(session, MineflayerProcessSession)
-        or not isinstance(candidate, I4AS2FirstMoveProposal)
+        not isinstance(candidate, I4AS2FirstMoveProposal)
         or candidate.physical_authorized or candidate.physical_issued
         or candidate.wal_modified or candidate.target_clearance_attested
     ):

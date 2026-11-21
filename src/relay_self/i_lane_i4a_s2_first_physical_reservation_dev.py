@@ -30,6 +30,29 @@ class I4AS2FirstReservationHold(ValueError):
     """Original physical WAL / S2 owner / independent DEV grant not qualified."""
 
 
+def require_i4a_offline_scripted_native(
+    session: MineflayerProcessSession,
+) -> None:
+    """Reject process-backed native sessions from the synthetic S2 API.
+
+    This deliberately supports the existing scripted Mineflayer subclasses
+    used by CPU/offline tests. A real MineflayerProcessSession, including a
+    subclass carrying a live process/decoder, has NO authority here. A
+    future real trial must use a separate source-qualified real runner with
+    independently verified Paper/world evidence, not this test adapter.
+    """
+    if (
+        not isinstance(session, MineflayerProcessSession)
+        or type(session) is MineflayerProcessSession
+        or "_process" in getattr(session, "__dict__", {})
+        or "_decoder" in getattr(session, "__dict__", {})
+        or getattr(session, "_effect_admission", None) is not None
+    ):
+        raise I4AS2FirstReservationHold(
+            "S2 synthetic issuer rejects process-backed/native live session"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class I4AS2SyntheticPrepared:
     """Evidence that the first new S2 Action is *unresolved*, not executed."""
@@ -71,9 +94,10 @@ def reserve_s2_first_original_move_synthetic_dev(
     performed; the new WAL remains unresolved and is NOT recoverable/retriable
     by any path in this PR. Independent scoped DEV grants remain mandatory.
     """
+    # Fail before any WAL lock, lease or supervisor issue for a real process.
+    require_i4a_offline_scripted_native(session)
     if (
-        not isinstance(session, MineflayerProcessSession)
-        or not isinstance(candidate, I4AS2FirstMoveProposal)
+        not isinstance(candidate, I4AS2FirstMoveProposal)
         or not isinstance(physical, PhysicalIssueAdmission)
         or not isinstance(lane, ResidentLlamaInferenceLane)
         or not isinstance(previous_probe, MineflayerObservation)
