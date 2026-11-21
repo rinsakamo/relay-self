@@ -63,7 +63,7 @@ async def capture_bd1b_real_original_once(
     and independently audits original Paper/Native/HTTP evidence.
     """
     if (type(model_wait_s) not in (int, float) or not 0 < model_wait_s <= 75
-            or type(evidence_dir) is not Path):
+            or not isinstance(evidence_dir, Path)):
         raise BD1bRealIssuerHold("typed bounded real-model trial required")
     root = evidence_dir.absolute()
     parent = root.parent
