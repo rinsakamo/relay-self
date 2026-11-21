@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.sense_projection import sense_from_native
+from relay_self.cognitive_minimal_dev import Predicate
 from relay_self.common_io import ScopeRef
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
     I2OriginalGoalHold,
@@ -64,7 +65,12 @@ def _configured_both(tmp_path, monkeypatch, *, exploration=True):
 
         def attach_original_empty(resident, *, self_id, **kwargs):
             registry = resident.owners[self_id].pattern_registry
-            assert registry.revision == 0 and not registry.patterns
+            assert registry.revision == 0
+            # Restored original Self keeps innate hunger/defense/oxygen
+            # patterns; only the exploration Goal was never installed.
+            assert registry.patterns
+            assert not any(p.predicate is Predicate.EXPLORE
+                           for p in registry.patterns)
             resident.register_present_schema(
                 self_id, SchemaSnapshot(self_id, registry.revision, ()),
             )
