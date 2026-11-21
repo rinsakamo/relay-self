@@ -27,8 +27,10 @@ def _paper_line(event, tick, sid):
 
 
 @pytest.fixture
-def rejoined(current_fixture, monkeypatch):
-    f, initial, native, _ = current_fixture
+def rejoined(request, monkeypatch):
+    # Import the existing fixture by alias, without redefining its Python name.
+    assert current_fixture is not None
+    f, initial, native, _ = request.getfixturevalue("current_fixture")
     old_composite = build_current_composite_source(
         bridge=f.bridge, self_id="A", native_revision=native, initial_receipts=initial,
     )
