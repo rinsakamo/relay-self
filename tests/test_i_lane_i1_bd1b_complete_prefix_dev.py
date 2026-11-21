@@ -110,3 +110,55 @@ def test_i1_current_readback_does_not_promote_observation_or_action(tmp_path, mo
         ) for sid in ("A", "B")
     )
     assert bridge.physical.active_action_ids == ()
+
+
+def test_i1_live_present_inquiry_cpu_replays_from_original_lf_prefix(tmp_path, monkeypatch):
+    # Exercise the entire original B Present -> I0 inquiry -> I1 CPU chain,
+    # not only the BD1b source helper. No invented new Owner or source.
+    from relay_self.i_lane_i1_normal_runtime_dev import read_i1_original_cpu_epoch
+    from test_bd1b_owner_present_dev import _configured
+    from test_i_lane_e2c_original_present_dev import _inject
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    _, bridge, boot, world, links, _ = case
+    sense = _inject(bridge, world, "A")
+    original = bridge.paper._log_path.read_bytes()
+    bridge.paper._log_path.write_bytes(original + b"> ")
+    row = read_i1_original_cpu_epoch(
+        bridge=bridge, boot=boot, world=world,
+        links=links, self_id="A",
+    )
+    assert row.paper_log_sha256 == links[0].paper_log_sha256
+    assert row.source_revision_refs[1].startswith(
+        "paper:" + boot.paper_session_id + ":"
+    )
+    assert row.sense_revision == sense.source_revision_ref
+    assert row.model_invoked is False and row.action_issue_authorized is False
+    assert bridge.paper._log_path.read_bytes() == original + b"> "
+
+
+def test_i1_complete_line_growth_during_cpu_projection_fences_stale_link(
+    tmp_path, monkeypatch,
+):
+    from relay_self.i_lane_i1_normal_runtime_dev import read_i1_original_cpu_epoch
+    from test_bd1b_owner_present_dev import _configured
+    from test_i_lane_e2c_original_present_dev import _inject
+    import relay_self.i_lane_cpu_readout_dev as i0
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    _, bridge, boot, world, links, _ = case
+    _inject(bridge, world, "A")
+    original = i0.build_coverage_inquiry
+
+    def next_line(**kwargs):
+        result = original(**kwargs)
+        with bridge.paper._log_path.open("ab") as handle:
+            handle.write(b"later independently completed Paper line\n")
+        return result
+
+    monkeypatch.setattr(i0, "build_coverage_inquiry", next_line)
+    with pytest.raises(BD1bSourceHold):
+        read_i1_original_cpu_epoch(
+            bridge=bridge, boot=boot, world=world,
+            links=links, self_id="A",
+        )
