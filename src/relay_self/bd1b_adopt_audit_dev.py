@@ -65,7 +65,7 @@ def audit_adopt_bundle(directory: str | Path) -> dict:
     keys = {
         "version", "kind", "ticket", "request", "request_sha256",
         "source", "candidate_input", "candidate_set_sha256",
-        "readback", "job_binding", "job_state_before", "job_state_after",
+        "readback", "provider_decision", "job_binding", "job_state_before", "job_state_after",
         "inquiry_ref", "pending_before", "pending_after", "file_sha256",
     }
     _require(set(evidence) == keys, "manifest keys missing or unexpected")
@@ -163,6 +163,15 @@ def audit_adopt_bundle(directory: str | Path) -> dict:
         and readback["provider_choice_id"] == "1",
         "issuer readback does not match submission/source",
     )
+    provider = evidence["provider_decision"]
+    _require(
+        type(provider) is dict
+        and provider["status"] == readback["provider_status"]
+        and provider["choice_id"] == readback["provider_choice_id"]
+        and provider["reason"] == readback["provider_reason"]
+        and provider["call_facts"] == readback["call_facts"],
+        "original provider result disagrees with readback",
+    )
     _require(
         evidence["job_state_before"] == "unused"
         and evidence["job_state_after"] == "committed",
@@ -186,6 +195,12 @@ def audit_adopt_bundle(directory: str | Path) -> dict:
         and after["schema_version"] == 4,
         "original Self identity/schema mismatch",
     )
+    registry = before.get("pattern_registry")
+    if registry is not None:
+        _require(
+            freeze["registry_revision"] == registry["revision"],
+            "candidate registry revision disagrees with original cognition",
+        )
     prior = before.get("exploration_continuity")
     current = after.get("exploration_continuity")
     _require(type(current) is dict, "Question continuity missing")
