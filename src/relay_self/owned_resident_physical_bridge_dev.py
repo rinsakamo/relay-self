@@ -354,7 +354,7 @@ class OwnedResidentPhysicalBridge:
         return (
             native == session.started.session_id
             and epoch == ticket.world.epoch
-            self.sessions.get(self_id) is session
+            and self.sessions.get(self_id) is session
             and session.process_returncode is None
             and (self.lifecycle.world.world_id, self.lifecycle.world.branch_id,
                  self.lifecycle.world.paper_session_id, self.lifecycle.world.epoch)
