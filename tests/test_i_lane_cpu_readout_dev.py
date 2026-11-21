@@ -4,8 +4,8 @@ from dataclasses import replace
 import pytest
 
 import relay_self.i_lane_cpu_readout_dev as integration
-from relay_self.bd1b_owner_source_dev import BD1bSourceHold
 from relay_self.bd1b_coverage_inquiry_dev import CoverageInquiryHold
+from relay_self.bd1b_owner_source_dev import BD1bSourceHold
 from test_bd1b_owner_present_dev import _configured
 from test_bd1b_owner_source_dev import _files
 
