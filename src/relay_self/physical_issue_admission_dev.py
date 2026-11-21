@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 import threading
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -197,14 +197,14 @@ class PhysicalIssueAdmission:
     @contextmanager
     def original_i4a_s2_first_wal_window(
         self, *, owner: Any, boundary: Any, lane: Any, action_id: str,
+        retained_lease_stack: ExitStack | None = None,
     ) -> Iterator[None]:
         """Synchronous DEV-only original Owner→issuer→WAL issue transaction.
 
-        This is NOT a native-effect lease spanning async IO: it admits at most
-        one initial S2 PREPARED reservation under an unchanged certified S1
-        prefix, then releases all locks and *does not* bind native children.
-        The unresolved WAL must subsequently HOLD, never be retried. No
-        caller may await or send native controls inside this critical section.
+        No caller may await or send native controls in this critical section.
+        With a caller-held original ExitStack, the same lease may outlive the
+        WAL window through the original native LOOK/STOP issuer. Otherwise
+        the synthetic PREPARED remains unresolved and cannot be resumed.
         """
         from relay_self.checkpointed_cognitive_runtime_dev import (
             CheckpointedCognitiveOwner,
@@ -233,12 +233,23 @@ class PhysicalIssueAdmission:
                 verify_i4a_s2_empty_run_boundary(
                     boundary, physical=self, lane=lane,
                 )
-                with self.lease(
+                if retained_lease_stack is not None and not isinstance(
+                    retained_lease_stack, ExitStack,
+                ):
+                    raise PhysicalIssueFenceError(
+                        "retained lease requires original ExitStack"
+                    )
+                lease = self.lease(
                     self_id=owner.self_id,
                     native_session_id=boundary.native_session_id,
                     action_id=action_id,
                     effect_family="MOVE_PLACE",
-                ):
+                )
+                if retained_lease_stack is not None:
+                    # The original lease survives the synchronous WAL window,
+                    # but the cognitive/issuer locks do not survive async IO.
+                    retained_lease_stack.enter_context(lease)
+                with nullcontext() if retained_lease_stack is not None else lease:
                     if self._i4a_s2_issue_window is not None:
                         raise PhysicalIssueFenceError(
                             "nested certified S2 physical reservation refused"

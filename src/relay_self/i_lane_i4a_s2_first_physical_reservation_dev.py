@@ -7,6 +7,7 @@ without an original LOOK/start/STOP+settlement driver, PREPARED must HOLD.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import dataclass
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -62,6 +63,7 @@ def reserve_s2_first_original_move_synthetic_dev(
     grant_real_world: bool,
     acknowledge_dev_unverified_principal: bool,
     evidence_timeout_s: float = 1.5,
+    retained_lease_stack: ExitStack | None = None,
 ) -> I4AS2SyntheticPrepared:
     """One synchronous Owner→admission lease→canonical WAL PREPARED transition.
 
@@ -94,6 +96,7 @@ def reserve_s2_first_original_move_synthetic_dev(
     boundary = candidate.boundary
     with physical.original_i4a_s2_first_wal_window(
         owner=owner, boundary=boundary, lane=lane, action_id=candidate.action_id,
+        retained_lease_stack=retained_lease_stack,
     ):
         journal = PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id=owner.self_id,
@@ -171,4 +174,5 @@ def reserve_s2_first_original_move_synthetic_dev(
             candidate.action_id, owner.self_id, boundary.prefix_count,
             boundary.prefix_digest, journal.digest, len(rows),
             boundary.new_skill_id, boundary.new_intent_id,
+            issue_lease_active=retained_lease_stack is not None,
         )
