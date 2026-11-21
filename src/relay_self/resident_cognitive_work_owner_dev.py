@@ -129,7 +129,18 @@ class ResidentCognitiveWorkOwner:
             patterns = [p for p in registry.patterns if p.schema_id == "exploration"
                         and p.predicate is Predicate.EXPLORE and p.kind is PatternKind.GOAL
                         and p.version == 1]
-            if (activation is None or activation.spec.version != 1
+            any_exploration = any(
+                p.schema_id == "exploration" or p.predicate is Predicate.EXPLORE
+                for p in registry.patterns
+            )
+            if activation is None:
+                # Restored older Self may have NO accepted exploration pattern.
+                # Rebootstrap its Present/Body cognition without creating one.
+                if snapshot.modules or any_exploration:
+                    raise ResidentCognitiveWorkError(
+                        "unregistered or unqualified exploration pattern"
+                    )
+            elif (activation.spec.version != 1
                 or activation.mode is SchemaMode.OFF
                 or "QUESTION_CANDIDATE" not in activation.spec.signal_kinds
                 or len(patterns) != 1
