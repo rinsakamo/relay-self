@@ -21,6 +21,7 @@ from relay_self.cognitive_minimal_dev import (
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
     prepare_i2_original_goal_handoff,
 )
+from relay_self import i_lane_i2d_self_schema_adoption_dev as i2d
 from relay_self.i_lane_i2d_self_schema_adoption_dev import (
     I2dOriginalHold,
     finish_i2d_self_adoption,
@@ -344,4 +345,45 @@ def test_i2d_logout_during_open_l2_does_not_submit_l1_or_commit(
         assert case[1].physical.active_action_ids == ()
     finally:
         release.set()
+        lane._pool.shutdown(wait=True)
+
+
+@pytest.mark.parametrize("fault", [
+    "failed-save", "postwrite-paper-growth",
+])
+def test_i2d_owner_persistence_failure_fences_without_live_publication(
+    tmp_path, monkeypatch, fault,
+):
+    case, lane, called = _case(tmp_path, monkeypatch)
+    try:
+        bridge = case[1]
+        owner = bridge.owners["A"]
+        before = owner.retained
+        old_registry = owner.pattern_registry
+        original_save = i2d.save_persistent_cognition
+
+        def hostile_save(path, cognition):
+            if fault == "failed-save":
+                raise OSError("synthetic disk failure")
+            original_save(path, cognition)
+            with bridge.paper._log_path.open("ab") as stream:
+                stream.write(b"PAPER_CHANGED_DURING_FSYNC\n")
+
+        monkeypatch.setattr(i2d, "save_persistent_cognition", hostile_save)
+        with pytest.raises(I2dOriginalHold, match="persistence uncertain"):
+            asyncio.run(run_i2d_self_adoption(
+                **_args(case, "A"), lane=lane, timeout_s=3,
+            ))
+        assert len(called) == 2
+        assert owner.retained is before
+        assert owner.pattern_registry is old_registry
+        assert bridge.cognitive_work._states["A"].mode == "QUARANTINED"
+        assert "A" in lane._fenced
+        assert bridge.physical.active_action_ids == ()
+        if fault == "failed-save":
+            assert load_persistent_cognition(owner.files.cognition_file) == before
+        else:
+            # Disk may have changed; never announce an adopted live Owner.
+            assert load_persistent_cognition(owner.files.cognition_file) != before
+    finally:
         lane._pool.shutdown(wait=True)
