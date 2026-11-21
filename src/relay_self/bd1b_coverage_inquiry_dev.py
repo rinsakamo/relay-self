@@ -37,7 +37,8 @@ class CoverageInquiryProposal:
 def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
                            readout: BD1bOwnerPresent,
                            i1_complete_paper_prefix: bool = False,
-                           i1_require_correlated_sense: bool = False) -> CoverageInquiryProposal | None:
+                           i1_require_correlated_sense: bool = False,
+                           i2b_read_attached_lane: bool = False) -> CoverageInquiryProposal | None:
     """Compare to a freshly rebuilt Present while holding the original lock.
 
     Identical evidence yields the same ref; callers can deduplicate by ref without
@@ -50,6 +51,7 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=i1_complete_paper_prefix,
             i1_require_correlated_sense=i1_require_correlated_sense,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         if type(readout) is not BD1bOwnerPresent or readout != current:
             raise CoverageInquiryHold("stale, foreign or altered Present")
