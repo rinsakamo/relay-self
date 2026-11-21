@@ -109,6 +109,48 @@ def _i1_native_probes(
     return original_probes[0], matches
 
 
+def _i1_original_commands(
+    *, evidence: Path, report: dict, sid: str,
+    original: MineflayerObservation, probes: list[MineflayerObservation],
+) -> None:
+    """Compare exact original stdin bytes with three independently parsed stdout probes.
+
+    Stdin evidence is captured at the SINGLE original adapter sender after
+    drain(), before logout. It is not proof of the child's receipt or the
+    Minecraft state. The Paper and raw stdout checks remain mandatory.
+    """
+    native_id = report["native_login_evidence"][sid]["native_session_id"]
+    digests = report.get("raw_native_command_file_sha256")
+    if (type(digests) is not dict or set(digests) != {"RelayA", "RelayB"}):
+        raise I1IndependentAuditHold("original A/B Native outbound transcript absent")
+    path = evidence / f"native-commands-Relay{sid}-{native_id}.jsonl"
+    if (_sha(path) != digests["Relay" + sid]
+            or path.stat().st_size > 128 * 1024):
+        raise I1IndependentAuditHold("original Native outbound transcript SHA mismatch")
+    raw = path.read_bytes()
+    if not raw.endswith(b"\n"):
+        raise I1IndependentAuditHold("outbound Native command missing last line ending")
+    commands = []
+    for line in raw.splitlines():
+        try:
+            command = json.loads(line.decode("utf-8"))
+        except (UnicodeError, ValueError) as exc:
+            raise I1IndependentAuditHold("invalid original outbound Native command") from exc
+        if (type(command) is not dict or set(command) != {"type", "request_id"}
+                or command.get("type") != "observe"
+                or type(command.get("request_id")) is not str):
+            raise I1IndependentAuditHold(
+                "unqualified physical or additional native command during I1"
+            )
+        commands.append(command["request_id"])
+    if (len(commands) != 3
+            or commands != [original.request_id, *(p.request_id for p in probes)]
+            or len(set(commands)) != 3):
+        raise I1IndependentAuditHold(
+            "original send-observe commands and raw probe replies do not match"
+        )
+
+
 def _replay_cpu(row: dict, observation: MineflayerObservation, owner, paper_session: str) -> None:
     """Independent original finite CPU Schema replay; no new owner or LLM."""
     snapshot = observation.snapshot
@@ -213,6 +255,12 @@ def _audit_i1_epochs(
         sid: _i1_native_probes(evidence=evidence, report=report, sid=sid)
         for sid in ("A", "B")
     }
+    for sid in ("A", "B"):
+        original_probe, i1_probes = probe_by_id[sid]
+        _i1_original_commands(
+            evidence=evidence, report=report, sid=sid,
+            original=original_probe, probes=i1_probes,
+        )
     processed = {"A": 0, "B": 0}
     seen_requests: set[str] = set()
     prior_paper: int | None = None
