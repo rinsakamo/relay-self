@@ -206,9 +206,6 @@ def initial_patterns() -> PatternRegistry:
         SchemaPattern("body-fatigue", 1, "body", PatternKind.CONSTRAINT,
                       Predicate.FATIGUE_HIGH, None, None, None, None,
                       Origin.INNATE, provenance),
-        SchemaPattern("body-oxygen-need", 1, "homeostatic", PatternKind.GOAL,
-                      Predicate.OXYGEN_LOW, "RESTORE_OXYGEN",
-                      None, None, None, Origin.INNATE, provenance),
     ))
 
 
@@ -245,6 +242,10 @@ def initial_patterns_with_relative_move() -> PatternRegistry:
     """
     base = initial_patterns()
     return PatternRegistry(base.revision + 1, base.patterns + (
+        SchemaPattern("body-oxygen-need", 1, "homeostatic", PatternKind.GOAL,
+                      Predicate.OXYGEN_LOW, "RESTORE_OXYGEN",
+                      None, None, None, Origin.INNATE,
+                      Provenance("innate-schema", "cognitive-v0.1")),
         SchemaPattern(
             "exploration-relative-move", 1, "exploration", PatternKind.GOAL,
             Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "RELATIVE",
