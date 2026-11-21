@@ -134,6 +134,12 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                 sessions.add(body.session_id)
             if len(actors) != 2 or len(sessions) != 2:
                 raise BD1bSourceHold("A/B actor or native collision")
+            # The resident lock does not lock the external Paper process.  A
+            # changed log invalidates the snapshot, even when all earlier
+            # checks succeeded against its former bytes.
+            if (bridge.paper._assert_owned().pid != process.pid
+                    or bridge.paper.read_owned_log(boot.paper_session_id) != log):
+                raise BD1bSourceHold("owned Paper log changed during verification")
             link = by_self[self_id]
             return BD1bOwnerSource(
                 self_id, world.world_id, world.branch_id, world.epoch,

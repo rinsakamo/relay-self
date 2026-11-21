@@ -43,6 +43,23 @@ def test_original_sources_are_read_only_for_both_selves(tmp_path, monkeypatch):
                for s, o in bridge.owners.items())
 
 
+def test_paper_log_change_during_verification_holds(tmp_path, monkeypatch):
+    case = _ready(tmp_path, monkeypatch)
+    paper = case[1].paper
+    read = paper.read_owned_log
+    calls = 0
+
+    def changing_log(session_id):
+        nonlocal calls
+        calls += 1
+        original = read(session_id)
+        return original if calls == 1 else original + b"changed\n"
+
+    monkeypatch.setattr(paper, "read_owned_log", changing_log)
+    with pytest.raises(BD1bSourceHold, match="changed during verification"):
+        _read(case)
+
+
 @pytest.mark.parametrize("failure", [
     "probe", "native-session", "resident-epoch", "world-epoch", "paper-session",
     "boot", "swap", "missing", "duplicate", "actor", "paper-source", "fenced", "action",
