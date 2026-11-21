@@ -40,8 +40,13 @@ def test_i1_explicit_execute_once_flag_is_passed_without_extra_grants(
     monkeypatch.setattr(runner, "check_stage24g_pinned_assets", stub_assets)
     monkeypatch.setattr(runner, "_verify_local_runtime", lambda *_args: None)
     monkeypatch.setattr(runner, "require_i1_native_preflight",
-                        lambda **_kw: SimpleNamespace(mineflayer_version="4.39.0",
-                                                     entities_sha256="f" * 64))
+                        lambda **_kw: SimpleNamespace(
+                            mineflayer_version="4.39.0",
+                            entities_sha256="f" * 64,
+                            node_module_warning_code=None,
+                            node_module_stderr_sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                            node_module_stderr_raw="",
+                        ))
     monkeypatch.setattr(runner, "inspect_real_recovered_sources",
                         lambda *_args: (SimpleNamespace(historical_native_sessions=()),
                                         SimpleNamespace(owners={"A": None, "B": None})))
