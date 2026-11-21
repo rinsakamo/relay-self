@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relay_self.bd1b_owner_present_dev import _build_present
-from relay_self.bd1b_owner_source_dev import BD1bOwnerSource
 from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
 from relay_self.b_np1b_initial_source_dev import InitialSourceReceipt
 from relay_self.b_np1b_rejoin_composite_source_dev import (
     RejoinedCompositeSourceReceipt,
     build_rejoined_composite_source,
 )
+from relay_self.bd1b_owner_present_dev import _build_present
+from relay_self.bd1b_owner_source_dev import BD1bOwnerSource
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 
 
