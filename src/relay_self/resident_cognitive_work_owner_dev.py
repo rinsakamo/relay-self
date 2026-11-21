@@ -161,7 +161,8 @@ class ResidentCognitiveWorkOwner:
 
     def read_present_cpu(self, *, bridge, boot, world, links, self_id,
                          i1_complete_paper_prefix: bool = False,
-                         i1_require_correlated_sense: bool = False):
+                         i1_require_correlated_sense: bool = False,
+                         i2b_read_attached_lane: bool = False):
         """Project current qualified evidence on the original resident CPU path.
 
         The result is ephemeral; a later consumer must revalidate it under this
@@ -176,6 +177,7 @@ class ResidentCognitiveWorkOwner:
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
                 i1_complete_paper_prefix=i1_complete_paper_prefix,
                 i1_require_correlated_sense=i1_require_correlated_sense,
+                i2b_read_attached_lane=i2b_read_attached_lane,
             )
 
     def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):
