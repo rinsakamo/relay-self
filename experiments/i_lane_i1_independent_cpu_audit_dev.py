@@ -124,8 +124,14 @@ def _i1_original_commands(
     if (type(digests) is not dict or set(digests) != {"RelayA", "RelayB"}):
         raise I1IndependentAuditHold("original A/B Native outbound transcript absent")
     path = evidence / f"native-commands-Relay{sid}-{native_id}.jsonl"
-    if (_sha(path) != digests["Relay" + sid]
-            or path.stat().st_size > 128 * 1024):
+    try:
+        actual_sha = _sha(path)
+        size = path.stat().st_size
+    except (OSError, RuntimeError) as exc:
+        raise I1IndependentAuditHold(
+            "original Native outbound transcript missing or untrusted"
+        ) from exc
+    if actual_sha != digests["Relay" + sid] or size > 128 * 1024:
         raise I1IndependentAuditHold("original Native outbound transcript SHA mismatch")
     raw = path.read_bytes()
     if not raw.endswith(b"\n"):
