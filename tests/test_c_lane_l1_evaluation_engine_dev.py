@@ -39,6 +39,59 @@ def test_source_admission_and_bounded_uncertainty(tmp_path):
     _fixture(tmp_path, scenario)
 
 
+def test_source_admission_tracks_settled_native_progress(tmp_path):
+    import json
+
+    import pytest
+
+    from relay_self.c_lane_l1_evaluation_engine_dev import build_evaluation_steps
+    from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
+    from test_p0d_stage27c_place_move_wal_issuer_dev import ScriptedPlaceNative
+    from test_p0d_stage27h_bounded_l0_move_dev import _issue, _start
+
+    class MotionNative(ScriptedPlaceNative):
+        async def send_set_control(self, action_id, *, control, state):
+            await super().send_set_control(action_id, control=control, state=state)
+            self.x += self.delta - 0.8
+
+    async def scenario(f, lane, server, delta, expected):
+        pre, handoff, former, first, loop = await _start(f, lane)
+        native = MotionNative(handoff.native_session_id)
+        native.delta = delta
+        assert loop.pre_action(first, now_ns=150).status == "L0_CONTINUE_MOVE"
+        receipt = await _issue(f, pre, handoff, loop, former, first, native)
+        step = loop.observe_terminal_action(
+            receipt, source_probe=first,
+            now_ns=loop.start_ns + loop.invocation.budget.max_duration_ms * 1_000_000,
+        )
+        args = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                    first_action_probe=first, last_settled_probe=receipt.settled_probe,
+                    world_id=f.lifecycle.world.world_id)
+        if delta == 0:
+            assert receipt.journal_status == "NATIVE_PLACE_MOVE_NO_PROGRESS"
+            with pytest.raises(C1OwnerReviewHold):
+                prepare_stage27hi_multi_review(loop, step, **args)
+            return
+        frame = prepare_stage27hi_multi_review(loop, step, **args)
+        facts = json.loads(frame.request.context[0].value_json)
+        assert facts["original_action_ids"] == [receipt.action_id]
+        assert facts["executed_actions"][0]["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+        steps = build_evaluation_steps(frame)
+        assert expected in steps[0].candidates[0].choice.description
+        assert steps[0].candidates[0].evidence_refs
+        assert "Skill success is not established" in steps[1].candidates[0].choice.description
+        assert "novelty is unknown" in steps[2].candidates[0].choice.description
+        assert loop.owner.retained.memories == ()
+
+    for index, (delta, expected) in enumerate((
+        (0.2, "decreased"), (0.0, "did not change"), (-0.2, "increased"),
+    )):
+        case_root = tmp_path / str(index)
+        case_root.mkdir()
+        _fixture(case_root,
+                 lambda f, lane, server: scenario(f, lane, server, delta, expected))
+
+
 def test_five_axes_use_resident_lane_and_preserve_owner(tmp_path):
     async def scenario(f, lane, server):
         loop, step, first, receipts, before = await _run_multi(f, lane, server)

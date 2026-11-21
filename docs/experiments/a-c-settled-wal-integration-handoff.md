@@ -32,3 +32,23 @@ tests, not a real World or model integration. Source-admission representative
 coverage and a new-run T2 recovery remain open until independently demonstrated.
 
 DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
+
+## C-Real1d-3f partial follow-up
+
+The source integration now also exercises synthetic movement toward and away
+from the Target through the original ActionPort, settled WAL, Stage27h and
+source admission before building candidates. An immobile synthetic Action
+instead produces `NATIVE_PLACE_MOVE_NO_PROGRESS`; the settled-only source
+validator rejects it. This is not proof of a comparable unchanged-gap settled
+case. Missing Target comparison and valid-but-incomparable cases remain open;
+frame-only tests do not close them. A remains HOLD.
+
+The existing Stage27 handoff requires no existing Intent or Skill histories.
+The Stage27h loop starts with zero Actions and requires the entire canonical WAL
+to contain exactly its own rows; its source validator repeats this requirement.
+Checkpoint capture preserves the WAL. Consequently, a second run after S1's
+settled rows is not demonstrated by the existing path. No WAL was cleared,
+transferred, or reassigned and no new Owner was introduced. T2 and its independent
+scope, Action IDs, WAL and GPU tickets remain unproven; C remains HOLD. A valid
+second-run lifecycle and the admission boundary need separate reconciliation.
+The existing partial evaluation B remains subject to its regression tests.
