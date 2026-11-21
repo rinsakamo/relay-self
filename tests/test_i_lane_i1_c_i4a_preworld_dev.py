@@ -17,19 +17,20 @@ from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[1]
+def _root():
+    return Path(__file__).resolve().parents[1]
 
 
 def _exact_head():
     return subprocess.check_output(
-        ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+        ["git", "-C", str(_root()), "rev-parse", "HEAD"],
         text=True,
     ).strip()
 
 
 def test_preworld_inventory_is_never_world_or_model_admission():
     report = inspect_i1_c_i4a_preworld(
-        repo_root=ROOT, expected_head=_exact_head(),
+        repo_root=_root(), expected_head=_exact_head(),
     )
     assert report.classification == "I1_C_I4A_PRE_WORLD_HOLD"
     assert len(report.source_sha256) == 5
@@ -44,13 +45,13 @@ def test_preworld_inventory_is_never_world_or_model_admission():
 @pytest.mark.parametrize("head", ["", "0" * 40, "a" * 39, "not-a-head"])
 def test_preworld_rejects_foreign_or_malformed_integration_head(head):
     with pytest.raises(I1CI4APreWorldHold):
-        inspect_i1_c_i4a_preworld(repo_root=ROOT, expected_head=head)
+        inspect_i1_c_i4a_preworld(repo_root=_root(), expected_head=head)
 
 
 def test_preworld_cli_grants_do_not_create_world_or_issue_actions(tmp_path, capsys):
     world = tmp_path / "world-must-not-start"
     code = main([
-        "--repo-root", str(ROOT),
+        "--repo-root", str(_root()),
         "--expected-head", _exact_head(),
         "--world-dir", str(world),
         "--real-world-dev-grant", "--accepted-eula",
@@ -66,7 +67,7 @@ def test_preworld_cli_grants_do_not_create_world_or_issue_actions(tmp_path, caps
 def test_preworld_cli_wrong_head_never_touches_world_dir(tmp_path, capsys):
     world = tmp_path / "no-world"
     code = main([
-        "--repo-root", str(ROOT),
+        "--repo-root", str(_root()),
         "--expected-head", "0" * 40,
         "--world-dir", str(world),
         "--real-world-dev-grant", "--accepted-eula",
