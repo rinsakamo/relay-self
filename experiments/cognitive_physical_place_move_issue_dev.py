@@ -207,7 +207,55 @@ async def issue_selected_place_move_dev(
         allow_prior_original_place_terminals=allow_prior_terminal_place_actions,
         place_gait_mode=precision_gait,
     )
+    return await complete_prepared_place_move_dev(
+        session, proposal=proposal, l0=l0, handoff=handoff,
+        motion=motion, current_probe=current_probe, owner=owner,
+        journal=journal, invocation=invocation, at_ns=at_ns,
+        evidence_timeout_s=evidence_timeout_s, pulse_seconds=pulse_seconds,
+        bind_native_children=bind_native_children,
+        pre_native_evidence=pre_native_evidence,
+        settlement_probe_limit=settlement_probe_limit,
+        precision_gait=precision_gait,
+    )
+
+
+async def complete_prepared_place_move_dev(
+    session: MineflayerProcessSession, *,
+    proposal: PhysicalActionProposalReceipt,
+    l0: Stage27L0PlaceProposal,
+    handoff: Stage27OwnedMoveIntent,
+    motion: Stage27PlaceMotionPlan,
+    current_probe: MineflayerObservation,
+    owner: CheckpointedCognitiveOwner,
+    journal: PhysicalActionJournal,
+    invocation: SkillInvocation,
+    at_ns: int,
+    evidence_timeout_s: float,
+    pulse_seconds: float,
+    bind_native_children: Callable[[str], None] | None,
+    pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None,
+    settlement_probe_limit: int | None,
+    precision_gait: str | None,
+) -> Stage27PlaceMoveReceipt:
+    """Shared original LOOK/forward/STOP/settle/terminal WAL implementation.
+
+    Called by the existing Stage27 issuer, or by I4a *within the same*
+    original physical lease that created its canonical PREPARED row.
+    A historical PREPARED from an earlier call cannot be resumed here.
+    """
+    from relay_self.action import ActionState
+
     parent = proposal.binding.action_id
+    rows = journal.records
+    if (
+        not rows or not journal.unresolved
+        or rows[-1]["action_id"] != parent
+        or rows[-1]["status"] != "PREPARED_UNRESOLVED"
+        or rows[-1]["skill_execution_id"] != handoff.skill_execution_id
+        or rows[-1]["intent_id"] != handoff.intent_id
+        or owner.supervisor.get(parent).state is not ActionState.ISSUED
+    ):
+        raise Stage27PlaceMoveRefusal("original PREPARED parent not current")
     # Optional operator DEV evidence tap runs only after the original fsynced
     # PREPARED WAL and strictly before any native LOOK/forward/STOP write.
     # Failure keeps the original WAL unresolved; it never licenses a retry.

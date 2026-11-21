@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 import threading
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -157,6 +157,8 @@ class PhysicalIssueAdmission:
         # Admission is not a second Action owner: this map only gates exact
         # native child IDs belonging to the already-selected original Action.
         self._native_child_ids: dict[str, dict[str, str]] = {}
+        self._i4a_s2_issue_window: tuple[Any, Any, str] | None = None
+        self._i4a_s2_consumed_action_ids: set[str] = set()
         self._used_native_children: dict[str, set[str]] = {}
         self._closed = False
         self._poisoned = False
@@ -167,6 +169,132 @@ class PhysicalIssueAdmission:
         self._stop_required: set[str] = set()
         self._stop_active: dict[str, tuple[str, str]] = {}
         self._stop_proofs: dict[str, NeutralStopProof] = {}
+
+    @contextmanager
+    def quiescent_wal_history_window(
+        self, *, self_id: str, native_session_id: str,
+    ) -> Iterator[None]:
+        """DEV-only: serialize an Owner WAL witness against admitted issues.
+
+        The caller holds the original Owner cohort lock first.  This admission
+        lock then spans canonical journal readback; the WAL's own flock is
+        acquired last.  No physical effect, lease or execution grant is made.
+        Direct unguarded file writers are outside this limited contract.
+        """
+        with self._lock:
+            if (
+                not self._resident_mode or not self._allow_resident_move
+                or self._closed or self._poisoned or self._neutralizing
+                or self._sessions.get(self_id) != native_session_id
+                or self._resident_states.get(self_id) != "ONLINE"
+                or self._active or self._native_child_ids
+            ):
+                raise PhysicalIssueFenceError(
+                    "original physical issuer cannot attest quiescent history"
+                )
+            yield
+
+    @contextmanager
+    def original_i4a_s2_first_wal_window(
+        self, *, owner: Any, boundary: Any, lane: Any, action_id: str,
+        retained_lease_stack: ExitStack | None = None,
+    ) -> Iterator[None]:
+        """Synchronous DEV-only original Owner→issuer→WAL issue transaction.
+
+        No caller may await or send native controls in this critical section.
+        With a caller-held original ExitStack, the same lease may outlive the
+        WAL window through the original native LOOK/STOP issuer. Otherwise
+        the synthetic PREPARED remains unresolved and cannot be resumed.
+        """
+        from relay_self.checkpointed_cognitive_runtime_dev import (
+            CheckpointedCognitiveOwner,
+        )
+        from relay_self.i_lane_i4a_s2_run_boundary_dev import (
+            I4AS2EmptyRunBoundary,
+            verify_i4a_s2_empty_run_boundary,
+        )
+        from relay_self.resident_llama_inference_lane_dev import (
+            ResidentLlamaInferenceLane,
+        )
+
+        if (
+            not isinstance(owner, CheckpointedCognitiveOwner)
+            or owner.cohort is None
+            or not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(lane, ResidentLlamaInferenceLane)
+            or boundary.owner is not owner
+            or type(action_id) is not str or not action_id
+        ):
+            raise PhysicalIssueFenceError("certified original S2 scope required")
+        with owner.cohort.lock:
+            with self.quiescent_wal_history_window(
+                self_id=owner.self_id, native_session_id=boundary.native_session_id,
+            ):
+                verify_i4a_s2_empty_run_boundary(
+                    boundary, physical=self, lane=lane,
+                )
+                if retained_lease_stack is not None and not isinstance(
+                    retained_lease_stack, ExitStack,
+                ):
+                    raise PhysicalIssueFenceError(
+                        "retained lease requires original ExitStack"
+                    )
+                lease = self.lease(
+                    self_id=owner.self_id,
+                    native_session_id=boundary.native_session_id,
+                    action_id=action_id,
+                    effect_family="MOVE_PLACE",
+                )
+                if retained_lease_stack is not None:
+                    # The original lease survives the synchronous WAL window,
+                    # but the cognitive/issuer locks do not survive async IO.
+                    retained_lease_stack.enter_context(lease)
+                with nullcontext() if retained_lease_stack is not None else lease:
+                    if self._i4a_s2_issue_window is not None:
+                        raise PhysicalIssueFenceError(
+                            "nested certified S2 physical reservation refused"
+                        )
+                    self._i4a_s2_issue_window = (owner, boundary, action_id)
+                    try:
+                        yield
+                    finally:
+                        self._i4a_s2_issue_window = None
+
+    def require_original_i4a_s2_wal_window(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Only the original participating issuer may assert S2 prefix mode."""
+        with self._lock:
+            window = self._i4a_s2_issue_window
+            active = self._active.get(getattr(owner, "self_id", ""))
+            if (
+                window is None or window[0] is not owner
+                or window[1] is not boundary or window[2] != action_id
+                or active is None or active.action_id != action_id
+                or active.effect_family != "MOVE_PLACE"
+                or active.native_session_id != boundary.native_session_id
+                or self._closed or self._poisoned or self._neutralizing
+            ):
+                raise PhysicalIssueFenceError(
+                    "original S2 issuer prefix not certified in atomic window"
+                )
+
+    def consume_original_i4a_s2_action_once(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Preconsume S2 ID under its active original issuer/Owner window.
+
+        This is a same-process anti-reopen fence; it does not authorize
+        movement or allow unresolved WAL replay after a process restart.
+        Even if the subsequent WAL CAS fails, do not recycle this ID.
+        """
+        self.require_original_i4a_s2_wal_window(
+            owner=owner, boundary=boundary, action_id=action_id,
+        )
+        with self._lock:
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError("S2 Action reservation already consumed")
+            self._i4a_s2_consumed_action_ids.add(action_id)
 
     @property
     def resident_mode(self) -> bool:
@@ -253,6 +381,10 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("stale or foreign physical native session")
             if type(action_id) is not str or not action_id.strip():
                 raise PhysicalIssueFenceError("physical Action ID required")
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError(
+                    "certified S2 Action already reserved: native effect retry refused"
+                )
             if effect_family not in _EFFECT_FAMILIES:
                 raise PhysicalIssueFenceError("unsupported physical effect family")
             if effect_family in ("MOVE", "MOVE_PLACE") and not (
