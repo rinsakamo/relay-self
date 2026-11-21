@@ -69,34 +69,47 @@ def _raw_file(root: Path, name: object) -> bytes:
         path = path / part
         if path.is_symlink():
             raise QEvidenceHold("symlink evidence is not admitted")
+    # Open every ancestor relative to a held directory fd. Checking
+    # path.is_symlink() alone is vulnerable to a directory replacement race.
+    # O_NOFOLLOW on *every* segment protects even if a parent is swapped
+    # between the earlier visual check and this source read.
+    opened: list[int] = []
     try:
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-        fd = os.open(path, flags)
-        try:
-            before = os.fstat(fd)
-            if not stat.S_ISREG(before.st_mode) or before.st_size > _MAX_BYTES:
-                raise QEvidenceHold("bounded regular file required")
-            chunks: list[bytes] = []
-            remaining = _MAX_BYTES + 1
-            while remaining:
-                piece = os.read(fd, min(1024 * 1024, remaining))
-                if not piece:
-                    break
-                chunks.append(piece)
-                remaining -= len(piece)
-            data = b"".join(chunks)
-            after = os.fstat(fd)
-            if (
-                len(data) > _MAX_BYTES or before.st_size != len(data)
-                or (before.st_dev, before.st_ino, before.st_mtime_ns, before.st_size)
-                != (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_size)
-            ):
-                raise QEvidenceHold("evidence changed while being read")
-            return data
-        finally:
-            os.close(fd)
+        no_follow = getattr(os, "O_NOFOLLOW", 0)
+        dir_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | no_follow
+        directory = os.open(root, dir_flags)
+        opened.append(directory)
+        for part in parts[:-1]:
+            directory = os.open(part, dir_flags, dir_fd=directory)
+            opened.append(directory)
+        flags = os.O_RDONLY | no_follow | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(parts[-1], flags, dir_fd=directory)
+        opened.append(fd)
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > _MAX_BYTES:
+            raise QEvidenceHold("bounded regular file required")
+        chunks: list[bytes] = []
+        remaining = _MAX_BYTES + 1
+        while remaining:
+            piece = os.read(fd, min(1024 * 1024, remaining))
+            if not piece:
+                break
+            chunks.append(piece)
+            remaining -= len(piece)
+        data = b"".join(chunks)
+        after = os.fstat(fd)
+        if (
+            len(data) > _MAX_BYTES or before.st_size != len(data)
+            or (before.st_dev, before.st_ino, before.st_mtime_ns, before.st_size)
+            != (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_size)
+        ):
+            raise QEvidenceHold("evidence changed while being read")
+        return data
     except OSError as exc:
         raise QEvidenceHold(f"missing/unreadable evidence: {name}") from exc
+    finally:
+        for fd in reversed(opened):
+            os.close(fd)
 
 
 def _jsonl(raw: bytes, role: str) -> list[dict[str, Any]]:
