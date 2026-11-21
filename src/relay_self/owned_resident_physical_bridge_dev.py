@@ -7,11 +7,20 @@ scheduler or model backend is attested by the inert boundary.
 """
 from __future__ import annotations
 
+import time
+
 from collections.abc import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.sense_projection import (
+    SenseFrame,
+    SenseRefusal,
+    sense_for_self_world,
+    sense_from_native,
+)
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
+from relay_self.common_io import ScopeRef
 from relay_self.owned_native_rejoin_cohort_dev import verify_native_spawn_probe
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.persistent_cognition import (
@@ -29,6 +38,7 @@ from relay_self.resident_cognitive_work_owner_dev import (
 from relay_self.resident_llama_inference_lane_dev import (
     ResidentLlamaInferenceLane,
 )
+from relay_self.three_self_present import project_three_self
 from relay_self.world_resident_lifecycle_dev import (
     LoginTicket,
     LogoutFenceEvidence,
@@ -92,6 +102,7 @@ class OwnedResidentPhysicalBridge:
         cognitive_work: ResidentCognitiveWorkOwner | None = None,
         inference_lane: ResidentLlamaInferenceLane | None = None,
         forbidden_native_sessions: frozenset[str] = frozenset(),
+        enable_sense: bool = False,
     ) -> None:
         if (
             not isinstance(lifecycle, WorldResidentLifecycle)
@@ -139,6 +150,8 @@ class OwnedResidentPhysicalBridge:
             or type(forbidden_native_sessions) is not frozenset
             or any(type(sid) is not str or not sid
                    for sid in forbidden_native_sessions)
+            or type(enable_sense) is not bool
+            or (enable_sense and cognitive_work is None)
             or not callable(launch)
             or type(probe_timeout_s) not in (float, int)
             or not 0 < probe_timeout_s <= 60
@@ -156,6 +169,10 @@ class OwnedResidentPhysicalBridge:
         self.work = InertResidentWorkBoundary(lifecycle.self_roster)
         self.cognitive_work = cognitive_work
         self.inference_lane = inference_lane
+        self.enable_sense = enable_sense
+        # Passive SENSE is ephemeral; original native/Paper sources remain authoritative.
+        self._sense: dict[str, SenseFrame] = {}
+        self._sense_received_at: dict[str, float] = {}
         # A restored Self may have joined/quit more than once in the old
         # boot. All historical native IDs, not just last_owner_session,
         # must be refused BEFORE rebind/admission.
@@ -260,8 +277,12 @@ class OwnedResidentPhysicalBridge:
                 raise OwnedResidentBridgeError("original native probe body unavailable")
             self.last_login_observations[self_id] = observations[0]
             self.retired.pop(self_id, None)
+            if self.enable_sense:
+                self._start_sense(self_id, launched, ticket)
             return ticket
         except BaseException:
+            self._sense.pop(self_id, None)
+            self._sense_received_at.pop(self_id, None)
             self.last_login_evidence.pop(self_id, None)
             self.last_login_observations.pop(self_id, None)
             # If source verification fails, NEVER grant a new issuer lease.
@@ -288,6 +309,113 @@ class OwnedResidentPhysicalBridge:
             raise
         finally:
             self._pending_login.discard(self_id)
+
+    def _start_sense(self, self_id: str, session: MineflayerProcessSession, ticket: LoginTicket) -> None:
+        """Subscribe to the existing original native receive/decoder after login."""
+        if self.cognitive_work is None:
+            raise OwnedResidentBridgeError("SENSE requires original resident lock")
+        scope = ScopeRef(self_id, ticket.world.paper_session_id)
+        previous_seq = 0
+
+        def observe(message: object) -> None:
+            nonlocal previous_seq
+            if not isinstance(message, MineflayerObservation) or message.kind == "probe":
+                return
+            # Same original lock as B Present projection. No extra perception owner.
+            with self.cognitive_work.lock:
+                if not self._sense_current(self_id, session, ticket):
+                    self._sense.pop(self_id, None)
+                    self._sense_received_at.pop(self_id, None)
+                    return
+                try:
+                    frame = sense_from_native(
+                        message, scope=scope, expected_native_session=session.started.session_id,
+                        previous_seq=previous_seq,
+                    )
+                except SenseRefusal:
+                    return
+                previous_seq = message.seq
+                self._sense[self_id] = frame
+                self._sense_received_at[self_id] = session._observer_received_monotonic
+
+        session.start_dispatcher(
+            observe,
+            compact_safe=lambda: (
+                not self.physical.closed and not self.physical.active_action_ids
+            ),
+        )
+
+    def _sense_current(self, self_id: str, session: MineflayerProcessSession, ticket: LoginTicket) -> bool:
+        view = self.lifecycle.view(self_id)
+        return (
+            self.sessions.get(self_id) is session
+            and session.process_returncode is None
+            and (self.lifecycle.world.world_id, self.lifecycle.world.branch_id,
+                 self.lifecycle.world.paper_session_id, self.lifecycle.world.epoch)
+            == (ticket.world.world_id, ticket.world.branch_id,
+                ticket.world.paper_session_id, ticket.world.epoch)
+            and view.status is Presence.ONLINE
+            and view.native_session_id == session.started.session_id
+            and self.owners[self_id].native_session_id == session.started.session_id
+            and not self.owners[self_id].fresh_native_observation_required
+            and self.physical.current_native_sessions[self_id] == session.started.session_id
+            and self.paper.owned_session_id == ticket.world.paper_session_id
+            and self.paper.world_id == ticket.world.world_id
+            and self.paper.branch_id == ticket.world.branch_id
+            and not self.paper.held_uncertain
+        )
+
+    def current_sense(self, self_id: str, *, max_age_s: float = 2.0) -> SenseFrame | None:
+        """Read only a current passive frame; no Action or Paper qualification."""
+        if self.cognitive_work is None or not self.enable_sense:
+            return None
+        with self.cognitive_work.lock:
+            frame = self._sense.get(self_id)
+            session = self.sessions.get(self_id)
+            evidence = self.last_login_evidence.get(self_id)
+            received_at = self._sense_received_at.get(self_id, 0)
+            if (frame is None or session is None or evidence is None
+                    or not 0 < max_age_s <= 60
+                    or not 0 <= time.monotonic() - received_at <= max_age_s):
+                return None
+            world = self.lifecycle.world
+            view = self.lifecycle.view(self_id)
+            if (view.status is not Presence.ONLINE or session.process_returncode is not None
+                    or session.observer_error is not None or session._dispatch_error is not None
+                    or frame.scope != ScopeRef(self_id, world.paper_session_id)
+                    or evidence.self_id != self_id
+                    or evidence.native_session_id != session.started.session_id
+                    or frame.observation.session_id != session.started.session_id
+                    or frame.source_revision_ref != (f"mineflayer:{session.started.session_id}:"
+                                                     f"{frame.observation.seq}")
+                    or view.native_session_id != session.started.session_id
+                    or self.owners[self_id].native_session_id != session.started.session_id
+                    or self.owners[self_id].fresh_native_observation_required
+                    or self.physical.current_native_sessions[self_id] != session.started.session_id
+                    or (world.world_id, world.branch_id, world.paper_session_id, world.epoch)
+                    != (evidence.world_id, evidence.branch_id,
+                        evidence.paper_session_id, evidence.world_epoch)
+                    or self.paper.owned_session_id != world.paper_session_id
+                    or self.paper.world_id != world.world_id
+                    or self.paper.branch_id != world.branch_id
+                    or self.paper.held_uncertain):
+                self._sense.pop(self_id, None)
+                self._sense_received_at.pop(self_id, None)
+                return None
+            return frame
+
+    def current_self_world(self, self_id: str):
+        """Transient source-bound E SelfWorld view; not a separate store."""
+        frame = self.current_sense(self_id)
+        if frame is None:
+            return None
+        world = self.lifecycle.world
+        return project_three_self(
+            retained=self.owners[self_id].retained, scope=frame.scope,
+            epoch_ref=f"{world.world_id}:{world.branch_id}:{world.paper_session_id}:{world.epoch}",
+            source_revision_refs=(frame.source_revision_ref,),
+            claims=sense_for_self_world(frame),
+        ).self_world
 
     def attach_observation_only_bounded_l1(
         self, lane: ResidentLlamaInferenceLane,
@@ -340,6 +468,8 @@ class OwnedResidentPhysicalBridge:
         """Synchronous, per-Self immediate issue block before any async wait."""
         if self_id not in self.sessions:
             raise OwnedResidentBridgeError("no currently owned Self session")
+        self._sense.pop(self_id, None)
+        self._sense_received_at.pop(self_id, None)
         current = self.sessions[self_id].started.session_id
         self.physical.quarantine_resident(
             self_id=self_id, native_session_id=current,
@@ -356,6 +486,8 @@ class OwnedResidentPhysicalBridge:
         session = self.sessions.get(self_id)
         if session is None:
             raise OwnedResidentBridgeError("logout without owned native session")
+        self._sense.pop(self_id, None)
+        self._sense_received_at.pop(self_id, None)
         native_id = session.started.session_id
         view = self.lifecycle.view(self_id)
         if view.native_session_id != native_id or view.status not in (
