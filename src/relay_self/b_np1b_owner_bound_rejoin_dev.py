@@ -117,9 +117,18 @@ def _owner_snapshot(bridge, originals):
     retired = bridge._b_np1b_retired_login.get("A")
     if retired is None:
         raise OwnerBoundRejoinHold("original Bridge logout proof unavailable")
-    logout, prior_scope, prior_owner = retired
+    logout, prior_scope, prior_owner, old_login, old_probe = retired
     if (prior_owner is not oa
             or prior_scope != (a.resident_epoch, a.native_session_id, a.world_epoch)
+            or old_login.self_id != "A" or old_login.native_session_id != a.native_session_id
+            or old_login.observation_ref != a.native_request_id
+            or old_login.observed_world_tick != a.native_world_time
+            or (old_login.world_id, old_login.branch_id, old_login.paper_session_id, old_login.world_epoch)
+            != (a.world_id, a.branch_id, a.paper_session_id, a.world_epoch)
+            or old_probe.kind != "probe" or old_probe.session_id != a.native_session_id
+            or old_probe.request_id != a.native_request_id
+            or old_probe.seq != a.native_sequence
+            or old_probe.provenance.reference != a.native_source_ref
             or scope_a[0] <= prior_scope[0]
             or scope_a[1] == a.native_session_id
             or scope_a[2] != world.epoch
@@ -141,6 +150,9 @@ def _owner_snapshot(bridge, originals):
             or login_a.observation_ref == a.native_request_id
             or login_b.self_id != "B" or login_b.native_session_id != b.native_session_id
             or login_b.observation_ref != b.native_request_id
+            or login_b.observed_world_tick != b.native_world_time
+            or probe_b.seq != b.native_sequence
+            or probe_b.provenance.reference != b.native_source_ref
             or sa.started.session_id != scope_a[1] or sb.started.session_id != scope_b[1]
             or bridge.physical.current_native_sessions["A"] != scope_a[1]
             or bridge.physical.current_native_sessions["B"] != scope_b[1]
@@ -163,7 +175,7 @@ def _owner_snapshot(bridge, originals):
     # Identity checks in the final readback use object identity, not only equal field values.
     return (
         world, oa, ob, sa, sb, scope_a, scope_b, login_a, login_b, probe_a,
-        probe_b, logout, prior_scope, native, paper, process,
+        probe_b, logout, prior_scope, native, paper, process, old_login, old_probe,
     )
 
 
@@ -184,7 +196,8 @@ def build_owner_bound_rejoin_paper(
         with resident.lock:
             before = _owner_snapshot(bridge, originals)
         (world, _oa, _ob, _sa, _sb, scope_a, _scope_b, login_a, _login_b,
-         _probe_a, _probe_b, logout, prior_scope, native, paper, process) = before
+         _probe_a, _probe_b, logout, prior_scope, native, paper, process,
+         _old_login, _old_probe) = before
         tick = paper.tick_readback(world.paper_session_id)
         log = paper.read_owned_log(world.paper_session_id)
         source = verify_rejoin_paper(
@@ -203,7 +216,7 @@ def build_owner_bound_rejoin_paper(
         with resident.lock:
             after = _owner_snapshot(bridge, originals)
             if (any(after[i] is not before[i]
-                    for i in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15))
+                    for i in (1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17))
                     or any(after[i] != before[i] for i in (0, 5, 6, 12, 13))
                     or paper._assert_owned() is not process
                     or paper.read_owned_log(world.paper_session_id) != log):
