@@ -135,6 +135,14 @@ def _material(bridge, probe: I1CPUProbe, sid: str) -> dict:
             owner.intent.current_intent.intent_id
             if owner.intent.current_intent is not None else None
         ),
+        # The same active intent ID can change lifecycle (reconsideration,
+        # release, etc.). Freeze the complete original event tuple so a
+        # stale in-flight L1 never inherits a later Owner decision.
+        "original_intent_events": tuple(
+            (event.kind.value, event.intent_id, event.at_ns,
+             event.objective, event.reason, event.provenance.reference)
+            for event in owner.intent.events
+        ),
     }
 
 
