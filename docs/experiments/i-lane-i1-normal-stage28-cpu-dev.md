@@ -163,6 +163,40 @@ required. A failed `stdin.drain` is not journaled as successfully
 delivered; a journal-write failure after drain is an unresolved attempt,
 not a success.
 
+### I1 BD1b Original Owner source readback (2026-11-21 follow-up)
+
+A new isolated World at older HEAD `1a0581f9b95a1beacc85dceff384e5ab4e8e847d`
+passed preflight but HOLDed during the first I1 Native refresh with
+`BD1bSourceHold: original A/B native or Paper link mismatch`. The
+initial Paper link's SHA256 exactly matched the owned stdout's 7,221-byte
+completed ACK-line prefix, while BD1b's pre-existing Owner source path
+`build_bd1b_owner_source()` rehashed the **entire currently read raw log**
+and compared that to `link.paper_log_sha256`. The mismatch is a
+well-supported potential cause; the original failing predicate and exact
+live raw bytes were not captured, so do not claim confirmed exclusive
+causation. The new World attempt, partial Native traces, and manifest
+remain `I1_REAL_WORLD_HOLD` without any completed CPU epochs or
+independent audit.
+
+The follow-up fix keeps BD1b's **default exact full-raw SHA fence**.
+Only an explicit `i1_complete_paper_prefix=True` on the original I1
+readout/Present/coverage/Schema call chain makes BD1b re-read the same
+**owned live Paper Popen** and derive the **last actual LF-terminated
+prefix**, requiring the link's actual main-thread ACK marker to be
+inside that completed source. The recomputed original SHA must equal
+the independent producer's linked SHA; B does not trust a caller-supplied
+digest or normalize prompt bytes. If a new complete line or ACK has
+appeared, currentness changes and the old link **HOLDs** until new
+producer linkage. Foreign session, swapped Self, stale Native, changed
+actor/nonce or incomplete ACK also HOLD. No plugin/Paper stdout mutation,
+new Owner, model, physical Action or auditor relaxation is permitted.
+
+Any future fresh isolated World run must save exact raw failure-time
+source and an explicit predicate classification if BD1b still HOLDs.
+This fix is CPU/offline only until an entirely new actual trial passes
+the unchanged independent I1 auditor. Historic failures cannot be
+reclassified or rewritten.
+
 ### I1 original Paper console prompt / complete-line capture contract
 
 The **first actual independent I1 audit** after a successful single isolated
