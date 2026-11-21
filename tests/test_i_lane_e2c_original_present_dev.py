@@ -68,12 +68,36 @@ def test_source_bound_sense_composite_keeps_original_b_coverage_and_owner(tmp_pa
     assert whole.coverage_inquiry == inquiry
     cpu = prepare_i1_cpu_schema_probe(**_args(case))
     assert cpu.original.source_revision_refs == inquiry.source_revision_refs
+    assert cpu.percept.source == frame.provenance
+    assert cpu.percept.sequence == frame.observation.seq
     assert cpu.schema.options == ()  # no verified action catalogue or target
     assert _files(bridge) == before
     # B never adopts A's SENSE automatically.
     b = bridge.cognitive_work.read_present_cpu(**_args(case, "B"))
     assert len(b.present.three_self.source_revision_refs) == 2
     assert b.present.three_self.scope.self_id == "B"
+
+
+def test_cpu_schema_uses_latest_qualified_sense_body_without_rewriting_login_probe(
+    tmp_path, monkeypatch,
+):
+    case = _configured(tmp_path, monkeypatch, need=True)
+    bridge, world = case[1], case[3]
+    original_probe = bridge.owners["A"].current_worldbody_observation
+    original_food = original_probe.snapshot.food
+    frame = _inject(bridge, world)
+    changed_food = 5.0 if original_food >= 10 else 20.0
+    bridge._sense["A"] = replace(
+        frame, observation=replace(
+            frame.observation,
+            snapshot=replace(frame.observation.snapshot, food=changed_food),
+        ),
+    )
+    cpu = prepare_i1_cpu_schema_probe(**_args(case))
+    assert cpu.percept.hunger == int(changed_food)
+    assert cpu.percept.source == bridge._sense["A"].provenance
+    assert bridge.owners["A"].current_worldbody_observation is original_probe
+    assert bridge.owners["A"].current_worldbody_observation.snapshot.food == original_food
 
 
 def test_composite_refuses_forged_scope_and_changed_revision(tmp_path, monkeypatch):
