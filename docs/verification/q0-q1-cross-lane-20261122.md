@@ -138,3 +138,52 @@ earlier source/Owner anchor remains required.
 
 Q overall: **DEV_ONLY / latest #1076 CI PASS, HOLD on real integrated source evidence /
 QUAL_NO_GO / SCIENCE_NOT_RUN.**
+
+
+## Q1b continuation — exact verified incident / source gate (2026-11-22 JST)
+
+The latest independently read I #1076 exact HEAD at this inspection is
+ca2be4b500436dc25646d3f5511f5f6d7cd1b983. Its exact-head
+[CI #44926065481](https://github.com/rinsakamo/relay-self/actions/runs/44926065481)
+is **5/5 SUCCESS with pytest 2,654 PASS**. The additive PRE_WORLD scanner
+is *not* an executing original real-World runner: S1/S2 real causality and
+trusted checkpoint source continue to HOLD.
+
+Q independently discovered catastrophic intermediate I commit 87d0e68e,
+which dropped 598 of 601 tracked files (156,846 deleted lines). Recovery
+commit ca2be4b5 has **601/601 historical paths restored**, no added/deleted
+paths against prior intact 959264a2, and exactly three changed original
+PRE_WORLD files. The Q JSON evidence for these exact Git trees is
+[q1b-i-pr1076-destructive-head-audit.json](./q1b-i-pr1076-destructive-head-audit.json).
+Do not erase the destructive commit or treat intermediate CI as success.
+
+Q1b added two separate read-only auditors:
+
+- experiments/q_lane_tree_integrity_dev.py: strict additive historical Git
+  file preservation, exact HEAD/ancestor and protected-file mode check.
+- experiments/q_lane_s1_boundary_audit_dev.py: separately provided pre-S2
+  anchor SHA and exact historical S1 WAL+checkpoint bytes, plus S2 WAL append
+  and unchanged S1 Action prefix. Fails on foreign owner/scope, replay,
+  PREPARED, changed S1 history, missing artifacts and forged checksum.
+  **No temporal/origin authentication is inferred from a caller-supplied
+  digest**. Original Stage28 checkpoint decoder and physical WAL owner remain
+  authoritative; full original evidence has not been read by Q.
+
+Q1 original byte-reader was also hardened with O_NOFOLLOW on every path
+component and directory-fd traversal against parent-symlink swap races.
+The hostile tests include swapping a symlink ancestor after a precheck,
+FIFO original evidence, duplicate JSON keys and synchronized WAL+anchor
+tamper that demonstrates false authentication risk.
+
+[Q exact-HEAD run #44926505232](https://github.com/rinsakamo/relay-self/actions/runs/44926505232)
+at code HEAD 19851f42fe34d80f1a3f7bd770e032a9c2965cb4:
+**4/4 SUCCESS, pytest 997 PASS**, lint, repository contracts and Mineflayer
+adapter passed. Main's CI does not include a separate Paper witness job.
+The new Q1b verification is **CPU_OFFLINE_DEV only**.
+
+**Current Q verdict:**
+- CODE/GIT TREE incident: resolved on I head ca2be4b5; no product bypass;
+- Q1/Q1b tests: passed exact HEAD, no real World/Gemma startup;
+- Trusted pre-S2 S1 anchor / authenticated owner continuity: **HOLD**;
+- Real S1→S2 Paper/Native and independent I4a original source: **HOLD**;
+- QUAL_NO_GO / SCIENCE_NOT_RUN.
