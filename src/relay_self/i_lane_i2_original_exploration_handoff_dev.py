@@ -146,7 +146,8 @@ def _digest(material: dict) -> str:
 
 
 def _prepare(*, bridge, boot, world, links, self_id: str,
-             request_id: str) -> I2OriginalGoalHandoff:
+             request_id: str,
+             i2b_read_attached_lane: bool = False) -> I2OriginalGoalHandoff:
     resident = getattr(bridge, "cognitive_work", None)
     if (type(self_id) is not str or self_id not in ("A", "B")
             or not isinstance(resident, ResidentCognitiveWorkOwner)
@@ -161,6 +162,7 @@ def _prepare(*, bridge, boot, world, links, self_id: str,
         probe = prepare_i1_cpu_schema_probe(
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=self_id, i1_require_correlated_sense=True,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         material = _material(bridge, probe, self_id)
         owner = bridge.owners[self_id]
@@ -183,6 +185,7 @@ def _prepare(*, bridge, boot, world, links, self_id: str,
         second = prepare_i1_cpu_schema_probe(
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=self_id, i1_require_correlated_sense=True,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         if _material(bridge, second, self_id) != material:
             raise I2OriginalGoalHold("original B/E source changed during I2 preparation")
@@ -209,17 +212,20 @@ def _prepare(*, bridge, boot, world, links, self_id: str,
         )
 
 
-def prepare_i2_original_goal_handoff(*, bridge, boot, world, links, self_id: str
+def prepare_i2_original_goal_handoff(*, bridge, boot, world, links, self_id: str,
+                                     i2b_read_attached_lane: bool = False
                                      ) -> I2OriginalGoalHandoff:
     """Freeze current original qualified Need/Question/Goal for future L1."""
     return _prepare(
         bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         request_id="i2-original-" + self_id + "-" + uuid.uuid4().hex,
+        i2b_read_attached_lane=i2b_read_attached_lane,
     )
 
 
 def verify_i2_original_goal_handoff(*, bridge, boot, world, links,
-                                    handoff: I2OriginalGoalHandoff) -> None:
+                                    handoff: I2OriginalGoalHandoff,
+                                    i2b_read_attached_lane: bool = False) -> None:
     """Revalidate sources and exact frozen request; never submit a model."""
     if type(handoff) is not I2OriginalGoalHandoff:
         raise I2OriginalGoalHold("original typed I2 handoff required")
@@ -228,6 +234,7 @@ def verify_i2_original_goal_handoff(*, bridge, boot, world, links,
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=handoff.self_id,
             request_id=handoff.bounded_request.request_id,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
     except (RuntimeError, ValueError, KeyError, AttributeError) as exc:
         raise I2OriginalGoalHold("I2 original source changed since freeze") from exc
