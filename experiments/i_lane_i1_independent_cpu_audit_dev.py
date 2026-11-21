@@ -68,7 +68,9 @@ def _paper_prefixes(frozen: bytes) -> dict[str, int]:
     return prefixes
 
 
-def _i1_native_probes(*, evidence: Path, report: dict, sid: str) -> list[MineflayerObservation]:
+def _i1_native_probes(
+    *, evidence: Path, report: dict, sid: str,
+) -> tuple[MineflayerObservation, list[MineflayerObservation]]:
     native_id = report["native_login_evidence"][sid]["native_session_id"]
     file = evidence / f"native-Relay{sid}-{native_id}.jsonl"
     if (
@@ -77,6 +79,8 @@ def _i1_native_probes(*, evidence: Path, report: dict, sid: str) -> list[Minefla
     ):
         raise I1IndependentAuditHold("original I1 Native JSONL integrity mismatch")
     matches = []
+    original_probes = []
+    original_request = report["native_login_evidence"][sid]["observation_ref"]
     previous_seq = -1
     for raw in file.read_bytes().splitlines():
         try:
@@ -87,6 +91,10 @@ def _i1_native_probes(*, evidence: Path, report: dict, sid: str) -> list[Minefla
                 or type(decoded.seq) is not int or decoded.seq <= previous_seq):
             raise I1IndependentAuditHold("foreign/reordered original native sequence")
         previous_seq = decoded.seq
+        if (isinstance(decoded, MineflayerObservation)
+                and decoded.kind == "probe"
+                and decoded.request_id == original_request):
+            original_probes.append(decoded)
         if isinstance(decoded, MineflayerObservation) and (
             decoded.request_id is not None
             and decoded.request_id.startswith("i1-original-sense-")
@@ -96,9 +104,9 @@ def _i1_native_probes(*, evidence: Path, report: dict, sid: str) -> list[Minefla
                     or decoded.snapshot.time is None):
                 raise I1IndependentAuditHold("invalid correlated original I1 Native probe")
             matches.append(decoded)
-    if len(matches) != 2:
-        raise I1IndependentAuditHold("exactly two original I1 probe results required")
-    return matches
+    if len(original_probes) != 1 or len(matches) != 2:
+        raise I1IndependentAuditHold("original login and two I1 probes required")
+    return original_probes[0], matches
 
 
 def _replay_cpu(row: dict, observation: MineflayerObservation, owner, paper_session: str) -> None:
@@ -214,7 +222,8 @@ def _audit_i1_epochs(
     for row in records:
         sid = row["self_id"]
         number = processed[sid]
-        observation = probe_by_id[sid][number]
+        original_probe, i1_probes = probe_by_id[sid]
+        observation = i1_probes[number]
         original = report["owner_worldbody_observations"][sid]
         native = report["native_login_evidence"][sid]
         paper_ref = row["paper_tick_source_ref"]
@@ -227,7 +236,8 @@ def _audit_i1_epochs(
             or row["native_session_id"] != native["native_session_id"]
             or type(row["native_seq"]) is not int
             or row["native_seq"] != observation.seq
-            or row["native_seq"] <= original["seq"]
+            or row["native_seq"] <= original_probe.seq
+            or original["seq"] != original_probe.seq
             or row["native_observation_ref"] != observation.provenance.reference
             or row["sense_revision"] !=
             f"mineflayer:{native['native_session_id']}:{observation.seq}"
@@ -246,7 +256,7 @@ def _audit_i1_epochs(
         refs = row["source_revision_refs"]
         expected_native = (
             f"native:{native['native_session_id']}:{native['observation_ref']}:"
-            f"{original['seq']}:{original['provenance']['reference']}"
+            f"{original_probe.seq}:{original_probe.provenance.reference}"
         )
         expected_paper = (
             f"paper:{paper_session}:{original_boot['paper_boot_id']}:"
