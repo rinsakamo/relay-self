@@ -247,3 +247,49 @@ def test_q1_untrusted_manifest_file_inventory_is_read_only(tmp_path):
     build_untrusted_file_inventory(root, paths)  # may index changed local bytes
     with pytest.raises(QEvidenceHold):
         verify_evidence(root, manifest, pins)
+
+
+def test_q1_nested_original_source_is_read_only(tmp_path):
+    root, manifest, pins = _fixture(tmp_path)
+    path = root / "nested" / "more"
+    path.mkdir(parents=True)
+    (root / "wal.evidence").rename(path / "wal.evidence")
+    entry = next(e for e in manifest["files"] if e["role"] == "wal")
+    entry["path"] = "nested/more/wal.evidence"
+    before = (path / "wal.evidence").read_bytes()
+    assert verify_evidence(root, manifest, pins)["file_count"] == 8
+    assert (path / "wal.evidence").read_bytes() == before
+
+
+def test_q1_parent_symlink_fails_even_if_precheck_is_raced(tmp_path, monkeypatch):
+    root, manifest, pins = _fixture(tmp_path)
+    real = root / "real"
+    real.mkdir()
+    (root / "wal.evidence").rename(real / "wal.evidence")
+    link = root / "substituted-dir"
+    link.symlink_to(real, target_is_directory=True)
+    entry = next(e for e in manifest["files"] if e["role"] == "wal")
+    entry["path"] = "substituted-dir/wal.evidence"
+    # Deliberately model a check/use race: the earlier symlink inspection
+    # is bypassed, but per-ancestor O_NOFOLLOW still rejects the traversal.
+    original = Path.is_symlink
+
+    def missed_symlink(self):
+        return False if self == link else original(self)
+
+    monkeypatch.setattr(Path, "is_symlink", missed_symlink)
+    before = (real / "wal.evidence").read_bytes()
+    with pytest.raises(QEvidenceHold):
+        verify_evidence(root, manifest, pins)
+    assert (real / "wal.evidence").read_bytes() == before
+
+
+def test_q1_rejects_fifo_without_blocking_or_writing(tmp_path):
+    import os
+
+    root, manifest, pins = _fixture(tmp_path)
+    fifo = root / "paper_ack.evidence"
+    fifo.unlink()
+    os.mkfifo(fifo)
+    with pytest.raises(QEvidenceHold):
+        verify_evidence(root, manifest, pins)
