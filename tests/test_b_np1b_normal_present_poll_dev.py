@@ -152,7 +152,8 @@ def test_missing_b_post_rejoin_present_never_qualifies_normal_cpu(rejoined_prese
             bridge=f.bridge, initial_receipts=initial,
             historical_composite=historical,
         )
-    with pytest.raises(ContinuingCompositeHold):
+    # The original Bridge caller normalizes a lower-level B HOLD.
+    with pytest.raises(NormalPresentPollHold):
         f.bridge.bind_normal_rejoin_present_cpu(
             initial_receipts=initial, historical_composite=historical,
         )
