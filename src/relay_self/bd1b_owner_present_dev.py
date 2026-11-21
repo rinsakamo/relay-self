@@ -39,7 +39,8 @@ class BD1bOwnerPresent:
 
 
 def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
-                             i1_complete_paper_prefix: bool = False):
+                             i1_complete_paper_prefix: bool = False,
+                             i1_require_correlated_sense: bool = False):
     """Revalidate the live source and project solely from current owner state."""
     if bridge.cognitive_work is None:
         raise BD1bPresentHold("original resident required")
@@ -59,7 +60,10 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
             f"native:{source.native_session_id}:{source.native_probe_ref}:{source.native_probe_seq}:{source.native_probe_source_ref}",
             f"paper:{source.paper_session_id}:{source.paper_boot_id}:{source.paper_log_sha256}:{source.paper_tick_source_ref}",
         )
-        sense = bridge.current_sense(self_id)
+        sense = (bridge.current_i1_correlated_sense(self_id)
+                 if i1_require_correlated_sense else bridge.current_sense(self_id))
+        if i1_require_correlated_sense and sense is None:
+            raise BD1bPresentHold("I1 exact Native observe reply not current")
         refs = owner_refs
         sense_claims = ()
         if sense is not None:
@@ -131,7 +135,8 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id,
                                     i1_complete_paper_prefix=i1_complete_paper_prefix) != source
                 or bridge.cognitive_work.present_schema(self_id) != schema
                 or owner.current_worldbody_observation is not probe
-                or bridge.current_sense(self_id) is not sense):
+                or (bridge.current_i1_correlated_sense(self_id)
+                    if i1_require_correlated_sense else bridge.current_sense(self_id)) is not sense):
             raise BD1bPresentHold("source changed during projection")
         return BD1bOwnerPresent(source, schema, present,
                                "NO_VERIFIED_ACTION_CATALOG", need,
