@@ -1,0 +1,1066 @@
+"""Minimal Cognitive v0.1 DEV seam: CPU Schema -> numbered L1 -> existing owners.
+
+This module owns no World observation, Goal/Intent ledger, physical Action issuer,
+GPU resource scheduler, or memory store. WorldBody/ActionPort remains authoritative.
+It composes the existing #829/#831/RelayEngine/Intent/Skill/Action contracts.
+"""
+from __future__ import annotations
+
+import json
+import math
+import time
+from dataclasses import dataclass, replace
+from enum import Enum
+from typing import Mapping
+
+from relay_self.action import ActionLifecycle
+from relay_self.common_io import ScopeRef
+from relay_self.intent import IntentCommitment
+from relay_self.provenance import Provenance
+from relay_self.relay_engine import (
+    BoundedChoice,
+    BoundedChoiceRequest,
+    CognitionDatum,
+    DecisionStatus,
+    OpenCognitionRequest,
+    RelayEngineResult,
+)
+from relay_self.skill import SkillExecution
+from relay_self.skill_invocation import (
+    SkillDefinition,
+    SkillInvocation,
+    SkillInvocationRefusal,
+    SkillParameterPreset,
+    SkillTarget,
+    bind_preset_invocation,
+    validate_preset_arguments,
+)
+from relay_self.target_contract import TargetContract
+
+
+class MinimalCognitionError(ValueError):
+    """Invalid source, learned pattern, selected option, or owner state."""
+
+
+class Predicate(str, Enum):
+    HUNGRY = "HUNGRY"
+    ZOMBIE_NEAR = "ZOMBIE_NEAR"
+    FATIGUE_HIGH = "FATIGUE_HIGH"
+    EXPLORE = "EXPLORE"
+    OXYGEN_LOW = "OXYGEN_LOW"
+
+
+class PatternKind(str, Enum):
+    GOAL = "GOAL"
+    CONSTRAINT = "CONSTRAINT"
+
+
+class Origin(str, Enum):
+    INNATE = "INNATE"
+    LEARNED = "LEARNED"
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaPattern:
+    """Same finite, typed CPU matcher for innate and L2-proposed patterns.
+
+    Data only: no model calls, Python source, expression eval, recursion, or IO.
+    """
+    pattern_id: str
+    version: int
+    schema_id: str
+    kind: PatternKind
+    predicate: Predicate
+    goal_id: str | None
+    skill_id: str | None
+    skill_version: int | None
+    target_kind: str | None
+    origin: Origin
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        for name in ("pattern_id", "schema_id"):
+            if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
+                raise MinimalCognitionError(f"{name} missing")
+        if type(self.version) is not int or self.version < 1:
+            raise MinimalCognitionError("invalid pattern version")
+        if not isinstance(self.kind, PatternKind) or not isinstance(self.predicate, Predicate):
+            raise MinimalCognitionError("unsupported CPU pattern/predicate")
+        if not isinstance(self.origin, Origin) or not isinstance(self.provenance, Provenance):
+            raise MinimalCognitionError("unqualified pattern")
+        if self.kind is PatternKind.GOAL:
+            # An intrinsic oxygen Need is a Goal with no learned physical
+            # Skill yet: never invent an Action/Target to resolve it.
+            unbound_oxygen = (
+                self.predicate is Predicate.OXYGEN_LOW
+                and self.skill_id is None
+                and self.skill_version is None
+                and self.target_kind is None
+            )
+            if not isinstance(self.goal_id, str) or not self.goal_id:
+                raise MinimalCognitionError("goal identity missing")
+            if not unbound_oxygen:
+                if not all(isinstance(x, str) and x for x in (
+                    self.skill_id, self.target_kind
+                )):
+                    raise MinimalCognitionError("goal needs bound skill and target kind")
+                if type(self.skill_version) is not int or self.skill_version < 1:
+                    raise MinimalCognitionError("goal needs positive skill version")
+            if self.predicate is Predicate.FATIGUE_HIGH:
+                raise MinimalCognitionError("fatigue is constraint-only in minimal DEV")
+            if self.predicate is Predicate.HUNGRY and self.target_kind != "FOOD":
+                raise MinimalCognitionError("HUNGRY must match FOOD")
+            if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
+                raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
+            if (
+                self.predicate is Predicate.EXPLORE
+                and self.target_kind not in {"DESTINATION", "RELATIVE"}
+            ):
+                raise MinimalCognitionError("EXPLORE requires a typed MOVE Target")
+        elif any(x is not None for x in (
+            self.goal_id, self.skill_id, self.skill_version, self.target_kind
+        )) or self.predicate is not Predicate.FATIGUE_HIGH:
+            raise MinimalCognitionError("invalid goal-less constraint pattern")
+
+
+@dataclass(frozen=True, slots=True)
+class PresetAcceptanceReceipt:
+    """Caller-provided record of Self's choice; not cryptographic authority."""
+
+    self_id: str
+    event_id: str
+    preset_ref: str
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.self_id, str) or not self.self_id.strip()
+                or not isinstance(self.event_id, str) or not self.event_id.strip()
+                or not isinstance(self.preset_ref, str)
+                or not self.preset_ref.startswith("skill-preset:v1@")
+                or not isinstance(self.provenance, Provenance)):
+            raise MinimalCognitionError("invalid Self preset acceptance receipt")
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptedSkillPreset:
+    """One Self-owned published preset, bound to exact Schema pattern revision."""
+
+    pattern_version: int
+    preset: SkillParameterPreset
+    receipt: PresetAcceptanceReceipt
+
+    def __post_init__(self) -> None:
+        if (type(self.pattern_version) is not int or self.pattern_version < 1
+                or not isinstance(self.preset, SkillParameterPreset)
+                or not isinstance(self.receipt, PresetAcceptanceReceipt)
+                or self.receipt.preset_ref != self.preset.preset_ref):
+            raise MinimalCognitionError("unqualified accepted Skill preset")
+
+
+@dataclass(frozen=True, slots=True)
+class PatternRegistry:
+    revision: int
+    patterns: tuple[SchemaPattern, ...]
+    accepted_presets: tuple[AcceptedSkillPreset, ...] = ()
+
+    def __post_init__(self) -> None:
+        if type(self.revision) is not int or self.revision < 0:
+            raise MinimalCognitionError("invalid registry revision")
+        if not isinstance(self.patterns, tuple) or len(self.patterns) > 64:
+            raise MinimalCognitionError("CPU registry is bounded to 64 patterns")
+        if len({(p.pattern_id, p.version) for p in self.patterns}) != len(self.patterns):
+            raise MinimalCognitionError("duplicate pattern version")
+        if any(not isinstance(p, SchemaPattern) for p in self.patterns):
+            raise MinimalCognitionError("invalid CPU pattern")
+        if (type(self.accepted_presets) is not tuple
+                or len(self.accepted_presets) > 64
+                or any(not isinstance(e, AcceptedSkillPreset)
+                       for e in self.accepted_presets)):
+            raise MinimalCognitionError("bounded accepted preset snapshot required")
+        keys = [(e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                for e in self.accepted_presets]
+        events = [(e.receipt.self_id, e.receipt.event_id)
+                  for e in self.accepted_presets]
+        if len(set(keys)) != len(keys) or len(set(events)) != len(events):
+            raise MinimalCognitionError("duplicate accepted preset or owner event")
+        for e in self.accepted_presets:
+            if not any(
+                p.pattern_id == e.preset.pattern_id
+                and p.version == e.pattern_version
+                and p.kind is PatternKind.GOAL
+                for p in self.patterns
+            ):
+                raise MinimalCognitionError("accepted preset lacks exact owning pattern")
+
+
+def initial_patterns() -> PatternRegistry:
+    """Bootstrap primitives; natural motivation still depends on observations."""
+    provenance = Provenance("innate-schema", "cognitive-v0.1")
+    return PatternRegistry(0, (
+        SchemaPattern("hunger-eat", 1, "homeostatic", PatternKind.GOAL,
+                      Predicate.HUNGRY, "HUNGER_RELIEF", "EAT", 1, "FOOD",
+                      Origin.INNATE, provenance),
+        SchemaPattern("defense-attack", 1, "defensive", PatternKind.GOAL,
+                      Predicate.ZOMBIE_NEAR, "DEFEND_SELF", "ATTACK", 1, "ZOMBIE",
+                      Origin.INNATE, provenance),
+        SchemaPattern("body-fatigue", 1, "body", PatternKind.CONSTRAINT,
+                      Predicate.FATIGUE_HIGH, None, None, None, None,
+                      Origin.INNATE, provenance),
+    ))
+
+
+def initial_move_pattern() -> SchemaPattern:
+    """Innate exploration Goal, opt-in until a real MOVE/STOP issuer is qualified.
+
+    Missing destinations still produce an unresolved Goal so L1 may ask L2
+    instead of fabricating coordinates or using S49's old chooser.
+    """
+    return SchemaPattern(
+        "exploration-move", 1, "exploration", PatternKind.GOAL,
+        Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "DESTINATION",
+        Origin.INNATE, Provenance("innate-schema", "cognitive-v0.1"),
+    )
+
+
+def initial_patterns_with_move() -> PatternRegistry:
+    """Opt-in MOVE Schema for read-only target resolution and future admission.
+
+    The caller may observe Goal/Target candidates while physical MOVE remains
+    unqualified. Do not include MOVE in issuer-approved skills until STOP and
+    settling are independently qualified; default registry stays unchanged.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
+
+
+def initial_patterns_with_relative_move() -> PatternRegistry:
+    """Opt-in Stage24a Goal/Skill pair for existing native relative controls.
+
+    Unlike DESTINATION navigation, RELATIVE MOVE means a bounded control
+    pulse only. This data registration never issues an Action or grants
+    physical permission; the original Stage23b issuer remains the sole port.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (
+        SchemaPattern("body-oxygen-need", 1, "homeostatic", PatternKind.GOAL,
+                      Predicate.OXYGEN_LOW, "RESTORE_OXYGEN",
+                      None, None, None, Origin.INNATE,
+                      Provenance("innate-schema", "cognitive-v0.1")),
+        SchemaPattern(
+            "exploration-relative-move", 1, "exploration", PatternKind.GOAL,
+            Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "RELATIVE",
+            Origin.INNATE, Provenance("innate-schema", "stage24a-relative-dev"),
+        ),
+    ))
+
+
+def accept_learned_pattern(
+    registry: PatternRegistry,
+    proposed: SchemaPattern,
+    *,
+    accepted_by_self: bool,
+    expected_revision: int,
+    allowed_skills: frozenset[tuple[str, int]],
+) -> PatternRegistry:
+    """Return candidate atomic snapshot for Self owner publication only.
+
+    This is NOT a Self-acceptance policy: caller must provide actual owner decision.
+    Never creates WorldBody capabilities; old versions remain in prior snapshots.
+    """
+    if not accepted_by_self:
+        raise MinimalCognitionError("L2 proposal is not Self-accepted")
+    if expected_revision != registry.revision:
+        raise MinimalCognitionError("stale registry revision")
+    if proposed.origin is not Origin.LEARNED:
+        raise MinimalCognitionError("only learned patterns may be proposed")
+    if proposed.schema_id not in {"homeostatic", "defensive", "body"}:
+        raise MinimalCognitionError("unknown owning schema")
+    if proposed.kind is PatternKind.GOAL and (
+        proposed.skill_id, proposed.skill_version
+    ) not in allowed_skills:
+        raise MinimalCognitionError("unavailable physical skill capability")
+    if any(p.pattern_id == proposed.pattern_id for p in registry.patterns):
+        raise MinimalCognitionError("pattern ID already registered; retain old versions")
+    return PatternRegistry(registry.revision + 1, registry.patterns + (proposed,),
+                           registry.accepted_presets)
+
+
+def accept_skill_parameter_preset(
+    registry: PatternRegistry,
+    proposed: SkillParameterPreset,
+    *,
+    definition: SkillDefinition,
+    receipt: PresetAcceptanceReceipt,
+    accepted_by_self: bool,
+    expected_revision: int,
+    available_skills: frozenset[tuple[str, int]],
+) -> PatternRegistry:
+    """CAS-publish Self-accepted params; never a physical Action authorization.
+
+    The acceptance receipt is supplied by the existing Self owner. This pure
+    function validates it but cannot authenticate that owner; callers must
+    journal the decision separately and persist the returned revision.
+    """
+    if not isinstance(registry, PatternRegistry) or (
+        type(expected_revision) is not int
+        or expected_revision != registry.revision
+    ):
+        raise MinimalCognitionError("stale Schema preset registry revision")
+    if accepted_by_self is not True:
+        raise MinimalCognitionError("unaccepted L2/Schema preset cannot publish")
+    if (not isinstance(proposed, SkillParameterPreset)
+            or not isinstance(definition, SkillDefinition)
+            or not isinstance(receipt, PresetAcceptanceReceipt)
+            or receipt.preset_ref != proposed.preset_ref):
+        raise MinimalCognitionError("Self receipt and proposed preset differ")
+    matching = [p for p in registry.patterns if p.pattern_id == proposed.pattern_id
+                and p.kind is PatternKind.GOAL]
+    if len(matching) != 1:
+        raise MinimalCognitionError("registered Goal pattern required")
+    pattern = matching[0]
+    if (pattern.skill_id != definition.skill_id
+            or pattern.skill_version != definition.version
+            or proposed.definition_ref != definition.definition_ref
+            or (definition.skill_id, definition.version) not in available_skills):
+        raise MinimalCognitionError("preset does not match registered Skill capability")
+    try:
+        validate_preset_arguments(definition, proposed.arguments)
+    except SkillInvocationRefusal as exc:
+        raise MinimalCognitionError("preset ABI validation failed") from exc
+    key = (receipt.self_id, proposed.pattern_id, proposed.preset_id)
+    found = next((e for e in registry.accepted_presets
+                  if (e.receipt.self_id, e.preset.pattern_id,
+                      e.preset.preset_id) == key), None)
+    if (found is not None and proposed.version != found.preset.version + 1
+            or found is None and proposed.version != 1):
+        raise MinimalCognitionError("preset version must advance by exactly one")
+    if any(e.receipt.self_id == receipt.self_id
+           and e.receipt.event_id == receipt.event_id
+           for e in registry.accepted_presets):
+        raise MinimalCognitionError("replayed Self acceptance event")
+    updated = tuple(e for e in registry.accepted_presets if e is not found) + (
+        AcceptedSkillPreset(pattern.version, proposed, receipt),
+    )
+    return PatternRegistry(registry.revision + 1, registry.patterns, updated)
+
+
+def retire_skill_parameter_preset(
+    registry: PatternRegistry,
+    *, self_id: str, pattern_id: str, preset_id: str,
+    accepted_by_self: bool, expected_revision: int,
+) -> PatternRegistry:
+    """Self can revoke future presentation, never cancel in-flight physical IO."""
+    if (not isinstance(registry, PatternRegistry)
+            or type(expected_revision) is not int
+            or expected_revision != registry.revision
+            or accepted_by_self is not True):
+        raise MinimalCognitionError("stale or unaccepted preset retirement")
+    old = tuple(e for e in registry.accepted_presets
+                if (e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                == (self_id, pattern_id, preset_id))
+    if len(old) != 1:
+        raise MinimalCognitionError("no registered Self preset to retire")
+    return PatternRegistry(
+        registry.revision + 1, registry.patterns,
+        tuple(e for e in registry.accepted_presets if e not in old),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class Target:
+    ref: str
+    kind: str
+    provenance: Provenance
+    world_session_id: str
+    observed_sequence: int
+    live: bool = True
+    arrival_contract: TargetContract | None = None
+
+    def __post_init__(self) -> None:
+        if not self.ref or not self.kind or not self.world_session_id:
+            raise MinimalCognitionError("target identity missing")
+        if type(self.observed_sequence) is not int or self.observed_sequence < 0:
+            raise MinimalCognitionError("invalid target sequence")
+        if not isinstance(self.provenance, Provenance) or type(self.live) is not bool:
+            raise MinimalCognitionError("invalid target evidence")
+        if self.arrival_contract is not None and (
+            not isinstance(self.arrival_contract, TargetContract)
+            or self.arrival_contract.target_ref != self.ref
+            or self.arrival_contract.provenance != self.provenance
+            or self.arrival_contract.scope.world_session_id != self.world_session_id
+            or self.arrival_contract.bound_seq > self.observed_sequence
+        ):
+            raise MinimalCognitionError("foreign or future target arrival contract")
+
+
+@dataclass(frozen=True, slots=True)
+class WorldPercept:
+    scope: ScopeRef
+    source: Provenance
+    sequence: int
+    hunger: int | None
+    fatigue_high: bool | None
+    targets: tuple[Target, ...]
+    threat_cue: bool = False
+    exploration_need: bool = False
+    oxygen_reserve: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
+            raise MinimalCognitionError("source-qualified World session required")
+        if type(self.sequence) is not int or self.sequence < 0:
+            raise MinimalCognitionError("invalid Percept sequence")
+        if self.hunger is not None and (
+            type(self.hunger) is not int or not 0 <= self.hunger <= 20
+        ):
+            raise MinimalCognitionError("invalid observed hunger")
+        if self.fatigue_high is not None and type(self.fatigue_high) is not bool:
+            raise MinimalCognitionError("invalid fatigue")
+        if type(self.threat_cue) is not bool or type(self.exploration_need) is not bool:
+            raise MinimalCognitionError("invalid threat/exploration cue")
+        if self.oxygen_reserve is not None and (
+            isinstance(self.oxygen_reserve, bool)
+            or not isinstance(self.oxygen_reserve, (int, float))
+            or not math.isfinite(self.oxygen_reserve)
+            or self.oxygen_reserve < 0
+        ):
+            raise MinimalCognitionError("invalid observed oxygen reserve")
+        if not isinstance(self.targets, tuple) or len(self.targets) > 16:
+            raise MinimalCognitionError("at most 16 source-qualified targets")
+        if len({t.ref for t in self.targets}) != len(self.targets):
+            raise MinimalCognitionError("duplicate target identity")
+        if any(
+            not isinstance(t, Target)
+            or t.world_session_id != self.scope.world_session_id
+            or t.observed_sequence > self.sequence
+            or (t.arrival_contract is not None and (
+                t.kind != "DESTINATION"
+                or t.arrival_contract.scope != self.scope
+                or t.arrival_contract.bound_seq > self.sequence
+            ))
+            for t in self.targets
+        ):
+            raise MinimalCognitionError("foreign/future/unqualified target contract")
+
+
+@dataclass(frozen=True, slots=True)
+class Goal:
+    goal_id: str
+    schema_id: str
+    skill_id: str
+    skill_version: int
+    strength: str
+    unresolved: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Option:
+    goal_id: str
+    skill_id: str
+    skill_version: int
+    target_ref: str
+    target_kind: str
+    schema_id: str
+    pattern_id: str
+    arrival_contract: TargetContract | None = None
+    invocation: SkillInvocation | None = None
+    target_source_family: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.target_source_family is not None and (
+            not isinstance(self.target_source_family, str)
+            or not self.target_source_family.strip()
+        ):
+            raise MinimalCognitionError("invalid target source family")
+        if self.invocation is not None and (
+            not isinstance(self.invocation, SkillInvocation)
+            or self.invocation.goal_id != self.goal_id
+            or self.invocation.skill_id != self.skill_id
+            or self.invocation.skill_version != self.skill_version
+            or self.invocation.target.ref != self.target_ref
+            or self.invocation.target.kind != self.target_kind
+            or self.invocation.target.contract != self.arrival_contract
+            or self.invocation.parameter_preset_ref is None
+        ):
+            raise MinimalCognitionError(
+                "L1 Option must contain the exact completed, preset-bound invocation"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class ConstraintSensation:
+    schema_id: str
+    sensation: str
+    epistemic_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaFrame:
+    scope: ScopeRef
+    epoch: int
+    source: Provenance
+    registry_revision: int
+    goals: tuple[Goal, ...]
+    options: tuple[Option, ...]
+    constraints: tuple[ConstraintSensation, ...]
+    fast_cues: tuple[str, ...]
+    pattern_checks: int
+    elapsed_ns: int
+    # Full currently eligible membership, distinct from bounded L1 presentation.
+    # None keeps original legacy exact-options-only revalidation behavior.
+    eligible_options: tuple[Option, ...] | None = None
+
+
+def _registered_preset_shortlist(
+    eligible: tuple[Option, ...],
+    goals: tuple[Goal, ...],
+    *,
+    epoch: int,
+    fast_crisis: bool,
+    max_choices: int = 8,
+) -> tuple[Option, ...]:
+    """CPU-only bounded presentation; independent from current eligibility.
+
+    A source-qualified emergency can suppress exploration. Otherwise reserve
+    one exploration exposure while rotating Goal/Target/Preset opportunities.
+    This only chooses which options SystemOne can see; it never chooses an
+    Intent or grants native Actions.
+    """
+    allowed = tuple(o for o in eligible if
+                    not fast_crisis or o.schema_id != "exploration")
+    urgency = {g.goal_id: g.strength == "URGENT" for g in goals}
+    groups: dict[tuple[str, str, str, int], list[Option]] = {}
+    for option in allowed:
+        key = (option.goal_id, option.schema_id,
+               option.skill_id, option.skill_version)
+        groups.setdefault(key, []).append(option)
+
+    def rotate(xs: list, turn: int) -> list:
+        if not xs:
+            return []
+        k = turn % len(xs)
+        return xs[k:] + xs[:k]
+
+    def ordered_group(key: tuple[str, str, str, int]) -> list[Option]:
+        by_target: dict[str, list[Option]] = {}
+        for o in groups[key]:
+            by_target.setdefault(o.target_ref, []).append(o)
+        targets = rotate(sorted(by_target), epoch)
+        # Two Presets per Goal+Target maximum per epoch, without fixing one
+        # winner forever. A target cannot use all eight slots by itself.
+        streams = [rotate(sorted(by_target[t], key=lambda x:
+                                 x.invocation.parameter_preset_ref
+                                 if x.invocation else ""), epoch)[:2]
+                   for t in targets]
+        return [item for j in range(2) for stream in streams
+                for item in stream[j:j + 1]]
+
+    urgent_keys = sorted(k for k in groups if urgency.get(k[0], False))
+    active_keys = sorted(k for k in groups if not urgency.get(k[0], False))
+    urgent_keys = rotate(urgent_keys, (epoch - 1) * max_choices)
+    active_keys = rotate(active_keys, (epoch - 1) * max_choices)
+
+    shown: list[Option] = []
+    reserve = None
+    if not fast_crisis:
+        exploratory = [k for k in active_keys if k[1] == "exploration"]
+        if exploratory:
+            reserve = ordered_group(exploratory[epoch % len(exploratory)])[0]
+    if reserve is not None:
+        shown.append(reserve)
+
+    # Distinct Goals get first exposure before repeated alternatives; when
+    # urgent overload occurs, no low-priority candidate steals a slot apart
+    # from the explicitly reserved non-crisis exploration opportunity.
+    for keys in (urgent_keys, active_keys):
+        streams = [ordered_group(k) for k in keys]
+        for depth in range(max((len(x) for x in streams), default=0)):
+            for stream in streams:
+                if len(shown) == max_choices:
+                    return tuple(shown)
+                if depth < len(stream) and stream[depth] not in shown:
+                    shown.append(stream[depth])
+    return tuple(shown)
+
+
+def bind_registered_skill_invocations(
+    frame: SchemaFrame,
+    registry: PatternRegistry,
+    *,
+    definitions: Mapping[tuple[str, int], SkillDefinition],
+    fast_crisis: bool,
+) -> SchemaFrame:
+    """Expand only Self-adopted Presets; prune *presentation*, not eligibility."""
+    if frame.registry_revision != registry.revision:
+        raise MinimalCognitionError("stale accepted Schema registry")
+    by_pattern = {p.pattern_id: p for p in registry.patterns}
+    eligible: list[Option] = []
+    for o in frame.options:
+        p = by_pattern.get(o.pattern_id)
+        if p is None or (p.goal_id, p.skill_id, p.skill_version,
+                         p.target_kind, p.schema_id) != (
+                o.goal_id, o.skill_id, o.skill_version,
+                o.target_kind, o.schema_id):
+            raise MinimalCognitionError("Option not registered in Schema")
+        definition = definitions.get((o.skill_id, o.skill_version))
+        if definition is None:
+            continue
+        for entry in registry.accepted_presets:
+            if (entry.receipt.self_id != frame.scope.self_id
+                    or entry.preset.pattern_id != o.pattern_id
+                    or entry.pattern_version != p.version):
+                continue
+            try:
+                bound = bind_preset_invocation(
+                    definition, entry.preset, scope=frame.scope,
+                    goal_id=o.goal_id,
+                    target=SkillTarget(o.target_ref, o.target_kind,
+                                       o.arrival_contract),
+                    # Stable definition/preset source; live Percept seq is a
+                    # separate observation and necessarily changes at recheck.
+                    provenance=entry.preset.provenance,
+                )
+            except SkillInvocationRefusal as exc:
+                raise MinimalCognitionError("accepted preset binding changed") from exc
+            eligible.append(replace(
+                o, invocation=bound,
+                target_source_family=frame.source.source,
+            ))
+    if len(eligible) > 1024:
+        raise MinimalCognitionError("registered candidate expansion exceeded bound")
+    current_eligible = tuple(o for o in eligible if
+                             not fast_crisis or o.schema_id != "exploration")
+    shortlisted = _registered_preset_shortlist(
+        current_eligible, frame.goals, epoch=frame.epoch,
+        fast_crisis=fast_crisis,
+    )
+    active = {(o.goal_id, o.skill_id, o.skill_version)
+              for o in current_eligible}
+    return replace(
+        frame, options=shortlisted, eligible_options=current_eligible,
+        goals=tuple(replace(g, unresolved=True) if
+                    (g.goal_id, g.skill_id, g.skill_version) not in active
+                    else g for g in frame.goals),
+    )
+
+
+def bind_frame_skill_invocations(
+    frame: SchemaFrame,
+    registry: PatternRegistry,
+    *,
+    definitions: Mapping[tuple[str, int], SkillDefinition],
+    presets: Mapping[str, SkillParameterPreset],
+) -> SchemaFrame:
+    """CPU-only Schema-to-L1 admission: bind, don't ask SystemOne to invent.
+
+    Missing definitions/presets leave the Need/Goal unresolved, never a
+    parameterless executable Option. An already-proposed L2 preset cannot
+    participate until the Self-owned caller places it in the accepted map.
+    """
+    if frame.registry_revision != registry.revision:
+        raise MinimalCognitionError("stale Schema registry for parameter binding")
+    patterns = {(p.pattern_id, p.version): p for p in registry.patterns}
+    if len(patterns) != len(registry.patterns):
+        raise MinimalCognitionError("ambiguous registered CPU patterns")
+    eligible: list[Option] = []
+    for option in frame.options:
+        pattern = next((
+            p for p in registry.patterns
+            if p.pattern_id == option.pattern_id
+            and p.kind is PatternKind.GOAL
+            and p.goal_id == option.goal_id
+            and p.skill_id == option.skill_id
+            and p.skill_version == option.skill_version
+            and p.target_kind == option.target_kind
+            and p.schema_id == option.schema_id
+        ), None)
+        if pattern is None:
+            raise MinimalCognitionError("Option does not match current Schema pattern")
+        definition = definitions.get((option.skill_id, option.skill_version))
+        preset = presets.get(option.pattern_id)
+        if definition is None or preset is None:
+            continue
+        if preset.pattern_id != option.pattern_id:
+            raise MinimalCognitionError("foreign parameter preset pattern binding")
+        try:
+            invocation = bind_preset_invocation(
+                definition, preset, scope=frame.scope,
+                goal_id=option.goal_id,
+                target=SkillTarget(
+                    option.target_ref, option.target_kind, option.arrival_contract,
+                ),
+                provenance=frame.source,
+            )
+        except SkillInvocationRefusal as exc:
+            raise MinimalCognitionError("invalid registered Skill parameter binding") from exc
+        eligible.append(replace(option, invocation=invocation))
+    active = {(o.goal_id, o.skill_id, o.skill_version) for o in eligible}
+    return replace(
+        frame,
+        options=tuple(eligible),
+        goals=tuple(replace(g, unresolved=True) if
+                    (g.goal_id, g.skill_id, g.skill_version) not in active
+                    else g for g in frame.goals),
+    )
+
+
+def cpu_schema_epoch(
+    percept: WorldPercept,
+    registry: PatternRegistry,
+    *,
+    allowed_skills: frozenset[tuple[str, int]],
+    epoch: int,
+    hunger_threshold: float = 17,
+    oxygen_need_threshold: float = 10,
+    oxygen_urgent_threshold: float = 3,
+    skill_definitions: Mapping[tuple[str, int], SkillDefinition] | None = None,
+    parameter_presets: Mapping[str, SkillParameterPreset] | None = None,
+    use_registered_presets: bool = False,
+    fast_crisis: bool = False,
+) -> SchemaFrame:
+    """Synchronous finite CPU-only step; caller controls event-loop cadence.
+
+    No LLM/backend/Memory access. Source Percept comes from the existing gateway.
+    """
+    t0 = time.perf_counter_ns()
+    if type(epoch) is not int or epoch < 0:
+        raise MinimalCognitionError("invalid epoch")
+    if type(use_registered_presets) is not bool or type(fast_crisis) is not bool:
+        raise MinimalCognitionError("registered Preset and FAST crisis flags must be bool")
+    if use_registered_presets and (
+        skill_definitions is None or parameter_presets is not None
+    ):
+        raise MinimalCognitionError(
+            "Self-registered mode requires definitions, not external preset map"
+        )
+    if (isinstance(hunger_threshold, bool)
+            or not isinstance(hunger_threshold, (int, float))
+            or not 0 <= hunger_threshold <= 20):
+        raise MinimalCognitionError("invalid hunger threshold")
+    if (
+        any(type(x) not in (int, float) or not math.isfinite(x)
+            for x in (oxygen_need_threshold, oxygen_urgent_threshold))
+        or not 0 <= oxygen_urgent_threshold <= oxygen_need_threshold
+    ):
+        raise MinimalCognitionError("invalid oxygen Need thresholds")
+    goals: list[Goal] = []
+    options: list[Option] = []
+    constraints: list[ConstraintSensation] = []
+    checks = 0
+    threats = tuple(t for t in percept.targets if t.kind == "ZOMBIE" and t.live)
+    threat_present = bool(threats) or percept.threat_cue
+    for pattern in registry.patterns:
+        checks += 1
+        triggered = (
+            pattern.predicate is Predicate.HUNGRY
+            and percept.hunger is not None and percept.hunger <= hunger_threshold
+        ) or (
+            pattern.predicate is Predicate.ZOMBIE_NEAR and threat_present
+        ) or (
+            pattern.predicate is Predicate.FATIGUE_HIGH
+            and percept.fatigue_high is True
+        ) or (
+            pattern.predicate is Predicate.EXPLORE
+            and percept.exploration_need is True
+        ) or (
+            pattern.predicate is Predicate.OXYGEN_LOW
+            and percept.oxygen_reserve is not None
+            and percept.oxygen_reserve <= oxygen_need_threshold
+        )
+        if not triggered:
+            continue
+        if pattern.kind is PatternKind.CONSTRAINT:
+            constraints.append(ConstraintSensation(
+                pattern.schema_id, "FATIGUE_LIMIT", "INFERRED"
+            ))
+            continue
+        matching = tuple(t for t in percept.targets if t.live and
+                         t.kind == pattern.target_kind)
+        available = (
+            pattern.skill_id is not None
+            and (pattern.skill_id, pattern.skill_version) in allowed_skills
+        )
+        oxygen_urgent = (
+            pattern.predicate is Predicate.OXYGEN_LOW
+            and percept.oxygen_reserve is not None
+            and percept.oxygen_reserve <= oxygen_urgent_threshold
+        )
+        goals.append(Goal(pattern.goal_id or "", pattern.schema_id,
+                          pattern.skill_id or "", pattern.skill_version or 0,
+                          "URGENT" if (
+                              pattern.predicate is Predicate.ZOMBIE_NEAR
+                              or oxygen_urgent
+                          ) else "ACTIVE", not (matching and available)))
+        if available:
+            for t in matching:
+                checks += 1
+                if len(options) >= 8 and not use_registered_presets:
+                    break
+                if t.arrival_contract is not None and (
+                    t.kind != "DESTINATION"
+                    or pattern.skill_id != "MOVE"
+                    or t.arrival_contract.goal_id != pattern.goal_id
+                ):
+                    # Reject mismatched Goal/Target semantics rather than
+                    # laundering a foreign acceptance condition into L1.
+                    raise MinimalCognitionError("Goal and Target contract disagree")
+                options.append(Option(
+                    pattern.goal_id or "", pattern.skill_id or "",
+                    pattern.skill_version or 0, t.ref, t.kind,
+                    pattern.schema_id, pattern.pattern_id,
+                    t.arrival_contract,
+                ))
+    frame = SchemaFrame(
+        percept.scope, epoch, percept.source, registry.revision,
+        tuple(goals), tuple(options), tuple(constraints),
+        tuple(
+            cue for cue, active in (
+                ("ZOMBIE_NEAR", bool(threats)),
+                ("OXYGEN_LOW", percept.oxygen_reserve is not None
+                 and percept.oxygen_reserve <= oxygen_urgent_threshold),
+            ) if active
+        ), checks,
+        time.perf_counter_ns() - t0,
+    )
+    if use_registered_presets:
+        return bind_registered_skill_invocations(
+            frame, registry, definitions=skill_definitions,
+            fast_crisis=fast_crisis,
+        )
+    if (skill_definitions is None) != (parameter_presets is None):
+        raise MinimalCognitionError("definition and accepted preset maps must be paired")
+    if skill_definitions is not None and parameter_presets is not None:
+        return bind_frame_skill_invocations(
+            frame, registry, definitions=skill_definitions,
+            presets=parameter_presets,
+        )
+    return frame
+
+
+@dataclass(frozen=True, slots=True)
+class L1Round:
+    frame: SchemaFrame
+    request: BoundedChoiceRequest
+    numbered: tuple[tuple[str, Option | str], ...]
+
+
+def assemble_l1_select(
+    frame: SchemaFrame,
+    *,
+    intent_owner: IntentCommitment,
+    recent_3self: tuple[str, ...] = (),
+    max_context_chars: int = 4096,
+) -> L1Round:
+    """Bounded numbered concrete options; no mandatory Memory retrieval."""
+    if not isinstance(intent_owner, IntentCommitment) or len(recent_3self) > 3:
+        raise MinimalCognitionError("invalid current Owner / Recent3SelfView")
+    if type(max_context_chars) is not int or max_context_chars < 256:
+        raise MinimalCognitionError("invalid context bound")
+    entries: list[Option | str] = list(frame.options)
+    entries.extend(("ESCALATE_L2", "DEFER"))
+    numbered = tuple((str(i), e) for i, e in enumerate(entries, 1))
+    active = intent_owner.current_intent
+    summary = {
+        "goals": [{"id":g.goal_id, "strength":g.strength,
+                   "skill":None if not g.skill_id else f"{g.skill_id}@{g.skill_version}",
+                   "unresolved":g.unresolved} for g in frame.goals],
+        "constraints": [{"schema":c.schema_id, "sense":c.sensation,
+                         "status":c.epistemic_status} for c in frame.constraints],
+        "fast_cues": list(frame.fast_cues),
+        "live_intent": None if active is None else active.intent_id,
+        "recent_3self": list(recent_3self),
+    }
+    datum = CognitionDatum.from_value("schema_current_and_recent", summary, frame.source)
+    if len(datum.value_json) > max_context_chars:
+        raise MinimalCognitionError("L1 CURRENT context exceeds bound")
+    choices = []
+    for choice_id, entry in numbered:
+        if isinstance(entry, str):
+            desc = entry
+        else:
+            desc = (f"{entry.goal_id}: {entry.skill_id}@{entry.skill_version}"
+                    f"({entry.target_ref}) [schema={entry.schema_id}]")
+            if entry.invocation is not None:
+                inv = entry.invocation
+                desc += (
+                    f" [preset={inv.parameter_preset_ref},"
+                    f" budget_actions={inv.budget.max_actions},"
+                    f" budget_ms={inv.budget.max_duration_ms}]"
+                )
+            if entry.arrival_contract is not None:
+                c = entry.arrival_contract
+                req = c.condition
+                desc += (
+                    f" [target={c.kind.value},"
+                    f" horizontal={req.min_horizontal_m:g}..{req.max_horizontal_m:g}m,"
+                    f" max_y_error={req.max_vertical_error_m:g}m,"
+                    f" still_ticks={req.still_ticks},"
+                    f" condition_ref={c.contract_ref}]"
+                )
+        choices.append(BoundedChoice(choice_id, desc))
+    request = BoundedChoiceRequest(
+        request_id=f"schema-l1-{frame.scope.self_id}-{frame.epoch}",
+        instruction=("Select exactly one numbered choice from CURRENT. "
+                     "Defend if threatened when justified; do not invent targets. "
+                     "Choose ESCALATE_L2 for unresolved needs with no usable target. "
+                     "Return only a bounded choice ID."),
+        intent_id=None if active is None else active.intent_id,
+        focus="GOAL_SKILL_TARGET",
+        choices=tuple(choices),
+        context=(datum,),
+        think_allowed=False,
+    )
+    return L1Round(frame, request, numbered)
+
+
+@dataclass(frozen=True, slots=True)
+class Selection:
+    status: str
+    option: Option | None
+    reason: str
+    world_scope: ScopeRef | None = None
+
+
+def resolve_l1_choice(
+    round_: L1Round,
+    result: RelayEngineResult,
+    *,
+    current_frame: SchemaFrame,
+    intent_owner: IntentCommitment,
+    available_skills: frozenset[tuple[str, int]],
+) -> Selection:
+    """Recheck only chosen dependencies, not unrelated global epoch/observations.
+
+    This is NOT a native Action grant; WorldBody must still refuse unqualified
+    targets or BUSY/unsupported operations at actual issuance.
+    """
+    if result.status is not DecisionStatus.RESOLVED or result.choice_id is None:
+        return Selection("RECONSIDER", None, "L1 unresolved")
+    chosen = dict(round_.numbered).get(result.choice_id)
+    if chosen is None:
+        return Selection("REJECTED", None, "unknown numbered L1 choice")
+    if chosen == "ESCALATE_L2":
+        return Selection("ESCALATE_L2", None, "L1 requested cognitive escalation")
+    if chosen == "DEFER":
+        return Selection("DEFER", None, "L1 deferred")
+    assert isinstance(chosen, Option)
+    if round_.frame.scope != current_frame.scope:
+        return Selection("REJECTED", None, "World/Self session changed")
+    if (chosen.skill_id, chosen.skill_version) not in available_skills:
+        return Selection("REJECTED", None, "Skill version unavailable")
+    eligible = (current_frame.options if current_frame.eligible_options is None
+                else current_frame.eligible_options)
+    if chosen not in eligible:
+        return Selection("REJECTED", None, "Goal/Target/Skill dependencies stale")
+    if intent_owner.current_intent is not None:
+        return Selection("DEFER", None, "legacy single CurrentIntent is busy")
+    return Selection("READY", chosen, "current selected dependencies", current_frame.scope)
+
+
+@dataclass(frozen=True, slots=True)
+class OwnerProposal:
+    intent_id: str
+    skill: SkillExecution
+    action: ActionLifecycle
+    option: Option
+    world_scope: ScopeRef
+
+
+def prepare_existing_owner_action(
+    selection: Selection,
+    *,
+    intent_owner: IntentCommitment,
+    intent_id: str,
+    skill_run_id: str,
+    action_id: str,
+    at_ns: int,
+    provenance: Provenance,
+) -> OwnerProposal:
+    """Reuse actual owner lifecycle and create PROPOSED only, never issue.
+
+    The existing S49/ActionPort must authorize and issue this grounded proposal
+    with native capability/currentness/session/target checks before World effect.
+    """
+    if (selection.status != "READY" or selection.option is None
+            or selection.world_scope is None):
+        raise MinimalCognitionError("only scoped READY selections may start Skill")
+    if intent_owner.current_intent is not None:
+        raise MinimalCognitionError("legacy Intent owner busy")
+    option = selection.option
+    intent_owner.commit(intent_id, objective=option.goal_id,
+                        at_ns=at_ns, provenance=provenance)
+    skill = SkillExecution.start(skill_run_id, skill_id=option.skill_id,
+                                 intent_commitment=intent_owner, at_ns=at_ns,
+                                 provenance=provenance)
+    action = ActionLifecycle.propose(action_id, skill_execution=skill,
+                                     intent_commitment=intent_owner, at_ns=at_ns,
+                                     provenance=provenance)
+    return OwnerProposal(intent_id, skill, action, option, selection.world_scope)
+
+
+def prepare_l2_pattern_request(frame: SchemaFrame) -> OpenCognitionRequest:
+    """Optional one-shot SystemTwo question; no generation inside CPU Schema.
+
+    This is only a proposal. No target is invented and no CPU rule is installed.
+    """
+    unresolved = [g.goal_id for g in frame.goals if g.unresolved]
+    if not unresolved:
+        raise MinimalCognitionError("no unresolved Goal for L2")
+    context = CognitionDatum.from_value(
+        "unresolved_goals",
+        {"goals": unresolved, "constraints": [
+            {"schema": c.schema_id, "sensation": c.sensation}
+            for c in frame.constraints
+        ], "world_session": frame.scope.world_session_id},
+        frame.source,
+    )
+    return OpenCognitionRequest(
+        request_id=f"schema-l2-{frame.scope.self_id}-{frame.epoch}",
+        instruction=(
+            "Propose one HYPOTHETICAL learned CPU SchemaPattern as a JSON object "
+            "with exactly keys pattern_id, version, schema_id, kind, predicate, "
+            "goal_id, skill_id, skill_version, target_kind. "
+            "Allowed predicate values: HUNGRY, ZOMBIE_NEAR, FATIGUE_HIGH. "
+            "Only GOAL or CONSTRAINT kinds, no code, expressions, loops, or new "
+            "physical capability. Existing known Skill must be checked by Self. "
+            "Do not pretend an unobserved Target exists. "
+            "The suggestion will NOT be executed without Self acceptance."
+        ),
+        intent_id=None,
+        focus="SCHEMA_PATTERN_PROPOSAL",
+        context=(context,),
+    )
+
+
+def parse_l2_pattern_proposal(
+    expression_text: str,
+    *,
+    model_provenance: Provenance,
+) -> SchemaPattern:
+    """Strict data parser for L2 output, using the *innate* SchemaPattern type."""
+    if not isinstance(expression_text, str) or len(expression_text) > 4096:
+        raise MinimalCognitionError("L2 proposal exceeds bounded text size")
+    try:
+        obj = json.loads(expression_text)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise MinimalCognitionError("L2 output is not JSON") from exc
+    keys = {"pattern_id", "version", "schema_id", "kind", "predicate",
+            "goal_id", "skill_id", "skill_version", "target_kind"}
+    if not isinstance(obj, dict) or set(obj) != keys:
+        raise MinimalCognitionError("L2 pattern fields do not match innate format")
+    try:
+        return SchemaPattern(
+            pattern_id=obj["pattern_id"],
+            version=obj["version"],
+            schema_id=obj["schema_id"],
+            kind=PatternKind(obj["kind"]),
+            predicate=Predicate(obj["predicate"]),
+            goal_id=obj["goal_id"],
+            skill_id=obj["skill_id"],
+            skill_version=obj["skill_version"],
+            target_kind=obj["target_kind"],
+            origin=Origin.LEARNED,
+            provenance=model_provenance,
+        )
+    except (ValueError, TypeError, KeyError) as exc:
+        raise MinimalCognitionError("invalid learned CPU pattern") from exc

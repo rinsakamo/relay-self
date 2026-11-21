@@ -1,0 +1,81 @@
+name: Work item
+description: Propose or track a bounded RelaySelf change, investigation, or qualification.
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What current problem, gap, or question should this Issue own?
+      placeholder: Describe the current problem or remaining work.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: work_class
+    attributes:
+      label: Work class
+      description: Choose the closest current class. This is planning metadata, not semantic authority.
+      options:
+        - Semantic change
+        - Behavior-preserving change
+        - Documentation / authority
+        - Research / simulation / evaluation
+        - External or physical qualification
+        - Repository / tooling
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence_status
+    attributes:
+      label: Evidence / status
+      description: Separate hypotheses, simulation results, implementation facts, and planning proposals. Link current evidence when available.
+      placeholder: "Example: Hypothesis — no implementation or simulation result yet."
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What bounded responsibility should this Issue own?
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What materially related work is explicitly outside this Issue?
+    validations:
+      required: true
+
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority / boundary impact
+      description: Which ontology, architecture, runtime principle, contract, or external boundary may be affected? Write "unknown" if ownership is genuinely unresolved.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What evidence would justify completion or closure?
+      placeholder: Prefer observable or testable conditions over implementation prescriptions.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: discipline
+    attributes:
+      label: Discipline check
+      options:
+        - label: I have separated current facts from hypotheses, future design, and historical evidence.
+          required: true
+        - label: I have searched for existing Issues or authority that already owns this responsibility.
+          required: true
