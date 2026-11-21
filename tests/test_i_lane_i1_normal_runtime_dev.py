@@ -6,7 +6,6 @@ from dataclasses import replace
 import pytest
 
 from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
-from relay_self.innate_schema import SchemaSnapshot
 from relay_self.i_lane_i1_normal_runtime_dev import (
     I1NormalRuntimeHold,
     install_i1_original_schema_bootstrap,
@@ -14,6 +13,7 @@ from relay_self.i_lane_i1_normal_runtime_dev import (
     read_i1_original_cpu_epoch,
     sample_i1_original_cpu_epochs,
 )
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkError,
     ResidentCognitiveWorkOwner,
