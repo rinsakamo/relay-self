@@ -167,7 +167,7 @@ def _submit_again(case, lane, handoff):
 @pytest.mark.parametrize("fault", [
     "foreign-ticket", "other-backend", "foreign-request",
     "altered-context", "retired", "new-source", "registry",
-    "paper-growth", "passive-source", "physical-open",
+    "paper-growth", "passive-source", "physical-open", "rejoin-epoch",
 ])
 def test_i2b_result_rejects_foreign_or_changed_live_sources(
     tmp_path, monkeypatch, fault,
@@ -202,6 +202,8 @@ def test_i2b_result_rejects_foreign_or_changed_live_sources(
         elif fault == "paper-growth":
             with bridge.paper._log_path.open("ab") as f:
                 f.write(b"new complete Paper line\n")
+        elif fault == "rejoin-epoch":
+            bridge.cognitive_work._states["A"].epoch += 1
         elif fault == "passive-source":
             # Only a matched probe may be consumed; newer passive SENSE may
             # exist but cannot be substituted for the frozen correlated one.
@@ -297,4 +299,24 @@ def test_i2b_timeout_never_resubmits_or_adopts(
             _submit_again(case, lane, h)
     finally:
         release.set()
+        lane._pool.shutdown(wait=True)
+
+
+def test_i2b_explicit_attached_read_preserves_original_cpu_only_gate(
+    tmp_path, monkeypatch,
+):
+    case, lane = _fixture(tmp_path, monkeypatch)
+    try:
+        _prepared(case, lane)
+        # The original I2/I1 CPU entry still rejects GPU attachment unless
+        # the caller explicitly qualifies the original attached-lane read.
+        with pytest.raises(RuntimeError):
+            prepare_i2_original_goal_handoff(**_args(case, "A"))
+        current = prepare_i2_original_goal_handoff(
+            **_args(case, "A"), i2b_read_attached_lane=True,
+        )
+        assert current.status == "EXPLORATION_GOAL_UNRESOLVED_TARGET"
+        assert not current.model_invoked
+        assert case[1].physical.active_action_ids == ()
+    finally:
         lane._pool.shutdown(wait=True)
