@@ -106,18 +106,28 @@ def independently_audit_recovered_real_rejoin(
     result_path: Path, *, generation: Path, restored: Path,
     stage28b_evidence: Path, executable: Path,
     expected_gemma_posts: int = 0,
+    expected_i1_cpu_sense: bool = False,
 ) -> dict:
     """Audit frozen stdout/probes/WAL, *not* only success summary booleans."""
     path = Path(result_path)
     report = json.loads(path.read_bytes())
     evidence = path.parent
     expected = (
-        "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if expected_i1_cpu_sense
+        else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
     )
     if (
         report.get("schema") != 1
         or report.get("classification") != expected
         or report.get("independent_audit_pass") is not False
+        or type(expected_i1_cpu_sense) is not bool
+        or report.get("i1_original_cpu_sense_enabled", False)
+        is not expected_i1_cpu_sense
+        or (expected_i1_cpu_sense and (
+            report.get("i1_normal_continuous_native_observed") is not True
+            or type(report.get("i1_cpu_epochs")) is not dict
+        ))
         or report.get("original_world_uuid") != _SOURCE_WORLD
         or report.get("original_committed_sha256") != _SOURCE_COMMITTED_SHA
         or report.get("fork_branch_id") != _FORK_BRANCH
@@ -347,7 +357,11 @@ def independently_audit_recovered_real_rejoin(
             ref=ref, tick=tick, paper_stdout=raw_paper,
         )
     return {
-        "classification": "REAL_RESTORED_WORLD_ORIGINAL_A_B_NATIVE_REJOIN_WORLDBODY_DEV",
+        "classification": (
+            "I1_BASE_ORIGINAL_NATIVE_PAPER_A_B_SOURCE_VERIFIED_DEV"
+            if expected_i1_cpu_sense
+            else "REAL_RESTORED_WORLD_ORIGINAL_A_B_NATIVE_REJOIN_WORLDBODY_DEV"
+        ),
         "generation_id": report["original_generation"],
         "world_id": _SOURCE_WORLD, "fork_branch_id": _FORK_BRANCH,
         "paper_session_id": paper_session,
