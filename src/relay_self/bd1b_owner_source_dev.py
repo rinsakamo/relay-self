@@ -14,7 +14,9 @@ from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28ForkPaperEpoch,
     Stage28NativePaperBodyLink,
 )
-from relay_self.stage28c2c_fresh_recovered_l1_dev import _require_live_original
+from relay_self.stage28c2c_fresh_recovered_l1_dev import (
+    _require_live_original,
+)
 from relay_self.world_resident_lifecycle_dev import WorldLifetime
 
 
@@ -52,11 +54,16 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
     conservatively requires a new producer receipt. Paper and native clocks
     are never compared to each other.
     """
+    return _build_source(bridge=bridge, boot=boot, world=world, links=links,
+                         self_id=self_id, require_original=_require_live_original)
+
+
+def _build_source(*, bridge, boot, world, links, self_id, require_original):
     if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
         raise BD1bSourceHold("original resident bridge required")
     with bridge.cognitive_work.lock:
         try:
-            scope, probe = _require_live_original(
+            scope, probe = require_original(
                 bridge=bridge, sid=self_id, boot=boot, world=world,
             )
             if (type(links) is not tuple or len(links) != 2

@@ -39,10 +39,15 @@ class BD1bOwnerPresent:
 
 def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
     """Revalidate the live source and project solely from current owner state."""
+    return _build_present(bridge=bridge, boot=boot, world=world, links=links,
+                          self_id=self_id, source_reader=build_bd1b_owner_source)
+
+
+def _build_present(*, bridge, boot, world, links, self_id, source_reader):
     if bridge.cognitive_work is None:
         raise BD1bPresentHold("original resident required")
     with bridge.cognitive_work.lock:
-        source = build_bd1b_owner_source(
+        source = source_reader(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         )
         try:
@@ -109,7 +114,7 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
         # cannot establish that an action is currently available.
         # Paper is external to the resident lock. Recheck its receipt and the
         # native/owner identity after projection before exposing the result.
-        if (build_bd1b_owner_source(bridge=bridge, boot=boot, world=world,
+        if (source_reader(bridge=bridge, boot=boot, world=world,
                                     links=links, self_id=self_id) != source
                 or bridge.cognitive_work.present_schema(self_id) != schema
                 or owner.current_worldbody_observation is not probe):

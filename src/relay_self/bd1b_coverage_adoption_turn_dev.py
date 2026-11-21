@@ -27,13 +27,16 @@ CHOICES = (
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class CoverageAdoptionTurn:
     self_id: str
     owner: object
     intent_owner: object
     intent_events: tuple
     owner_scope: tuple[int, str, int]
+    cohort_owners: tuple[object, object]
+    cohort_scopes: tuple[tuple[int, str, int], tuple[int, str, int]]
+    cohort_probes: tuple[object, object]
     continuity_revision: int
     inquiry: object
     source: object
@@ -43,19 +46,22 @@ class CoverageAdoptionTurn:
     candidate_set_sha256: str
 
 
-def _snapshot(*, bridge, boot, world, links, self_id, request_id):
+def _snapshot(*, bridge, boot, world, links, self_id, request_id,
+              present_reader=None, inquiry_reader=None):
     resident = bridge.cognitive_work
     if resident is None:
         raise CoverageAdoptionTurnHold("original resident required")
+    present_reader = present_reader or resident.read_present_cpu
+    inquiry_reader = inquiry_reader or resident.read_coverage_inquiry_cpu
     owner = resident.owners[self_id]
     owner._eligible()
     if bridge.owners.get(self_id) is not owner or owner.self_id != self_id:
         raise CoverageAdoptionTurnHold("original owner identity mismatch")
     events = owner.intent.events
     identity = owner.retained.identity
-    present = resident.read_present_cpu(bridge=bridge, boot=boot, world=world,
+    present = present_reader(bridge=bridge, boot=boot, world=world,
                                         links=links, self_id=self_id)
-    inquiry = resident.read_coverage_inquiry_cpu(bridge=bridge, boot=boot, world=world,
+    inquiry = inquiry_reader(bridge=bridge, boot=boot, world=world,
                                                   links=links, self_id=self_id)
     if inquiry is None:
         raise CoverageAdoptionTurnHold("current coverage inquiry required")
@@ -90,10 +96,10 @@ def _snapshot(*, bridge, boot, world, links, self_id, request_id):
     )
     digest = _freeze_hash(self_id, scope, request, boot, probe,
                           owner.pattern_registry.revision, ())
-    final_present = resident.read_present_cpu(
+    final_present = present_reader(
         bridge=bridge, boot=boot, world=world, links=links, self_id=self_id
     )
-    if (final_present != present or resident.read_coverage_inquiry_cpu(
+    if (final_present != present or inquiry_reader(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id
         ) != inquiry or owner.intent.events != events or owner.retained.identity != identity
             or resident.owners[self_id] is not owner
@@ -117,9 +123,14 @@ def prepare_coverage_adoption_turn(*, bridge, boot, world, links, self_id):
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             request_id=request_id,
         )
-        return CoverageAdoptionTurn(self_id, owner, owner.intent, owner.intent.events,
-                                    scope, rev, inquiry, source, probe, work_ref,
+        turn = CoverageAdoptionTurn(self_id, owner, owner.intent, owner.intent.events,
+                                    scope, tuple(resident.owners[sid] for sid in ("A", "B")),
+                                    tuple(resident.current_scope(sid) for sid in ("A", "B")),
+                                    tuple(resident.owners[sid].current_worldbody_observation for sid in ("A", "B")),
+                                    rev, inquiry, source, probe, work_ref,
                                     request, digest)
+        resident._coverage_adoption_turns[work_ref] = turn
+        return turn
 
 
 def validate_coverage_adoption_turn_cpu(*, bridge, boot, world, links, turn):
@@ -127,12 +138,18 @@ def validate_coverage_adoption_turn_cpu(*, bridge, boot, world, links, turn):
     if type(turn) is not CoverageAdoptionTurn or bridge.cognitive_work is None:
         raise CoverageAdoptionTurnHold("original turn required")
     with bridge.cognitive_work.lock:
+        if bridge.cognitive_work._coverage_adoption_turns.get(turn.work_ref) is not turn:
+            raise CoverageAdoptionTurnHold("unregistered prepared turn")
         owner, scope, rev, inquiry, source, probe, request, digest = _snapshot(
             bridge=bridge, boot=boot, world=world, links=links, self_id=turn.self_id,
             request_id=turn.request.request_id,
         )
         if (owner is not turn.owner or owner.intent is not turn.intent_owner
                 or owner.intent.events != turn.intent_events or scope != turn.owner_scope
+                or any(bridge.cognitive_work.owners[sid] is not turn.cohort_owners[i]
+                       or bridge.cognitive_work.current_scope(sid) != turn.cohort_scopes[i]
+                       or bridge.cognitive_work.owners[sid].current_worldbody_observation is not turn.cohort_probes[i]
+                       for i, sid in enumerate(("A", "B")))
                 or rev != turn.continuity_revision or inquiry != turn.inquiry
                 or source != turn.source or probe is not turn.original_probe
                 or request != turn.request or digest != turn.candidate_set_sha256

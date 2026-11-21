@@ -114,13 +114,19 @@ def _require_live_original(
     boot: Stage28ForkPaperEpoch,
     world: WorldLifetime,
 ) -> tuple[tuple[int, str, int], MineflayerObservation]:
+    if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.inference_lane is not None:
+        raise Stage28c2cL1Hold("CPU preflight requires disconnected GPU")
+    return _require_original_sources(bridge=bridge, sid=sid, boot=boot, world=world)
+
+
+def _require_original_sources(*, bridge, sid, boot, world):
+    """Shared identity and observation checks; callers enforce their lane boundary."""
     if (
         not isinstance(bridge, OwnedResidentPhysicalBridge)
         or sid not in ("A", "B")
         or not isinstance(boot, Stage28ForkPaperEpoch)
         or not isinstance(world, WorldLifetime)
         or bridge.cognitive_work is None
-        or bridge.inference_lane is not None  # this is CPU preflight
         or not bridge.physical.observation_only
         or bridge.physical.active_action_ids
         or tuple(sorted(bridge.owners)) != ("A", "B")

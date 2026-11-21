@@ -43,8 +43,16 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
     """
     if bridge.cognitive_work is None:
         raise CoverageInquiryHold("original resident required")
+    return _build_inquiry(bridge=bridge, boot=boot, world=world, links=links,
+                          self_id=self_id, readout=readout,
+                          present_reader=bridge.cognitive_work.read_present_cpu)
+
+
+def _build_inquiry(*, bridge, boot, world, links, self_id, readout, present_reader):
+    if bridge.cognitive_work is None:
+        raise CoverageInquiryHold("original resident required")
     with bridge.cognitive_work.lock:
-        current = bridge.cognitive_work.read_present_cpu(
+        current = present_reader(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
         )
         if type(readout) is not BD1bOwnerPresent or readout != current:

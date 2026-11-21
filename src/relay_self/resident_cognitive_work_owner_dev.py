@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import weakref
 from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any
@@ -108,6 +109,7 @@ class ResidentCognitiveWorkOwner:
         self._states = {sid: _ResidentState() for sid in owners}
         # Run configuration only: it is deliberately not part of checkpoint data.
         self._present_schemas = {}
+        self._coverage_adoption_turns = weakref.WeakValueDictionary()
         self._discarded: dict[str, list[LocalPeerDiscard]] = {
             sid: [] for sid in owners
         }
