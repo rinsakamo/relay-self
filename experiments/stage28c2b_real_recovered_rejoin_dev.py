@@ -453,7 +453,11 @@ async def run_restored_a_b_real_observation(
         report["raw_native_file_sha256"] = {
             name: file_sha256(path) for name, path in raw_paths.items()
         }
-        report["classification"] = "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        report["classification"] = (
+            "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+            if i1_original_cpu_sense
+            else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         physical.hold_for_operator()
