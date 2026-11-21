@@ -503,6 +503,23 @@ class OwnedResidentPhysicalBridge:
                 self.lifecycle.fail_self(self_id)
             raise
 
+    def bind_normal_rejoin_present_cpu(
+        self, *, initial_receipts, historical_composite,
+    ) -> None:
+        """Bind the existing original Owner's history after full current qualification."""
+        if self.cognitive_work is None:
+            raise OwnedResidentBridgeError("original cognitive resident not attached")
+        self.cognitive_work.bind_normal_rejoin_source_cpu(
+            bridge=self, initial_receipts=initial_receipts,
+            historical_composite=historical_composite,
+        )
+
+    def poll_normal_present_cpu(self):
+        """Explicit read-only A/B CPU caller. No periodic scheduler is installed."""
+        if self.cognitive_work is None:
+            raise OwnedResidentBridgeError("original cognitive resident not attached")
+        return self.cognitive_work.poll_normal_present_cpu(bridge=self)
+
     def world_only_quiescence(self) -> WorldOnlyQuiescenceEvidence:
         """Only a scoped NO-COMPUTE/NO-PEER qualification, not arbitrary L1/L2."""
         if (
