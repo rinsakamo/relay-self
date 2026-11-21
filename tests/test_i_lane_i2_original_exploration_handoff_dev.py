@@ -8,7 +8,6 @@ import pytest
 
 from adapters.mineflayer.sense_projection import sense_from_native
 from relay_self.common_io import ScopeRef
-from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
     I2OriginalGoalHold,
     prepare_i2_original_goal_handoff,
@@ -196,7 +195,7 @@ def test_i2_stale_original_source_never_adopts_previous_goal_or_question(
     tmp_path, monkeypatch, failure,
 ):
     case = _configured_both(tmp_path, monkeypatch)
-    bridge, world = case[1], case[3]
+    bridge = case[1]
     value = prepare_i2_original_goal_handoff(**_args(case, "A"))
     if failure == "next-native":
         old = bridge._i1_correlated_sense["A"]
