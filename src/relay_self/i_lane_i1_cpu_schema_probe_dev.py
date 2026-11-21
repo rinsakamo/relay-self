@@ -1,0 +1,94 @@
+"""I1 partial: source-bound CPU Schema probe from the original B Owner.
+
+No verified Action catalog or target binding exists in this slice: it can only
+form bounded *cognitive* L1 proposals, never an executable physical option.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from adapters.mineflayer.python_protocol import MineflayerObservation
+from relay_self.cognitive_minimal_dev import (
+    L1Round,
+    SchemaFrame,
+    WorldPercept,
+    assemble_l1_select,
+    cpu_schema_epoch,
+)
+from relay_self.i_lane_cpu_readout_dev import I0OwnerCPUReadout, read_i0_owner_cpu
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+
+
+class I1CPUProbeHold(RuntimeError):
+    """No coherent original-owned CPU Schema input was qualified."""
+
+
+@dataclass(frozen=True, slots=True)
+class I1CPUProbe:
+    original: I0OwnerCPUReadout
+    percept: WorldPercept
+    schema: SchemaFrame
+    l1_proposal: L1Round
+    action_issue_authorized: bool = False
+    model_invoked: bool = False
+
+
+def _exact_food(value: object) -> int | None:
+    # Do not manufacture a discrete hunger observation by rounding sensor data.
+    if type(value) is int and 0 <= value <= 20:
+        return value
+    if type(value) is float and value.is_integer() and 0 <= value <= 20:
+        return int(value)
+    return None
+
+
+def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str) -> I1CPUProbe:
+    """Current original native probe -> CPU Schema -> *unissued* L1 options.
+
+    A missing qualified Action catalog intentionally yields no executable
+    Skill/Target binding. This does not connect E SENSE, normal scheduling,
+    provider inference, or the physical issuer.
+    """
+    resident = getattr(bridge, "cognitive_work", None)
+    if not isinstance(resident, ResidentCognitiveWorkOwner):
+        raise I1CPUProbeHold("original cognitive resident required")
+    with resident.lock:
+        original = read_i0_owner_cpu(
+            bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+        )
+        owner = bridge.owners[self_id]
+        observation = owner.current_worldbody_observation
+        if not isinstance(observation, MineflayerObservation):
+            raise I1CPUProbeHold("original native WorldBody observation required")
+        snapshot = observation.snapshot
+        # A recognized native entity is a possible defensive cue only;
+        # it is NOT a Target, Action capability, or verified physical threat.
+        threat_cue = any(
+            entity.name == "zombie" or entity.entity_type == "zombie"
+            for entity in snapshot.nearby_entities
+        )
+        percept = WorldPercept(
+            scope=original.present.present.three_self.scope,
+            source=observation.provenance,
+            sequence=observation.seq,
+            hunger=_exact_food(snapshot.food),
+            fatigue_high=None,
+            targets=(),
+            threat_cue=threat_cue,
+            exploration_need=original.present.exploration_need is not None,
+            oxygen_reserve=snapshot.oxygen_level,
+        )
+        schema = cpu_schema_epoch(
+            percept, owner.pattern_registry,
+            allowed_skills=frozenset(),  # NO verified executable catalog.
+            epoch=original.present.source.resident_epoch,
+        )
+        l1_proposal = assemble_l1_select(
+            schema, intent_owner=owner.intent, recent_3self=(),
+        )
+        after = read_i0_owner_cpu(
+            bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+        )
+        if after != original or owner.current_worldbody_observation is not observation:
+            raise I1CPUProbeHold("original WorldBody/Present changed during CPU probe")
+        return I1CPUProbe(original, percept, schema, l1_proposal)
