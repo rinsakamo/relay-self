@@ -208,6 +208,7 @@ def test_q1_exchanged_files_and_symlinks_refused(tmp_path):
     p2.write_bytes(first)
     with pytest.raises(QEvidenceHold):
         verify_evidence(root, manifest, pins)
+    p2.write_bytes(second)  # restore earlier role so symlink is the actual failure
     p1.unlink()
     p1.symlink_to(p2)
     with pytest.raises(QEvidenceHold, match="symlink"):
