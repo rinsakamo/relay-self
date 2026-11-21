@@ -399,6 +399,19 @@ def finish_i2d_self_adoption(
             save_persistent_cognition(owner.files.cognition_file, new_cognition)
             if load_persistent_cognition(owner.files.cognition_file) != new_cognition:
                 raise I2dOriginalHold("original cognition write/readback mismatch")
+            # Native/Paper may advance outside the resident Python lock while
+            # the file is fsynced. Reject a changed source BEFORE publishing
+            # the new registry/Schema in the live original Owner.
+            verify_i2_original_goal_handoff(
+                bridge=bridge, boot=boot, world=world, links=links,
+                handoff=h, i2b_read_attached_lane=True,
+            )
+            if lane.cognitive_work.current_scope(h.self_id) != (
+                accepted.ticket.self_epoch,
+                accepted.ticket.native_session_id,
+                accepted.ticket.world_epoch,
+            ):
+                raise I2dOriginalHold("source changed after durable write")
         except (ValueError, RuntimeError, OSError) as exc:
             lane.cognitive_work.fence_self(h.self_id)
             lane.fence_self(h.self_id)
