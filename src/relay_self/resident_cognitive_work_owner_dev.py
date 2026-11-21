@@ -150,6 +150,26 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
             self._present_schemas[self_id] = (snapshot, registry)
 
+    def recorded_retired_schema(self, self_id: str) -> SchemaSnapshot | None:
+        """Read only the actual registered original Schema after full retirement.
+
+        No inference from retained registry: missing registration stays absent.
+        This is only input to a NEW typed committed Stage28 generation.
+        """
+        with self.lock:
+            if not self.retired_clean(self_id):
+                raise ResidentCognitiveWorkError("original Schema not retired")
+            registration = self._present_schemas.get(self_id)
+            if registration is None:
+                return None
+            snapshot, registry = registration
+            if (self.owners[self_id].cohort is not self
+                    or snapshot.self_id != self_id
+                    or registry != self.owners[self_id].pattern_registry
+                    or snapshot.revision != registry.revision):
+                raise ResidentCognitiveWorkError("retired Schema/Registry mismatched")
+            return snapshot
+
     def present_schema(self, self_id: str) -> SchemaSnapshot:
         """Return only a current registration, under the resident lock."""
         with self.lock:
