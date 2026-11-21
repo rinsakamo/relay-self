@@ -29,7 +29,10 @@ from relay_self.innate_schema import (
 )
 from relay_self.persistent_cognition import save_persistent_cognition
 from relay_self.provenance import Provenance
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from relay_self.self_owner_checkpoint_dev import load_self_owner_cut
 from relay_self.stage28b_retired_resident_typed_cut_dev import capture_retired_resident_typed_world
 from test_stage28b_retired_typed_cut_dev import _setup
@@ -223,3 +226,26 @@ def test_i2c_recorded_schema_codec_refuses_noncanonical_and_foreign(
         decode_recorded_schema(
             raw, expected_self_id="A", expected_registry_revision=1,
         )
+
+
+def test_i2c_second_self_schema_rejection_rolls_back_first_before_join(
+    tmp_path, monkeypatch,
+):
+    generation, dest, recovered = _restored(tmp_path, monkeypatch)
+    original = ResidentCognitiveWorkOwner.register_present_schema
+
+    def reject_b(resident, self_id, snapshot):
+        if self_id == "B":
+            raise ResidentCognitiveWorkError("synthetic B owner rejected")
+        return original(resident, self_id, snapshot)
+
+    monkeypatch.setattr(
+        ResidentCognitiveWorkOwner, "register_present_schema", reject_b,
+    )
+    with pytest.raises(I2cRestoredSchemaHold):
+        bootstrap_original_recorded_a_b_schemas(
+            recovered=recovered, generation=generation, restored_directory=dest,
+        )
+    assert recovered.cognitive_work._present_schemas == {}
+    assert recovered.physical.all_residents_offline
+    assert recovered.physical.active_action_ids == ()
