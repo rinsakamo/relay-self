@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 import pytest
@@ -29,7 +28,8 @@ from relay_self.resident_llama_inference_lane_dev import (
 )
 from test_bd1b_owner_source_dev import _files
 from test_i_lane_i2_original_exploration_handoff_dev import (
-    _args, _configured_both,
+    _args,
+    _configured_both,
 )
 
 
