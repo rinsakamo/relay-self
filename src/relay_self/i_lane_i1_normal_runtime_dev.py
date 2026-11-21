@@ -7,9 +7,11 @@ without it: an EMPTY SchemaSnapshot means no exploration Need, not OFF evidence.
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from adapters.mineflayer.sense_projection import SenseFrame
 from relay_self.cognitive_minimal_dev import PatternKind, Predicate
 from relay_self.i_lane_i1_cpu_schema_probe_dev import prepare_i1_cpu_schema_probe
 from relay_self.innate_schema import (
@@ -115,23 +117,34 @@ def install_i1_original_schema_bootstrap(
         return snapshots
 
 
-def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str) -> I1OriginalCPUEpoch:
+def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str,
+                               require_correlated_i1: bool = False) -> I1OriginalCPUEpoch:
     """One synchronous normal CPU epoch from exact current B+E source evidence."""
     resident = bridge.cognitive_work
     if not isinstance(resident, ResidentCognitiveWorkOwner):
         raise I1NormalRuntimeHold("original resident CPU owner missing")
     with resident.lock:
-        current = bridge.current_sense(self_id)
+        current = (bridge.current_i1_correlated_sense(self_id)
+                   if require_correlated_i1 else bridge.current_sense(self_id))
         if current is None:
             raise I1NormalRuntimeHold("fresh original native SENSE required")
+        if require_correlated_i1 and (
+            current.observation.kind != "probe"
+            or type(current.observation.request_id) is not str
+            or re.fullmatch(r"i1-original-sense-[0-9a-f]{32}",
+                            current.observation.request_id) is None
+        ):
+            raise I1NormalRuntimeHold("I1 source not an exact matched original observe reply")
         probe = prepare_i1_cpu_schema_probe(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_require_correlated_sense=require_correlated_i1,
         )
         refs = probe.original.source_revision_refs
         if (len(refs) != 3 or refs[-1] != current.source_revision_ref
                 or probe.percept.source != current.provenance
                 or probe.percept.sequence != current.observation.seq
-                or bridge.current_sense(self_id) is not current
+                or (bridge.current_i1_correlated_sense(self_id)
+                    if require_correlated_i1 else bridge.current_sense(self_id)) is not current
                 or probe.schema.options or probe.action_issue_authorized
                 or probe.model_invoked):
             raise I1NormalRuntimeHold("unqualified / executable native CPU projection")
@@ -158,7 +171,7 @@ def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str) -> I
 
 async def sample_i1_original_cpu_epochs(
     *, bridge, boot, world, links, refresh_paper_source: Callable,
-    refresh_native_source: Callable[[], Awaitable[None]] | None = None,
+    refresh_native_source: Callable[[], Awaitable[dict[str, SenseFrame]]] | None = None,
     timeout_s: float = 5.0, poll_s: float = 0.05,
     per_self_limit: int = 2,
 ) -> I1OriginalCPUResult:
@@ -184,18 +197,28 @@ async def sample_i1_original_cpu_epochs(
     counts = {"A": 0, "B": 0}
     epochs: list[I1OriginalCPUEpoch] = []
     refresh_rounds = 0
+    expected_probes: dict[str, SenseFrame] = {}
     while event_loop.time() < deadline and not all(v == per_self_limit for v in counts.values()):
         # Explicit caller-owned read-only Native probes ensure a stationary
         # Self can be reobserved without fabricating passive movement.
         if (refresh_native_source is not None
                 and refresh_rounds < per_self_limit
                 and all(n == refresh_rounds for n in counts.values())):
-            await refresh_native_source()
+            observed_probes = await refresh_native_source()
+            if (type(observed_probes) is not dict
+                    or set(observed_probes) != {"A", "B"}
+                    or any(type(frame) is not SenseFrame for frame in observed_probes.values())):
+                raise I1NormalRuntimeHold("original A/B matched observe receipts missing")
+            expected_probes = observed_probes
             refresh_rounds += 1
         changed = [
             sid for sid in ("A", "B")
             if counts[sid] < per_self_limit
-            and (frame := bridge.current_sense(sid)) is not None
+            and (frame := (
+                bridge.current_i1_correlated_sense(sid)
+                if refresh_native_source is not None
+                else bridge.current_sense(sid)
+            )) is not None
             and frame.source_revision_ref != last[sid]
         ]
         if changed:
@@ -206,15 +229,37 @@ async def sample_i1_original_cpu_epochs(
                 row = read_i1_original_cpu_epoch(
                     bridge=bridge, boot=boot, world=fresh_world,
                     links=fresh_links, self_id=sid,
+                    require_correlated_i1=refresh_native_source is not None,
                 )
-                if (refresh_native_source is not None
-                        and (type(row.native_request_id) is not str
-                             or not row.native_request_id.startswith(
-                                 "i1-original-sense-"
-                             ))):
-                    raise I1NormalRuntimeHold(
-                        "read-only Native request correlation lost before CPU adoption"
-                    )
+                if refresh_native_source is not None:
+                    expected = expected_probes.get(sid)
+                    if (expected is None
+                            or bridge.current_i1_correlated_sense(sid) is not expected
+                            or row.native_request_id != expected.observation.request_id
+                            or row.native_seq != expected.observation.seq
+                            or row.native_observation_ref != expected.provenance.reference
+                            or row.sense_revision != expected.source_revision_ref):
+                        failure = I1NormalRuntimeHold(
+                            "read-only Native request correlation lost before CPU adoption"
+                        )
+                        failure.i1_correlated_cpu_readback = {
+                            "self_id": sid,
+                            "row_request_id": row.native_request_id,
+                            "row_native_seq": row.native_seq,
+                            "row_sense_revision": row.sense_revision,
+                            "expected_request_id": (
+                                expected.observation.request_id if expected is not None else None
+                            ),
+                            "expected_native_seq": (
+                                expected.observation.seq if expected is not None else None
+                            ),
+                            "expected_sense_revision": (
+                                expected.source_revision_ref if expected is not None else None
+                            ),
+                            "diagnostic_only": True,
+                            "independent_audit_pass": False,
+                        }
+                        raise failure
                 if row.sense_revision != last[sid]:
                     epochs.append(row)
                     last[sid] = row.sense_revision
