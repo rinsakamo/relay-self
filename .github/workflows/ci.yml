@@ -78,6 +78,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Verify BD1b live ingress and one-post capture offline
+        run: |
+          python -m pytest tests/test_bd1b_real_issuer_preflight_dev.py \
+            tests/test_bd1b_real_original_capture_dev.py
+
       - name: Run deterministic tests
         run: python -m pytest
 
