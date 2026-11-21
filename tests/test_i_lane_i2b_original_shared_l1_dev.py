@@ -20,6 +20,7 @@ from relay_self.i_lane_i2b_original_shared_l1_dev import (
     run_i2b_original_shared_l1,
     submit_i2b_original_shared_l1,
 )
+from relay_self.provenance import Provenance
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 from relay_self.resident_llama_inference_lane_dev import (
     LlamaCppSingleSlotWitness,
@@ -168,6 +169,7 @@ def _submit_again(case, lane, handoff):
     "foreign-ticket", "other-backend", "foreign-request",
     "altered-context", "retired", "new-source", "registry",
     "paper-growth", "passive-source", "physical-open", "rejoin-epoch",
+    "stale-intent",
 ])
 def test_i2b_result_rejects_foreign_or_changed_live_sources(
     tmp_path, monkeypatch, fault,
@@ -204,6 +206,14 @@ def test_i2b_result_rejects_foreign_or_changed_live_sources(
                 f.write(b"new complete Paper line\n")
         elif fault == "rejoin-epoch":
             bridge.cognitive_work._states["A"].epoch += 1
+        elif fault == "stale-intent":
+            intent = bridge.owners["A"].intent
+            assert intent.current_intent is None
+            intent.commit(
+                "i2b-conflicting-intent", objective="foreign task",
+                at_ns=(intent.last_at_ns or 0) + 1,
+                provenance=Provenance("synthetic", "stale-intent"),
+            )
         elif fault == "passive-source":
             # Only a matched probe may be consumed; newer passive SENSE may
             # exist but cannot be substituted for the frozen correlated one.
