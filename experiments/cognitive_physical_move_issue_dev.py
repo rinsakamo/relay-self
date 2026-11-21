@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -58,6 +59,8 @@ class ResidentMoveDevReceipt:
     all_stop_probes: tuple[MineflayerObservation, ...] = ()
     skill_success_attested: bool = False
     paper_causal_attribution: bool = False
+    # Local sender chronology only, never native-effect or Paper causality proof.
+    native_start_dispatch_monotonic_ns: int = 0
 
 
 async def _native(
@@ -259,6 +262,7 @@ async def issue_selected_move_dev(
         if bind_native_children is None:
             raise PhysicalMoveRefusal("original MOVE issuer child binding absent")
         bind_native_children(parent)
+        native_start_dispatch_monotonic_ns = time.monotonic_ns()
         await session.send_set_control(start_id, control=control, state=True)
         start = await _native(
             session, session_id=current_probe.session_id,
@@ -297,6 +301,7 @@ async def issue_selected_move_dev(
         return ResidentMoveDevReceipt(
             terminal, start, stop, initial, first, settled,
             displacement, journal.digest, all_stop_probes,
+            native_start_dispatch_monotonic_ns=native_start_dispatch_monotonic_ns,
         )
     except BaseException:
         if not attempted_stop:

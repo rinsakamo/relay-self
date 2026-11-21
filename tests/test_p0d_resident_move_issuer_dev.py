@@ -353,20 +353,12 @@ def test_original_issuer_deferred_eat_and_attack_children_match_original_wal(tmp
                 )
 
 
-@pytest.mark.parametrize("bad", ["wrong-stop-ack", "no-motion"])
-def test_original_move_uncertain_keeps_wal_and_blocks_a_retirement(tmp_path, bad):
+def test_original_move_uncertain_keeps_wal_and_blocks_a_retirement(tmp_path):
     gate = PhysicalIssueAdmission(
         {"A": "native-A", "B": "native-B"},
         resident_mode=True, allow_resident_move=True,
     )
-    s = ScriptedNative("native-A", bad_stop=bad == "wrong-stop-ack")
-    if bad == "no-motion":
-        original = s.send_set_control
-
-        async def no_motion(action_id, *, control, state):
-            await original(action_id, control=control, state=state)
-            s.x = 1.0
-        s.send_set_control = no_motion
+    s = ScriptedNative("native-A", bad_stop=True)
     s.gate = lambda native, effect, action: gate.require_native_effect(
         self_id="A", native_session_id=native,
         effect=effect, action_id=action,
@@ -386,6 +378,56 @@ def test_original_move_uncertain_keeps_wal_and_blocks_a_retirement(tmp_path, bad
                 fence_ref=fence.fence_ref,
                 physical_wal_file=args["journal"].path,
             )
+        with gate.lease(
+            self_id="B", native_session_id="native-B",
+            action_id="peer-action", effect_family="EAT",
+        ):
+            gate.require_native_effect(
+                self_id="B", native_session_id="native-B",
+                effect="consume_held", action_id="peer-action",
+            )
+
+    asyncio.run(scenario())
+
+
+def test_original_move_no_net_is_settled_failure_not_unresolved_or_success(tmp_path):
+    gate = PhysicalIssueAdmission(
+        {"A": "native-A", "B": "native-B"},
+        resident_mode=True, allow_resident_move=True,
+    )
+    s = ScriptedNative("native-A")
+    original_send = s.send_set_control
+
+    async def no_motion(action_id, *, control, state):
+        await original_send(action_id, control=control, state=state)
+        s.x = 1.0
+
+    s.send_set_control = no_motion
+    s.gate = lambda native, effect, action: gate.require_native_effect(
+        self_id="A", native_session_id=native,
+        effect=effect, action_id=action,
+    )
+    args = _selected(tmp_path)
+
+    async def scenario():
+        receipt = await gate.issue_move(s, **args)
+        assert receipt.terminal.state is ActionState.OUTCOME
+        assert receipt.displacement_m == 0.0
+        assert receipt.skill_success_attested is False
+        assert receipt.paper_causal_attribution is False
+        assert receipt.native_start_dispatch_monotonic_ns > 0
+        assert len(s.sent_commands) == 2  # One start and one STOP, never retry.
+        saved = PhysicalActionJournal.restore(args["journal"].path, self_id="A")
+        assert not saved.unresolved
+        assert saved.records[-1]["status"] == "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        fence = gate.quarantine_resident(self_id="A", native_session_id="native-A")
+        retired = gate.retire_resident(
+            self_id="A", native_session_id="native-A",
+            fence_ref=fence.fence_ref, physical_wal_file=args["journal"].path,
+        )
+        assert retired.physical_wal_clear
+        assert gate.resident_states["A"] == "OFFLINE"
+        assert gate.resident_states["B"] == "ONLINE"
         with gate.lease(
             self_id="B", native_session_id="native-B",
             action_id="peer-action", effect_family="EAT",

@@ -396,6 +396,12 @@ async def run_stage24b_selected_b_move(
             evidence_timeout_s=15,
             pulse_seconds=candidate.pulse_seconds,
         )
+        # A missing/synthetic timestamp is not an admissible dispatch interval.
+        if (
+            type(receipt.native_start_dispatch_monotonic_ns) is not int
+            or receipt.native_start_dispatch_monotonic_ns < intent_commit_monotonic_ns
+        ):
+            raise Stage24bMoveRefusal("original native start dispatch chronology absent")
         checked = PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id="B",
         )

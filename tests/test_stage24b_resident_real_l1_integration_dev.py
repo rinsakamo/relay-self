@@ -298,6 +298,10 @@ def test_l1_selected_move_can_have_terminal_no_net_outcome_without_fake_success(
         "NATIVE_MOVE_NO_NET_DISPLACEMENT"
     )
     assert result["native_net_displacement_m"] == 0.0
+    assert result["native_start_dispatch_monotonic_ns"] >= result[
+        "intent_commit_monotonic_ns"
+    ]
+    assert result["intent_to_native_start_dispatch_ns"] >= 0
     assert result["autonomous_l1_skill_selection"] is True
     assert result["skill_success_attested"] is False
     assert result["paper_action_causation"] is False
