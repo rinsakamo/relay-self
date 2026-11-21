@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from dataclasses import dataclass, replace
 
@@ -150,8 +151,9 @@ def _prepare(*, bridge, boot, world, links, self_id: str,
     if (type(self_id) is not str or self_id not in ("A", "B")
             or not isinstance(resident, ResidentCognitiveWorkOwner)
             or type(request_id) is not str
-            or not request_id.startswith("i2-original-" + self_id + "-")
-            or len(request_id) != len("i2-original-" + self_id + "-") + 32):
+            or re.fullmatch(
+                r"i2-original-" + self_id + r"-[0-9a-f]{32}", request_id,
+            ) is None):
         raise I2OriginalGoalHold("exact original A/B owner and I2 request required")
     with resident.lock:
         # The proven I1 source validator re-reads original B Present,
