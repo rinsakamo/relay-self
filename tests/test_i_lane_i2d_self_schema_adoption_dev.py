@@ -16,7 +16,6 @@ from relay_self.cognitive_minimal_dev import (
     Origin,
     PatternKind,
     Predicate,
-    SchemaPattern,
     initial_patterns,
 )
 from relay_self.i_lane_i2_original_exploration_handoff_dev import (
