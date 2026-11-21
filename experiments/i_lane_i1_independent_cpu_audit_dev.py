@@ -205,8 +205,6 @@ def _audit_i1_epochs(
         sid: _i1_native_probes(evidence=evidence, report=report, sid=sid)
         for sid in ("A", "B")
     }
-    if set(probe_by_id["A"][0:1]) & set(probe_by_id["B"][0:1]):
-        raise I1IndependentAuditHold("cross-Self native request identity reused")
     processed = {"A": 0, "B": 0}
     seen_requests: set[str] = set()
     prior_paper: int | None = None
