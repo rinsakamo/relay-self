@@ -92,7 +92,6 @@ def reserve_s2_first_original_move_synthetic_dev(
         raise I4AS2FirstReservationHold("original non-issuing S2 candidate invalid")
     owner = candidate.boundary.owner
     boundary = candidate.boundary
-    binding = candidate.proposal.binding
     with physical.original_i4a_s2_first_wal_window(
         owner=owner, boundary=boundary, lane=lane, action_id=candidate.action_id,
     ):
