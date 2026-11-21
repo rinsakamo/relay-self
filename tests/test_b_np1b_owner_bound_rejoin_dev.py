@@ -133,7 +133,8 @@ def test_owner_bound_rejoin_rejects_foreign_and_changing_sources(rejoined, monke
             bridge.last_login_observations["A"], request_id=initial[0].native_request_id,
         )
     elif fault == "b_session":
-        bridge.sessions["B"].started.session_id = "foreign-b"
+        session_b = bridge.sessions["B"]
+        session_b._started = replace(session_b.started, session_id="foreign-b")
     elif fault in ("paper_quit", "a_present", "b_quit", "actor", "tick_ack"):
         data = paper._log_path.read_text()
         if fault == "paper_quit":
