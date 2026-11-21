@@ -8,7 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from experiments.q_lane_evidence_audit_dev import QEvidenceHold, verify_evidence
+from experiments.q_lane_evidence_audit_dev import (
+    QEvidenceHold,
+    build_untrusted_file_inventory,
+    verify_evidence,
+)
 
 _HEAD = "a" * 40
 _WORLD = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
@@ -222,5 +226,24 @@ def test_q1_path_escape_and_missing_external_pin_fail_closed(tmp_path):
         verify_evidence(root, manifest, pins)
     root, manifest, pins = _fixture(tmp_path / "new")
     pins["sha256"].pop("wal")
+    with pytest.raises(QEvidenceHold):
+        verify_evidence(root, manifest, pins)
+
+
+def test_q1_untrusted_manifest_file_inventory_is_read_only(tmp_path):
+    root, manifest, pins = _fixture(tmp_path)
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.iterdir()}
+    paths = {entry["role"]: entry["path"] for entry in manifest["files"]}
+    entries = build_untrusted_file_inventory(root, paths)
+    assert {entry["role"] for entry in entries} == set(pins["sha256"])
+    assert {entry["sha256"] for entry in entries} == set(pins["sha256"].values())
+    assert before == {
+        p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.iterdir()
+    }
+    # Returning a local inventory is not authentication; a forged file with
+    # recalculated hash still fails against independently supplied pins.
+    _change(root, manifest, pins, "wal",
+            lambda data: data.replace(b"move-A-1", b"move-X-1"))
+    build_untrusted_file_inventory(root, paths)  # may index changed local bytes
     with pytest.raises(QEvidenceHold):
         verify_evidence(root, manifest, pins)
