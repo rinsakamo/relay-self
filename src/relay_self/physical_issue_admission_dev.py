@@ -158,6 +158,7 @@ class PhysicalIssueAdmission:
         # native child IDs belonging to the already-selected original Action.
         self._native_child_ids: dict[str, dict[str, str]] = {}
         self._i4a_s2_issue_window: tuple[Any, Any, str] | None = None
+        self._i4a_s2_consumed_action_ids: set[str] = set()
         self._used_native_children: dict[str, set[str]] = {}
         self._closed = False
         self._poisoned = False
@@ -267,6 +268,23 @@ class PhysicalIssueAdmission:
                     "original S2 issuer prefix not certified in atomic window"
                 )
 
+    def consume_original_i4a_s2_action_once(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Preconsume S2 ID under its active original issuer/Owner window.
+
+        This is a same-process anti-reopen fence; it does not authorize
+        movement or allow unresolved WAL replay after a process restart.
+        Even if the subsequent WAL CAS fails, do not recycle this ID.
+        """
+        self.require_original_i4a_s2_wal_window(
+            owner=owner, boundary=boundary, action_id=action_id,
+        )
+        with self._lock:
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError("S2 Action reservation already consumed")
+            self._i4a_s2_consumed_action_ids.add(action_id)
+
     @property
     def resident_mode(self) -> bool:
         return self._resident_mode
@@ -352,6 +370,10 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("stale or foreign physical native session")
             if type(action_id) is not str or not action_id.strip():
                 raise PhysicalIssueFenceError("physical Action ID required")
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError(
+                    "certified S2 Action already reserved: native effect retry refused"
+                )
             if effect_family not in _EFFECT_FAMILIES:
                 raise PhysicalIssueFenceError("unsupported physical effect family")
             if effect_family in ("MOVE", "MOVE_PLACE") and not (

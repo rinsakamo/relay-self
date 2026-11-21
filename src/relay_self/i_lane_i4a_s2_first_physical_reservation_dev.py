@@ -133,6 +133,12 @@ def reserve_s2_first_original_move_synthetic_dev(
             intent_owner=owner.intent,
             skill_execution=owner.skills[boundary.new_skill_id],
         )
+        # Consume the parent identity before the canonical WAL CAS. If the
+        # original issuer later fails, the conservative result is STOP/HOLD,
+        # not a new lease with the same PREPARED parent.
+        physical.consume_original_i4a_s2_action_once(
+            owner=owner, boundary=boundary, action_id=candidate.action_id,
+        )
         begin_physical_issue_dev(
             session, capability="MOVE", proposal=candidate.proposal,
             current_probe=candidate.source_probe,

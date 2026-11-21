@@ -71,6 +71,12 @@ def test_s2_original_issuer_appends_prepared_only_and_fences_any_native_io(tmp_p
         assert saved.digest == receipt.prepared_wal_sha256
         assert owner.supervisor.get(candidate.action_id).state is ActionState.ISSUED
         assert f.physical.active_action_ids == ()
+        with pytest.raises(PhysicalIssueFenceError):
+            with f.physical.lease(
+                self_id=owner.self_id, native_session_id=owner.native_session_id,
+                action_id=candidate.action_id, effect_family="MOVE_PLACE",
+            ):
+                raise AssertionError("duplicate original S2 native lease granted")
         with pytest.raises(PhysicalJournalUnresolved):
             saved.require_clear()
         with pytest.raises(PhysicalIssueFenceError):
