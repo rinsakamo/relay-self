@@ -7,6 +7,7 @@ scheduler or model backend is attested by the inert boundary.
 """
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -175,6 +176,11 @@ class OwnedResidentPhysicalBridge:
         self._sense: dict[str, SenseFrame] = {}
         self._sense_received_at: dict[str, float] = {}
         self._sense_refreshing: set[str] = set()
+        # Exactly matched I1 observe replies; separate from the normal
+        # passive Native SENSE stream. Both live under the same original
+        # resident lock and Native process, not a second owner.
+        self._i1_correlated_sense: dict[str, SenseFrame] = {}
+        self._i1_correlated_received_at: dict[str, float] = {}
         # A restored Self may have joined/quit more than once in the old
         # boot. All historical native IDs, not just last_owner_session,
         # must be refused BEFORE rebind/admission.
@@ -285,6 +291,8 @@ class OwnedResidentPhysicalBridge:
         except BaseException:
             self._sense.pop(self_id, None)
             self._sense_received_at.pop(self_id, None)
+            self._i1_correlated_sense.pop(self_id, None)
+            self._i1_correlated_received_at.pop(self_id, None)
             self.last_login_evidence.pop(self_id, None)
             self.last_login_observations.pop(self_id, None)
             # If source verification fails, NEVER grant a new issuer lease.
@@ -436,6 +444,42 @@ class OwnedResidentPhysicalBridge:
                 return None
             return frame
 
+    def current_i1_correlated_sense(
+        self, self_id: str, *, max_age_s: float = 2.0,
+    ) -> SenseFrame | None:
+        """Read the last exact matched observe reply from this original bridge.
+
+        Passive move/entities may have higher Native seq and no request ID:
+        they continue to update current_sense(), but must never replace the
+        explicitly correlated I1 CPU snapshot. This I1-only projection is
+        bounded by normal original Native/Paper/Owner currentness and TTL.
+        """
+        if self.cognitive_work is None or not self.enable_sense:
+            return None
+        with self.cognitive_work.lock:
+            # Real original resident/Native/Paper fences are still mandatory.
+            passive = self.current_sense(self_id, max_age_s=max_age_s)
+            correlated = self._i1_correlated_sense.get(self_id)
+            received = self._i1_correlated_received_at.get(self_id, 0)
+            if (passive is None or correlated is None
+                    or not 0 < max_age_s <= 60
+                    or not 0 <= time.monotonic() - received <= max_age_s
+                    or correlated.scope != passive.scope
+                    or correlated.observation.session_id != passive.observation.session_id
+                    or correlated.observation.seq > passive.observation.seq
+                    or correlated.observation.kind != "probe"
+                    or type(correlated.observation.request_id) is not str
+                    or re.fullmatch(
+                        r"i1-original-sense-[0-9a-f]{32}",
+                        correlated.observation.request_id,
+                    ) is None
+                    or correlated.source_revision_ref != (
+                        f"mineflayer:{correlated.observation.session_id}:"
+                        f"{correlated.observation.seq}"
+                    )):
+                return None
+            return correlated
+
     async def refresh_i1_read_only_sense(
         self, self_id: str, *, timeout_s: float = 2.0,
     ) -> SenseFrame:
@@ -503,7 +547,10 @@ class OwnedResidentPhysicalBridge:
                     previous_seq=previous_seq, expected_request_id=request_id,
                 )
                 self._sense[self_id] = frame
-                self._sense_received_at[self_id] = time.monotonic()
+                now = time.monotonic()
+                self._sense_received_at[self_id] = now
+                self._i1_correlated_sense[self_id] = frame
+                self._i1_correlated_received_at[self_id] = now
                 return frame
         finally:
             with self.cognitive_work.lock:
@@ -575,6 +622,8 @@ class OwnedResidentPhysicalBridge:
             raise OwnedResidentBridgeError("no currently owned Self session")
         self._sense.pop(self_id, None)
         self._sense_received_at.pop(self_id, None)
+        self._i1_correlated_sense.pop(self_id, None)
+        self._i1_correlated_received_at.pop(self_id, None)
         current = self.sessions[self_id].started.session_id
         self.physical.quarantine_resident(
             self_id=self_id, native_session_id=current,
@@ -593,6 +642,8 @@ class OwnedResidentPhysicalBridge:
             raise OwnedResidentBridgeError("logout without owned native session")
         self._sense.pop(self_id, None)
         self._sense_received_at.pop(self_id, None)
+        self._i1_correlated_sense.pop(self_id, None)
+        self._i1_correlated_received_at.pop(self_id, None)
         native_id = session.started.session_id
         view = self.lifecycle.view(self_id)
         if view.native_session_id != native_id or view.status not in (
