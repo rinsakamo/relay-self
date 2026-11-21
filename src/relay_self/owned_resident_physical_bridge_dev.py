@@ -315,7 +315,20 @@ class OwnedResidentPhysicalBridge:
         if self.cognitive_work is None:
             raise OwnedResidentBridgeError("SENSE requires original resident lock")
         scope = ScopeRef(self_id, ticket.world.paper_session_id)
-        previous_seq = 0
+        evidence = self.last_login_evidence[self_id]
+        probe = self.last_login_observations[self_id]
+        if (probe.kind != "probe" or probe.request_id != evidence.observation_ref
+                or probe.session_id != session.started.session_id or probe.seq < 1
+                or not self._sense_current(self_id, session, ticket)):
+            raise OwnedResidentBridgeError("verified original seed probe required for SENSE")
+        # Same original probe, NOT a second observation or an added Paper fact.
+        seed = sense_from_native(
+            probe, scope=scope, expected_native_session=session.started.session_id,
+            expected_request_id=evidence.observation_ref, previous_seq=probe.seq - 1,
+        )
+        previous_seq = probe.seq
+        self._sense[self_id] = seed
+        self._sense_received_at[self_id] = time.monotonic()
 
         def observe(message: object) -> None:
             nonlocal previous_seq
