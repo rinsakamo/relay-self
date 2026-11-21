@@ -149,6 +149,8 @@ def build_rejoined_composite_source(
                     or native.native_request_id != login_a.observation_ref
                     or native.native_request_id != probe_a.request_id
                     or native.native_sequence != probe_a.seq
+                    or bridge.sessions["A"]._decoder.next_seq != probe_a.seq + 1
+                    or bridge.sessions["B"]._decoder.next_seq != probe_b.seq + 1
                     or native.native_source_ref != probe_a.provenance.reference
                     or native.native_world_time != owner_a.last_observed_tick
                     or native.native_revision != _revision({
