@@ -32,7 +32,8 @@ class I0OwnerCPUReadout:
 
 def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str,
                       i1_complete_paper_prefix: bool = False,
-                      i1_require_correlated_sense: bool = False) -> I0OwnerCPUReadout:
+                      i1_require_correlated_sense: bool = False,
+                      i2b_read_attached_lane: bool = False) -> I0OwnerCPUReadout:
     """Bundle B's original Present and inquiry at one guarded source revision.
 
     All source checks and projections go through the original resident. A
@@ -48,6 +49,7 @@ def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str,
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=i1_complete_paper_prefix,
             i1_require_correlated_sense=i1_require_correlated_sense,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         inquiry = build_coverage_inquiry(
             bridge=bridge, boot=boot, world=world, links=links,
@@ -55,12 +57,14 @@ def read_i0_owner_cpu(*, bridge, boot, world, links, self_id: str,
             **({
                 "i1_complete_paper_prefix": True,
                 "i1_require_correlated_sense": i1_require_correlated_sense,
+                "i2b_read_attached_lane": i2b_read_attached_lane,
             } if i1_complete_paper_prefix else {}),
         )
         after = resident.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=i1_complete_paper_prefix,
             i1_require_correlated_sense=i1_require_correlated_sense,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         revisions = before.present.three_self.source_revision_refs
         if (
