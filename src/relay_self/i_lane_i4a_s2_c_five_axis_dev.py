@@ -7,9 +7,7 @@ every bounded GPU choice, after each result and before final readout.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
@@ -38,7 +36,6 @@ from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceL
 from relay_self.skill import SkillState
 from relay_self.target_contract import (
     TargetBodyObservation,
-    TargetConditionStatus,
     evaluate_target,
 )
 
