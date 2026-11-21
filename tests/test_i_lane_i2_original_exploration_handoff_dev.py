@@ -153,7 +153,7 @@ def test_i2_old_restored_registry_does_not_get_invented_exploration(
 
 @pytest.mark.parametrize("failure", [
     "foreign-self", "altered-question", "invented-goal",
-    "request-swap", "request-content", "request-identity",
+    "request-swap", "request-nonhex", "request-content", "request-identity",
     "wrong-hash", "fake-selected", "foreign-need",
 ])
 def test_i2_frozen_handoff_rejects_fabrication(
@@ -170,6 +170,10 @@ def test_i2_frozen_handoff_rejects_fabrication(
     elif failure == "request-swap":
         value = replace(value, bounded_request=replace(
             value.bounded_request, request_id="i2-original-B-" + "f" * 32,
+        ))
+    elif failure == "request-nonhex":
+        value = replace(value, bounded_request=replace(
+            value.bounded_request, request_id="i2-original-A-" + "Z" * 32,
         ))
     elif failure == "request-content":
         value = replace(value, bounded_request=replace(
