@@ -159,10 +159,9 @@ def test_auditor_rejects_changed_originals(tmp_path, monkeypatch, variant):
         with (altered / "physical.after.wal").open("ab") as f:
             f.write(b"evil")
     elif variant == "duplicate_json":
+        raw = manifest_file.read_text(encoding="utf-8").rstrip()
         manifest_file.write_text(
-            manifest_file.read_text(encoding="utf-8").replace(
-                '"version": 1,', '"version": 1, "version": 1,'
-            ), encoding="utf-8",
+            raw[:-1] + ', "version": 1}', encoding="utf-8",
         )
     elif variant in ("question", "origin"):
         path = altered / "cognition.after.json"
