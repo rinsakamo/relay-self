@@ -10,6 +10,7 @@ from dataclasses import asdict, replace
 import pytest
 
 import relay_self.bd1b_owner_present_dev as projection
+from relay_self.b_np1b_continuing_b_composite_dev import ContinuingCompositeHold
 from relay_self.b_np1b_rejoin_composite_source_dev import RejoinCompositeHold
 from relay_self.b_np1b_rejoin_present_dev import RejoinedOwnerSource
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
@@ -112,9 +113,11 @@ def test_no_implicit_legacy_fallback_or_foreign_receipt(rejoined_present, varian
         args[variant.removeprefix("mix_")] = object()
     else:
         args["self_id"] = "B"
-    with pytest.raises((ResidentCognitiveWorkError, RejoinCompositeHold, ValueError)):
+    with pytest.raises((ResidentCognitiveWorkError, RejoinCompositeHold,
+                        ContinuingCompositeHold, ValueError)):
         f.cognitive.read_present_cpu(**args)
-    with pytest.raises((ResidentCognitiveWorkError, RejoinCompositeHold, ValueError)):
+    with pytest.raises((ResidentCognitiveWorkError, RejoinCompositeHold,
+                        ContinuingCompositeHold, ValueError)):
         f.cognitive.read_coverage_inquiry_cpu(**args)
 
 
