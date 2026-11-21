@@ -662,7 +662,8 @@ class OwnedResidentPhysicalBridge:
     def world_only_quiescence(self) -> WorldOnlyQuiescenceEvidence:
         """Only a scoped NO-COMPUTE/NO-PEER qualification, not arbitrary L1/L2."""
         if (
-            self.sessions or self._pending_login or not self.physical.all_residents_offline
+            self.sessions or self._pending_login or getattr(self, "_sense_refreshing", None)
+            or not self.physical.all_residents_offline
             or not self.lifecycle.can_world_only_checkpoint()
         ):
             raise OwnedResidentBridgeError(
