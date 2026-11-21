@@ -26,6 +26,7 @@ class I1NativePreflightReceipt:
     mineflayer_version: str
     entities_sha256: str
     node_inspector_verified: bool = True
+    native_module_import_verified: bool = True
     no_symlink_ancestors: bool = True
     world_started: bool = False
 
@@ -108,5 +109,38 @@ def require_i1_native_preflight(
         raise I1NativePreflightHold(
             "original Node oxygen owner source inspector rejected dependencies "
             "or returned inconsistent source SHA256; no World permitted"
+        )
+    # Loading the actual module has no bot, socket or World side effect.
+    # Unlike a version/file-only check, it detects incomplete npm-ci trees
+    # whose transitive JS dependencies would crash the original Native startup
+    # after Paper had already been launched. Reuse Node's own require path
+    # resolution from the same original worktree as bridge.mjs.
+    load_probe = (
+        "const fs=require('node:fs');"
+        "const path=require('node:path');"
+        "const root=fs.realpathSync(path.join(process.cwd(),'node_modules','mineflayer'));"
+        "const loaded=fs.realpathSync(require.resolve('mineflayer'));"
+        "if(!loaded.startsWith(root+path.sep))"
+        "throw new Error('Mineflayer module escaped original worktree');"
+        "const mineflayer=require('mineflayer');"
+        "if(typeof mineflayer.createBot!=='function')"
+        "throw new Error('Mineflayer createBot unavailable');"
+        "process.stdout.write('I1_NATIVE_MODULE_LOAD_OK\\n');"
+    )
+    try:
+        loaded = subprocess.run(
+            [node, "--eval", load_probe], capture_output=True,
+            text=True, timeout=15, check=False, cwd=root,
+        )
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as exc:
+        raise I1NativePreflightHold(
+            "original Mineflayer module import preflight unavailable"
+        ) from exc
+    if (loaded.returncode != 0
+            or loaded.stdout != "I1_NATIVE_MODULE_LOAD_OK\\n"
+            or loaded.stderr.strip()):
+        raise I1NativePreflightHold(
+            "original worktree-local Mineflayer module cannot load fully "
+            "before Paper boot; npm-ci source is incomplete or foreign"
         )
     return I1NativePreflightReceipt("4.39.0", source_sha)
