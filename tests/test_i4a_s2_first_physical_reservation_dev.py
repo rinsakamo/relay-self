@@ -10,6 +10,7 @@ from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
     I4AS2FirstReservationHold,
     reserve_s2_first_original_move_synthetic_dev,
 )
+from relay_self.i_lane_i4a_s2_run_boundary_dev import I4AS2RunBoundaryHold
 from relay_self.physical_action_journal import (
     PhysicalActionJournal,
     PhysicalJournalUnresolved,
@@ -17,11 +18,8 @@ from relay_self.physical_action_journal import (
 from relay_self.physical_issue_admission_dev import PhysicalIssueFenceError
 from test_c_lane_stage27hi_multi_action_review_dev import _fixture
 from test_i4a_s2_first_move_proposal_dev import _first_s2, _propose
-from test_p0d_stage27c_place_move_wal_issuer_dev import (
-    ScriptedPlaceNative,
-    _grant,
-)
 from test_i4a_s2_owner_handoff_dev import P
+from test_p0d_stage27c_place_move_wal_issuer_dev import ScriptedPlaceNative, _grant
 
 
 def _prepare(f, lane, candidate, witness, **overrides):
@@ -80,8 +78,10 @@ def test_s2_original_issuer_appends_prepared_only_and_fences_any_native_io(tmp_p
                 self_id=owner.self_id, native_session_id=owner.native_session_id,
                 effect="look", action_id=candidate.action_id+"-look",
             )
-        with pytest.raises((I4AS2FirstReservationHold, PhysicalIssueFenceError,
-                            PhysicalJournalUnresolved)):
+        with pytest.raises((
+            I4AS2FirstReservationHold, I4AS2RunBoundaryHold,
+            PhysicalIssueFenceError, PhysicalJournalUnresolved,
+        )):
             reserve_s2_first_original_move_synthetic_dev(
                 native, candidate, **args,
             )
@@ -135,7 +135,9 @@ def test_s2_original_issuer_rejects_modified_historic_sha_after_rechecksum(tmp_p
         ).encode("utf-8")
         body["sha256"] = hashlib.sha256(canonical).hexdigest()
         path.write_text(json.dumps(body), encoding="utf-8")
-        with pytest.raises((PhysicalIssueFenceError, I4AS2FirstReservationHold)):
+        with pytest.raises((
+            PhysicalIssueFenceError, I4AS2FirstReservationHold, I4AS2RunBoundaryHold,
+        )):
             reserve_s2_first_original_move_synthetic_dev(
                 native, candidate, **args,
             )

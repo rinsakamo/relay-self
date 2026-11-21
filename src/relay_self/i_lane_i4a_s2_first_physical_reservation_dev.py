@@ -19,14 +19,8 @@ from experiments.cognitive_physical_executor_dev import (
 )
 from relay_self.action import ActionState
 from relay_self.i_lane_i4a_s2_first_move_proposal_dev import I4AS2FirstMoveProposal
-from relay_self.i_lane_i4a_s2_run_boundary_dev import (
-    I4AS2RunBoundaryHold,
-)
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.physical_issue_admission_dev import (
-    PhysicalIssueAdmission,
-    PhysicalIssueFenceError,
-)
+from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
 from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
 
@@ -83,7 +77,6 @@ def reserve_s2_first_original_move_synthetic_dev(
         or not isinstance(previous_probe, MineflayerObservation)
         or not isinstance(provenance, Provenance)
         or type(at_ns) is not int or at_ns < 0
-        or not isinstance(candidate.proposal, object)
         or candidate.physical_authorized or candidate.physical_issued
         or candidate.wal_modified or candidate.target_clearance_attested
         or candidate.proposal.physical_authorized
