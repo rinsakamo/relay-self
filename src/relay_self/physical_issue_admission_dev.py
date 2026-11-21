@@ -168,6 +168,30 @@ class PhysicalIssueAdmission:
         self._stop_active: dict[str, tuple[str, str]] = {}
         self._stop_proofs: dict[str, NeutralStopProof] = {}
 
+    @contextmanager
+    def quiescent_wal_history_window(
+        self, *, self_id: str, native_session_id: str,
+    ) -> Iterator[None]:
+        """DEV-only: serialize an Owner WAL witness against admitted issues.
+
+        The caller holds the original Owner cohort lock first.  This admission
+        lock then spans canonical journal readback; the WAL's own flock is
+        acquired last.  No physical effect, lease or execution grant is made.
+        Direct unguarded file writers are outside this limited contract.
+        """
+        with self._lock:
+            if (
+                not self._resident_mode or not self._allow_resident_move
+                or self._closed or self._poisoned or self._neutralizing
+                or self._sessions.get(self_id) != native_session_id
+                or self._resident_states.get(self_id) != "ONLINE"
+                or self._active or self._native_child_ids
+            ):
+                raise PhysicalIssueFenceError(
+                    "original physical issuer cannot attest quiescent history"
+                )
+            yield
+
     @property
     def resident_mode(self) -> bool:
         return self._resident_mode
