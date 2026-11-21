@@ -9,7 +9,6 @@ from dataclasses import replace
 import pytest
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
-from relay_self.bd1b_issuer_readback_dev import read_issuer_result
 from relay_self.bd1b_original_issuer_once_dev import issue_original_adoption_once
 from relay_self.bd1b_owner_source_dev import BD1bSourceHold
 from relay_self.persistent_cognition import load_persistent_cognition
