@@ -24,9 +24,18 @@ class I1CI4APreWorldHold(RuntimeError):
 _REQUIRED_SOURCE = (
     "src/relay_self/i_lane_i1_normal_runtime_dev.py",
     "src/relay_self/i_lane_i4a_s2_first_native_move_dev.py",
+    "src/relay_self/i_lane_i4a_s2_first_physical_reservation_dev.py",
+    "src/relay_self/i_lane_i4a_s2_run_boundary_dev.py",
+    "src/relay_self/i_lane_i4a_live_wal_anchor_dev.py",
     "src/relay_self/c_lane_l1_evaluation_engine_dev.py",
     "src/relay_self/physical_issue_admission_dev.py",
     "src/relay_self/physical_action_journal.py",
+    "src/relay_self/paper_tick_witness_dev.py",
+    "src/relay_self/world_resident_lifecycle_dev.py",
+    "src/relay_self/self_owner_checkpoint_dev.py",
+    "src/relay_self/checkpointed_cognitive_runtime_dev.py",
+    "adapters/mineflayer/process_session.py",
+    "adapters/llama_cpp/relay_engine.py",
 )
 
 # Each must have an independent, runtime-grounded source, not a synthetic flag.

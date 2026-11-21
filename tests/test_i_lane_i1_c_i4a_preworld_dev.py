@@ -34,7 +34,15 @@ def test_preworld_inventory_is_never_world_or_model_admission():
         repo_root=_root(), expected_head=_exact_head(),
     )
     assert report.classification == "I1_C_I4A_PRE_WORLD_HOLD"
-    assert len(report.source_sha256) == 5
+    assert len(report.source_sha256) == 14
+    assert {
+        "src/relay_self/i_lane_i4a_s2_first_physical_reservation_dev.py",
+        "src/relay_self/i_lane_i4a_s2_run_boundary_dev.py",
+        "src/relay_self/i_lane_i4a_live_wal_anchor_dev.py",
+        "src/relay_self/paper_tick_witness_dev.py",
+        "adapters/mineflayer/process_session.py",
+        "adapters/llama_cpp/relay_engine.py",
+    }.issubset(report.source_sha256)
     assert report.blockers
     assert "live_original_s2_issuer_not_integrated" in report.blockers
     assert report.world_started is False
@@ -153,4 +161,33 @@ def test_preworld_rejects_mutation_hidden_by_git_index_flags(tmp_path, index_fla
         check=False,
     ).returncode == 0
     with pytest.raises(I1CI4APreWorldHold, match="committed source blob differs"):
+        inspect_i1_c_i4a_preworld(repo_root=tmp_path, expected_head=head)
+
+
+@pytest.mark.parametrize("rel", [
+    "src/relay_self/i_lane_i4a_s2_first_physical_reservation_dev.py",
+    "src/relay_self/paper_tick_witness_dev.py",
+    "adapters/llama_cpp/relay_engine.py",
+])
+def test_preworld_rejects_dirty_newly_covered_boundary_sources(tmp_path, rel):
+    report = inspect_i1_c_i4a_preworld(
+        repo_root=_root(), expected_head=_exact_head(),
+    )
+    for source in report.source_sha256:
+        target = tmp_path / source
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_root() / source, target)
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=CI",
+         "-c", "user.email=ci@example.invalid", "commit", "-qm", "fixture"],
+        check=True,
+    )
+    head = subprocess.check_output(
+        ["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    target = tmp_path / rel
+    target.write_bytes(target.read_bytes() + b"\n# unexpected local source mutation\n")
+    with pytest.raises(I1CI4APreWorldHold, match="tracked and clean"):
         inspect_i1_c_i4a_preworld(repo_root=tmp_path, expected_head=head)

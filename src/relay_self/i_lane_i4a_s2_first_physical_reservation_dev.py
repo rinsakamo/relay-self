@@ -41,13 +41,30 @@ def require_i4a_offline_scripted_native(
     future real trial must use a separate source-qualified real runner with
     independently verified Paper/world evidence, not this test adapter.
     """
-    if (
-        not isinstance(session, MineflayerProcessSession)
-        or type(session) is MineflayerProcessSession
-        or "_process" in getattr(session, "__dict__", {})
-        or "_decoder" in getattr(session, "__dict__", {})
-        or getattr(session, "_effect_admission", None) is not None
+    if not isinstance(session, MineflayerProcessSession) or (
+        type(session) is MineflayerProcessSession
     ):
+        raise I4AS2FirstReservationHold(
+            "S2 synthetic issuer rejects process-backed/native live session"
+        )
+    # A subclass may keep runtime resources in slots or class attributes,
+    # not its instance __dict__. Do not mistake those for a scripted source.
+    # This guards accidental real-process routing, not arbitrary forged Python.
+    missing = object()
+    try:
+        own_fields = getattr(session, "__dict__", {})
+        process_backed = (
+            not isinstance(own_fields, dict)
+            or "_process" in own_fields
+            or "_decoder" in own_fields
+            or getattr(session, "_process", missing) is not missing
+            or getattr(session, "_decoder", missing) is not missing
+            or getattr(session, "_effect_admission", None) is not None
+        )
+    except Exception:
+        # Descriptor inspection failure must not grant synthetic admission.
+        process_backed = True
+    if process_backed:
         raise I4AS2FirstReservationHold(
             "S2 synthetic issuer rejects process-backed/native live session"
         )

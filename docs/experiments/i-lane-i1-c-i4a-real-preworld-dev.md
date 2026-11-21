@@ -2,7 +2,7 @@
 
 Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
 inventory, **not** an executing real-World or real-Gemma runner. Its one
-CLI mode performs a Git exact-HEAD check and hashes five original code files;
+CLI mode performs a Git exact-HEAD check and hashes fourteen original code files;
 it returns exit 2 **even when EULA and real-World DEV grant are provided**.
 The optional World directory is never touched.
 
@@ -35,3 +35,16 @@ is insufficient: tracked files flagged `assume-unchanged` or `skip-worktree`
 can be modified invisibly to that check. Adversarial fixture tests cover both
 index flags. This remains a **code-only** integrity check; it never authorizes
 World startup or attests a runtime witness.
+
+## Additional PRE_WORLD boundary coverage
+
+The committed-byte inventory now includes original S2 reservation, Owner
+run-boundary and S1 anchor, Paper witness and World lifecycle, checkpoint/
+Owner, original Native process adapter and llama.cpp HTTP provider. These
+are prerequisites for a future **separate** real runner, not witness
+authentication or motor authority. Synthetic S2 issuer rejects subclass
+native resources in `__slots__`, class attributes, or descriptor inspection
+failure **before** a physical lease or canonical WAL mutation. Adversarial
+tests exercise rejection with untouched WAL/Supervisor/lease. Python objects
+that deliberately forge their own runtime identity remain out of scope;
+a real runner must use the separately qualified original Native source.
