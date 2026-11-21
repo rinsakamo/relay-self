@@ -168,9 +168,8 @@ def test_rejoined_composite_fails_closed_on_current_source_changes(
         elif fault == "native_sequence":
             altered = replace(probe, seq=probe.seq + 1)
         else:
-            altered = replace(
-                probe, provenance=replace(probe.provenance, reference="foreign-source"),
-            )
+            # Provenance is derived from session_id/seq, not a dataclass field.
+            altered = replace(probe, session_id="foreign-source-session")
         bridge.last_login_observations["A"] = altered
     elif fault == "b_native_session":
         bridge.sessions["B"]._started = replace(
