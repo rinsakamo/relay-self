@@ -188,3 +188,19 @@ def test_lane_from_another_real_resident_holds(tmp_path):
         assert other_lane.cognitive_work is not lane.cognitive_work
         with pytest.raises(BD1bSourceHold):
             verify_post_gpu_source(**kw, lane=other_lane, turn=turn)
+
+
+def test_retired_original_owner_holds(tmp_path, monkeypatch):
+    import asyncio
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    turn = prepare_coverage_adoption_turn(**arguments(case))
+    lane = attach(case[1], monkeypatch)
+    resident = case[1].cognitive_work
+    resident.fence_self("A")
+    receipt = asyncio.run(resident.retire_self("A"))
+    resident.mark_offline(receipt)
+    kw = arguments(case)
+    kw.pop("self_id")
+    with pytest.raises(BD1bSourceHold):
+        verify_post_gpu_source(**kw, lane=lane, turn=turn)
