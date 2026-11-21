@@ -34,6 +34,9 @@ from experiments.p0d_real_two_native_smoke_dev import (
 from experiments.stage24g_pinned_assets_launch_dev import (
     check_stage24g_pinned_assets,
 )
+from relay_self.i_lane_i1_native_preflight_dev import (
+    require_i1_native_preflight,
+)
 from relay_self.i_lane_i1_normal_runtime_dev import (
     install_i1_original_schema_bootstrap,
     prepare_i1_original_schema_bootstrap,
@@ -95,6 +98,14 @@ async def _cleanup_native(session, report: dict[str, object]) -> None:
             session.finish_raw_source_audit()
     except BaseException:
         report["raw_source_audit_uncertain"] = True
+    # A failed I1 observation may have already drained bytes into the
+    # original Native child. Preserve its outbound transcript too: never
+    # convert an incomplete command journal into a successful capture.
+    if getattr(session, "_raw_command_audit_fd", None) is not None:
+        try:
+            session.finish_raw_command_audit()
+        except BaseException:
+            report["raw_source_audit_uncertain"] = True
 
 
 def inspect_real_recovered_sources(
@@ -170,6 +181,14 @@ async def run_restored_a_b_real_observation(
     ):
         raise Stage28c2bRealRejoinHold("bounded real-run/presence timeout required")
     _verify_local_runtime(java, node)
+    # The original Mineflayer Node process refuses symlink ancestors even
+    # when Python's older package.json path check passed. This must be
+    # enforced before copying a World, creating a real Paper child or any
+    # Native process. The check itself starts only the read-only Node inspector.
+    preflight = (
+        require_i1_native_preflight(node=node)
+        if i1_original_cpu_sense else None
+    )
     history, source = inspect_real_recovered_sources(
         generation, restored, stage28b_evidence,
     )
@@ -278,6 +297,8 @@ async def run_restored_a_b_real_observation(
         "independent_audit_pass": False,
         "i1_original_cpu_sense_enabled": i1_original_cpu_sense,
         "i1_normal_continuous_native_observed": False,
+        **({"i1_native_preflight": asdict(preflight)}
+           if preflight is not None else {}),
     }
     report_path = evidence / "stage28c2b-recovered-world-result.json"
 
@@ -562,7 +583,6 @@ def main() -> int:
         if args.inspect_only and (
             args.real_world_dev_grant or args.execution_dir is not None
             or args.evidence_dir is not None
-            or args.i1_original_cpu_sense
         ):
             raise Stage28c2bRealRejoinHold("inspect-only may not activate a World")
         if args.execute_once and (
@@ -581,6 +601,14 @@ def main() -> int:
             accepted_eula=True,
         )
         _verify_local_runtime(args.java, args.node)
+        if args.i1_original_cpu_sense:
+            native_receipt = require_i1_native_preflight(node=args.node)
+            print(
+                "I1_NATIVE_DEPENDENCIES_PRE_WORLD_PASS "
+                f"mineflayer={native_receipt.mineflayer_version} "
+                f"source_sha256={native_receipt.entities_sha256} "
+                "world_started=false", flush=True,
+            )
         history, original = inspect_real_recovered_sources(
             args.generation, args.restored, args.stage28b_evidence,
         )
