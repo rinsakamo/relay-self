@@ -53,18 +53,18 @@ _I1_AUDITED = "I1_ORIGINAL_A_B_NATIVE_PAPER_CPU_SOURCE_AUDITED_DEV"
 _I1_BASE = "I1_BASE_ORIGINAL_NATIVE_PAPER_A_B_SOURCE_VERIFIED_DEV"
 
 
-def _paper_prefixes(frozen: bytes) -> dict[str, bytes]:
-    """Hashes of actual *line-complete* prefixes, never invented log snapshots."""
+def _paper_prefixes(frozen: bytes) -> dict[str, int]:
+    """Hash to byte offset of a real line-complete prefix (bounded memory)."""
     if not frozen or len(frozen) > 64 * 1024 * 1024:
         raise I1IndependentAuditHold("bounded frozen owned Paper log required")
-    prefixes: dict[str, bytes] = {}
+    prefixes: dict[str, int] = {}
     digest = hashlib.sha256()
     offset = 0
     for line in frozen.splitlines(keepends=True):
         offset += len(line)
         digest.update(line)
         if line.endswith(b"\\n"):
-            prefixes[digest.hexdigest()] = frozen[:offset]
+            prefixes[digest.hexdigest()] = offset
     return prefixes
 
 
@@ -254,8 +254,9 @@ def _audit_i1_epochs(
         )
         if refs != [expected_native, expected_paper, row["sense_revision"]]:
             raise I1IndependentAuditHold("I1 composited Native/Paper/SENSE refs disagree")
-        prefix = prefixes[log_ref]
-        if (len(prefix) < prior_digest_size
+        prefix_size = prefixes[log_ref]
+        prefix = frozen[:prefix_size]
+        if (prefix_size < prior_digest_size
                 or prior_paper is not None and row["paper_tick"] < prior_paper):
             raise I1IndependentAuditHold("Paper source moved backward during CPU loop")
         try:
@@ -285,7 +286,7 @@ def _audit_i1_epochs(
         processed[sid] += 1
         seen_requests.add(req)
         prior_paper = row["paper_tick"]
-        prior_digest_size = len(prefix)
+        prior_digest_size = prefix_size
         prior_nonce = paper_ref
     if processed != {"A": 2, "B": 2} or prior_nonce is None:
         raise I1IndependentAuditHold("two independently sourced CPU epochs per Self missing")
