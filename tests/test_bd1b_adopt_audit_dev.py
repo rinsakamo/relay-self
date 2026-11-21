@@ -1,12 +1,12 @@
 """Generate faithful CPU synthetic ADOPT originals and audit in another process."""
-from dataclasses import asdict
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from dataclasses import asdict
+from pathlib import Path
 
 import pytest
 
