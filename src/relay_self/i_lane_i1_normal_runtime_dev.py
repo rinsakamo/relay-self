@@ -42,6 +42,7 @@ class I1OriginalCPUEpoch:
     paper_tick_source_ref: str
     paper_log_sha256: str
     paper_actor_uuid: str
+    resident_epoch: int
     source_revision_refs: tuple[str, ...]
     schema_revision: int
     goal_ids: tuple[str, ...]
@@ -145,6 +146,7 @@ def read_i1_original_cpu_epoch(*, bridge, boot, world, links, self_id: str) -> I
             paper_tick_source_ref=probe.original.present.source.paper_tick_source_ref,
             paper_log_sha256=probe.original.present.source.paper_log_sha256,
             paper_actor_uuid=probe.original.present.source.paper_actor_uuid,
+            resident_epoch=probe.original.present.source.resident_epoch,
             source_revision_refs=refs,
             schema_revision=probe.original.present.schema.revision,
             goal_ids=tuple(goal.goal_id for goal in probe.schema.goals),
