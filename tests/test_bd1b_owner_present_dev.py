@@ -93,7 +93,7 @@ def test_no_online_replacement_or_external_present(tmp_path, monkeypatch):
                                  links=case[4], self_id="A", present=_project(case).present)
 
 
-@pytest.mark.parametrize("variant", ["foreign", "revision", "off", "missing-pattern", "version"])
+@pytest.mark.parametrize("variant", ["foreign", "revision", "missing-pattern", "version"])
 def test_bad_bootstrap_rejected(tmp_path, monkeypatch, variant):
     original = ResidentCognitiveWorkOwner.bind_login
     def bind(resident, *, self_id, **kwargs):

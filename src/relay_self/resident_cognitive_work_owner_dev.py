@@ -17,7 +17,7 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     LiveCognitionCheckpointError,
 )
-from relay_self.cognitive_minimal_dev import PatternKind, Predicate
+from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
 from relay_self.common_io import ScopeRef
 from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
 from relay_self.persistent_cognition import Memory
@@ -126,16 +126,14 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("foreign or stale schema registration")
             activation = snapshot.get("exploratory")
             # Explicit mapping: D module exploratory v1 -> B exploration pattern v1.
-            patterns = [p for p in registry.patterns if p.schema_id == "exploration"
-                        and p.predicate is Predicate.EXPLORE and p.kind is PatternKind.GOAL
-                        and p.version == 1]
+            expected_pattern = initial_patterns_with_relative_move().patterns[-1]
+            patterns = [p for p in registry.patterns if p.schema_id == "exploration"]
             if (activation is None or activation.spec.version != 1
-                or activation.mode is SchemaMode.OFF
                 or "QUESTION_CANDIDATE" not in activation.spec.signal_kinds
-                or len(patterns) != 1
-                or not check_schema_eligibility(snapshot, scope=ScopeRef(self_id, None),
-                    schema_id="exploratory", requested_mode=activation.mode,
-                    current_registry_revision=registry.revision).allowed):
+                or (activation.mode is not SchemaMode.OFF and (patterns != [expected_pattern]
+                    or not check_schema_eligibility(snapshot, scope=ScopeRef(self_id, None),
+                        schema_id="exploratory", requested_mode=activation.mode,
+                        current_registry_revision=registry.revision).allowed))):
                 raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
             self._present_schemas[self_id] = (snapshot, registry)
 

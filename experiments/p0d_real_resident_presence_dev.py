@@ -60,7 +60,6 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitiveOwnerFiles,
 )
-from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
@@ -92,6 +91,11 @@ from relay_self.resident_paper_presence_join_dev import (
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
     require_pre_inference_resident_presence,
+)
+from relay_self.schema_bootstrap_dev import (
+    SchemaBootstrapConfig,
+    bootstrap_fresh_schemas,
+    create_fresh_owner,
 )
 from relay_self.stage28b_retired_resident_typed_cut_dev import (
     capture_retired_resident_typed_world,
@@ -846,8 +850,10 @@ async def run_real_resident_presence(
     model_name: str | None = None,
     stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
     typed_owner_cut_dev: bool = False,
+    exploration_schema_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
+    schema_config = SchemaBootstrapConfig(exploration_schema_dev)
     if real_world_dev_grant is not True:
         raise RealResidentPresenceRefusal(
             "HOLD_REAL_WORLD_GRANT: explicit real Paper/native DEV approval required"
@@ -1002,15 +1008,14 @@ async def run_real_resident_presence(
                         "unresolved": False,
                     }, sort_keys=True) + "\n").encode(),
                 )
-            originals[sid] = CheckpointedCognitiveOwner(
-                retained=PersistentCognition(
+            originals[sid] = create_fresh_owner(
+                config=schema_config, retained=PersistentCognition(
                     IdentitySpecification(
                         sid, ("World-independent retained identity",),
                         Provenance("p0d-real-resident", sid),
                     )
                 ),
                 intent=IntentCommitment(),
-                pattern_registry=initial_patterns(),
                 native_session_id=initial_native[sid],
                 last_observed_tick=0,
                 files=CognitiveOwnerFiles(
@@ -1019,6 +1024,7 @@ async def run_real_resident_presence(
                 physical_supervisor=ActionSupervisor(),
             )
         cognition = ResidentCognitiveWorkOwner(originals)
+        bootstrap_fresh_schemas(cognition, schema_config)
         lane = None
         if b_autonomous_l1_dev:
             assert llama_endpoint is not None and systemone_endpoint is not None
@@ -1156,6 +1162,7 @@ def main() -> int:
     parser.add_argument("--b-heartbeat-s", type=float, default=4.0)
     parser.add_argument("--world-only", action="store_true")
     parser.add_argument("--typed-owner-cut-dev", action="store_true")
+    parser.add_argument("--exploration-schema-dev", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     parser.add_argument("--b-autonomous-l1-dev", action="store_true")
@@ -1181,6 +1188,7 @@ def main() -> int:
             systemone_endpoint=args.systemone_endpoint,
             model_name=args.model,
             typed_owner_cut_dev=args.typed_owner_cut_dev,
+            exploration_schema_dev=args.exploration_schema_dev,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)
