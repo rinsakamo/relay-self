@@ -8,6 +8,7 @@ scheduler or model backend is attested by the inert boundary.
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -173,6 +174,7 @@ class OwnedResidentPhysicalBridge:
         # Passive SENSE is ephemeral; original native/Paper sources remain authoritative.
         self._sense: dict[str, SenseFrame] = {}
         self._sense_received_at: dict[str, float] = {}
+        self._sense_refreshing: set[str] = set()
         # A restored Self may have joined/quit more than once in the old
         # boot. All historical native IDs, not just last_owner_session,
         # must be refused BEFORE rebind/admission.
@@ -433,6 +435,79 @@ class OwnedResidentPhysicalBridge:
                 self._sense_received_at.pop(self_id, None)
                 return None
             return frame
+
+    async def refresh_i1_read_only_sense(
+        self, self_id: str, *, timeout_s: float = 2.0,
+    ) -> SenseFrame:
+        """Original single Native reader: request a fresh read-only Body probe.
+
+        No second native subprocess, Physical Action, GPU task or Memory owner.
+        The correlated result must be consumed through the original session
+        and admitted under the resident lock after fresh owner/source checks.
+        """
+        from relay_self.checkpoint_stop_neutralization_dev import _receive_matched
+
+        if (self.cognitive_work is None
+                or not self.enable_sense
+                or not self.physical.observation_only
+                or self.physical.active_action_ids
+                or type(timeout_s) not in (float, int)
+                or not 0 < timeout_s <= 5):
+            raise OwnedResidentBridgeError("I1 requires original observation-only native")
+        with self.cognitive_work.lock:
+            session = self.sessions.get(self_id)
+            evidence = self.last_login_evidence.get(self_id)
+            if (session is None or evidence is None
+                    or self_id in self._sense_refreshing
+                    or session.process_returncode is not None
+                    or self.cognitive_work.current_scope(self_id)[1:]
+                    != (evidence.native_session_id, evidence.world_epoch)
+                    or self.physical.current_native_sessions[self_id]
+                    != evidence.native_session_id
+                    or session.started.session_id != evidence.native_session_id
+                    or self.lifecycle.view(self_id).status is not Presence.ONLINE
+                    or self.paper.held_uncertain
+                    or self.lifecycle.world.paper_session_id
+                    != evidence.paper_session_id):
+                raise OwnedResidentBridgeError("I1 stale/foreign/parallel native observer")
+            self._check_world()
+            self._sense_refreshing.add(self_id)
+        request_id = "i1-original-sense-" + uuid.uuid4().hex
+        try:
+            await session.send_observe(request_id)
+            observation = await _receive_matched(
+                session, session_id=evidence.native_session_id,
+                kind="probe", identity=request_id, timeout_s=timeout_s,
+            )
+            with self.cognitive_work.lock:
+                if (self.sessions.get(self_id) is not session
+                        or self.cognitive_work.current_scope(self_id)[1:]
+                        != (evidence.native_session_id, evidence.world_epoch)
+                        or self.lifecycle.view(self_id).status is not Presence.ONLINE
+                        or self.physical.current_native_sessions[self_id]
+                        != evidence.native_session_id
+                        or self.paper.held_uncertain
+                        or self.lifecycle.world.paper_session_id
+                        != evidence.paper_session_id):
+                    raise OwnedResidentBridgeError("I1 source changed during observe")
+                self._check_world()
+                previous = self._sense.get(self_id)
+                previous_seq = (
+                    previous.observation.seq if previous is not None
+                    else self.last_login_observations[self_id].seq
+                )
+                frame = sense_from_native(
+                    observation,
+                    scope=ScopeRef(self_id, evidence.paper_session_id),
+                    expected_native_session=evidence.native_session_id,
+                    previous_seq=previous_seq, expected_request_id=request_id,
+                )
+                self._sense[self_id] = frame
+                self._sense_received_at[self_id] = time.monotonic()
+                return frame
+        finally:
+            with self.cognitive_work.lock:
+                self._sense_refreshing.discard(self_id)
 
     def current_self_world(self, self_id: str):
         """Transient source-bound E SelfWorld view; not a separate store."""
