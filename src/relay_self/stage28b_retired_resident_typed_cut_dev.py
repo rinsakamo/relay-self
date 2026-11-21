@@ -21,9 +21,9 @@ from relay_self.coordinated_checkpoint_dev import (
 )
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
     capture_typed_generation,
