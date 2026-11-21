@@ -96,7 +96,9 @@ class _SyntheticLlamaServer:
                     self._write(500, {"error": "synthetic transport failure"})
                     return
                 response = (
-                    json.dumps({"status": "resolved", "choice_id": owner.choice_id})
+                    json.dumps({"status": ("unresolved" if owner.choice_id is None
+                                           else "resolved"),
+                                "choice_id": owner.choice_id})
                     if "response_format" in payload
                     else "Cognition is a tentative inference, not physical truth."
                 )
