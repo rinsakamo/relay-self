@@ -1,6 +1,7 @@
 """I4a: original Owner S1 certified prefix -> empty S2 authenticated boundary."""
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -10,7 +11,6 @@ from relay_self.i_lane_i4a_s2_run_boundary_dev import (
     verify_i4a_s2_empty_run_boundary,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.provenance import Provenance
 from test_c_lane_stage27hi_multi_action_review_dev import _fixture
 from test_i4a_s2_owner_handoff_dev import (
     P,
@@ -57,10 +57,10 @@ def test_s2_authenticated_empty_scope_retains_s1_history_and_peer(tmp_path):
         verify_i4a_s2_empty_run_boundary(
             boundary, physical=f.physical, lane=lane,
         )
-        with pytest.raises(I4AS2RunBoundaryHold, match="replayed"):
-            attest_i4a_s2_empty_run_boundary(
-                # Not even a replay of the boundary without original witness.
-                None, None,
+        with pytest.raises(I4AS2RunBoundaryHold, match="Owner/current"):
+            verify_i4a_s2_empty_run_boundary(
+                replace(boundary, new_skill_id="forged-s2-skill"),
+                physical=f.physical, lane=lane,
             )
         assert (peer.retained, peer.intent.events, dict(peer.skills),
                 peer.files.physical_wal_file.read_bytes()) == before
