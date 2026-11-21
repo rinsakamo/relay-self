@@ -140,10 +140,10 @@ def test_i1_live_present_inquiry_cpu_replays_from_original_lf_prefix(tmp_path, m
 def test_i1_complete_line_growth_during_cpu_projection_fences_stale_link(
     tmp_path, monkeypatch,
 ):
+    import relay_self.i_lane_cpu_readout_dev as i0
     from relay_self.i_lane_i1_normal_runtime_dev import read_i1_original_cpu_epoch
     from test_bd1b_owner_present_dev import _configured
     from test_i_lane_e2c_original_present_dev import _inject
-    import relay_self.i_lane_cpu_readout_dev as i0
 
     case = _configured(tmp_path, monkeypatch, need=True)
     _, bridge, boot, world, links, _ = case
