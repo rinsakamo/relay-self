@@ -611,6 +611,18 @@ def main() -> int:
                 f"node_stderr_sha256={native_receipt.node_module_stderr_sha256} "
                 "world_started=false", flush=True,
             )
+            if native_receipt.node_module_warning_code is not None:
+                # Do not silently hide an admitted diagnostic in inspect-only.
+                # The direct I1 runner also saves the *raw* bytes in
+                # i1_native_preflight on its terminal evidence report.
+                print(
+                    "I1_NATIVE_NODE_WARNING_OBSERVED "
+                    f"code={native_receipt.node_module_warning_code} "
+                    f"stderr_sha256={native_receipt.node_module_stderr_sha256}",
+                    file=sys.stderr, flush=True,
+                )
+                sys.stderr.write(native_receipt.node_module_stderr_raw)
+                sys.stderr.flush()
         history, original = inspect_real_recovered_sources(
             args.generation, args.restored, args.stage28b_evidence,
         )
