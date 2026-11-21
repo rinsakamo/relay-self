@@ -166,6 +166,8 @@ class OwnedResidentPhysicalBridge:
         self.forbidden_native_sessions = forbidden_native_sessions
         self.sessions: dict[str, MineflayerProcessSession] = {}
         self.retired: dict[str, ResidentIssuerRetired] = {}
+        # DEV-only owner-retained logout witness for post-reJOIN Paper correlation.
+        self._b_np1b_retired_login: dict[str, tuple[LogoutFenceEvidence, tuple[int, str, int], CheckpointedCognitiveOwner]] = {}
         # Preserve the ORIGINAL verified native/Paper source claim so an
         # independent Paper log join can use it without inventing evidence.
         self.last_login_evidence: dict[str, NativeLoginEvidence] = {}
@@ -417,8 +419,12 @@ class OwnedResidentPhysicalBridge:
         )
         # Original cognition writes must lose Self admission BEFORE the
         # first async await. A late CPU job cannot rewrite a frozen Self.
+        retired_scope = None
         if self.cognitive_work is not None:
             with self.cognitive_work.lock:
+                self._b_np1b_retired_login.pop(self_id, None)
+                if self.adopt_login_worldbody_dev and view.status is Presence.ONLINE:
+                    retired_scope = self.cognitive_work.current_scope(self_id)
                 self.cognitive_work.fence_self(self_id)
                 # Historical receipts remain immutable; only current admission is cleared.
                 for name in ('_fresh_native_initial', '_fresh_native_current',
@@ -471,6 +477,10 @@ class OwnedResidentPhysicalBridge:
                 stale_gpu_fenced=True, peer_transport_drained=True,
             )
             self.lifecycle.finish_logout(self_id, proof)
+            if retired_scope is not None:
+                assert self.cognitive_work is not None
+                with self.cognitive_work.lock:
+                    self._b_np1b_retired_login[self_id] = (proof, retired_scope, owner)
             self.retired[self_id] = retirement
             del self.sessions[self_id]
             return proof
