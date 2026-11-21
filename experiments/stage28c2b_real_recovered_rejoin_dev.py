@@ -607,6 +607,8 @@ def main() -> int:
                 "I1_NATIVE_DEPENDENCIES_PRE_WORLD_PASS "
                 f"mineflayer={native_receipt.mineflayer_version} "
                 f"source_sha256={native_receipt.entities_sha256} "
+                f"node_warning={native_receipt.node_module_warning_code or 'NONE'} "
+                f"node_stderr_sha256={native_receipt.node_module_stderr_sha256} "
                 "world_started=false", flush=True,
             )
         history, original = inspect_real_recovered_sources(
