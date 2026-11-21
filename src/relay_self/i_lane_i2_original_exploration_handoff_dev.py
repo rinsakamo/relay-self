@@ -91,7 +91,6 @@ def _material(bridge, probe: I1CPUProbe, sid: str) -> dict:
     if need is None:
         if inquiry is not None or goals or probe.percept.exploration_need:
             raise I2OriginalGoalHold("unqualified exploration cannot form a Goal or Question")
-        status = "NO_QUALIFIED_EXPLORATION_GOAL"
         need_ref = question_ref = None
     else:
         if (inquiry is None or len(goals) != 1 or not goals[0].unresolved
@@ -104,7 +103,6 @@ def _material(bridge, probe: I1CPUProbe, sid: str) -> dict:
                 or inquiry.world_epoch != source.world_epoch
                 or inquiry.resident_epoch != source.resident_epoch):
             raise I2OriginalGoalHold("exploration Need, bounded Question and CPU Goal disagree")
-        status = "EXPLORATION_GOAL_UNRESOLVED_TARGET"
         need_ref = need.signal.envelope.event_id
         question_ref = inquiry.question_ref
     return {
