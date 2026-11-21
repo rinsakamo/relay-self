@@ -35,7 +35,8 @@ class CoverageInquiryProposal:
 
 
 def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
-                           readout: BD1bOwnerPresent) -> CoverageInquiryProposal | None:
+                           readout: BD1bOwnerPresent,
+                           i1_complete_paper_prefix: bool = False) -> CoverageInquiryProposal | None:
     """Compare to a freshly rebuilt Present while holding the original lock.
 
     Identical evidence yields the same ref; callers can deduplicate by ref without
@@ -46,6 +47,7 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
     with bridge.cognitive_work.lock:
         current = bridge.cognitive_work.read_present_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_complete_paper_prefix=i1_complete_paper_prefix,
         )
         if type(readout) is not BD1bOwnerPresent or readout != current:
             raise CoverageInquiryHold("stale, foreign or altered Present")
