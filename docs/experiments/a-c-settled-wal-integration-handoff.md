@@ -52,3 +52,24 @@ transferred, or reassigned and no new Owner was introduced. T2 and its independe
 scope, Action IDs, WAL and GPU tickets remain unproven; C remains HOLD. A valid
 second-run lifecycle and the admission boundary need separate reconciliation.
 The existing partial evaluation B remains subject to its regression tests.
+
+### C-Real1d-3g: source admission classification
+
+The synthetic original Owner → Stage27h → ActionPort → Native → canonical WAL
+path admits settled observations with comparable PLACE gaps, including a
+nonzero displacement at equal distance, and a vertical mismatch with no
+comparable gap. The Native source emits all positions before the WAL is written;
+no WAL or review frame is rewritten to manufacture either result. OUTSIDE and
+TOO_CLOSE gaps have different meanings and are not compared. Missing Target
+contract fails at Stage27h construction before Action admission; a foreign
+session, inconsistent position or provenance fails source admission. A valid
+source with no comparison retains an unavailable comparison and UNKNOWN choice.
+Empty retained Memory leaves novelty unknown; observed movement does not prove
+Skill success or its applicability or stop cause. NO_PROGRESS is a terminal WAL
+outcome but is excluded by this settled-only review. These results concern the
+bounded synthetic integration; they do not prove real World causality.
+
+B's mixed and interrupted evaluation regression is independent of A. C's
+second SkillRun / new Task lifecycle remains an I-lane dependency: the original
+Owner and whole-WAL scoping must be reconciled before a separate run is claimed.
+Neither A/B nor this handoff awards overall DEV settled-WAL evaluation PASS.

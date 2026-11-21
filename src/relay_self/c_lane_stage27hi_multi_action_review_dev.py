@@ -312,6 +312,7 @@ def prepare_stage27hi_multi_review(
                 "gait_modes": [r.get("gait_mode", "WALK") for r in rows],
                 "last_native_seq": last_settled_probe.seq,
                 "target_status": assessment.status.value,
+                "initial_target_status": initial_assessment.status.value,
                 "target_gap_m": assessment.gap_to_envelope_m,
                 "initial_target_gap_m": initial_assessment.gap_to_envelope_m,
                 "executed_actions": list(rows),

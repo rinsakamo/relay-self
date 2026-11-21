@@ -92,6 +92,97 @@ def test_source_admission_tracks_settled_native_progress(tmp_path):
                  lambda f, lane, server: scenario(f, lane, server, delta, expected))
 
 
+def test_source_admission_equal_gap_and_vertical_mismatch(tmp_path):
+    import json
+    import math
+    from dataclasses import replace
+
+    import pytest
+
+    from relay_self.c_lane_l1_evaluation_engine_dev import build_evaluation_steps
+    from test_p0d_stage27c_place_move_wal_issuer_dev import ScriptedPlaceNative
+    from test_p0d_stage27h_bounded_l0_move_dev import _issue, _start
+
+    class DisplacedNative(ScriptedPlaceNative):
+        async def send_set_control(self, action_id, *, control, state):
+            await super().send_set_control(action_id, control=control, state=state)
+            self.x -= 0.6
+
+        async def send_observe(self, request_id):
+            await super().send_observe(request_id)
+            probe = self.events[-1]
+            position = probe.snapshot.position
+            position = replace(position, y=position.y + self.dy, z=position.z + self.dz)
+            self.events[-1] = replace(probe, snapshot=replace(probe.snapshot, position=position))
+
+    async def scenario(f, lane, server, vertical):
+        pre, handoff, former, first, loop = await _start(f, lane)
+        native = DisplacedNative(handoff.native_session_id)
+        anchor = loop.invocation.target.contract.anchor
+        distance = anchor.x - first.snapshot.position.x
+        native.dy = 1.5 if vertical else 0.0
+        native.dz = 0.0 if vertical else math.sqrt(0.4 * distance - 0.04)
+        assert loop.pre_action(first, now_ns=150).status == "L0_CONTINUE_MOVE"
+        receipt = await _issue(f, pre, handoff, loop, former, first, native)
+        assert receipt.journal_status == "NATIVE_PLACE_MOVE_SETTLED"
+        step = loop.observe_terminal_action(
+            receipt, source_probe=first,
+            now_ns=loop.start_ns + loop.invocation.budget.max_duration_ms * 1_000_000,
+        )
+        frame = prepare_stage27hi_multi_review(
+            loop, step, physical=f.physical, lane=lane, bridge=f.bridge,
+            first_action_probe=first, last_settled_probe=receipt.settled_probe,
+            world_id=f.lifecycle.world.world_id,
+        )
+        facts = json.loads(frame.request.context[0].value_json)
+        choices = build_evaluation_steps(frame)
+        assert receipt.displacement_m >= 0.1
+        if vertical:
+            assert facts["target_status"] == "VERTICAL_MISMATCH"
+            assert facts["target_gap_m"] is None
+            assert "comparison unavailable" in choices[0].candidates[0].choice.description
+        else:
+            assert facts["target_gap_m"] == pytest.approx(facts["initial_target_gap_m"])
+            assert "did not change" in choices[0].candidates[0].choice.description
+        assert "novelty is unknown" in choices[2].candidates[0].choice.description
+        assert "success is not established" in choices[1].candidates[0].choice.description
+        assert "cause is not established" in choices[3].candidates[0].choice.description
+
+    for vertical in (False, True):
+        case_root = tmp_path / str(vertical)
+        case_root.mkdir()
+        _fixture(case_root, lambda f, lane, server: scenario(f, lane, server, vertical))
+
+
+def test_missing_target_contract_holds_before_action_admission(tmp_path):
+    from dataclasses import replace
+
+    import pytest
+
+    from relay_self.p0d_stage27h_bounded_l0_move_dev import (
+        Stage27hBoundedMoveLoop,
+        Stage27hLoopRefusal,
+    )
+    from test_p0d_stage27h_bounded_l0_move_dev import _start
+
+    async def scenario(f, lane, server):
+        pre, handoff, _, _, loop = await _start(f, lane)
+        option = pre.round.frame.options[0]
+        invocation = replace(option.invocation, target=replace(option.invocation.target,
+                                                               contract=None))
+        option = replace(option, invocation=invocation, arrival_contract=None)
+        frame = replace(pre.round.frame, options=(option,))
+        missing_target = replace(pre, round=replace(pre.round, frame=frame))
+        wal = loop.owner.files.physical_wal_file.read_bytes()
+        with pytest.raises(Stage27hLoopRefusal, match="Preset/Target required"):
+            Stage27hBoundedMoveLoop(missing_target, handoff, owner=loop.owner,
+                                    physical=f.physical, world_epoch=pre.world_epoch,
+                                    start_ns=100)
+        assert loop.owner.files.physical_wal_file.read_bytes() == wal
+        assert loop.action_count == 0
+    _fixture(tmp_path, scenario)
+
+
 def test_five_axes_use_resident_lane_and_preserve_owner(tmp_path):
     async def scenario(f, lane, server):
         loop, step, first, receipts, before = await _run_multi(f, lane, server)
@@ -372,8 +463,9 @@ def test_progress_candidates_follow_comparable_observations():
 
     from relay_self.c_lane_l1_evaluation_engine_dev import build_evaluation_steps
 
-    def descriptions(before, after, reached=False):
+    def descriptions(before, after, reached=False, after_status="OUTSIDE"):
         facts = {"original_action_ids": ["a"], "initial_target_gap_m": before,
+                 "initial_target_status": "OUTSIDE", "target_status": after_status,
                  "target_gap_m": after, "executed_actions": [{"displacement_m": 1.0}]}
         frame = SimpleNamespace(
             request=SimpleNamespace(context=[SimpleNamespace(value_json=json.dumps(facts))]),
@@ -390,6 +482,7 @@ def test_progress_candidates_follow_comparable_observations():
         assert fragment in choices[0]
         assert choices[1] == "UNKNOWN"
     assert "arrival condition observed" in descriptions(3, 0, reached=True)[0]
+    assert "comparison unavailable" in descriptions(3, 1, after_status="TOO_CLOSE")[0]
 
 
 def test_failure_positions_preserve_only_completed_axes(tmp_path, monkeypatch):
@@ -540,6 +633,7 @@ def test_candidate_options_remain_bounded_by_observed_motion_and_sources():
 
     for movement, before, after in ((0, 2, 1), (1, 2, 1), (1, None, 1)):
         facts = {"original_action_ids": ["a"], "initial_target_gap_m": before,
+                 "initial_target_status": "OUTSIDE", "target_status": "OUTSIDE",
                  "target_gap_m": after, "executed_actions": [{"displacement_m": movement}]}
         frame = SimpleNamespace(
             request=SimpleNamespace(context=[SimpleNamespace(value_json=json.dumps(facts))]),

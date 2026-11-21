@@ -72,7 +72,9 @@ def build_evaluation_steps(frame):
     after = facts.get("target_gap_m")
     if frame.completion_review_offered:
         progress = "Target arrival condition observed; Goal completion is not established"
-    elif (type(before) in (float, int) and type(after) in (float, int)
+    elif (facts.get("initial_target_status") == "OUTSIDE"
+          and facts.get("target_status") in ("OUTSIDE", "CONDITION_OBSERVED")
+          and type(before) in (float, int) and type(after) in (float, int)
           and math.isfinite(before) and math.isfinite(after)):
         if math.isclose(before, after, abs_tol=1e-9):
             progress = "Target distance did not change; arrival not established"
@@ -115,7 +117,9 @@ def build_evaluation_steps(frame):
                 "3", ("Movement was measured" if movement else "No movement was measured")
                 + "; Skill effectiveness is not established",
             ), (wal, native)))
-            if movement and type(before) in (float, int) and type(after) in (float, int) \
+            if movement and facts.get("initial_target_status") == "OUTSIDE" \
+                    and facts.get("target_status") in ("OUTSIDE", "CONDITION_OBSERVED") \
+                    and type(before) in (float, int) and type(after) in (float, int) \
                     and math.isfinite(before) and math.isfinite(after) and after < before:
                 candidates.append(EvaluationCandidate(BoundedChoice(
                     "4", "Movement coincided with Target progress; consistent with "
@@ -184,6 +188,7 @@ async def _execute_evaluation(frame, loop, *, physical, lane, bridge,
                 "world_epoch": frame.world_epoch, "skill_execution_id": frame.skill_execution_id,
                 "action_ids": list(frame.action_ids),
                 "target_status": source_facts["target_status"],
+                "initial_target_status": source_facts["initial_target_status"],
                 "target_gap_m": source_facts["target_gap_m"],
                 "initial_target_gap_m": source_facts["initial_target_gap_m"],
                 "terminal_status": frame.terminal_status,
