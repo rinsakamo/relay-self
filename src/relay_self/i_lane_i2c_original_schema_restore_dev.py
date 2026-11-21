@@ -79,6 +79,9 @@ def bootstrap_original_recorded_a_b_schemas(
             )
             if len(expected_files) != 6:
                 raise I2cRestoredSchemaHold("complete same-generation Self file pins required")
+            candidates = {c.self_id: c.semantic.cut for c in recovered.plan.candidates}
+            if set(candidates) != {"A", "B"}:
+                raise I2cRestoredSchemaHold("foreign restored cut roster")
             snapshots = []
             for cut in original_cuts:
                 sid = cut.self_id
@@ -107,7 +110,7 @@ def bootstrap_original_recorded_a_b_schemas(
                             or _hash_file(archived_root / filename) != expected_files[key]):
                         raise I2cRestoredSchemaHold("original/restored Self source changed")
                 if (load_self_owner_cut(restored_root / "owner-state.json") != cut
-                        or recovered.plan.candidates[0].self_id not in ("A", "B")):
+                        or candidates[sid] != cut):
                     raise I2cRestoredSchemaHold("restored saved Schema differs from committed cut")
                 snapshots.append((sid, cut.recorded_schema))
             # All reads and validation above are complete before publishing
