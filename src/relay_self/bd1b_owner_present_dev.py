@@ -3,6 +3,7 @@ import hashlib
 from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import MineflayerNearbyEntitiesCoverage
+from adapters.mineflayer.sense_projection import SenseRefusal, sense_for_composite_source
 from relay_self.bd1b_owner_source_dev import BD1bOwnerSource, build_bd1b_owner_source
 from relay_self.common_io import Clock, ClockStamp, CommonEnvelope, ScopeRef
 from relay_self.exploration_need_dev import (
@@ -52,10 +53,24 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
         owner = bridge.owners[self_id]
         probe = owner.current_worldbody_observation
         scope = ScopeRef(self_id, source.paper_session_id)
-        refs = (
+        owner_refs = (
             f"native:{source.native_session_id}:{source.native_probe_ref}:{source.native_probe_seq}:{source.native_probe_source_ref}",
             f"paper:{source.paper_session_id}:{source.paper_boot_id}:{source.paper_log_sha256}:{source.paper_tick_source_ref}",
         )
+        sense = bridge.current_sense(self_id)
+        refs = owner_refs
+        sense_claims = ()
+        if sense is not None:
+            if (sense.scope != scope or sense.observation.session_id != source.native_session_id
+                    or sense.source_revision_ref !=
+                    f"mineflayer:{source.native_session_id}:{sense.observation.seq}"):
+                raise BD1bPresentHold("SENSE does not belong to current original source")
+            try:
+                refs, sense_claims = sense_for_composite_source(
+                    sense, owner_source_refs=owner_refs,
+                )
+            except SenseRefusal as exc:
+                raise BD1bPresentHold("invalid composite SENSE revision") from exc
         epoch = f"resident:{source.resident_epoch}:world:{source.world_epoch}"
         claim = LensClaim(scope, Lens.SELF_BODY, "native-worldbody",
                           EpistemicStatus.OBSERVED, (probe.provenance,), refs,
@@ -75,7 +90,7 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
                                     value, coverage_key))
         three = project_three_self(retained=owner.retained, scope=scope,
                                    epoch_ref=epoch, source_revision_refs=refs,
-                                   claims=tuple(claims))
+                                   claims=(*claims, *sense_claims))
         present = project_present_frame(
             three_self=three, snapshot=schema,
             current_registry_revision=owner.pattern_registry.revision,
@@ -112,7 +127,8 @@ def build_bd1b_owner_present(*, bridge, boot, world, links, self_id):
         if (build_bd1b_owner_source(bridge=bridge, boot=boot, world=world,
                                     links=links, self_id=self_id) != source
                 or bridge.cognitive_work.present_schema(self_id) != schema
-                or owner.current_worldbody_observation is not probe):
+                or owner.current_worldbody_observation is not probe
+                or bridge.current_sense(self_id) is not sense):
             raise BD1bPresentHold("source changed during projection")
         return BD1bOwnerPresent(source, schema, present,
                                "NO_VERIFIED_ACTION_CATALOG", need,
