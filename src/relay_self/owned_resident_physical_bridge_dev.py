@@ -367,7 +367,7 @@ class OwnedResidentPhysicalBridge:
 
     def current_sense(self, self_id: str, *, max_age_s: float = 2.0) -> SenseFrame | None:
         """Read only a current passive frame; no Action or Paper qualification."""
-        if self.cognitive_work is None or not self.enable_sense:
+        if self.cognitive_work is None or not getattr(self, "enable_sense", False):
             return None
         with self.cognitive_work.lock:
             frame = self._sense.get(self_id)
