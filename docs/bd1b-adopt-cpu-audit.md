@@ -48,3 +48,16 @@ The focused hostile tests are end-to-end commit tests, not only checks of
 preceding SOURCE and ISSUER helper functions. All PASS/HOLD classifications
 must be based on observed test and exact-HEAD CI results; code existence alone
 does not constitute a PASS.
+
+
+## CI original evidence retention
+
+On the BD1b development head, the exact-head GitHub CI pytest job runs the
+focused hostile suite before the full test suite. The successful CPU-synthetic
+original bundle is copied to an exclusive archive path, re-audited in a second
+subprocess, and uploaded as a GitHub Actions artifact named
+`bd1b-adopt-cpu-<exact-head-sha>` for 14 days. The log prints the archive's
+manifest SHA256 and every original file SHA256. Fetch the artifact, extract it
+into a trusted read-only directory and run the standalone module to reproduce
+its self-consistency classification. Retention is for inspection, **not** a
+trusted original-owner signature or independently authenticated source.

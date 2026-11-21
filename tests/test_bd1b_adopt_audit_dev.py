@@ -140,6 +140,22 @@ def test_actual_cpu_adoption_bundle_passes_separate_process(tmp_path, monkeypatc
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["inquiry_ref"] == result["inquiry_ref"]
     assert {p.name: p.read_bytes() for p in bundle.iterdir()} == before_audit
+    # An opt-in CI archive preserves actual copied originals for later review.
+    # Re-audit the archive in a fresh process before the artifact is uploaded.
+    retained = os.environ.get("BD1B_AUDIT_ARCHIVE")
+    if retained:
+        archive = Path(retained)
+        assert not archive.exists()
+        shutil.copytree(bundle, archive)
+        recheck = _subprocess_audit(archive)
+        assert recheck.returncode == 0, recheck.stderr
+        assert json.loads(recheck.stdout) == result
+        print("BD1B_AUDIT_ORIGINAL " + json.dumps({
+            "archive": str(archive),
+            "manifest_sha256": _sha((archive / "manifest.json").read_bytes()),
+            "file_sha256": {name: _sha((archive / name).read_bytes()) for name in _FILES},
+            **result,
+        }, sort_keys=True))
 
 
 @pytest.mark.parametrize("variant", [
