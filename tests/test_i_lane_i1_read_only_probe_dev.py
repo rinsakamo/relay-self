@@ -79,6 +79,8 @@ def test_original_native_read_only_probe_is_matched_and_source_fenced(
         bridge._sense = {}
         bridge._sense_received_at = {}
         bridge._sense_refreshing = set()
+        bridge._i1_correlated_sense = {}
+        bridge._i1_correlated_received_at = {}
         bridge._start_sense("A", session, SimpleNamespace(world=world))
         assert bridge._sense["A"].source_revision_ref == f"mineflayer:{native}:2"
         for _ in range(2):
@@ -87,16 +89,20 @@ def test_original_native_read_only_probe_is_matched_and_source_fenced(
             with pytest.raises(Exception):
                 await bridge.refresh_i1_read_only_sense("A", timeout_s=0.3)
             assert bridge._sense["A"].observation.seq == 2
+            assert bridge.current_i1_correlated_sense("A") is None
         else:
             first = await bridge.refresh_i1_read_only_sense("A", timeout_s=0.8)
             assert first.observation.seq == 3
             assert first.source_revision_ref == f"mineflayer:{native}:3"
+            assert bridge.current_i1_correlated_sense("A") is first
             next_frame = await bridge.refresh_i1_read_only_sense("A", timeout_s=0.8)
             assert next_frame.observation.seq == 4
             assert bridge.current_sense("A") is next_frame
+            assert bridge.current_i1_correlated_sense("A") is next_frame
             assert bridge._sense_refreshing == set()
             bridge.cognitive_work.fence_self("A")
             assert bridge.current_sense("A") is None
+            assert bridge.current_i1_correlated_sense("A") is None
             with pytest.raises((OwnedResidentBridgeError, RuntimeError)):
                 await bridge.refresh_i1_read_only_sense("A", timeout_s=0.3)
         await session.terminate()
