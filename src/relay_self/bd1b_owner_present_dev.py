@@ -61,6 +61,11 @@ def _build_present(*, bridge, boot, world, links, self_id, source_reader):
             f"native:{source.native_session_id}:{source.native_probe_ref}:{source.native_probe_seq}:{source.native_probe_source_ref}",
             f"paper:{source.paper_session_id}:{source.paper_boot_id}:{source.paper_log_sha256}:{source.paper_tick_source_ref}",
         )
+        # Original reJOIN supplies a third, identity-qualified independent
+        # revision. Historic Stage28 readouts keep their exact two refs.
+        composite_receipt = getattr(source, "composite_receipt", None)
+        if composite_receipt is not None:
+            refs += (f"composite:rejoin:{composite_receipt.composite_revision}",)
         epoch = f"resident:{source.resident_epoch}:world:{source.world_epoch}"
         claim = LensClaim(scope, Lens.SELF_BODY, "native-worldbody",
                           EpistemicStatus.OBSERVED, (probe.provenance,), refs,
