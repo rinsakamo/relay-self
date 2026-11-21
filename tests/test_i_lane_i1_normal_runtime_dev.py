@@ -112,6 +112,7 @@ def test_two_qualified_native_versions_for_each_self_without_action_or_memory(
             bridge._sense[sid] = replace(
                 frame, observation=replace(
                     frame.observation, seq=3 + rounds,
+                    request_id=f"i1-original-sense-{rounds:031x}{int(sid == 'B'):x}",
                     snapshot=replace(frame.observation.snapshot, food=float(8 + rounds)),
                 ),
                 source_revision_ref=f"mineflayer:{frame.observation.session_id}:{3 + rounds}",
