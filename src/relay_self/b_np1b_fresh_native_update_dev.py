@@ -80,7 +80,7 @@ async def update_fresh_native(*, bridge: OwnedResidentPhysicalBridge, self_id: s
     if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
         raise FreshNativeHold('original bridge required')
     resident = bridge.cognitive_work
-    claimed = False
+    claim = None
     try:
         with resident.lock:
             snap = _snapshot(bridge, self_id)
@@ -106,11 +106,11 @@ async def update_fresh_native(*, bridge: OwnedResidentPhysicalBridge, self_id: s
                 raise FreshNativeHold('current native observation has no update provenance')
             pending = getattr(bridge, '_fresh_native_pending', None)
             if pending is None:
-                pending = bridge._fresh_native_pending = set()
+                pending = bridge._fresh_native_pending = {}
             if self_id in pending:
                 raise FreshNativeHold('native update already receiving')
-            pending.add(self_id)
-            claimed = True
+            claim = object()
+            pending[self_id] = claim
         request = 'p0d-update-' + uuid.uuid4().hex
         deadline = asyncio.get_running_loop().time() + bridge.probe_timeout_s
         await asyncio.wait_for(session.send_observe(request), bridge.probe_timeout_s)
@@ -165,6 +165,33 @@ async def update_fresh_native(*, bridge: OwnedResidentPhysicalBridge, self_id: s
     except Exception as exc:
         raise FreshNativeHold('native update unavailable') from exc
     finally:
-        if claimed:
+        if claim is not None:
             with resident.lock:
-                bridge._fresh_native_pending.discard(self_id)
+                if bridge._fresh_native_pending.get(self_id) is claim:
+                    del bridge._fresh_native_pending[self_id]
+
+
+def read_rejoined_native_revision(*, bridge: OwnedResidentPhysicalBridge,
+                                  self_id: str) -> NativeRevision:
+    """Read the currently adopted login probe without qualifying any Paper source."""
+    if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
+        raise FreshNativeHold('original bridge required')
+    try:
+        with bridge.cognitive_work.lock:
+            owner, world, _, evidence, initial, scope, current, tick, _ = _snapshot(bridge, self_id)
+            if (scope[0] <= 1 or current is not initial
+                    or self_id in getattr(bridge, '_fresh_native_pending', {})
+                    or self_id in getattr(bridge, '_fresh_native_current', {})
+                    or initial.request_id != evidence.observation_ref):
+                raise FreshNativeHold('rejoined login probe unavailable')
+            data = dict(self_id=self_id, owner_identity=str(owner.files.self_root),
+                        resident_epoch=scope[0], world_id=world.world_id,
+                        branch_id=world.branch_id, world_epoch=world.epoch,
+                        native_session_id=scope[1], native_request_id=initial.request_id,
+                        native_sequence=initial.seq, native_source_ref=initial.provenance.reference,
+                        native_world_time=tick)
+            return NativeRevision(**data, native_revision=_revision(data))
+    except FreshNativeHold:
+        raise
+    except (KeyError, AttributeError, RuntimeError, ValueError, TypeError) as exc:
+        raise FreshNativeHold('rejoined native source unavailable') from exc

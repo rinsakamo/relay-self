@@ -418,7 +418,15 @@ class OwnedResidentPhysicalBridge:
         # Original cognition writes must lose Self admission BEFORE the
         # first async await. A late CPU job cannot rewrite a frozen Self.
         if self.cognitive_work is not None:
-            self.cognitive_work.fence_self(self_id)
+            with self.cognitive_work.lock:
+                self.cognitive_work.fence_self(self_id)
+                # Historical receipts remain immutable; only current admission is cleared.
+                for name in ('_fresh_native_initial', '_fresh_native_current',
+                             '_fresh_native_pending'):
+                    getattr(self, name, {}).pop(self_id, None)
+                self.last_login_evidence.pop(self_id, None)
+                self.last_login_observations.pop(self_id, None)
+        self.forbidden_native_sessions = self.forbidden_native_sessions | {native_id}
         if self.inference_lane is not None:
             self.inference_lane.fence_self(self_id)
         try:

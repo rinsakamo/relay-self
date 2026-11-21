@@ -11,7 +11,11 @@ from relay_self.b_np1b_current_composite_source_dev import (
     CompositeSourceHold,
     build_current_composite_source,
 )
-from relay_self.b_np1b_fresh_native_update_dev import update_fresh_native
+from relay_self.b_np1b_fresh_native_update_dev import (
+    FreshNativeHold,
+    read_rejoined_native_revision,
+    update_fresh_native,
+)
 from relay_self.b_np1b_initial_source_dev import build_initial_source_receipts
 from relay_self.owned_paper_world_dev import PaperTickReceipt
 from test_b_np1b_fresh_native_update_dev import files
@@ -35,8 +39,10 @@ def current(tmp_path, monkeypatch):
 
     def make_fixture(*args, **kwargs):
         f = fixture(*args, **kwargs)
+        serial = [0]
         async def launch(config):
-            sid = 'native-' + config.username
+            serial[0] += 1
+            sid = 'native-' + config.username + '-' + str(serial[0])
             started = {'type': 'adapter_started', 'session_id': sid, 'seq': 0,
                        'mineflayer_version': MINEFLAYER_VERSION,
                        'config': {'host': config.host, 'port': config.port,
@@ -63,6 +69,10 @@ def current(tmp_path, monkeypatch):
                 pid = 1234
                 def __init__(self):
                     self.stdin = self.stdout = Pipe()
+                def terminate(self):
+                    self.returncode = 0
+                async def wait(self):
+                    return self.returncode
             session = Session(Process())
             session._started = await session.receive()
             return session
@@ -89,6 +99,81 @@ def current(tmp_path, monkeypatch):
 def build(f, initial, native):
     return build_current_composite_source(bridge=f.bridge, self_id='A',
                                            native_revision=native, initial_receipts=initial)
+
+
+def test_real_logout_rejoin_fences_current_sources_and_preserves_pending(current, monkeypatch):
+    from relay_self.checkpointed_cognitive_runtime_dev import load_persistent_cognition
+    from relay_self.world_resident_lifecycle_dev import Presence
+
+    f, initial, native, _ = current
+    bridge = f.bridge
+    composite = build(f, initial, native)
+    historical = (initial, composite)
+    old_probe = f.owners['A'].current_worldbody_observation
+    old_login = bridge.last_login_observations['A']
+    old_scope = f.cognitive.current_scope('A')
+    other = (bridge.sessions['B'], f.owners['B'].current_worldbody_observation,
+             f.cognitive.current_scope('B'))
+    wal = f.owners['A'].files.physical_wal_file.read_bytes()
+    session = bridge.sessions['A']
+    receive = session.receive
+
+    async def run():
+        arrived, release = asyncio.Event(), asyncio.Event()
+        async def delayed():
+            item = await receive()
+            arrived.set()
+            await release.wait()
+            return item
+        monkeypatch.setattr(session, 'receive', delayed)
+        task = asyncio.create_task(update_fresh_native(
+            bridge=bridge, self_id='A', initial_receipt=initial[0]))
+        await arrived.wait()
+        proof = await bridge.logout('A')
+        assert proof.physical_issuer_revoked and proof.no_physical_inflight
+        assert proof.physical_wal_clear and proof.native_terminated
+        assert f.cognitive.retired_clean('A')
+        assert f.lifecycle.view('A').status is Presence.OFFLINE
+        assert load_persistent_cognition(f.owners['A'].files.cognition_file) == f.owners['A'].retained
+        assert f.owners['A'].files.physical_wal_file.read_bytes() == wal
+        assert 'A' not in bridge.last_login_evidence and 'A' not in bridge.last_login_observations
+        with pytest.raises(FreshNativeHold):
+            read_rejoined_native_revision(bridge=bridge, self_id='A')
+        with pytest.raises(CompositeSourceHold):
+            build(f, initial, native)
+        await bridge.login('A')
+        new = read_rejoined_native_revision(bridge=bridge, self_id='A')
+        assert new.resident_epoch > old_scope[0]
+        assert new.native_session_id != old_scope[1]
+        assert new.native_request_id != old_login.request_id
+        assert f.owners['A'].current_worldbody_observation is bridge.last_login_observations['A']
+        assert new.native_request_id == f.owners['A'].current_worldbody_observation.request_id
+        current_probe = bridge.last_login_observations['A']
+        bridge.last_login_observations['A'] = old_login
+        with pytest.raises(FreshNativeHold):
+            read_rejoined_native_revision(bridge=bridge, self_id='A')
+        bridge.last_login_observations['A'] = replace(current_probe, request_id=old_login.request_id)
+        with pytest.raises(FreshNativeHold):
+            read_rejoined_native_revision(bridge=bridge, self_id='A')
+        bridge.last_login_observations['A'] = current_probe
+        with pytest.raises(CompositeSourceHold):
+            build(f, initial, native)
+        with pytest.raises(FreshNativeHold):
+            await update_fresh_native(bridge=bridge, self_id='A', initial_receipt=initial[0])
+        marker = object()
+        bridge._fresh_native_pending['A'] = marker
+        release.set()
+        with pytest.raises(FreshNativeHold):
+            await task
+        assert bridge._fresh_native_pending['A'] is marker
+        del bridge._fresh_native_pending['A']
+        assert read_rejoined_native_revision(bridge=bridge, self_id='A') == new
+        assert f.owners['A'].current_worldbody_observation is not old_probe
+        assert (bridge.sessions['B'], f.owners['B'].current_worldbody_observation,
+                f.cognitive.current_scope('B')) == other
+        assert (initial, composite) == historical
+
+    asyncio.run(run())
 
 
 def test_current_composite_original_process_and_read_only(current):
@@ -121,7 +206,7 @@ def test_hostile_sources_hold(current, monkeypatch, case):
     if case == 'stale':
         asyncio.run(update_fresh_native(bridge=bridge, self_id='A', initial_receipt=initial[0]))
     elif case == 'pending':
-        bridge._fresh_native_pending.add('A')
+        bridge._fresh_native_pending['A'] = object()
     elif case in ('boot', 'session', 'nonce'):
         tick = replace(tick, **({'server_session_id': 'foreign'} if case == 'session' else
             {'source_ref': tick.source_ref.replace(BOOT if case == 'boot' else '77777777', 'foreign')}))
