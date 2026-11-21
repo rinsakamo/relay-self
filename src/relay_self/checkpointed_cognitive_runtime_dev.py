@@ -7,9 +7,10 @@ operator/adapter contracts and MUST be independently attested for real World.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -245,6 +246,13 @@ class CognitionOwnerCohort:
                     pending_question_refs=tuple(sorted(owner.pending_questions)),
                 )
                 retained = owner.retained
+                if retained.exploration_continuity is not None:
+                    questions = {q.question_ref for q in retained.exploration_continuity.questions if q.open}
+                    if not questions.issubset(owner.pending_questions):
+                        raise LiveCognitionCheckpointError("open exploration Question missing from owner cut")
+                if retained.pattern_registry is not None and retained.pattern_registry != cut.pattern_registry:
+                    raise LiveCognitionCheckpointError("cognition/owner registry mismatch")
+                retained = replace(retained, pattern_registry=cut.pattern_registry)
                 fence_ref = self.fence.fence_ref
             except BaseException:
                 self._freeze_failed = True
@@ -257,11 +265,14 @@ class CognitionOwnerCohort:
             folder = checkpoint_dir / generation_id
             folder.mkdir(mode=0o700)
             owner_path = folder / "owner-state.json"
-            save_self_owner_cut(owner_path, cut)
             # Canonical original owner persists, not a forked authority.
             save_persistent_cognition(owner.files.cognition_file, retained)
             if load_persistent_cognition(owner.files.cognition_file) != retained:
                 raise LiveCognitionCheckpointError("cognition write/readback mismatch")
+            if cut.pattern_registry.accepted_presets or retained.exploration_continuity is not None:
+                cut = replace(cut, cognition_sha256=hashlib.sha256(
+                    owner.files.cognition_file.read_bytes()).hexdigest())
+            save_self_owner_cut(owner_path, cut)
             receipt = SelfFrozenReceipt(
                 self_id=self_id,
                 snapshot=SelfSnapshotSource(
@@ -404,6 +415,8 @@ class CheckpointedCognitiveOwner:
             raise LiveCognitionCheckpointError("actual Intent owner required")
         if not isinstance(pattern_registry, PatternRegistry):
             raise LiveCognitionCheckpointError("typed pattern registry required")
+        if retained.pattern_registry is not None and retained.pattern_registry != pattern_registry:
+            raise LiveCognitionCheckpointError("cognition/owner registry mismatch")
         if not isinstance(physical_supervisor, ActionSupervisor):
             raise LiveCognitionCheckpointError("actual physical Action supervisor required")
         if not native_session_id or type(last_observed_tick) is not int or last_observed_tick < 0:
@@ -415,6 +428,12 @@ class CheckpointedCognitiveOwner:
         )
         if len({x.execution_id for x in skills}) != len(skills):
             raise LiveCognitionCheckpointError("duplicate Skill histories")
+        if len({x.message_id for x in peer_deliveries}) != len(peer_deliveries):
+            raise LiveCognitionCheckpointError("duplicate peer delivery")
+        if (type(pending_questions) is not tuple
+                or any(type(q) is not str or not q.strip() for q in pending_questions)
+                or len(set(pending_questions)) != len(pending_questions)):
+            raise LiveCognitionCheckpointError("invalid or duplicate pending Question")
         self.retained = retained
         self.intent = intent
         self.pattern_registry = pattern_registry
@@ -510,6 +529,8 @@ class CheckpointedCognitiveOwner:
                 accepted_by_self=True, expected_revision=self.pattern_registry.revision,
                 allowed_skills=allowed_skills,
             )
+            if self.retained.pattern_registry is not None:
+                self.retained = replace(self.retained, pattern_registry=self.pattern_registry)
 
 
 def staged_recover_cognition_cohort(

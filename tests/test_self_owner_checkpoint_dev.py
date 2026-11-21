@@ -139,6 +139,51 @@ def _capture(world: Path, store: Path, sources, *, sequence: int = 1):
     )
 
 
+def test_schema1_refuses_registry_with_accepted_presets(tmp_path: Path, monkeypatch):
+    _, _, _, cuts = _fixture(tmp_path)
+    monkeypatch.setattr(type(cuts[0].pattern_registry), "accepted_presets", (object(),), raising=False)
+    with pytest.raises(SelfOwnerCheckpointError, match="cannot encode accepted Presets"):
+        save_self_owner_cut(tmp_path / "unsafe.json", cuts[0])
+
+
+def test_explicit_digest_enables_schema2_without_presets(tmp_path: Path):
+    world, store, specs, cuts = _fixture(tmp_path)
+    for spec, cut in zip(specs, cuts):
+        cognition = PersistentCognition(
+            IdentitySpecification(cut.self_id, ("Continue as the same Self.",),
+                                  Provenance("test-identity", cut.self_id)),
+            pattern_registry=cut.pattern_registry,
+        )
+        save_persistent_cognition(spec.cognition_file, cognition)
+        bound = replace(cut, cognition_sha256=hashlib.sha256(
+            spec.cognition_file.read_bytes()).hexdigest())
+        spec.owner_state_file.unlink()
+        save_self_owner_cut(spec.owner_state_file, bound)
+        assert json.loads(spec.owner_state_file.read_text())["payload"]["schema"] == 2
+        assert load_self_owner_cut(spec.owner_state_file) == bound
+    checkpoint = _capture(world, store, specs)
+    assert all(c.cognition_sha256 for c in verify_typed_generation(checkpoint))
+
+
+def test_explicit_digest_rejects_changed_cognition_without_presets(tmp_path: Path):
+    world, store, specs, cuts = _fixture(tmp_path)
+    spec, cut = specs[0], cuts[0]
+    cognition = PersistentCognition(
+        IdentitySpecification("A", ("original",), Provenance("test-identity", "A")),
+        pattern_registry=cut.pattern_registry,
+    )
+    save_persistent_cognition(spec.cognition_file, cognition)
+    bound = replace(cut, cognition_sha256=hashlib.sha256(
+        spec.cognition_file.read_bytes()).hexdigest())
+    spec.owner_state_file.unlink()
+    save_self_owner_cut(spec.owner_state_file, bound)
+    save_persistent_cognition(spec.cognition_file, replace(
+        cognition, identity=replace(cognition.identity, directives=("modified",))))
+    with pytest.raises(SelfOwnerCheckpointError, match="digest mismatch"):
+        _capture(world, store, specs)
+    assert latest_verified_generation(store) is None
+
+
 def test_typed_two_self_generation_and_inert_restore(tmp_path: Path):
     world, store, specs, cuts = _fixture(tmp_path)
     assert cuts[0].pattern_registry.revision == 1

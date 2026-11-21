@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import weakref
 from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +18,9 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     LiveCognitionCheckpointError,
 )
+from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
+from relay_self.common_io import ScopeRef
+from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
 from relay_self.persistent_cognition import Memory
 
 
@@ -103,11 +107,74 @@ class ResidentCognitiveWorkOwner:
         self.lock = threading.RLock()
         self.owners = dict(owners)
         self._states = {sid: _ResidentState() for sid in owners}
+        # Run configuration only: it is deliberately not part of checkpoint data.
+        self._present_schemas = {}
+        self._coverage_adoption_turns = weakref.WeakValueDictionary()
         self._discarded: dict[str, list[LocalPeerDiscard]] = {
             sid: [] for sid in owners
         }
         for owner in owners.values():
             owner.cohort = self  # use original owner's existing mutation path
+
+    def register_present_schema(self, self_id: str, snapshot: SchemaSnapshot) -> None:
+        """Install once before the first login; restore requires explicit rebootstrap."""
+        with self.lock:
+            state = self._state(self_id)
+            if state.mode != "OFFLINE" or state.epoch != 0 or self_id in self._present_schemas:
+                raise ResidentCognitiveWorkError("schema registration closed")
+            owner = self.owners[self_id]
+            registry = owner.pattern_registry
+            if not isinstance(snapshot, SchemaSnapshot) or snapshot.self_id != self_id or snapshot.revision != registry.revision:
+                raise ResidentCognitiveWorkError("foreign or stale schema registration")
+            activation = snapshot.get("exploratory")
+            # Explicit mapping: D module exploratory v1 -> B exploration pattern v1.
+            expected_pattern = initial_patterns_with_relative_move().patterns[-1]
+            patterns = [p for p in registry.patterns if p.schema_id == "exploration"]
+            if (activation is None or activation.spec.version != 1
+                or "QUESTION_CANDIDATE" not in activation.spec.signal_kinds
+                or (activation.mode is not SchemaMode.OFF and (patterns != [expected_pattern]
+                    or not check_schema_eligibility(snapshot, scope=ScopeRef(self_id, None),
+                        schema_id="exploratory", requested_mode=activation.mode,
+                        current_registry_revision=registry.revision).allowed))):
+                raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
+            self._present_schemas[self_id] = (snapshot, registry)
+
+    def present_schema(self, self_id: str) -> SchemaSnapshot:
+        """Return only a current registration, under the resident lock."""
+        with self.lock:
+            self.current_scope(self_id)
+            registration = self._present_schemas.get(self_id)
+            if registration is None or registration[1] != self.owners[self_id].pattern_registry:
+                raise ResidentCognitiveWorkError("schema unregistered or registry changed")
+            return registration[0]
+
+    def read_present_cpu(self, *, bridge, boot, world, links, self_id):
+        """Project current qualified evidence on the original resident CPU path.
+
+        The result is ephemeral; a later consumer must revalidate it under this
+        lock. Future SENSE composition belongs inside this same snapshot boundary.
+        """
+        from relay_self.bd1b_owner_present_dev import build_bd1b_owner_present
+
+        with self.lock:
+            if bridge.cognitive_work is not self or bridge.owners.get(self_id) is not self.owners.get(self_id):
+                raise ResidentCognitiveWorkError("foreign resident bridge")
+            return build_bd1b_owner_present(
+                bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            )
+
+    def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):
+        """Run the existing read-only inquiry consumer against current Present."""
+        from relay_self.bd1b_coverage_inquiry_dev import build_coverage_inquiry
+
+        with self.lock:
+            readout = self.read_present_cpu(
+                bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            )
+            return build_coverage_inquiry(
+                bridge=bridge, boot=boot, world=world, links=links,
+                self_id=self_id, readout=readout,
+            )
 
     def _state(self, self_id: str) -> _ResidentState:
         try:

@@ -92,9 +92,12 @@ class OwnedResidentPhysicalBridge:
         cognitive_work: ResidentCognitiveWorkOwner | None = None,
         inference_lane: ResidentLlamaInferenceLane | None = None,
         forbidden_native_sessions: frozenset[str] = frozenset(),
+        adopt_login_worldbody_dev: bool = False,
     ) -> None:
         if (
-            not isinstance(lifecycle, WorldResidentLifecycle)
+            type(adopt_login_worldbody_dev) is not bool
+            or (adopt_login_worldbody_dev and cognitive_work is None)
+            or not isinstance(lifecycle, WorldResidentLifecycle)
             or not isinstance(physical, PhysicalIssueAdmission)
             or not physical.resident_mode
             or (
@@ -155,6 +158,7 @@ class OwnedResidentPhysicalBridge:
         self.probe_timeout_s = float(probe_timeout_s)
         self.work = InertResidentWorkBoundary(lifecycle.self_roster)
         self.cognitive_work = cognitive_work
+        self.adopt_login_worldbody_dev = adopt_login_worldbody_dev
         self.inference_lane = inference_lane
         # A restored Self may have joined/quit more than once in the old
         # boot. All historical native IDs, not just last_owner_session,
@@ -242,26 +246,36 @@ class OwnedResidentPhysicalBridge:
                 physical_wal_file=owner.files.physical_wal_file,
                 source_world_epoch_validated=True,
             )
+            if len(observations) != 1:
+                raise OwnedResidentBridgeError("original native probe body unavailable")
             if self.cognitive_work is not None:
-                self.cognitive_work.bind_login(
-                    self_id=self_id,
-                    native_session_id=launched.started.session_id,
-                    world_epoch=ticket.world.epoch, world_tick=observed_tick,
-                )
+                with self.cognitive_work.lock:
+                    self.cognitive_work.bind_login(
+                        self_id=self_id,
+                        native_session_id=launched.started.session_id,
+                        world_epoch=ticket.world.epoch, world_tick=observed_tick,
+                    )
+                    scope = self.cognitive_work.current_scope(self_id)
+                    self.sessions[self_id] = launched
+                    self.last_login_evidence[self_id] = evidence
+                    self.last_login_observations[self_id] = observations[0]
+                    if self.adopt_login_worldbody_dev:
+                        self._adopt_login_worldbody_dev(self_id, scope)
                 if self.inference_lane is not None:
                     self.inference_lane.bind_login(self_id)
             else:
                 owner.native_session_id = launched.started.session_id
                 owner.last_observed_tick = observed_tick
                 owner.fresh_native_observation_required = False
-            self.sessions[self_id] = launched
-            self.last_login_evidence[self_id] = evidence
-            if len(observations) != 1:
-                raise OwnedResidentBridgeError("original native probe body unavailable")
-            self.last_login_observations[self_id] = observations[0]
+                self.sessions[self_id] = launched
+                self.last_login_evidence[self_id] = evidence
+                self.last_login_observations[self_id] = observations[0]
             self.retired.pop(self_id, None)
             return ticket
         except BaseException:
+            if self.adopt_login_worldbody_dev and self.cognitive_work is not None:
+                with self.cognitive_work.lock:
+                    self.owners[self_id].current_worldbody_observation = None
             self.last_login_evidence.pop(self_id, None)
             self.last_login_observations.pop(self_id, None)
             # If source verification fails, NEVER grant a new issuer lease.
@@ -288,6 +302,41 @@ class OwnedResidentPhysicalBridge:
             raise
         finally:
             self._pending_login.discard(self_id)
+
+    def _adopt_login_worldbody_dev(self, self_id: str, scope: tuple[int, str, int]) -> None:
+        """Adopt the correlated login probe within the original resident epoch."""
+        resident = self.cognitive_work
+        if resident is None:
+            raise OwnedResidentBridgeError("resident required")
+        with resident.lock:
+            owner = self.owners[self_id]
+            probe = self.last_login_observations.get(self_id)
+            evidence = self.last_login_evidence.get(self_id)
+            session = self.sessions.get(self_id)
+            world = self.lifecycle.world
+            if (
+                not self.adopt_login_worldbody_dev
+                or self.lifecycle.view(self_id).status is not Presence.ONLINE
+                or resident.current_scope(self_id) != scope
+                or scope[2] != world.epoch or owner.cohort is not resident
+                or session is None or session.process_returncode is not None
+                or evidence is None or probe is None
+                or evidence.self_id != self_id or evidence.world_epoch != world.epoch
+                or evidence.world_id != world.world_id or evidence.branch_id != world.branch_id
+                or evidence.paper_session_id != world.paper_session_id
+                or session.started.session_id != scope[1]
+                or self.physical.current_native_sessions[self_id] != scope[1]
+                or evidence.native_session_id != scope[1] or owner.native_session_id != scope[1]
+                or probe.session_id != scope[1] or probe.kind != "probe"
+                or not evidence.observation_ref or probe.request_id != evidence.observation_ref
+                or probe.snapshot.time is None
+                or probe.snapshot.time.day * 24000 + probe.snapshot.time.time_of_day
+                != evidence.observed_world_tick
+                or evidence.observed_world_tick != owner.last_observed_tick
+            ):
+                raise OwnedResidentBridgeError("stale or foreign login WorldBody")
+            self._check_world()
+            owner.accept_rejoined_worldbody(probe, request_id=evidence.observation_ref)
 
     def attach_observation_only_bounded_l1(
         self, lane: ResidentLlamaInferenceLane,
@@ -369,7 +418,15 @@ class OwnedResidentPhysicalBridge:
         # Original cognition writes must lose Self admission BEFORE the
         # first async await. A late CPU job cannot rewrite a frozen Self.
         if self.cognitive_work is not None:
-            self.cognitive_work.fence_self(self_id)
+            with self.cognitive_work.lock:
+                self.cognitive_work.fence_self(self_id)
+                # Historical receipts remain immutable; only current admission is cleared.
+                for name in ('_fresh_native_initial', '_fresh_native_current',
+                             '_fresh_native_pending'):
+                    getattr(self, name, {}).pop(self_id, None)
+                self.last_login_evidence.pop(self_id, None)
+                self.last_login_observations.pop(self_id, None)
+        self.forbidden_native_sessions = self.forbidden_native_sessions | {native_id}
         if self.inference_lane is not None:
             self.inference_lane.fence_self(self_id)
         try:
