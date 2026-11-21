@@ -42,13 +42,13 @@ for new independent source qualifications pending independently provided origina
 2. **Receipt timing API incompatibility: confirmed.**
    tests/test_stage24b_resident_real_l1_integration_dev.py::
    test_l1_selected_move_can_have_terminal_no_net_outcome_without_fake_success
-   raises AttributeError: the caller experiments/stage24b_real_l1_move_dev.py
-   accesses receipt.native_start_dispatch_monotonic_ns, which is **absent** from
+   raised AttributeError at 5aa94d39: the caller experiments/stage24b_real_l1_move_dev.py
+   accessed receipt.native_start_dispatch_monotonic_ns, absent from the then-current
    ResidentMoveDevReceipt in experiments/cognitive_physical_move_issue_dev.py.
    **Category: producer/consumer API incompatibility on old HEAD**, not a model failure.
-   **Owner: I.** Resolved at a710d653: capture the actual sender monotonic timestamp within the original issuer and validate chronology in the caller; the alternative would have been to
-   capture actual dispatch monotonic time inside the one original Native issuer
-   and return it through a typed receipt; no invented caller clock value.
+   **Owner: I.** Resolved at a710d653: the sole original Native issuer records
+   the actual monotonic dispatch time in the typed receipt; Stage24b validates
+   its chronology. No synthetic caller-supplied clock value was substituted.
 
 The previous 496 test failures, 14 collection errors and the 2,641 PASS / 2 FAIL
 run are historical. **At HEAD a710d653, exact-HEAD CI 44923902340 succeeds
