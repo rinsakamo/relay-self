@@ -186,6 +186,7 @@ def test_i1_cli_inspect_only_is_now_a_nonworld_native_dependency_preflight(
         mineflayer_version="4.39.0", entities_sha256="a" * 64,
         node_module_warning_code="DEP0040",
         node_module_stderr_sha256="b" * 64,
+        node_module_stderr_raw=NODE_22_DEP0040,
     ))
     monkeypatch.setattr(runner, "inspect_real_recovered_sources",
                         lambda *_a: (SimpleNamespace(historical_native_sessions=()),
@@ -195,10 +196,13 @@ def test_i1_cli_inspect_only_is_now_a_nonworld_native_dependency_preflight(
         *_args(tmp_path), "--inspect-only", "--i1-original-cpu-sense",
     ])
     assert runner.main() == 0
-    output = capsys.readouterr().out
+    captured = capsys.readouterr()
+    output = captured.out
     assert "I1_NATIVE_DEPENDENCIES_PRE_WORLD_PASS" in output
     assert "node_warning=DEP0040" in output
     assert "node_stderr_sha256=" + "b" * 64 in output
+    assert "I1_NATIVE_NODE_WARNING_OBSERVED" in captured.err
+    assert NODE_22_DEP0040 in captured.err
     assert not (tmp_path / "new-world").exists()
 
 
