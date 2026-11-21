@@ -55,6 +55,7 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str) -> 
     with resident.lock:
         original = read_i0_owner_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_complete_paper_prefix=True,
         )
         owner = bridge.owners[self_id]
         original_probe = owner.current_worldbody_observation
@@ -103,6 +104,7 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str) -> 
         )
         after = read_i0_owner_cpu(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+            i1_complete_paper_prefix=True,
         )
         if (after != original
                 or owner.current_worldbody_observation is not original_probe
