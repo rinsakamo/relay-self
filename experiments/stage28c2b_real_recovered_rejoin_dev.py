@@ -495,8 +495,13 @@ async def run_restored_a_b_real_observation(
             report_path, (json.dumps(report, sort_keys=True, indent=2) + "\n").encode(),
         )
         print(f"STAGE28C2B_REAL_CAPTURE={report_path}", file=sys.stderr, flush=True)
-    if report["classification"] != "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING":
-        raise Stage28c2bRealRejoinHold("original real Paper native source unavailable")
+    expected_classification = (
+        "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if i1_original_cpu_sense
+        else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+    )
+    if report["classification"] != expected_classification:
+        raise Stage28c2bRealRejoinHold("original real Paper/native/I1 source unavailable")
     return report_path
 
 
