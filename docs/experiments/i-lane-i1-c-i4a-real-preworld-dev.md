@@ -28,3 +28,10 @@ refusal or promoting I1's independent World evidence into I4a evidence.
 Offline negative controls: fake/foreign HEAD, EULA+grant without launch,
 non-created World directory, and rejection of process-backed sessions in
 the synthetic S2 interface. No real World and no real Gemma were run.
+
+Exact-HEAD source admission additionally compares the bytes of each required
+working-tree file against its committed Git blob. A normal clean `git diff`
+is insufficient: tracked files flagged `assume-unchanged` or `skip-worktree`
+can be modified invisibly to that check. Adversarial fixture tests cover both
+index flags. This remains a **code-only** integrity check; it never authorizes
+World startup or attests a runtime witness.

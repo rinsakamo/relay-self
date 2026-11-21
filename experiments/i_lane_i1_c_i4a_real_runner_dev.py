@@ -104,7 +104,19 @@ def inspect_i1_c_i4a_preworld(
             cursor = cursor.parent
         if not item.is_file():
             raise I1CI4APreWorldHold("original I1/C/I4a source file unavailable")
-        source[rel] = hashlib.sha256(item.read_bytes()).hexdigest()
+        try:
+            current_bytes = item.read_bytes()
+            committed = subprocess.run(
+                ["git", "-C", str(repo_root), "cat-file", "blob", f"HEAD:{rel}"],
+                capture_output=True, check=False, timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise I1CI4APreWorldHold("committed source blob unavailable") from exc
+        # git diff --quiet can be fooled by assume-unchanged / skip-worktree.
+        # Compare actual bytes to the *committed* blob, not the Git index.
+        if committed.returncode != 0 or committed.stdout != current_bytes:
+            raise I1CI4APreWorldHold("committed source blob differs from working tree")
+        source[rel] = hashlib.sha256(current_bytes).hexdigest()
     return I1CI4APreWorldReceipt(
         "I1_C_I4A_PRE_WORLD_HOLD",
         expected_head, source, _UNMET_LIVE_ADMISSIONS,

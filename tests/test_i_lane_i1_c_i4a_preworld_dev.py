@@ -120,3 +120,37 @@ def test_preworld_rejects_dirty_source_even_when_commit_head_matches(tmp_path):
         inspect_i1_c_i4a_preworld(
             repo_root=tmp_path, expected_head=initial_head,
         )
+
+@pytest.mark.parametrize("index_flag", ["--assume-unchanged", "--skip-worktree"])
+def test_preworld_rejects_mutation_hidden_by_git_index_flags(tmp_path, index_flag):
+    original = inspect_i1_c_i4a_preworld(
+        repo_root=_root(), expected_head=_exact_head(),
+    )
+    for rel in original.source_sha256:
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_root() / rel, path)
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=CI",
+         "-c", "user.email=ci@example.invalid", "commit", "-qm", "fixture"],
+        check=True,
+    )
+    head = subprocess.check_output(
+        ["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    rel = "src/relay_self/i_lane_i4a_s2_first_native_move_dev.py"
+    source = tmp_path / rel
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "update-index", index_flag, "--", rel],
+        check=True,
+    )
+    source.write_bytes(source.read_bytes() + b"\n# masked dirty source\n")
+    # This demonstrates why the earlier git diff-only check was inadequate.
+    assert subprocess.run(
+        ["git", "-C", str(tmp_path), "diff", "--quiet", "HEAD", "--", rel],
+        check=False,
+    ).returncode == 0
+    with pytest.raises(I1CI4APreWorldHold, match="committed source blob differs"):
+        inspect_i1_c_i4a_preworld(repo_root=tmp_path, expected_head=head)
