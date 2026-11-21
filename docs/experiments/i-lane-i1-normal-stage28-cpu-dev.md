@@ -163,6 +163,55 @@ required. A failed `stdin.drain` is not journaled as successfully
 delivered; a journal-write failure after drain is an unresolved attempt,
 not a success.
 
+### I1 Native read-only request correlation vs passive E SENSE
+
+A later **real single-World** I1 DEV trial at old HEAD
+`afd1106724e1b472efaf4626444612ab23a20b16` passed PRE_WORLD and
+recorded the two distinct `i1-original-sense-...` stdin requests and
+matching original Native stdout probe replies **per Self**, but the
+Runner HOLDed on `read-only Native request correlation lost before CPU
+adoption` without a terminal CPU ledger. This is **not** BD1bSourceHold,
+and no BD1b failure-time Paper file should be expected for that attempt.
+Actual row values were not preserved, so do not assert confirmed unique
+cause or promote its partial raw stdout to a CPU assessment.
+
+One concrete original-receive race is now addressed: normal passive
+E SENSE updates `bridge._sense` on unsolicited `move/entities` messages,
+which have **no request_id**, after an explicitly correlated read-only
+Native `probe` reply was verified. The I1 loop previously consumed the
+latest passive `current_sense` instead of the response to its own
+`observe` request. New **I1-only** per-Self ephemeral
+`_i1_correlated_sense` on the **same original resident bridge/lock**
+retains exactly the reply verified through the original session
+`_receive_matched`; passive SENSE continues normally and has not
+changed. The separate readback
+`current_i1_correlated_sense` independently checks the still-current
+original Native/Paper/Owner scope and a short TTL, exact I1
+32-hex request ID, probe kind, same session, source revision and
+non-future Native seq. It is cleared on failed login, quarantine and
+logout. It is not a separate owner, memory, World witness or physical
+Action grant.
+
+The normal original B Present → CoverageInquiry → I0 CPU → I1 CPU
+read-only path receives an **explicit** correlated-I1 mode, checks
+the *same* pinned request-response revision both before and after
+projection, and compares each CPU row with the **exact verified
+`SenseFrame` returned by that round's original Native refresh**
+(A/B request ID, seq, provenance and revision all must match).
+Merely starting with `i1-original-sense-` does **not** authorize
+adoption. In no-refresh/normal E SENSE mode the previous passive
+behavior is unchanged. CPU evidence is emitted only after the
+original B/Paper, Native and Schema fences agree. A correlation HOLD
+can retain a diagnostic-only mismatch record; it never creates a
+completed CPU ledger or independent-audit eligibility.
+
+Synthetic regression exercises two explicit matched A/B probes each
+with a later higher-seq unsolicited passive event before CPU, plus
+passive-only, expired, foreign session/scope/request, future seq and
+Owner retirement negatives. All synthetic/offline results remain
+distinct from the historical real World HOLD and any future
+separate independent real-source audit.
+
 ### I1 BD1b Original Owner source readback (2026-11-21 follow-up)
 
 A new isolated World at older HEAD `1a0581f9b95a1beacc85dceff384e5ab4e8e847d`
