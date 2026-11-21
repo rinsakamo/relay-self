@@ -6,6 +6,7 @@ ResidentLlamaInferenceLane. These tests do not call real llama.cpp or Paper.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import threading
 from dataclasses import replace
@@ -34,6 +35,12 @@ from relay_self.persistent_cognition import (
     save_persistent_cognition,
 )
 from relay_self.provenance import Provenance
+from relay_self.self_owner_checkpoint_dev import (
+    SelfOwnerCut,
+    load_self_owner_cut,
+    rehydrate_self_owner,
+    save_self_owner_cut,
+)
 from relay_self.relay_engine import (
     CognitionMode,
     ProviderDecision,
@@ -385,5 +392,44 @@ def test_i2d_owner_persistence_failure_fences_without_live_publication(
         else:
             # Disk may have changed; never announce an adopted live Owner.
             assert load_persistent_cognition(owner.files.cognition_file) != before
+    finally:
+        lane._pool.shutdown(wait=True)
+
+
+def test_i2d_owner_model_adoption_is_compatible_with_future_v3_typed_cut(
+    tmp_path, monkeypatch,
+):
+    case, lane, _ = _case(tmp_path, monkeypatch)
+    try:
+        result = asyncio.run(run_i2d_self_adoption(
+            **_args(case, "A"), lane=lane, timeout_s=3.0,
+        ))
+        assert result.outcome == "SELF_ACCEPTED_NONMOTOR_EXPLORATION_SCHEMA"
+        bridge = case[1]
+        owner = bridge.owners["A"]
+        snapshot = bridge.cognitive_work._present_schemas["A"][0]
+        path = tmp_path / "future-a-owner-state.json"
+        cut = SelfOwnerCut(
+            generation_id="g-i2d-future-a", self_id="A",
+            world_id=case[3].world_id, branch_id=case[3].branch_id,
+            former_native_session_id=owner.native_session_id,
+            last_observed_world_tick=owner.last_observed_tick,
+            intent_events=owner.intent.events,
+            skill_executions=(),
+            pattern_registry=owner.pattern_registry,
+            cognition_sha256=hashlib.sha256(
+                owner.files.cognition_file.read_bytes(),
+            ).hexdigest(),
+            recorded_schema=snapshot,
+        )
+        save_self_owner_cut(path, cut)
+        decoded = load_self_owner_cut(path)
+        assert decoded == cut
+        assert decoded.recorded_schema == snapshot
+        restored = rehydrate_self_owner(decoded)
+        assert restored.pattern_registry == owner.pattern_registry
+        assert restored.old_skill_resume_authorized is False
+        assert restored.new_physical_action_issue_authorized is False
+        assert bridge.physical.active_action_ids == ()
     finally:
         lane._pool.shutdown(wait=True)
