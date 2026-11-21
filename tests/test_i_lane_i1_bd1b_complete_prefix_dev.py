@@ -162,3 +162,84 @@ def test_i1_complete_line_growth_during_cpu_projection_fences_stale_link(
             bridge=bridge, boot=boot, world=world,
             links=links, self_id="A",
         )
+
+
+def test_i1_bd1b_failure_attaches_exact_original_read_before_any_reread(
+    tmp_path, monkeypatch,
+):
+    from experiments.stage28c2b_real_recovered_rejoin_dev import (
+        freeze_i1_bd1b_hold_readback,
+    )
+
+    case = _ready(tmp_path, monkeypatch)
+    _, bridge, _, _, links, _ = case
+    original = bridge.paper._log_path.read_bytes()
+    failing = original + b"> new complete line\n> incomplete"
+    bridge.paper._log_path.write_bytes(failing)
+    with pytest.raises(BD1bSourceHold) as caught:
+        _read(case, i1=True)
+    error = caught.value
+    assert error.i1_original_paper_readback == failing
+    assert error.i1_source_debug["raw_sha256"] == hashlib.sha256(failing).hexdigest()
+    assert error.i1_source_debug["link_sha256_A"] == links[0].paper_log_sha256
+    # Change the live log AFTER the source HOLD: diagnostic must not reread it.
+    bridge.paper._log_path.write_bytes(failing + b"other later completed line\n")
+    evidence = tmp_path / "hold-evidence"
+    evidence.mkdir()
+    report = {"classification": "REAL_REJOIN_HOLD"}
+    assert freeze_i1_bd1b_hold_readback(
+        exception=error, evidence=evidence, report=report,
+    )
+    receipt = report["i1_bd1b_failure_readback"]
+    assert (evidence / receipt["filename"]).read_bytes() == failing
+    assert receipt["sha256"] == hashlib.sha256(failing).hexdigest()
+    assert receipt["diagnostic_only"] and not receipt["independent_audit_pass"]
+    assert report["classification"] == "REAL_REJOIN_HOLD"
+    # Captures are exclusive and may not be silently overwritten.
+    assert not freeze_i1_bd1b_hold_readback(
+        exception=error, evidence=evidence, report=report,
+    )
+
+
+def test_i1_bd1b_hold_evidence_does_not_mutate_normal_b_or_invent_failure(
+    tmp_path, monkeypatch,
+):
+    from experiments.stage28c2b_real_recovered_rejoin_dev import (
+        freeze_i1_bd1b_hold_readback,
+    )
+
+    case = _ready(tmp_path, monkeypatch)
+    _, bridge, _, _, _, _ = case
+    original = bridge.paper._log_path.read_bytes()
+    bridge.paper._log_path.write_bytes(original + b"> ")
+    with pytest.raises(BD1bSourceHold) as caught:
+        _read(case, i1=False)
+    assert not hasattr(caught.value, "i1_original_paper_readback")
+    evidence = tmp_path / "hold-evidence"
+    evidence.mkdir()
+    report = {"classification": "REAL_REJOIN_HOLD"}
+    assert not freeze_i1_bd1b_hold_readback(
+        exception=caught.value, evidence=evidence, report=report,
+    )
+    assert list(evidence.iterdir()) == []
+    assert report == {"classification": "REAL_REJOIN_HOLD"}
+
+
+def test_i1_bd1b_hold_evidence_rejects_inconsistent_attached_digest(
+    tmp_path,
+):
+    from experiments.stage28c2b_real_recovered_rejoin_dev import (
+        freeze_i1_bd1b_hold_readback,
+    )
+
+    failure = BD1bSourceHold("synthetic bad")
+    failure.i1_original_paper_readback = b"actual"
+    failure.i1_source_debug = {"raw_sha256": "0" * 64, "raw_size": 6}
+    evidence = tmp_path / "hold-evidence"
+    evidence.mkdir()
+    report = {}
+    assert not freeze_i1_bd1b_hold_readback(
+        exception=failure, evidence=evidence, report=report,
+    )
+    assert report["i1_bd1b_failure_capture_uncertain"] is True
+    assert not list(evidence.iterdir())
