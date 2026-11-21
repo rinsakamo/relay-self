@@ -1153,6 +1153,7 @@ async def run_stage27_real_world(
     stage27h_l0_move_loop: bool = False,
     stage27i_precision_gait: bool = False,
     stage27j_long_move: bool = False,
+    stage27_enable_sense: bool = False,
 ) -> Path:
     """Run the Stage26 original World only via the Stage27 opt-in motor hook."""
     if (
@@ -1162,6 +1163,10 @@ async def run_stage27_real_world(
         raise Stage27RealWorldRefusal("original real Gemma/EULA/World DEV prerequisites missing")
     if (
         type(stage27h_l0_move_loop) is not bool
+        or type(stage27_enable_sense) is not bool
+        or (stage27_enable_sense and not (
+            stage27h_l0_move_loop or stage27i_precision_gait or stage27j_long_move
+        ))
         or type(stage27i_precision_gait) is not bool
         or type(stage27j_long_move) is not bool
         or sum((
@@ -1198,6 +1203,7 @@ async def run_stage27_real_world(
         ),
         _stage27i_precision_target=stage27i_precision_gait,
         _stage27j_long_target=stage27j_long_move,
+        _stage27_enable_sense=stage27_enable_sense,
         _stage27_motor_hook=(
             stage27j_real_a_motor_hook if stage27j_long_move
             else stage27i_real_a_motor_hook if stage27i_precision_gait
@@ -1231,6 +1237,7 @@ def main() -> int:
     p.add_argument("--stage27h-l0-move-loop", action="store_true")
     p.add_argument("--stage27i-precision-gait", action="store_true")
     p.add_argument("--stage27j-long-move", action="store_true")
+    p.add_argument("--stage27-enable-sense", action="store_true")
     args = p.parse_args()
     try:
         report = asyncio.run(run_stage27_real_world(
@@ -1249,6 +1256,7 @@ def main() -> int:
             stage27h_l0_move_loop=args.stage27h_l0_move_loop,
             stage27i_precision_gait=args.stage27i_precision_gait,
             stage27j_long_move=args.stage27j_long_move,
+            stage27_enable_sense=args.stage27_enable_sense,
         ))
     except Exception as exc:
         print(f"STAGE27_REAL_WORLD_HOLD={type(exc).__name__}: {exc}", file=sys.stderr)
