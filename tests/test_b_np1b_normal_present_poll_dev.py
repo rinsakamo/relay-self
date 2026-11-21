@@ -15,19 +15,20 @@ from relay_self.b_np1b_continuing_b_composite_dev import (
     ContinuingCompositeSourceReceipt,
     build_continuing_b_composite_source,
 )
-from relay_self.b_np1b_normal_present_poll_dev import NormalPresentPollHold, NormalPresentCpuPoll
-from relay_self.b_np1b_rejoin_composite_source_dev import RejoinCompositeHold
+from relay_self.b_np1b_normal_present_poll_dev import NormalPresentCpuPoll, NormalPresentPollHold
 from relay_self.b_np1b_rejoin_present_dev import RejoinedOwnerSource
 from relay_self.owned_paper_world_dev import PaperTickReceipt
+from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
-from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE, WORLD
+from test_b_np1b_initial_source_dev import ACTORS, BOOT, WORLD
 from test_b_np1b_owner_bound_rejoin_dev import _paper_line
+from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
 from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 
 
 @pytest.fixture
 def pair(request):
-    assert rejoined_present is not None
+    assert rejoined_present is not None and rejoined is not None and current_fixture is not None
     f, initial, old_native, historical, old_session, logout, b_before = (
         request.getfixturevalue("rejoined_present")
     )
