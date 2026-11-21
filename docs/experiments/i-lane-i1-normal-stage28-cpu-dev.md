@@ -163,6 +163,39 @@ required. A failed `stdin.drain` is not journaled as successfully
 delivered; a journal-write failure after drain is an unresolved attempt,
 not a success.
 
+### I1 original Paper console prompt / complete-line capture contract
+
+The **first actual independent I1 audit** after a successful single isolated
+Paper A/B trial at old HEAD `9c32cec3b311a044658c470d061f7aa0760875da`
+correctly HOLDed: its two captured CPU `paper_log_sha256` values were
+genuine byte prefixes of the immutable owned Paper stdout, **but included a
+non-newline-terminated console prompt after a valid Paper ACK**. They were
+not a complete line-boundary source and the independent auditor rejected
+them. The old trial and its original evidence remain `I1_REAL_WORLD_HOLD`,
+regardless of later software fixes; no retrospective promotion, artifact
+rewriting, or re-audit-as-success.
+
+I1's new **opt-in source projection** now makes its initial A/B Paper body
+link and each subsequent read-only CPU epoch hash only the exact original
+`read_owned_log()` byte prefix ending at its **last real LF byte**, and
+requires that the newly requested Paper ACK marker be present *within that
+complete prefix*. The source projection never inserts a newline, repairs
+an ACK, changes an old byte, trusts a detached/global log, or consumes a
+trailing partial line as evidence. If the requested ACK is only in the
+partial tail, or there are no complete lines, capture HOLDs. Full raw
+console output **including the trailing prompt** stays attached to the
+original owned Paper stdout and is frozen as the pre-STOP source; the
+independent auditor still recomputes original complete-line prefix SHA256
+from its independently read frozen log. Default (non-I1) Stage28 behavior
+is unchanged.
+
+Adversarial offline tests emulate two real ACK-bound CPU epochs with
+`> ` prompt bytes observed during the first read and still retained when
+the second ACK arrives. They prove canonical source digests pass an
+unchanged strict independent auditor while the old byte-prefix-in-prompt
+SHA **still HOLDs**. This is CPU/offline evidence only, not an attestation
+of the past real World or a license to repeat/relax an independent audit.
+
 For each epoch, it recomputes SHA256 of a line-complete **prefix** of the
 immutable pre-STOP owned Paper log, verifies the plugin-owned ACK bytes and
 nonce/tick, and checks that the two same-original Paper actors were still
