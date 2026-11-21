@@ -424,7 +424,7 @@ class WorldPercept:
             or not math.isfinite(self.oxygen_reserve)
             or self.oxygen_reserve < 0
         ):
-            raise MinimalCognitionError("invalid body oxygen reserve")
+            raise MinimalCognitionError("invalid observed oxygen reserve")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
@@ -862,7 +862,7 @@ def assemble_l1_select(
     active = intent_owner.current_intent
     summary = {
         "goals": [{"id":g.goal_id, "strength":g.strength,
-                   "skill":f"{g.skill_id}@{g.skill_version}",
+                   "skill":None if not g.skill_id else f"{g.skill_id}@{g.skill_version}",
                    "unresolved":g.unresolved} for g in frame.goals],
         "constraints": [{"schema":c.schema_id, "sense":c.sensation,
                          "status":c.epistemic_status} for c in frame.constraints],

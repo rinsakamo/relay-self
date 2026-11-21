@@ -711,7 +711,7 @@ class LlamaCppRelayProvider:
                 request,
                 model=self._model,
             )
-            body = self._call(
+            body = self._call_for_request(
                 request_body,
                 endpoint=self._systemone_endpoint,
                 request_id=request.request_id,
@@ -738,7 +738,7 @@ class LlamaCppRelayProvider:
                 request,
                 model=self._model,
             )
-            body = self._call(request_body, request_id=request.request_id)
+            body = self._call_for_request(request_body, request_id=request.request_id)
             raw_text, call_facts = _extract_completion(
                 body,
                 request_body=request_body,
@@ -765,7 +765,7 @@ class LlamaCppRelayProvider:
             mode=mode,
             model=self._model,
         )
-        body = self._call(request_body, request_id=request.request_id)
+        body = self._call_for_request(request_body, request_id=request.request_id)
         raw_text, call_facts = _extract_completion(
             body,
             request_body=request_body,
@@ -789,6 +789,24 @@ class LlamaCppRelayProvider:
             choice_id=decision.choice_id,
             reason=decision.reason,
             call_facts=call_facts,
+        )
+
+    def _call_for_request(
+        self,
+        request_body: dict[str, object],
+        *,
+        request_id: str,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        """Preserve I1 original provider subclasses while binding Stage26 audit.
+
+        _call(request_body, endpoint=...) is the original polymorphic source
+        contract. Only Stage26's explicit raw audit adds a request_id kwarg.
+        """
+        if self._stage26_audit_dir is None:
+            return self._call(request_body, endpoint=endpoint)
+        return self._call(
+            request_body, endpoint=endpoint, request_id=request_id,
         )
 
     def _call(
@@ -833,7 +851,7 @@ class LlamaCppRelayProvider:
                 timeout=self._timeout,
             ) as response:
                 status = getattr(response, "status", None if capture else 200)
-                raw = response.read(2097153)
+                raw = response.read() if capture is not None else response.read(2097153)
             if capture is not None:
                 _write_model_response_capture(
                     capture, request_bytes, raw, status,

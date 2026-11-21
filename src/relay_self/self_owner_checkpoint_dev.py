@@ -515,7 +515,7 @@ def _load_copied_cohort(
             != cut.cognition_sha256
         ):
             raise SelfOwnerCheckpointError(
-                "same-generation original cognition bytes disagree"
+                "same-generation cognition digest mismatch"
             )
         retained = load_persistent_cognition(cognition_path)
         if retained.identity.self_id != sid:

@@ -6,6 +6,7 @@ import pytest
 from relay_self.checkpointed_cognitive_runtime_dev import (
     LiveCognitionCheckpointError,
 )
+from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.persistent_cognition import (
     Memory,
     save_persistent_cognition,
@@ -62,7 +63,9 @@ def test_stage28c2a_real_schema_original_a_b_preserved_offline_and_no_issue(
         assert owner.last_observed_tick == 105
         assert owner.fresh_native_observation_required
         assert owner.pattern_registry.revision == 0
-        assert len(owner.pattern_registry.patterns) == 4
+        # Stage28 must restore original source Registry; never silently
+        # fabricate an oxygen pattern during recovery.
+        assert owner.pattern_registry == initial_patterns()
         assert owner.cohort is recovered.cognitive_work
         assert not owner.supervisor.open_actions
         with pytest.raises(ResidentCognitiveWorkError, match="not online"):

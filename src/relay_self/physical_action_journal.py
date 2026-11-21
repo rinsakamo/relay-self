@@ -305,7 +305,9 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("PLACE MOVE original ACK/settle/budget invalid")
             max_seq[session] = final
-        elif row["status"] == "NATIVE_MOVE_SETTLED" and row["capability"] == "MOVE":
+        elif row["status"] in (
+            "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+        ) and row["capability"] == "MOVE":
             child_seq = row["effect_seqs"]
             start_pos = _move_pos(row["started_position"])
             end_pos = _move_pos(row["settled_position"])
@@ -321,7 +323,11 @@ def _validate(value: object) -> dict[str, Any]:
             delta = row["displacement_m"]
             if (
                 type(delta) not in (int, float) or not math.isfinite(delta)
-                or not 0.1 <= delta <= 8.0
+                or not (
+                    0.1 <= delta <= 8.0
+                    if row["status"] == "NATIVE_MOVE_SETTLED"
+                    else 0 <= delta < 0.1
+                )
                 or abs(math.dist(start_pos, end_pos) - delta) > 1e-6
                 or row["food_before"] is not None or row["food_after"] is not None
                 or row["count_before"] is not None or row["count_after"] is not None
@@ -706,11 +712,17 @@ class PhysicalActionJournal:
             (before_pos.x, before_pos.y, before_pos.z),
             (after_pos.x, after_pos.y, after_pos.z),
         )
-        if not 0.1 <= displacement <= 8.0:
+        if not 0 <= displacement <= 8.0:
             raise PhysicalJournalError("MOVE observed displacement not qualified")
+        # A real ACKed MOVE can produce no net displacement; never upgrade a
+        # settled physical failure to Skill/Goal success.
+        status = (
+            "NATIVE_MOVE_SETTLED" if displacement >= 0.1
+            else "NATIVE_MOVE_NO_NET_DISPLACEMENT"
+        )
         self._commit([*self._body["actions"][:-1], {
             **row,
-            "status": "NATIVE_MOVE_SETTLED",
+            "status": status,
             "effect_seqs": [start_ack.seq, stop_ack.seq],
             "after_seq": settled.seq,
             "settled_position": {
