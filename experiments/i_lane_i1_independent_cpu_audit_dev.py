@@ -47,7 +47,7 @@ class I1IndependentAuditHold(RuntimeError):
     """Independent original A/B Native, Paper or cognitive evidence is absent."""
 
 
-_I1_REQUEST = re.compile(r"i1-original-sense-[0-9a-f]{32}\\Z")
+_I1_REQUEST = re.compile(r"i1-original-sense-[0-9a-f]{32}\Z")
 _I1_CLASS = "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
 _I1_AUDITED = "I1_ORIGINAL_A_B_NATIVE_PAPER_CPU_SOURCE_AUDITED_DEV"
 _I1_BASE = "I1_BASE_ORIGINAL_NATIVE_PAPER_A_B_SOURCE_VERIFIED_DEV"
@@ -63,7 +63,7 @@ def _paper_prefixes(frozen: bytes) -> dict[str, int]:
     for line in frozen.splitlines(keepends=True):
         offset += len(line)
         digest.update(line)
-        if line.endswith(b"\\n"):
+        if line.endswith(b"\n"):
             prefixes[digest.hexdigest()] = offset
     return prefixes
 
