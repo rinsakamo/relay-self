@@ -1,5 +1,6 @@
 """Adversarial PRE_WORLD-only controls for the future I1+C+I4a runner."""
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -90,3 +91,32 @@ def test_preworld_does_not_repurpose_s2_synthetic_issuer_for_real_process():
     disguised._process = object()
     with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
         require_i4a_offline_scripted_native(disguised)
+
+
+def test_preworld_rejects_dirty_source_even_when_commit_head_matches(tmp_path):
+    original = inspect_i1_c_i4a_preworld(
+        repo_root=_root(), expected_head=_exact_head(),
+    )
+    for rel in original.source_sha256:
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_root() / rel, path)
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "-c", "user.name=CI",
+         "-c", "user.email=ci@example.invalid", "commit", "-qm", "fixture"],
+        check=True,
+    )
+    initial_head = subprocess.check_output(
+        ["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    assert inspect_i1_c_i4a_preworld(
+        repo_root=tmp_path, expected_head=initial_head,
+    ).live_admission is False
+    changed = tmp_path / "src/relay_self/i_lane_i4a_s2_first_native_move_dev.py"
+    changed.write_bytes(changed.read_bytes() + b"\n# tampered after HEAD\n")
+    with pytest.raises(I1CI4APreWorldHold, match="tracked and clean"):
+        inspect_i1_c_i4a_preworld(
+            repo_root=tmp_path, expected_head=initial_head,
+        )

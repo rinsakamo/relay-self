@@ -76,6 +76,23 @@ def inspect_i1_c_i4a_preworld(
         raise I1CI4APreWorldHold("original source HEAD unavailable") from exc
     if git.returncode != 0 or git.stdout.strip() != expected_head:
         raise I1CI4APreWorldHold("original integration HEAD changed or unauthenticated")
+    # HEAD alone is insufficient: a same-HEAD dirty or untracked source must
+    # not be reported as the original integration code.
+    try:
+        tracked = subprocess.run(
+            ["git", "-C", str(repo_root), "ls-files", "--error-unmatch",
+             "--", *_REQUIRED_SOURCE],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+        clean = subprocess.run(
+            ["git", "-C", str(repo_root), "diff", "--quiet", "HEAD",
+             "--", *_REQUIRED_SOURCE],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise I1CI4APreWorldHold("original source working tree unavailable") from exc
+    if tracked.returncode != 0 or clean.returncode != 0:
+        raise I1CI4APreWorldHold("original source not tracked and clean at HEAD")
     source: dict[str, str] = {}
     for rel in _REQUIRED_SOURCE:
         item = repo_root / rel
