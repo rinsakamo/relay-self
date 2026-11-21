@@ -21,6 +21,7 @@ from relay_self.relay_engine import (
     ProviderDecision,
     RelayEngine,
 )
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.resident_llama_inference_lane_dev import (
     ResidentInferenceTicket,
     ResidentLlamaInferenceLane,
@@ -131,8 +132,9 @@ def submit_i2b_original_shared_l1(
     The existing bridge must attach the lane before this call so logout can
     immediately fence in-flight work. A busy/uncertain slot is HOLD; no retry.
     """
-    if not isinstance(lane, ResidentLlamaInferenceLane):
-        raise I2bSharedL1Hold("original shared lane required")
+    if (not isinstance(lane, ResidentLlamaInferenceLane)
+            or not isinstance(lane.cognitive_work, ResidentCognitiveWorkOwner)):
+        raise I2bSharedL1Hold("original shared lane/Owner required")
     with lane.cognitive_work.lock:
         _require_current(
             bridge=bridge, boot=boot, world=world, links=links,
