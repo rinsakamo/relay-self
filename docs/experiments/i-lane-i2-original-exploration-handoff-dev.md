@@ -21,4 +21,4 @@ No Goal/Question/Intent is adopted or persisted. There is no `ResidentLlamaInfer
 
 Next: explicitly source-qualify the original restored Schema/Pattern path without inventing exploration disposition; bind a bounded request to the **actual original resident shared L1 ticket and result**, preserving DEFER/ESCALATE and no fabricated positive choice. A separate local real-Paper/Gemma run and independent audit are required for any real I2 qualification. Then D's original Question/Goal acceptance and checkpoint retention would need explicit authenticated owner transactions, not a read-only handoff.
 
-Status remains `I2_ORIGINAL_EXPLORATION_GOAL_HANDOFF_CPU_OFFLINE_DEV_ONLY` pending exact-HEAD CI. `I2_REAL_WORLD_NOT_RUN`, `I1_B_SCHEMA_RESTORATION_INTEGRATION_HOLD`, `QUAL_NO_GO`, `SCIENCE_NOT_RUN`.
+Status remains `I2_ORIGINAL_EXPLORATION_GOAL_HANDOFF_CPU_OFFLINE_DEV_ONLY` pending exact-HEAD CI. The fully audited I1 real-World artifacts stay read-only in their previous evidence roots; the new I2 synthetic fixtures are never substituted for those originals. `I2_REAL_WORLD_NOT_RUN`, `I1_B_SCHEMA_RESTORATION_INTEGRATION_HOLD`, `QUAL_NO_GO`, `SCIENCE_NOT_RUN`.
