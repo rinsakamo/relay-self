@@ -21,8 +21,9 @@ from relay_self.b_np1b_rejoin_composite_source_dev import (
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
 from test_b_np1b_fresh_native_update_dev import files
+from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
-from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE, WORLD
+from test_b_np1b_initial_source_dev import ACTORS, BOOT, PRESENCE
 
 
 def build(rejoined):
@@ -260,7 +261,8 @@ def test_final_lock_revalidates_original_sources(rejoined, monkeypatch, fault):
                     bridge.last_login_evidence["A"], observation_ref="foreign",
                 )
             if fault == "paper_process_during_paper":
-                paper._process.pid += 1
+                old_assert = paper._assert_owned
+                monkeypatch.setattr(paper, "_assert_owned", lambda: SimpleNamespace(pid=old_assert().pid + 1))
         return data
 
     monkeypatch.setattr(paper, "read_owned_log", changing)
