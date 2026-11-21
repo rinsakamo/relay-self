@@ -56,7 +56,10 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
         claims = current.present.three_self.self_world.claims
         # E may add independent SENSE claims at the same composite revision.
         # The *original* B coverage claim remains the sole inquiry basis.
-        matching = tuple(c for c in claims if c.claim_key == need.basis[0].present_ref)
+        matching = tuple(
+            claim for claim in claims
+            if len(need.basis) == 1 and claim.claim_key == need.basis[0].present_ref
+        )
         if (current.present.signals != (need.signal,)
                 or need.signal.signal_kind != "EXPLORATION_NEED"
                 or need.signal.source_revision_refs != refs
@@ -71,13 +74,13 @@ def build_coverage_inquiry(*, bridge, boot, world, links, self_id,
         source = current.source
         parts = [self_id, source.world_id, source.branch_id, source.world_epoch,
                  source.resident_epoch, need.signal.envelope.event_id,
-                 claims[0].claim_key, list(refs), need.signal.schema_id,
+                 matching[0].claim_key, list(refs), need.signal.schema_id,
                  need.signal.module_version, current.schema.revision]
         digest = hashlib.sha256(json.dumps(parts, ensure_ascii=False,
                                            separators=(",", ":")).encode()).hexdigest()
         return CoverageInquiryProposal(
             "coverage-inquiry:v1:" + digest, self_id, source.world_id,
             source.branch_id, source.world_epoch, source.resident_epoch,
-            need.signal.envelope.event_id, claims[0].claim_key, refs,
+            need.signal.envelope.event_id, matching[0].claim_key, refs,
             need.signal.schema_id, need.signal.module_version, current.schema.revision,
         )
