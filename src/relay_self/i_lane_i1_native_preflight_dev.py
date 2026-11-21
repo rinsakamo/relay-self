@@ -44,9 +44,9 @@ _NODE_OK = re.compile(
 # qualified. Never pass arbitrary stderr, --no-deprecation, NODE_NO_WARNINGS,
 # alternate error output or any additional warning/stack trace.
 _NODE_PUNYCODE_DEP0040 = re.compile(
-    r"\\(node:[1-9][0-9]{0,9}\\) \\[DEP0040\\] DeprecationWarning: "
-    r"The `punycode` module is deprecated\\. Please use a userland alternative instead\\.\\r?\\n"
-    r"\\(Use `node --trace-deprecation \\.\\.\\.` to show where the warning was created\\)\\r?\\n?\\Z"
+    r"\(node:[1-9][0-9]{0,9}\) \[DEP0040\] DeprecationWarning: "
+    r"The `punycode` module is deprecated\. Please use a userland alternative instead\.\r?\n"
+    r"\(Use `node --trace-deprecation \.\.\.` to show where the warning was created\)\r?\n?\Z"
 )
 
 
