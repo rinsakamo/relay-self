@@ -7,6 +7,7 @@ It composes the existing #829/#831/RelayEngine/Intent/Skill/Action contracts.
 from __future__ import annotations
 
 import json
+import math
 import time
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -46,6 +47,7 @@ class Predicate(str, Enum):
     ZOMBIE_NEAR = "ZOMBIE_NEAR"
     FATIGUE_HIGH = "FATIGUE_HIGH"
     EXPLORE = "EXPLORE"
+    OXYGEN_LOW = "OXYGEN_LOW"
 
 
 class PatternKind(str, Enum):
@@ -87,20 +89,34 @@ class SchemaPattern:
         if not isinstance(self.origin, Origin) or not isinstance(self.provenance, Provenance):
             raise MinimalCognitionError("unqualified pattern")
         if self.kind is PatternKind.GOAL:
-            if not all(isinstance(x, str) and x for x in (
-                self.goal_id, self.skill_id, self.target_kind
-            )):
-                raise MinimalCognitionError("goal needs bound skill and target kind")
-            if type(self.skill_version) is not int or self.skill_version < 1:
-                raise MinimalCognitionError("goal needs positive skill version")
+            # An intrinsic oxygen Need is a Goal with no learned physical
+            # Skill yet: never invent an Action/Target to resolve it.
+            unbound_oxygen = (
+                self.predicate is Predicate.OXYGEN_LOW
+                and self.skill_id is None
+                and self.skill_version is None
+                and self.target_kind is None
+            )
+            if not isinstance(self.goal_id, str) or not self.goal_id:
+                raise MinimalCognitionError("goal identity missing")
+            if not unbound_oxygen:
+                if not all(isinstance(x, str) and x for x in (
+                    self.skill_id, self.target_kind
+                )):
+                    raise MinimalCognitionError("goal needs bound skill and target kind")
+                if type(self.skill_version) is not int or self.skill_version < 1:
+                    raise MinimalCognitionError("goal needs positive skill version")
             if self.predicate is Predicate.FATIGUE_HIGH:
                 raise MinimalCognitionError("fatigue is constraint-only in minimal DEV")
             if self.predicate is Predicate.HUNGRY and self.target_kind != "FOOD":
                 raise MinimalCognitionError("HUNGRY must match FOOD")
             if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
                 raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
-            if self.predicate is Predicate.EXPLORE and self.target_kind != "DESTINATION":
-                raise MinimalCognitionError("EXPLORE must match DESTINATION")
+            if (
+                self.predicate is Predicate.EXPLORE
+                and self.target_kind not in {"DESTINATION", "RELATIVE"}
+            ):
+                raise MinimalCognitionError("EXPLORE requires a typed MOVE Target")
         elif any(x is not None for x in (
             self.goal_id, self.skill_id, self.skill_version, self.target_kind
         )) or self.predicate is not Predicate.FATIGUE_HIGH:
@@ -190,6 +206,9 @@ def initial_patterns() -> PatternRegistry:
         SchemaPattern("body-fatigue", 1, "body", PatternKind.CONSTRAINT,
                       Predicate.FATIGUE_HIGH, None, None, None, None,
                       Origin.INNATE, provenance),
+        SchemaPattern("body-oxygen-need", 1, "homeostatic", PatternKind.GOAL,
+                      Predicate.OXYGEN_LOW, "RESTORE_OXYGEN",
+                      None, None, None, Origin.INNATE, provenance),
     ))
 
 
@@ -383,6 +402,7 @@ class WorldPercept:
     targets: tuple[Target, ...]
     threat_cue: bool = False
     exploration_need: bool = False
+    oxygen_reserve: float | None = None
 
     def __post_init__(self) -> None:
         if self.scope.world_session_id is None or not isinstance(self.source, Provenance):
@@ -397,6 +417,13 @@ class WorldPercept:
             raise MinimalCognitionError("invalid fatigue")
         if type(self.threat_cue) is not bool or type(self.exploration_need) is not bool:
             raise MinimalCognitionError("invalid threat/exploration cue")
+        if self.oxygen_reserve is not None and (
+            isinstance(self.oxygen_reserve, bool)
+            or not isinstance(self.oxygen_reserve, (int, float))
+            or not math.isfinite(self.oxygen_reserve)
+            or self.oxygen_reserve < 0
+        ):
+            raise MinimalCognitionError("invalid body oxygen reserve")
         if not isinstance(self.targets, tuple) or len(self.targets) > 16:
             raise MinimalCognitionError("at most 16 source-qualified targets")
         if len({t.ref for t in self.targets}) != len(self.targets):
@@ -683,6 +710,8 @@ def cpu_schema_epoch(
     allowed_skills: frozenset[tuple[str, int]],
     epoch: int,
     hunger_threshold: float = 17,
+    oxygen_need_threshold: float = 10,
+    oxygen_urgent_threshold: float = 3,
     skill_definitions: Mapping[tuple[str, int], SkillDefinition] | None = None,
     parameter_presets: Mapping[str, SkillParameterPreset] | None = None,
     use_registered_presets: bool = False,
@@ -707,6 +736,12 @@ def cpu_schema_epoch(
             or not isinstance(hunger_threshold, (int, float))
             or not 0 <= hunger_threshold <= 20):
         raise MinimalCognitionError("invalid hunger threshold")
+    if (
+        any(type(x) not in (int, float) or not math.isfinite(x)
+            for x in (oxygen_need_threshold, oxygen_urgent_threshold))
+        or not 0 <= oxygen_urgent_threshold <= oxygen_need_threshold
+    ):
+        raise MinimalCognitionError("invalid oxygen Need thresholds")
     goals: list[Goal] = []
     options: list[Option] = []
     constraints: list[ConstraintSensation] = []
@@ -726,6 +761,10 @@ def cpu_schema_epoch(
         ) or (
             pattern.predicate is Predicate.EXPLORE
             and percept.exploration_need is True
+        ) or (
+            pattern.predicate is Predicate.OXYGEN_LOW
+            and percept.oxygen_reserve is not None
+            and percept.oxygen_reserve <= oxygen_need_threshold
         )
         if not triggered:
             continue
@@ -736,11 +775,21 @@ def cpu_schema_epoch(
             continue
         matching = tuple(t for t in percept.targets if t.live and
                          t.kind == pattern.target_kind)
-        available = (pattern.skill_id, pattern.skill_version) in allowed_skills
+        available = (
+            pattern.skill_id is not None
+            and (pattern.skill_id, pattern.skill_version) in allowed_skills
+        )
+        oxygen_urgent = (
+            pattern.predicate is Predicate.OXYGEN_LOW
+            and percept.oxygen_reserve is not None
+            and percept.oxygen_reserve <= oxygen_urgent_threshold
+        )
         goals.append(Goal(pattern.goal_id or "", pattern.schema_id,
                           pattern.skill_id or "", pattern.skill_version or 0,
-                          "URGENT" if pattern.predicate is Predicate.ZOMBIE_NEAR
-                          else "ACTIVE", not (matching and available)))
+                          "URGENT" if (
+                              pattern.predicate is Predicate.ZOMBIE_NEAR
+                              or oxygen_urgent
+                          ) else "ACTIVE", not (matching and available)))
         if available:
             for t in matching:
                 checks += 1
@@ -763,7 +812,13 @@ def cpu_schema_epoch(
     frame = SchemaFrame(
         percept.scope, epoch, percept.source, registry.revision,
         tuple(goals), tuple(options), tuple(constraints),
-        ("ZOMBIE_NEAR",) if threats else (), checks,
+        tuple(
+            cue for cue, active in (
+                ("ZOMBIE_NEAR", bool(threats)),
+                ("OXYGEN_LOW", percept.oxygen_reserve is not None
+                 and percept.oxygen_reserve <= oxygen_urgent_threshold),
+            ) if active
+        ), checks,
         time.perf_counter_ns() - t0,
     )
     if use_registered_presets:
