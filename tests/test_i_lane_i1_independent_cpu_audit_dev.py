@@ -139,10 +139,12 @@ def _fixture(tmp_path: Path):
             },
         }
         data = [_line(start), _line(original)]
+        commands = [_line({"type": "observe", "request_id": "initial-" + sid})]
         for number, seq in enumerate((2, 3), start=1):
             req = f"i1-original-sense-{(number + 2 * int(sid == 'B')):032x}"
             source, obs = _native(sid, seq, req)
             data.append(_line(source))
+            commands.append(_line({"type": "observe", "request_id": req}))
             ref, tick, digest = paper_refs[number - 1]
             rows = {
                 "self_id": sid,
@@ -175,6 +177,11 @@ def _fixture(tmp_path: Path):
         report["raw_native_file_sha256"]["Relay" + sid] = hashlib.sha256(
             raw.read_bytes()
         ).hexdigest()
+        command_path = evidence / f"native-commands-Relay{sid}-native-{sid}.jsonl"
+        command_path.write_bytes(b"".join(commands))
+        report.setdefault("raw_native_command_file_sha256", {})["Relay" + sid] = (
+            hashlib.sha256(command_path.read_bytes()).hexdigest()
+        )
     report["i1_cpu_epochs"]["epochs"] = [
         records[(sid, round_)] for round_ in (1, 2) for sid in ("A", "B")
     ]
@@ -203,7 +210,8 @@ def test_independent_native_paper_cpu_replay_success_from_synthetic_sources(tmp_
     "wrong-paper-tick", "wrong-paper-ack", "paper-actor",
     "forged-goal", "forged-l1-options", "invented-exploration",
     "extra-native-probe", "changed-raw-snapshot", "stale-resident-epoch",
-    "physical-authority", "model-invoked",
+    "physical-authority", "model-invoked", "missing-command-log",
+    "altered-command-id", "extra-physical-command", "command-sha-forgery",
 ])
 def test_i1_independent_rejects_manifest_or_source_tampering(tmp_path, tamper):
     report, evidence, executable, owners = _fixture(tmp_path)
@@ -215,6 +223,22 @@ def test_i1_independent_rejects_manifest_or_source_tampering(tmp_path, tamper):
         rows.pop()
     elif tamper == "wrong-order":
         rows[0], rows[1] = rows[1], rows[0]
+    elif tamper == "missing-command-log":
+        (evidence / "native-commands-RelayA-native-A.jsonl").unlink()
+    elif tamper in ("altered-command-id", "extra-physical-command", "command-sha-forgery"):
+        path = evidence / "native-commands-RelayA-native-A.jsonl"
+        if tamper == "command-sha-forgery":
+            report["raw_native_command_file_sha256"]["RelayA"] = "f" * 64
+        else:
+            rows = [json.loads(line) for line in path.read_bytes().splitlines()]
+            if tamper == "altered-command-id":
+                rows[1]["request_id"] = "i1-original-sense-" + "a" * 32
+            else:
+                rows.insert(1, {"type": "effect", "effect": "attack_entity", "action_id": "forged"})
+            path.write_bytes(b"".join(_line(row) for row in rows))
+            report["raw_native_command_file_sha256"]["RelayA"] = hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
     elif tamper == "wrong-request":
         first["native_request_id"] = "i1-original-sense-" + "f" * 32
     elif tamper == "duplicate-request":
