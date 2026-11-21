@@ -58,6 +58,23 @@ per Self, with strictly increasing Native seq and unique request IDs.
 Every admitted CPU epoch must match the actual Native request ID,
 source provenance and composite source revision.
 
+**New original stdin audit:** When I1 is enabled, the same original
+`MineflayerProcessSession` journals the exact outbound JSONL *after*
+`stdin.drain()`, independently of its existing raw stdout recorder. The
+frozen `native-commands-Relay{A,B}-<native-session>.jsonl` files and their
+SHA256 hashes (`raw_native_command_file_sha256` in the terminal report)
+must contain **exactly 3 read-only `observe` commands per Self**: the
+original `p0d-rejoin` admission request and the two distinct
+`i1-original-sense` requests. The verifier checks exact ID and order
+against all three original Native stdout probe messages. Extra effects,
+forged or missing requests, absent transcript files, bad hashes, and
+partially written transcripts are HOLD. Command journaling is an
+independent original-owner stdin *process* witness, not proof that
+Minecraft acted; original Native stdout and owned Paper ACKs are still
+required. A failed `stdin.drain` is not journaled as successfully
+delivered; a journal-write failure after drain is an unresolved attempt,
+not a success.
+
 For each epoch, it recomputes SHA256 of a line-complete **prefix** of the
 immutable pre-STOP owned Paper log, verifies the plugin-owned ACK bytes and
 nonce/tick, and checks that the two same-original Paper actors were still
