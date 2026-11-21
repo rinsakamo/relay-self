@@ -486,3 +486,73 @@ def test_provider_inference_error_preserves_completed_receipts(tmp_path, monkeyp
         assert loop.owner.retained == retained and len(loop._seen_action_ids) == 3
         assert loop.owner.files.physical_wal_file.read_bytes() == wal
     _fixture(tmp_path, scenario)
+
+
+def test_session_and_epoch_change_while_third_provider_call_is_running(tmp_path, monkeypatch):
+    import asyncio
+    import threading
+
+    import pytest
+
+    from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+    from relay_self.c_lane_stage27g_original_owner_review_dev import C1OwnerReviewHold
+    from relay_self.resident_llama_inference_lane_dev import (
+        ResidentGpuLaneError,
+        ResidentLlamaInferenceLane,
+    )
+
+    provider_call = LlamaCppRelayProvider.__call__
+    await_call = ResidentLlamaInferenceLane.await_result
+
+    async def scenario(f, lane, server):
+        loop, step, first, actions, _ = await _run_multi(f, lane, server)
+        last = actions[-1].settled_probe
+        loop.owner.observe_world_tick(session_id=last.session_id, world_tick=(
+            last.snapshot.time.day * 24000 + last.snapshot.time.time_of_day))
+        loop.owner.accept_rejoined_worldbody(last, request_id=last.request_id)
+        common = dict(physical=f.physical, lane=lane, bridge=f.bridge,
+                      first_action_probe=first, last_settled_probe=last)
+        frame = prepare_stage27hi_multi_review(loop, step, world_id=frame_world(f), **common)
+        wal = loop.owner.files.physical_wal_file.read_bytes()
+        before = (dict(loop.owner.skills), loop.owner.intent.events, loop.owner.retained)
+        server.choice_id = "1"
+        for changed in ("session", "epoch"):
+            entered, release = threading.Event(), threading.Event()
+            calls = 0
+            waits = 0
+
+            def blocked_provider(self, request, **kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 3:
+                    entered.set()
+                    if not release.wait(10):
+                        raise RuntimeError("test did not release provider")
+                return provider_call(self, request, **kwargs)
+
+            async def change_in_flight(self, ticket, **kwargs):
+                nonlocal waits
+                waits += 1
+                if waits == 3:
+                    assert await asyncio.to_thread(entered.wait, 10)
+                    try:
+                        if changed == "session":
+                            loop.owner.native_session_id = "new-session"
+                        else:
+                            object.__setattr__(f.lifecycle.world, "epoch", frame.world_epoch + 1)
+                    finally:
+                        release.set()
+                return await await_call(self, ticket, **kwargs)
+
+            monkeypatch.setattr(LlamaCppRelayProvider, "__call__", blocked_provider)
+            monkeypatch.setattr(ResidentLlamaInferenceLane, "await_result", change_in_flight)
+            with pytest.raises((C1OwnerReviewHold, ResidentGpuLaneError)) as exc:
+                await execute_evaluation(frame, loop, task_id=f"inflight-{changed}", **common)
+            assert len(exc.value.evaluation_audit.axes) == 2
+            assert len(exc.value.evaluation_audit.receipts) >= 2
+            loop.owner.native_session_id = frame.native_session_id
+            object.__setattr__(f.lifecycle.world, "epoch", frame.world_epoch)
+            assert (dict(loop.owner.skills), loop.owner.intent.events, loop.owner.retained) == before
+            assert loop.owner.files.physical_wal_file.read_bytes() == wal
+            assert len(loop._seen_action_ids) == 3
+    _fixture(tmp_path, scenario)
