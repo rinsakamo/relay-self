@@ -95,7 +95,15 @@ class SchemaPattern:
             )
             if not isinstance(self.goal_id, str) or not self.goal_id:
                 raise MinimalCognitionError("goal identity missing")
-            if not unbound_oxygen:
+            unbound_exploration = (
+                self.predicate is Predicate.EXPLORE
+                and self.origin is Origin.LEARNED
+                and self.goal_id == "EXPLORE_WORLD"
+                and self.skill_id is None
+                and self.skill_version is None
+                and self.target_kind is None
+            )
+            if not (unbound_oxygen or unbound_exploration):
                 if not all(isinstance(x, str) and x for x in (
                     self.skill_id, self.target_kind
                 )):
@@ -108,7 +116,9 @@ class SchemaPattern:
                 raise MinimalCognitionError("HUNGRY must match FOOD")
             if self.predicate is Predicate.ZOMBIE_NEAR and self.target_kind != "ZOMBIE":
                 raise MinimalCognitionError("ZOMBIE_NEAR must match ZOMBIE")
-            if self.predicate is Predicate.EXPLORE and self.target_kind != "RELATIVE":
+            if (self.predicate is Predicate.EXPLORE
+                    and self.target_kind != "RELATIVE"
+                    and not unbound_exploration):
                 raise MinimalCognitionError("Stage24a EXPLORE must match RELATIVE")
         elif any(x is not None for x in (
             self.goal_id, self.skill_id, self.skill_version, self.target_kind
@@ -240,7 +250,18 @@ def accept_learned_pattern(
         raise MinimalCognitionError("stale registry revision")
     if proposed.origin is not Origin.LEARNED:
         raise MinimalCognitionError("only learned patterns may be proposed")
-    if proposed.schema_id not in {"homeostatic", "defensive", "body"}:
+    if proposed.schema_id == "exploration":
+        # I2d learns a Need/Goal without granting a MOVE or inventing Target.
+        # Only this exact unbound Pattern is a legal exploration learning cut.
+        if (proposed.kind is not PatternKind.GOAL
+                or proposed.predicate is not Predicate.EXPLORE
+                or proposed.version != 1
+                or proposed.goal_id != "EXPLORE_WORLD"
+                or any(x is not None for x in (
+                    proposed.skill_id, proposed.skill_version, proposed.target_kind
+                ))):
+            raise MinimalCognitionError("exploration learning cannot grant Skill")
+    elif proposed.schema_id not in {"homeostatic", "defensive", "body"}:
         raise MinimalCognitionError("unknown owning schema")
     if proposed.kind is PatternKind.GOAL and (
         proposed.skill_id, proposed.skill_version
