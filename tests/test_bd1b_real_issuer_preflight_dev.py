@@ -92,7 +92,7 @@ def test_misqualified_original_source_never_checks_model(tmp_path, monkeypatch, 
     elif variant == "unqualified-physical":
         bridge.physical._observation_only = False
     elif variant == "action-open":
-        bridge.physical._active_action_ids.add("wrong")  # guarded by presence checks
+        bridge.physical._active["wrong"] = type("Active", (), {"action_id": "wrong"})()
     elif variant == "foreign-self":
         pass
     else:

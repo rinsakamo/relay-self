@@ -59,7 +59,7 @@ def require_live_bd1b_source(*, bridge, boot, world, links, self_id):
                     "RESTORED_SCHEMA_ACTIVATION_NOT_ATTESTED"
                 ) from exc
             activation = schema.get("exploratory")
-            if (activation is None or activation.spec.version != 1
+            if (schema.self_id != sid or activation is None or activation.spec.version != 1
                     or activation.mode is not SchemaMode.FULL
                     or "EXPLORATION_NEED" not in activation.spec.signal_kinds
                     or schema.revision != resident.owners[sid].pattern_registry.revision):
