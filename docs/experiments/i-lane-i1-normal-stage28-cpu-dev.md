@@ -33,8 +33,59 @@ python -m experiments.stage28c2b_real_recovered_rejoin_dev \
 
 The new execution and evidence paths must be absent/fresh. No autonomous retries. Inspect `stage28c2b-recovered-world-result.json`, original independent native raw JSONL, actual owned Paper log, original B source qualification for each readout, per-self revision advancement (2 each), Original Owner/Registry/retired WAL, cleanup and every HOLD receipt. If any source is unavailable, stop at PRE_WORLD_HOLD and report that clearly. This mode intentionally **does not start llama-server or make a model POST**; future I2/I3 integration must reuse the one original owned llama-server, not add a second GPU lane.
 
+## Separate I1 independent audit (implemented; real World not yet run)
+
+**Run only after** the original Stage28 opt-in runner has exited and written a
+terminal `I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING` report.
+The original Stage28 audit command rejects this I1 classification by default.
+Use the I1-specific verifier in a **fresh process**, with verified actual
+paths rather than guessed/stale evidence:
+
+```bash
+python -m experiments.i_lane_i1_independent_cpu_audit_dev \
+  --result "$NEW_EVIDENCE_DIR/stage28c2b-recovered-world-result.json" \
+  --generation "$GENERATION" --restored "$RESTORED" \
+  --stage28b-evidence "$STAGE28B_EVIDENCE" \
+  --execution-dir "$NEW_ISOLATED_WORLD"
+```
+
+The verifier first reruns the established Stage28 owner/World lineage,
+historical Native and Paper source, physical WAL and clean-retirement checks
+with an explicit I1-only base classification (never the old Stage28 promoted
+classification). It then independently re-parses the original Native JSONL:
+the initial admission probe plus exactly **two new request-correlated probes**
+per Self, with strictly increasing Native seq and unique request IDs.
+Every admitted CPU epoch must match the actual Native request ID,
+source provenance and composite source revision.
+
+For each epoch, it recomputes SHA256 of a line-complete **prefix** of the
+immutable pre-STOP owned Paper log, verifies the plugin-owned ACK bytes and
+nonce/tick, and checks that the two same-original Paper actors were still
+present. Paper and Native clocks are **never compared numerically**. Finally,
+it reconstructs the original saved rev-0 PatternRegistry/Intent, replays the
+CPU Schema from the actual Native Body, and checks Goal IDs, fixed bounded
+ESCALATE_L2/DEFER choices, and the absence of invented exploration.
+An altered ACK, a forged or duplicate request ID, a changed Native raw
+observation, an invented Goal/Action, an absent second epoch, or a stale
+Paper prefix is HOLD. The verifier does not send World commands, modify
+source files or call a model.
+
+**Only the external independent verdict**
+`I1_ORIGINAL_A_B_NATIVE_PAPER_CPU_SOURCE_AUDITED_DEV` qualifies that new
+DEV capture. GitHub CI proves the verifier's synthetic tests only; it is
+**not** a real World result. The new audit is specific to the historically
+pinned original Stage28b A/B Self (which has no saved exploration pattern).
+Expanded PatternRegistry variants require a separate independently testable
+audit contract. Never elevate this DEV result to QUAL/SCIENCE.
+
 ## Next work
 
-- New independent I1 real-World and native/Paper source auditor. Refresh link at every epoch is implemented but lacks actual World proof; WATCH Paper log growth and owner session changes.
-- Decide native-event driven long-running CPU cadence beyond this bounded two-observation DEV trial, without per-frame GPU, alternate Memory Owner or hardcoded exploration/Skill.
-- Integrate original D Question ADOPT, safe L1 numbered choice and A motor with final current-source admission. C1 after terminal Intent, checkpoint and habit only later.
+- One isolated LocalCodex real Paper+Native DEV trial using the existing
+  standing EULA and World DEV authorization, then the new independent audit;
+  source mismatch must terminate PRE_WORLD_HOLD with **no automatic retry**
+- Verify the original Paper output prefix/ACK and original Native response
+  correlation against the real source; if stale, do not borrow a new World
+  epoch or old decision to make it pass
+- Beyond the two-sample observation-only DEV loop, build an original-owner
+  autonomous CPU cadence and complete D Question ADOPT, A motor/bounded L1,
+  C learning after terminal Intent and checkpoint integration separately
