@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "classification": "Q_GIT_TREE_CATASTROPHIC_DROP_AND_RECOVERY_READ_ONLY_DEV",
+  "observation_date_jst": "2026-11-22",
+  "source": "GitHub REST exact commit objects and recursive Git trees",
+  "repository": "rinsakamo/relay-self",
+  "issue": 1088,
+  "subject_pr": 1076,
+  "prior": {
+    "commit": "959264a22b670db96709af46cb532bea746acc9d",
+    "tree_sha": "b0a4556f78d306ffd4006bd2fa05e11c69384f13",
+    "file_count": 601
+  },
+  "destructive": {
+    "commit": "87d0e68e55b6978a02fc82e3826fb9320f736c05",
+    "parent": "959264a22b670db96709af46cb532bea746acc9d",
+    "tree_sha": "79f905ce3cde141b1d7feac39f48c6ecfdfb22e2",
+    "file_count": 3,
+    "additions": 54,
+    "deletions": 156846
+  },
+  "repaired": {
+    "commit": "ca2be4b500436dc25646d3f5511f5f6d7cd1b983",
+    "parent": "87d0e68e55b6978a02fc82e3826fb9320f736c05",
+    "tree_sha": "a03a287d48cb3525b9c2c2dac2ecf1389688e01c",
+    "file_count": 601,
+    "missing_paths_compared_to_prior": [],
+    "added_paths_compared_to_prior": [],
+    "changed_paths_compared_to_prior": [
+      "docs/experiments/i-lane-i1-c-i4a-real-preworld-dev.md",
+      "experiments/i_lane_i1_c_i4a_real_runner_dev.py",
+      "tests/test_i_lane_i1_c_i4a_preworld_dev.py"
+    ]
+  },
+  "repository_origin_authenticated": false,
+  "original_world_source_inspected": false,
+  "real_world_attested": false,
+  "qual_go": false,
+  "science_run": false
+}
