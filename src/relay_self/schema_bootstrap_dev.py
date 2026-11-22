@@ -5,8 +5,8 @@ from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveO
 from relay_self.cognitive_minimal_dev import initial_patterns, initial_patterns_with_relative_move
 from relay_self.exploration_schema_record_dev import require_recorded_schema
 from relay_self.innate_schema import SchemaMode
-from relay_self.self_owner_checkpoint_dev import SelfOwnerCut
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.self_owner_checkpoint_dev import SelfOwnerCut
 
 
 class SchemaBootstrapHold(RuntimeError):

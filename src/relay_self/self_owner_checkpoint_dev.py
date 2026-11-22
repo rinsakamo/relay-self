@@ -27,12 +27,6 @@ from relay_self.coordinated_checkpoint_dev import (
     capture_generation,
     verify_generation,
 )
-from relay_self.intent import (
-    IntentCommitment,
-    IntentEvent,
-    IntentEventKind,
-    ReconsiderationDecision,
-)
 from relay_self.exploration_schema_record_dev import (
     RecordedSchemaHold,
     decode_recorded_schema,
@@ -40,6 +34,12 @@ from relay_self.exploration_schema_record_dev import (
     require_recorded_schema,
 )
 from relay_self.innate_schema import SchemaSnapshot
+from relay_self.intent import (
+    IntentCommitment,
+    IntentEvent,
+    IntentEventKind,
+    ReconsiderationDecision,
+)
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillEvent, SkillExecution, SkillState
 

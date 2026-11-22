@@ -19,9 +19,9 @@ from relay_self.coordinated_checkpoint_dev import (
     SelfSnapshotSource,
     verify_generation,
 )
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
-from relay_self.innate_schema import SchemaSnapshot
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.self_owner_checkpoint_dev import (
