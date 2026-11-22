@@ -55,13 +55,14 @@ def _time(snapshot: dict) -> int:
         raise Q4EvidenceHold("Native World clock missing")
     keys = set(clock)
     if keys not in (
+        {"day", "time_of_day"},  # historical Q4 fixture contract
         {"day", "time_of_day", "is_day"},
         {"day", "time_of_day", "is_day", "world_age_ticks"},
     ):
         raise Q4EvidenceHold("Native World clock has unrecognized fields")
     day, tod = clock.get("day"), clock.get("time_of_day")
     if (type(day) is not int or type(tod) is not int
-            or type(clock.get("is_day")) is not bool
+            or ("is_day" in clock and type(clock["is_day"]) is not bool)
             or day < 0 or not 0 <= tod < 24000):
         raise Q4EvidenceHold("invalid Native daylight time")
     if "world_age_ticks" in clock:
