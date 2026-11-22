@@ -294,3 +294,28 @@ Mineflayer/Paper/GPU/World process was run.
 
 The next gate for R0.5 is exact-head compatibility and Q read-only
 shadow audit, not R2 runtime migration or enabling physical PLACE.
+
+### U5b — abandoned PREPARED and lease reacquisition guard
+
+A new lease is **not** a new issuance authority for a previously prepared
+PLACE action. The original `PhysicalIssueAdmission` now performs a
+read-only canonical-WAL/saved-S1 comparison when acquiring a PLACE lease
+after an S1 anchor exists. It demands exactly the unchanged terminal
+Owner-held S1 rows, historical schema, source digest, canonical file path
+and a non-unresolved WAL; a leftover PREPARED or rewritten S1 refuses the
+new lease **before** any Native child is registered. This uses the existing
+physical lock followed by the original WAL lock. The subsequent
+`resident.lock → physical._lock → WAL` check still verifies the Owner,
+session, World and action identity. No new writer, issuer or permission.
+
+`tests/test_i_unified_u5_abandoned_place_lease_dev.py` adds hostile
+interruption-before-binding, abandoned LOOK, forged PREPARED before lease,
+rechecksummed S1 before lease, same-Self and real-thread lease contention,
+and cross-Self nonauthorization coverage. The negative quarantine-after-
+START example explicitly records **STOP SAFETY HOLD**: refusing STOP
+proves fail-closed admission, not safe physical neutralization.
+
+This is an **additional CPU/synthetic regression only**. It does not seal
+an S1 prefix independently, authenticate real Native/Paper source, remove
+the final-check-to-stdin race, qualify STOP settling, authorize original
+B production PLACE, or discharge Q/PRE_WORLD/QUAL/SCIENCE HOLD.
