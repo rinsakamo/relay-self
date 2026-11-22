@@ -126,6 +126,11 @@ def test_stage27h_reads_owner_sense_without_granting_action(tmp_path):
         assert loop.last_sense_input.route_status == "UNKNOWN"
         assert "body_aabb" in loop.last_sense_input.missing
         assert not step.extra_physical_authority
+        # A blocked native reader cannot certify the latest SENSE for the
+        # original L0/Present consumer, even with a valid prior position.
+        session.backpressure_hold = True
+        assert f.bridge.current_sense(f.names[0]) is None
+        assert f.bridge.current_self_world(f.names[0]) is None
         for sid in f.names:
             await f.bridge.logout(sid)
 

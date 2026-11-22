@@ -175,7 +175,10 @@ def test_resident_stalled_owner_coalesces_then_preserves_stop(tmp_path):
         while session._decoder.next_seq < 1003:
             await asyncio.sleep(0)
         assert session._dispatch_queue.qsize() == 256
-        assert fixture.bridge.current_sense(sid).position.x == 1002
+        # The observer may see the latest event, but the owned receive
+        # queue has irrecoverably compacted intermediate observations.
+        # Neither L0 nor Present may call that a continuous current stream.
+        assert fixture.bridge.current_sense(sid) is None
         agg = session.passive_aggregation
         assert agg.source == session_id and agg.replaced_count == 744
         assert (agg.first_replaced_seq, agg.last_replaced_seq, agg.latest_seq) == (258, 1001, 1002)

@@ -355,6 +355,11 @@ class OwnedResidentPhysicalBridge:
         view = self.lifecycle.view(self_id)
         if (view.status is not Presence.ONLINE or session.process_returncode is not None
                 or session.observer_error is not None or session._dispatch_error is not None
+                # A compacted passive event has known continuity loss, and
+                # a blocked reader has unbounded native/pipe residency. Neither
+                # is proof of a current SENSE for L0 or Present.
+                or session.passive_aggregation is not None
+                or session.backpressure_hold
                 or frame.scope != ScopeRef(self_id, world.paper_session_id)
                 or evidence.self_id != self_id
                 or evidence.native_session_id != session.started.session_id

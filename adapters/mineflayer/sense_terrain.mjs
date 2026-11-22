@@ -30,7 +30,12 @@ export function captureSenseTerrain (bot) {
       typeof bot.blockAt !== 'function') {
     throw new Error('SENSE requires a live entity and read-only blockAt')
   }
-  const position = bot.entity.position
+  // Sample one synchronous Node turn. A changing entity/pose/dimension makes
+  // the entire readout UNKNOWN; a hybrid of two body generations is not SENSE.
+  const entity = bot.entity
+  const position = entity.position
+  const startPose = entity.pose
+  const startDimension = bot.game?.dimension
   if (![position.x, position.y, position.z].every(finite)) {
     throw new Error('SENSE position unavailable')
   }
@@ -67,12 +72,22 @@ export function captureSenseTerrain (bot) {
       }
     }
   }
+  const atEnd = bot.entity?.position
+  const stable = bot.entity === entity &&
+    atEnd && [atEnd.x, atEnd.y, atEnd.z].every(finite) &&
+    atEnd.x === origin.x && atEnd.y === origin.y && atEnd.z === origin.z &&
+    bot.entity.pose === startPose && bot.game?.dimension === startDimension
+  // Never publish a partial cross-pose, cross-position or cross-world sample
+  // as observed blocks. A synchronous scan is still NOT Paper tick authority.
+  const qualifiedCells = stable
+    ? cells
+    : cells.map(cell => ({ position: cell.position, name: null, shapes: null }))
   return {
     source_scope: 'mineflayer_loaded_blocks',
     sample_monotonic_ns: process.hrtime.bigint().toString(),
     position: origin,
-    dimension: typeof bot.game?.dimension === 'string' ? bot.game.dimension : null,
-    body_pose: typeof bot.entity.pose === 'string' ? bot.entity.pose : null,
+    dimension: stable && typeof startDimension === 'string' ? startDimension : null,
+    body_pose: stable && typeof startPose === 'string' ? startPose : null,
     // Entity dimensions do not attest the pose-specific physical hitbox.
     // Mineflayer does not expose a source-qualified server AABB here.
     body_aabb: null,
@@ -80,8 +95,8 @@ export function captureSenseTerrain (bot) {
     dy_min: SENSE_DY_MIN,
     dy_max: SENSE_DY_MAX,
     expected_cells: SENSE_EXPECTED_CELLS,
-    known_cells: known,
-    complete: known === SENSE_EXPECTED_CELLS,
-    cells
+    known_cells: stable ? known : 0,
+    complete: stable && known === SENSE_EXPECTED_CELLS,
+    cells: qualifiedCells
   }
 }

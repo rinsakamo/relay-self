@@ -49,7 +49,7 @@ def packet(*, collision=True, all_unknown=False):
             source_scope="mineflayer_loaded_blocks",
             sample_monotonic_ns="123456789",
             position={"x": 0.5, "y": 64, "z": 0.5},
-            dimension="minecraft:overworld", body_pose=None,
+            dimension="minecraft:overworld", body_pose="standing",
             body_aabb=[0.2, 64, 0.2, 0.8, 65.8, 0.8],
             radius=2, dy_min=-1, dy_max=2,
             expected_cells=100, known_cells=known, complete=known == 100,
@@ -132,6 +132,7 @@ def test_body_geometry_missing_cannot_promote_route():
     lambda p: p["terrain"]["cells"][0].update(shapes=[[0, 0, 0, 999, 1, 1]]),
     lambda p: p["terrain"].update(body_aabb=[-1, 64, -1, 10, 65.8, 10]),
     lambda p: p["terrain"].update(sample_monotonic_ns="unknown"),
+    lambda p: p["terrain"].update(body_pose=None),
 ])
 def test_malformed_unbounded_or_fake_geometry_refused(mutation):
     p = packet()
