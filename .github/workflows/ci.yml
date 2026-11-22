@@ -89,9 +89,6 @@ jobs:
       - name: Install Ruff
         run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
 
-      - name: Diagnostic Ruff import diff (temporary)
-        run: ruff check --fix --diff tests/test_q_lane_q9_u24_s1_stop_diagnostic_dev.py || true
-
       - name: Run lint
         run: ruff check src tests experiments adapters observability
 
