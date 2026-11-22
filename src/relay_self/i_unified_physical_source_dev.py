@@ -125,7 +125,7 @@ def _scope(bridge: Any, self_id: str) -> tuple[Any, int, str, int]:
         ):
             raise IUnifiedPhysicalHold("original B scope incomplete")
         return owner, epoch, native, world_epoch
-    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError, RuntimeError) as exc:
         raise IUnifiedPhysicalHold("original B current scope unavailable") from exc
 
 
