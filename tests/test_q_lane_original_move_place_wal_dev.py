@@ -105,7 +105,7 @@ def _verify(root: Path, claims: dict):
 def _edit(root: Path, file: str, update) -> None:
     p = root / file
     obj = json.loads(p.read_bytes())
-    update(obj)
+    update(obj["body"])
     p.write_bytes(_envelope(obj["body"]))
 
 
