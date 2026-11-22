@@ -6,13 +6,20 @@ physical motor stoppage. It never issues an Action or modifies a journal.
 """
 from __future__ import annotations
 
+import json
 import math
+import os
+import stat
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterProtocolError,
     MineflayerEffectResult,
     MineflayerObservation,
+    MineflayerStreamDecoder,
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
 
@@ -147,3 +154,124 @@ def verify_q4_previous_place_terminal_cpu(
     except (AttributeError, KeyError, IndexError, TypeError, ValueError,
             ArithmeticError) as exc:
         raise Q4PlaceRepeatHold("Q4 readback cannot be verified") from exc
+
+
+def _read_original_q4_fd(path: Path, fd: int) -> bytes:
+    """Read an active original process transcript without trusting its filename."""
+    if (
+        type(path) is not Path or not path.is_absolute()
+        or any(part.is_symlink() for part in (path, *path.parents))
+        or type(fd) is not int
+    ):
+        raise Q4PlaceRepeatHold("Q4 original process source path not trusted")
+    try:
+        active = os.fstat(fd)
+        before = path.stat(follow_symlinks=False)
+        if (
+            not stat.S_ISREG(active.st_mode)
+            or not stat.S_ISREG(before.st_mode)
+            or active.st_ino != before.st_ino or active.st_dev != before.st_dev
+            or active.st_nlink != 1 or before.st_nlink != 1
+            or active.st_mode & 0o777 != 0o600
+            or not 0 < active.st_size <= 32 * 1024 * 1024
+        ):
+            raise Q4PlaceRepeatHold("Q4 original process source FD was changed")
+        opened = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            source = os.fstat(opened)
+            if (source.st_dev, source.st_ino) != (active.st_dev, active.st_ino):
+                raise Q4PlaceRepeatHold("Q4 original source swapped during read")
+            with os.fdopen(os.dup(opened), "rb") as stream:
+                wire = stream.read(32 * 1024 * 1024 + 1)
+        finally:
+            os.close(opened)
+        after = os.fstat(fd)
+        if (
+            len(wire) != active.st_size
+            or not wire.endswith(b"\\n")
+            or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+            != (active.st_dev, active.st_ino, active.st_size, active.st_mtime_ns)
+        ):
+            raise Q4PlaceRepeatHold("Q4 original source moved while reading")
+        return wire
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise Q4PlaceRepeatHold("Q4 owned process original source unavailable") from exc
+
+
+def verify_q4_owned_native_source_for_rearm(
+    *, session: MineflayerProcessSession, native_stdout_path: Path,
+    evidence: Q4PlaceTerminalReadback,
+) -> None:
+    """Join actual bridge-owned stdin+stdout bytes to typed settled S1 receipt.
+
+    This is an *additional* positive provenance check BEFORE the existing
+    Original Owner/WAL admission, never a new physical authority. The stdin
+    bytes prove local buffer submission attempts only; stdout applied ACKs
+    and independent original Paper evidence still have to agree. A CPU mock
+    of the OS child can test structure but cannot certify a real World.
+    """
+    if (
+        type(session) is not MineflayerProcessSession
+        or not isinstance(evidence, Q4PlaceTerminalReadback)
+        or type(native_stdout_path) is not Path
+        or not session.bounded_place_dev_mode
+        or session.process_returncode is not None
+        or session.owned_child_pid is None
+        or session._raw_source_audit_finished
+        or session._raw_stdin_audit_finished
+        or type(session._raw_source_audit_fd) is not int
+        or type(session._raw_stdin_audit_fd) is not int
+        or type(session._raw_stdin_audit_path) is not Path
+        or evidence.look.session_id != session.started.session_id
+    ):
+        raise Q4PlaceRepeatHold("actual original Q4 Native source capture absent")
+    stdout = _read_original_q4_fd(
+        native_stdout_path, session._raw_source_audit_fd,
+    )
+    stdin = _read_original_q4_fd(
+        session._raw_stdin_audit_path, session._raw_stdin_audit_fd,
+    )
+    if native_stdout_path == session._raw_stdin_audit_path:
+        raise Q4PlaceRepeatHold("Q4 original stdin/stdout cannot be same file")
+    decoded = {}
+    decoder = MineflayerStreamDecoder()
+    try:
+        for raw in stdout.splitlines():
+            event = decoder.decode(raw.decode("utf-8"))
+            decoded[event.seq] = event
+        commands = [json.loads(raw) for raw in stdin.splitlines()]
+    except (UnicodeError, ValueError, MineflayerAdapterProtocolError) as exc:
+        raise Q4PlaceRepeatHold("Q4 original Native stream not replayable") from exc
+    if decoder.session_id != session.started.session_id:
+        raise Q4PlaceRepeatHold("Q4 original Native startup Session mismatch")
+    actual = (
+        evidence.look, evidence.start, evidence.stop,
+        evidence.initial_stop, evidence.first_stable, evidence.settled,
+    )
+    if any(decoded.get(x.seq) != x for x in actual):
+        raise Q4PlaceRepeatHold("Q4 typed Native receipt not in original stdout")
+    parent = evidence.start.action_id.removesuffix("-start")
+    children = (parent + "-look", parent + "-start", parent + "-stop")
+    effects = ("look", "set_control", "clear_controls")
+    expected = list(zip(children, effects, strict=True))
+    selected = [
+        (line.get("action_id"), line.get("effect"))
+        for line in commands if type(line) is dict
+        and line.get("action_id") in children
+    ]
+    if selected != expected:
+        raise Q4PlaceRepeatHold(
+            "Q4 original stdin did not issue exactly one LOOK/START/STOP"
+        )
+    if any(
+        line.get("type") != "effect"
+        for line in commands if type(line) is dict
+        and line.get("action_id") in children
+    ):
+        raise Q4PlaceRepeatHold("Q4 original child command was not a physical effect")
+    if any(
+        (not isinstance(line, dict))
+        or line.get("type") not in {"effect", "observe", "shutdown"}
+        for line in commands
+    ):
+        raise Q4PlaceRepeatHold("Q4 original stdin contains invalid commands")
