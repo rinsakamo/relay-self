@@ -170,6 +170,16 @@ class ResidentCognitiveWorkOwner:
                 if (initial_receipts is None or historical_composite is None
                         or any(value is not None for value in (boot, world, links))):
                     raise ResidentCognitiveWorkError("ambiguous mixed Stage28/reJOIN source")
+                if getattr(self, "_normal_second_rejoin_cut", None) is not None:
+                    from relay_self.b_np1b_second_rejoin_rearm_dev import (
+                        build_second_rejoin_owner_present,
+                    )
+
+                    return build_second_rejoin_owner_present(
+                        bridge=bridge, self_id=self_id,
+                        initial_receipts=initial_receipts,
+                        historical_composite=historical_composite,
+                    )
                 return build_rejoined_owner_present(
                     bridge=bridge, self_id=self_id,
                     initial_receipts=initial_receipts,
