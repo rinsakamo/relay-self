@@ -152,7 +152,7 @@ def _retired_v3_source(tmp_path, monkeypatch):
         )
         resident.register_present_schema(sid, snapshot)
         resident.bind_login(
-            sid, native_session_id="native-retired-" + sid,
+            self_id=sid, native_session_id="native-retired-" + sid,
             world_epoch=0, world_tick=105,
         )
         resident.fence_self(sid)
