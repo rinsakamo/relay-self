@@ -28,7 +28,7 @@ _MANIFEST_VERSION = "q4-original-raw-evidence-dev-v1"
 
 def _read_original(root: Path, source: Path) -> dict[str, object]:
     if (
-        type(source) is not Path or not source.is_absolute()
+        not isinstance(source, Path) or not source.is_absolute()
         or source.is_symlink() or not source.is_file()
         or source.parent.is_symlink()
     ):
@@ -37,7 +37,7 @@ def _read_original(root: Path, source: Path) -> dict[str, object]:
         relative = source.relative_to(root)
     except ValueError as exc:
         raise Q4RawManifestHold("raw evidence escapes isolated trial root") from exc
-    if not relative.parts or len(relative.parts) > 4:
+    if not relative.parts or len(relative.parts) > 4 or ".." in relative.parts:
         raise Q4RawManifestHold("bounded evidence path required")
     # No symlink in any path component; do not follow an escaping parent.
     if any((root.joinpath(*relative.parts[:i])).is_symlink()
@@ -104,10 +104,10 @@ def seal_q4_original_raw_manifest(
     independent full raw streams. This does not judge either as successful.
     """
     if (
-        type(root) is not Path or not root.is_absolute() or root.is_symlink()
+        not isinstance(root, Path) or not root.is_absolute() or root.is_symlink()
         or not root.is_dir() or root.resolve() != root
         or mode not in ("two_moves", "stop_failure")
-        or type(output) is not Path or not output.is_absolute()
+        or not isinstance(output, Path) or not output.is_absolute()
         or output.parent != root or output.is_symlink() or output.exists()
         or type(evidence) is not dict or set(evidence) != set(_ROLES)
     ):
