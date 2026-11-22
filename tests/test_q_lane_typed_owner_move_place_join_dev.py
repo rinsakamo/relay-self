@@ -54,6 +54,12 @@ def _fixture(tmp_path: Path, *, fault: str | None = None, schema: int = 1):
         owner["former_native_session_id"] = "other-session"
     elif fault == "unknown-skill-end":
         owner["skills"][0]["events"][-1]["state"] = "FAKE_FINISHED"
+    elif fault == "active-s2-intent":
+        owner["intent_events"].append({
+            "kind": "committed", "intent_id": "intent-2",
+            "objective": "MOVE", "reason": None, "at_ns": 2000,
+            "provenance": owner["intent_events"][0]["provenance"],
+        })
     elif fault == "extra-s2-in-owner":
         owner["skills"].append({
             "execution_id": "skill-2", "skill_id": "MOVE_PLACE",
@@ -147,6 +153,7 @@ def test_q1j_same_generation_owner_intent_and_canonical_wal_is_bounded(
     "unbound-s1-skill", "unbound-s1-intent", "s1-success", "s1-incomplete",
     "s1-intent-failed", "wrong-generation", "wrong-branch",
     "wrong-native-session", "unknown-skill-end",
+    "extra-s2-in-owner", "active-s2-intent",
 ])
 def test_q1j_forged_checkpoint_canonically_rehashed_and_git_pinned_holds(
     tmp_path, fault,
@@ -219,6 +226,4 @@ def test_q1j_self_consistent_new_git_and_checkpoint_can_never_authenticate(
     result = _audit(q1h)
     assert result["independent_prior_witness_authenticated"] is False
     assert result["actual_s1_s2_runtime_order_attested"] is False
-    assert result["original_stage28_full_generation_verified"] is False if (
-        "original_stage28_full_generation_verified" in result
-    ) else result["typed_product_full_restore_attested"] is False
+    assert result["typed_product_full_restore_attested"] is False
