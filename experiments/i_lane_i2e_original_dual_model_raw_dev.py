@@ -8,10 +8,19 @@ both requests. The files contain HTTP entity-body bytes, NOT network packets.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import asdict
 import json
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+from relay_self.i_lane_i2d_self_schema_adoption_dev import (
+    finish_i2d_self_adoption,
+    submit_i2d_original_l1_acceptance,
+    submit_i2d_original_l2,
+)
+from relay_self.persistent_cognition import load_persistent_cognition
+from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
 
 from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderError,
@@ -120,3 +129,87 @@ class I2eOriginalDualModeRawProvider(LlamaCppRelayProvider):
         self.completed += 1
         self.receipts.append(receipt)
         return response
+
+
+async def run_i2e_original_dual_raw(
+    *, bridge, boot, world, links, self_id: str,
+    lane: ResidentLlamaInferenceLane,
+    provider: I2eOriginalDualModeRawProvider,
+    timeout_s: float = 60.0,
+) -> dict:
+    """No retry: collect both original model entity bodies, requests and Owner.
+
+    This callable must be injected by a separate provenance-qualified owned
+    Paper/Native runner. It does not attest the World or start any process.
+    A partial trial retains the raw original evidence for a later HOLD audit.
+    """
+    if (
+        type(provider) is not I2eOriginalDualModeRawProvider
+        or not isinstance(lane, ResidentLlamaInferenceLane)
+        or lane.provider is not provider
+        or bridge.inference_lane is not lane
+        or bridge.cognitive_work is not lane.cognitive_work
+        or not bridge.physical.observation_only
+        or bridge.physical.active_action_ids
+        or provider.attempted or provider.completed
+        or type(timeout_s) not in (int, float)
+        or not 0 < timeout_s <= 60
+    ):
+        raise I2eRawModelHold("single original owned lane/raw preflight required")
+    owner = bridge.owners[self_id]
+    raw_dir = provider.raw_dir
+    with lane.cognitive_work.lock:
+        original_bytes = owner.files.cognition_file.read_bytes()
+        if load_persistent_cognition(owner.files.cognition_file) != owner.retained:
+            raise I2eRawModelHold("original durable cognition not authoritative")
+        _write_model_raw_once(raw_dir / "before-cognition.json", original_bytes)
+    proposed = submit_i2d_original_l2(
+        bridge=bridge, boot=boot, world=world, links=links,
+        self_id=self_id, lane=lane,
+    )
+    await lane.await_result(proposed.ticket, timeout_s=timeout_s)
+    accepted = submit_i2d_original_l1_acceptance(
+        bridge=bridge, boot=boot, world=world, links=links,
+        proposed=proposed, lane=lane,
+    )
+    await lane.await_result(accepted.ticket, timeout_s=timeout_s)
+    outcome = finish_i2d_self_adoption(
+        bridge=bridge, boot=boot, world=world, links=links,
+        accepted=accepted, lane=lane,
+    )
+    if (provider.attempted != 2 or provider.completed != 2
+            or provider.uncertain or outcome.physical_action_authorized
+            or not outcome.goal_unresolved):
+        raise I2eRawModelHold("dual real model attempts/Owner result uncertain")
+    with lane.cognitive_work.lock:
+        after_bytes = owner.files.cognition_file.read_bytes()
+        if load_persistent_cognition(owner.files.cognition_file) != owner.retained:
+            raise I2eRawModelHold("original updated durable cognition not readable")
+        _write_model_raw_once(raw_dir / "after-cognition.json", after_bytes)
+        manifest = {
+            "schema": 1,
+            "source_category": "original_bridge_unattested_world",
+            "self_id": self_id,
+            "model_alias": provider.model,
+            "backend_ref": lane.backend_ref,
+            "open_l2_request": asdict(proposed.request),
+            "bounded_l1_request": asdict(accepted.request),
+            "open_l2_ticket": asdict(proposed.ticket),
+            "bounded_l1_ticket": asdict(accepted.ticket),
+            "handoff": asdict(proposed.handoff),
+            "l2_pattern": {
+                "pattern_id": accepted.pattern.pattern_id,
+                "provenance": asdict(accepted.pattern.provenance),
+            },
+            "outcome": asdict(outcome),
+            "before_cognition_sha256": hashlib.sha256(original_bytes).hexdigest(),
+            "after_cognition_sha256": hashlib.sha256(after_bytes).hexdigest(),
+            "all_physical_actions": 0,
+            "world_independent_audit_attested": False,
+        }
+        _write_model_raw_once(
+            raw_dir / "i2e-dual-model-report.json",
+            (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
+                        indent=2) + "\n").encode("utf-8"),
+        )
+        return manifest
