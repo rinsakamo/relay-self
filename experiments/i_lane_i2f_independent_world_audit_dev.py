@@ -87,7 +87,27 @@ def _model_native_correlation(
     )
     if match is None or match.group(1) != paper["paper_boot_id"]:
         raise I2fIndependentWorldHold("Paper tick source boot not original")
-    # The corresponding boot nonce/ACK bytes must already be archived.
+    # Independently parse the archived Paper plugin ACK nonce and require
+    # the exact original Popen stdout witness, not the latest paper tick.
+    nonce = match.group(2)
+    ack_path = (
+        executable / "plugins" / "P0BRecorder" / "p0d-ticks"
+        / "acks" / (nonce + ".ack")
+    )
+    try:
+        ack_rows = ack_path.read_text(encoding="utf-8").splitlines()
+        ack = dict(line.split("=", 1) for line in ack_rows)
+        if len(ack_rows) != len(ack):
+            raise ValueError("duplicate Paper ACK rows")
+        _verify_main_thread_ack(
+            executable, paper_session=paper["paper_session_id"],
+            world_id=paper["source_world_id"],
+            boot_id=paper["paper_boot_id"],
+            ref=paper_tick_source,
+            tick=int(ack["paper_tick"]), paper_stdout=raw_paper,
+        )
+    except (OSError, RuntimeError, ValueError, KeyError) as exc:
+        raise I2fIndependentWorldHold("model Paper nonce/source not archived") from exc
     a = report["native_login_evidence"]["A"]
     native = a["native_session_id"]
     stdout = evidence / f"native-RelayA-{native}.jsonl"
