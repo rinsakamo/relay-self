@@ -8,7 +8,6 @@ Missing genuine Paper position producer remains PRE_WORLD_HOLD.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from collections.abc import Awaitable, Callable
