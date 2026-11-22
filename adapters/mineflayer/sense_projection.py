@@ -299,7 +299,8 @@ def sense_terrain_obstacle_hint(
     body = frame.terrain.body_aabb
     dx, dy, dz = target.x - origin.x, target.y - origin.y, target.z - origin.z
     if (
-        body is None or dy != 0 or not 0 < math.hypot(dx, dz) <= 1
+        body is None or frame.terrain.body_pose is None
+        or dy != 0 or not 0 < math.hypot(dx, dz) <= 1
     ):
         return "UNKNOWN"
     bounds = (
