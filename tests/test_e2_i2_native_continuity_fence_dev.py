@@ -96,7 +96,13 @@ def test_one_original_decoder_latches_queue_pressure_without_losing_effect_ack(c
         session = MineflayerProcessSession(process)
         session._started = await session.receive()
         observed = []
-        session.start_dispatcher(observed.append, capacity=1,
+        observer_hold_at_event = []
+
+        def observer(msg):
+            observed.append(msg)
+            observer_hold_at_event.append(session.native_continuity_hold)
+
+        session.start_dispatcher(observer, capacity=1,
                                  compact_safe=lambda: compact)
         process.stdout.queue.put_nowait(observation(1, "move"))
         process.stdout.queue.put_nowait(observation(2, "entities"))
@@ -127,6 +133,11 @@ def test_one_original_decoder_latches_queue_pressure_without_losing_effect_ack(c
         assert [msg.seq for msg in consumed] == ([2, 3] if compact else [1, 2, 3])
         assert consumed[-1].result == "applied"
         assert [msg.seq for msg in observed] == [1, 2, 3]
+        # The observer must not see the pressured row BEFORE the HOLD
+        # latch. Otherwise a concurrent original Present read can adopt it.
+        assert observer_hold_at_event[0] is None
+        assert observer_hold_at_event[1] is receipt
+        assert observer_hold_at_event[2] is receipt
         assert session.native_continuity_hold is receipt
         await session.terminate()
 
