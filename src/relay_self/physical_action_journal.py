@@ -16,7 +16,7 @@ import stat
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
@@ -26,6 +26,11 @@ from adapters.mineflayer.python_protocol import (
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.physical_action_port import PhysicalActionBinding
+
+
+if TYPE_CHECKING:
+    from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
+    from relay_self.skill_invocation import SkillInvocation
 
 
 class PhysicalJournalError(ValueError):
@@ -71,6 +76,16 @@ _MOVE_FIELDS = {
     "initial_stop_tick", "first_stable_tick", "settled_tick",
     "displacement_m",
 }
+# Schema v2 is an additive, exact original-WAL extension for a selected PLACE
+# parent MOVE. Old schema-v1 relative rows remain untouched and still valid.
+_MOVE_PLACE_FIELDS = {
+    "invocation_ref", "preset_ref", "target_contract_ref",
+    "aim_yaw_rad", "target_position",
+    "budget_actions", "budget_duration_ms", "budget_distance_m",
+}
+# Optional exact v2 MOVE_PLACE row extension; old persisted WALs have neither
+# field and MUST continue to pass readback unchanged.
+_MOVE_PLACE_GAIT_FIELDS = {"gait_mode", "gait_ack_seq"}
 
 
 def _move_pos(value: object) -> tuple[float, float, float]:
@@ -86,7 +101,7 @@ def _move_pos(value: object) -> tuple[float, float, float]:
 
 def _validate(value: object) -> dict[str, Any]:
     body = _exact(value, {"schema", "self_id", "actions"})
-    if body["schema"] != 1 or type(body["actions"]) is not list:
+    if body["schema"] not in (1, 2) or type(body["actions"]) is not list:
         raise PhysicalJournalError("unsupported journal schema")
     _text(body["self_id"])
     seen: set[str] = set()
@@ -98,6 +113,12 @@ def _validate(value: object) -> dict[str, Any]:
             entry, (
                 _ROW | _ATTACK_FIELDS
                 if entry.get("capability") == "ATTACK"
+                else (
+                    _ROW | _MOVE_FIELDS | _MOVE_PLACE_FIELDS
+                    | (_MOVE_PLACE_GAIT_FIELDS
+                       if set(entry) & _MOVE_PLACE_GAIT_FIELDS else set())
+                )
+                if entry.get("capability") == "MOVE_PLACE"
                 else _ROW | _MOVE_FIELDS
                 if entry.get("capability") == "MOVE"
                 else _ROW
@@ -131,6 +152,41 @@ def _validate(value: object) -> dict[str, Any]:
                 or row["control"] != row["target_ref"].removeprefix("relative:")
             ):
                 raise PhysicalJournalError("MOVE control not original relative target")
+        elif row["capability"] == "MOVE_PLACE":
+            if (
+                body["schema"] != 2
+                or not row["target_ref"].startswith("destination:")
+                or row["control"] != "forward"
+                or not row["invocation_ref"].startswith("skill-invocation:v1@")
+                or not row["preset_ref"].startswith("skill-preset:v1@")
+                or not row["target_contract_ref"].startswith("target-contract:v1@")
+                or type(row["aim_yaw_rad"]) not in (float, int)
+                or not math.isfinite(row["aim_yaw_rad"])
+                or not -math.pi <= row["aim_yaw_rad"] <= math.pi
+                or type(row["budget_actions"]) is not int
+                or not 1 <= row["budget_actions"] <= 64
+                or type(row["budget_duration_ms"]) is not int
+                or not 1 <= row["budget_duration_ms"] <= 3600000
+                or (
+                    row["budget_distance_m"] is not None
+                    and (
+                        type(row["budget_distance_m"]) not in (float, int)
+                        or not math.isfinite(row["budget_distance_m"])
+                        or row["budget_distance_m"] <= 0
+                    )
+                )
+            ):
+                raise PhysicalJournalError("PLACE MOVE original Invocation/budget invalid")
+            _move_pos(row["target_position"])
+            if "gait_mode" in row and (
+                row["gait_mode"] not in ("WALK", "SNEAK")
+                or ("gait_ack_seq" not in row)
+            ):
+                raise PhysicalJournalError("unrecognized original MOVE gait")
+            if "gait_mode" in row and row["gait_mode"] == "WALK" and (
+                row["gait_ack_seq"] is not None
+            ):
+                raise PhysicalJournalError("walking PLACE has no gait-mode effect")
         else:
             raise PhysicalJournalError("unknown physical Action capability")
         if row["action_id"] in seen:
@@ -141,6 +197,8 @@ def _validate(value: object) -> dict[str, Any]:
         if row["source_ref"] != f"{session}:{seq}" or seq <= max_seq.get(session, -1):
             raise PhysicalJournalReplay("stale or forged native source")
         if row["status"] == "PREPARED_UNRESOLVED":
+            if row["capability"] == "MOVE_PLACE" and row.get("gait_ack_seq") is not None:
+                raise PhysicalJournalError("unresolved gait cannot claim native effect")
             if idx != len(body["actions"]) - 1 or any(
                 row[k] is not None for k in (
                     "effect_seqs", "after_seq", "food_before", "food_after",
@@ -153,7 +211,7 @@ def _validate(value: object) -> dict[str, Any]:
                 ("hurt_seq", "source_entity_id", "actor_entity_id")
             ):
                 raise PhysicalJournalError("unresolved ATTACK cannot claim a hurt event")
-            if row["capability"] == "MOVE":
+            if row["capability"] in ("MOVE", "MOVE_PLACE"):
                 _move_pos(row["started_position"])
                 if any(row[k] is not None for k in (
                     "settled_position", "initial_stop_seq", "first_stable_seq",
@@ -201,6 +259,53 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("ATTACK attributed hurt evidence invalid")
             max_seq[session] = after
+        elif (
+            row["capability"] == "MOVE_PLACE"
+            and row["status"] in {
+                "NATIVE_PLACE_MOVE_SETTLED", "NATIVE_PLACE_MOVE_NO_PROGRESS",
+                "NATIVE_PLACE_MOVE_OVERSHOOT",
+            }
+        ):
+            child_seq = row["effect_seqs"]
+            start_pos = _move_pos(row["started_position"])
+            end_pos = _move_pos(row["settled_position"])
+            if type(child_seq) is not list or len(child_seq) != 3:
+                raise PhysicalJournalError("PLACE MOVE needs look/start/stop ACKs")
+            look_seq, start_seq, stop_seq = [_number(v) for v in child_seq]
+            gait_seq = row.get("gait_ack_seq")
+            if row.get("gait_mode") == "SNEAK":
+                if gait_seq is None or not look_seq < _number(gait_seq) < start_seq:
+                    raise PhysicalJournalError("SNEAK gait ACK missing or stale")
+            elif gait_seq is not None:
+                raise PhysicalJournalError("unrequested native gait ACK")
+            initial = _number(row["initial_stop_seq"])
+            first = _number(row["first_stable_seq"])
+            final = _number(row["after_seq"])
+            initial_tick = _number(row["initial_stop_tick"])
+            first_tick = _number(row["first_stable_tick"])
+            final_tick = _number(row["settled_tick"])
+            delta = row["displacement_m"]
+            if (
+                type(delta) not in (int, float) or not math.isfinite(delta)
+                or not 0 <= delta <= 8
+                or abs(math.dist(start_pos, end_pos) - delta) > 1e-6
+                or any(row[k] is not None for k in (
+                    "food_before", "food_after", "count_before", "count_after",
+                ))
+                or not seq < look_seq < start_seq < stop_seq < initial < first < final
+                or not 8 <= first_tick - initial_tick <= 200
+                or not 8 <= final_tick - first_tick <= 200
+                or not (
+                    row["status"] == "NATIVE_PLACE_MOVE_NO_PROGRESS"
+                    if delta < 0.1 else
+                    row["status"] == "NATIVE_PLACE_MOVE_OVERSHOOT"
+                    if row["budget_distance_m"] is not None
+                    and delta > row["budget_distance_m"] + 1e-6 else
+                    row["status"] == "NATIVE_PLACE_MOVE_SETTLED"
+                )
+            ):
+                raise PhysicalJournalError("PLACE MOVE original ACK/settle/budget invalid")
+            max_seq[session] = final
         elif row["status"] in (
             "NATIVE_MOVE_SETTLED", "NATIVE_MOVE_NO_NET_DISPLACEMENT",
         ) and row["capability"] == "MOVE":
@@ -338,18 +443,30 @@ class PhysicalActionJournal:
     def records(self) -> tuple[dict[str, Any], ...]:
         return tuple(dict(x) for x in self._body["actions"])
 
-    def certified_prefix_digest(self, count: int) -> str:
-        """Revalidate a historical prefix against the current canonical WAL.
+    def certified_prefix_digest(
+        self, count: int, *, source_schema: int | None = None,
+    ) -> str:
+        """Revalidate a canonical historical prefix, without source authentication.
 
-        A digest is not custody authentication: only comparison with a
-        separately retained, earlier ORIGINAL-Owner witness detects a changed
-        prefix after the full envelope checksum has been recomputed. This is
-        read-only, never an issuer, WAL migration or physical permission.
+        The optional source_schema=1 allows a separately held pre-upgrade v1
+        S1 digest to be checked after an original v2 MOVE_PLACE append. A
+        source_schema value is never evidence of historical custody by itself:
+        only a previously retained independent Owner witness can establish
+        that the digest was known BEFORE this journal changed. Neither form
+        authorizes a physical Action or automatically resolves PREPARED.
         """
         if type(count) is not int or not 0 < count <= len(self._body["actions"]):
             raise PhysicalJournalError("nonempty canonical WAL prefix required")
+        schema = self._body["schema"] if source_schema is None else source_schema
+        if (
+            type(schema) is not int
+            or schema not in (1, 2)
+            or schema > self._body["schema"]
+        ):
+            raise PhysicalJournalError("invalid canonical historical prefix schema")
         prefix = _validate({
-            **self._body, "actions": self._body["actions"][:count],
+            **self._body, "schema": schema,
+            "actions": self._body["actions"][:count],
         })
         return _digest(prefix)
 
@@ -363,8 +480,13 @@ class PhysicalActionJournal:
         if self.unresolved:
             raise PhysicalJournalUnresolved("possible physical effect: STOP/UNKNOWN")
 
-    def _commit(self, records: list[dict[str, Any]]) -> None:
-        updated = _validate({**self._body, "actions": records})
+    def _commit(
+        self, records: list[dict[str, Any]], *, upgrade_to_v2: bool = False,
+    ) -> None:
+        updated = _validate({
+            **self._body, "schema": 2 if upgrade_to_v2 else self._body["schema"],
+            "actions": records,
+        })
         with _exclusive(self.path):
             old, digest = _read(self.path)
             if digest != self.digest or old != self._body:
@@ -627,6 +749,201 @@ class PhysicalActionJournal:
             "settled_tick": t2,
             "displacement_m": displacement,
         }])
+
+    def prepare_place_move(
+        self, binding: PhysicalActionBinding, probe: MineflayerObservation,
+        invocation: "SkillInvocation", motion: "Stage27PlaceMotionPlan",
+        *, precision_gait: str | None = None,
+    ) -> None:
+        """fsync selected original PLACE/Preset BEFORE any native LOOK/effect."""
+        from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
+        from relay_self.skill_invocation import SkillInvocation
+        from relay_self.target_contract import TargetKind
+
+        self.require_clear()
+        if (
+            not isinstance(binding, PhysicalActionBinding)
+            or not isinstance(invocation, SkillInvocation)
+            or not isinstance(motion, Stage27PlaceMotionPlan)
+            or binding.scope.self_id != self._body["self_id"]
+            or binding.scope != invocation.scope
+            or binding.skill_id != "MOVE" or binding.skill_version != 1
+            or binding.capability_ref != "MOVE" or binding.capability_version != 1
+            or binding.body_channel != "locomotion"
+            or binding.goal_id != invocation.goal_id
+            or binding.target_kind != "DESTINATION"
+            or binding.target_ref != invocation.target.ref
+            or invocation.target.contract is None
+            or invocation.target.contract.kind is not TargetKind.PLACE
+            or invocation.target.contract.anchor is None
+            or invocation.parameter_preset_ref is None
+            or motion.invocation_ref != invocation.invocation_ref
+            or motion.parameter_preset_ref != invocation.parameter_preset_ref
+            or motion.target_contract_ref != invocation.target.contract.contract_ref
+            or motion.target_ref != binding.target_ref
+            or motion.self_id != binding.scope.self_id
+            or motion.native_session_id != binding.scope.world_session_id
+            or motion.native_probe_seq != binding.native_seq
+            or motion.native_probe_request_id != binding.native_request_id
+            or motion.observation_status != "OUTSIDE"
+            or motion.next_step
+            != "NATIVE_LOOK_AND_BOUNDED_MOVE_RESOLUTION_REQUIRED_NOT_ISSUABLE"
+            or motion.desired_mineflayer_yaw_rad is None
+            or motion.action_granted or motion.native_effect_issued
+            or motion.world_goal_succeeded
+            or precision_gait not in (None, "WALK", "SNEAK")
+            or not isinstance(probe, MineflayerObservation)
+            or probe.kind != "probe" or not probe.request_id
+            or probe.session_id != binding.scope.world_session_id
+            or probe.seq != binding.native_seq
+            or probe.request_id != binding.native_request_id
+            or probe.provenance != binding.native_source
+            or probe.snapshot.time is None or probe.snapshot.health <= 0
+        ):
+            raise PhysicalJournalError("selected original PLACE/Preset binding invalid")
+        pos, target = probe.snapshot.position, invocation.target.contract.anchor
+        self._commit([*self.records, {
+            "session_id": probe.session_id,
+            "intent_id": binding.intent_id,
+            "skill_execution_id": binding.skill_execution_id,
+            "action_id": binding.action_id,
+            "capability": "MOVE_PLACE",
+            "target_ref": binding.target_ref,
+            "probe_seq": probe.seq,
+            "probe_request_id": probe.request_id,
+            "source_ref": probe.provenance.reference,
+            "status": "PREPARED_UNRESOLVED",
+            "effect_seqs": None,
+            "after_seq": None,
+            "food_before": None, "food_after": None,
+            "count_before": None, "count_after": None,
+            "control": "forward",
+            "started_position": {"x": pos.x, "y": pos.y, "z": pos.z},
+            "settled_position": None,
+            "initial_stop_seq": None, "first_stable_seq": None,
+            "initial_stop_tick": None, "first_stable_tick": None,
+            "settled_tick": None, "displacement_m": None,
+            "invocation_ref": invocation.invocation_ref,
+            "preset_ref": invocation.parameter_preset_ref,
+            "target_contract_ref": motion.target_contract_ref,
+            "target_position": {"x": target.x, "y": target.y, "z": target.z},
+            "aim_yaw_rad": motion.desired_mineflayer_yaw_rad,
+            "budget_actions": invocation.budget.max_actions,
+            "budget_duration_ms": invocation.budget.max_duration_ms,
+            "budget_distance_m": invocation.budget.max_distance_m,
+            **({"gait_mode": precision_gait, "gait_ack_seq": None}
+               if precision_gait is not None else {}),
+        }], upgrade_to_v2=True)
+
+    def close_place_move(
+        self, binding: PhysicalActionBinding,
+        invocation: "SkillInvocation",
+        before: MineflayerObservation,
+        look_ack: MineflayerEffectResult,
+        start_ack: MineflayerEffectResult,
+        stop_ack: MineflayerEffectResult,
+        initial_stop: MineflayerObservation,
+        first_stable: MineflayerObservation,
+        settled: MineflayerObservation,
+        terminal: ActionLifecycle,
+        supervisor: ActionSupervisor,
+        *, gait_ack: MineflayerEffectResult | None = None,
+    ) -> str:
+        """Seal original LOOK/(optional SNEAK)/start/STOP native readbacks."""
+        from relay_self.skill_invocation import SkillInvocation
+
+        if not self.unresolved or not isinstance(binding, PhysicalActionBinding):
+            raise PhysicalJournalError("MOVE PLACE PREPARED original WAL missing")
+        row = self.records[-1]
+        entries = (before, initial_stop, first_stable, settled)
+        if (
+            not isinstance(invocation, SkillInvocation)
+            or row["capability"] != "MOVE_PLACE"
+            or row["intent_id"] != binding.intent_id
+            or row["skill_execution_id"] != binding.skill_execution_id
+            or row["action_id"] != binding.action_id
+            or row["target_ref"] != binding.target_ref
+            or row["invocation_ref"] != invocation.invocation_ref
+            or row["preset_ref"] != invocation.parameter_preset_ref
+            or row["target_contract_ref"] != invocation.target.contract.contract_ref
+            or row["source_ref"] != binding.native_source.reference
+            or any(not isinstance(x, MineflayerObservation) or x.kind != "probe"
+                   or x.snapshot.time is None or not x.request_id
+                   or x.snapshot.health <= 0 for x in entries)
+            or any(x.session_id != row["session_id"] for x in entries)
+            or before.seq != row["probe_seq"]
+            or before.request_id != row["probe_request_id"]
+            or any(not isinstance(x, MineflayerEffectResult)
+                   for x in (look_ack, start_ack, stop_ack))
+            or any(x.session_id != before.session_id
+                   for x in (look_ack, start_ack, stop_ack))
+            or look_ack.action_id != binding.action_id + "-look"
+            or start_ack.action_id != binding.action_id + "-start"
+            or stop_ack.action_id != binding.action_id + "-stop"
+            or look_ack.effect != "look" or start_ack.effect != "set_control"
+            or stop_ack.effect != "clear_controls"
+            or any(x.result != "applied" for x in (look_ack, start_ack, stop_ack))
+            or not before.seq < look_ack.seq < start_ack.seq < stop_ack.seq
+            or (row.get("gait_mode") == "SNEAK" and (
+                not isinstance(gait_ack, MineflayerEffectResult)
+                or gait_ack.session_id != before.session_id
+                or gait_ack.action_id != binding.action_id + "-sneak"
+                or gait_ack.effect != "set_control" or gait_ack.result != "applied"
+                or not look_ack.seq < gait_ack.seq < start_ack.seq
+            ))
+            or (row.get("gait_mode") != "SNEAK" and gait_ack is not None)
+            or not stop_ack.seq < initial_stop.seq < first_stable.seq < settled.seq
+            or len({x.request_id for x in entries}) != 4
+            or not isinstance(terminal, ActionLifecycle)
+            or terminal.state is not ActionState.OUTCOME
+            or terminal.action_id != binding.action_id
+            or not isinstance(supervisor, ActionSupervisor)
+            or supervisor.get(binding.action_id) is not terminal
+        ):
+            raise PhysicalJournalError("MOVE PLACE original Action/native source mismatch")
+        def to_tick(item: MineflayerObservation) -> int:
+            assert item.snapshot.time is not None
+            return item.snapshot.time.day * 24000 + item.snapshot.time.time_of_day
+
+        t0, t1, t2 = map(to_tick, (initial_stop, first_stable, settled))
+        p0, p1 = first_stable.snapshot.position, settled.snapshot.position
+        if (
+            not 8 <= t1 - t0 <= 200
+            or not 8 <= t2 - t1 <= 200
+            or math.dist((p0.x, p0.y, p0.z), (p1.x, p1.y, p1.z)) > 0.06
+        ):
+            raise PhysicalJournalError("PLACE MOVE STOP did not settle")
+        before_pos, after_pos = before.snapshot.position, settled.snapshot.position
+        delta = math.dist(
+            (before_pos.x, before_pos.y, before_pos.z),
+            (after_pos.x, after_pos.y, after_pos.z),
+        )
+        if not math.isfinite(delta) or delta > 8:
+            raise PhysicalJournalError("PLACE MOVE displacement exceeds source bounds")
+        budget = invocation.budget.max_distance_m
+        status = (
+            "NATIVE_PLACE_MOVE_NO_PROGRESS" if delta < 0.1
+            else "NATIVE_PLACE_MOVE_OVERSHOOT"
+            if budget is not None and delta > budget + 1e-6
+            else "NATIVE_PLACE_MOVE_SETTLED"
+        )
+        self._commit([*self.records[:-1], {
+            **row, "status": status,
+            "effect_seqs": [look_ack.seq, start_ack.seq, stop_ack.seq],
+            **({"gait_ack_seq": gait_ack.seq if gait_ack is not None else None}
+               if "gait_mode" in row else {}),
+            "after_seq": settled.seq,
+            "settled_position": {
+                "x": after_pos.x, "y": after_pos.y, "z": after_pos.z,
+            },
+            "initial_stop_seq": initial_stop.seq,
+            "first_stable_seq": first_stable.seq,
+            "initial_stop_tick": t0,
+            "first_stable_tick": t1,
+            "settled_tick": t2,
+            "displacement_m": delta,
+        }])
+        return status
 
     def prepare_attack(
         self, binding: PhysicalActionBinding, probe: MineflayerObservation,
