@@ -4,12 +4,12 @@ import json
 
 import pytest
 
+from relay_self.i_lane_i4a_live_wal_anchor_dev import capture_live_wal_history_anchor
 from relay_self.i_lane_i4a_s1_native_source_audit_dev import (
     I4AS1NativeSourceHold,
     audit_i4a_original_s1_native_stdout,
 )
 from relay_self.i_lane_i4a_s1_source_capture_dev import freeze_original_s1_wal
-from relay_self.i_lane_i4a_live_wal_anchor_dev import capture_live_wal_history_anchor
 from relay_self.physical_action_journal import PhysicalActionJournal
 from test_c_lane_stage27hi_multi_action_review_dev import _fixture, _run_multi
 from test_i4a_live_wal_anchor_dev import _close_original_s1
