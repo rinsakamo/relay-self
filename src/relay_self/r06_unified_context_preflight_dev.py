@@ -8,19 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relay_self.i_unified_original_context_dev import (
-    read_i_unified_b_current,
-)
+from relay_self.i_unified_original_context_dev import read_i_unified_b_current
 from relay_self.r0_cognitive_context_dev import (
     CognitiveContext,
     context_is_live,
     read_original_owner_current,
 )
-from relay_self.r05_context_compat_preflight_dev import (
-    audit_r05_initial_owner_context,
-)
+from relay_self.r05_context_compat_preflight_dev import audit_r05_initial_owner_context
 from relay_self.three_self_present import EpistemicStatus
-
 
 R06_EXTERNAL_HOLDS = (
     "Q_INDEPENDENT_ORIGINAL_SOURCE_NOT_ATTESTED",
