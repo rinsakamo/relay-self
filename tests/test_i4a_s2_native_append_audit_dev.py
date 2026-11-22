@@ -120,6 +120,13 @@ def test_original_s2_native_append_readback_refuses_forged_source(tmp_path):
                 captured, **{**kwargs, "after_sha256": tampered_sha},
             )
         forged = json.loads(json.dumps(entries))
+        forged[rows[-1]["first_stable_seq"]]["snapshot"]["position"]["x"] += 0.25
+        tampered_sha = _write_raw(full, forged)
+        with pytest.raises(I4AS2NativeAppendHold, match="residual drift"):
+            audit_i4a_s2_native_append(
+                captured, **{**kwargs, "after_sha256": tampered_sha},
+            )
+        forged = json.loads(json.dumps(entries))
         forged[rows[-1]["after_seq"]]["snapshot"]["position"]["x"] += 0.5
         tampered_sha = _write_raw(full, forged)
         with pytest.raises(I4AS2NativeAppendHold, match="position/tick"):

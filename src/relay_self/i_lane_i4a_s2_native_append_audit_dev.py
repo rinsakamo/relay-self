@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -142,6 +143,15 @@ def audit_i4a_s2_native_append(
             or (tick is not None and _tick(event) != tick)
         ):
             raise I4AS2NativeAppendHold("S2 original probe/position/tick mismatch")
+    first_stable = entries[row["first_stable_seq"]].snapshot.position
+    last_settled = entries[row["after_seq"]].snapshot.position
+    if math.dist(
+        (first_stable.x, first_stable.y, first_stable.z),
+        (last_settled.x, last_settled.y, last_settled.z),
+    ) > 0.06:
+        raise I4AS2NativeAppendHold("S2 Native STOP residual drift exceeds 0.06m")
+    if len({entries[seq].request_id for seq, _, _, _ in probes}) != len(probes):
+        raise I4AS2NativeAppendHold("S2 duplicate original STOP/probe request")
     return I4AS2NativeAppendReadback(
         "I4A_S1_S2_NATIVE_APPEND_SOURCE_CPU_OFFLINE_ONLY",
         s1.original_stdout_sha256, after_sha256, action_id,

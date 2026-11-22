@@ -122,3 +122,9 @@ missing/malformed/forged evidence. Tests spawn a separate Python interpreter
 and reject a forged `restart_authenticated=True` receipt. A caller-authored
 manifest/hash does not establish original Owner custody, independently sourced
 Paper attribution, valid WorldBody Target, real S2 L1, or qualification.
+
+The S2 stdout auditor also independently compares the actual
+first-stable and terminal Native positions and refuses more than 0.06m
+residual STOP drift, even with a valid checksum and matching WAL ticks.
+It rejects reused probe request IDs. Synthetic STOP fixtures preserve a
+stationary first-stable/final pair; deliberate drift is a negative control.

@@ -79,7 +79,7 @@ def _stream(rows):
             (row["initial_stop_seq"], row["initial_stop_tick"],
              None, "first-stop"),
             (row["first_stable_seq"], row["first_stable_tick"],
-             None, "first-stable"),
+             row["settled_position"], "first-stable"),
             (row["after_seq"], row["settled_tick"],
              row["settled_position"], "settled"),
         ):
