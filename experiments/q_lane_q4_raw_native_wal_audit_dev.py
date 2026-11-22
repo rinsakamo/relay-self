@@ -53,9 +53,22 @@ def _time(snapshot: dict) -> int:
     clock = snapshot.get("time")
     if not isinstance(clock, dict):
         raise Q4EvidenceHold("Native World clock missing")
+    keys = set(clock)
+    if keys not in (
+        {"day", "time_of_day", "is_day"},
+        {"day", "time_of_day", "is_day", "world_age_ticks"},
+    ):
+        raise Q4EvidenceHold("Native World clock has unrecognized fields")
     day, tod = clock.get("day"), clock.get("time_of_day")
-    if type(day) is not int or type(tod) is not int or day < 0 or not 0 <= tod < 24000:
-        raise Q4EvidenceHold("invalid Native World tick")
+    if (type(day) is not int or type(tod) is not int
+            or type(clock.get("is_day")) is not bool
+            or day < 0 or not 0 <= tod < 24000):
+        raise Q4EvidenceHold("invalid Native daylight time")
+    if "world_age_ticks" in clock:
+        age = clock["world_age_ticks"]
+        if type(age) is not int or not 0 <= age <= 2**53 - 1:
+            raise Q4EvidenceHold("invalid independent Native world-age tick")
+        return age
     return day * 24000 + tod
 
 
@@ -159,6 +172,9 @@ def audit_two_nominal_moves(wal: Path, native: Path) -> list[dict]:
                 raise Q4EvidenceHold("missing/foreign/duplicate original Native probe")
             seen_probe_requests.add(m["request_id"])
             probes.append(m["snapshot"])
+        clocks = [p.get("time") for p in probes]
+        if len({isinstance(c, dict) and "world_age_ticks" in c for c in clocks}) != 1:
+            raise Q4EvidenceHold("mixed native STOP clock sources")
         ticks = [_time(p) for p in probes]
         if ticks != [
             row.get("initial_stop_tick"),
