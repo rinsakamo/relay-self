@@ -165,3 +165,51 @@ source authentication, concurrent physical leases, and all runtime
 commands before PRE_WORLD. U2's earlier claim that schema v2 was
 absent is historical; v2 is now present in U3, but its live issuer is
 still **HOLD**.
+
+
+## U4 — PLACE PhysicalIssueAdmission opt-in and typed WAL (2026-11-22)
+
+The **existing** `PhysicalIssueAdmission` class now recognizes a distinct
+`MOVE_PLACE` effect family, exact original child IDs for `look`,
+`set_control` and `clear_controls`, and a **separate explicit**
+`allow_resident_place_move=True` constructor opt-in. The opt-in can
+only be set together with `resident_mode=True` and
+`allow_resident_move=True`; the default is False. The lease requires
+the original native session and single-action ownership. No child is
+admitted before original `PhysicalActionJournal` fsync PREPARED
+readback and `bind_native_children` correlation. Selected Native
+IDs are one-shot, and releasing/ending the lease removes admission.
+`MOVE_PLACE` requires v2 PREPARED rows. A `SNEAK` gait is **refused**
+at child binding because it requires an additional, separately
+accounted-for `set_control` ID; this U4 minimal route covers only
+walking without that gait. It is deliberately not permissive fallback.
+
+The new `tests/test_i_unified_i4a_place_lease_dev.py` uses a separate
+*synthetic* opt-in instance of the **original PhysicalIssueAdmission
+class**, original typed `PhysicalActionBinding`, original
+`SkillInvocation` and `Stage27PlaceMotionPlan`, and the original
+canonical WAL `prepare_place_move`/ `close_place_move` methods.
+Synthetic source-shaped MineflayerObservations / EffectResults and
+original `ActionSupervisor` lifecycle allow a complete v2
+PREPARED->terminal **contract test**, with no actual Native IO.
+Denied cases include missing opt-in, wrong child IDs, cross-Self,
+pre-PREPARED, replay, missing Native lease, forged source/target,
+unresolved PREPARED and SNEAK. The *real B restored instance* is
+separately tested for explicit refusal: it is **observation-only**
+and has `allow_resident_move=False`, so its physical gate rejects
+even before U4 PLACE-specific opt-in evaluation.
+
+U4 **does not** migrate B's restored original Owner to a physically
+enabled mode or install any real PLACE/L0 motor runner. The synthetic
+opt-in PhysicalIssueAdmission test object is NOT the B restored actor;
+there is no original B actor/World-backed issued S2 evidence.
+Particularly, PLACE `bind_native_children` currently trusts the
+provided canonical WAL path and a matching local session/Action row;
+it does **not** independently authenticate the physical journal's
+original custody against Paper/Native process evidence or a long-lived
+original-B-held source witness. That must be separately fenced in
+a future stage before any real opt-in is considered. Explicit
+`PRE_WORLD_HOLD`, `QUAL_NO_GO`, `SCIENCE_NOT_RUN` remain.
+
+Historical I2/I4a test discovery is still incomplete: scoped U4 CI
+cannot imply blanket legacy regressions or real S2 source certification.
