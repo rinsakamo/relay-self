@@ -8,12 +8,16 @@ both requests. The files contain HTTP entity-body bytes, NOT network packets.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import asdict
 import json
 import urllib.error
 import urllib.request
+from dataclasses import asdict
 from pathlib import Path
 
+from adapters.llama_cpp.relay_engine import (
+    LlamaCppRelayProvider,
+    _write_model_raw_once,
+)
 from relay_self.i_lane_i2d_self_schema_adoption_dev import (
     finish_i2d_self_adoption,
     submit_i2d_original_l1_acceptance,
@@ -21,12 +25,6 @@ from relay_self.i_lane_i2d_self_schema_adoption_dev import (
 )
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.resident_llama_inference_lane_dev import ResidentLlamaInferenceLane
-
-from adapters.llama_cpp.relay_engine import (
-    LlamaCppProviderError,
-    LlamaCppRelayProvider,
-    _write_model_raw_once,
-)
 
 
 class I2eRawModelHold(RuntimeError):
