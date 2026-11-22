@@ -167,7 +167,7 @@ def test_valid_v2_place_terminal_variants_and_second_v2_run(
     assert s1.canonical_schema == 2
     assert s1.canonical_prefix_sha256 == journal.digest
     second = _place(
-        session=owner.native_session_id, seq=12, delta=delta,
+        session=owner.native_session_id, seq=13, delta=delta,
         budget_distance=budget, gait=gait,
     )
     assert second["status"] == expected
