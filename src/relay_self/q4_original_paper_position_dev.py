@@ -88,8 +88,23 @@ def _build_window(
     bridge: OwnedResidentPhysicalBridge,
     self_id: str,
     receipt: Stage27PlaceMoveReceipt,
+    *,
+    after_log_prefix: bytes | None = None,
 ) -> Q4OriginalPaperPositionWindow:
     trace, raw = _owned_log_source(bridge, self_id)
+    # The second PLACE MUST use new Paper events, not replay S1's valid
+    # 8+8-tick window. Capture this prefix from the same owned Paper process
+    # before issuing S2; reject truncation/rewrite or partial log lines.
+    after_line = 0
+    if after_log_prefix is not None:
+        if (
+            type(after_log_prefix) is not bytes
+            or not after_log_prefix.endswith(b"\n")
+            or not 0 < len(after_log_prefix) <= len(raw)
+            or not raw.startswith(after_log_prefix)
+        ):
+            raise Q4OriginalPaperHold("pre-S2 original Paper prefix changed")
+        after_line = len(after_log_prefix.splitlines())
     name = bridge.configs[self_id].username
     session = bridge.sessions[self_id]
     if (
@@ -112,6 +127,7 @@ def _build_window(
     visible = [
         e for e in people[1:]
         if e.event in {"PRESENT", "MOVE"}
+        and e.line > after_line
         and math.dist(origin, _position(e)) >= 0.1
     ]
     chosen = None
@@ -165,6 +181,7 @@ async def await_original_q4_paper_position_window(
     receipt: Stage27PlaceMoveReceipt,
     *,
     timeout_s: float = 7.0,
+    after_log_prefix: bytes | None = None,
 ) -> Q4OriginalPaperPositionWindow:
     """Bounded append-only Paper sampling; never fabricates a position/tick."""
     if type(timeout_s) not in (int, float) or not 0 < timeout_s <= 12:
@@ -172,7 +189,9 @@ async def await_original_q4_paper_position_window(
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
-            return _build_window(bridge, self_id, receipt)
+            return _build_window(
+                bridge, self_id, receipt, after_log_prefix=after_log_prefix,
+            )
         except Q4OriginalPaperHold:
             await asyncio.sleep(0.1)
     raise Q4OriginalPaperHold("owned Paper position 8+8 tick evidence timed out")
