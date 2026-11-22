@@ -475,3 +475,57 @@ def test_q1h_git_ref_changed_during_canonical_source_readback(tmp_path, monkeypa
     with pytest.raises(QOriginalMovePlaceGitHold):
         join.audit_q1h_original_move_place_git_custody(**kwargs)
     assert calls == 2
+
+
+def test_q1g_canonical_valid_sneak_gait_ack_between_look_and_start(tmp_path):
+    root, claims = _setup(tmp_path)
+    def sneak(body):
+        row = body["actions"][-1]
+        row["gait_mode"] = "SNEAK"
+        row["gait_ack_seq"] = 10
+        row["effect_seqs"] = [9, 11, 12]
+        row["initial_stop_seq"] = 13
+        row["first_stable_seq"] = 14
+        row["after_seq"] = 15
+    _edit(root, claims["s2_wal_file"], sneak)
+    result = _verify(root, claims)
+    assert result["s2_action_id"] == "action-2"
+    assert result["s2_terminal_status_label"] == "NATIVE_PLACE_MOVE_NO_PROGRESS"
+    assert result["s2_outcome_original_native_paper_attested"] is False
+
+
+def test_q1g_valid_overshoot_is_terminal_not_skill_success(tmp_path):
+    root, claims = _setup(tmp_path)
+    def overshoot(body):
+        row = body["actions"][-1]
+        row["settled_position"]["x"] = 1.7
+        row["displacement_m"] = 1.2
+        row["status"] = "NATIVE_PLACE_MOVE_OVERSHOOT"
+    _edit(root, claims["s2_wal_file"], overshoot)
+    result = _verify(root, claims)
+    assert result["s2_terminal_status_label"] == "NATIVE_PLACE_MOVE_OVERSHOOT"
+    assert result["real_world_attested"] is False
+
+
+def test_q1h_pinned_forged_intent_even_with_new_self_consistent_git_root(
+    tmp_path,
+):
+    original, _repo, anchor, kwargs = _q1h_source(tmp_path)
+    anchor["s1_intent_id"] = "forged-intent-not-in-canonical-wal"
+    new_anchor = _canon(anchor) + b"\n"
+    alternate = tmp_path / "alt"  # separate synthetic untrusted Git source
+    alternate.mkdir()
+    repo, git = _git_pre_s2_source(
+        alternate, new_anchor,
+        (original / kwargs["s2_wal_file"]).read_bytes(),
+    )
+    kwargs["git_repo_root"] = repo
+    kwargs["git_claims"] = git
+    kwargs["external_anchor_bytes"] = new_anchor
+    kwargs["externally_pinned_anchor_sha256"] = hashlib.sha256(
+        new_anchor,
+    ).hexdigest()
+    # Individual hash/Git consistency is not a binding to the correct
+    # physical Intent. Q1h must reject before any proof of real Owner.
+    with pytest.raises(QOriginalMovePlaceGitHold):
+        audit_q1h_original_move_place_git_custody(**kwargs)
