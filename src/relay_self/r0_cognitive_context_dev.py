@@ -12,8 +12,8 @@ from dataclasses import dataclass
 
 from relay_self.bd1b_owner_source_dev import BD1bOwnerSource, build_bd1b_owner_source
 from relay_self.common_io import (
-    CognitiveTask,
     CognitionResultReceipt,
+    CognitiveTask,
     PreemptionTrace,
     Profile,
     ProfileDecision,
