@@ -273,8 +273,13 @@ async def run_restored_a_b_real_observation(
         future_pins=future_pins,
     )
     if not (
-        source.receipt.source_committed_sha256 == _SOURCE_COMMITTED_SHA
-        and source.receipt.fork_branch_id == _FORK_BRANCH
+        source.receipt.source_committed_sha256 == (
+            _SOURCE_COMMITTED_SHA if future_pins is None
+            else future_pins.source_committed_sha256
+        )
+        and source.receipt.fork_branch_id == (
+            _FORK_BRANCH if future_pins is None else future_pins.fork_branch_id
+        )
     ):
         raise Stage28c2bRealRejoinHold("original historical Self receipt mismatched")
     if i1_original_cpu_sense and future_pins is None:
