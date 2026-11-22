@@ -2,7 +2,7 @@
 
 Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
 inventory, **not** an executing real-World or real-Gemma runner. Its one
-CLI mode performs a Git exact-HEAD check and hashes eighteen original code files;
+CLI mode performs a Git exact-HEAD check and hashes nineteen original code files;
 it returns exit 2 **even when EULA and real-World DEV grant are provided**.
 The optional World directory is never touched.
 
@@ -111,3 +111,14 @@ probes and PREPARED_UNRESOLVED. The result is deliberately labeled
 `SOURCE_CPU_OFFLINE_ONLY`; supplied hashes cannot authenticate their own
 custody or the original Paper/Target/World sources. This is not a real runner,
 independent Paper auditor, model invocation or Physical authority.
+
+## Separate-process CLI boundary
+
+`experiments/i_lane_i4a_s2_independent_native_audit_dev.py` is a standalone
+read-only subprocess entrypoint. It accepts a disk S1 capture manifest, the
+canonical S2 WAL and original before/after Native stdout files; returns exit
+0 and JSON only for **offline source-content correlation**, exit 2/HOLD for
+missing/malformed/forged evidence. Tests spawn a separate Python interpreter
+and reject a forged `restart_authenticated=True` receipt. A caller-authored
+manifest/hash does not establish original Owner custody, independently sourced
+Paper attribution, valid WorldBody Target, real S2 L1, or qualification.

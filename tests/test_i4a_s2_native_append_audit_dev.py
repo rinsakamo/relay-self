@@ -1,5 +1,10 @@
 """Original S1->S2 Native append auditor (synthetic, CPU-only)."""
 import json
+import os
+import subprocess
+import sys
+from dataclasses import asdict
+from pathlib import Path
 
 import pytest
 
@@ -54,6 +59,40 @@ def test_original_s2_native_append_readback_refuses_forged_source(tmp_path):
             "skill_id": boundary.new_skill_id, "intent_id": boundary.new_intent_id,
         }
         receipt = audit_i4a_s2_native_append(captured, **kwargs)
+        # Independent subprocess must reconstruct the receipt from disk and
+        # cannot access the live original Owner/Physical/Resident model.
+        manifest = tmp_path / "capture.json"
+        manifest.write_text(json.dumps(asdict(captured)), encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        script = root / "experiments" / "i_lane_i4a_s2_independent_native_audit_dev.py"
+        argv = [
+            sys.executable, str(script), "--capture", str(manifest),
+            "--s2-wal", str(kwargs["s2_wal"]),
+            "--before-stdout", str(original), "--after-stdout", str(full),
+            "--before-sha256", before_sha, "--after-sha256", after_sha,
+            "--action-id", candidate.action_id,
+            "--skill-id", boundary.new_skill_id,
+            "--intent-id", boundary.new_intent_id,
+        ]
+        env = {**os.environ, "PYTHONPATH": str(root / "src") + os.pathsep + str(root)}
+        verified = subprocess.run(
+            argv, cwd=root, env=env, capture_output=True, text=True,
+            timeout=15, check=False,
+        )
+        assert verified.returncode == 0, verified.stderr
+        separate = json.loads(verified.stdout)
+        assert separate["classification"].endswith("CPU_OFFLINE_ONLY")
+        assert not separate["physical_authorized"]
+        assert not separate["paper_attested"]
+        fake = json.loads(manifest.read_bytes())
+        fake["restart_authenticated"] = True
+        manifest.write_text(json.dumps(fake), encoding="utf-8")
+        denied = subprocess.run(
+            argv, cwd=root, env=env, capture_output=True, text=True,
+            timeout=15, check=False,
+        )
+        assert denied.returncode == 2
+        assert "I4A_S1_S2_NATIVE_CONTENT_HOLD" in denied.stderr
         assert receipt.s2_status == "NATIVE_PLACE_MOVE_SETTLED"
         assert receipt.s2_effect_count == 3
         assert receipt.native_probe_count == 4
