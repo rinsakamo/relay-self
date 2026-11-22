@@ -7,6 +7,7 @@ and does NOT revive old physical Actions or resume L1 work.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
@@ -20,6 +21,7 @@ from relay_self.coordinated_checkpoint_dev import (
 )
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.self_owner_checkpoint_dev import (
@@ -53,6 +55,7 @@ def _retired_owner_snapshots(
     *, owners: dict[str, CheckpointedCognitiveOwner],
     root: Path, generation_id: str,
     world_id: str, branch_id: str,
+    schema_snapshots: dict[str, SchemaSnapshot] | None = None,
 ) -> tuple[SelfSnapshotSource, ...]:
     """Serialize canonical original owners, never parallel shadow owners."""
     if tuple(sorted(owners)) != ("A", "B"):
@@ -74,6 +77,14 @@ def _retired_owner_snapshots(
             owner.files.physical_wal_file, self_id=self_id,
         )
         wal.require_clear()
+        snapshot = (schema_snapshots or {}).get(self_id)
+        cognition_sha = None
+        if snapshot is not None:
+            if owner.retained.pattern_registry != owner.pattern_registry:
+                raise Stage28bRetiredCutHold(
+                    "recorded Schema requires original persisted cognition registry"
+                )
+            cognition_sha = hashlib.sha256(owner.files.cognition_file.read_bytes()).hexdigest()
         cut = SelfOwnerCut(
             generation_id=generation_id, self_id=self_id,
             world_id=world_id, branch_id=branch_id,
@@ -86,6 +97,7 @@ def _retired_owner_snapshots(
                 owner.peer_deliveries[key] for key in sorted(owner.peer_deliveries)
             ),
             pending_question_refs=tuple(sorted(owner.pending_questions)),
+            schema_snapshot=snapshot, cognition_sha256=cognition_sha,
         )
         destination = root / self_id
         destination.mkdir(mode=0o700)
@@ -155,10 +167,26 @@ def capture_retired_resident_typed_world(
     generation_id = f"g-{sequence:012d}"
     prepared = evidence_dir / ("stage28b-typed-staging-" + generation_id)
     prepared.mkdir(mode=0o700)
-    sources = _retired_owner_snapshots(
-        owners=bridge.owners, root=prepared, generation_id=generation_id,
-        world_id=world.world_id, branch_id=world.branch_id,
-    )
+    resident = getattr(bridge, "cognitive_work", None)
+    if resident is not None:
+        with resident.lock:
+            if any(resident.owners.get(sid) is not owner
+                   for sid, owner in bridge.owners.items()):
+                raise Stage28bRetiredCutHold("foreign original Resident Owner")
+            try:
+                registered = resident.retired_recorded_schemas()
+            except (ValueError, RuntimeError) as exc:
+                raise Stage28bRetiredCutHold("unqualified retired Schema registration") from exc
+            sources = _retired_owner_snapshots(
+                owners=bridge.owners, root=prepared, generation_id=generation_id,
+                world_id=world.world_id, branch_id=world.branch_id,
+                schema_snapshots=registered,
+            )
+    else:
+        sources = _retired_owner_snapshots(
+            owners=bridge.owners, root=prepared, generation_id=generation_id,
+            world_id=world.world_id, branch_id=world.branch_id,
+        )
     # Recheck source lease immediately before stopping Paper. A second
     # concurrent native login/action must force HOLD instead of a mixed cut.
     bridge.world_only_quiescence()

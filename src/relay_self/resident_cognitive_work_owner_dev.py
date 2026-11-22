@@ -402,6 +402,34 @@ class ResidentCognitiveWorkOwner:
             state.native = None
             state.world_epoch = None
 
+    def retired_recorded_schemas(self) -> dict[str, SchemaSnapshot]:
+        """Read original pre-login registrations ONLY after true A/B retirement.
+
+        Registry presence does not establish activation. No inferred defaults
+        are returned, and a partially registered cohort is a source HOLD.
+        """
+        from relay_self.exploration_schema_record_dev import require_recorded_schema
+
+        with self.lock:
+            if not self._present_schemas:
+                return {}
+            if set(self._present_schemas) != set(self.owners):
+                raise ResidentCognitiveWorkError("partial original Schema registration")
+            found = {}
+            for sid, owner in self.owners.items():
+                if not self.retired_clean(sid):
+                    raise ResidentCognitiveWorkError("Schema cut requires retired original Self")
+                snapshot, pinned_registry = self._present_schemas[sid]
+                if pinned_registry != owner.pattern_registry:
+                    raise ResidentCognitiveWorkError("original Schema registry changed after login")
+                try:
+                    found[sid] = require_recorded_schema(
+                        snapshot, self_id=sid, registry=owner.pattern_registry,
+                    )
+                except ValueError as exc:
+                    raise ResidentCognitiveWorkError("original Schema registration invalid") from exc
+            return found
+
     def retired_clean(self, self_id: str) -> bool:
         with self.lock:
             state = self._state(self_id)
