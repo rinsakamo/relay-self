@@ -25,6 +25,12 @@ from relay_self.relay_engine import (
     RelayEngineResult,
 )
 from relay_self.skill import SkillExecution
+from relay_self.skill_invocation import (
+    SkillDefinition,
+    SkillInvocationRefusal,
+    SkillParameterPreset,
+    validate_preset_arguments,
+)
 
 
 class MinimalCognitionError(ValueError):
@@ -111,9 +117,44 @@ class SchemaPattern:
 
 
 @dataclass(frozen=True, slots=True)
+class PresetAcceptanceReceipt:
+    """Caller-provided record of Self's choice; not cryptographic authority."""
+
+    self_id: str
+    event_id: str
+    preset_ref: str
+    provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.self_id, str) or not self.self_id.strip()
+                or not isinstance(self.event_id, str) or not self.event_id.strip()
+                or not isinstance(self.preset_ref, str)
+                or not self.preset_ref.startswith("skill-preset:v1@")
+                or not isinstance(self.provenance, Provenance)):
+            raise MinimalCognitionError("invalid Self preset acceptance receipt")
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptedSkillPreset:
+    """One Self-owned published preset, bound to exact Schema pattern revision."""
+
+    pattern_version: int
+    preset: SkillParameterPreset
+    receipt: PresetAcceptanceReceipt
+
+    def __post_init__(self) -> None:
+        if (type(self.pattern_version) is not int or self.pattern_version < 1
+                or not isinstance(self.preset, SkillParameterPreset)
+                or not isinstance(self.receipt, PresetAcceptanceReceipt)
+                or self.receipt.preset_ref != self.preset.preset_ref):
+            raise MinimalCognitionError("unqualified accepted Skill preset")
+
+
+@dataclass(frozen=True, slots=True)
 class PatternRegistry:
     revision: int
     patterns: tuple[SchemaPattern, ...]
+    accepted_presets: tuple[AcceptedSkillPreset, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.revision) is not int or self.revision < 0:
@@ -124,6 +165,25 @@ class PatternRegistry:
             raise MinimalCognitionError("duplicate pattern version")
         if any(not isinstance(p, SchemaPattern) for p in self.patterns):
             raise MinimalCognitionError("invalid CPU pattern")
+        if (type(self.accepted_presets) is not tuple
+                or len(self.accepted_presets) > 64
+                or any(not isinstance(e, AcceptedSkillPreset)
+                       for e in self.accepted_presets)):
+            raise MinimalCognitionError("bounded accepted preset snapshot required")
+        keys = [(e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                for e in self.accepted_presets]
+        events = [(e.receipt.self_id, e.receipt.event_id)
+                  for e in self.accepted_presets]
+        if len(set(keys)) != len(keys) or len(set(events)) != len(events):
+            raise MinimalCognitionError("duplicate accepted preset or owner event")
+        for e in self.accepted_presets:
+            if not any(
+                p.pattern_id == e.preset.pattern_id
+                and p.version == e.pattern_version
+                and p.kind is PatternKind.GOAL
+                for p in self.patterns
+            ):
+                raise MinimalCognitionError("accepted preset lacks exact owning pattern")
 
 
 def initial_patterns() -> PatternRegistry:
@@ -188,7 +248,88 @@ def accept_learned_pattern(
         raise MinimalCognitionError("unavailable physical skill capability")
     if any(p.pattern_id == proposed.pattern_id for p in registry.patterns):
         raise MinimalCognitionError("pattern ID already registered; retain old versions")
-    return PatternRegistry(registry.revision + 1, registry.patterns + (proposed,))
+    return PatternRegistry(registry.revision + 1, registry.patterns + (proposed,), registry.accepted_presets)
+
+
+def accept_skill_parameter_preset(
+    registry: PatternRegistry,
+    proposed: SkillParameterPreset,
+    *,
+    definition: SkillDefinition,
+    receipt: PresetAcceptanceReceipt,
+    accepted_by_self: bool,
+    expected_revision: int,
+    available_skills: frozenset[tuple[str, int]],
+) -> PatternRegistry:
+    """CAS-publish Self-accepted params; never a physical Action authorization.
+
+    The acceptance receipt is supplied by the existing Self owner. This pure
+    function validates it but cannot authenticate that owner; callers must
+    journal the decision separately and persist the returned revision.
+    """
+    if not isinstance(registry, PatternRegistry) or (
+        type(expected_revision) is not int
+        or expected_revision != registry.revision
+    ):
+        raise MinimalCognitionError("stale Schema preset registry revision")
+    if accepted_by_self is not True:
+        raise MinimalCognitionError("unaccepted L2/Schema preset cannot publish")
+    if (not isinstance(proposed, SkillParameterPreset)
+            or not isinstance(definition, SkillDefinition)
+            or not isinstance(receipt, PresetAcceptanceReceipt)
+            or receipt.preset_ref != proposed.preset_ref):
+        raise MinimalCognitionError("Self receipt and proposed preset differ")
+    matching = [p for p in registry.patterns if p.pattern_id == proposed.pattern_id
+                and p.kind is PatternKind.GOAL]
+    if len(matching) != 1:
+        raise MinimalCognitionError("registered Goal pattern required")
+    pattern = matching[0]
+    if (pattern.skill_id != definition.skill_id
+            or pattern.skill_version != definition.version
+            or proposed.definition_ref != definition.definition_ref
+            or (definition.skill_id, definition.version) not in available_skills):
+        raise MinimalCognitionError("preset does not match registered Skill capability")
+    try:
+        validate_preset_arguments(definition, proposed.arguments)
+    except SkillInvocationRefusal as exc:
+        raise MinimalCognitionError("preset ABI validation failed") from exc
+    key = (receipt.self_id, proposed.pattern_id, proposed.preset_id)
+    found = next((e for e in registry.accepted_presets
+                  if (e.receipt.self_id, e.preset.pattern_id,
+                      e.preset.preset_id) == key), None)
+    if (found is not None and proposed.version != found.preset.version + 1
+            or found is None and proposed.version != 1):
+        raise MinimalCognitionError("preset version must advance by exactly one")
+    if any(e.receipt.self_id == receipt.self_id
+           and e.receipt.event_id == receipt.event_id
+           for e in registry.accepted_presets):
+        raise MinimalCognitionError("replayed Self acceptance event")
+    updated = tuple(e for e in registry.accepted_presets if e is not found) + (
+        AcceptedSkillPreset(pattern.version, proposed, receipt),
+    )
+    return PatternRegistry(registry.revision + 1, registry.patterns, updated)
+
+
+def retire_skill_parameter_preset(
+    registry: PatternRegistry,
+    *, self_id: str, pattern_id: str, preset_id: str,
+    accepted_by_self: bool, expected_revision: int,
+) -> PatternRegistry:
+    """Self can revoke future presentation, never cancel in-flight physical IO."""
+    if (not isinstance(registry, PatternRegistry)
+            or type(expected_revision) is not int
+            or expected_revision != registry.revision
+            or accepted_by_self is not True):
+        raise MinimalCognitionError("stale or unaccepted preset retirement")
+    old = tuple(e for e in registry.accepted_presets
+                if (e.receipt.self_id, e.preset.pattern_id, e.preset.preset_id)
+                == (self_id, pattern_id, preset_id))
+    if len(old) != 1:
+        raise MinimalCognitionError("no registered Self preset to retire")
+    return PatternRegistry(
+        registry.revision + 1, registry.patterns,
+        tuple(e for e in registry.accepted_presets if e not in old),
+    )
 
 
 @dataclass(frozen=True, slots=True)

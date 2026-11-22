@@ -63,6 +63,35 @@ jobs:
       - name: Install pytest
         run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
 
+      - name: Verify BD1b original CPU ADOPT in separate process
+        env:
+          BD1B_AUDIT_ARCHIVE: ${{ runner.temp }}/bd1b-audit-original
+        run: |
+          python -m pytest -s tests/test_bd1b_adopt_commit_hostile_dev.py \
+            tests/test_bd1b_adopt_audit_dev.py
+
+      - name: Retain BD1b CPU original audit evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bd1b-adopt-cpu-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/bd1b-audit-original/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify BD1b live ingress and one-post capture offline
+        run: |
+          python -m pytest tests/test_bd1b_real_issuer_preflight_dev.py \
+            tests/test_bd1b_real_original_capture_dev.py
+
+      - name: Verify original B+D Schema3 typed source and inert restore offline
+        run: python -m pytest tests/test_bd1b_schema3_typed_restore_dev.py
+
+      - name: Verify BD1b original pre-login Schema3 producer admission offline
+        run: python -m pytest tests/test_bd1b_schema3_prelogin_producer_dev.py
+
+      - name: Verify BD1b original Schema3 source raw readback offline
+        run: python -m pytest tests/test_bd1b_schema3_source_readback_dev.py
+
       - name: Run deterministic tests
         run: python -m pytest
 

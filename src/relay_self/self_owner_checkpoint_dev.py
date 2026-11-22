@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,13 @@ from relay_self.coordinated_checkpoint_dev import (
     capture_generation,
     verify_generation,
 )
+from relay_self.exploration_schema_record_dev import (
+    RecordedSchemaHold,
+    decode_recorded_schema,
+    encode_recorded_schema,
+    require_recorded_schema,
+)
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.intent import (
     IntentCommitment,
     IntentEvent,
@@ -104,6 +112,8 @@ class SelfOwnerCut:
     pattern_registry: PatternRegistry
     peer_deliveries: tuple[PeerDelivery, ...] = ()
     pending_question_refs: tuple[str, ...] = ()
+    cognition_sha256: str | None = None
+    schema_snapshot: SchemaSnapshot | None = None
 
     def __post_init__(self) -> None:
         for name in ("generation_id", "self_id", "world_id", "branch_id",
@@ -121,6 +131,17 @@ class SelfOwnerCut:
             raise SelfOwnerCheckpointError("only current Skill histories may be saved")
         if type(self.pattern_registry) is not PatternRegistry:
             raise SelfOwnerCheckpointError("typed learned Schema registry required")
+        if self.schema_snapshot is not None:
+            if (type(self.cognition_sha256) is not str
+                    or re.fullmatch(r"[0-9a-f]{64}", self.cognition_sha256) is None):
+                raise SelfOwnerCheckpointError("recorded Schema requires same-generation cognition digest")
+            try:
+                require_recorded_schema(
+                    self.schema_snapshot, self_id=self.self_id,
+                    registry=self.pattern_registry,
+                )
+            except RecordedSchemaHold as exc:
+                raise SelfOwnerCheckpointError("invalid original Schema cut") from exc
         if (type(self.peer_deliveries) is not tuple
                 or any(type(m) is not PeerDelivery for m in self.peer_deliveries)):
             raise SelfOwnerCheckpointError("typed peer delivery receipts required")
@@ -184,9 +205,30 @@ def _replay_intent(events: tuple[IntentEvent, ...]) -> IntentCommitment:
     return owner
 
 
+def _encode_accepted_registry(cut: SelfOwnerCut) -> dict[str, Any]:
+    """Opt-in D5 typed Self-accepted Presets, legacy schema1 untouched."""
+    from relay_self.preset_registry_checkpoint import encode_pattern_registry
+
+    try:
+        return encode_pattern_registry(cut.pattern_registry, self_id=cut.self_id)
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise SelfOwnerCheckpointError("cannot encode accepted Presets") from exc
+
+
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
+    schema3 = cut.schema_snapshot is not None
+    schema2 = schema3 or cut.cognition_sha256 is not None or bool(cut.pattern_registry.accepted_presets)
+    if schema2 and (
+        type(cut.cognition_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
+    ):
+        raise SelfOwnerCheckpointError("cannot encode accepted Presets without cognition digest")
     return {
-        "schema": 1,
+        **({"cognition_sha256": cut.cognition_sha256} if schema2 else {}),
+        **({"exploration_schema": encode_recorded_schema(
+            cut.schema_snapshot, self_id=cut.self_id, registry=cut.pattern_registry,
+        )} if schema3 else {}),
+        "schema": 3 if schema3 else (2 if schema2 else 1),
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -210,7 +252,9 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
                 ],
             } for s in cut.skill_executions
         ],
-        "pattern_registry": {
+        "pattern_registry": (
+            _encode_accepted_registry(cut)
+            if schema2 else {
             "revision": cut.pattern_registry.revision,
             "patterns": [
                 {
@@ -222,7 +266,8 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
                     "provenance": _provenance(p.provenance),
                 } for p in cut.pattern_registry.patterns
             ],
-        },
+            }
+        ),
         "peer_deliveries": [
             {
                 "message_id": m.message_id, "sender_self_id": m.sender_self_id,
@@ -269,13 +314,23 @@ def _read_skill(value: object) -> SkillExecution:
 
 
 def _deserialize(value: object) -> SelfOwnerCut:
-    payload = _exact(value, {
+    keys = {
         "schema", "generation_id", "self_id", "world_id", "branch_id",
         "former_native_session_id", "last_observed_world_tick", "intent_events",
         "skills", "pattern_registry", "peer_deliveries", "pending_question_refs",
-    }, "owner snapshot")
-    if type(payload["schema"]) is not int or payload["schema"] != 1:
+    }
+    if type(value) is dict and value.get("schema") in (2, 3):
+        keys.add("cognition_sha256")
+        if value["schema"] == 3:
+            keys.add("exploration_schema")
+    payload = _exact(value, keys, "owner snapshot")
+    if type(payload["schema"]) is not int or payload["schema"] not in (1, 2, 3):
         raise SelfOwnerCheckpointError("unsupported owner checkpoint schema")
+    if payload["schema"] in (2, 3) and (
+        type(payload["cognition_sha256"]) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", payload["cognition_sha256"]) is None
+    ):
+        raise SelfOwnerCheckpointError("invalid cognition digest")
     try:
         if any(type(payload[k]) is not list for k in (
             "intent_events", "skills", "peer_deliveries", "pending_question_refs"
@@ -291,26 +346,46 @@ def _deserialize(value: object) -> SelfOwnerCut:
                 _nat(e["at_ns"], "Intent time"), _read_provenance(e["provenance"]),
                 e["objective"], e["reason"],
             ))
-        registry = _exact(payload["pattern_registry"], {
-            "revision", "patterns",
-        }, "pattern registry")
-        if type(registry["patterns"]) is not list:
-            raise SelfOwnerCheckpointError("pattern list required")
-        patterns = []
-        for raw in registry["patterns"]:
-            p = _exact(raw, {
-                "pattern_id", "version", "schema_id", "kind", "predicate",
-                "goal_id", "skill_id", "skill_version", "target_kind", "origin",
-                "provenance",
-            }, "Schema pattern")
-            patterns.append(SchemaPattern(
-                pattern_id=p["pattern_id"], version=p["version"],
-                schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
-                predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
-                skill_id=p["skill_id"], skill_version=p["skill_version"],
-                target_kind=p["target_kind"], origin=Origin(p["origin"]),
-                provenance=_read_provenance(p["provenance"]),
-            ))
+        if payload["schema"] in (2, 3):
+            from relay_self.preset_registry_checkpoint import (
+                PresetCheckpointRefusal,
+                decode_pattern_registry,
+            )
+
+            try:
+                pattern_registry = decode_pattern_registry(
+                    payload["pattern_registry"],
+                    expected_self_id=payload["self_id"],
+                )
+            except PresetCheckpointRefusal as exc:
+                raise SelfOwnerCheckpointError(
+                    "invalid Self-accepted owner Preset registry"
+                ) from exc
+        else:
+            registry = _exact(payload["pattern_registry"], {
+                "revision", "patterns",
+            }, "pattern registry")
+            if type(registry["patterns"]) is not list:
+                raise SelfOwnerCheckpointError("pattern list required")
+            patterns = []
+            for raw in registry["patterns"]:
+                p = _exact(raw, {
+                    "pattern_id", "version", "schema_id", "kind", "predicate",
+                    "goal_id", "skill_id", "skill_version", "target_kind", "origin",
+                    "provenance",
+                }, "Schema pattern")
+                patterns.append(SchemaPattern(
+                    pattern_id=p["pattern_id"], version=p["version"],
+                    schema_id=p["schema_id"], kind=PatternKind(p["kind"]),
+                    predicate=Predicate(p["predicate"]), goal_id=p["goal_id"],
+                    skill_id=p["skill_id"], skill_version=p["skill_version"],
+                    target_kind=p["target_kind"], origin=Origin(p["origin"]),
+                    provenance=_read_provenance(p["provenance"]),
+                ))
+            pattern_registry = PatternRegistry(
+                _nat(registry["revision"], "registry revision"),
+                tuple(patterns),
+            )
         peers = []
         for raw in payload["peer_deliveries"]:
             m = _exact(raw, {
@@ -328,11 +403,16 @@ def _deserialize(value: object) -> SelfOwnerCut:
             ),
             intent_events=tuple(intent_events),
             skill_executions=tuple(_read_skill(s) for s in payload["skills"]),
-            pattern_registry=PatternRegistry(
-                _nat(registry["revision"], "registry revision"), tuple(patterns),
-            ),
+            pattern_registry=pattern_registry,
             peer_deliveries=tuple(peers),
             pending_question_refs=tuple(payload["pending_question_refs"]),
+            cognition_sha256=payload.get("cognition_sha256"),
+            schema_snapshot=(
+                decode_recorded_schema(
+                    payload["exploration_schema"], self_id=payload["self_id"],
+                    registry=pattern_registry,
+                ) if payload["schema"] == 3 else None
+            ),
         )
     except (TypeError, ValueError, KeyError, AttributeError) as exc:
         if isinstance(exc, SelfOwnerCheckpointError):
@@ -403,6 +483,10 @@ def verify_peer_cohort(
     sessions = {c.former_native_session_id for c in cuts}
     if len(sessions) != len(cuts):
         raise SelfOwnerCheckpointError("duplicate native session in cohort")
+    if any(c.schema_snapshot is not None for c in cuts) and any(
+        c.schema_snapshot is None for c in cuts
+    ):
+        raise SelfOwnerCheckpointError("partial A/B Schema activation source cut")
     messages: dict[str, tuple[PeerDelivery, set[str]]] = {}
     for c in cuts:
         if (c.generation_id != generation_id
@@ -466,6 +550,27 @@ def _load_copied_cohort(
         cut = load_self_owner_cut(file)
         if cut.self_id != sid:
             raise SelfOwnerCheckpointError("owner snapshot Self identity mismatch")
+        from relay_self.persistent_cognition import load_persistent_cognition
+
+        cognition_path = generation / "selves" / sid / "cognition.json"
+        if cut.cognition_sha256 is not None and (
+            type(cut.cognition_sha256) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
+            or hashlib.sha256(cognition_path.read_bytes()).hexdigest() != cut.cognition_sha256
+        ):
+            raise SelfOwnerCheckpointError("same-generation cognition digest mismatch")
+        cognition = load_persistent_cognition(cognition_path)
+        if cognition.identity.self_id != sid or (
+            cognition.pattern_registry is not None
+            and cognition.pattern_registry != cut.pattern_registry
+        ) or (cut.cognition_sha256 is not None and cognition.pattern_registry is None):
+            raise SelfOwnerCheckpointError("same-generation cognition/owner registry mismatch")
+        if cognition.exploration_continuity is not None:
+            if cut.cognition_sha256 is None:
+                raise SelfOwnerCheckpointError("exploration cognition requires schema2 owner cut")
+            open_questions = {q.question_ref for q in cognition.exploration_continuity.questions if q.open}
+            if not open_questions.issubset(cut.pending_question_refs):
+                raise SelfOwnerCheckpointError("open exploration Question missing from owner cut")
         cuts.append(cut)
     cohort = tuple(cuts)
     verify_peer_cohort(

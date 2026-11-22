@@ -66,7 +66,7 @@ from relay_self.world_resident_lifecycle_dev import (
 )
 
 
-def _fake_paper(root: Path) -> OwnedPaperWorld:
+def _fake_paper(root: Path, world_id="world-live") -> OwnedPaperWorld:
     paper_dir = root / "paper"
     paper_dir.mkdir()
     world_dir = paper_dir / "world"
@@ -95,7 +95,7 @@ def _fake_paper(root: Path) -> OwnedPaperWorld:
     return OwnedPaperWorld(
         server_dir=paper_dir, world_dir=world_dir, evidence_dir=evidence,
         command=(sys.executable, "-u", str(script)),
-        world_id="world-live", branch_id="source",
+        world_id=world_id, branch_id="source",
         tick_readback=read_tick, timeout_seconds=3.0,
     )
 
@@ -154,10 +154,11 @@ class FakeNativeResident:
 
 
 class ResidentFixture:
-    def __init__(self, root: Path, n: int, *, cognitive_work: bool = False):
-        self.paper = _fake_paper(root)
+    def __init__(self, root: Path, n: int, *, cognitive_work: bool = False,
+                 names=None, world_id="world-live"):
+        self.paper = _fake_paper(root, world_id)
         paper_session = self.paper.start_owned()
-        self.names = tuple(f"S{i:03d}" for i in range(n))
+        self.names = tuple(f"S{i:03d}" for i in range(n)) if names is None else names
         self.original_ids = {
             sid: f"offline-born-{sid}" for sid in self.names
         }
@@ -188,7 +189,7 @@ class ResidentFixture:
             )
         self.lifecycle = WorldResidentLifecycle(
             world=WorldLifetime(
-                "world-live", "source", paper_session, 0, 100,
+                world_id, "source", paper_session, 0, 100,
             ),
             persisted_self_refs={
                 sid: "retained:boot:" + sid for sid in self.names

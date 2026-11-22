@@ -20,6 +20,11 @@ from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkOwner,
 )
+from relay_self.schema_bootstrap_dev import (
+    SchemaBootstrapConfig,
+    SchemaBootstrapHold,
+    bootstrap_restored_schemas,
+)
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28InertRecovery,
     stage28_inert_cognitive_recovery,
@@ -80,6 +85,7 @@ def prepare_recovered_a_b_resident_owners(
     expected_committed_sha256: str,
     expected_fork_branch_id: str,
     observation_only: bool = False,
+    schema_bootstrap: SchemaBootstrapConfig | None = None,
 ) -> Stage28c2aOfflineOwners:
     """Verify full typed source+fork, rebuild original A/B objects *offline*.
 
@@ -175,6 +181,13 @@ def prepare_recovered_a_b_resident_owners(
         ):
             raise Stage28c2OwnerHold("full unique original A/B session roster required")
         work = ResidentCognitiveWorkOwner(owners)
+        saved_cuts = tuple(candidate.semantic.cut for candidate in plan.candidates)
+        if schema_bootstrap is not None or any(
+            cut.schema_snapshot is not None for cut in saved_cuts
+        ):
+            bootstrap_restored_schemas(
+                work, schema_bootstrap, source_cuts=saved_cuts,
+            )
         physical = PhysicalIssueAdmission(
             old_ids,
             resident_mode=True, initially_offline=True,
@@ -190,6 +203,8 @@ def prepare_recovered_a_b_resident_owners(
                    for owner in owners.values())
         ):
             raise Stage28c2OwnerHold("restored original owner has live authority")
+    except SchemaBootstrapHold as exc:
+        raise Stage28c2OwnerHold(f"schema bootstrap HOLD: {exc}") from exc
     except Stage28c2OwnerHold:
         raise
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:

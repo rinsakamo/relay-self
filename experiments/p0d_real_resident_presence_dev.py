@@ -56,11 +56,11 @@ from experiments.stage24g_model_gate_dev import (
     receipt_json as stage24g_model_receipt_json,
 )
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.bd1b_schema3_prelogin_source_dev import prepare_original_schema3_prelogin
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitiveOwnerFiles,
 )
-from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.common_io import ScopeRef
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
@@ -92,6 +92,11 @@ from relay_self.resident_paper_presence_join_dev import (
     join_resident_paper_presence,
     parse_owned_paper_resident_trace,
     require_pre_inference_resident_presence,
+)
+from relay_self.schema_bootstrap_dev import (
+    SchemaBootstrapConfig,
+    bootstrap_fresh_schemas,
+    create_fresh_owner,
 )
 from relay_self.stage28b_retired_resident_typed_cut_dev import (
     capture_retired_resident_typed_world,
@@ -392,6 +397,7 @@ async def _owned_resident_trial(
     b_autonomous_l1_dev: bool = False,
     real_llm_granted: bool = False,
     typed_owner_cut_dev: bool = False,
+    initial_source_dev: bool = False,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -416,6 +422,39 @@ async def _owned_resident_trial(
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
+    initial_source = None
+    initial_paper_raw_sha = None
+    if initial_source_dev:
+        from relay_self.b_np1b_initial_source_dev import build_initial_source_receipts
+
+        initial_tick = paper.tick_readback(paper_session)
+        # Only the opt-in Schema3 typed owner cut requires a frozen ORIGINAL
+        # Paper stdout log. The B NP1 initial-source-only path is unchanged.
+        capture_original_paper = typed_owner_cut_dev and bridge.cognitive_work is not None
+        original_paper_bytes = (
+            paper.read_owned_log(paper_session) if capture_original_paper else None
+        )
+        initial_source = [asdict(item) for item in build_initial_source_receipts(
+            bridge=bridge, tick=initial_tick,
+        )]
+        if original_paper_bytes is not None:
+            initial_paper_raw_sha = hashlib.sha256(original_paper_bytes).hexdigest()
+            if (
+                paper.read_owned_log(paper_session) != original_paper_bytes
+                or any(
+                    item["paper_log_sha256"] != initial_paper_raw_sha
+                    for item in initial_source
+                )
+            ):
+                raise RealResidentPresenceRefusal(
+                    "original Paper log changed across initial Native/Paper source"
+                )
+            _write_bytes_new(
+                evidence_dir / "initial-native-paper-owned.log", original_paper_bytes,
+            )
+        _write_bytes_new(evidence_dir / "initial-native-paper-source.json",
+                         (json.dumps(initial_source, sort_keys=True) + "\n").encode())
+        bridge.adopt_login_worldbody_dev = False
     a_logout = await bridge.logout("A")
     if a_logout.native_session_id != old_a:
         raise RealResidentPresenceRefusal("A native terminal source mismatch")
@@ -605,6 +644,10 @@ async def _owned_resident_trial(
             result_world.new_world.paper_session_id
         )
         result_data["world_only_new_epoch"] = result_world.new_world.epoch
+    if initial_source is not None:
+        result_data["initial_native_paper_source"] = initial_source
+        if initial_paper_raw_sha is not None:
+            result_data["initial_paper_log_sha256"] = initial_paper_raw_sha
     return result_data
 
 
@@ -846,8 +889,11 @@ async def run_real_resident_presence(
     model_name: str | None = None,
     stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
     typed_owner_cut_dev: bool = False,
+    exploration_schema_dev: bool = False,
+    initial_source_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
+    schema_config = SchemaBootstrapConfig(exploration_schema_dev)
     if real_world_dev_grant is not True:
         raise RealResidentPresenceRefusal(
             "HOLD_REAL_WORLD_GRANT: explicit real Paper/native DEV approval required"
@@ -883,6 +929,10 @@ async def run_real_resident_presence(
     ):
         raise RealResidentPresenceRefusal(
             "Stage28b typed offline source cut requires passive A/B, no LLM or MOVE"
+        )
+    if typed_owner_cut_dev and exploration_schema_dev and not initial_source_dev:
+        raise RealResidentPresenceRefusal(
+            "Schema3 typed source requires original Native/Paper initial-source capture"
         )
     if stage24g_model_receipt is not None and (
         not isinstance(stage24g_model_receipt, Stage24gModelGateReceipt)
@@ -956,6 +1006,7 @@ async def run_real_resident_presence(
             expected_world_uuid=world_uuid,
             read_owned_log=lambda sess: holder["paper"].read_owned_log(sess),
             timeout_seconds=min(15.0, timeout_s / 3),
+            allow_repeated_same_boot=initial_source_dev,
         )
         owner = OwnedPaperWorld(
             server_dir=root, world_dir=root / "world",
@@ -1002,15 +1053,14 @@ async def run_real_resident_presence(
                         "unresolved": False,
                     }, sort_keys=True) + "\n").encode(),
                 )
-            originals[sid] = CheckpointedCognitiveOwner(
-                retained=PersistentCognition(
+            originals[sid] = create_fresh_owner(
+                config=schema_config, retained=PersistentCognition(
                     IdentitySpecification(
                         sid, ("World-independent retained identity",),
                         Provenance("p0d-real-resident", sid),
                     )
                 ),
                 intent=IntentCommitment(),
-                pattern_registry=initial_patterns(),
                 native_session_id=initial_native[sid],
                 last_observed_tick=0,
                 files=CognitiveOwnerFiles(
@@ -1019,6 +1069,17 @@ async def run_real_resident_presence(
                 physical_supervisor=ActionSupervisor(),
             )
         cognition = ResidentCognitiveWorkOwner(originals)
+        bootstrap_fresh_schemas(cognition, schema_config)
+        if typed_owner_cut_dev and exploration_schema_dev:
+            prelogin = prepare_original_schema3_prelogin(
+                cognition, evidence_dir=evidence,
+            )
+            report["schema3_prelogin_record"] = str(
+                evidence / "stage28b-schema3-prelogin.json"
+            )
+            report["schema3_prelogin_cognition_sha256"] = list(
+                prelogin.cognition_sha256
+            )
         lane = None
         if b_autonomous_l1_dev:
             assert llama_endpoint is not None and systemone_endpoint is not None
@@ -1059,6 +1120,7 @@ async def run_real_resident_presence(
             configs=configs, owners=originals,
             launch=native_factory, cognitive_work=cognition,
             inference_lane=lane,
+            adopt_login_worldbody_dev=initial_source_dev,
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _owned_resident_trial(
@@ -1071,6 +1133,7 @@ async def run_real_resident_presence(
             b_autonomous_l1_dev=b_autonomous_l1_dev,
             real_llm_granted=real_llm_grant,
             typed_owner_cut_dev=typed_owner_cut_dev,
+            initial_source_dev=initial_source_dev,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1093,6 +1156,24 @@ async def run_real_resident_presence(
                 "typed_world_self_saved_tick"
             ]
             report["real_60_second_autosave_attested"] = False
+            if exploration_schema_dev:
+                from relay_self.innate_schema import SchemaMode
+                from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+
+                cut_generation = Path(trial["typed_world_self_generation"])
+                source_cuts = verify_typed_generation(cut_generation)
+                if (tuple(c.self_id for c in source_cuts) != ("A", "B")
+                        or not all(c.schema_snapshot is not None
+                                   and c.schema_snapshot.get("exploratory").mode is SchemaMode.FULL
+                                   and c.cognition_sha256 is not None
+                                   for c in source_cuts)
+                        or not trial.get("initial_native_paper_source")
+                        or not report.get("schema3_prelogin_record")):
+                    raise RealResidentPresenceRefusal(
+                        "original Schema3 typed source, Native/Paper pair or prelogin missing"
+                    )
+                report["schema3_original_typed_owner_qualified"] = True
+                report["schema3_original_independent_audit"] = False
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if physical is not None:
@@ -1156,6 +1237,8 @@ def main() -> int:
     parser.add_argument("--b-heartbeat-s", type=float, default=4.0)
     parser.add_argument("--world-only", action="store_true")
     parser.add_argument("--typed-owner-cut-dev", action="store_true")
+    parser.add_argument("--exploration-schema-dev", action="store_true")
+    parser.add_argument("--initial-source-dev", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     parser.add_argument("--b-autonomous-l1-dev", action="store_true")
@@ -1181,6 +1264,8 @@ def main() -> int:
             systemone_endpoint=args.systemone_endpoint,
             model_name=args.model,
             typed_owner_cut_dev=args.typed_owner_cut_dev,
+            exploration_schema_dev=args.exploration_schema_dev,
+            initial_source_dev=args.initial_source_dev,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)

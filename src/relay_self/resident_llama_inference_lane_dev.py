@@ -10,12 +10,13 @@ CPU cognition. Operator must prevent any bypass clients to this endpoint.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import threading
 import urllib.error
 import urllib.request
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from urllib.parse import urlsplit
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
@@ -77,9 +78,25 @@ class ResidentInferenceRetirement:
 @dataclass(slots=True)
 class _Job:
     ticket: ResidentInferenceTicket
+    request: BoundedChoiceRequest | OpenCognitionRequest
+    request_sha256: str
     future: Future[ProviderDecision | ProviderExpression] | None = None
     terminal_slot_idle: bool = False
     result_adopted: bool = False
+    question_adoption_state: str = "unused"
+    question_adoption_binding: tuple | None = None
+
+
+def _request_sha256(
+    request: BoundedChoiceRequest | OpenCognitionRequest, mode: CognitionMode,
+) -> str:
+    """Bind every request field, its concrete type and the submitted mode."""
+    payload = {"type": type(request).__name__, "mode": mode.value,
+               "request": asdict(request)}
+    return hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()
 
 
 def _require_local_url(endpoint: str) -> tuple[str, int]:
@@ -233,7 +250,7 @@ class ResidentLlamaInferenceLane:
                 self_id, work_ref, request.request_id, mode,
                 scope[0], scope[1], scope[2], self.backend_ref,
             )
-            job = _Job(ticket)
+            job = _Job(ticket, request, _request_sha256(request, mode))
             self._jobs[key] = job
             try:
                 job.future = self._pool.submit(self._execute, key, request)
@@ -322,6 +339,30 @@ class ResidentLlamaInferenceLane:
             job.future.result()
             self.cognitive_work.owners[ticket.self_id].retain_memory(memory)
             job.result_adopted = True
+
+    def verify_submitted_bounded_request(
+        self, ticket: ResidentInferenceTicket, expected: BoundedChoiceRequest,
+    ) -> ProviderDecision:
+        """Read the completed job's result only if its actual request matches.
+
+        This association does not authorize adoption or any state change.
+        """
+        with self.cognitive_work.lock, self._lock:
+            result = self.result(ticket)
+            job = self._require_current_job(ticket)
+            if (
+                ticket.mode is not CognitionMode.BOUNDED
+                or ticket.backend_ref != self.backend_ref
+                or type(expected) is not BoundedChoiceRequest
+                or type(job.request) is not BoundedChoiceRequest
+                or ticket.request_id != job.request.request_id
+                or job.request != expected
+                or job.request_sha256 != _request_sha256(expected, ticket.mode)
+                or job.request_sha256 != _request_sha256(job.request, ticket.mode)
+                or not isinstance(result, ProviderDecision)
+            ):
+                raise ResidentGpuLaneError("submitted bounded request mismatch")
+            return result
 
     def fence_self(self, self_id: str) -> None:
         """Sync per Self; does not cancel the backend generation thread."""

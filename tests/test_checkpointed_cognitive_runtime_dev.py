@@ -189,6 +189,19 @@ class RuntimeFixture:
         ))
 
 
+def test_owner_rejects_duplicate_pending_questions_before_set_conversion(tmp_path):
+    fixture = RuntimeFixture(tmp_path)
+    owner = fixture.owners[0]
+    with pytest.raises(LiveCognitionCheckpointError, match="duplicate pending Question"):
+        CheckpointedCognitiveOwner(
+            retained=owner.retained, intent=owner.intent,
+            pattern_registry=owner.pattern_registry,
+            native_session_id=owner.native_session_id,
+            last_observed_tick=owner.last_observed_tick, files=owner.files,
+            physical_supervisor=owner.supervisor, pending_questions=("q", "q"),
+        )
+
+
 def test_existing_a_b_cognitive_owners_snapshot_and_whole_rollback(tmp_path):
     f = RuntimeFixture(tmp_path)
     f.baseline()
@@ -966,3 +979,59 @@ def test_native_work_bridge_stale_b_probe_rejects_release(tmp_path):
     finally:
         if paper.owned_session_id is not None:
             paper.stop_and_save()
+
+
+def test_exploration_schema4_is_bound_to_original_owner_cut(tmp_path):
+    import hashlib
+    import json
+    from dataclasses import replace
+
+    from relay_self.exploration_continuity_dev import ExplorationContinuity, QuestionRecord
+    from relay_self.persistent_cognition import load_persistent_cognition
+    from relay_self.self_owner_checkpoint_dev import load_self_owner_cut
+
+    f = RuntimeFixture(tmp_path)
+    owner = f.owners[0]
+    state = ExplorationContinuity(owner.self_id, 1, (QuestionRecord("q", Provenance("probe", "p")),))
+    owner.retained = replace(owner.retained, exploration_continuity=state)
+    owner.pending_questions.update(("q", "other-valid-question"))
+    f.cohort.close()
+    receipt = f.cohort.freeze(owner.self_id, "g-000000000001")
+    cut = load_self_owner_cut(receipt.snapshot.owner_state_file)
+    data = owner.files.cognition_file.read_bytes()
+    assert json.loads(data)["schema_version"] == 4
+    assert load_persistent_cognition(owner.files.cognition_file).exploration_continuity == state
+    assert cut.cognition_sha256 == hashlib.sha256(data).hexdigest()
+    assert set(cut.pending_question_refs) == {"q", "other-valid-question"}
+
+
+def test_schema4_attempt_digest_tampering_is_rejected(tmp_path):
+    import json
+    from dataclasses import replace
+
+    from relay_self.exploration_continuity_dev import (
+        AttemptPhase,
+        AttemptRecord,
+        ExplorationContinuity,
+        QuestionRecord,
+        _attempt_ref,
+    )
+    from relay_self.persistent_cognition import (
+        InvalidPersistentCognitionData,
+        load_persistent_cognition,
+        save_persistent_cognition,
+    )
+    f = RuntimeFixture(tmp_path)
+    owner = f.owners[0]
+    digest = "a" * 64
+    state = ExplorationContinuity(owner.self_id, 2, (QuestionRecord("q", Provenance("probe", "p")),), (
+        AttemptRecord(_attempt_ref(owner.self_id, "q", digest), "q", digest,
+                      AttemptPhase.RESERVED, Provenance("owner", "A")),))
+    path = owner.files.cognition_file
+    save_persistent_cognition(path, replace(owner.retained, exploration_continuity=state))
+    assert load_persistent_cognition(path).exploration_continuity == state
+    payload = json.loads(path.read_text())
+    payload["exploration_continuity"]["attempts"][0]["evidence_digest"] = "b" * 64
+    path.write_text(json.dumps(payload))
+    with pytest.raises(InvalidPersistentCognitionData):
+        load_persistent_cognition(path)

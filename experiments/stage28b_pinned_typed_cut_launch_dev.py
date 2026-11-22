@@ -31,6 +31,8 @@ def main() -> int:
     parser.add_argument("--java", default="java")
     parser.add_argument("--node", default="node")
     parser.add_argument("--timeout-s", type=float, default=120.0)
+    parser.add_argument("--record-exploration-schema3", action="store_true",
+                        help="Opt-in original pre-login FULL Schema3 and native source")
     args = parser.parse_args()
     try:
         if args.execute_once and not args.real_world_dev_grant:
@@ -57,7 +59,10 @@ def main() -> int:
             accepted_eula=True, real_world_dev_grant=True,
             real_llm_grant=False, b_autonomous_l1_dev=False,
             b_selected_move_dev=False, world_only=False,
-            typed_owner_cut_dev=True, java=args.java, node=args.node,
+            typed_owner_cut_dev=True,
+            exploration_schema_dev=args.record_exploration_schema3,
+            initial_source_dev=args.record_exploration_schema3,
+            java=args.java, node=args.node,
             timeout_s=args.timeout_s,
         ))
         print(f"STAGE28B_TYPED_OWNER_RESULT={result}", flush=True)
