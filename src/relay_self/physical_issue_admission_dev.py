@@ -813,11 +813,11 @@ class PhysicalIssueAdmission:
         this remains a bounded pre-S2 DEV integrity check.
         """
         from adapters.mineflayer.process_session import MineflayerProcessSession
-        from relay_self.owned_resident_physical_bridge_dev import (
-            OwnedResidentPhysicalBridge,
-        )
         from experiments.cognitive_physical_place_move_issue_dev import (
             Stage27PlaceMoveReceipt,
+        )
+        from relay_self.owned_resident_physical_bridge_dev import (
+            OwnedResidentPhysicalBridge,
         )
         from relay_self.q4_original_paper_position_dev import (
             Q4OriginalPaperHold,
