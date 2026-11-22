@@ -133,3 +133,30 @@ start nor authenticate llama.cpp/Gemma, Minecraft, or a World epoch.
 
 **Q1g/Q1h CPU_OFFLINE_DEV only. I4a real S1→S2 HOLD.
 QUAL_NO_GO / SCIENCE_NOT_RUN.**
+
+
+## Q1k: Git parent graph replacement / graft defenses
+
+Git `refs/replace/*` and `GIT_REPLACE_REF_BASE` can cause ordinary
+`rev-list`, `ls-tree` and `cat-file` to return substituted object
+contents while retaining the originally requested SHA in some displays.
+An adversary can conceal an actual multi-parent merge behind a
+single-parent replacement and make Q1d falsely accept a linear source
+history. Q1k sets `GIT_NO_REPLACE_OBJECTS=1` on **every** Git read in
+the custody verifier, including tree and object content inspection.
+Legacy `.git/info/grafts` can independently rewrite parents, so any
+nonempty or symlinked graft file causes HOLD. Empty regular graft files
+are accepted. The Git path is discovered with
+`git rev-parse --path-format=absolute --git-path info/grafts` to work
+with ordinary repositories and linked worktrees.
+
+Adversarial disposable Git tests cover merge laundering with
+`git replace --graft`, a legacy parent graft, symlinked graft, and an
+empty graft control. This closes a *local history interpretation*
+failure mode, not the fundamental missing independent Original Owner
+witness or real pre-S2 event chronology. An attacker who controls the
+actual Git objects and the external pins can still manufacture an
+internally consistent history.
+
+**Q1k Git object custody hardening CPU_OFFLINE_DEV only;
+Original independent source HOLD; QUAL_NO_GO; SCIENCE_NOT_RUN.**
