@@ -56,10 +56,31 @@ def _pinned(raw: bytes, claim: str) -> None:
         raise BD1bSchema3ReadbackHold("external exact source digest missing or changed")
 
 
+def _unique_source_keys(pairs):
+    """Refuse ambiguous original evidence; Python's default JSON is last-wins."""
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise BD1bSchema3ReadbackHold("duplicate original source JSON field")
+        out[key] = value
+    return out
+
+
+def _reject_nonfinite(value):
+    raise BD1bSchema3ReadbackHold(
+        "non-finite original source JSON constant: " + value
+    )
+
+
 def _json(raw: bytes):
     try:
-        return json.loads(raw)
+        return json.loads(
+            raw, object_pairs_hook=_unique_source_keys,
+            parse_constant=_reject_nonfinite,
+        )
     except (ValueError, UnicodeError) as exc:
+        if isinstance(exc, BD1bSchema3ReadbackHold):
+            raise
         raise BD1bSchema3ReadbackHold("original source JSON unreadable") from exc
 
 
