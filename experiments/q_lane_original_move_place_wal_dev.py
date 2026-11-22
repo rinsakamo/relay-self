@@ -223,7 +223,7 @@ def audit_q1g_original_move_place_wal(
     digest, NOT derived from S2, the current original Owner, or Q itself.
     """
     if (
-        type(evidence_dir) is not Path and not isinstance(evidence_dir, Path)
+        not isinstance(evidence_dir, Path)
         or not evidence_dir.is_dir() or evidence_dir.is_symlink()
         or type(s1_wal_file) is not str or type(s2_wal_file) is not str
         or s1_wal_file == s2_wal_file
@@ -239,8 +239,11 @@ def audit_q1g_original_move_place_wal(
         or not 1 <= expected_s1_action_count < _MAX_ROWS
     ):
         raise QMovePlaceWalHold("exact original S1/S2 source scope missing")
-    old_raw = _raw_file(evidence_dir, s1_wal_file)
-    new_raw = _raw_file(evidence_dir, s2_wal_file)
+    try:
+        old_raw = _raw_file(evidence_dir, s1_wal_file)
+        new_raw = _raw_file(evidence_dir, s2_wal_file)
+    except QEvidenceHold as exc:
+        raise QMovePlaceWalHold("original WAL file missing or untrusted") from exc
     if _sha(old_raw) != expected_s1_wal_sha256:
         raise QMovePlaceWalHold("S1 raw canonical WAL differs from external pin")
     old, old_digest = _wal(
