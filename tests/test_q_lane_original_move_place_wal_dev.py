@@ -8,10 +8,15 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from experiments.q_lane_original_move_place_git_custody_dev import (
+    QOriginalMovePlaceGitHold,
+    audit_q1h_original_move_place_git_custody,
+)
 from experiments.q_lane_original_move_place_wal_dev import (
     QMovePlaceWalHold,
     audit_q1g_original_move_place_wal,
@@ -296,3 +301,177 @@ def test_q1g_rewritten_original_and_attacker_rewritten_pin_not_authenticated(tmp
     assert verdict["independent_external_s1_origin_attested"] is False
     assert verdict["original_owner_attested"] is False
     assert verdict["real_world_attested"] is False
+
+
+def _git_pre_s2_source(tmp_path: Path, anchor: bytes, s2_raw: bytes):
+    repo = tmp_path / "git-source"
+    repo.mkdir()
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    for key, value in (("user.name", "Q offline"), ("user.email", "q@example.invalid")):
+        subprocess.run(["git", "-C", str(repo), "config", key, value], check=True)
+    def commit(msg: str) -> str:
+        subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", msg], check=True)
+        return subprocess.check_output(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True,
+        ).strip()
+    (repo / "README").write_text("not an original authorized witness\n")
+    root_sha = commit("synthetic prior root")
+    proof = repo / "proof"
+    proof.mkdir()
+    (proof / "anchor.json").write_bytes(anchor)
+    pre_sha = commit("synthetic pre S2")
+    (proof / "s2-original-wal.json").write_bytes(s2_raw)
+    post_sha = commit("synthetic post S2")
+    return repo, {
+        "trusted_root_sha": root_sha,
+        "pre_s2_anchor_commit": pre_sha,
+        "post_s2_evidence_commit": post_sha,
+        "anchor_path": "proof/anchor.json", "s2_path": "proof/s2-original-wal.json",
+    }
+
+
+def _q1h_source(tmp_path: Path):
+    original, claims = _setup(tmp_path)
+    checkpoint_bytes = b'{"schema":"synthetic","owner":"owner-A","generation":4}\n'
+    (original / "checkpoint.json").write_bytes(checkpoint_bytes)
+    anchor = {
+        "schema": 1, "phase": "S1_TERMINAL_PRE_S2",
+        "head": "1"*40, "world_uuid": "world-A",
+        "owner_id": "owner-A", "self_id": SELF,
+        "native_session_id": SESSION, "checkpoint_generation": 4,
+        "s1_intent_id": "intent-1", "s1_skill_execution_id": "skill-1",
+        "s1_action_id": "action-1", "s1_status": "NATIVE_PLACE_MOVE_SETTLED",
+        "s1_wal_sha256": claims["expected_s1_wal_sha256"],
+        "s1_checkpoint_sha256": hashlib.sha256(checkpoint_bytes).hexdigest(),
+        "s1_action_count": 1,
+    }
+    anchor_bytes = _canon(anchor) + b"\n"
+    repo, git = _git_pre_s2_source(
+        tmp_path, anchor_bytes,
+        (original / claims["s2_wal_file"]).read_bytes(),
+    )
+    kwargs = {
+        "evidence_dir": original,
+        "git_repo_root": repo,
+        "external_anchor_bytes": anchor_bytes,
+        "externally_pinned_anchor_sha256": hashlib.sha256(anchor_bytes).hexdigest(),
+        "expected_code_head": "1"*40,
+        "expected_world_uuid": "world-A", "expected_owner_id": "owner-A",
+        "expected_self_id": SELF,
+        "expected_native_session_id": SESSION,
+        "expected_checkpoint_generation": 4,
+        "s1_wal_file": claims["s1_wal_file"],
+        "s1_checkpoint_file": "checkpoint.json",
+        "s2_wal_file": claims["s2_wal_file"],
+        "expected_s2_action_id": "action-2",
+        "git_claims": git,
+    }
+    return original, repo, anchor, kwargs
+
+
+def test_q1h_original_wal_checkpoint_git_same_bytes_synthetic_success(tmp_path):
+    original, repo, _anchor, kwargs = _q1h_source(tmp_path)
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns)
+              for p in original.iterdir()}
+    head = subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True,
+    )
+    result = audit_q1h_original_move_place_git_custody(**kwargs)
+    assert result["classification"] == (
+        "Q1H_ORIGINAL_MOVE_PLACE_GIT_WAL_COUPLED_CPU_OFFLINE_DEV"
+    )
+    assert result["canonical_move_place_wal_structurally_consistent"] is True
+    assert result["committed_blob_chain_consistent"] is True
+    assert result["s2_terminal_status_label"] == "NATIVE_PLACE_MOVE_NO_PROGRESS"
+    assert result["original_stage28_checkpoint_semantics_verified"] is False
+    assert result["external_witness_origin_authenticated"] is False
+    assert result["actual_pre_s2_runtime_capture_verified"] is False
+    assert result["native_ack_paper_source_independently_verified"] is False
+    assert result["real_world_attested"] is False
+    assert result["qual_go"] is False and result["science_run"] is False
+    assert before == {p.name: (p.read_bytes(), p.stat().st_mtime_ns)
+                      for p in original.iterdir()}
+    assert subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True,
+    ) == head
+
+
+@pytest.mark.parametrize("forgery", [
+    "checkpoint", "s2-wal", "s1-wal", "anchor-raw",
+    "head", "world", "owner", "session", "generation",
+    "s1-intent", "s1-skill", "fake-git-anchor",
+    "git-foreign-s2", "missing-original", "extra-git-claim",
+])
+def test_q1h_mismatch_between_individually_consistent_archive_and_wal(
+    tmp_path, forgery,
+):
+    original, repo, anchor, kwargs = _q1h_source(tmp_path)
+    if forgery == "checkpoint":
+        (original / "checkpoint.json").write_bytes(b'{"generation":999}\n')
+    elif forgery in ("s2-wal", "s1-wal"):
+        file = kwargs["s2_wal_file"] if forgery == "s2-wal" else kwargs["s1_wal_file"]
+        _edit(original, file,
+              lambda body: body["actions"][-1].__setitem__(
+                  "action_id", "forged-but-rehashed",
+              ))
+    elif forgery == "anchor-raw":
+        kwargs["external_anchor_bytes"] += b"forged"
+    elif forgery in ("head", "world", "owner", "session", "generation"):
+        keys = {
+            "head": "expected_code_head", "world": "expected_world_uuid",
+            "owner": "expected_owner_id", "session": "expected_native_session_id",
+            "generation": "expected_checkpoint_generation",
+        }
+        kwargs[keys[forgery]] = 99 if forgery == "generation" else "wrong"
+    elif forgery in ("s1-intent", "s1-skill"):
+        key = "s1_intent_id" if forgery == "s1-intent" else "s1_skill_execution_id"
+        anchor[key] = "forged-original"
+        kwargs["external_anchor_bytes"] = _canon(anchor) + b"\n"
+        kwargs["externally_pinned_anchor_sha256"] = hashlib.sha256(
+            kwargs["external_anchor_bytes"],
+        ).hexdigest()
+        # Attacker can update the bytes and the local pin, but not the
+        # pre-existing independently specified Git anchor object.
+    elif forgery == "fake-git-anchor":
+        kwargs["git_claims"]["anchor_path"] = "README"
+    elif forgery == "git-foreign-s2":
+        kwargs["git_claims"]["s2_path"] = "README"
+    elif forgery == "missing-original":
+        (original / "checkpoint.json").unlink()
+    else:
+        kwargs["git_claims"]["previous_receipt"] = "synthetic"
+    with pytest.raises(QOriginalMovePlaceGitHold):
+        audit_q1h_original_move_place_git_custody(**kwargs)
+
+
+def test_q1h_both_attacker_controlled_git_and_pins_not_original_attested(tmp_path):
+    original, repo, anchor, kwargs = _q1h_source(tmp_path)
+    # The entire fixture represents an attacker-created but self-consistent
+    # Git history. The receipt must never call this genuine source auth.
+    result = audit_q1h_original_move_place_git_custody(**kwargs)
+    assert result["external_witness_origin_authenticated"] is False
+    assert result["original_owner_authentication_verified"] is False
+    assert result["real_world_attested"] is False
+
+
+def test_q1h_git_ref_changed_during_canonical_source_readback(tmp_path, monkeypatch):
+    from experiments import q_lane_original_move_place_git_custody_dev as join
+
+    original, repo, _anchor, kwargs = _q1h_source(tmp_path)
+    call = join.audit_q1g_original_move_place_wal
+    calls = 0
+    def drift(*args, **kwargs):
+        nonlocal calls
+        result = call(*args, **kwargs)
+        calls += 1
+        if calls == 2:
+            (repo / "metadata").write_text("new Git HEAD")
+            subprocess.run(["git", "-C", str(repo), "add", "metadata"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "untrusted HEAD drift"],
+                           check=True)
+        return result
+    monkeypatch.setattr(join, "audit_q1g_original_move_place_wal", drift)
+    with pytest.raises(QOriginalMovePlaceGitHold):
+        join.audit_q1h_original_move_place_git_custody(**kwargs)
+    assert calls == 2
