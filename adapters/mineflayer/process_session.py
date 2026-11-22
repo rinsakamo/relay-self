@@ -70,10 +70,19 @@ class MineflayerProcessSession:
         bridge_path: str | Path | None = None,
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
+        enable_q4_bounded_place_dev: bool = False,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
         _require_positive_timeout("startup_timeout_s", startup_timeout_s)
+        if type(enable_q4_bounded_place_dev) is not bool:
+            raise MineflayerProcessStartError("Q4 DEV mode must be an explicit boolean")
+        # Never accept ambient Q4 authorization inherited from a shell.
+        # Only this one native process launch can receive an explicit guard.
+        child_env = dict(os.environ)
+        child_env.pop("RELAY_Q4_BOUNDED_PLACE_DEV", None)
+        if enable_q4_bounded_place_dev:
+            child_env["RELAY_Q4_BOUNDED_PLACE_DEV"] = "1"
         bridge = (
             Path(__file__).with_name("bridge.mjs")
             if bridge_path is None
@@ -90,6 +99,7 @@ class MineflayerProcessSession:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=None,
+                env=child_env,
             )
         except OSError as exc:
             raise MineflayerProcessStartError(
