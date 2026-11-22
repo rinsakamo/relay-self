@@ -588,3 +588,33 @@ test('envelope preserves target-local session and monotonic sequence fields', ()
     }
   )
 })
+
+test('world age remains distinct from frozen daylight time and rejects invalid ages', () => {
+  const bot = {
+    health: 20,
+    food: 20,
+    foodSaturation: 5,
+    oxygenLevel: 20,
+    time: { timeOfDay: 6000, day: 0, isDay: true, age: 120 },
+    entity: { id: 1, position: { x: 0, y: 64, z: 0 } },
+    inventory: { items: () => [] },
+    entities: {}
+  }
+  const first = snapshotFromBot(bot)
+  assert.deepEqual(first.time, {
+    time_of_day: 6000, day: 0, is_day: true, world_age_ticks: 120
+  })
+  bot.time.age = 140
+  const next = snapshotFromBot(bot)
+  assert.equal(next.time.time_of_day, first.time.time_of_day)
+  assert.equal(next.time.world_age_ticks - first.time.world_age_ticks, 20)
+
+  delete bot.time.age
+  assert.deepEqual(snapshotFromBot(bot).time, {
+    time_of_day: 6000, day: 0, is_day: true
+  })
+  for (const bad of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, '120']) {
+    bot.time.age = bad
+    assert.throws(() => snapshotFromBot(bot), /bot.time.age/)
+  }
+})
