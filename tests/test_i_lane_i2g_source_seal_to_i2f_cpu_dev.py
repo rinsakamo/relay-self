@@ -123,9 +123,9 @@ def _fake_original(tmp_path, monkeypatch):
             f"world={world_id} actor={actors[sid]} name=Relay{sid} "
             "x=0 y=64 z=0 source=PAPER_MAIN_THREAD\n"
         )
-    paper.extend(["Saved the game\\n", "Stopping server\\n"])
+    paper.extend(["Saved the game\n", "Stopping server\n"])
     (evidence / (paper_session + ".log")).write_bytes("".join(paper).encode())
-    (evidence / (paper_session + ".pid")).write_text("130\\n")
+    (evidence / (paper_session + ".pid")).write_text("130\n")
     # Final IDs MUST equal the original committed A/B Owner cuts.
     # A's first Native belongs to an older, now retired session.
     original_ids = {
@@ -336,7 +336,7 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
     elif fault == "paper-false-b-receipt":
         report["steps"][0]["b_paper_continuation_tick"] = 8888
     elif fault == "paper-tampered-pid":
-        (evidence / "paper-owned-i2g-fixture.pid").write_text("not-pid\\n")
+        (evidence / "paper-owned-i2g-fixture.pid").write_text("not-pid\n")
     elif fault == "paper-no-save":
         paper = evidence / "paper-owned-i2g-fixture.log"
         paper.write_text(paper.read_text().replace("Saved the game", "NO SAVE"))
