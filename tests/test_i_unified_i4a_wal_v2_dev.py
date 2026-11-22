@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+
 import pytest
 
 from relay_self.i_unified_physical_source_dev import (
