@@ -103,6 +103,25 @@ def _single_parent(root: Path, commit: str) -> str:
     return parents[1]
 
 
+def _linear_custody_chain(root: Path, *, ancestor: str, descendant: str) -> list[str]:
+    """Return a bounded, unmerged first-parent chain AFTER ancestor.
+
+    A Git ancestor check alone permits side branches and merges. Require that
+    every commit on the admitted chain has exactly one parent and that it
+    reaches the expected earlier commit without silently skipping history.
+    """
+    current = descendant
+    reverse: list[str] = []
+    while current != ancestor:
+        if len(reverse) >= _MAX_COMMITS:
+            raise QGitCustodyHold("bounded linear source custody chain required")
+        reverse.append(current)
+        current = _single_parent(root, current)
+    if not reverse:
+        raise QGitCustodyHold("distinct start and end commits required")
+    return list(reversed(reverse))
+
+
 def inspect_git_pre_s2_custody(
     repo_root: Path, *, trusted_root_sha: str, pre_s2_anchor_commit: str,
     post_s2_evidence_commit: str, anchor_path: str, s2_path: str,
@@ -141,26 +160,27 @@ def inspect_git_pre_s2_custody(
     s2_blob = _regular(final, s2_name)
     if _regular(final, anchor_name) != anchor_blob:
         raise QGitCustodyHold("historical anchor blob changed in S2 evidence commit")
-    if _single_parent(repo_root, post) == pre:
-        chain = [post]
-    else:
-        # All commits strictly after the pre-anchor source (up to the post
-        # receipt) must preserve the anchor's exact blob. No selective
-        # old-anchor deletion followed by restoration is admitted.
-        sequence = _run(
-            repo_root, "rev-list", "--reverse", "--ancestry-path", f"{pre}..{post}",
-        ).decode("ascii").split()
-        if not sequence or len(sequence) > _MAX_COMMITS or sequence[-1] != post:
-            raise QGitCustodyHold("bounded source custody chain required")
-        chain = sequence
-    cursor = pre
+    # The selected PRE commit must INTRODUCE the anchor, not simply contain
+    # an old anchor introduced earlier and renamed as the alleged capture
+    # point. Likewise no S2 evidence may appear and disappear before S1.
+    before_chain = _linear_custody_chain(
+        repo_root, ancestor=root, descendant=pre,
+    )
+    for sha in before_chain[:-1]:
+        old = _entries(repo_root, sha)
+        if anchor_name in old:
+            raise QGitCustodyHold("pre-S2 anchor existed before selected anchor commit")
+        if s2_name in old:
+            raise QGitCustodyHold("S2 evidence appeared before S1 anchor commit")
+    # Preserve the exact anchor blob through EVERY commit after capture.
+    # Reject an S2 file added, removed, and re-added at the final commit.
+    chain = _linear_custody_chain(repo_root, ancestor=pre, descendant=post)
     for sha in chain:
-        if _single_parent(repo_root, sha) != cursor:
-            raise QGitCustodyHold("no merges or alternate custody branch admitted")
         current = _entries(repo_root, sha)
         if _regular(current, anchor_name) != anchor_blob:
             raise QGitCustodyHold("pre-S2 anchor disappeared or changed in custody chain")
-        cursor = sha
+        if sha != post and s2_name in current:
+            raise QGitCustodyHold("S2 evidence existed before final evidence commit")
     previous = _entries(repo_root, _single_parent(repo_root, post))
     if s2_name in previous:
         raise QGitCustodyHold("S2 evidence file predates supposed post-S2 commit")
@@ -168,6 +188,8 @@ def inspect_git_pre_s2_custody(
         raise QGitCustodyHold("pre-S2 anchor blob differs from caller-held SHA pin")
     if hashlib.sha256(_object(repo_root, s2_blob)).hexdigest() != expected_s2_sha256:
         raise QGitCustodyHold("S2 evidence blob differs from caller-held SHA pin")
+    if _run(repo_root, "rev-parse", "HEAD").decode("ascii").strip() != post:
+        raise QGitCustodyHold("exact HEAD changed during read-only custody inspection")
     return {
         "classification": "Q1C_GIT_DAG_PRE_S2_BLOB_CUSTODY_CPU_OFFLINE_DEV",
         "trusted_root_sha": root,
@@ -177,7 +199,10 @@ def inspect_git_pre_s2_custody(
         "anchor_sha256": expected_anchor_sha256,
         "s2_path": s2_name,
         "s2_sha256": expected_s2_sha256,
+        "pre_anchor_commit_count": len(before_chain),
         "post_anchor_commit_count": len(chain),
+        "anchor_first_introduced_at_selected_commit": True,
+        "s2_first_introduced_at_selected_commit": True,
         "committed_ancestor_order_verified": True,
         "git_object_sha256_consistent": True,
         "external_root_origin_authenticated": False,
