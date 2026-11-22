@@ -386,3 +386,64 @@ def test_original_initial_receipt_recomputed_revisions_and_cross_source_fence(
 
     with pytest.raises((BD1bSchema3ReadbackHold, ValueError, RuntimeError)):
         audit_schema3_original_source_bytes(**args)
+
+
+
+@pytest.mark.parametrize("role", ["report", "prelogin", "initial", "logout"])
+def test_schema3_original_readback_refuses_duplicate_json_even_if_rehashed(
+    tmp_path, monkeypatch, role,
+):
+    """Last-wins JSON and recomputed caller pins cannot erase a conflicting field."""
+    args = _bundle(tmp_path, monkeypatch)
+    evidence = args["evidence_dir"]
+    if role == "report":
+        path = evidence / "resident-presence-result.json"
+        needle = b'"real_gpu": false'
+        injected = b'"real_gpu": true, "real_gpu": false'
+        claim = "expected_producer_report_sha256"
+    elif role == "prelogin":
+        path = evidence / "stage28b-schema3-prelogin.json"
+        needle = b'"schema_modes": ["FULL", "FULL"]'
+        injected = b'"schema_modes": ["OFF", "OFF"], ' + needle
+        claim = "expected_prelogin_manifest_sha256"
+    elif role == "initial":
+        path = evidence / "initial-native-paper-source.json"
+        needle = b'"self_id": "A"'
+        injected = b'"self_id": "B", "self_id": "A"'
+        claim = "expected_initial_source_sha256"
+    else:
+        path = evidence / "A-first-logout-original.json"
+        needle = b'"native_session_id": "original-A"'
+        injected = b'"native_session_id": "old-forged", "native_session_id": "original-A"'
+        claim = None
+    raw = path.read_bytes()
+    assert needle in raw
+    assert raw.count(needle) >= 1
+    path.write_bytes(raw.replace(needle, injected, 1))
+    # Locally recompute every exposed external SHA claim. The conflict must
+    # still fail the source parser, rather than hiding under last-wins JSON.
+    if claim is not None:
+        args[claim] = _sha(path)
+    else:
+        report = evidence / "resident-presence-result.json"
+        value = json.loads(report.read_bytes())
+        ref = value["steps"][0]["a_first_logout_receipt_file"]
+        ref["sha256"] = _sha(path)
+        _write(report, value)
+        args["expected_producer_report_sha256"] = _sha(report)
+    with pytest.raises(BD1bSchema3ReadbackHold, match="duplicate original source JSON"):
+        audit_schema3_original_source_bytes(**args)
+
+
+def test_schema3_original_readback_refuses_nan_after_hash_is_recalculated(
+    tmp_path, monkeypatch,
+):
+    args = _bundle(tmp_path, monkeypatch)
+    initial = args["evidence_dir"] / "initial-native-paper-source.json"
+    raw = initial.read_bytes()
+    needle = b'"paper_tick": 107'
+    assert needle in raw
+    initial.write_bytes(raw.replace(needle, b'"paper_tick": NaN', 1))
+    args["expected_initial_source_sha256"] = _sha(initial)
+    with pytest.raises(BD1bSchema3ReadbackHold, match="non-finite"):
+        audit_schema3_original_source_bytes(**args)
