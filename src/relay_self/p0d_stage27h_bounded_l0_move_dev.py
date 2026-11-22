@@ -10,9 +10,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
-
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
 from relay_self.action import ActionState
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.p0d_stage26_gemma_l1_dev import PreparedStage26L1
