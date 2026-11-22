@@ -15,6 +15,7 @@ from relay_self.i_lane_i4a_live_wal_anchor_dev import (
     LiveWalHistoryAnchor,
 )
 from relay_self.i_lane_i4a_s2_run_boundary_dev import (
+    I4AS2EmptyRunBoundary,
     I4AS2RunBoundaryHold,
     verify_i4a_s2_empty_run_boundary,
 )
@@ -58,18 +59,34 @@ def _unmocked_case(tmp_path, monkeypatch):
     )
     owner._i4a_live_wal_anchor = anchor
     owner.current_worldbody_observation = current
-    for field, value in (
-        ("anchor", anchor),
-        ("world_epoch", scope[2]),
-        ("memory_snapshot", owner.retained),
-        ("registry_snapshot", owner.pattern_registry),
-        ("intent_events_snapshot", owner.intent.events),
-        ("skills_snapshot", tuple(sorted(owner.skills.items()))),
-    ):
-        object.__setattr__(boundary, field, value)
+    # U14 constructed an intentionally INCOMPLETE forged boundary solely for
+    # a stubbed verifier. An unmocked test must instead use the original
+    # fully typed immutable boundary with every required field populated.
+    boundary = I4AS2EmptyRunBoundary(
+        owner=owner, anchor=anchor,
+        self_id=owner.self_id, native_session_id=owner.native_session_id,
+        world_epoch=scope[2],
+        decision_request_id="synthetic-s2-decision-not-real-LLM",
+        post_model_probe_id=current.request_id,
+        post_model_probe_seq=current.seq,
+        old_skill_id=old["skill_execution_id"],
+        old_intent_id=old["intent_id"],
+        new_skill_id="new-skill-S2", new_intent_id="new-intent-S2",
+        invocation_ref=parts[10].invocation_ref,
+        preset_ref=parts[10].parameter_preset_ref or "",
+        target_ref=proposal.binding.target_ref,
+        prefix_count=len(journal.records), prefix_digest=journal.digest,
+        prefix_action_ids=(old["action_id"],),
+        memory_snapshot=owner.retained,
+        registry_snapshot=owner.pattern_registry,
+        intent_events_snapshot=owner.intent.events,
+        skills_snapshot=tuple(sorted(owner.skills.items())),
+    )
     owner._i4a_s2_empty_run_boundary = boundary
     assert not journal.unresolved
-    return parts
+    updated = list(parts)
+    updated[5] = boundary
+    return tuple(updated)
 
 
 def test_unmocked_original_s2_history_verifier_allows_one_cpu_prepared(
