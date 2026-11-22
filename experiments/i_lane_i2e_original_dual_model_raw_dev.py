@@ -39,7 +39,7 @@ class I2eOriginalDualModeRawProvider(LlamaCppRelayProvider):
     ) -> None:
         super().__init__(endpoint=endpoint, model=model, timeout=timeout)
         if (
-            type(raw_dir) is not Path or raw_dir.is_symlink()
+            not isinstance(raw_dir, Path) or raw_dir.is_symlink()
             or not raw_dir.is_dir() or any(raw_dir.iterdir())
             or type(timeout) not in (float, int)
             or not 0 < timeout <= 60
