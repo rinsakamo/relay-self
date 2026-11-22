@@ -62,6 +62,11 @@ class MineflayerProcessSession:
         self._bounded_place_dev_mode = False
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
+        # U17: optional, one-use transcript of bytes buffered by THIS owned
+        # child's existing final stdin writer. Not a delivery/ACK receipt.
+        self._raw_stdin_audit_fd: int | None = None
+        self._raw_stdin_audit_finished = False
+        self._raw_stdin_audit_size = 0
 
     @classmethod
     async def launch(
@@ -219,6 +224,69 @@ class MineflayerProcessSession:
         os.close(fd)
         self._raw_source_audit_fd = None
         self._raw_source_audit_finished = True
+
+    def start_raw_stdin_audit(self, path: str | Path) -> None:
+        """One continuous original stdin transcript for both Q4 PLACE Actions.
+
+        The stdout capture must already be open on this same session. The
+        transcript records buffer-write attempts, not Native ACK or Paper
+        causality; neither grants a physical issue. Keep it active through S2.
+        """
+        location = Path(path)
+        if (
+            self._started is None
+            or self._raw_source_audit_fd is None
+            or self._raw_source_audit_finished
+            or self._raw_stdin_audit_fd is not None
+            or self._raw_stdin_audit_finished
+            or not location.is_absolute()
+            or not location.parent.is_dir()
+            or any(part.is_symlink() for part in location.parents)
+        ):
+            raise MineflayerProcessIOError(
+                "one active owned stdout and fresh absolute stdin audit required"
+            )
+        fd = os.open(
+            location, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
+        )
+        try:
+            os.fsync(fd)
+            parent_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(parent_fd)
+            finally:
+                os.close(parent_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_stdin_audit_fd = fd
+
+    def finish_raw_stdin_audit(self) -> None:
+        """Freeze buffered-stdin original exactly once, even after host abort."""
+        fd = self._raw_stdin_audit_fd
+        if fd is None or self._raw_stdin_audit_finished:
+            raise MineflayerProcessIOError("owned stdin audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_stdin_audit_fd = None
+        self._raw_stdin_audit_finished = True
+
+    def _write_owned_stdin(self, data: bytes) -> None:
+        """Called only by the existing _send path within its atomic issuer."""
+        fd = self._raw_stdin_audit_fd
+        if fd is not None and self._raw_stdin_audit_size + len(data) > 32 * 1024 * 1024:
+            raise MineflayerProcessIOError("bounded original stdin archive exhausted")
+        assert self._process.stdin is not None
+        self._process.stdin.write(data)
+        if fd is not None:
+            view = memoryview(data)
+            while view:
+                written = os.write(fd, view)
+                if written <= 0:
+                    raise MineflayerProcessIOError("owned stdin source write incomplete")
+                view = view[written:]
+            self._raw_stdin_audit_size += len(data)
+            os.fsync(fd)
 
     @property
     def owned_child_pid(self) -> int | None:
@@ -426,16 +494,16 @@ class MineflayerProcessSession:
                         # The owned physical bridge installs atomic submission
                         # for genuine process-backed resident sessions.
                         gate(self.started.session_id, effect, action_id)
-                        self._process.stdin.write(data)
+                        self._write_owned_stdin(data)
                     else:
                         # No await between original lock-bound final admission
                         # and the synchronous final Native stdin buffer write.
                         sender(
                             self.started.session_id, effect, action_id,
-                            lambda: self._process.stdin.write(data),
+                            lambda: self._write_owned_stdin(data),
                         )
                 else:
-                    self._process.stdin.write(data)
+                    self._write_owned_stdin(data)
                 # Drain, ACK and Paper readback remain separate qualifications.
                 # A write/drain error cannot be retried with this one-shot ID.
                 await self._process.stdin.drain()
