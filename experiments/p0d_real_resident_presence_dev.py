@@ -998,6 +998,9 @@ async def run_real_resident_presence(
         physical = PhysicalIssueAdmission(
             initial_native, resident_mode=True, initially_offline=True,
             allow_resident_move=(b_selected_move_dev or b_autonomous_l1_dev),
+            # I2g is a provenance-only birth cut. No CPU path, Skill,
+            # or accidental original ATTACK/EAT lease may issue effects.
+            observation_only=i2g_original_v3_source,
         )
         configs = {
             sid: MineflayerLaunchConfig(
