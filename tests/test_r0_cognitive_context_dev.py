@@ -122,10 +122,9 @@ def test_current_rejects_foreign_stale_and_retired_source(tmp_path, monkeypatch,
     frame = _read(case)
     bridge = case[1]
     if failure == "foreign":
-        forged = replace(frame, scope=ScopeRef("B", frame.scope.world_session_id))
-        # Constructor rejects foreign self, not merely final runtime recheck.
+        # Constructor rejects foreign self before it can reach runtime use.
         with pytest.raises(R0ContextHold):
-            CognitiveContext(forged)
+            replace(frame, scope=ScopeRef("B", frame.scope.world_session_id))
     elif failure == "registry":
         bridge.owners["A"].pattern_registry = replace(bridge.owners["A"].pattern_registry, revision=3)
     elif failure == "native":
