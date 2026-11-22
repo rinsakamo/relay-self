@@ -236,6 +236,7 @@ async def run_restored_a_b_real_observation(
     on_reconnected: Callable[..., Awaitable[None]] | None = None,
     i1_original_cpu_sense: bool = False,
     future_pins: I2fFutureSourcePins | None = None,
+    future_world_grant: bool = False,
 ) -> Path:
     """One real Paper/native A/B trial, no auto retries; no model by default.
 
@@ -253,7 +254,8 @@ async def run_restored_a_b_real_observation(
         or (i1_original_cpu_sense and on_reconnected is not None
             and future_pins is None)
         or (future_pins is not None and (
-            not isinstance(future_pins, I2fFutureSourcePins)
+            future_world_grant is not True
+            or not isinstance(future_pins, I2fFutureSourcePins)
             or not i1_original_cpu_sense
             or not callable(on_reconnected)
         ))
