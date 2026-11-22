@@ -137,6 +137,7 @@ async def run_original_u17_two_place_trial_dev(
         # original Bridge/Owner login; there is no rearming before first use.
         bridge.physical.arm_original_place_s1(
             bridge=bridge, self_id=self_id, journal=journal,
+            allow_empty_q4_initial_dev=True,
         )
         initial = await issue_original_s1_place_on_owned_native_dev(
             bridge=bridge, restored=restored,
