@@ -423,13 +423,35 @@ async def _owned_resident_trial(
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
     initial_source = None
+    initial_paper_raw_sha = None
     if initial_source_dev:
         from relay_self.b_np1b_initial_source_dev import build_initial_source_receipts
 
         initial_tick = paper.tick_readback(paper_session)
+        # Only the opt-in Schema3 typed owner cut requires a frozen ORIGINAL
+        # Paper stdout log. The B NP1 initial-source-only path is unchanged.
+        capture_original_paper = typed_owner_cut_dev and bridge.cognitive_work is not None
+        original_paper_bytes = (
+            paper.read_owned_log(paper_session) if capture_original_paper else None
+        )
         initial_source = [asdict(item) for item in build_initial_source_receipts(
             bridge=bridge, tick=initial_tick,
         )]
+        if original_paper_bytes is not None:
+            initial_paper_raw_sha = hashlib.sha256(original_paper_bytes).hexdigest()
+            if (
+                paper.read_owned_log(paper_session) != original_paper_bytes
+                or any(
+                    item["paper_log_sha256"] != initial_paper_raw_sha
+                    for item in initial_source
+                )
+            ):
+                raise RealResidentPresenceRefusal(
+                    "original Paper log changed across initial Native/Paper source"
+                )
+            _write_bytes_new(
+                evidence_dir / "initial-native-paper-owned.log", original_paper_bytes,
+            )
         _write_bytes_new(evidence_dir / "initial-native-paper-source.json",
                          (json.dumps(initial_source, sort_keys=True) + "\n").encode())
         bridge.adopt_login_worldbody_dev = False
@@ -624,6 +646,8 @@ async def _owned_resident_trial(
         result_data["world_only_new_epoch"] = result_world.new_world.epoch
     if initial_source is not None:
         result_data["initial_native_paper_source"] = initial_source
+        if initial_paper_raw_sha is not None:
+            result_data["initial_paper_log_sha256"] = initial_paper_raw_sha
     return result_data
 
 

@@ -92,7 +92,8 @@ def require_original_initial_a_b(
                            for k in ("native_request_id", "native_source_ref"))):
             raise BD1bInitialSourceBindingHold("original pre-reJOIN Native source mismatch")
         if (p["paper_session_id"] != paper_session_id
-                or p["paper_boot_id"] != paper_boot_id
+                or type(p["paper_boot_id"]) is not str
+                or not p["paper_boot_id"]
                 or p["presence_boot_id"] != paper_boot_id
                 or p["paper_actor_uuid"] != actors[sid]
                 or type(p["paper_pid"]) is not int or p["paper_pid"] <= 0
@@ -110,7 +111,7 @@ def require_original_initial_a_b(
             p["paper_tick_ref"],
         )
         assert match is not None
-        if match.group(1) != paper_boot_id:
+        if match.group(1) != p["paper_boot_id"]:
             raise BD1bInitialSourceBindingHold("first-paper nonce/boot source mismatch")
         for key in ("paper_session_id", "paper_pid", "paper_boot_id",
                     "presence_boot_id", "paper_tick", "paper_tick_ref",

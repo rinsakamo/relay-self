@@ -207,6 +207,18 @@ def audit_schema3_original_source_bytes(
             ("B", step.get("b_actor_uuid")),
         ),
     )
+    first_paper_raw = _file(
+        evidence / "initial-native-paper-owned.log", limit=4_000_000,
+    )
+    first_paper_sha = hashlib.sha256(first_paper_raw).hexdigest()
+    if (
+        not first_paper_raw
+        or any(row["paper_log_sha256"] != first_paper_sha for row in initial)
+        or step.get("initial_paper_log_sha256") != first_paper_sha
+    ):
+        raise BD1bSchema3ReadbackHold(
+            "original initial Paper raw stdout does not match Native/Paper receipt"
+        )
     new_a = step.get("a_relogin_evidence")
     if (type(new_a) is not dict
             or type(new_a.get("native_session_id")) is not str

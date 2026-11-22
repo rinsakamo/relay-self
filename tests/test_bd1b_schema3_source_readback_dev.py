@@ -101,6 +101,13 @@ def _bundle(tmp_path, monkeypatch):
             fields, sort_keys=True, separators=(",", ":"),
         ).encode()).hexdigest()
 
+    first_paper_raw = (
+        b"P0D_TICK_READY boot=paper-boot-a source=PAPER_MAIN_THREAD\\n"
+        b"P0D_RESIDENT boot=presence-boot-a actor=uuid-A status=JOIN\\n"
+        b"P0D_RESIDENT boot=presence-boot-a actor=uuid-B status=JOIN\\n"
+    )
+    (evidence / "initial-native-paper-owned.log").write_bytes(first_paper_raw)
+    first_paper_sha = hashlib.sha256(first_paper_raw).hexdigest()
     initial = []
     for sid, native in (("A", "original-A"), ("B", "original-B")):
         native_data = {
@@ -113,12 +120,12 @@ def _bundle(tmp_path, monkeypatch):
         }
         paper_data = {
             "paper_session_id": "paper-owned-original", "paper_pid": 1011,
-            "paper_boot_id": "paper-boot-a", "presence_boot_id": "paper-boot-a",
+            "paper_boot_id": "paper-boot-a", "presence_boot_id": "presence-boot-a",
             "paper_tick": 107,
             "paper_tick_ref": "paper-main-thread:p0d:paper-boot-a:nonce-1:sha256:"
             + "a" * 64,
             "paper_actor_uuid": "uuid-" + sid,
-            "paper_log_sha256": "b" * 64,
+            "paper_log_sha256": first_paper_sha,
         }
         initial.append({
             **native_data, **paper_data,
@@ -133,7 +140,8 @@ def _bundle(tmp_path, monkeypatch):
         "typed_world_self_saved_tick": 110,
         "initial_native_paper_source": initial,
         "paper_session_id": "paper-owned-original",
-        "paper_boot": "paper-boot-a",
+        "paper_boot": "presence-boot-a",
+        "initial_paper_log_sha256": first_paper_sha,
         "a_actor_uuid": "uuid-A",
         "b_actor_uuid": "uuid-B",
         "a_original_native_session": "original-A",
@@ -283,6 +291,7 @@ def test_original_source_crosscheck_rejects_hostile_correlated_inputs(
     "paper-boolean-pid", "paper-other-actor", "paper-other-log",
     "paper-other-tick", "paper-nonce-source", "paper-bad-revision",
     "paper-extra-field", "report-other-actor", "initial-wrong-independent-pin",
+    "raw-paper-source-tampered", "raw-paper-reported-hash-tampered",
 ])
 def test_original_initial_receipt_recomputed_revisions_and_cross_source_fence(
     tmp_path, monkeypatch, variant,
@@ -343,6 +352,12 @@ def test_original_initial_receipt_recomputed_revisions_and_cross_source_fence(
         rows[0]["extra-model-permission"] = True
     elif variant == "report-other-actor":
         manifest["steps"][0]["a_actor_uuid"] = "other-actor"
+    elif variant == "raw-paper-source-tampered":
+        (evidence / "initial-native-paper-owned.log").write_bytes(
+            b"forged-Paper-log"
+        )
+    elif variant == "raw-paper-reported-hash-tampered":
+        manifest["steps"][0]["initial_paper_log_sha256"] = "f" * 64
     else:
         args["expected_initial_source_sha256"] = "f" * 64
 
