@@ -389,6 +389,12 @@ class MineflayerTerrainSnapshot:
         ):
             raise MineflayerAdapterProtocolError("invalid SENSE local clock")
         if self.body_aabb is not None:
+            # The shape cannot be treated as this body's current envelope
+            # without the simultaneous Native pose. Never infer standing.
+            if self.body_pose is None:
+                raise MineflayerAdapterProtocolError(
+                    "SENSE body AABB requires a simultaneously observed pose"
+                )
             box = self.body_aabb
             x, y, z = self.position.x, self.position.y, self.position.z
             if (
