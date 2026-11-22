@@ -175,3 +175,20 @@ def test_q4_terminal_not_rearmable_after_quarantine(tmp_path, monkeypatch):
         gate.rearm_original_place_after_q4_settled(
             bridge=bridge, self_id="A", evidence=proof,
         )
+
+
+def test_u17_source_bound_rearm_refuses_unowned_stdout_even_after_terminal_wal(
+    tmp_path, monkeypatch,
+):
+    """Typed-only positive legacy fixture must not authorize live S2."""
+    bridge, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    proof = _settle(bridge, owner, gate, journal, typed)
+    original = journal.path.read_bytes()
+    with pytest.raises(PhysicalIssueFenceError):
+        gate.rearm_original_place_after_q4_owned_native_dev(
+            bridge=bridge, self_id="A", evidence=proof,
+            native_stdout_path=tmp_path / "forged-stdout.jsonl",
+        )
+    assert journal.path.read_bytes() == original
+    assert "A" in gate._original_place_consumed
+    assert gate.active_action_ids == ()
