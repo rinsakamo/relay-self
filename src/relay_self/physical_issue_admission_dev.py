@@ -512,6 +512,7 @@ class PhysicalIssueAdmission:
         self, *, self_id: str, action_id: str,
         anchor: _OriginalPlaceS1Anchor, expected_digest: str | None = None,
         expected_identity: tuple[int, int, int, int] | None = None,
+        wal_lock_held: bool = False,
     ) -> tuple[str, tuple[int, int, int, int]]:
         """Run only under resident.lock -> physical._lock, recheck original WAL."""
         from relay_self.physical_action_journal import PhysicalActionJournal
@@ -546,7 +547,17 @@ class PhysicalIssueAdmission:
                 )
             path = owner.files.physical_wal_file
             before_identity = _place_wal_identity(path)
-            original = PhysicalActionJournal.restore(path, self_id=self_id)
+            if wal_lock_held:
+                # Caller holds the ORIGINAL WAL .lock through synchronous
+                # Native stdin.write; reacquiring flock here would deadlock.
+                from relay_self.physical_action_journal import _read
+
+                body, digest = _read(path)
+                if body["self_id"] != self_id:
+                    raise PhysicalIssueFenceError("foreign original PLACE WAL")
+                original = PhysicalActionJournal(path, body, digest)
+            else:
+                original = PhysicalActionJournal.restore(path, self_id=self_id)
             after_identity = _place_wal_identity(path)
             rows = original.records
             size = len(witness.s1_rows)
@@ -644,6 +655,109 @@ class PhysicalIssueAdmission:
                 "PLACE original owner-bound child admission unavailable"
             ) from exc
 
+    def _is_quarantined_place_stop_locked(
+        self, *, self_id: str, native_session_id: str,
+        effect: str, action_id: str | None,
+        binding: _OriginalPlaceNativeBinding | None,
+    ) -> bool:
+        """Emergency STOP, not an Owner/WAL/World grant.
+
+        In quarantine the cognitive source has already been fenced and may
+        no longer be readable. Only the ORIGINAL already-bound, same-session
+        one-shot STOP of a START already submitted is eligible. Never relax
+        LOOK/START, allow a new lease, or silently reconcile PREPARED.
+        """
+        if binding is None:
+            return False
+        anchor = binding.anchor
+        lease = self._active.get(self_id)
+        children = self._native_child_ids.get(self_id, {})
+        used = self._used_native_children.get(self_id, set())
+        return (
+            effect == "clear_controls"
+            and self._resident_states.get(self_id) == "QUARANTINED"
+            and not self._closed and not self._poisoned
+            and not self._observation_only
+            and anchor.bridge.physical is self
+            and anchor.bridge.cognitive_work is anchor.resident
+            and anchor.bridge.owners.get(self_id) is anchor.owner
+            and anchor.resident.owners.get(self_id) is anchor.owner
+            and self._original_place_s1.get(self_id) is anchor
+            and self._original_place_bound.get(self_id) is binding
+            and self_id in self._original_place_consumed
+            and lease is not None and lease.effect_family == "MOVE_PLACE"
+            and lease.action_id == binding.action_id
+            and lease.native_session_id == native_session_id
+            and self._sessions.get(self_id) == native_session_id
+            and anchor.witness.native_session_id == native_session_id
+            and self._generation == anchor.gate_generation
+            and self._resident_epochs.get(self_id) == anchor.physical_epoch + 1
+            and children.get("set_control") in used
+            and children.get("clear_controls") == action_id
+            and action_id not in used
+        )
+
+    def submit_native_effect(
+        self, *, self_id: str, native_session_id: str,
+        effect: str, action_id: str | None,
+        write: Callable[[], None],
+    ) -> None:
+        """Final Native stdin *buffer write* in the original issuer critical section.
+
+        The original B resident -> physical -> canonical WAL lock remains held
+        across the source reread, one-shot consumption and synchronous write().
+        No await is allowed inside this method. Native drain/ACK/Paper outcome
+        remains a separate, unproven boundary; failed writes are NOT replayed.
+        """
+        if not callable(write):
+            raise PhysicalIssueFenceError("native effect requires synchronous writer")
+        with self._lock:
+            lease = self._active.get(self_id)
+            binding = self._original_place_bound.get(self_id)
+            if lease is not None and lease.effect_family == "MOVE_PLACE" and binding is None:
+                raise PhysicalIssueFenceError("PLACE requires original S1-bound write")
+        if binding is None:
+            with self._lock:
+                self._require_native_effect_locked(
+                    self_id=self_id, native_session_id=native_session_id,
+                    effect=effect, action_id=action_id,
+                )
+                write()
+            return
+        from relay_self.physical_action_journal import _exclusive
+
+        # Acquire the ORIGINAL cognition lock first; quarantine takes physical
+        # lock only. No await, including between validation and stdin.write.
+        with binding.anchor.resident.lock, self._lock:
+            if self._original_place_bound.get(self_id) is not binding:
+                raise PhysicalIssueFenceError("PLACE binding changed before native write")
+            if self._is_quarantined_place_stop_locked(
+                self_id=self_id, native_session_id=native_session_id,
+                effect=effect, action_id=action_id, binding=binding,
+            ):
+                # Fencing cognition makes its former source unreadable.
+                # Stopping an already-submitted gait takes priority over WAL
+                # readback; only the exact pre-bound one-shot STOP can pass.
+                self._require_native_effect_locked(
+                    self_id=self_id, native_session_id=native_session_id,
+                    effect=effect, action_id=action_id,
+                )
+                write()
+                return
+            with _exclusive(binding.anchor.owner.files.physical_wal_file):
+                self._check_original_place_source(
+                    self_id=self_id, action_id=binding.action_id,
+                    anchor=binding.anchor,
+                    expected_digest=binding.prepared_digest,
+                    expected_identity=binding.prepared_file_identity,
+                    wal_lock_held=True,
+                )
+                self._require_native_effect_locked(
+                    self_id=self_id, native_session_id=native_session_id,
+                    effect=effect, action_id=action_id,
+                )
+                write()
+
     def require_native_effect(
         self, *, self_id: str, native_session_id: str,
         effect: str, action_id: str | None = None,
@@ -664,12 +778,16 @@ class PhysicalIssueAdmission:
             with binding.anchor.resident.lock, self._lock:
                 if self._original_place_bound.get(self_id) is not binding:
                     raise PhysicalIssueFenceError("PLACE lease changed after binding")
-                self._check_original_place_source(
-                    self_id=self_id, action_id=binding.action_id,
-                    anchor=binding.anchor,
-                    expected_digest=binding.prepared_digest,
-                    expected_identity=binding.prepared_file_identity,
-                )
+                if not self._is_quarantined_place_stop_locked(
+                    self_id=self_id, native_session_id=native_session_id,
+                    effect=effect, action_id=action_id, binding=binding,
+                ):
+                    self._check_original_place_source(
+                        self_id=self_id, action_id=binding.action_id,
+                        anchor=binding.anchor,
+                        expected_digest=binding.prepared_digest,
+                        expected_identity=binding.prepared_file_identity,
+                    )
                 self._require_native_effect_locked(
                     self_id=self_id, native_session_id=native_session_id,
                     effect=effect, action_id=action_id,
@@ -691,16 +809,25 @@ class PhysicalIssueAdmission:
         if self._poisoned:
             raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
         resident_state = self._resident_states.get(self_id)
-        # A quarantined MOVE may still need one *exact* STOP to prevent
-        # continued walking. No other motion/effect can follow quarantine.
+        # A quarantined MOVE/PLACE may still need one exact STOP; PLACE
+        # additionally requires an original S1 binding and consumed START.
+        # No other motion/effect can follow quarantine.
         active_motion = self._active.get(self_id)
         quarantine_stop = (
             resident_state == "QUARANTINED"
             and not self._closed and not self._poisoned
             and active_motion is not None
-            and active_motion.effect_family == "MOVE"
+            and active_motion.effect_family in ("MOVE", "MOVE_PLACE")
             and effect == "clear_controls"
             and self._native_child_ids.get(self_id, {}).get(effect) == action_id
+            and (
+                active_motion.effect_family == "MOVE"
+                or self._is_quarantined_place_stop_locked(
+                    self_id=self_id, native_session_id=native_session_id,
+                    effect=effect, action_id=action_id,
+                    binding=self._original_place_bound.get(self_id),
+                )
+            )
         )
         if resident_state != "ONLINE" and not quarantine_stop:
             raise PhysicalIssueFenceError("Self resident native effect blocked")
