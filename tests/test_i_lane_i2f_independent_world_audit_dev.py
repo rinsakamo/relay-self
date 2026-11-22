@@ -27,7 +27,7 @@ from test_i_lane_i1_independent_cpu_audit_dev import (
 
 
 def _synthetic_model_world(tmp_path):
-    report, evidence, executable, owners = _fixture(tmp_path)
+    report, evidence, executable, _owners = _fixture(tmp_path)
     report["paper_boot"]["paper_session_id"] = _SESSION
     report["paper_boot"]["source_world_id"] = _SOURCE_WORLD
     ref = next(
