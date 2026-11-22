@@ -71,6 +71,17 @@ def verify_coupled_s1_s2_custody(
         )
         if pre != post:
             raise QCoupledCustodyHold("original S1/S2 evidence drifted between reads")
+        # Read the exact Git HEAD/objects again after the final original-WAL
+        # readback. A branch ref or repository may have changed while the
+        # original source was inspected; never combine mismatched snapshots.
+        git_after = inspect_git_pre_s2_custody(
+            git_repo_root,
+            **git_claims,
+            expected_anchor_sha256=source_claims["expected_pre_s2_anchor_sha256"],
+            expected_s2_sha256=pre["s2_wal_sha256"],
+        )
+        if git_after != git:
+            raise QCoupledCustodyHold("Git custody source drifted between reads")
         if (
             pre["s2_wal_sha256"] != git["s2_sha256"]
             or pre["head"] != source_claims["expected_head"]
