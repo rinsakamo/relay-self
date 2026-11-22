@@ -99,7 +99,11 @@ def test_q4_rearm_denies_synthetic_incomplete_or_replayed_receipts(
     proof = _settle(bridge, owner, gate, journal, typed)
     sid = bridge.paper.owned_session_id
     if tamper == "bad_stop_result":
-        proof = replace(proof, stop=replace(proof.stop, result="rejected"))
+        proof = replace(
+            proof, stop=replace(
+                proof.stop, result="rejected", error="native-stop-refused",
+            ),
+        )
     elif tamper == "wrong_native":
         proof = replace(proof, stop=replace(proof.stop, session_id="foreign"))
     elif tamper == "wrong_paper":
@@ -126,7 +130,7 @@ def test_q4_rearm_denies_synthetic_incomplete_or_replayed_receipts(
     elif tamper == "missing_stable":
         proof = replace(
             proof, first_stable=replace(
-                proof.first_stable, request_id="",
+                proof.first_stable, request_id=proof.initial_stop.request_id,
             ),
         )
     elif tamper == "unrelated_self":
