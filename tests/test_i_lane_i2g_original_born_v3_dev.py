@@ -26,6 +26,10 @@ from relay_self.persistent_cognition import (
     load_persistent_cognition,
     save_persistent_cognition,
 )
+from relay_self.physical_issue_admission_dev import (
+    PhysicalIssueAdmission,
+    PhysicalIssueFenceError,
+)
 from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
@@ -188,3 +192,24 @@ def test_i2g_local_cli_refuses_before_world_when_source_unqualified(
     assert runner.main() == 2
     assert "I2G_REAL_ORIGINAL_PRE_WORLD_OR_TRIAL_HOLD" in capsys.readouterr().err
     assert not list(tmp_path.glob("p0d-resident-presence-*"))
+
+
+def test_i2h_observation_only_original_issuer_blocks_all_physical_leases():
+    """Born-v3 passive World must not merely *choose* to avoid actions."""
+    issuer = PhysicalIssueAdmission(
+        {"A": "offline-born-A", "B": "offline-born-B"},
+        resident_mode=True, initially_offline=True,
+        observation_only=True, allow_resident_move=False,
+    )
+    assert issuer.resident_mode
+    assert issuer.observation_only
+    assert issuer.all_residents_offline
+    for family in ("NONE", "MOVE", "EAT", "ATTACK"):
+        with pytest.raises(PhysicalIssueFenceError, match="observation-only"):
+            with issuer.lease(
+                self_id="A", native_session_id="offline-born-A",
+                action_id="no-physical-source-" + family,
+                effect_family=family,
+            ):
+                pytest.fail("physical issue lease granted in passive I2g")
+    assert not issuer.active_action_ids
