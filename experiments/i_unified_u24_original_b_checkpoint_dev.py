@@ -169,6 +169,14 @@ async def generate_checkpoint(args: argparse.Namespace) -> Path:
         })
         logout = await bridge.logout("B")
         _record(evidence / "B-logout.json", asdict(logout))
+        # The Paper boot tick and Native world clock can initially differ.
+        # Qualify the lower bound before the irreversible stop-and-save cut.
+        async with asyncio.timeout(15.0):
+            while True:
+                tick = await asyncio.to_thread(tick_reader, paper_session)
+                if tick.tick >= owner.last_observed_tick:
+                    break
+                await asyncio.sleep(0.1)
         cut = capture_retired_resident_typed_world(
             bridge=bridge, paper=paper, store=store, evidence_dir=evidence,
             expected_self_ids=("B",),
