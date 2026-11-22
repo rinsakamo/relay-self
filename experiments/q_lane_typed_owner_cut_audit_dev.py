@@ -335,7 +335,7 @@ def audit_q1i_typed_owner_cut(
         ):
             raise QTypedOwnerCutHold("typed Owner scope/generation mismatch")
         digest = _sha(_canon(p))
-        if not type(e["sha256"]) is str or e["sha256"] != digest:
+        if type(e["sha256"]) is not str or e["sha256"] != digest:
             raise QTypedOwnerCutHold("Owner payload canonical SHA mismatch")
         if _canon(e) != raw:
             raise QTypedOwnerCutHold("noncanonical Owner checkpoint bytes")
