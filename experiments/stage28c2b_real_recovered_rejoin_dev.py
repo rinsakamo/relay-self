@@ -34,6 +34,14 @@ from experiments.p0d_real_two_native_smoke_dev import (
 from experiments.stage24g_pinned_assets_launch_dev import (
     check_stage24g_pinned_assets,
 )
+from relay_self.i_lane_i2c_original_schema_restore_dev import (
+    bootstrap_original_recorded_a_b_schemas,
+)
+from relay_self.i_lane_i2f_future_source_pins_dev import (
+    I2fFutureSourcePins,
+    inspect_i2f_future_original_sources,
+    verify_i2f_original_source_unchanged,
+)
 from relay_self.i_lane_i1_native_preflight_dev import (
     require_i1_native_preflight,
 )
@@ -154,12 +162,19 @@ async def _cleanup_native(session, report: dict[str, object]) -> None:
 
 def inspect_real_recovered_sources(
     generation: Path, restored: Path, evidence28b: Path,
+    *, future_pins: I2fFutureSourcePins | None = None,
 ):
     """No World launch or filesystem mutation; source pins cannot be guessed."""
     from relay_self.stage28c2_recovered_resident_owner_dev import (
         prepare_recovered_a_b_resident_owners,
     )
 
+    if future_pins is not None:
+        qualified, prepared = inspect_i2f_future_original_sources(
+            generation=generation, restored=restored,
+            original_evidence=evidence28b, pins=future_pins,
+        )
+        return qualified, prepared.restored
     history = inspect_original_stage28b_native_sessions(
         evidence28b, generation,
         expected_manifest_sha256=_STAGE28B_EVIDENCE_SHA,
@@ -183,15 +198,28 @@ def inspect_real_recovered_sources(
     return history, state
 
 
-def require_stage28_capture_classification(report: dict, *, i1_original_cpu_sense: bool) -> None:
+def require_stage28_capture_classification(
+    report: dict, *, i1_original_cpu_sense: bool,
+    future_pins: I2fFutureSourcePins | None = None,
+) -> None:
     """Distinct original Stage28 and new I1 pending-audit statuses."""
     expected_classification = (
+        "I2F_FUTURE_V3_ORIGINAL_A_B_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if future_pins is not None else
         "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
         if i1_original_cpu_sense
         else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
     )
     if (type(i1_original_cpu_sense) is not bool
             or report.get("classification") != expected_classification
+            or (future_pins is not None and (
+                report.get("i2f_future_source") is not True
+                or report.get("i2f_dual_model_completed") is not True
+                or report.get("real_gemma_post") != 2
+                or report.get("model_post_attempted") != 2
+                or report.get("real_action_issued") != 0
+                or report.get("physical_action_issue_authorized") is not False
+            ))
             or report.get("i1_original_cpu_sense_enabled") is not i1_original_cpu_sense
             or (i1_original_cpu_sense and (
                 report.get("i1_normal_continuous_native_observed") is not True
@@ -207,6 +235,7 @@ async def run_restored_a_b_real_observation(
     timeout_s: float = 120, presence_timeout_s: float = 12.0,
     on_reconnected: Callable[..., Awaitable[None]] | None = None,
     i1_original_cpu_sense: bool = False,
+    future_pins: I2fFutureSourcePins | None = None,
 ) -> Path:
     """One real Paper/native A/B trial, no auto retries; no model by default.
 
@@ -221,7 +250,13 @@ async def run_restored_a_b_real_observation(
         or not 1 <= presence_timeout_s <= 30
         or presence_timeout_s > timeout_s / 2
         or type(i1_original_cpu_sense) is not bool
-        or (i1_original_cpu_sense and on_reconnected is not None)
+        or (i1_original_cpu_sense and on_reconnected is not None
+            and future_pins is None)
+        or (future_pins is not None and (
+            not isinstance(future_pins, I2fFutureSourcePins)
+            or not i1_original_cpu_sense
+            or not callable(on_reconnected)
+        ))
     ):
         raise Stage28c2bRealRejoinHold("bounded real-run/presence timeout required")
     _verify_local_runtime(java, node)
@@ -235,13 +270,14 @@ async def run_restored_a_b_real_observation(
     )
     history, source = inspect_real_recovered_sources(
         generation, restored, stage28b_evidence,
+        future_pins=future_pins,
     )
     if not (
         source.receipt.source_committed_sha256 == _SOURCE_COMMITTED_SHA
         and source.receipt.fork_branch_id == _FORK_BRANCH
     ):
         raise Stage28c2bRealRejoinHold("original historical Self receipt mismatched")
-    if i1_original_cpu_sense:
+    if i1_original_cpu_sense and future_pins is None:
         # Fail pre-copy/pre-World if the original restored registry cannot
         # be reconfigured without inventing a new Pattern or capability.
         prepare_i1_original_schema_bootstrap(source.cognitive_work)
@@ -263,16 +299,27 @@ async def run_restored_a_b_real_observation(
     ):
         raise Stage28c2bRealRejoinHold("new isolated execution/evidence roots required")
 
+    source_world = (_SOURCE_WORLD if future_pins is None else future_pins.source_world_id)
+    source_branch = (_SOURCE_BRANCH if future_pins is None else future_pins.source_branch_id)
+    source_commit = (_SOURCE_COMMITTED_SHA if future_pins is None
+                     else future_pins.source_committed_sha256)
+    fork_branch = (_FORK_BRANCH if future_pins is None else future_pins.fork_branch_id)
     prepared = create_execution_copy(
         generation, restored, dest,
-        expected_world_id=_SOURCE_WORLD,
-        expected_source_branch_id=_SOURCE_BRANCH,
-        expected_committed_sha256=_SOURCE_COMMITTED_SHA,
-        expected_fork_branch_id=_FORK_BRANCH,
+        expected_world_id=source_world,
+        expected_source_branch_id=source_branch,
+        expected_committed_sha256=source_commit,
+        expected_fork_branch_id=fork_branch,
     )
-    if i1_original_cpu_sense:
+    if i1_original_cpu_sense and future_pins is None:
         install_i1_original_schema_bootstrap(prepared.recovered.cognitive_work)
-    if _world_uuid(dest / "world") != _SOURCE_WORLD:
+    if future_pins is not None:
+        bootstrap_original_recorded_a_b_schemas(
+            recovered=prepared.recovered,
+            generation=generation,
+            restored_directory=dest,
+        )
+    if _world_uuid(dest / "world") != source_world:
         raise Stage28c2bRealRejoinHold("copied World UUID is not original restored World")
     evidence.mkdir(mode=0o700)
     _write_bytes_new(
@@ -302,7 +349,7 @@ async def run_restored_a_b_real_observation(
         if reader is None:
             reader = PaperMainThreadTickReader(
                 spool_dir=plugin_dir / "P0BRecorder" / "p0d-ticks",
-                expected_world_uuid=_SOURCE_WORLD,
+                expected_world_uuid=source_world,
                 read_owned_log=lambda sess: holder["paper"].read_owned_log(sess),
                 timeout_seconds=min(timeout_s / 3, 15.0),
                 allow_repeated_same_boot=True,
@@ -313,7 +360,7 @@ async def run_restored_a_b_real_observation(
         server_dir=dest, world_dir=dest / "world", evidence_dir=evidence,
         command=(java, "-Xms512M", "-Xmx1536M", "-jar", str(dest / "paper.jar"),
                  "--nogui"),
-        world_id=_SOURCE_WORLD, branch_id=_FORK_BRANCH,
+        world_id=source_world, branch_id=fork_branch,
         tick_readback=tick_readback, timeout_seconds=timeout_s,
     )
     holder["paper"] = paper
@@ -326,9 +373,11 @@ async def run_restored_a_b_real_observation(
         "classification": "REAL_REJOIN_HOLD",
         "schema": 1,
         "original_generation": prepared.recovered.plan.generation_id,
-        "original_world_uuid": _SOURCE_WORLD,
-        "original_committed_sha256": _SOURCE_COMMITTED_SHA,
-        "fork_branch_id": _FORK_BRANCH,
+        "original_world_uuid": source_world,
+        "original_committed_sha256": source_commit,
+        "fork_branch_id": fork_branch,
+        "i2f_future_source": future_pins is not None,
+        "i2f_dual_model_completed": False,
         "original_history": asdict(history),
         "paper_jar_sha256": checked.paper_sha256,
         "plugin_jar_sha256": checked.plugin_sha256,
@@ -516,7 +565,7 @@ async def run_restored_a_b_real_observation(
         _write_bytes_new(evidence / "prestop-paper-resident-owned.log", log)
         trace = parse_owned_paper_resident_trace(
             owned_paper_session_id=paper_session,
-            expected_world_uuid=_SOURCE_WORLD, owned_paper_log=log,
+            expected_world_uuid=source_world, owned_paper_log=log,
             log_ref="paper-owned-log:" + paper_session + ":sha256:" + digest,
         )
         for name in ("RelayA", "RelayB"):
@@ -541,12 +590,19 @@ async def run_restored_a_b_real_observation(
             native.finish_raw_source_audit()
             if i1_original_cpu_sense:
                 native.finish_raw_command_audit()
-        report["original_stage28b_reverified"] = (
-            inspect_original_stage28b_native_sessions(
-                stage28b_evidence, generation,
-                expected_manifest_sha256=_STAGE28B_EVIDENCE_SHA,
-            ) == history
-        )
+        if future_pins is not None:
+            verify_i2f_original_source_unchanged(
+                generation=generation, original_evidence=stage28b_evidence,
+                pins=future_pins,
+            )
+            report["original_stage28b_reverified"] = True
+        else:
+            report["original_stage28b_reverified"] = (
+                inspect_original_stage28b_native_sessions(
+                    stage28b_evidence, generation,
+                    expected_manifest_sha256=_STAGE28B_EVIDENCE_SHA,
+                ) == history
+            )
         if not report["original_stage28b_reverified"]:
             raise Stage28c2bRealRejoinHold("immutable Stage28b original changed")
         # An external verifier must inspect raw native/Paper evidence before
@@ -563,6 +619,8 @@ async def run_restored_a_b_real_observation(
                 name: file_sha256(path) for name, path in command_paths.items()
             }
         report["classification"] = (
+            "I2F_FUTURE_V3_ORIGINAL_A_B_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+            if future_pins is not None else
             "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
             if i1_original_cpu_sense
             else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
@@ -616,6 +674,7 @@ async def run_restored_a_b_real_observation(
         print(f"STAGE28C2B_REAL_CAPTURE={report_path}", file=sys.stderr, flush=True)
     require_stage28_capture_classification(
         report, i1_original_cpu_sense=i1_original_cpu_sense,
+        future_pins=future_pins,
     )
     return report_path
 
