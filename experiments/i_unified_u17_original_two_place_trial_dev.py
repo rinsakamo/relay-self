@@ -64,6 +64,7 @@ async def run_original_u17_two_place_trial_dev(
     s2_operator_permit: Q4DevOperatorPermit,
     provenance: Provenance,
     real_world_granted: bool = False,
+    trial_mode: str = "two_moves",
 ) -> tuple[Stage27PlaceMoveReceipt, Stage27PlaceMoveReceipt]:
     """One real parent: no fabricated S1 callback, no second Native session.
 
@@ -86,6 +87,7 @@ async def run_original_u17_two_place_trial_dev(
         or not isinstance(s2_operator_permit, Q4DevOperatorPermit)
         or s1_operator_permit is s2_operator_permit
         or not isinstance(provenance, Provenance)
+        or trial_mode not in ("two_moves", "stop_failure")
         or tuple(bridge.lifecycle.self_roster) != (self_id,)
         or len(bridge.sessions) != 1
         or bridge.inference_lane is None
@@ -142,7 +144,12 @@ async def run_original_u17_two_place_trial_dev(
             grant_for_action=grant_for_action,
             operator_permit=s1_operator_permit,
             provenance=provenance,
+            inject_stop_failure=trial_mode == "stop_failure",
         )
+        if trial_mode == "stop_failure":
+            raise I4AS2OwnedNativeHold(
+                "STOP fault injection unexpectedly returned a settled original Action"
+            )
         first = initial.receipt
         first_metrics = (initial.forward_ms, initial.host_ms)
         paper_window = await await_original_q4_paper_position_window(
@@ -199,6 +206,10 @@ async def run_original_u17_two_place_trial_dev(
                     "s1_action_id": first.action_id if first else None,
                     "s2_action_id": second.action_id if second else None,
                     "s2_terminal": failure is None and second is not None,
+                    "trial_mode": trial_mode,
+                    "stop_fault_injection_consumed": bool(
+                        session._q4_stop_failure_used
+                    ),
                     "wal_unresolved": bool(final_wal.unresolved),
                     "real_world_dev_pass": False,
                     "paper_causation_attested": False,
@@ -243,7 +254,7 @@ async def run_original_u17_two_place_trial_dev(
         )):
             try:
                 seal_q4_original_raw_manifest(
-                    root=evidence_dir, mode="two_moves",
+                    root=evidence_dir, mode=trial_mode,
                     evidence={
                         "native_stdout": stdout,
                         "native_stdin": stdin,
@@ -255,7 +266,10 @@ async def run_original_u17_two_place_trial_dev(
                         "host_monotonic": evidence_dir / "original-host-monotonic.json",
                         "process_exit": evidence_dir / "original-node-process-exit.json",
                     },
-                    output=evidence_dir / "original-u17-two-move-manifest.json",
+                    output=evidence_dir / (
+                        "original-u17-" + trial_mode.replace("_", "-")
+                        + "-manifest.json"
+                    ),
                 )
             except Q4RawManifestHold:
                 if failure is None:
