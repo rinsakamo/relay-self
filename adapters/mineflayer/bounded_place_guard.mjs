@@ -47,12 +47,18 @@ export class Q4BoundedPlaceMotionGuard {
         throw new Error('bounded_place_native_timer_not_armed')
       }
       this.timer = timer
-      if (this.tripped) throw new Error('bounded_place_native_start_tripped')
+      if (this.tripped) {
+        // A hostile interval implementation may fire its callback before
+        // returning the handle. Never retain a live timer after that trip.
+        this.clearTimer()
+        throw new Error('bounded_place_native_start_tripped')
+      }
       this.bot.clearControlStates()
       if (this.tripped) throw new Error('bounded_place_native_start_tripped')
       this.bot.setControlState('forward', true)
       if (this.tripped) throw new Error('bounded_place_native_start_tripped')
       this.check() // recheck source/clock after START, not only at next tick
+      if (this.tripped) throw new Error('bounded_place_native_start_tripped')
     } catch (error) {
       this.trip('bounded_place_native_start_failed')
       throw error
