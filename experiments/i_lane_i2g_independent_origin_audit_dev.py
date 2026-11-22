@@ -401,7 +401,7 @@ def prepare_i2g_inert_fork_and_pins_once(
     )
     pins = I2fFutureSourcePins(
         review.source_world_id, review.source_branch_id,
-        review.source_committed_sha256, restored.fork_branch_id,
+        review.source_committed_sha256, restored.restored_branch_id,
         sealed_manifest_sha256, manifest_files,
     )
     # Re-verify the sealed source after inert restore but before pin export.
