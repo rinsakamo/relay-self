@@ -373,8 +373,12 @@ def prepare_i2g_inert_fork_and_pins_once(
         or re.fullmatch(r"[0-9a-f]{64}", sealed_manifest_sha256) is None
         or type(manifest_files) is not int or manifest_files < 1
         or pins_output.is_symlink() or pins_output.exists()
-        or pins_output.parent.resolve() in (
-            evidence.resolve(), generation.resolve(), destination.resolve()
+        or not pins_output.parent.is_dir()
+        or any(
+            source == pins_output.resolve() or source in pins_output.resolve().parents
+            for source in (
+                evidence.resolve(), generation.resolve(), destination.resolve()
+            )
         )
     ):
         raise I2gIndependentOriginHold("external fixed original pins and fresh fork required")
