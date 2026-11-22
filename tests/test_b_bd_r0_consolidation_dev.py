@@ -14,7 +14,10 @@ from relay_self.r0_cognitive_context_dev import (
     context_is_live,
     read_original_owner_current,
 )
+from test_b_np1b_normal_present_poll_dev import current_fixture as current_fixture
 from test_b_np1b_normal_present_poll_dev import pair as pair
+from test_b_np1b_normal_present_poll_dev import rejoined as rejoined
+from test_b_np1b_normal_present_poll_dev import rejoined_present as rejoined_present
 from test_bd1b_owner_present_dev import _configured
 from test_bd1b_owner_source_dev import _files
 
