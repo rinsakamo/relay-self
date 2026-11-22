@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from dataclasses import replace
 
 import pytest
 
@@ -252,3 +253,35 @@ def test_phased_watchdog_closed_gate_rejects_replay_after_cancel(
         with _lease(gate, owner, typed):
             pytest.fail("no action replay on failed stop")
     assert journal.unresolved and native.kill_attempts == 1
+
+
+@pytest.mark.parametrize("tamper", ["start_seq", "stop_seq", "stop_session"])
+def test_phased_watchdog_refuses_forged_terminal_ack_after_closed_wal(
+    tmp_path, monkeypatch, tamper,
+):
+    original, owner, gate, journal, typed, native, host = _case(
+        tmp_path, monkeypatch,
+    )
+    real_issue = _issue(original, owner, gate, journal, typed)
+
+    async def forged_receipt(boundary):
+        receipt = await real_issue(boundary)
+        if tamper == "start_seq":
+            return replace(receipt, start_ack=replace(
+                receipt.start_ack, seq=receipt.start_ack.seq + 30,
+            ))
+        if tamper == "stop_seq":
+            return replace(receipt, stop_ack=replace(
+                receipt.stop_ack, seq=receipt.stop_ack.seq + 30,
+            ))
+        return replace(receipt, stop_ack=replace(
+            receipt.stop_ack, session_id="foreign-native",
+        ))
+
+    with pytest.raises(Q4PlaceAbortHold, match="terminal WAL/Native"):
+        asyncio.run(_run(host, owner, typed, forged_receipt))
+    # Original WAL was closed, but mismatched caller receipt MUST NOT obtain
+    # a reusable physical session or claim a certified Q4 real World result.
+    assert not journal.unresolved
+    assert gate.resident_states["A"] == "QUARANTINED"
+    assert native.kill_attempts == 1
