@@ -18,13 +18,10 @@ def test_stage27_original_executor_is_importable_from_unified_i():
 
 def test_q4_live_wiring_advertises_remaining_exact_issuer_blockers():
     report = audit_q4_original_live_wiring_cpu()
-    assert set(report.missing_original_interfaces) == {
-        "original_i4a_s2_first_wal_window",
-        "require_original_i4a_s2_wal_window",
-        "consume_original_i4a_s2_action_once",
-        "original_place_s2_wal_reservation",
-        "original_place_prior_terminal_reservation",
-    }
+    assert report.missing_original_interfaces == ()
+    assert report.original_s2_cpu_reservation_wired
+    assert not report.independent_source_authenticated
+    assert not report.real_world_authorized
     assert "quiescent_wal_history_window" not in (
         report.missing_original_interfaces
     )
