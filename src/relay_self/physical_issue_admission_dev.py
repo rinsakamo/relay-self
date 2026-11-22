@@ -724,7 +724,7 @@ class PhysicalIssueAdmission:
                 )
                 write()
             return
-        from relay_self.physical_action_journal import _exclusive
+        from relay_self.physical_action_journal import PhysicalJournalError, _exclusive
 
         # Acquire the ORIGINAL cognition lock first; quarantine takes physical
         # lock only. No await, including between validation and stdin.write.
@@ -744,19 +744,26 @@ class PhysicalIssueAdmission:
                 )
                 write()
                 return
-            with _exclusive(binding.anchor.owner.files.physical_wal_file):
-                self._check_original_place_source(
-                    self_id=self_id, action_id=binding.action_id,
-                    anchor=binding.anchor,
-                    expected_digest=binding.prepared_digest,
-                    expected_identity=binding.prepared_file_identity,
-                    wal_lock_held=True,
-                )
-                self._require_native_effect_locked(
-                    self_id=self_id, native_session_id=native_session_id,
-                    effect=effect, action_id=action_id,
-                )
-                write()
+            try:
+                with _exclusive(binding.anchor.owner.files.physical_wal_file):
+                    self._check_original_place_source(
+                        self_id=self_id, action_id=binding.action_id,
+                        anchor=binding.anchor,
+                        expected_digest=binding.prepared_digest,
+                        expected_identity=binding.prepared_file_identity,
+                        wal_lock_held=True,
+                    )
+                    self._require_native_effect_locked(
+                        self_id=self_id, native_session_id=native_session_id,
+                        effect=effect, action_id=action_id,
+                    )
+                    write()
+            except PhysicalJournalError as exc:
+                # The canonical WAL lock itself may have been replaced or
+                # symlinked; no native bytes may be written in that case.
+                raise PhysicalIssueFenceError(
+                    "PLACE canonical WAL lock or source unavailable"
+                ) from exc
 
     def require_native_effect(
         self, *, self_id: str, native_session_id: str,
