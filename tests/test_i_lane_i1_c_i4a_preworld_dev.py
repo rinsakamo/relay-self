@@ -34,7 +34,7 @@ def test_preworld_inventory_is_never_world_or_model_admission():
         repo_root=_root(), expected_head=_exact_head(),
     )
     assert report.classification == "I1_C_I4A_PRE_WORLD_HOLD"
-    assert len(report.source_sha256) == 15
+    assert len(report.source_sha256) == 16
     assert {
         "src/relay_self/i_lane_i4a_s2_first_physical_reservation_dev.py",
         "src/relay_self/i_lane_i4a_s2_run_boundary_dev.py",

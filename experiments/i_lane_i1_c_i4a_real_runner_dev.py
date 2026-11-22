@@ -28,6 +28,7 @@ _REQUIRED_SOURCE = (
     "src/relay_self/i_lane_i4a_s2_run_boundary_dev.py",
     "src/relay_self/i_lane_i4a_live_wal_anchor_dev.py",
     "src/relay_self/i_lane_i4a_s1_source_capture_dev.py",
+    "src/relay_self/i_lane_i4a_s1_native_source_audit_dev.py",
     "src/relay_self/c_lane_l1_evaluation_engine_dev.py",
     "src/relay_self/physical_issue_admission_dev.py",
     "src/relay_self/physical_action_journal.py",

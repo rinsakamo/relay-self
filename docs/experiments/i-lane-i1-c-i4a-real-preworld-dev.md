@@ -2,7 +2,7 @@
 
 Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
 inventory, **not** an executing real-World or real-Gemma runner. Its one
-CLI mode performs a Git exact-HEAD check and hashes fifteen original code files;
+CLI mode performs a Git exact-HEAD check and hashes sixteen original code files;
 it returns exit 2 **even when EULA and real-World DEV grant are provided**.
 The optional World directory is never touched.
 
@@ -68,3 +68,19 @@ capture receipt has independent custody; a mutable manifest cannot authenticate
 itself. Genuine native/Paper/Gemma/Target/T1/T2 source witnesses and an
 original real S2 issuer/runner remain HOLD. No real World, GPU or Physical
 runtime is executed or enabled by this slice.
+
+
+## Original Native stdout ↔ S1 WAL source review (offline)
+
+`audit_i4a_original_s1_native_stdout` reparses a bounded original Native
+JSONL file using the **existing MineflayerStreamDecoder**, which rejects
+wrong session, missing adapter_started, missing/duplicated/rewritten sequence
+and malformed events. It joins every settled S1 MOVE_PLACE canonical WAL
+row to exactly matching initial native request, LOOK/START/STOP children,
+optional SNEAK ACK and initial/first-stable/final STOP probes, checking
+saved position and **Native** tick; unexpected physical child ACKs are
+refused. This is a **source correlation**, not a claim that Native tick and
+Paper tick are numerically interchangeable, nor an independently authenticated
+Paper action attribution. Synthetic source-shaped tests cover forgeries,
+missing frames and wrong session. It makes no physical issue, starts no
+World or Gemma and does not authenticate provenance after restart.
