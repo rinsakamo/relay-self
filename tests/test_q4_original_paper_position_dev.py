@@ -136,3 +136,50 @@ def test_u19_paper_prefix_fence_rejects_replayed_s1_samples(monkeypatch):
         )
     with pytest.raises(Q4OriginalPaperHold, match="prefix changed"):
         _build_window(bridge, "A", receipt, after_log_prefix=pre_move[:-1])
+
+
+def test_u19_reverse_s2_observed_relative_to_pre_motor_position(monkeypatch):
+    """Synthetic S2 can return to login, yet MUST have fresh Paper samples."""
+    bridge, receipt = _case(monkeypatch)
+    from adapters.mineflayer.python_protocol import MineflayerPosition
+    from relay_self import q4_original_paper_position_dev as module
+
+    _, original = module._owned_log_source(bridge, "A")
+    def reverse(observation):
+        return replace(
+            observation,
+            snapshot=replace(
+                observation.snapshot,
+                position=MineflayerPosition(1.0, 64.0, 2.0),
+            ),
+        )
+
+    initial, first, settled = (
+        reverse(receipt.initial_stop_probe),
+        reverse(receipt.first_stable_probe),
+        reverse(receipt.settled_probe),
+    )
+    returning = replace(
+        receipt, initial_stop_probe=initial, first_stable_probe=first,
+        settled_probe=settled, all_stop_probes=(initial, first, settled),
+    )
+    # All these lines are later than the frozen S1 Paper prefix.
+    additional = "".join(
+        f"P0D_RESIDENT event={kind} boot={BOOT} tick={tick} "
+        f"world={WORLD} actor={ACTOR} name=RelaySelf "
+        f"x=1.0 y=64.0 z=2.0 source=PAPER_MAIN_THREAD\\n"
+        for kind, tick in (
+            ("MOVE", 140), ("PRESENT", 150), ("PRESENT", 160)
+        )
+    ).replace("\\n", "\n").encode()
+    updated = original + additional
+    parsed = parse_owned_paper_resident_trace(
+        owned_paper_session_id=PAPER, expected_world_uuid=WORLD,
+        owned_paper_log=updated, log_ref="synthetic-test-only",
+    )
+    monkeypatch.setattr(module, "_owned_log_source", lambda *_: (parsed, updated))
+    evidence = _build_window(
+        bridge, "A", returning, after_log_prefix=original,
+    )
+    assert tuple(point.tick for point in evidence.points) == (140, 150, 160)
+    assert evidence.points[0].x == 1.0
