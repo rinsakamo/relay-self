@@ -7,12 +7,15 @@ from dataclasses import replace
 import pytest
 
 from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
-from relay_self.innate_schema import (
-    SchemaActivation, SchemaMode, SchemaModuleSpec, SchemaSnapshot,
-)
 from relay_self.i_lane_i2e_future_original_preflight_dev import (
     I2eFutureSourceHold,
     preflight_i2e_future_source,
+)
+from relay_self.innate_schema import (
+    SchemaActivation,
+    SchemaMode,
+    SchemaModuleSpec,
+    SchemaSnapshot,
 )
 from relay_self.persistent_cognition import save_persistent_cognition
 from relay_self.provenance import Provenance
