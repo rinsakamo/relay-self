@@ -163,7 +163,12 @@ def test_i2e_independent_raw_rejects_forged_or_replayed_evidence(
         report = json.loads(report_path.read_bytes())
         if fault in ("open-request", "open-response",
                      "bounded-request", "bounded-response"):
-            path = directory / (fault.replace("-", "-") + "-body.bin")
+            path = directory / ({
+                "open-request": "open-l2-request-body.bin",
+                "open-response": "open-l2-response-body.bin",
+                "bounded-request": "bounded-l1-request-body.bin",
+                "bounded-response": "bounded-l1-response-body.bin",
+            }[fault])
             with path.open("ab") as stream:
                 stream.write(b"FORGED")
         elif fault in ("first-http-sha", "second-http-sha"):
