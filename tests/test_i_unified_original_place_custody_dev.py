@@ -75,9 +75,11 @@ def _bind(gate, bridge, owner, journal, typed):
 
 
 def _allow(gate, owner, action_id, effect="look"):
-    gate.require_native_effect(
+    # Synthetic final submission: the no-op writer is explicitly NOT actual
+    # Native stdin, ACK, Paper evidence, or a physical settled outcome.
+    gate.submit_native_effect(
         self_id="A", native_session_id=owner.native_session_id,
-        effect=effect, action_id=action_id,
+        effect=effect, action_id=action_id, write=lambda: None,
     )
 
 
