@@ -11,6 +11,7 @@ import pytest
 
 from relay_self.physical_issue_admission_dev import PhysicalIssueFenceError
 from relay_self.q4_place_abort_dev import (
+    Q4DevOperatorPermit,
     Q4PlaceAbortHold,
     abort_original_place_after_start,
     run_q4_dev_place_with_watchdog,
@@ -28,6 +29,7 @@ class FakeOwnedNative:
         self.started = SimpleNamespace(session_id=session_id)
         self.process_returncode = None
         self.physical = physical
+        self.bounded_place_dev_mode = True
         self.fail_stop = fail_stop
         self.fail_exit = fail_exit
         self.stop_attempts = []
@@ -92,7 +94,7 @@ def test_cancel_after_start_and_lease_expiry_forces_native_termination(
             await run_q4_dev_place_with_watchdog(
                 bridge=host, self_id="A",
                 stop_action_id=typed[0].action_id + "-stop",
-                issue_original=issue, operator_one_shot_opt_in=True,
+                issue_original=issue, operator_permit=Q4DevOperatorPermit("A", owner.native_session_id),
                 watchdog_s=0.01,
             )
 
@@ -198,13 +200,13 @@ def test_explicit_dev_operator_opt_in_is_not_optional(tmp_path, monkeypatch):
             await run_q4_dev_place_with_watchdog(
                 bridge=host, self_id="A",
                 stop_action_id=typed[0].action_id + "-stop",
-                issue_original=issue, operator_one_shot_opt_in=False,
+                issue_original=issue, operator_permit=None,
             )
         with pytest.raises(Q4PlaceAbortHold, match="one-time DEV"):
             await run_q4_dev_place_with_watchdog(
                 bridge=host, self_id="A",
                 stop_action_id=typed[0].action_id + "-stop",
-                issue_original=issue, operator_one_shot_opt_in=True,
+                issue_original=issue, operator_permit=Q4DevOperatorPermit("A", owner.native_session_id),
                 watchdog_s=2.01,
             )
 
