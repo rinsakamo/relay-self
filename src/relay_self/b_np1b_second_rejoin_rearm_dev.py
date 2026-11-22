@@ -537,6 +537,7 @@ async def rearm_second_rejoin_normal_cpu(
         try:
             new = start_normal_resident_present_cpu(
                 bridge=bridge, interval_s=interval_s,
+                task_refs=NormalResidentPresentCpuScheduler._SECOND_TASK_REFS,
             )
         except BaseException as exc:
             # Old tasks are already stopped and cannot regain authority.
@@ -546,6 +547,8 @@ async def rearm_second_rejoin_normal_cpu(
             or new._tokens["B"].epoch != verified_b.resident_epoch
             or new._tasks["A"] is old._tasks["A"]
             or new._tasks["B"] is old._tasks["B"]
+            or new._tokens["A"].task_ref == old._tokens["A"].task_ref
+            or new._tokens["B"].task_ref == old._tokens["B"].task_ref
         ):
             new._stopped = True
             new._current.clear()
