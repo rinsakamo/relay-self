@@ -6,8 +6,8 @@ and does NOT revive old physical Actions or resume L1 work.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
 
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
