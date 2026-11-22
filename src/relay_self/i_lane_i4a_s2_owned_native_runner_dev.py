@@ -55,7 +55,7 @@ from relay_self.i_lane_i4a_s2_owner_handoff_dev import (
 from relay_self.i_lane_i4a_s2_run_boundary_dev import (
     attest_i4a_s2_empty_run_boundary,
 )
-from relay_self.owned_paper_world_dev import PaperTickReceipt
+from relay_self.q4_original_paper_position_dev import Q4OriginalPaperPositionWindow
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
 from relay_self.p0d_stage27c_l0_place_proposal_dev import Stage27L0PlaceProposal
@@ -392,9 +392,7 @@ async def continue_original_s1_to_s2_owned_native_dev(
     *, bridge: OwnedResidentPhysicalBridge,
     s1_loop: Stage27hBoundedMoveLoop,
     s1_receipt: Stage27PlaceMoveReceipt,
-    paper_stop: PaperTickReceipt,
-    paper_first: PaperTickReceipt,
-    paper_settled: PaperTickReceipt,
+    paper_window: Q4OriginalPaperPositionWindow,
     native_stdout_path: Path,
     evidence_dir: Path,
     grant_for_action: Callable[
@@ -421,9 +419,7 @@ async def continue_original_s1_to_s2_owned_native_dev(
         type(bridge) is not OwnedResidentPhysicalBridge
         or not isinstance(s1_loop, Stage27hBoundedMoveLoop)
         or not isinstance(s1_receipt, Stage27PlaceMoveReceipt)
-        or not all(isinstance(x, PaperTickReceipt) for x in (
-            paper_stop, paper_first, paper_settled,
-        ))
+        or not isinstance(paper_window, Q4OriginalPaperPositionWindow)
         or not isinstance(native_stdout_path, Path)
         or not isinstance(evidence_dir, Path)
         or not evidence_dir.is_absolute() or not evidence_dir.is_dir()
@@ -462,6 +458,7 @@ async def continue_original_s1_to_s2_owned_native_dev(
     require_i4a_s2_owned_native_source_audit(
         session, native_stdout_path,
     )
+    paper_stop, paper_first, paper_settled = paper_window.receipts
     original_s1_proof = Q4PlaceTerminalReadback(
         s1_receipt.look_ack, s1_receipt.start_ack, s1_receipt.stop_ack,
         s1_receipt.initial_stop_probe, s1_receipt.first_stable_probe,
@@ -482,7 +479,8 @@ async def continue_original_s1_to_s2_owned_native_dev(
     )
     bridge.physical.rearm_original_place_after_q4_owned_native_dev(
         bridge=bridge, self_id=self_id, evidence=original_s1_proof,
-        native_stdout_path=native_stdout_path,
+        native_stdout_path=native_stdout_path, native_receipt=s1_receipt,
+        paper_window=paper_window,
     )
     first = await _probe_from_original_owned_native(session)
     _adopt_u17_original_probe(bridge, owner, first)
