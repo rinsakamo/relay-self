@@ -422,6 +422,12 @@ class OwnedResidentPhysicalBridge:
                     or view.status is not Presence.ONLINE
                     or session.process_returncode is not None
                     or session.observer_error is not None or session._dispatch_error is not None
+                    # Original receive stream has no trustworthy native-to-Python
+                    # clock mapping. Compacted or saturated source data cannot
+                    # become CURRENT merely because it was recently received.
+                    or session.passive_aggregation is not None
+                    or session.native_continuity_hold is not None
+                    or session.backpressure_hold
                     or frame.scope != ScopeRef(self_id, world.paper_session_id)
                     or evidence.self_id != self_id
                     or evidence.native_session_id != session.started.session_id
