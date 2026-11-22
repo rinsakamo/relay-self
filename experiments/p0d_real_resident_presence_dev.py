@@ -552,37 +552,12 @@ async def _owned_resident_trial(
             bridge=bridge, history=normal_history,
             interval_s=0.1, timeout_s=min(8.0, float(b_heartbeat_s) * 2),
         )
-        first, later = normal_readback.first_a, normal_readback.later_a
-        first_b, later_b = normal_readback.first_b, normal_readback.later_b
-        normal_cpu_doc = dict(
-            classification="ORIGINAL_WORLD_NORMAL_CPU_SOURCE_READBACK_DEV",
-            world_id=world_uuid, paper_session_id=paper_session,
-            original_a_native_session=old_a,
-            original_b_native_session=original_b_native,
-            first_a=asdict(first.poll.a_present.source.composite_receipt),
-            first_b=asdict(first_b.poll.b_present.source.composite_receipt),
-            later_a=asdict(later.poll.a_present.source.composite_receipt),
-            later_b=asdict(later_b.poll.b_present.source.composite_receipt),
-            adopted_b_native=asdict(normal_readback.updated_b_native),
-            first_pair_revision=first.source_pair_revision,
-            later_pair_revision=later.source_pair_revision,
-            first_a_iteration=first.iteration,
-            first_b_iteration=first_b.iteration,
-            later_a_iteration=later.iteration,
-            later_b_iteration=later_b.iteration,
-            a_cpu_task_ref=first.token.task_ref,
-            b_cpu_task_ref=first_b.token.task_ref,
-            a_cpu_epoch=first.token.epoch,
-            b_cpu_epoch=first_b.token.epoch,
-            no_gpu_or_physical_action=True,
+        normal_cpu_sha = _freeze_original_normal_cpu_world_readback(
+            evidence_dir=evidence_dir, readback=normal_readback, world_uuid=world_uuid,
+            paper_session=paper_session, old_a=old_a,
+            original_b_native=original_b_native,
         )
-        normal_path = evidence_dir / "normal-cpu-world-source-readback.json"
-        _write_bytes_new(
-            normal_path, (json.dumps(normal_cpu_doc, sort_keys=True, indent=2) + "\n").encode(),
-        )
-        if json.loads(normal_path.read_text()) != normal_cpu_doc:
-            raise RealResidentPresenceRefusal("normal CPU World readback file changed")
-        normal_cpu_sha = file_sha256(normal_path)
+        normal_cpu_doc = True
     # This reads ONLY the explicitly owned Paper Popen stdout log.
     source = paper.read_owned_log(paper_session)
     import hashlib
@@ -716,6 +691,46 @@ async def _owned_resident_trial(
     if initial_source is not None:
         result_data["initial_native_paper_source"] = initial_source
     return result_data
+
+
+def _freeze_original_normal_cpu_world_readback(
+    *, evidence_dir: Path, readback, world_uuid: str, paper_session: str,
+    old_a: str, original_b_native: str,
+) -> str:
+    """Freeze original Owner-mediated periodic results without inferring Action authority."""
+    normal_readback = readback
+    first, later = normal_readback.first_a, normal_readback.later_a
+    first_b, later_b = normal_readback.first_b, normal_readback.later_b
+    normal_cpu_doc = dict(
+        classification="ORIGINAL_WORLD_NORMAL_CPU_SOURCE_READBACK_DEV",
+        world_id=world_uuid, paper_session_id=paper_session,
+        original_a_native_session=old_a,
+        original_b_native_session=original_b_native,
+        first_a=asdict(first.poll.a_present.source.composite_receipt),
+        first_b=asdict(first_b.poll.b_present.source.composite_receipt),
+        later_a=asdict(later.poll.a_present.source.composite_receipt),
+        later_b=asdict(later_b.poll.b_present.source.composite_receipt),
+        adopted_b_native=asdict(normal_readback.updated_b_native),
+        first_pair_revision=first.source_pair_revision,
+        later_pair_revision=later.source_pair_revision,
+        first_a_iteration=first.iteration,
+        first_b_iteration=first_b.iteration,
+        later_a_iteration=later.iteration,
+        later_b_iteration=later_b.iteration,
+        a_cpu_task_ref=first.token.task_ref,
+        b_cpu_task_ref=first_b.token.task_ref,
+        a_cpu_epoch=first.token.epoch,
+        b_cpu_epoch=first_b.token.epoch,
+        no_gpu_or_physical_action=True,
+    )
+    normal_path = evidence_dir / "normal-cpu-world-source-readback.json"
+    _write_bytes_new(
+        normal_path, (json.dumps(normal_cpu_doc, sort_keys=True, indent=2) + "\n").encode(),
+    )
+    if json.loads(normal_path.read_text()) != normal_cpu_doc:
+        raise RealResidentPresenceRefusal("normal CPU World readback file changed")
+    normal_cpu_sha = file_sha256(normal_path)
+    return normal_cpu_sha
 
 
 def _verify_original_normal_cpu_world_report(trial: dict[str, object]) -> None:
