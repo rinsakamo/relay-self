@@ -129,6 +129,7 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
     evidence_timeout_s: float = 1.5,
     pulse_seconds: float = 0.15,
     settlement_probe_limit: int = 60,
+    motor_metrics_out: list[tuple[float, float]] | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Run exactly one original S2 PLACE under the existing physical issuer.
 
@@ -157,6 +158,9 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
         or type(pulse_seconds) not in (int, float)
         or not math.isfinite(pulse_seconds)
         or not 0.15 <= pulse_seconds <= 0.75
+        or (motor_metrics_out is not None and (
+            type(motor_metrics_out) is not list or motor_metrics_out
+        ))
         or candidate.target_clearance_attested
         or candidate.physical_authorized or candidate.physical_issued
         or candidate.wal_modified
@@ -318,7 +322,7 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
                     parent_action_id=parent_action_id, journal=journal,
                 )
 
-            return await complete_prepared_place_move_dev(
+            receipt = await complete_prepared_place_move_dev(
                 session, proposal=candidate.proposal, l0=l0, handoff=handoff,
                 motion=candidate.motion, current_probe=candidate.source_probe,
                 owner=owner, journal=journal,
@@ -331,6 +335,18 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
                 precision_gait=None,
                 motor_boundary=motor,
             )
+            # This timing comes from the original task-bound START ACK and
+            # STOP attempt/ACK milestones, never a caller-produced receipt.
+            forward_ms, host_ms = motor.original_motor_times_ms()
+            if (
+                not all(math.isfinite(x) for x in (forward_ms, host_ms))
+                or not 0 <= forward_ms <= 800
+                or not forward_ms <= host_ms <= 2000
+            ):
+                raise I4AS2OwnedNativeHold("S2 original host START/STOP bound invalid")
+            if motor_metrics_out is not None:
+                motor_metrics_out.append((forward_ms, host_ms))
+            return receipt
 
     # The OUTER same-World harness owns open/finalize of this single stdout
     # transcript; do NOT end it after Action 1, since Action 2 must reuse
@@ -402,6 +418,7 @@ async def continue_original_s1_to_s2_owned_native_dev(
     provenance: Provenance,
     s1_forward_ms: float,
     s1_host_ms: float,
+    s2_motor_metrics_out: list[tuple[float, float]] | None = None,
 ) -> tuple[I4AS1SourceCapture, Stage27PlaceMoveReceipt]:
     """U17: actual S1 terminal -> original B fresh L1 -> original S2 motor.
 
@@ -431,6 +448,9 @@ async def continue_original_s1_to_s2_owned_native_dev(
         or not math.isfinite(s1_forward_ms) or not math.isfinite(s1_host_ms)
         or not 0 <= s1_forward_ms <= 800
         or not s1_forward_ms <= s1_host_ms <= 2000
+        or (s2_motor_metrics_out is not None and (
+            type(s2_motor_metrics_out) is not list or s2_motor_metrics_out
+        ))
     ):
         raise I4AS2OwnedNativeHold("real original S1-to-S2 input not qualified")
     owner = s1_loop.owner
@@ -523,5 +543,6 @@ async def continue_original_s1_to_s2_owned_native_dev(
         acknowledge_dev_unverified_principal=True,
         evidence_timeout_s=12.0, pulse_seconds=0.15,
         settlement_probe_limit=60,
+        motor_metrics_out=s2_motor_metrics_out,
     )
     return capture, s2_receipt
