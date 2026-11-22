@@ -188,7 +188,7 @@ def _read_original_q4_fd(path: Path, fd: int) -> bytes:
         after = os.fstat(fd)
         if (
             len(wire) != active.st_size
-            or not wire.endswith(b"\\n")
+            or not wire.endswith(b"\n")
             or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
             != (active.st_dev, active.st_ino, active.st_size, active.st_mtime_ns)
         ):
