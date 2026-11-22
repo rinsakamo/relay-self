@@ -66,8 +66,8 @@ def _assert_unmodified_parent_graph(root: Path) -> None:
     This is only a local DAG integrity gate, not Git producer authentication.
     """
     try:
-        path = _run(root, "rev-parse", "--path-format=absolute", "--git-path", "info/grafts")
-        graft = Path(path.decode("utf-8").strip())
+        path = _run(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+        graft = Path(path.decode("utf-8").strip()) / "info" / "grafts"
         if graft.is_symlink() or (graft.is_file() and graft.stat().st_size):
             raise QGitCustodyHold("legacy Git grafts can rewrite historical parent custody")
     except (UnicodeError, OSError) as exc:
