@@ -150,7 +150,7 @@ def _fake_original(tmp_path, monkeypatch):
             }))
         login_ref = {
             "self_id": sid,
-            "login_seq": 2 if key == "A1" else 1,
+            "login_seq": 3 if key == "A1" else 2 if key == "B0" else 1,
             "world_id": world_id,
             "branch_id": "p0d-real-resident-presence",
             "paper_session_id": paper_session,
