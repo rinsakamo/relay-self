@@ -66,6 +66,7 @@ async def issue_original_s1_place_on_owned_native_dev(
     ],
     operator_permit: Q4DevOperatorPermit,
     provenance: Provenance,
+    inject_stop_failure: bool = False,
 ) -> I4AS1OwnedNativeSettled:
     """Real Original B: Native probe -> actual L1 -> Intent/Skill -> PLACE S1.
 
@@ -82,6 +83,7 @@ async def issue_original_s1_place_on_owned_native_dev(
         or not callable(grant_for_action)
         or not isinstance(operator_permit, Q4DevOperatorPermit)
         or not isinstance(provenance, Provenance)
+        or type(inject_stop_failure) is not bool
     ):
         raise I4AS2OwnedNativeHold("real Original B restored source/DEV grant required")
     owner = bridge.owners.get("B")
@@ -164,6 +166,11 @@ async def issue_original_s1_place_on_owned_native_dev(
     ):
         raise I4AS2OwnedNativeHold("two original scoped S1 operator labels required")
     propose_grant, issue_grant = grants
+    if inject_stop_failure:
+        # Same original owned Native adapter; no other STOP or effect sender.
+        # Failure occurs only when the Stage27 executor reaches its first STOP
+        # after genuine START ACK. The existing Q4 watchdog owns termination.
+        session.arm_q4_stop_failure_once_dev(l0.action_id + "-stop")
     start_stop_ms: list[tuple[float, float]] = []
 
     async def original_issue(motor: Q4DevMotorBoundary) -> Stage27PlaceMoveReceipt:
