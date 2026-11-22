@@ -56,6 +56,7 @@ from experiments.stage24g_model_gate_dev import (
     receipt_json as stage24g_model_receipt_json,
 )
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.bd1b_schema3_prelogin_source_dev import prepare_original_schema3_prelogin
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitiveOwnerFiles,
@@ -905,6 +906,10 @@ async def run_real_resident_presence(
         raise RealResidentPresenceRefusal(
             "Stage28b typed offline source cut requires passive A/B, no LLM or MOVE"
         )
+    if typed_owner_cut_dev and exploration_schema_dev and not initial_source_dev:
+        raise RealResidentPresenceRefusal(
+            "Schema3 typed source requires original Native/Paper initial-source capture"
+        )
     if stage24g_model_receipt is not None and (
         not isinstance(stage24g_model_receipt, Stage24gModelGateReceipt)
         or not b_autonomous_l1_dev
@@ -1041,6 +1046,16 @@ async def run_real_resident_presence(
             )
         cognition = ResidentCognitiveWorkOwner(originals)
         bootstrap_fresh_schemas(cognition, schema_config)
+        if typed_owner_cut_dev and exploration_schema_dev:
+            prelogin = prepare_original_schema3_prelogin(
+                cognition, evidence_dir=evidence,
+            )
+            report["schema3_prelogin_record"] = str(
+                evidence / "stage28b-schema3-prelogin.json"
+            )
+            report["schema3_prelogin_cognition_sha256"] = list(
+                prelogin.cognition_sha256
+            )
         lane = None
         if b_autonomous_l1_dev:
             assert llama_endpoint is not None and systemone_endpoint is not None
@@ -1117,6 +1132,24 @@ async def run_real_resident_presence(
                 "typed_world_self_saved_tick"
             ]
             report["real_60_second_autosave_attested"] = False
+            if exploration_schema_dev:
+                from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+                from relay_self.innate_schema import SchemaMode
+
+                cut_generation = Path(trial["typed_world_self_generation"])
+                source_cuts = verify_typed_generation(cut_generation)
+                if (tuple(c.self_id for c in source_cuts) != ("A", "B")
+                        or not all(c.schema_snapshot is not None
+                                   and c.schema_snapshot.get("exploratory").mode is SchemaMode.FULL
+                                   and c.cognition_sha256 is not None
+                                   for c in source_cuts)
+                        or not trial.get("initial_native_paper_source")
+                        or not report.get("schema3_prelogin_record")):
+                    raise RealResidentPresenceRefusal(
+                        "original Schema3 typed source, Native/Paper pair or prelogin missing"
+                    )
+                report["schema3_original_typed_owner_qualified"] = True
+                report["schema3_original_independent_audit"] = False
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if physical is not None:
