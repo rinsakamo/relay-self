@@ -325,7 +325,9 @@ def independently_read_i2g_original(
                 or login.get("world_id") != world_id
                 or login.get("branch_id") != branch_id
                 or login.get("world_epoch") != 0
-                or login.get("login_seq") != (2 if idx == 2 else 1)
+                # Original WorldResidentLifecycle uses a GLOBAL A,B,A
+                # login counter (1, 2, 3), never a per-Self sequence.
+                or login.get("login_seq") != idx + 1
                 or any(login.get(key) is not True for key in (
                     "old_native_invalidated", "physical_wal_clear",
                     "stale_gpu_fenced", "stale_transport_fenced",
