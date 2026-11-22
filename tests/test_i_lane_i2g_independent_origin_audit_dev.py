@@ -21,25 +21,27 @@ def test_i2g_root_inventory_requires_three_original_typed_dimension_hashes(
 ):
     evidence = tmp_path / "evidence"
     evidence.mkdir()
+    generation = evidence / "typed-world-self-generations" / "g-000000000001"
+    generation.mkdir(parents=True)
     file = evidence / "resident-presence-result.json"
     file.write_bytes(b"synthetic-untrusted-content")
     with pytest.raises(audit.I2gIndependentOriginHold):
-        audit._root_files(evidence, manifest_exists=False)
+        audit._root_files(evidence, generation=generation, manifest_exists=False)
     for name in audit._NESTED_HASHES:
-        path = evidence / name
+        path = generation / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"synthetic-dimension-checksum")
-    files = audit._root_files(evidence, manifest_exists=False)
+    files = audit._root_files(evidence, generation=generation, manifest_exists=False)
     assert files == {
         "resident-presence-result.json": hashlib.sha256(file.read_bytes()).hexdigest()
     }
     (evidence / "untracked").write_bytes(b"tamper")
-    assert len(audit._root_files(evidence, manifest_exists=False)) == 2
+    assert len(audit._root_files(evidence, generation=generation, manifest_exists=False)) == 2
     (evidence / "untracked").unlink()
     (evidence / "SHA256SUMS").write_bytes(b"forged root manifest")
     with pytest.raises(audit.I2gIndependentOriginHold):
-        audit._root_files(evidence, manifest_exists=False)
-    assert audit._root_files(evidence, manifest_exists=True) == files
+        audit._root_files(evidence, generation=generation, manifest_exists=False)
+    assert audit._root_files(evidence, generation=generation, manifest_exists=True) == files
 
 
 @pytest.mark.parametrize("fault", [
