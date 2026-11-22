@@ -43,3 +43,45 @@ or writing Memory or physical journal. The source hash only guards change.
 
 No cloud-side simulation is evidence that the user's WSL2 RTX 3060/Paper
 or the real Self issued any physical actions.
+
+
+## Incompatibility audit (first exact-head run)
+
+The first broad historical source+fixture transplant was actually run on
+\`888bac537b51751d2fb8d1f9deda4a1b8bc681ab\`. Full pytest collected and
+executed, with **2,977 PASS / 538 FAIL**. Five-job CI was 4/5:
+repository contracts, Ruff, Mineflayer, Paper succeeded, pytest failed.
+Real defects were API incompatibilities, not merely missing fixture imports:
+
+- B schema refuses the old I2 legacy exploration mapping/activation (114 fails).
+- I2's \`read_i0_owner_cpu\` signatures and B's current legacy Source no longer
+  match (\`i2b_read_attached_lane\` and follow-on SENSE).
+- Old I4a Stage27 fixture \`allow_resident_move\` and provider
+  \`enable_stage26_raw_audit\` are not B original interfaces (216+ fails).
+- Old I4a Journal \`certified_prefix_digest\` is absent from B; do NOT
+  invent a trust root or backfill a fake certified digest.
+- E2 Native receive-queue pressure fence assumes a different dispatcher
+  than B's existing original Mineflayer session. It is NOT transplanted.
+- Older Option/target/registry assumptions conflict with present B Schema3.
+
+Those historical tests and real-World runners have therefore NOT been added
+to final test discovery. Historical PR evidence and test files remain in
+#1080 and #1076; **not passing them is a HOLD, not a silent PASS**.
+
+The final branch retains the selected code as deliberately non-authoritative
+DEV modules, and uses **new compatibility tests** around B Original Owner:
+- \`read_i_unified_b_current\` positively reads B's R0 CURRENT and rejects
+  a mutated Paper session without Memory/physical authority.
+- I2 handoff pairing requires B original owner/source and current Schema,
+  and remains HOLD if old I2 exploration/source API cannot qualify.
+- \`capture_i_unified_s1_cpu\` / \`audit_i_unified_s2_cpu\` use B's
+  existing \`PhysicalActionJournal.restore\` (read-only) and compare S1
+  prefix, Self, Owner identity, native session, generation, distinct S2
+  Intent/Skill/Action and terminal status. CPU local content equality
+  **is not authenticated source custody**; no physical S2 is issued.
+- Reuse of C modules is staged; no C1 real adoption or next-epoch claim.
+- Q remains external and must inspect original source and WAL independently.
+
+The final exact HEAD's CI verdict must be recorded independently after this
+change. No claim of complete I2/I4a runtime integration is permitted merely
+because B-only regression and the newly scoped negative tests pass.
