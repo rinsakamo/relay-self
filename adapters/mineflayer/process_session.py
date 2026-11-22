@@ -333,15 +333,11 @@ class MineflayerProcessSession:
                 if batch == 64:
                     batch = 0
                     await asyncio.sleep(0)
-                try:
-                    self._dispatch_observer(message)
-                except Exception as exc:
-                    self.observer_error = exc
                 if self._dispatch_queue.full():
-                    # A full queue means residence in the original native pipe
-                    # cannot be bounded by Python receipt time. Even if a
-                    # concurrent consumer immediately relieves pressure,
-                    # current perception must HOLD until original reJOIN.
+                    # Fence BEFORE any observer can publish the just-read
+                    # frame; another CPU consumer may run in another thread.
+                    # Local receipt time cannot bound time spent in Native
+                    # stdout/pipe even when no passive record was replaced.
                     if self.native_continuity_hold is None:
                         self.native_continuity_hold = NativeReceiveContinuityHold(
                             source=message.session_id,
@@ -349,6 +345,10 @@ class MineflayerProcessSession:
                             reason="OWNER_QUEUE_FULL_UNKNOWN_PIPE_DELAY",
                             received_monotonic=received_at,
                         )
+                try:
+                    self._dispatch_observer(message)
+                except Exception as exc:
+                    self.observer_error = exc
                 if self._dispatch_queue.full() and self._can_compact(message):
                     tail = self._dispatch_queue._queue[-1]
                     if self._passive(tail):
