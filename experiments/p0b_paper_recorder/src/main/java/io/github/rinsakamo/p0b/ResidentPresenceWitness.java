@@ -24,6 +24,9 @@ final class ResidentPresenceWitness implements Listener {
     private record Sample(UUID worldId, double x, double y, double z, int tick) {}
     private final JavaPlugin plugin;
     private final UUID bootId = UUID.randomUUID();
+    // Only a disposable Q4 DEV Paper launch opts into 5-tick stationary
+    // position samples; normal Paper witness remains unchanged.
+    private final boolean fineQ4Samples = Boolean.getBoolean("relay.q4.paper.fine_samples");
     private final Map<UUID, Sample> last = new HashMap<>();
 
     ResidentPresenceWitness(JavaPlugin plugin) {
@@ -90,7 +93,7 @@ final class ResidentPresenceWitness implements Listener {
                     double movementSquared = dx * dx + dy * dy + dz * dz;
                     if (movementSquared >= 0.04) {
                         emit("MOVE", player);
-                    } else if (tick - before.tick() >= 40) {
+                    } else if (tick - before.tick() >= (fineQ4Samples ? 5 : 40)) {
                         emit("PRESENT", player);
                     }
                 }
