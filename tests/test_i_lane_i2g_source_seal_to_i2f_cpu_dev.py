@@ -31,8 +31,8 @@ from relay_self.stage28b_retired_resident_typed_cut_dev import (
     capture_retired_resident_typed_world,
 )
 from relay_self.world_resident_lifecycle_dev import WorldLifetime
-from test_stage28b_retired_typed_cut_dev import _setup
 from test_mineflayer_process_session import observation_line
+from test_stage28b_retired_typed_cut_dev import _setup
 
 
 def _bytes(value: dict) -> bytes:
