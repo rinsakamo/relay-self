@@ -41,6 +41,20 @@ class OriginalSchema3PreloginReceipt:
     real_model_post_attempted: bool = False
 
 
+def _write_once(path: Path, raw: bytes) -> None:
+    """Exclusive original bytes, no overwrite or replay on partial failure."""
+    if (path.parent.is_symlink() or not path.parent.is_dir()
+            or not isinstance(raw, bytes)):
+        raise BD1bSchema3ProducerHold("unqualified original evidence sink")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "wb") as out:
+        out.write(raw)
+        out.flush()
+        os.fsync(out.fileno())
+    if path.read_bytes() != raw:
+        raise BD1bSchema3ProducerHold("original evidence bytes changed")
+
+
 def _digest(path: Path) -> str:
     if path.is_symlink() or not path.is_file() or path.stat().st_nlink != 1:
         raise BD1bSchema3ProducerHold("unsafe original Owner file")
@@ -103,6 +117,16 @@ def prepare_original_schema3_prelogin(
             if load_persistent_cognition(owner.files.cognition_file) != new_retained:
                 raise BD1bSchema3ProducerHold("original cognition persisted source differs")
             owner.retained = new_retained
+            cognition_raw = owner.files.cognition_file.read_bytes()
+            wal_raw = owner.files.physical_wal_file.read_bytes()
+            _write_once(
+                evidence_dir / f"stage28b-schema3-{sid}-prelogin-cognition.json",
+                cognition_raw,
+            )
+            _write_once(
+                evidence_dir / f"stage28b-schema3-{sid}-prelogin-wal.json",
+                wal_raw,
+            )
             cognition.append((sid, _digest(owner.files.cognition_file)))
             wal_rows.append((sid, _digest(owner.files.physical_wal_file)))
         receipt = OriginalSchema3PreloginReceipt(
@@ -125,15 +149,5 @@ def prepare_original_schema3_prelogin(
             "real_model_post_attempted": False,
         }
         raw = (json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode()
-        fd = os.open(record_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        try:
-            with os.fdopen(fd, "wb") as out:
-                out.write(raw)
-                out.flush()
-                os.fsync(out.fileno())
-        except BaseException:
-            # Partial record must remain visible; no retry.
-            raise
-        if record_file.read_bytes() != raw:
-            raise BD1bSchema3ProducerHold("prelogin evidence readback differs")
+        _write_once(record_file, raw)
         return receipt
