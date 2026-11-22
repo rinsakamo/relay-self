@@ -397,6 +397,7 @@ async def _owned_resident_trial(
     real_llm_granted: bool = False,
     typed_owner_cut_dev: bool = False,
     initial_source_dev: bool = False,
+    normal_cpu_present_dev: bool = False,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -421,6 +422,29 @@ async def _owned_resident_trial(
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
     await asyncio.sleep(float(b_heartbeat_s))
+    normal_history = None
+    if normal_cpu_present_dev:
+        from relay_self.b_np1b_normal_cpu_world_runner_dev import (
+            capture_original_historical_cpu_source,
+            capture_original_initial_cpu_sources,
+        )
+
+        original_receipts = capture_original_initial_cpu_sources(bridge=bridge)
+        # A's historical Composite needs a later independent Paper heartbeat.
+        await asyncio.sleep(float(b_heartbeat_s))
+        normal_history = await capture_original_historical_cpu_source(
+            bridge=bridge, initial_receipts=original_receipts,
+        )
+        _immutable_receipt(
+            evidence_dir, "normal-cpu-original-A-initial", original_receipts[0],
+        )
+        _immutable_receipt(
+            evidence_dir, "normal-cpu-original-B-initial", original_receipts[1],
+        )
+        _immutable_receipt(
+            evidence_dir, "normal-cpu-original-A-composite",
+            normal_history.a_historical_composite,
+        )
     initial_source = None
     if initial_source_dev:
         from relay_self.b_np1b_initial_source_dev import build_initial_source_receipts
@@ -443,7 +467,26 @@ async def _owned_resident_trial(
         bridge.owners["A"].files.cognition_file,
     )
     await asyncio.sleep(float(b_heartbeat_s))
-    b_probe = await _bounded_b_probe(bridge.sessions["B"])
+    if normal_cpu_present_dev:
+        from relay_self.b_np1b_normal_cpu_world_runner_dev import (
+            update_original_b_after_a_logout,
+        )
+
+        assert normal_history is not None
+        surviving_b = await update_original_b_after_a_logout(
+            bridge=bridge, history=normal_history,
+        )
+        b_probe = bridge.owners["B"].current_worldbody_observation
+        if (
+            b_probe is None
+            or b_probe.request_id != surviving_b.native_request_id
+            or b_probe.seq != surviving_b.native_sequence
+        ):
+            raise RealResidentPresenceRefusal(
+                "original B Native post-logout adoption not current"
+            )
+    else:
+        b_probe = await _bounded_b_probe(bridge.sessions["B"])
     if (
         physical.current_native_sessions["B"] != original_b_native
         or bridge.sessions["B"].started.session_id != original_b_native
@@ -496,7 +539,25 @@ async def _owned_resident_trial(
     a_relogin_pid = bridge.sessions["A"].owned_child_pid
     if a_relogin.native_session_id == old_a:
         raise RealResidentPresenceRefusal("A reused native process")
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(float(b_heartbeat_s) if normal_cpu_present_dev else 1.0)
+    normal_cpu_doc = None
+    normal_cpu_sha = None
+    if normal_cpu_present_dev:
+        from relay_self.b_np1b_normal_cpu_world_runner_dev import (
+            exercise_original_normal_cpu_runtime,
+        )
+
+        assert normal_history is not None
+        normal_readback = await exercise_original_normal_cpu_runtime(
+            bridge=bridge, history=normal_history,
+            interval_s=0.1, timeout_s=min(8.0, float(b_heartbeat_s) * 2),
+        )
+        normal_cpu_sha = _freeze_original_normal_cpu_world_readback(
+            evidence_dir=evidence_dir, readback=normal_readback, world_uuid=world_uuid,
+            paper_session=paper_session, old_a=old_a,
+            original_b_native=original_b_native,
+        )
+        normal_cpu_doc = True
     # This reads ONLY the explicitly owned Paper Popen stdout log.
     source = paper.read_owned_log(paper_session)
     import hashlib
@@ -580,6 +641,12 @@ async def _owned_resident_trial(
         "b_move_action_causality": False,
         "real_l1_l2_gpu_executed": b_move is not None and b_autonomous_l1_dev,
         "real_peer_transport_executed": False,
+        "normal_cpu_present_opt_in": normal_cpu_present_dev,
+        "normal_cpu_present_source_file": (
+            str(evidence_dir / "normal-cpu-world-source-readback.json")
+            if normal_cpu_doc is not None else None
+        ),
+        "normal_cpu_present_source_sha256": normal_cpu_sha,
     }
     final_a = await bridge.logout("A")
     final_b = await bridge.logout("B")
@@ -624,6 +691,155 @@ async def _owned_resident_trial(
     if initial_source is not None:
         result_data["initial_native_paper_source"] = initial_source
     return result_data
+
+
+def _freeze_original_normal_cpu_world_readback(
+    *, evidence_dir: Path, readback, world_uuid: str, paper_session: str,
+    old_a: str, original_b_native: str,
+) -> str:
+    """Freeze original Owner-mediated periodic results without inferring Action authority."""
+    normal_readback = readback
+    first, later = normal_readback.first_a, normal_readback.later_a
+    first_b, later_b = normal_readback.first_b, normal_readback.later_b
+    normal_cpu_doc = dict(
+        classification="ORIGINAL_WORLD_NORMAL_CPU_SOURCE_READBACK_DEV",
+        world_id=world_uuid, paper_session_id=paper_session,
+        original_a_native_session=old_a,
+        original_b_native_session=original_b_native,
+        first_a=asdict(first.poll.a_present.source.composite_receipt),
+        first_b=asdict(first_b.poll.b_present.source.composite_receipt),
+        later_a=asdict(later.poll.a_present.source.composite_receipt),
+        later_b=asdict(later_b.poll.b_present.source.composite_receipt),
+        adopted_b_native=asdict(normal_readback.updated_b_native),
+        first_pair_revision=first.source_pair_revision,
+        later_pair_revision=later.source_pair_revision,
+        first_a_iteration=first.iteration,
+        first_b_iteration=first_b.iteration,
+        later_a_iteration=later.iteration,
+        later_b_iteration=later_b.iteration,
+        a_cpu_task_ref=first.token.task_ref,
+        b_cpu_task_ref=first_b.token.task_ref,
+        a_cpu_epoch=first.token.epoch,
+        b_cpu_epoch=first_b.token.epoch,
+        no_gpu_or_physical_action=True,
+    )
+    normal_path = evidence_dir / "normal-cpu-world-source-readback.json"
+    _write_bytes_new(
+        normal_path, (json.dumps(normal_cpu_doc, sort_keys=True, indent=2) + "\n").encode(),
+    )
+    if json.loads(normal_path.read_text()) != normal_cpu_doc:
+        raise RealResidentPresenceRefusal("normal CPU World readback file changed")
+    normal_cpu_sha = file_sha256(normal_path)
+    return normal_cpu_sha
+
+
+def _verify_original_normal_cpu_world_report(trial: dict[str, object]) -> None:
+    """Re-read frozen source receipts; reject invented A/B CPU runtime success.
+
+    Checks full composite revision linkage, original two native sessions and
+    independently advanced B Native plus both original Owner CPU task epochs.
+    This does not qualify a new Physical Action, L1, or cross-clock simultaneity.
+    """
+    from relay_self.b_np1b_initial_source_dev import _revision
+
+    if (
+        type(trial) is not dict
+        or trial.get("normal_cpu_present_opt_in") is not True
+        or trial.get("b_actual_physical_action") is not False
+        or trial.get("real_l1_l2_gpu_executed") is not False
+    ):
+        raise RealResidentPresenceRefusal("original CPU World mode not exclusively passive")
+    path = trial.get("normal_cpu_present_source_file")
+    digest = trial.get("normal_cpu_present_source_sha256")
+    if (
+        type(path) is not str or not path.endswith("/normal-cpu-world-source-readback.json")
+        or type(digest) is not str or len(digest) != 64
+    ):
+        raise RealResidentPresenceRefusal("frozen normal CPU readback path or digest missing")
+    try:
+        data = Path(path).read_bytes()
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise RealResidentPresenceRefusal("normal CPU readback SHA mismatch")
+        witness = json.loads(data)
+    except (OSError, ValueError, TypeError) as exc:
+        raise RealResidentPresenceRefusal("normal CPU readback bytes invalid") from exc
+    if (
+        type(witness) is not dict
+        or witness.get("classification") != "ORIGINAL_WORLD_NORMAL_CPU_SOURCE_READBACK_DEV"
+        or witness.get("world_id") != trial.get("world_uuid")
+        or witness.get("paper_session_id") != trial.get("paper_session_id")
+        or witness.get("original_a_native_session") != trial.get("a_original_native_session")
+        or witness.get("original_b_native_session") != trial.get("b_original_native_session")
+        or witness.get("no_gpu_or_physical_action") is not True
+        or witness.get("a_cpu_task_ref") != "normal-present-cpu:A"
+        or witness.get("b_cpu_task_ref") != "normal-present-cpu:B"
+        or any(type(witness.get(k)) is not int or witness[k] <= 0 for k in (
+            "first_a_iteration", "first_b_iteration",
+            "later_a_iteration", "later_b_iteration",
+            "a_cpu_epoch", "b_cpu_epoch",
+        ))
+        or witness["later_a_iteration"] <= witness["first_a_iteration"]
+        or witness["later_b_iteration"] <= witness["first_b_iteration"]
+    ):
+        raise RealResidentPresenceRefusal("original A/B CPU task continuity not demonstrated")
+    a0, b0, a1, b1 = (
+        witness.get("first_a"), witness.get("first_b"),
+        witness.get("later_a"), witness.get("later_b"),
+    )
+    b_native = witness.get("adopted_b_native")
+    if any(type(x) is not dict for x in (a0, b0, a1, b1, b_native)):
+        raise RealResidentPresenceRefusal("typed Native and composite source records missing")
+    try:
+        if (
+            a0["self_id"] != a1["self_id"] or a0["self_id"] != "A"
+            or b0["self_id"] != b1["self_id"] or b0["self_id"] != "B"
+            or a0["native_session_id"] != a1["native_session_id"]
+            or a0["native_session_id"] == witness["original_a_native_session"]
+            or b0["native_session_id"] != witness["original_b_native_session"]
+            or b1["native_session_id"] != witness["original_b_native_session"]
+            or b_native["native_session_id"] != witness["original_b_native_session"]
+            or a0["native_revision"] != a1["native_revision"]
+            or a0["paper_actor_uuid"] != a1["paper_actor_uuid"]
+            or b0["paper_actor_uuid"] != b1["paper_actor_uuid"]
+            or a0["paper_actor_uuid"] == b0["paper_actor_uuid"]
+            or b0["native_revision"] == b1["native_revision"]
+            or b_native["native_revision"] != b1["native_revision"]
+            or b_native["native_request_id"] != b1["native_request_id"]
+            or b_native["native_sequence"] != b1["native_sequence"]
+            or b1["native_sequence"] <= b0["native_sequence"]
+            or a0["resident_epoch"] != witness["a_cpu_epoch"]
+            or a1["resident_epoch"] != witness["a_cpu_epoch"]
+            or b0["resident_epoch"] != witness["b_cpu_epoch"]
+            or b1["resident_epoch"] != witness["b_cpu_epoch"]
+        ):
+            raise RealResidentPresenceRefusal("original Native owner/session or B update diverged")
+        for a, b, pair in (
+            (a0, b0, witness["first_pair_revision"]),
+            (a1, b1, witness["later_pair_revision"]),
+        ):
+            if (
+                a["world_id"] != witness["world_id"]
+                or b["world_id"] != witness["world_id"]
+                or a["paper_session_id"] != witness["paper_session_id"]
+                or b["paper_session_id"] != witness["paper_session_id"]
+                or a["paper_log_sha256"] != b["paper_log_sha256"]
+                or a["paper_tick_ref"] != b["paper_tick_ref"]
+                or a["paper_tick"] != b["paper_tick"]
+                or a["b_continuity_revision"] != b["b_continuity_revision"]
+                or b["a_rejoin_composite_ref"] != _revision(a)
+                or _revision(dict(
+                    a_composite=a["composite_revision"],
+                    b_composite=b["composite_revision"],
+                    a_native=a["native_revision"],
+                    b_native=b["native_revision"],
+                    paper_sha256=a["paper_log_sha256"],
+                )) != pair
+            ):
+                raise RealResidentPresenceRefusal("A/B original source pair not qualified")
+        if witness["first_pair_revision"] == witness["later_pair_revision"]:
+            raise RealResidentPresenceRefusal("no real B Native update reached scheduled CPU")
+    except (KeyError, ValueError, TypeError) as exc:
+        raise RealResidentPresenceRefusal("frozen A/B CPU source structure incomplete") from exc
 
 
 def _adopt_verified_trial_report(
@@ -866,9 +1082,22 @@ async def run_real_resident_presence(
     typed_owner_cut_dev: bool = False,
     exploration_schema_dev: bool = False,
     initial_source_dev: bool = False,
+    normal_cpu_present_dev: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     schema_config = SchemaBootstrapConfig(exploration_schema_dev)
+    if type(normal_cpu_present_dev) is not bool:
+        raise RealResidentPresenceRefusal("normal CPU runner opt-in must be boolean")
+    if normal_cpu_present_dev and (
+        not exploration_schema_dev or initial_source_dev
+        or world_only or typed_owner_cut_dev
+        or b_selected_move_dev or b_autonomous_l1_dev or real_llm_grant
+        or stage24g_model_receipt is not None
+    ):
+        raise RealResidentPresenceRefusal(
+            "normal CPU runner requires fresh exploration Schema and passive original "
+            "A/B World, without competing source reader, L1, MOVE or checkpoint modes"
+        )
     if real_world_dev_grant is not True:
         raise RealResidentPresenceRefusal(
             "HOLD_REAL_WORLD_GRANT: explicit real Paper/native DEV approval required"
@@ -977,7 +1206,7 @@ async def run_real_resident_presence(
             expected_world_uuid=world_uuid,
             read_owned_log=lambda sess: holder["paper"].read_owned_log(sess),
             timeout_seconds=min(15.0, timeout_s / 3),
-            allow_repeated_same_boot=initial_source_dev,
+            allow_repeated_same_boot=(initial_source_dev or normal_cpu_present_dev),
         )
         owner = OwnedPaperWorld(
             server_dir=root, world_dir=root / "world",
@@ -1081,7 +1310,7 @@ async def run_real_resident_presence(
             configs=configs, owners=originals,
             launch=native_factory, cognitive_work=cognition,
             inference_lane=lane,
-            adopt_login_worldbody_dev=initial_source_dev,
+            adopt_login_worldbody_dev=(initial_source_dev or normal_cpu_present_dev),
             probe_timeout_s=min(30.0, timeout_s / 3),
         )
         trial = await _owned_resident_trial(
@@ -1095,6 +1324,7 @@ async def run_real_resident_presence(
             real_llm_granted=real_llm_grant,
             typed_owner_cut_dev=typed_owner_cut_dev,
             initial_source_dev=initial_source_dev,
+            normal_cpu_present_dev=normal_cpu_present_dev,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1102,6 +1332,10 @@ async def run_real_resident_presence(
             report, trial, b_selected_move_dev=b_selected_move_dev,
             world_only=world_only, b_autonomous_l1_dev=b_autonomous_l1_dev,
         )
+        if normal_cpu_present_dev:
+            _verify_original_normal_cpu_world_report(trial)
+            report["classification"] = "REAL_PAPER_AB_NORMAL_CPU_PRESENT_SCHEDULED_DEV"
+            report["real_normal_cpu_present_scheduled"] = True
         if typed_owner_cut_dev:
             if not trial.get("typed_world_self_cut_validated"):
                 raise RealResidentPresenceRefusal(
@@ -1159,6 +1393,7 @@ async def run_real_resident_presence(
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_DEV",
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
         "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
+        "REAL_PAPER_AB_NORMAL_CPU_PRESENT_SCHEDULED_DEV",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path
@@ -1182,6 +1417,7 @@ def main() -> int:
     parser.add_argument("--typed-owner-cut-dev", action="store_true")
     parser.add_argument("--exploration-schema-dev", action="store_true")
     parser.add_argument("--initial-source-dev", action="store_true")
+    parser.add_argument("--normal-cpu-present-dev", action="store_true")
     parser.add_argument("--b-selected-move-dev", action="store_true")
     parser.add_argument("--b-pulse-seconds", type=float, default=0.35)
     parser.add_argument("--b-autonomous-l1-dev", action="store_true")
@@ -1209,6 +1445,7 @@ def main() -> int:
             typed_owner_cut_dev=args.typed_owner_cut_dev,
             exploration_schema_dev=args.exploration_schema_dev,
             initial_source_dev=args.initial_source_dev,
+            normal_cpu_present_dev=args.normal_cpu_present_dev,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)
