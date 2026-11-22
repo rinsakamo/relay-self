@@ -19,12 +19,16 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     parse_mineflayer_line,
 )
+from experiments.i_lane_i2e_independent_dual_model_audit_dev import (
+    independently_audit_i2e_model_bundle,
+)
 from experiments.stage28c2b_real_recovered_rejoin_dev import (
     _FORK_BRANCH,
     _SOURCE_COMMITTED_SHA,
     _SOURCE_WORLD,
     inspect_real_recovered_sources,
 )
+from relay_self.i_lane_i2f_future_source_pins_dev import I2fFutureSourcePins
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.resident_paper_presence_join_dev import (
@@ -107,18 +111,32 @@ def independently_audit_recovered_real_rejoin(
     stage28b_evidence: Path, executable: Path,
     expected_gemma_posts: int = 0,
     expected_i1_cpu_sense: bool = False,
+    future_pins: I2fFutureSourcePins | None = None,
 ) -> dict:
     """Audit frozen stdout/probes/WAL, *not* only success summary booleans."""
     path = Path(result_path)
     report = json.loads(path.read_bytes())
     evidence = path.parent
     expected = (
+        "I2F_FUTURE_V3_ORIGINAL_A_B_CAPTURED_INDEPENDENT_AUDIT_PENDING"
+        if future_pins is not None else
         "I1_ORIGINAL_CPU_SENSE_CAPTURED_INDEPENDENT_AUDIT_PENDING"
         if expected_i1_cpu_sense
         else "REAL_REJOIN_CAPTURED_INDEPENDENT_AUDIT_PENDING"
     )
+    source_world = (_SOURCE_WORLD if future_pins is None else future_pins.source_world_id)
+    source_commit = (_SOURCE_COMMITTED_SHA if future_pins is None
+                     else future_pins.source_committed_sha256)
+    fork_branch = (_FORK_BRANCH if future_pins is None else future_pins.fork_branch_id)
     if (
-        report.get("schema") != 1
+        (future_pins is not None and (
+            not isinstance(future_pins, I2fFutureSourcePins)
+            or not expected_i1_cpu_sense
+            or expected_gemma_posts != 2
+            or report.get("i2f_future_source") is not True
+            or report.get("i2f_dual_model_completed") is not True
+        ))
+        or report.get("schema") != 1
         or report.get("classification") != expected
         or report.get("independent_audit_pass") is not False
         or type(expected_i1_cpu_sense) is not bool
@@ -128,9 +146,9 @@ def independently_audit_recovered_real_rejoin(
             report.get("i1_normal_continuous_native_observed") is not True
             or type(report.get("i1_cpu_epochs")) is not dict
         ))
-        or report.get("original_world_uuid") != _SOURCE_WORLD
-        or report.get("original_committed_sha256") != _SOURCE_COMMITTED_SHA
-        or report.get("fork_branch_id") != _FORK_BRANCH
+        or report.get("original_world_uuid") != source_world
+        or report.get("original_committed_sha256") != source_commit
+        or report.get("fork_branch_id") != fork_branch
         or report.get("real_world_trials") != 1
         or type(expected_gemma_posts) is not int
         or expected_gemma_posts not in (0, 2)
@@ -146,7 +164,25 @@ def independently_audit_recovered_real_rejoin(
         raise Stage28c2bIndependentAuditHold("capture was not terminal and effect-free")
     original, state = inspect_real_recovered_sources(
         generation, restored, stage28b_evidence,
+        future_pins=future_pins,
     )
+    model_audit = None
+    if future_pins is not None:
+        model_audit = independently_audit_i2e_model_bundle(
+            evidence / "i2f-original-dual-model"
+        )
+        if model_audit.get("real_world_dev_pass") is not False:
+            raise Stage28c2bIndependentAuditHold("model-only auditor promoted World")
+        source_model = evidence / "i2f-original-dual-model" / "i2e-dual-model-report.json"
+        if _sha(source_model) != report.get("i2f_model_report_sha256"):
+            raise Stage28c2bIndependentAuditHold("original model report raw bytes changed")
+        for name, digest in report.get("i2f_model_raw_sha256", {}).items():
+            file = source_model.parent / name
+            if _sha(file) != digest:
+                raise Stage28c2bIndependentAuditHold("original raw model bytes changed")
+        if (set(report.get("i2f_model_raw_sha256", {})) !=
+                {x.name for x in source_model.parent.iterdir()}):
+            raise Stage28c2bIndependentAuditHold("unexpected/unarchived original model entity")
     inventory = "".join(
         f"{digest}  {name}\n" for name, digest in _inventory(Path(restored))
     ).encode()
@@ -156,8 +192,8 @@ def independently_audit_recovered_real_rejoin(
         report.get("original_history") is None
         or report["original_history"]["historical_native_sessions"]
         != list(original.historical_native_sessions)
-        or state.receipt.source_committed_sha256 != _SOURCE_COMMITTED_SHA
-        or state.receipt.fork_branch_id != _FORK_BRANCH
+        or state.receipt.source_committed_sha256 != source_commit
+        or state.receipt.fork_branch_id != fork_branch
     ):
         raise Stage28c2bIndependentAuditHold("old A/B cognitive/source lineage differs")
     paper_session = report.get("paper_session_id")
@@ -172,9 +208,9 @@ def independently_audit_recovered_real_rejoin(
         or not paper_session.startswith("paper-owned-")
         or type(paper_boot) is not dict
         or paper_boot.get("paper_session_id") != paper_session
-        or paper_boot.get("source_world_id") != _SOURCE_WORLD
-        or paper_boot.get("fork_branch_id") != _FORK_BRANCH
-        or paper_boot.get("committed_sha256") != _SOURCE_COMMITTED_SHA
+        or paper_boot.get("source_world_id") != source_world
+        or paper_boot.get("fork_branch_id") != fork_branch
+        or paper_boot.get("committed_sha256") != source_commit
         or paper_boot.get("old_ticks_directly_comparable") is not False
         or type(paper_boot.get("boot_tick")) is not int
         or type(paper_boot.get("paper_pid")) is not int
@@ -209,7 +245,7 @@ def independently_audit_recovered_real_rejoin(
         raise Stage28c2bIndependentAuditHold("Paper resident source not archived")
     full = parse_owned_paper_resident_trace(
         owned_paper_session_id=paper_session,
-        expected_world_uuid=_SOURCE_WORLD,
+        expected_world_uuid=source_world,
         owned_paper_log=raw_paper,
         log_ref="paper-owned-original:" + paper_session + ":sha256:" + _sha(final_paper),
     )
@@ -251,8 +287,8 @@ def independently_audit_recovered_real_rejoin(
             or link["clocks_numerically_comparable"] is not False
             or link["physical_action_issue_authorized"] is not False
             or native["paper_session_id"] != paper_session
-            or native["world_id"] != _SOURCE_WORLD
-            or native["branch_id"] != _FORK_BRANCH
+            or native["world_id"] != source_world
+            or native["branch_id"] != fork_branch
             or native["world_epoch"] != paper_boot["world_epoch"]
             or native["action_issue_authorized"] is not False
         ):
@@ -321,7 +357,17 @@ def independently_audit_recovered_real_rejoin(
         copied_cognition = load_persistent_cognition(
             Path(executable) / "selves" / sid / "cognition.json"
         )
-        if source_cognition != copied_cognition:
+        if future_pins is not None and sid == "A":
+            raw_dir = evidence / "i2f-original-dual-model"
+            if (source_cognition != load_persistent_cognition(
+                    raw_dir / "before-cognition.json")
+                    or copied_cognition != load_persistent_cognition(
+                        raw_dir / "after-cognition.json"
+                    )):
+                raise Stage28c2bIndependentAuditHold(
+                    "future A original cognition differs from model-captured Owner"
+                )
+        elif source_cognition != copied_cognition:
             raise Stage28c2bIndependentAuditHold(
                 "original persistent cognition was replaced on real rejoin"
             )
@@ -353,17 +399,21 @@ def independently_audit_recovered_real_rejoin(
     ]:
         _verify_main_thread_ack(
             Path(executable), paper_session=paper_session,
-            world_id=_SOURCE_WORLD, boot_id=paper_boot["paper_boot_id"],
+            world_id=source_world, boot_id=paper_boot["paper_boot_id"],
             ref=ref, tick=tick, paper_stdout=raw_paper,
         )
     return {
         "classification": (
+            "I2F_BASE_FUTURE_V3_ORIGINAL_NATIVE_PAPER_SOURCE_VERIFIED_DEV"
+            if future_pins is not None else
             "I1_BASE_ORIGINAL_NATIVE_PAPER_A_B_SOURCE_VERIFIED_DEV"
             if expected_i1_cpu_sense
             else "REAL_RESTORED_WORLD_ORIGINAL_A_B_NATIVE_REJOIN_WORLDBODY_DEV"
         ),
         "generation_id": report["original_generation"],
-        "world_id": _SOURCE_WORLD, "fork_branch_id": _FORK_BRANCH,
+        "world_id": source_world, "fork_branch_id": fork_branch,
+        "i2f_original_model_bundle_audited": model_audit is not None,
+        "i2f_real_world_model_qualified": False,
         "paper_session_id": paper_session,
         "verified_native_sessions": sorted(live_ids),
         "native_world_time_is_not_paper_tick": True,
