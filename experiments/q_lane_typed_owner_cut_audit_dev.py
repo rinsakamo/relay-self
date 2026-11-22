@@ -194,12 +194,14 @@ def _intents(raw: object) -> dict[str, dict[str, object]]:
             pending = False
             if kind == "reconsidered_release":
                 committed[ident]["final_kind"] = kind
+                committed[ident]["closed_at_ns"] = e["at_ns"]
                 active = None
         elif kind in ("completed", "failed", "invalidated"):
             # An actual Owner may complete/fail an Intent after any
             # previous reconsideration request; the product owner replays
             # these transitions. Never claim complete semantic equivalence.
             committed[ident]["final_kind"] = kind
+            committed[ident]["closed_at_ns"] = e["at_ns"]
             active, pending = None, False
         else:
             raise QTypedOwnerCutHold("unknown Intent event kind")
@@ -240,8 +242,14 @@ def _skills(raw: object, intents: dict[str, dict[str, object]]) -> dict[str, dic
             else:
                 raise QTypedOwnerCutHold("unrecognized Skill transition")
             states.append(e["state"])
-        if actions[0]["at_ns"] < intents[item["intent_id"]]["at_ns"]:
+        intent = intents[item["intent_id"]]
+        if actions[0]["at_ns"] < intent["at_ns"]:
             raise QTypedOwnerCutHold("Skill started before committed Intent")
+        if (
+            "closed_at_ns" in intent
+            and actions[-1]["at_ns"] > intent["closed_at_ns"]
+        ):
+            raise QTypedOwnerCutHold("Skill history continued after Intent was released")
         seen[item["execution_id"]] = {
             "skill_id": item["skill_id"], "intent_id": item["intent_id"],
             "last_state": states[-1], "start_ns": actions[0]["at_ns"],
