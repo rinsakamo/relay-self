@@ -110,3 +110,29 @@ def test_u18_original_paper_log_prefix_change_denies_rearm(monkeypatch):
     )
     with pytest.raises(Q4OriginalPaperHold, match="prefix changed"):
         verify_original_q4_paper_position_window(bridge, "A", receipt, window)
+
+
+def test_u19_paper_prefix_fence_rejects_replayed_s1_samples(monkeypatch):
+    """Synthetic Paper transcript: old S1 samples cannot satisfy a new S2."""
+    bridge, receipt = _case(monkeypatch)
+    from relay_self import q4_original_paper_position_dev as module
+
+    _, raw = module._owned_log_source(bridge, "A")
+    # Same owned Paper boot and JOIN, captured BEFORE the movement samples.
+    pre_move = b"".join(raw.splitlines(keepends=True)[:2])
+    distinct = _build_window(
+        bridge, "A", receipt, after_log_prefix=pre_move,
+    )
+    assert tuple(p.tick for p in distinct.points) == (110, 120, 130)
+
+    # After S1 is fully recorded, no additional Paper position can
+    # retrospectively qualify S2 without fresh post-fence entries.
+    with pytest.raises(Q4OriginalPaperHold, match="stable position"):
+        _build_window(bridge, "A", receipt, after_log_prefix=raw)
+    with pytest.raises(Q4OriginalPaperHold, match="prefix changed"):
+        _build_window(
+            bridge, "A", receipt,
+            after_log_prefix=pre_move.replace(b"version=1", b"version=2"),
+        )
+    with pytest.raises(Q4OriginalPaperHold, match="prefix changed"):
+        _build_window(bridge, "A", receipt, after_log_prefix=pre_move[:-1])
