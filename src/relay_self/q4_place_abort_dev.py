@@ -197,6 +197,7 @@ class Q4DevMotorBoundary:
         self.stopped_at: float | None = None
         self._runner: asyncio.Task | None = None
         self._start_seq: int | None = None
+        self._stop_seq: int | None = None
 
     def bind_runner(self, runner: asyncio.Task) -> None:
         if self._runner is not None or not isinstance(runner, asyncio.Task):
@@ -241,6 +242,7 @@ class Q4DevMotorBoundary:
             or ack.seq <= self._start_seq
         ):
             raise Q4PlaceAbortHold("Q4 original STOP ACK missing or invalid")
+        self._stop_seq = ack.seq
         self.stopped_at = asyncio.get_running_loop().time()
         self.stopped.set()
 
@@ -367,10 +369,14 @@ async def run_q4_dev_place_with_motor_deadline(
             not isinstance(receipt, Stage27PlaceMoveReceipt)
             or receipt.action_id != action_id
             or receipt.native_session_id != session.started.session_id
-            or receipt.start_ack.action_id != action_id + "-start"
-            or receipt.stop_ack.action_id != action_id + "-stop"
+            or not boundary._matches_ack(
+                receipt.start_ack, action_id + "-start", "set_control",
+            )
+            or not boundary._matches_ack(
+                receipt.stop_ack, action_id + "-stop", "clear_controls",
+            )
             or receipt.start_ack.seq != boundary._start_seq
-            or receipt.stop_ack.result != "applied"
+            or receipt.stop_ack.seq != boundary._stop_seq
             or not 0.1 <= receipt.displacement_m <= Q4_MAX_DISPLACEMENT_M
             or journal.unresolved
             or not rows or rows[-1]["action_id"] != action_id
