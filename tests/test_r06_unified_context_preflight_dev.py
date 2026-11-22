@@ -41,6 +41,7 @@ def test_b_i_same_original_owner_read_only_current_and_schema_need(
     before_state = _state(bridge)
     before_turns = dict(bridge.cognitive_work._coverage_adoption_turns)
     report = audit_r06_unified_b_i_current(**_args(case, sid))
+    assert type(report) is R06UnifiedCurrentAudit
     assert report.self_id == sid
     assert report.r05_stage28_aligned
     assert report.unified_b_i_current_aligned
