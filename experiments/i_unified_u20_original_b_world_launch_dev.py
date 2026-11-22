@@ -54,6 +54,8 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CognitiveOwnerFiles,
     StagedRecoveredCognition,
 )
+from relay_self.cognitive_minimal_dev import initial_move_pattern
+from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.innate_schema import SchemaMode
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
@@ -74,6 +76,7 @@ from relay_self.schema_bootstrap_dev import (
     SchemaBootstrapConfig,
     bootstrap_restored_schemas,
 )
+from relay_self.skill_invocation import validate_preset_arguments
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     Stage28InertRecovery,
     stage28_inert_cognitive_recovery,
@@ -129,6 +132,21 @@ def inspect_u20_original_b_source(
             "empty Intent and no replayable Skill required"
         )
     candidate = plan.candidates[0]
+    pattern = initial_move_pattern()
+    definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
+    registry = candidate.semantic.pattern_registry
+    presets = tuple(
+        entry.preset for entry in registry.accepted_presets
+        if entry.receipt.self_id == "B"
+        and entry.preset.pattern_id == pattern.pattern_id
+        and entry.pattern_version == pattern.version
+    )
+    if (
+        pattern not in registry.patterns or len(presets) != 1
+        or presets[0].definition_ref != definition.definition_ref
+    ):
+        raise U20OriginalWorldHold("exactly one accepted original B PLACE MOVE Preset required")
+    validate_preset_arguments(definition, presets[0].arguments)
     if PhysicalActionJournal.read_snapshot(
         candidate.physical_wal_path, self_id="B", require_clear=True,
     ):

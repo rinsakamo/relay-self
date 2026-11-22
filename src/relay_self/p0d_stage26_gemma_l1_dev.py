@@ -1,4 +1,4 @@
-"""Stage26 read-only real bounded L1 over a retained two-Self Preset.
+"""Stage26 read-only real bounded L1 over a retained Self Preset.
 
 This reuses the original #860 resident llama.cpp one-slot owner and the
 accepted-Preset CPU Schema from #923.  A real backend may choose MOVE, DEFER,
@@ -23,6 +23,7 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
 from relay_self.cognitive_minimal_dev import (
     L1Round,
     Option,
+    PatternRegistry,
     Target,
     WorldPercept,
     assemble_l1_select,
@@ -106,6 +107,64 @@ class RealGemmaChoiceWitness:
     provider_kind: str = "REAL_LLAMA_CPP_BOUNDED_PROVIDER_NOT_SCRIPTED"
 
 
+def build_stage26_move_round(
+    *, self_id: str, registry: PatternRegistry, first: MineflayerObservation,
+    definition: SkillDefinition, intent: IntentCommitment,
+    stage27i_precision_target: bool = False,
+) -> tuple[L1Round, Target]:
+    """Build the exact Stage26 model choices using only the CPU."""
+    # The DESTINATION remains a hypothetical operator DEMO target, not a
+    # terrain-confirmed path. The same new native source is its only anchor.
+    scope = ScopeRef(self_id, first.session_id)
+    target_ref = f"destination:stage26-{self_id}"
+    here = first.snapshot.position
+    contract = TargetContract(
+        scope=scope, goal_id="EXPLORE_WORLD",
+        target_ref=target_ref, kind=TargetKind.PLACE,
+        reference_frame=ReferenceFrame.WORLD,
+        provenance=first.provenance,
+        condition=ArrivalCondition(
+            0.0, 0.15 if stage27i_precision_target else 0.6, 1.0,
+        ),
+        bound_seq=first.seq,
+        anchor=MineflayerPosition(
+            here.x + (1.5 if stage27i_precision_target else 1.0),
+            here.y, here.z,
+        ),
+    )
+    target = Target(
+        target_ref, "DESTINATION", first.provenance, first.session_id,
+        first.seq, arrival_contract=contract,
+    )
+    definitions = {("MOVE", 1): definition}
+    allowed = frozenset({("MOVE", 1)})
+    frame = cpu_schema_epoch(
+        WorldPercept(
+            scope, first.provenance, first.seq,
+            hunger=int(first.snapshot.food), fatigue_high=False,
+            targets=(target,), exploration_need=True,
+        ), registry, allowed_skills=allowed,
+        epoch=first.seq, skill_definitions=definitions,
+        use_registered_presets=True,
+    )
+    if (
+        len(frame.options) != 1
+        or frame.options[0].invocation is None
+        or frame.options[0].invocation.parameter_preset_ref is None
+    ):
+        raise Stage26L1Refusal("only one fully bound accepted MOVE option required")
+
+    round_ = assemble_l1_select(frame, intent_owner=intent)
+    numbered = tuple(n for n, value in round_.numbered if isinstance(value, Option))
+    if len(round_.numbered) != 3 or len(numbered) != 1:
+        raise Stage26L1Refusal("MOVE, ESCALATE_L2 and DEFER all required")
+    if tuple(v for _, v in round_.numbered if isinstance(v, str)) != (
+        "ESCALATE_L2", "DEFER",
+    ):
+        raise Stage26L1Refusal("unqualified L1 option surface")
+    return round_, target
+
+
 def prepare_restored_preset_l1(
     *, self_id: str,
     restored: StagedRecoveredCognition,
@@ -142,7 +201,7 @@ def prepare_restored_preset_l1(
         or owner.pattern_registry != restored.semantic.pattern_registry
     ):
         raise Stage26L1Refusal(
-            "recovered A/B Schema or newly bound native owner source missing"
+            "recovered Self Schema or newly bound native owner source missing"
         )
     try:
         self_epoch, native_id, world_epoch = lane.cognitive_work.current_scope(self_id)
@@ -158,56 +217,12 @@ def prepare_restored_preset_l1(
     if definition.skill_id != "MOVE" or definition.version != 1:
         raise Stage26L1Refusal("only original bounded MOVE@1 candidate allowed")
 
-    # The DESTINATION remains a hypothetical operator DEMO target, not a
-    # terrain-confirmed path. The same new native source is its only anchor.
-    scope = ScopeRef(self_id, first.session_id)
-    target_ref = f"destination:stage26-{self_id}"
-    here = first.snapshot.position
-    contract = TargetContract(
-        scope=scope, goal_id="EXPLORE_WORLD",
-        target_ref=target_ref, kind=TargetKind.PLACE,
-        reference_frame=ReferenceFrame.WORLD,
-        provenance=first.provenance,
-        condition=ArrivalCondition(
-            0.0, 0.15 if stage27i_precision_target else 0.6, 1.0,
-        ),
-        bound_seq=first.seq,
-        anchor=MineflayerPosition(
-            here.x + (1.5 if stage27i_precision_target else 1.0),
-            here.y, here.z,
-        ),
-    )
-    target = Target(
-        target_ref, "DESTINATION", first.provenance, first.session_id,
-        first.seq, arrival_contract=contract,
-    )
-    definitions = {("MOVE", 1): definition}
-    allowed = frozenset({("MOVE", 1)})
-    frame = cpu_schema_epoch(
-        WorldPercept(
-            scope, first.provenance, first.seq,
-            hunger=int(first.snapshot.food), fatigue_high=False,
-            targets=(target,), exploration_need=True,
-        ), restored.semantic.pattern_registry, allowed_skills=allowed,
-        epoch=first.seq, skill_definitions=definitions,
-        use_registered_presets=True,
-    )
-    if (
-        len(frame.options) != 1
-        or frame.options[0].invocation is None
-        or frame.options[0].invocation.parameter_preset_ref is None
-    ):
-        raise Stage26L1Refusal("only one fully bound accepted MOVE option required")
-
     intent = IntentCommitment()
-    round_ = assemble_l1_select(frame, intent_owner=intent)
-    numbered = tuple(n for n, value in round_.numbered if isinstance(value, Option))
-    if len(round_.numbered) != 3 or len(numbered) != 1:
-        raise Stage26L1Refusal("MOVE, ESCALATE_L2 and DEFER all required")
-    if tuple(v for _, v in round_.numbered if isinstance(v, str)) != (
-        "ESCALATE_L2", "DEFER",
-    ):
-        raise Stage26L1Refusal("unqualified L1 option surface")
+    round_, target = build_stage26_move_round(
+        self_id=self_id, registry=restored.semantic.pattern_registry,
+        first=first, definition=definition, intent=intent,
+        stage27i_precision_target=stage27i_precision_target,
+    )
     # Source-unique request identity prevents old native epochs presenting an
     # apparently current request with the same schema epoch/choice number.
     request = replace(
@@ -217,7 +232,7 @@ def prepare_restored_preset_l1(
     round_ = replace(round_, request=request)
     return PreparedStage26L1(
         self_id, restored.semantic.cut.former_native_session_id,
-        first.session_id, first, restored, frame.registry_revision,
+        first.session_id, first, restored, round_.frame.registry_revision,
         round_, target, owner, intent, definition,
         f"stage26-{first.session_id}-{first.seq}", world_epoch,
     )

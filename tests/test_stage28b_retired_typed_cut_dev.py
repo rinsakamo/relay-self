@@ -1,6 +1,7 @@
 """Stage28b synthetic original owner + one stopped Paper typed cut; no Minecraft."""
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -11,10 +12,16 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     CognitiveOwnerFiles,
 )
-from relay_self.cognitive_minimal_dev import initial_patterns
+from relay_self.cognitive_minimal_dev import (
+    PresetAcceptanceReceipt,
+    initial_patterns,
+    initial_patterns_with_relative_move,
+)
 from relay_self.coordinated_autosave_runtime_dev import StoppedWorldReceipt
 from relay_self.coordinated_checkpoint_dev import restore_generation
+from relay_self.initial_skill_ir import initial_skill_definitions
 from relay_self.intent import IntentCommitment
+from relay_self.p0d_stage26_gemma_l1_dev import Stage26L1Refusal, build_stage26_move_round
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
@@ -22,7 +29,14 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.schema_bootstrap_dev import (
+    SchemaBootstrapConfig,
+    bootstrap_fresh_schemas,
+    create_fresh_owner,
+)
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
+from relay_self.skill_invocation import SkillBudget, SkillConstraints, SkillParameterPreset
 from relay_self.stage28_cognitive_recovery_gate_dev import (
     stage28_inert_cognitive_recovery,
 )
@@ -30,6 +44,7 @@ from relay_self.world_resident_lifecycle_dev import (
     WorldLifetime,
     WorldOnlyQuiescenceEvidence,
 )
+from test_stage24a_resident_l1_move_dev import probe
 
 
 class FakeOwnedPaper:
@@ -60,7 +75,7 @@ class FakeRetiredBridge:
             world=WorldLifetime(
                 "world-1", "source", "paper-owned-original", 0, 100,
             ),
-            self_roster=("A", "B"),
+            self_roster=tuple(sorted(owners)),
         )
         self.quiescence_checks = 0
         self.dirty_after_first = False
@@ -70,12 +85,12 @@ class FakeRetiredBridge:
         if self.dirty_after_first and self.quiescence_checks > 1:
             raise stage28b.Stage28bRetiredCutHold("late native rejoin/lease")
         return WorldOnlyQuiescenceEvidence(
-            0, ("A", "B"), "original-retirement-world0",
+            0, self.lifecycle.self_roster, "original-retirement-world0",
             True, True, True, True, True,
         )
 
 
-def _setup(tmp_path, monkeypatch):
+def _setup(tmp_path, monkeypatch, *, roster=("A", "B")):
     monkeypatch.setattr(stage28b, "OwnedPaperWorld", FakeOwnedPaper)
     monkeypatch.setattr(stage28b, "OwnedResidentPhysicalBridge", FakeRetiredBridge)
     world = tmp_path / "world"
@@ -88,7 +103,7 @@ def _setup(tmp_path, monkeypatch):
     evidence = tmp_path / "evidence"
     evidence.mkdir()
     owners = {}
-    for sid in ("A", "B"):
+    for sid in roster:
         root = tmp_path / ("self-" + sid)
         root.mkdir()
         wal = root / "physical-wal.json"
@@ -183,3 +198,72 @@ def test_stage28b_tampered_original_cognition_refused_before_stop(
         )
     assert paper.stop_count == 0
     assert not list(store.iterdir())
+
+
+def test_single_b_cpu_preset_survives_typed_cut_and_builds_stage26_l1(tmp_path, monkeypatch):
+    """Synthetic lifecycle fixture. No Paper, native process, or model is called."""
+    bridge, paper, store, evidence = _setup(tmp_path, monkeypatch, roster=("B",))
+    initial = bridge.owners["B"]
+    config = SchemaBootstrapConfig(exploration_enabled=True, destination_move=True)
+    owner = create_fresh_owner(
+        config=config, retained=initial.retained, intent=initial.intent,
+        native_session_id=initial.native_session_id, last_observed_tick=105,
+        files=initial.files, physical_supervisor=initial.supervisor,
+    )
+    bridge.owners["B"] = owner
+    resident = ResidentCognitiveWorkOwner(bridge.owners)
+    bridge.cognitive_work = resident
+    bootstrap_fresh_schemas(resident, config)
+    resident.bind_login(self_id="B", native_session_id="native-original", world_epoch=0,
+                        world_tick=105)
+
+    definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
+    first = probe(10, native="native-fresh")
+    for registry in (owner.pattern_registry, initial_patterns_with_relative_move()):
+        with pytest.raises(Stage26L1Refusal, match="fully bound accepted MOVE"):
+            build_stage26_move_round(
+                self_id="B", registry=registry, first=first,
+                definition=definition, intent=IntentCommitment(),
+            )
+    preset = SkillParameterPreset(
+        "exploration-move", "Walk", 1, definition.definition_ref,
+        SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
+        Provenance("test-fixture", "proposed"),
+    )
+    receipt = PresetAcceptanceReceipt(
+        "B", "test-acceptance", preset.preset_ref, Provenance("test-fixture", "accepted"),
+    )
+    resident.publish_accepted_move_preset(
+        preset=preset, definition=definition, receipt=receipt,
+        scope=resident.current_scope("B"), expected_revision=owner.pattern_registry.revision,
+    )
+    resident.fence_self("B")
+    retired = asyncio.run(resident.retire_self("B"))
+    save_persistent_cognition(owner.files.cognition_file, owner.retained)
+    resident.mark_offline(retired)
+
+    result = stage28b.capture_retired_resident_typed_world(
+        bridge=bridge, paper=paper, store=store, evidence_dir=evidence,
+        expected_self_ids=("B",),
+    )
+    (cut,) = verify_typed_generation(result.generation)
+    assert cut.self_id == "B"
+    assert cut.pattern_registry.accepted_presets[0].receipt == receipt
+    assert cut.schema_snapshot.revision == cut.pattern_registry.revision
+    dest = tmp_path / "restored-b"
+    restore_generation(result.generation, dest, restore_id="single-b-restore")
+    plan = stage28_inert_cognitive_recovery(
+        result.generation, dest,
+        expected_self_ids=("B",), expected_source_world_id="world-1",
+    )
+    assert not plan.candidates[0].issue_authorized
+    round_, target = build_stage26_move_round(
+        self_id="B", registry=plan.candidates[0].semantic.pattern_registry, first=first,
+        definition=definition, intent=IntentCommitment(),
+    )
+    option, = round_.frame.options
+    assert tuple(n for n, _ in round_.numbered) == ("1", "2", "3")
+    assert option.invocation.parameter_preset_ref == preset.preset_ref
+    assert option.invocation.target.contract == target.arrival_contract
+    assert option.invocation.budget == preset.budget
+    assert option.invocation.target.kind == "DESTINATION"

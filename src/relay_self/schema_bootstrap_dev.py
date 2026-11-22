@@ -2,7 +2,11 @@
 from dataclasses import dataclass
 
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
-from relay_self.cognitive_minimal_dev import initial_patterns, initial_patterns_with_relative_move
+from relay_self.cognitive_minimal_dev import (
+    initial_patterns,
+    initial_patterns_with_move,
+    initial_patterns_with_relative_move,
+)
 from relay_self.exploration_schema_record_dev import require_recorded_schema
 from relay_self.innate_schema import SchemaMode
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
@@ -16,23 +20,35 @@ class SchemaBootstrapHold(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class SchemaBootstrapConfig:
     exploration_enabled: bool = False
+    destination_move: bool = False
 
     def __post_init__(self):
         if type(self.exploration_enabled) is not bool:
             raise ValueError("explicit boolean exploration configuration required")
+        if type(self.destination_move) is not bool or (
+            self.destination_move and not self.exploration_enabled
+        ):
+            raise ValueError("destination MOVE requires explicit exploration activation")
 
 
 def fresh_pattern_registry(config: SchemaBootstrapConfig):
     if not isinstance(config, SchemaBootstrapConfig):
         raise ValueError("explicit schema bootstrap configuration required")
+    if config.destination_move:
+        return initial_patterns_with_move()
     return initial_patterns_with_relative_move() if config.exploration_enabled else initial_patterns()
 
 
 def create_fresh_owner(*, config: SchemaBootstrapConfig, retained, intent, native_session_id,
                        last_observed_tick, files, physical_supervisor):
     """Construct the original checkpoint owner with the explicitly selected registry."""
+    registry = fresh_pattern_registry(config)
+    if config.destination_move:
+        if retained.identity.self_id != "B" or retained.pattern_registry is not None:
+            raise SchemaBootstrapHold("destination MOVE requires fresh original B")
+        retained = retained.retain_schema_registry(registry)
     owner = CheckpointedCognitiveOwner(
-        retained=retained, intent=intent, pattern_registry=fresh_pattern_registry(config),
+        retained=retained, intent=intent, pattern_registry=registry,
         native_session_id=native_session_id, last_observed_tick=last_observed_tick,
         files=files, physical_supervisor=physical_supervisor,
     )
@@ -44,6 +60,8 @@ def bootstrap_fresh_schemas(resident: ResidentCognitiveWorkOwner, config: Schema
     """Register separate snapshots before login, after original owners are created."""
     expected = fresh_pattern_registry(config)
     with resident.lock:
+        if config.destination_move and tuple(resident.owners) != ("B",):
+            raise SchemaBootstrapHold("destination MOVE bootstrap requires single original B")
         # Check every Self before publishing any registration.
         for sid, owner in resident.owners.items():
             state = resident._state(sid)

@@ -58,10 +58,8 @@ def _retired_owner_snapshots(
     schema_snapshots: dict[str, SchemaSnapshot] | None = None,
 ) -> tuple[SelfSnapshotSource, ...]:
     """Serialize canonical original owners, never parallel shadow owners."""
-    if tuple(sorted(owners)) != ("A", "B"):
-        raise Stage28bRetiredCutHold("exact A/B original Self roster required")
     sources = []
-    for self_id in ("A", "B"):
+    for self_id in sorted(owners):
         owner = owners[self_id]
         if (
             not isinstance(owner, CheckpointedCognitiveOwner)
@@ -117,8 +115,9 @@ def capture_retired_resident_typed_world(
     paper: OwnedPaperWorld,
     store: Path,
     evidence_dir: Path,
+    expected_self_ids: tuple[str, ...] = ("A", "B"),
 ) -> Stage28bRetiredCutResult:
-    """One foreground original-owner cut after real A/B logout.
+    """One foreground original-owner cut after real original Self logout.
 
     The original bridge's world-only quiescence verifies *absence* of all
     native children, unresolved WAL, unretired CPU/GPU tasks, peer traffic and
@@ -138,20 +137,23 @@ def capture_retired_resident_typed_world(
         raise Stage28bRetiredCutHold("one original bridge/owned Paper and separate stores")
     lifecycle = bridge.lifecycle
     world = lifecycle.world
-    if tuple(sorted(bridge.owners)) != ("A", "B"):
-        raise Stage28bRetiredCutHold("exact A/B original Self roster required")
+    if (
+        expected_self_ids not in (("A", "B"), ("B",))
+        or tuple(sorted(bridge.owners)) != expected_self_ids
+    ):
+        raise Stage28bRetiredCutHold("exact A/B or explicitly requested single B original roster required")
     if (
         paper.held_uncertain
         or paper.owned_session_id != world.paper_session_id
         or paper.world_id != world.world_id
         or paper.branch_id != world.branch_id
         or tuple(sorted(bridge.owners)) != lifecycle.self_roster
-        or lifecycle.self_roster != ("A", "B")
+        or lifecycle.self_roster != expected_self_ids
     ):
         raise Stage28bRetiredCutHold("resident/Paper source World identity mismatch")
     source = bridge.world_only_quiescence()
     if (
-        source.checked_self_ids != ("A", "B")
+        source.checked_self_ids != expected_self_ids
         or source.world_epoch != world.epoch
         or not source.original_physical_issuer_closed
         or not source.native_sessions_absent
@@ -159,7 +161,7 @@ def capture_retired_resident_typed_world(
         or not source.all_gpu_epochs_retired
         or not source.pending_peer_messages_empty
     ):
-        raise Stage28bRetiredCutHold("original A/B retirement not independently qualified")
+        raise Stage28bRetiredCutHold("original Self retirement not independently qualified")
 
     # Keep an independently new typed generation. Do not infer saved cognition
     # from a World-only generation or borrow any earlier owner-state.json.
@@ -200,14 +202,14 @@ def capture_retired_resident_typed_world(
         or not stopped.all_dimensions_saved
         or stopped.logical_tick < world.world_tick
         or any(bridge.owners[sid].last_observed_tick > stopped.logical_tick
-               for sid in ("A", "B"))
+               for sid in expected_self_ids)
     ):
         raise Stage28bRetiredCutHold(
             "stopped Paper tick/source incompatible with original Self cut"
         )
     generation = capture_typed_generation(
         paper.world_dir, store, sequence=sequence,
-        expected_self_ids=("A", "B"), selves=sources,
+        expected_self_ids=expected_self_ids, selves=sources,
         world_id=world.world_id, branch_id=world.branch_id,
         logical_tick=stopped.logical_tick,
         tick_source_ref=stopped.tick_source_ref,
@@ -217,8 +219,8 @@ def capture_retired_resident_typed_world(
     )
     verify_generation(generation)
     cuts = verify_typed_generation(generation)
-    if tuple(c.self_id for c in cuts) != ("A", "B"):
-        raise Stage28bRetiredCutHold("typed generation missing original A/B owners")
+    if tuple(c.self_id for c in cuts) != expected_self_ids:
+        raise Stage28bRetiredCutHold("typed generation missing original owners")
     # Deliberate no Paper restart here. A Stage28c fresh World branch restore
     # must be a separately qualified action, with completely new native IDs.
     return Stage28bRetiredCutResult(
