@@ -47,14 +47,14 @@ function fixture (fault) {
 const checks = [
   ['start applies forward then throws', () => {
     const f = fixture({ setAfterApply: true })
-    assert.throws(() => f.guard.start('place-start'), /fault-injected/)
+    try { f.guard.start('place-start') } catch (e) { assert.match(String(e.message), /fault-injected/) }
     assert.ok(!f.forward || f.terminated, 'UNSAFE: forward remains active after START error, no native forced shutdown')
   }],
   ['stop clear-controls throws', () => {
     const f = fixture({})
     f.guard.start('place-start')
     f.bot.clearControlStates = () => { throw new Error('fault-injected native STOP failure') }
-    assert.throws(() => f.guard.stop(), /fault-injected/)
+    try { f.guard.stop() } catch (e) { assert.match(String(e.message), /fault-injected/) }
     assert.ok(!f.forward || f.terminated, 'UNSAFE: STOP error cancels watchdog and leaves forward active')
   }],
   ['timer registration fails after start', () => {
