@@ -334,6 +334,10 @@ async def complete_prepared_place_move_dev(
             motor_boundary.accept_start_ack(start)
         await asyncio.sleep(pulse_seconds)
         attempted_stop = True
+        if motor_boundary is not None:
+            motor_boundary.before_native_stop(
+                action_id=stop_id, session_id=session.started.session_id,
+            )
         await session.send_clear_controls(stop_id)
         stop = await _native(
             session, session_id=current_probe.session_id,
