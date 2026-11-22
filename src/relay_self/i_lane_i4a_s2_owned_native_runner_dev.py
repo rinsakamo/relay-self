@@ -59,7 +59,7 @@ def require_i4a_s2_owned_native_source_audit(
     """
     if (
         type(session) is not MineflayerProcessSession
-        or type(path) is not Path or not path.is_absolute()
+        or not isinstance(path, Path) or not path.is_absolute()
         or path.is_symlink() or not path.is_file()
         or not path.parent.is_dir() or path.parent.is_symlink()
         or session._raw_source_audit_finished
