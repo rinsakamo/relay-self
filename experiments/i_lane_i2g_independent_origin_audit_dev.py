@@ -213,7 +213,8 @@ def independently_read_i2g_original(
                 or trial.get("b_move_action_causality") is not False
                 or trial.get("real_l1_l2_gpu_executed") is not False
                 or trial.get("i2g_initial_exploration_pattern_learned") is not False
-                or trial.get("i2g_initial_physical_action_issued") is not False):
+                or trial.get("i2g_initial_physical_action_issued") is not False
+                or trial.get("i2g_original_issuer_observation_only") is not True):
             raise I2gIndependentOriginHold("unqualified World original trial/effect")
         checked = inspect_stage28c_source(
             source, expected_world_id=world_id,
