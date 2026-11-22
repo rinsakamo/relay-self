@@ -24,6 +24,9 @@ _TERMINAL = frozenset((
     "NATIVE_ATTACK_HURT_OBSERVED",
     "NATIVE_MOVE_SETTLED",
     "NATIVE_MOVE_NO_NET_DISPLACEMENT",
+    "NATIVE_PLACE_MOVE_SETTLED",
+    "NATIVE_PLACE_MOVE_NO_PROGRESS",
+    "NATIVE_PLACE_MOVE_OVERSHOOT",
 ))
 
 
@@ -75,6 +78,7 @@ class IUnifiedS1Witness:
     native_session_id: str
     world_epoch: int
     canonical_wal_path: str
+    canonical_schema: int
     canonical_prefix_sha256: str
     s1_rows: tuple[dict, ...]
     s1_digest: str
@@ -157,7 +161,8 @@ def capture_i_unified_s1_cpu(
                 raise IUnifiedPhysicalHold("original B S1 epoch / prefix changed")
             return IUnifiedS1Witness(
                 self_id, owner, epoch, native, world_epoch,
-                str(journal.path), digest, rows, _digest(rows),
+                str(journal.path), original.schema_version,
+                digest, rows, _digest(rows),
             )
     except (IUnifiedSourceHold, IUnifiedPhysicalHold, PhysicalJournalError,
             AttributeError, OSError, ValueError) as exc:
@@ -183,6 +188,8 @@ def audit_i_unified_s2_cpu(
                 or str(journal.path) != s1.canonical_wal_path
                 or s1.source_custody_authenticated or s1.physical_issue_authorized
                 or _digest(s1.s1_rows) != s1.s1_digest
+                or type(s1.canonical_schema) is not int
+                or s1.canonical_schema not in (1, 2)
                 or type(s1.canonical_prefix_sha256) is not str
                 or len(s1.canonical_prefix_sha256) != 64
             ):
@@ -194,8 +201,10 @@ def audit_i_unified_s2_cpu(
             if (
                 latest.digest != journal.digest or latest.records != rows
                 or len(rows) <= len(s1.s1_rows)
-                or latest.certified_prefix_digest(len(s1.s1_rows))
-                != s1.canonical_prefix_sha256
+                or latest.schema_version < s1.canonical_schema
+                or latest.certified_prefix_digest(
+                    len(s1.s1_rows), source_schema=s1.canonical_schema,
+                ) != s1.canonical_prefix_sha256
                 or prefix != s1.s1_rows or _digest(prefix) != s1.s1_digest
                 or not _distinct_runs(prefix, s2, native)
                 or _scope(bridge, self_id) != (owner, epoch, native, world_epoch)
