@@ -147,7 +147,7 @@ the custody verifier, including tree and object content inspection.
 Legacy `.git/info/grafts` can independently rewrite parents, so any
 nonempty or symlinked graft file causes HOLD. Empty regular graft files
 are accepted. The Git path is discovered with
-`git rev-parse --path-format=absolute --git-path info/grafts` to work
+`git rev-parse --path-format=absolute --git-common-dir` + literal `info/grafts` to work
 with ordinary repositories and linked worktrees.
 
 Adversarial disposable Git tests cover merge laundering with
