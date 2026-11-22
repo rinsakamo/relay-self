@@ -520,6 +520,32 @@ class OwnedResidentPhysicalBridge:
             raise OwnedResidentBridgeError("original cognitive resident not attached")
         return self.cognitive_work.poll_normal_present_cpu(bridge=self)
 
+    def start_normal_present_cpu_schedule(self, *, interval_s: float = 0.05):
+        """Start periodic A/B Present using the original Resident CPU tasks.
+
+        Bound source history, current Paper and both original Native sessions
+        are prerequisites. No GPU, Action or persistent cognition mutation.
+        """
+        from relay_self.b_np1b_normal_present_scheduler_dev import (
+            start_normal_resident_present_cpu,
+        )
+
+        return start_normal_resident_present_cpu(
+            bridge=self, interval_s=interval_s,
+        )
+
+    def require_scheduled_present_cpu(self, self_id: str):
+        """Read a scheduler result ONLY after a fresh original-source recheck."""
+        from relay_self.b_np1b_normal_present_scheduler_dev import NormalCpuScheduleHold
+
+        resident = self.cognitive_work
+        if resident is None:
+            raise NormalCpuScheduleHold("original cognitive resident missing")
+        scheduler = getattr(resident, "_normal_present_scheduler", None)
+        if scheduler is None or scheduler.bridge is not self:
+            raise NormalCpuScheduleHold("original CPU schedule not installed")
+        return scheduler.require_current(self_id)
+
     def world_only_quiescence(self) -> WorldOnlyQuiescenceEvidence:
         """Only a scoped NO-COMPUTE/NO-PEER qualification, not arbitrary L1/L2."""
         if (
