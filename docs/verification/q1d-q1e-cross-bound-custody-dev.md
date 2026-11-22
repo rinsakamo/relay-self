@@ -137,3 +137,26 @@ CPU_OFFLINE_DEV consistency classification but **must not upgrade**
 to INDEPENDENT_ORIGINAL_SOURCE_AUDITED_DEV, REAL_WORLD_DEV, QUAL or SCIENCE
 without their own original evidence. Current overall state remains
 **I4A_S1_S2_REAL_WORLD_HOLD / QUAL_NO_GO / SCIENCE_NOT_RUN**.
+
+
+## Q1d hardening: byte-identical aliases under other Git paths
+
+A separate hostile gap involved a Git object with the **exact same bytes**
+as a claimed S1 anchor or S2 WAL appearing earlier under another path.
+A file-path-only birth check could miss it after the earlier copy is deleted
+or renamed. Git blob IDs are content-addressed, so the reader now scans
+**all committed regular and symlink blob entries** in root, pre-S1 and
+each intermediate custody tree for the same byte-identical anchor/S2 blobs.
+
+An earlier exact byte alias rejects source custody even when the named
+artifact path was absent then. Synthetic hostile fixtures cover an S1
+anchor copied at an earlier commit, an S2 artifact hidden in the pre-S1
+commit under a different name, and S2 present and then deleted as a
+renamed intermediate file.
+
+This proves only byte-identical alias absence in the **selected bounded Git
+history**. Different byte serializations of semantically equivalent
+events, other Git repositories, uncommitted source files, rewritten
+independently controlled histories and the physical time of actual S1/S2
+events remain outside Q's attestation. No origin/World classification is
+promoted.
