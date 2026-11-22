@@ -1,4 +1,4 @@
-"""U17 gate tests: no simulated WORLD, no forged original S1 acceptance."""
+"""U18: no fabricated S1 callback may enter the real two-MOVE flow."""
 from __future__ import annotations
 
 import asyncio
@@ -10,36 +10,42 @@ from experiments.i_unified_u17_original_two_place_trial_dev import (
     U17OriginalS1Settled,
     run_original_u17_two_place_trial_dev,
 )
+from relay_self.i_lane_i4a_s1_owned_native_runner_dev import (
+    issue_original_s1_place_on_owned_native_dev,
+)
 from relay_self.i_lane_i4a_s2_owned_native_runner_dev import (
     I4AS2OwnedNativeHold,
     continue_original_s1_to_s2_owned_native_dev,
 )
 
 
-def test_u17_path_uses_original_s1_and_no_independent_sender():
+def test_u18_real_s1_calls_original_model_actionport_and_wal_not_external_callback():
     assert inspect.iscoroutinefunction(run_original_u17_two_place_trial_dev)
+    assert inspect.iscoroutinefunction(issue_original_s1_place_on_owned_native_dev)
     assert inspect.iscoroutinefunction(continue_original_s1_to_s2_owned_native_dev)
-    arg_names = set(inspect.signature(
+    params = set(inspect.signature(
         run_original_u17_two_place_trial_dev,
     ).parameters)
-    assert {"bridge", "original_s1", "propose_grant", "issue_grant",
-            "operator_permit"}.issubset(arg_names)
-    assert not {"session", "native_sender", "physical_issuer"} & arg_names
+    assert {
+        "bridge", "restored", "s1_operator_permit", "s2_operator_permit",
+        "grant_for_action",
+    }.issubset(params)
+    assert not {"original_s1", "session", "native_sender", "physical_issuer"} & params
     assert U17OriginalS1Settled.__dataclass_fields__["loop"] is not None
 
 
-def test_u17_no_original_bridge_never_calls_s1(tmp_path):
+def test_u18_no_original_bridge_cannot_enter_model_or_native(tmp_path):
     calls = []
 
-    async def forbidden_s1():
+    def forbidden_grants(_binding):
         calls.append("unexpected")
-        raise AssertionError("synthetic S1 callback should never start")
+        raise AssertionError("forged S1 must never run")
 
-    with pytest.raises(I4AS2OwnedNativeHold, match="isolated original"):
+    with pytest.raises(I4AS2OwnedNativeHold, match="isolated Original B"):
         asyncio.run(run_original_u17_two_place_trial_dev(
-            bridge=object(), self_id="A", evidence_dir=tmp_path,
-            original_s1=forbidden_s1, propose_grant=None,
-            issue_grant=None, operator_permit=None, provenance=None,
-            real_world_granted=True,
+            bridge=object(), self_id="B", evidence_dir=tmp_path,
+            restored=object(), grant_for_action=forbidden_grants,
+            s1_operator_permit=None, s2_operator_permit=None,
+            provenance=None, real_world_granted=True,
         ))
     assert calls == []
