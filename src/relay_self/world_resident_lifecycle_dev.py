@@ -181,10 +181,16 @@ class WorldResidentLifecycle:
     def __init__(
         self, *, world: WorldLifetime,
         persisted_self_refs: dict[str, str],
+        independent_native_world_clock: bool = False,
     ) -> None:
         if (
             not isinstance(world, WorldLifetime)
             or type(persisted_self_refs) is not dict
+            or type(independent_native_world_clock) is not bool
+            or (independent_native_world_clock and (
+                world.epoch < 1
+                or not world.paper_session_id.startswith("paper-owned-")
+            ))
         ):
             raise ResidentLifecycleError("one World and explicit Self registry required")
         for sid, ref in persisted_self_refs.items():
@@ -192,6 +198,8 @@ class WorldResidentLifecycle:
             _ref("persisted cognition source", ref)
         self._lock = threading.RLock()
         self._world = world
+        # Native full-day World time and Paper process-local tick are distinct clocks.
+        self._independent_native_world_clock = independent_native_world_clock
         self._self = {
             sid: _Resident(sid, Presence.OFFLINE, ref)
             for sid, ref in persisted_self_refs.items()
@@ -320,7 +328,10 @@ class WorldResidentLifecycle:
                 or evidence.paper_session_id != self._world.paper_session_id
                 or evidence.world_epoch != self._world.epoch
                 or type(evidence.observed_world_tick) is not int
-                or evidence.observed_world_tick < self._world.world_tick
+                or (
+                    not self._independent_native_world_clock
+                    and evidence.observed_world_tick < self._world.world_tick
+                )
                 or evidence.native_session_id in {
                     a.native_session_id for a in self._self.values()
                     if a.status is Presence.ONLINE
@@ -343,7 +354,8 @@ class WorldResidentLifecycle:
             actor.last_observed_world = WorldLifetime(
                 self._world.world_id, self._world.branch_id,
                 self._world.paper_session_id, self._world.epoch,
-                evidence.observed_world_tick,
+                self._world.world_tick if self._independent_native_world_clock
+                else evidence.observed_world_tick,
             )
             return self.view(ticket.self_id)
 

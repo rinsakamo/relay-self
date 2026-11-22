@@ -100,6 +100,7 @@ class PaperMainThreadTickReader:
         timeout_seconds: float = 4.0,
         monotonic: Callable[[], float] = time.monotonic,
         pause: Callable[[float], None] = time.sleep,
+        allow_repeated_same_boot: bool = False,
     ) -> None:
         self.expected_world_uuid = _canonical_uuid(expected_world_uuid)
         self.spool_dir = Path(spool_dir)
@@ -111,6 +112,7 @@ class PaperMainThreadTickReader:
             any(p.is_symlink() or not p.is_dir() for p in (self.requests, self.acks))
             or not callable(read_owned_log)
             or not callable(monotonic) or not callable(pause)
+            or type(allow_repeated_same_boot) is not bool
             or type(timeout_seconds) not in (int, float)
             or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 30
         ):
@@ -121,13 +123,16 @@ class PaperMainThreadTickReader:
         self.pause = pause
         self._seen_sessions: dict[str, str] = {}
         self._seen_boots: set[str] = set()
+        self._last_ticks: dict[str, int] = {}
+        self.allow_repeated_same_boot = allow_repeated_same_boot
 
     def __call__(self, owned_server_session: str) -> PaperTickReceipt:
         # One source-qualified tick witness per server generation.
         if (
             type(owned_server_session) is not str
             or not owned_server_session.startswith("paper-owned-")
-            or owned_server_session in self._seen_sessions
+            or (owned_server_session in self._seen_sessions
+                and not self.allow_repeated_same_boot)
             or _TOKEN.fullmatch(owned_server_session) is None
         ):
             raise PaperTickWitnessError("unknown or reused Paper process session")
@@ -171,7 +176,18 @@ class PaperMainThreadTickReader:
                     claimed["nonce"] != nonce
                     or claimed["server_session_id"] != owned_server_session
                     or claimed["world_uuid"] != self.expected_world_uuid
-                    or claimed["boot_id"] in self._seen_boots
+                    or (
+                        claimed["boot_id"] in self._seen_boots
+                        and claimed["boot_id"] != self._seen_sessions.get(owned_server_session)
+                    )
+                    or (
+                        owned_server_session in self._seen_sessions
+                        and claimed["boot_id"] != self._seen_sessions[owned_server_session]
+                    )
+                    or (
+                        owned_server_session in self._last_ticks
+                        and int(claimed["paper_tick"]) < self._last_ticks[owned_server_session]
+                    )
                 ):
                     raise PaperTickWitnessError("Paper tick ACK from stale/foreign boot or World")
                 marker = (
@@ -198,6 +214,7 @@ class PaperMainThreadTickReader:
                 if ready_indices and ack_indices and min(ready_indices) < max(ack_indices):
                     self._seen_sessions[owned_server_session] = claimed["boot_id"]
                     self._seen_boots.add(claimed["boot_id"])
+                    self._last_ticks[owned_server_session] = int(claimed["paper_tick"])
                     digest = hashlib.sha256(raw).hexdigest()
                     return PaperTickReceipt(
                         server_session_id=owned_server_session,

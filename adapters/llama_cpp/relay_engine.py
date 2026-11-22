@@ -612,6 +612,7 @@ class LlamaCppRelayProvider:
         model: str,
         timeout: float = 60.0,
         systemone_endpoint: str | None = None,
+        systemone_raw_dir: Path | None = None,
     ) -> None:
         self._endpoint = _validate_endpoint(endpoint)
         self._systemone_endpoint = (
@@ -629,6 +630,17 @@ class LlamaCppRelayProvider:
         self._model = model
         self._timeout = float(timeout)
         self._stage26_audit_dir: Path | None = None
+        if systemone_raw_dir is not None and (
+            self._systemone_endpoint is None
+            or not isinstance(systemone_raw_dir, Path)
+            or systemone_raw_dir.is_symlink()
+            or not systemone_raw_dir.is_dir()
+            or any(systemone_raw_dir.iterdir())
+        ):
+            raise ValueError(
+                "systemone raw capture requires a new empty owned evidence directory"
+            )
+        self._systemone_raw_dir = systemone_raw_dir
 
     def enable_stage26_raw_audit(self, directory: Path) -> None:
         """One-time opt-in; evidence dir must exist and be empty."""
@@ -699,7 +711,7 @@ class LlamaCppRelayProvider:
                 request,
                 model=self._model,
             )
-            body = self._call(
+            body = self._call_for_request(
                 request_body,
                 endpoint=self._systemone_endpoint,
                 request_id=request.request_id,
@@ -726,7 +738,7 @@ class LlamaCppRelayProvider:
                 request,
                 model=self._model,
             )
-            body = self._call(request_body, request_id=request.request_id)
+            body = self._call_for_request(request_body, request_id=request.request_id)
             raw_text, call_facts = _extract_completion(
                 body,
                 request_body=request_body,
@@ -753,7 +765,7 @@ class LlamaCppRelayProvider:
             mode=mode,
             model=self._model,
         )
-        body = self._call(request_body, request_id=request.request_id)
+        body = self._call_for_request(request_body, request_id=request.request_id)
         raw_text, call_facts = _extract_completion(
             body,
             request_body=request_body,
@@ -779,6 +791,24 @@ class LlamaCppRelayProvider:
             call_facts=call_facts,
         )
 
+    def _call_for_request(
+        self,
+        request_body: dict[str, object],
+        *,
+        request_id: str,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        """Preserve I1 original provider subclasses while binding Stage26 audit.
+
+        _call(request_body, endpoint=...) is the original polymorphic source
+        contract. Only Stage26's explicit raw audit adds a request_id kwarg.
+        """
+        if self._stage26_audit_dir is None:
+            return self._call(request_body, endpoint=endpoint)
+        return self._call(
+            request_body, endpoint=endpoint, request_id=request_id,
+        )
+
     def _call(
         self,
         request_body: dict[str, object],
@@ -792,6 +822,13 @@ class LlamaCppRelayProvider:
             separators=(",", ":"),
         ).encode("utf-8")
         response_path: Path | None = None
+        capture = (
+            self._systemone_raw_dir
+            if target_endpoint == self._systemone_endpoint
+            else None
+        )
+        if capture is not None:
+            _write_model_raw_once(capture / "systemone-request-body.bin", request_bytes)
         if self._stage26_audit_dir is not None:
             if type(request_id) is not str or not request_id.strip():
                 raise LlamaCppProviderError("audited model call missing request ID")
@@ -813,7 +850,12 @@ class LlamaCppRelayProvider:
                 request,
                 timeout=self._timeout,
             ) as response:
-                raw = response.read(2097153)
+                status = getattr(response, "status", None if capture else 200)
+                raw = response.read() if capture is not None else response.read(2097153)
+            if capture is not None:
+                _write_model_response_capture(
+                    capture, request_bytes, raw, status,
+                )
             if response_path is not None:
                 # Persist actual response bytes and independent digest manifest
                 # before parsing, including malformed JSON/model outputs.
@@ -839,7 +881,17 @@ class LlamaCppRelayProvider:
                 )
             if len(raw) > 2097152:
                 raise LlamaCppProviderProtocolError("model response above 2MiB bound")
+            if capture is not None and status != 200:
+                raise LlamaCppProviderError(f"llama.cpp model HTTP status {status}")
             body = json.loads(raw.decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if capture is not None:
+                _write_model_response_capture(
+                    capture, request_bytes, exc.read(2097153), exc.code,
+                )
+            raise LlamaCppProviderError(
+                f"llama.cpp model HTTP status {exc.code}"
+            ) from exc
         except (
             urllib.error.URLError,
             TimeoutError,
@@ -855,6 +907,42 @@ class LlamaCppRelayProvider:
                 "llama.cpp response body must be a JSON object"
             )
         return body
+
+
+def _write_model_raw_once(path: Path, payload: bytes) -> None:
+    """One original entity-body capture, exclusive and fsynced; no replay."""
+    if path.parent.is_symlink() or not path.parent.is_dir():
+        raise LlamaCppProviderError("owned model evidence directory missing")
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as writer:
+            writer.write(payload)
+            writer.flush()
+            os.fsync(writer.fileno())
+    except OSError as exc:
+        raise LlamaCppProviderError("model raw evidence write failed") from exc
+
+
+def _write_model_response_capture(
+    evidence: Path, request_bytes: bytes, response_bytes: bytes,
+    status: int | None,
+) -> None:
+    if type(status) is not int or not 100 <= status <= 599:
+        raise LlamaCppProviderError("real model HTTP status unavailable")
+    _write_model_raw_once(evidence / "systemone-response-body.bin", response_bytes)
+    manifest = {
+        "schema": 1,
+        "capture_type": "urllib_http_entity_bodies_not_wire_headers",
+        "http_status": status,
+        "request_body_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "response_body_sha256": hashlib.sha256(response_bytes).hexdigest(),
+        "request_body_bytes": len(request_bytes),
+        "response_body_bytes": len(response_bytes),
+    }
+    _write_model_raw_once(
+        evidence / "systemone-http-evidence.json",
+        (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode(),
+    )
 
 
 def _extract_completion(

@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -113,6 +114,7 @@ class SelfOwnerCut:
     pattern_registry: PatternRegistry
     peer_deliveries: tuple[PeerDelivery, ...] = ()
     pending_question_refs: tuple[str, ...] = ()
+    cognition_sha256: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("generation_id", "self_id", "world_id", "branch_id",
@@ -194,8 +196,18 @@ def _replay_intent(events: tuple[IntentEvent, ...]) -> IntentCommitment:
 
 
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
+    # Legacy accepted-Preset snapshots remain readable without a cognition
+    # digest. I1's newer source can bind the exact same-generation bytes.
+    if cut.cognition_sha256 is not None and (
+        type(cut.cognition_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
+    ):
+        raise SelfOwnerCheckpointError("invalid cognition source digest")
+    schema2 = bool(cut.pattern_registry.accepted_presets) or cut.cognition_sha256 is not None
     return {
-        "schema": 2 if cut.pattern_registry.accepted_presets else 1,
+        **({"cognition_sha256": cut.cognition_sha256}
+           if cut.cognition_sha256 is not None else {}),
+        "schema": 2 if schema2 else 1,
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -221,7 +233,7 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
         ],
         "pattern_registry": (
             encode_pattern_registry(cut.pattern_registry, self_id=cut.self_id)
-            if cut.pattern_registry.accepted_presets else {
+            if schema2 else {
                 "revision": cut.pattern_registry.revision,
                 "patterns": [
                     {
@@ -281,11 +293,19 @@ def _read_skill(value: object) -> SkillExecution:
 
 
 def _deserialize(value: object) -> SelfOwnerCut:
-    payload = _exact(value, {
+    keys = {
         "schema", "generation_id", "self_id", "world_id", "branch_id",
         "former_native_session_id", "last_observed_world_tick", "intent_events",
         "skills", "pattern_registry", "peer_deliveries", "pending_question_refs",
-    }, "owner snapshot")
+    }
+    if type(value) is dict and value.get("schema") == 2 and "cognition_sha256" in value:
+        keys.add("cognition_sha256")
+    payload = _exact(value, keys, "owner snapshot")
+    if "cognition_sha256" in payload and (
+        type(payload["cognition_sha256"]) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", payload["cognition_sha256"]) is None
+    ):
+        raise SelfOwnerCheckpointError("invalid cognition source digest")
     if type(payload["schema"]) is not int or payload["schema"] not in (1, 2):
         raise SelfOwnerCheckpointError("unsupported owner checkpoint schema")
     try:
@@ -307,9 +327,9 @@ def _deserialize(value: object) -> SelfOwnerCut:
             restored_registry = decode_pattern_registry(
                 payload["pattern_registry"], expected_self_id=payload["self_id"],
             )
-            if not restored_registry.accepted_presets:
+            if not restored_registry.accepted_presets and "cognition_sha256" not in payload:
                 raise SelfOwnerCheckpointError(
-                    "owner-cut v2 requires an actual adopted Preset"
+                    "owner-cut v2 requires accepted Preset or cognition digest"
                 )
         else:
             registry = _exact(payload["pattern_registry"], {
@@ -355,6 +375,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
             pattern_registry=restored_registry,
             peer_deliveries=tuple(peers),
             pending_question_refs=tuple(payload["pending_question_refs"]),
+            cognition_sha256=payload.get("cognition_sha256"),
         )
     except (TypeError, ValueError, KeyError, AttributeError) as exc:
         if isinstance(exc, SelfOwnerCheckpointError):
@@ -488,9 +509,38 @@ def _load_copied_cohort(
         cut = load_self_owner_cut(file)
         if cut.self_id != sid:
             raise SelfOwnerCheckpointError("owner snapshot Self identity mismatch")
-        retained = load_persistent_cognition(
-            generation / "selves" / sid / "cognition.json"
-        )
+        cognition_path = generation / "selves" / sid / "cognition.json"
+        if cut.cognition_sha256 is not None and (
+            hashlib.sha256(cognition_path.read_bytes()).hexdigest()
+            != cut.cognition_sha256
+        ):
+            raise SelfOwnerCheckpointError(
+                "same-generation cognition digest mismatch"
+            )
+        retained = load_persistent_cognition(cognition_path)
+        if retained.identity.self_id != sid:
+            raise SelfOwnerCheckpointError("same-generation cognition Self mismatch")
+        if cut.cognition_sha256 is not None and (
+            retained.pattern_registry is None
+            or retained.pattern_registry != cut.pattern_registry
+        ):
+            raise SelfOwnerCheckpointError(
+                "bound cognition/Owner registry mismatch"
+            )
+        if retained.exploration_continuity is not None:
+            if cut.cognition_sha256 is None:
+                raise SelfOwnerCheckpointError(
+                    "exploration cognition needs digest-bound typed owner"
+                )
+            open_refs = {
+                q.question_ref
+                for q in retained.exploration_continuity.questions
+                if q.open
+            }
+            if not open_refs.issubset(cut.pending_question_refs):
+                raise SelfOwnerCheckpointError(
+                    "open exploration Question missing from typed owner"
+                )
         if retained.pattern_registry is not None or cut.pattern_registry.accepted_presets:
             try:
                 reconcile_restored_self_schema(

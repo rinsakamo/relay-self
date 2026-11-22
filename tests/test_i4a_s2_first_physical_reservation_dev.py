@@ -183,3 +183,50 @@ def test_i4a_synthetic_s2_rejects_live_native_before_wal_or_lease(tmp_path):
             action.action_id for action in loop.owner.supervisor.recorded_actions
         }
     _fixture(tmp_path, scenario)
+
+
+@pytest.mark.parametrize("resource", ["_process", "_decoder"])
+def test_s2_rejects_slot_resource_before_original_wal_or_lease(tmp_path, resource):
+    """A real resource in __slots__ was invisible to the old __dict__ fence."""
+    class SlottedNative(ScriptedPlaceNative):
+        __slots__ = ("_process", "_decoder")
+
+    async def scenario(f, lane, server):
+        loop, witness, boundary, observed = await _first_s2(f, lane, server)
+        candidate = _propose(f, lane, witness, boundary, observed)
+        _, args = _prepare(f, lane, candidate, witness)
+        native = SlottedNative(boundary.native_session_id)
+        setattr(native, resource, object())
+        assert resource not in vars(native)
+        owner = loop.owner
+        previous_wal = owner.files.physical_wal_file.read_bytes()
+        previous_actions = owner.supervisor.recorded_actions
+        with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+            reserve_s2_first_original_move_synthetic_dev(
+                native, candidate, **args,
+            )
+        assert owner.files.physical_wal_file.read_bytes() == previous_wal
+        assert owner.supervisor.recorded_actions == previous_actions
+        assert f.physical.active_action_ids == ()
+        assert candidate.action_id not in {
+            action.action_id for action in owner.supervisor.recorded_actions
+        }
+    _fixture(tmp_path, scenario)
+
+
+def test_s2_rejects_class_resource_and_failing_descriptor():
+    from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
+        require_i4a_offline_scripted_native,
+    )
+
+    class ClassResource(MineflayerProcessSession):
+        _process = object()
+
+    class UninspectableNative(MineflayerProcessSession):
+        @property
+        def _decoder(self):
+            raise RuntimeError("decoder inspection unavailable")
+
+    for cls in (ClassResource, UninspectableNative):
+        with pytest.raises(I4AS2FirstReservationHold, match="process-backed"):
+            require_i4a_offline_scripted_native(object.__new__(cls))

@@ -51,6 +51,7 @@ class NativePreparedRejoin:
 
 async def verify_native_spawn_probe(
     session: MineflayerProcessSession, *, timeout_s: float,
+    probe_sink: Callable[[MineflayerObservation], None] | None = None,
 ) -> tuple[int, int, str, int]:
     """Verify this owned native child's spawn + request-correlated World tick.
 
@@ -60,6 +61,7 @@ async def verify_native_spawn_probe(
     if (
         type(timeout_s) not in (int, float)
         or not 0 < timeout_s <= 60
+        or (probe_sink is not None and not callable(probe_sink))
     ):
         raise NativeCohortRejoinError("bounded native source timeout required")
     loop = asyncio.get_running_loop()
@@ -109,6 +111,8 @@ async def verify_native_spawn_probe(
             tick = native_time.day * 24000 + native_time.time_of_day
             if type(tick) is not int or tick < 0:
                 raise NativeCohortRejoinError("invalid native source World clock")
+            if probe_sink is not None:
+                probe_sink(entry)
             return spawn.seq, entry.seq, request_id, tick
     raise NativeCohortRejoinError("native rejoin probe not received")
 

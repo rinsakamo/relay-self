@@ -123,7 +123,10 @@ class PhysicalIssueAdmission:
         resident_mode: bool = False,
         initially_offline: bool = False,
         allow_resident_move: bool = False,
+        observation_only: bool = False,
     ) -> None:
+        if type(observation_only) is not bool or (observation_only and not resident_mode):
+            raise PhysicalIssueFenceError("observation-only requires explicit resident mode")
         if type(resident_mode) is not bool or type(initially_offline) is not bool:
             raise PhysicalIssueFenceError("resident ownership mode must be explicit")
         if initially_offline and not resident_mode:
@@ -144,6 +147,7 @@ class PhysicalIssueAdmission:
         self._lock = threading.RLock()
         self._sessions = dict(current_sessions)
         self._resident_mode = resident_mode
+        self._observation_only = observation_only
         self._allow_resident_move = allow_resident_move
         # Ordinary all-N checkpoint remains unchanged unless opted in.
         # Offline session tokens are stale birth refs, NEVER issue grants.
@@ -301,6 +305,10 @@ class PhysicalIssueAdmission:
         return self._resident_mode
 
     @property
+    def observation_only(self) -> bool:
+        return self._observation_only
+
+    @property
     def resident_states(self) -> dict[str, str]:
         with self._lock:
             return dict(self._resident_states)
@@ -373,6 +381,8 @@ class PhysicalIssueAdmission:
     ) -> Iterator[IssueLease]:
         """Synchronous acquire before async await; finally releases on cancel."""
         with self._lock:
+            if self._observation_only:
+                raise PhysicalIssueFenceError("observation-only blocks all physical leases")
             if self._closed:
                 raise PhysicalIssueFenceError("checkpoint fence closed physical admission")
             if self._resident_states.get(self_id) != "ONLINE":
@@ -487,6 +497,8 @@ class PhysicalIssueAdmission:
         is installed; an emergency STOP has its own separately supervised path.
         """
         with self._lock:
+            if self._observation_only:
+                raise PhysicalIssueFenceError("observation-only blocks all native effects")
             if self._poisoned:
                 raise PhysicalIssueFenceError("native physical effect blocked by checkpoint")
             resident_state = self._resident_states.get(self_id)
@@ -545,6 +557,8 @@ class PhysicalIssueAdmission:
         cognition/World cut starts only after stop readback is verified.
         """
         with self._lock:
+            if self._observation_only:
+                raise PhysicalIssueFenceError("observation-only blocks neutralization effects")
             if self._closed or self._poisoned:
                 raise PhysicalIssueFenceError("physical neutralization already held")
             if self._resident_mode and any(
