@@ -30,6 +30,7 @@ _REQUIRED_SOURCE = (
     "src/relay_self/i_lane_i4a_s1_source_capture_dev.py",
     "src/relay_self/i_lane_i4a_s1_native_source_audit_dev.py",
     "src/relay_self/i_lane_i4a_s1_native_command_audit_dev.py",
+    "src/relay_self/i_lane_i4a_s2_native_append_audit_dev.py",
     "src/relay_self/c_lane_l1_evaluation_engine_dev.py",
     "src/relay_self/physical_issue_admission_dev.py",
     "src/relay_self/physical_action_journal.py",

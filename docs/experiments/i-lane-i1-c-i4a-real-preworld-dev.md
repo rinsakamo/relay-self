@@ -2,7 +2,7 @@
 
 Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
 inventory, **not** an executing real-World or real-Gemma runner. Its one
-CLI mode performs a Git exact-HEAD check and hashes sixteen original code files;
+CLI mode performs a Git exact-HEAD check and hashes eighteen original code files;
 it returns exit 2 **even when EULA and real-World DEV grant are provided**.
 The optional World directory is never touched.
 
@@ -97,3 +97,17 @@ commands. Adversarial tests recompute the stdin SHA after changing yaw,
 pitch, command fields and values. This **does not** validate whether the
 saved target itself came from independently qualified WorldBody/terrain,
 or authenticate Native command custody. No new issuer or World permission.
+
+
+## Original S2 Native stdout append-only source comparison
+
+The CPU-only `audit_i4a_s2_native_append` rechecks the S1 WAL frozen source,
+S1 stdout and the canonical S2 WAL, and demands that the full original S2
+stdout be an exact byte extension of original S1 stdout. It verifies the new
+S2 LOOK/START/STOP (optional SNEAK) ACKs, initial Native probe and STOP
+settling source against the **one** new canonical WAL Action, refusing foreign
+session, extra effects, changes to the old Native prefix, changed outcome
+probes and PREPARED_UNRESOLVED. The result is deliberately labeled
+`SOURCE_CPU_OFFLINE_ONLY`; supplied hashes cannot authenticate their own
+custody or the original Paper/Target/World sources. This is not a real runner,
+independent Paper auditor, model invocation or Physical authority.
