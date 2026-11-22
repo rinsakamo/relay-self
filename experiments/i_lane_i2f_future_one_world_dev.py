@@ -58,10 +58,12 @@ async def run_i2f_one_original_world(
     gate: Stage24gModelGateReceipt,
     timeout_s: float = 180, presence_timeout_s: float = 12,
     model_wait_s: float = 60,
+    model_post_grant: bool = False,
 ) -> Path:
     """Exactly one future v3 World run; model chooses, NOT runner flags."""
     if (
         not isinstance(pins, I2fFutureSourcePins)
+        or model_post_grant is not True
         or not isinstance(gate, Stage24gModelGateReceipt)
         or gate.model_alias != model_alias
         or gate.llama_pid <= 1 or gate.slot_count != 1 or gate.slot_id != 0
@@ -69,6 +71,19 @@ async def run_i2f_one_original_world(
         or not 0 < model_wait_s <= 60
     ):
         raise I2fOriginalWorldHold("new v3 source and owned model slot required")
+
+    # Direct Python entrypoint must revalidate the exact loaded GGUF/PID,
+    # not trust a stale or caller-built preflight dataclass.
+    try:
+        again = verify_stage24g_model_gate(
+            gguf_path=Path(gate.gguf_path), llama_pid=gate.llama_pid,
+            model_alias=model_alias, llama_endpoint=llama_endpoint,
+            systemone_endpoint=llama_endpoint,
+        )
+        if again != gate:
+            raise I2fOriginalWorldHold("original model source changed since preflight")
+    except (OSError, RuntimeError, ValueError, TypeError) as exc:
+        raise I2fOriginalWorldHold("owned GGUF/PID/GPU not verified before World") from exc
 
     async def on_reconnected(
         *, prepared, bridge, boot, world, links, paper, evidence, report,
@@ -84,6 +99,14 @@ async def run_i2f_one_original_world(
             or set(bridge.owners) != {"A", "B"}
         ):
             raise I2fOriginalWorldHold("original verified A/B Body or new-source pin missing")
+        # World/Paper preparation may have consumed time; recheck the same
+        # exclusive real GPU process before any model POST.
+        if verify_stage24g_model_gate(
+            gguf_path=Path(gate.gguf_path), llama_pid=gate.llama_pid,
+            model_alias=model_alias, llama_endpoint=llama_endpoint,
+            systemone_endpoint=llama_endpoint,
+        ) != gate:
+            raise I2fOriginalWorldHold("model backend changed after Paper/Native JOIN")
         _write_bytes_new(
             evidence / "i2f-model-preflight.json",
             (json.dumps(asdict(gate), sort_keys=True, indent=2) + "\n").encode(),
@@ -184,6 +207,7 @@ def main() -> int:
     parser.add_argument("--model-wait-s", type=float, default=60.0)
     parser.add_argument("--eula-accepted", action="store_true")
     parser.add_argument("--real-world-dev-grant", action="store_true")
+    parser.add_argument("--model-post-grant", action="store_true")
     parser.add_argument("--inspect-only", action="store_true")
     parser.add_argument("--execute-once", action="store_true")
     args = parser.parse_args()
@@ -191,12 +215,12 @@ def main() -> int:
         if (args.inspect_only == args.execute_once
                 or not args.eula_accepted
                 or (args.inspect_only and (
-                    args.real_world_dev_grant
+                    args.real_world_dev_grant or args.model_post_grant
                     or args.execution_dir is not None
                     or args.evidence_dir is not None
                 ))
                 or (args.execute_once and (
-                    not args.real_world_dev_grant
+                    not args.real_world_dev_grant or not args.model_post_grant
                     or args.execution_dir is None
                     or args.evidence_dir is None
                 ))):
@@ -241,6 +265,7 @@ def main() -> int:
             gate=gate, timeout_s=args.timeout_s,
             presence_timeout_s=args.presence_timeout_s,
             model_wait_s=args.model_wait_s,
+            model_post_grant=True,
         ))
         print("I2F_CAPTURED_INDEPENDENT_AUDIT_PENDING=" + str(result), flush=True)
         return 0
