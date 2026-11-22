@@ -159,7 +159,7 @@ def verify_q4_previous_place_terminal_cpu(
 def _read_original_q4_fd(path: Path, fd: int) -> bytes:
     """Read an active original process transcript without trusting its filename."""
     if (
-        type(path) is not Path or not path.is_absolute()
+        not isinstance(path, Path) or not path.is_absolute()
         or any(part.is_symlink() for part in (path, *path.parents))
         or type(fd) is not int
     ):
@@ -213,7 +213,7 @@ def verify_q4_owned_native_source_for_rearm(
     if (
         type(session) is not MineflayerProcessSession
         or not isinstance(evidence, Q4PlaceTerminalReadback)
-        or type(native_stdout_path) is not Path
+        or not isinstance(native_stdout_path, Path)
         or not session.bounded_place_dev_mode
         or session.process_returncode is not None
         or session.owned_child_pid is None
@@ -221,7 +221,7 @@ def verify_q4_owned_native_source_for_rearm(
         or session._raw_stdin_audit_finished
         or type(session._raw_source_audit_fd) is not int
         or type(session._raw_stdin_audit_fd) is not int
-        or type(session._raw_stdin_audit_path) is not Path
+        or not isinstance(session._raw_stdin_audit_path, Path)
         or evidence.look.session_id != session.started.session_id
     ):
         raise Q4PlaceRepeatHold("actual original Q4 Native source capture absent")
