@@ -13,7 +13,11 @@ from relay_self.physical_issue_admission_dev import PhysicalIssueFenceError
 from relay_self.q4_place_repeat_source_dev import Q4PlaceTerminalReadback
 from test_i_unified_i4a_place_lease_dev import _acks, _probes, _terminal
 from test_i_unified_original_place_custody_dev import (
-    _allow, _bind, _lease, _prepare, _setup,
+    _allow,
+    _bind,
+    _lease,
+    _prepare,
+    _setup,
 )
 
 
