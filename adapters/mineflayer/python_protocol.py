@@ -851,7 +851,7 @@ def _decode_time(value: object) -> MineflayerTime:
         is_day=_decoded_bool("is_day", payload["is_day"]),
         world_age_ticks=(
             _decoded_non_negative_int("world_age_ticks", payload["world_age_ticks"])
-            if "world_age_ticks" in payload else None
+            if payload.get("world_age_ticks") is not None else None
         ),
     )
 
