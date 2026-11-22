@@ -123,3 +123,45 @@ reader/writer behavior, add v2 support with adversarial tests, reconcile
 B's original physical lease and Q's independently held original evidence,
 then perform new PRE_WORLD and DEV qualification. No actual real World,
 GPU/model, S2 Native effect, C1 experience or Q audit was run here.
+
+
+## U3 — original B WAL v2 MOVE_PLACE compatibility (2026-11-22)
+
+The upstream I4a source `9f3d6f73af1f4d0e16e212f9cb0ff2564c0137fd`
+includes v2 exact-row validation, `prepare_place_move` and `close_place_move`.
+U3 ports these ORIGINAL canonical WAL operations into B's single
+`PhysicalActionJournal`, **without copying I4a's alternative owner,
+issuer or separate file**. B's existing v1 EAT/ATTACK/relative MOVE
+operations are preserved; schema v1 remains the default for `create`,
+`restore` accepts schema 1 or 2, v2 upgrades are explicit and use
+the same canonical CAS/fsync mechanism. Unknown versions and incomplete
+PLACE gait pairs fail closed.
+
+A pre-existing v1 S1 prefix needs explicit `source_schema=1` when
+calling `certified_prefix_digest` on a later v2 journal. Rehashing
+the old rows under schema 2 would yield the wrong historic digest and
+can never prove source custody. `i_unified_physical_source_dev.py`
+records the original snapshot schema and matches a separately held
+original SHA and Owner/world/native scope, including after a v2 append.
+This remains CPU readback only: it cannot authenticate a witness
+which was forged before its first capture or prove post-restart custody.
+
+The new U3 source-shaped synthetic tests exercise:
+- v1 old rows + v2 PREPARED refusing S2 completion until closed
+- v1 digest equality across a v2 append, and v2→v2 S1/S2 readback
+- PLACE settled/no-progress/overshoot and optional WALK/SNEAK gait ACK formats
+- hostile v2 row mutation with recomputed full-file checksum, bad
+  Action/source/skill/budget/tick/position, partial gait data and downgrade
+- default v1 writer unchanged, mixed-format stale/duplicate rejection.
+
+**Remaining U3 HOLD gates:** The U3 positive WAL fixtures use internal
+canonical `_commit` with synthetic rows. They do *not* exercise the
+full upstream typed `prepare_place_move/close_place_move` issuer chain,
+PhysicalIssueAdmission lease, Native ACK/Paper original custody,
+fresh B Owner L1 Skill selection, C1 success retention or a real World.
+Adding v2 parser/writer methods is not an S2 authorization.
+Q must independently inspect v1→v2 on-disk migration, original S1
+source authentication, concurrent physical leases, and all runtime
+commands before PRE_WORLD. U2's earlier claim that schema v2 was
+absent is historical; v2 is now present in U3, but its live issuer is
+still **HOLD**.
