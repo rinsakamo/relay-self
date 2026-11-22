@@ -1,6 +1,7 @@
 """Source-shaped synthetic fixture: independent S1 Native stdout vs WAL."""
 import hashlib
 import json
+import math
 
 import pytest
 
@@ -190,10 +191,13 @@ def test_s1_command_capture_rejects_missing_duplicate_and_replaced_effects(tmp_p
         stdout_sha = _write_raw(stdout, _stream(rows))
         commands = []
         for row in rows:
+            start, target = row["started_position"], row["target_position"]
+            yaw = math.atan2(start["x"] - target["x"], start["z"] - target["z"])
+            assert yaw == pytest.approx(row["aim_yaw_rad"])
             parent = row["action_id"]
             commands.extend([
                 (row["effect_seqs"][0], {"type": "effect", "action_id": parent + "-look",
-                                          "effect": "look", "yaw": 0, "pitch": 0}),
+                                          "effect": "look", "yaw": yaw, "pitch": 0}),
                 (row["effect_seqs"][1], {"type": "effect", "action_id": parent + "-start",
                                           "effect": "set_control", "control": "forward", "state": True}),
                 (row["effect_seqs"][2], {"type": "effect", "action_id": parent + "-stop",
@@ -215,4 +219,31 @@ def test_s1_command_capture_rejects_missing_duplicate_and_replaced_effects(tmp_p
                        [dict(commands[0], action_id="foreign")] + commands[1:]):
             with pytest.raises(I4AS1NativeSourceHold, match="stdin correlation"):
                 audit(broken)
+
+        # A valid SHA over forged stdin is not proof of an authentic heading.
+        for change in (
+            {"yaw": commands[0]["yaw"] + 0.4},
+            {"pitch": 0.3},
+            {"yaw": math.nan},
+            {"yaw": math.inf},
+            {"unexpected": "ignored-before"},
+        ):
+            wrong = [dict(command) for command in commands]
+            wrong[0].update(change)
+            with pytest.raises(I4AS1NativeSourceHold, match="stdin correlation"):
+                audit(wrong)
+
+        # No custom observe/shutdown envelope can disguise a source mutation.
+        for extra in (
+            {"type": "observe", "request_id": "valid-id", "effect": "look"},
+            {"type": "observe", "request_id": "not valid"},
+            {"type": "shutdown", "effect": "look"},
+            {"type": "shutdown"},
+        ):
+            with pytest.raises(I4AS1NativeSourceHold, match="stdin correlation"):
+                audit([extra, *commands])
+
+        # The valid original heading still holds with inert observation frames.
+        assert audit([{"type": "observe", "request_id": "native-a-1"}, *commands]).child_commands == len(commands)
+        assert audit([*commands, {"type": "shutdown"}]).child_commands == len(commands)
     _fixture(tmp_path, scenario)

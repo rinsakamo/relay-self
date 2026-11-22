@@ -84,3 +84,16 @@ Paper tick are numerically interchangeable, nor an independently authenticated
 Paper action attribution. Synthetic source-shaped tests cover forgeries,
 missing frames and wrong session. It makes no physical issue, starts no
 World or Gemma and does not authenticate provenance after restart.
+
+## S1 command geometry negative fence (CPU-only)
+
+The original Native stdin auditor now independently recomputes the yaw
+convention from each **saved** S1 WAL starting position and saved PLACE target,
+and requires the source LOOK yaw to match both this geometry and the WAL
+`aim_yaw_rad` at a strict numeric tolerance. The original LOOK pitch must
+be zero. The audit rejects invalid extra OBSERVE/SHUTDOWN fields and
+non-terminal SHUTDOWN, in addition to missing/reordered/replaced physical
+commands. Adversarial tests recompute the stdin SHA after changing yaw,
+pitch, command fields and values. This **does not** validate whether the
+saved target itself came from independently qualified WorldBody/terrain,
+or authenticate Native command custody. No new issuer or World permission.
