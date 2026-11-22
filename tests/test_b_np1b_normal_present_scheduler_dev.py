@@ -121,7 +121,7 @@ def test_periodic_original_cpu_tasks_publish_only_rechecked_source(pair):
     asyncio.run(scenario())
     assert files(f) == before_files
     assert _original_state(f) == before_state
-    assert f.bridge.physical.active_action_ids == frozenset()
+    assert not f.bridge.physical.active_action_ids
 
 
 def test_scheduler_recovers_after_actual_b_native_update_without_rebinding(pair):
@@ -223,9 +223,7 @@ def test_original_logout_cancels_a_owned_cpu_task_and_fences_b_result(pair):
             assert receipt.native_terminated
             assert f.cognitive.retired_clean("A")
             assert scheduler._tasks["A"].done()
-            assert "normal-present-cpu:A" in receipt.__dict__.get(
-                "cancelled_cpu_task_refs", (),
-            ) or "normal-present-cpu:A" in (
+            assert "normal-present-cpu:A" in (
                 f.cognitive._state("A").retired.cancelled_cpu_task_refs
             )
             assert f.bridge.sessions["B"] is b_session
