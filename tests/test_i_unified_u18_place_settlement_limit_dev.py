@@ -8,6 +8,7 @@ import asyncio
 
 import pytest
 
+from relay_self.physical_action_journal import (PhysicalActionJournal, PhysicalJournalError)
 from experiments.cognitive_physical_move_issue_dev import (
     PhysicalMoveRefusal,
     _settled,
@@ -50,3 +51,23 @@ def test_u18_stalled_body_exhausts_fixed_reservation_without_retry():
             timeout_s=3.0, max_probe_requests=3,
         ))
     assert native.seq == 5
+
+
+def test_u18_original_empty_initial_wal_prefix_rechecks_across_v2_upgrade(
+    tmp_path,
+):
+    """A zero Action prefix is not invented S1 history or a grant."""
+    journal = PhysicalActionJournal.create(tmp_path / "original.json", self_id="B")
+    exact_boot_digest = journal.digest
+    assert journal.records == ()
+    with pytest.raises(PhysicalJournalError):
+        journal.certified_prefix_digest(0)
+    # The first real PLACE would upgrade the SAME original WAL to schema v2.
+    # An empty upgrade here only tests canonical origin hashes, no effect.
+    journal._commit([], upgrade_to_v2=True)
+    assert journal.schema_version == 2
+    assert journal.certified_prefix_digest(
+        0, source_schema=1,
+    ) == exact_boot_digest
+    with pytest.raises(PhysicalJournalError):
+        journal.certified_prefix_digest(0)
