@@ -193,6 +193,7 @@ def _fake_original(tmp_path, monkeypatch):
         "real_l1_l2_gpu_executed": False,
         "i2g_initial_exploration_pattern_learned": False,
         "i2g_initial_physical_action_issued": False,
+        "i2g_original_issuer_observation_only": True,
         "a_actor_uuid": actors["A"],
         "b_actor_uuid": actors["B"],
         "a_paper_quit_tick": 9,
@@ -295,6 +296,7 @@ def test_i2g_full_raw_origin_to_sealed_manifest_to_inert_fork_CPU_only(
     "paper-cross-actor", "paper-duplicate-epoch", "paper-b-quit-first",
     "paper-false-b-receipt", "paper-tampered-pid", "paper-no-save",
     "paper-native-pid-collision", "native-foreign-boot",
+    "issuer-not-observation-only",
     "native-unretired-issuer", "native-extra-observe",
     "native-probe-without-stdin",
 ])
@@ -356,6 +358,8 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
         paper.write_text(paper.read_text().replace("Saved the game", "NO SAVE"))
     elif fault == "paper-native-pid-collision":
         report["i2g_original_raw_native"][0]["pid"] = 130
+    elif fault == "issuer-not-observation-only":
+        report["steps"][0]["i2g_original_issuer_observation_only"] = False
     elif fault == "native-foreign-boot":
         report["steps"][0]["i2g_original_first_login_evidence"]["A"][
             "paper_session_id"
@@ -396,6 +400,7 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
         "paper-false-b-receipt", "paper-native-pid-collision",
         "native-foreign-boot", "native-unretired-issuer",
         "native-extra-observe", "native-probe-without-stdin",
+        "issuer-not-observation-only",
     }:
         path.write_bytes(_bytes(report))
     with pytest.raises(I2gIndependentOriginHold):
