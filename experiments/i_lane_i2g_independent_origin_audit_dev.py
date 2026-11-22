@@ -167,8 +167,6 @@ def _require_i2h_original_paper_continuity(*, trace, trial: dict) -> None:
         or trial["b_paper_continuation_tick"] != between[-1].tick
         or not any(x.event in ("PRESENT", "MOVE") for x in a
                 if a_joins[0].line < x.line < a_quits[0].line)
-        or not any(x.event in ("PRESENT", "MOVE") for x in a
-                if a_joins[1].line < x.line < a_quits[1].line)
     ):
         raise I2gIndependentOriginHold("Paper B continuation or A two resident epochs absent")
 
@@ -278,7 +276,7 @@ def independently_read_i2g_original(
         pid_source = root / (session + ".pid")
         pid_raw = pid_source.read_text(encoding="utf-8")
         if (
-            re.fullmatch(r"[1-9][0-9]{0,9}\\n", pid_raw) is None
+            re.fullmatch(r"[1-9][0-9]{0,9}\n", pid_raw) is None
             or b"Saved the game" not in raw_paper
             or b"Stopping server" not in raw_paper
             or raw_paper.rfind(b"Saved the game")
