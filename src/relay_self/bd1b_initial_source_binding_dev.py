@@ -53,7 +53,7 @@ def require_original_initial_a_b(
         type(initial) is not list or len(initial) != 2
         or any(type(x) is not dict or set(x) != _FIELDS for x in initial)
         or [x["self_id"] for x in initial] != ["A", "B"]
-        or type(evidence_dir) is not Path
+        or not isinstance(evidence_dir, Path)
         or type(world_id) is not str or not world_id
         or type(branch_id) is not str or not branch_id
         or type(paper_session_id) is not str or not paper_session_id

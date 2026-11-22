@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from relay_self.bd1b_initial_source_binding_dev import require_original_initial_a_b
 from relay_self.exploration_schema_record_dev import encode_recorded_schema
 from relay_self.innate_schema import SchemaMode
 from relay_self.persistent_cognition import load_persistent_cognition
@@ -91,6 +92,7 @@ def audit_schema3_original_source_bytes(
     expected_committed_sha256: str,
     expected_producer_report_sha256: str,
     expected_prelogin_manifest_sha256: str,
+    expected_initial_source_sha256: str,
 ) -> OriginalSchema3SourceReadback:
     """Re-read raw originals independently; do not write or start any process."""
     evidence = Path(evidence_dir).absolute()
@@ -186,15 +188,25 @@ def audit_schema3_original_source_bytes(
             or step.get("b_physical_wal_outcome") is not False):
         raise BD1bSchema3ReadbackHold("producer report differs from original typed source")
     initial_raw = _file(evidence / "initial-native-paper-source.json")
+    _pinned(initial_raw, expected_initial_source_sha256)
     initial = _json(initial_raw)
-    if (type(initial) is not list or len(initial) != 2
-            or step.get("initial_native_paper_source") != initial
-            or sorted(row.get("self_id") for row in initial if type(row) is dict) != ["A", "B"]
-            or any(row.get("world_id") != cuts[0].world_id
-                   or row.get("branch_id") != cuts[0].branch_id
-                   or row.get("paper_session_id") != step.get("paper_session_id")
-                   for row in initial)):
-        raise BD1bSchema3ReadbackHold("original Native/Paper pair receipt mismatch")
+    if step.get("initial_native_paper_source") != initial:
+        raise BD1bSchema3ReadbackHold("original Native/Paper initial bytes not reproduced")
+    require_original_initial_a_b(
+        initial, evidence_dir=evidence,
+        world_id=cuts[0].world_id,
+        branch_id=cuts[0].branch_id,
+        original_sessions=(
+            ("A", step.get("a_original_native_session")),
+            ("B", step.get("b_original_native_session")),
+        ),
+        paper_session_id=step.get("paper_session_id"),
+        paper_boot_id=step.get("paper_boot"),
+        actor_uuids=(
+            ("A", step.get("a_actor_uuid")),
+            ("B", step.get("b_actor_uuid")),
+        ),
+    )
     new_a = step.get("a_relogin_evidence")
     if (type(new_a) is not dict
             or type(new_a.get("native_session_id")) is not str

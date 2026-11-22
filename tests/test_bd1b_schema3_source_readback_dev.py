@@ -96,12 +96,35 @@ def _bundle(tmp_path, monkeypatch):
             "native_terminated": True, "stale_gpu_fenced": True,
             "peer_transport_drained": True,
         })
-    initial = [
-        {"self_id": sid, "world_id": "world-1",
-         "branch_id": "source", "paper_session_id": "paper-owned-original",
-         "native_session_id": native}
-        for sid, native in (("A", "original-A"), ("B", "original-B"))
-    ]
+    def revision(fields):
+        return "sha256:" + hashlib.sha256(json.dumps(
+            fields, sort_keys=True, separators=(",", ":"),
+        ).encode()).hexdigest()
+
+    initial = []
+    for sid, native in (("A", "original-A"), ("B", "original-B")):
+        native_data = {
+            "self_id": sid, "owner_identity": str(tmp_path / ("self-" + sid)),
+            "resident_epoch": 1, "world_id": "world-1",
+            "branch_id": "source", "world_epoch": 0,
+            "native_session_id": native, "native_request_id": "probe-" + sid,
+            "native_sequence": 2, "native_source_ref": "native-source-" + sid,
+            "native_world_time": 105,
+        }
+        paper_data = {
+            "paper_session_id": "paper-owned-original", "paper_pid": 1011,
+            "paper_boot_id": "paper-boot-a", "presence_boot_id": "paper-boot-a",
+            "paper_tick": 107,
+            "paper_tick_ref": "paper-main-thread:p0d:paper-boot-a:nonce-1:sha256:"
+            + "a" * 64,
+            "paper_actor_uuid": "uuid-" + sid,
+            "paper_log_sha256": "b" * 64,
+        }
+        initial.append({
+            **native_data, **paper_data,
+            "native_revision": revision(native_data),
+            "paper_revision": revision(paper_data),
+        })
     (evidence / "initial-native-paper-source.json").write_text(
         json.dumps(initial, sort_keys=True) + "\n"
     )
@@ -110,6 +133,9 @@ def _bundle(tmp_path, monkeypatch):
         "typed_world_self_saved_tick": 110,
         "initial_native_paper_source": initial,
         "paper_session_id": "paper-owned-original",
+        "paper_boot": "paper-boot-a",
+        "a_actor_uuid": "uuid-A",
+        "b_actor_uuid": "uuid-B",
         "a_original_native_session": "original-A",
         "b_original_native_session": "original-B",
         "a_relogin_evidence": {"native_session_id": "rejoined-A"},
@@ -142,6 +168,9 @@ def _bundle(tmp_path, monkeypatch):
         "expected_producer_report_sha256": _sha(report_path),
         "expected_prelogin_manifest_sha256": _sha(
             evidence / "stage28b-schema3-prelogin.json"
+        ),
+        "expected_initial_source_sha256": _sha(
+            evidence / "initial-native-paper-source.json"
         ),
     }
     return args
@@ -176,6 +205,7 @@ def test_cpu_original_schema3_source_crosscheck_and_separate_process(
         "--committed-sha256", args["expected_committed_sha256"],
         "--report-sha256", args["expected_producer_report_sha256"],
         "--prelogin-sha256", args["expected_prelogin_manifest_sha256"],
+        "--initial-source-sha256", args["expected_initial_source_sha256"],
     ], capture_output=True, text=True, timeout=30, env=env)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["classification"] == receipt.classification

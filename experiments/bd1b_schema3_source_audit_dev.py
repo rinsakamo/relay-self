@@ -23,6 +23,7 @@ def main() -> int:
     parser.add_argument("--committed-sha256", required=True)
     parser.add_argument("--report-sha256", required=True)
     parser.add_argument("--prelogin-sha256", required=True)
+    parser.add_argument("--initial-source-sha256", required=True)
     args = parser.parse_args()
     try:
         proof = audit_schema3_original_source_bytes(
@@ -30,6 +31,7 @@ def main() -> int:
             expected_committed_sha256=args.committed_sha256,
             expected_producer_report_sha256=args.report_sha256,
             expected_prelogin_manifest_sha256=args.prelogin_sha256,
+            expected_initial_source_sha256=args.initial_source_sha256,
         )
         print(json.dumps(asdict(proof), sort_keys=True, indent=2))
         return 0
