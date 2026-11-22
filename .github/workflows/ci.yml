@@ -86,6 +86,9 @@ jobs:
       - name: Verify original B+D Schema3 typed source and inert restore offline
         run: python -m pytest tests/test_bd1b_schema3_typed_restore_dev.py
 
+      - name: Verify BD1b original pre-login Schema3 producer admission offline
+        run: python -m pytest tests/test_bd1b_schema3_prelogin_producer_dev.py
+
       - name: Run deterministic tests
         run: python -m pytest
 
