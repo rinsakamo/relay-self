@@ -9,7 +9,6 @@ and revalidates GGUF file identity. Fails closed on missing/partial source.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import sys
