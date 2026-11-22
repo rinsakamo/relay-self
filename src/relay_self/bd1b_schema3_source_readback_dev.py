@@ -141,8 +141,10 @@ def audit_schema3_original_source_bytes(
         PhysicalActionJournal.restore(
             generation / "selves" / sid / "physical-wal.json", self_id=sid,
         ).require_clear()
+    if type(report) is not dict:
+        raise BD1bSchema3ReadbackHold("producer source report must be an object")
     step = report.get("steps")
-    if (type(report) is not dict or type(step) is not list or len(step) != 1
+    if (type(step) is not list or len(step) != 1
             or type(step[0]) is not dict):
         raise BD1bSchema3ReadbackHold("original producer's one trial missing")
     step = step[0]

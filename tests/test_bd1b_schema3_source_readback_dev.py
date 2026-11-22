@@ -8,8 +8,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -159,6 +161,12 @@ def test_cpu_original_schema3_source_crosscheck_and_separate_process(
     assert receipt.original_paper_provenance_attested is False
     assert receipt.original_native_provenance_attested is False
     assert receipt.original_model_post_attested is False
+    source_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = (
+        str(source_root / "src") + os.pathsep + str(source_root)
+        + os.pathsep + env.get("PYTHONPATH", "")
+    )
     result = subprocess.run([
         sys.executable, "-m", "experiments.bd1b_schema3_source_audit_dev",
         "--evidence-dir", str(args["evidence_dir"]),
@@ -166,7 +174,7 @@ def test_cpu_original_schema3_source_crosscheck_and_separate_process(
         "--committed-sha256", args["expected_committed_sha256"],
         "--report-sha256", args["expected_producer_report_sha256"],
         "--prelogin-sha256", args["expected_prelogin_manifest_sha256"],
-    ], capture_output=True, text=True, timeout=30)
+    ], capture_output=True, text=True, timeout=30, env=env)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["classification"] == receipt.classification
     assert before == {p.relative_to(root): p.read_bytes()

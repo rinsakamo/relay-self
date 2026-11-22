@@ -18,7 +18,7 @@ producer must state that no model or physical Action was issued.
 Usage after an independently preserved new-world run:
 
 ```bash
-python -m experiments.bd1b_schema3_source_audit_dev \
+PYTHONPATH=src:. python -m experiments.bd1b_schema3_source_audit_dev \
   --evidence-dir /path/to/evidence \
   --generation /path/to/evidence/typed-world-self-generations/g-000000000000 \
   --committed-sha256 <verified-sha> \
