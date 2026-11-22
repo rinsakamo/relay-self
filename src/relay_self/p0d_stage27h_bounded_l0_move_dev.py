@@ -297,6 +297,33 @@ class Stage27hBoundedMoveLoop:
         self._ready_to_reserve_seq = None
         return cap
 
+    def yield_one_settled_action_for_q4_dev(self) -> None:
+        """End a one-Action DEV run without asserting target/Skill success.
+
+        Only a *fully observed* first Action with original terminal WAL may
+        relinquish this already-owned Stage27h Skill.  This is a nonissuing
+        yield, not a second controller or a way to waive STOP settlement.
+        """
+        if (
+            self.action_count != 1
+            or self.terminal_status is not None
+            or self._settlement_reserved != 0
+            or self._reserved_source_seq is not None
+            or len(self._seen_action_ids) != 1
+            or self.last_action_id not in self._seen_action_ids
+            or not self.last_wal_digest
+        ):
+            raise Stage27hLoopRefusal("Q4 first original MOVE not settled")
+        journal = self._validate_owner_and_journal()
+        if (
+            journal.unresolved or len(journal.records) != 1
+            or journal.records[0]["action_id"] != self.last_action_id
+            or journal.records[0]["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+            or journal.digest != self.last_wal_digest
+        ):
+            raise Stage27hLoopRefusal("Q4 original first MOVE WAL not terminal")
+        self.terminal_status = "L0_Q4_ONE_ACTION_YIELD_EVALUATION"
+
     def observe_terminal_action(
         self,
         receipt: Stage27PlaceMoveReceipt,
