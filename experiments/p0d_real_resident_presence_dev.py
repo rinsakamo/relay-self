@@ -578,7 +578,7 @@ async def _owned_resident_trial(
         )
         normal_path = evidence_dir / "normal-cpu-world-source-readback.json"
         _write_bytes_new(
-            normal_path, (json.dumps(normal_cpu_doc, sort_keys=True, indent=2) + "\\n").encode(),
+            normal_path, (json.dumps(normal_cpu_doc, sort_keys=True, indent=2) + "\n").encode(),
         )
         if json.loads(normal_path.read_text()) != normal_cpu_doc:
             raise RealResidentPresenceRefusal("normal CPU World readback file changed")
