@@ -43,13 +43,14 @@ from relay_self.target_contract import (
     TargetKind,
 )
 from test_bd1b_owner_present_dev import _configured
+from test_i_unified_b_wal_prefix_dev import _eat_row
 from test_p0d_resident_move_issuer_dev import _probe
 
 P = Provenance("i-unified-synthetic-place", "original-contract-test-not-native")
 
 
 def _typed_place(native="native-A", *, action_id="place-A", gait=None):
-    before = _probe(native, 1, "place-source-1", 100, 1.0)
+    before = _probe(native, 5, "place-source-5", 100, 1.0)
     scope = ScopeRef("A", native)
     target_ref = "destination:waypoint-A"
     goal_id = "EXPLORE_WORLD"
@@ -119,20 +120,20 @@ def _terminal(binding):
 
 def _acks(native, action):
     return (
-        MineflayerEffectResult(native, 2, action + "-look", "look",
+        MineflayerEffectResult(native, 6, action + "-look", "look",
                               "applied", None),
-        MineflayerEffectResult(native, 3, action + "-start", "set_control",
+        MineflayerEffectResult(native, 7, action + "-start", "set_control",
                               "applied", None),
-        MineflayerEffectResult(native, 4, action + "-stop", "clear_controls",
+        MineflayerEffectResult(native, 8, action + "-stop", "clear_controls",
                               "applied", None),
     )
 
 
 def _probes(native):
     return (
-        _probe(native, 5, "initial-stop", 110, 1.5),
-        _probe(native, 6, "first-stable", 120, 1.5),
-        _probe(native, 7, "settled", 130, 1.5),
+        _probe(native, 9, "initial-stop", 110, 1.5),
+        _probe(native, 10, "first-stable", 120, 1.5),
+        _probe(native, 11, "settled", 130, 1.5),
     )
 
 
@@ -144,25 +145,36 @@ def _gate(*, move=True, place=True):
     )
 
 
-def test_original_place_lease_typed_wal_prepare_native_id_gate_and_close(tmp_path):
-    gate = _gate()
-    journal = PhysicalActionJournal.create(tmp_path / "original-wal.json", self_id="A")
-    binding, before, invocation, motion = _typed_place()
-    peer = PhysicalActionJournal.create(tmp_path / "peer-wal.json", self_id="B")
+def test_original_place_lease_typed_wal_prepare_native_id_gate_and_close(tmp_path, monkeypatch):
+    case = _configured(tmp_path, monkeypatch)
+    bridge = case[1]
+    owner = bridge.owners["A"]
+    native = owner.native_session_id
+    gate = PhysicalIssueAdmission(
+        bridge.physical.current_native_sessions,
+        resident_mode=True, allow_resident_move=True,
+        allow_resident_place_move=True,
+    )
+    bridge.physical = gate  # synthetic opt-in; restored B actor remains disabled
+    journal = PhysicalActionJournal.restore(owner.files.physical_wal_file, self_id="A")
+    journal._commit([_eat_row(session=native)])
+    gate.arm_original_place_s1(bridge=bridge, self_id="A", journal=journal)
+    binding, before, invocation, motion = _typed_place(native)
+    peer = PhysicalActionJournal.restore(bridge.owners["B"].files.physical_wal_file, self_id="B")
     peer_bytes = peer.path.read_bytes()
     with pytest.raises(PhysicalIssueFenceError):
         gate.require_native_effect(
-            self_id="A", native_session_id="native-A",
+            self_id="A", native_session_id=native,
             effect="look", action_id=binding.action_id + "-look",
         )
     with gate.lease(
-        self_id="A", native_session_id="native-A",
+        self_id="A", native_session_id=native,
         action_id=binding.action_id, effect_family="MOVE_PLACE",
     ):
         assert gate.active_action_ids == (binding.action_id,)
         with pytest.raises(PhysicalIssueFenceError):
             gate.require_native_effect(
-                self_id="A", native_session_id="native-A",
+                self_id="A", native_session_id=native,
                 effect="look", action_id=binding.action_id + "-look",
             )
         before_digest = journal.digest
@@ -172,15 +184,15 @@ def test_original_place_lease_typed_wal_prepare_native_id_gate_and_close(tmp_pat
         assert journal.unresolved
         with pytest.raises(PhysicalJournalUnresolved):
             journal.require_clear()
-        gate.bind_native_children(
-            self_id="A", native_session_id="native-A",
+        gate.bind_original_place_children(
+            bridge=bridge, self_id="A", native_session_id=native,
             lease_action_id=binding.action_id,
             parent_action_id=binding.action_id,
-            family="MOVE_PLACE", journal=journal,
+            journal=journal,
         )
         with pytest.raises(PhysicalIssueFenceError):
             gate.require_native_effect(
-                self_id="A", native_session_id="native-A",
+                self_id="A", native_session_id=native,
                 effect="look", action_id="forged-look",
             )
         with pytest.raises(PhysicalIssueFenceError):
@@ -193,31 +205,31 @@ def test_original_place_lease_typed_wal_prepare_native_id_gate_and_close(tmp_pat
             ("clear_controls", "-stop"),
         ):
             gate.require_native_effect(
-                self_id="A", native_session_id="native-A",
+                self_id="A", native_session_id=native,
                 effect=effect, action_id=binding.action_id + suffix,
             )
             with pytest.raises(PhysicalIssueFenceError):
                 gate.require_native_effect(
-                    self_id="A", native_session_id="native-A",
+                    self_id="A", native_session_id=native,
                     effect=effect, action_id=binding.action_id + suffix,
                 )
         # The simulated EffectResult objects below did not come from IO.
         terminal, supervisor = _terminal(binding)
-        look, start, stop = _acks("native-A", binding.action_id)
+        look, start, stop = _acks(native, binding.action_id)
         status = journal.close_place_move(
             binding, invocation, before, look, start, stop,
-            *_probes("native-A"), terminal, supervisor,
+            *_probes(native), terminal, supervisor,
         )
         assert status == "NATIVE_PLACE_MOVE_SETTLED"
         assert not journal.unresolved
         assert journal.records[-1]["action_id"] == binding.action_id
-        assert journal.records[-1]["effect_seqs"] == [2, 3, 4]
+        assert journal.records[-1]["effect_seqs"] == [6, 7, 8]
     assert gate.active_action_ids == ()
     assert peer.path.read_bytes() == peer_bytes
     assert PhysicalActionJournal.restore(journal.path, self_id="A").records == journal.records
     with pytest.raises(PhysicalIssueFenceError):
         gate.require_native_effect(
-            self_id="A", native_session_id="native-A",
+            self_id="A", native_session_id=native,
             effect="look", action_id=binding.action_id + "-look",
         )
 
