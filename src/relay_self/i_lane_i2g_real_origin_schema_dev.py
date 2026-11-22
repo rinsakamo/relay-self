@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.innate_schema import SchemaSnapshot
 from relay_self.persistent_cognition import load_persistent_cognition
+from relay_self.provenance import Provenance
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 
 
@@ -54,6 +55,10 @@ def register_i2g_born_original_empty_schemas(
                 if (
                     owner.self_id != sid or owner.cohort is not resident
                     or state.mode != "OFFLINE" or state.epoch != 0
+                    or owner.native_session_id != "offline-born-" + sid
+                    or owner.last_observed_tick != 0
+                    or owner.retained.identity.provenance
+                    != Provenance("p0d-real-resident", sid)
                     or owner.supervisor.open_actions or owner.intent.current_intent
                     or owner.pending_questions
                     or owner.skills or owner.peer_deliveries
