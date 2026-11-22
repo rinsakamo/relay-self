@@ -216,12 +216,23 @@ def independently_audit_i2e_model_bundle(directory: Path) -> dict:
                 or len(bounded_request.context) != len(open_request.context) + 1
                 or bounded_request.context[:-1] != open_request.context):
             raise I2eIndependentAuditHold("L2/L1 original same-Self request linkage absent")
+        original_request = _request_common(
+            handoff["bounded_request"], bounded=True,
+        )
+        if (open_request.context[:-1] != original_request.context
+                or open_request.intent_id != original_request.intent_id
+                or open_request.identity_context != original_request.identity_context
+                or original_request.think_allowed
+                or tuple(c.description for c in original_request.choices)
+                != ("ESCALATE_L2", "DEFER")):
+            raise I2eIndependentAuditHold("L2 prompt differed from original frozen I2 request")
         binding = open_request.context[-1]
         if binding.key != "i2d_source_binding":
             raise I2eIndependentAuditHold("source binding missing from L2 prompt")
         source_binding = json.loads(binding.value_json)
-        if source_binding.get("material_sha256") != handoff["material_sha256"]:
-            raise I2eIndependentAuditHold("I2 source hash differs between prompts")
+        if (source_binding.get("material_sha256") != handoff["material_sha256"]
+                or source_binding.get("request_sha256") != _fingerprint(original_request)):
+            raise I2eIndependentAuditHold("I2 source/request hash differs between prompts")
         ticket_l2, ticket_l1 = (
             _ticket(report["open_l2_ticket"]),
             _ticket(report["bounded_l1_ticket"]),
