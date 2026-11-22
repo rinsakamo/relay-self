@@ -38,11 +38,12 @@ def test_identical_original_qualified_source_is_necessary_not_permission():
     assert _same_original_source(source(), handoff(), "A")
     for altered in (
         {"self_id": "B"}, {"native_session_id": "native-b"},
-        {"native_seq": 4}, {"native_request_id": "probe-b"},
         {"paper_session_id": "paper-b"}, {"paper_log_sha256": "b" * 64},
         {"resident_epoch": 3},
     ):
         assert not _same_original_source(source(), handoff(**altered), "A")
+    # B source is the initial login probe; I2 can be a later correlated SENSE.
+    assert _same_original_source(source(), handoff(native_seq=8, native_request_id="later"), "A")
     assert not _same_original_source(source(), handoff(), "B")
 
 
