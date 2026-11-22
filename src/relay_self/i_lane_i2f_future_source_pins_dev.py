@@ -97,6 +97,9 @@ def inspect_i2f_future_original_sources(
             original_evidence, generation,
             expected_manifest_sha256=pins.original_manifest_sha256,
             expected_files=pins.original_manifest_files,
+            expected_report_classification=(
+                "I2G_REAL_ORIGINAL_V3_TYPED_A_B_CAPTURED_AUDIT_PENDING"
+            ),
         )
         if (
             prepared.committed_sha256 != pins.source_committed_sha256
@@ -129,6 +132,9 @@ def verify_i2f_original_source_unchanged(
             original_evidence, generation,
             expected_manifest_sha256=pins.original_manifest_sha256,
             expected_files=pins.original_manifest_files,
+            expected_report_classification=(
+                "I2G_REAL_ORIGINAL_V3_TYPED_A_B_CAPTURED_AUDIT_PENDING"
+            ),
         )
         if (observed.source_manifest_sha256 != pins.original_manifest_sha256
                 or hashlib.sha256(
