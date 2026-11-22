@@ -435,10 +435,21 @@ class PhysicalActionJournal:
     def restore(cls, path: str | Path, *, self_id: str) -> PhysicalActionJournal:
         p = Path(path)
         with _exclusive(p):
-            body, digest = _read(p)
-            if body["self_id"] != _text(self_id):
-                raise PhysicalJournalError("foreign Self cannot restore physical history")
-        return cls(p, body, digest)
+            return cls._load_snapshot(p, self_id=self_id)
+
+    @classmethod
+    def _load_snapshot(cls, path: Path, *, self_id: str) -> PhysicalActionJournal:
+        body, digest = _read(path)
+        if body["self_id"] != _text(self_id):
+            raise PhysicalJournalError("foreign Self cannot restore physical history")
+        return cls(path, body, digest)
+
+    @classmethod
+    def read_clear_snapshot(cls, path: str | Path, *, self_id: str) -> tuple[dict[str, Any], ...]:
+        """Verify a quiescent checkpoint WAL without creating a lock or a writer."""
+        journal = cls._load_snapshot(Path(path), self_id=self_id)
+        journal.require_clear()
+        return journal.records
 
     @property
     def records(self) -> tuple[dict[str, Any], ...]:

@@ -550,8 +550,7 @@ def staged_recover_cognition_cohort(
         if retained.identity.self_id != sid:
             raise LiveCognitionCheckpointError("foreign restored Self identity")
         journal_path = files / "physical-wal.json"
-        journal = PhysicalActionJournal.restore(journal_path, self_id=sid)
-        journal.require_clear()
+        PhysicalActionJournal.read_clear_snapshot(journal_path, self_id=sid)
         result.append(StagedRecoveredCognition(
             sid, retained, owner, journal_path,
         ))
