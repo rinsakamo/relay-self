@@ -8,6 +8,7 @@ from relay_self.i_unified_original_context_dev import (
     _owner,
     _same_original_source,
     prepare_i_unified_original_ingress,
+    read_i_unified_b_current,
     verify_i_unified_original_ingress,
 )
 
@@ -70,4 +71,33 @@ def test_missing_qualified_source_never_produces_cognitive_or_physical_grant():
     with pytest.raises(IUnifiedSourceHold):
         verify_i_unified_original_ingress(
             receipt=object(), bridge=None, boot=None, world=None, links=(),
+        )
+
+
+
+def test_original_b_current_unified_readonly_positive_then_paper_drift(tmp_path, monkeypatch):
+    """Live owner and R0 typed CURRENT may be read; no I2/physical grant."""
+    from relay_self.r0_cognitive_context_dev import context_is_live
+    from test_bd1b_owner_present_dev import _configured
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    _, bridge, boot, world, links, _ = case
+    receipt = read_i_unified_b_current(
+        bridge=bridge, boot=boot, world=world, links=links, self_id="A",
+    )
+    assert receipt.original_owner is bridge.owners["A"]
+    assert receipt.original_owner is bridge.cognitive_work.owners["A"]
+    assert receipt.context.current.scope.self_id == "A"
+    assert receipt.physical_authorized is False
+    assert receipt.memory_adopted is False
+    assert context_is_live(
+        receipt.context, bridge=bridge, boot=boot, world=world, links=links,
+    )
+    bridge.paper._session_id = "foreign-paper-session"
+    assert not context_is_live(
+        receipt.context, bridge=bridge, boot=boot, world=world, links=links,
+    )
+    with pytest.raises(IUnifiedSourceHold):
+        read_i_unified_b_current(
+            bridge=bridge, boot=boot, world=world, links=links, self_id="A",
         )
