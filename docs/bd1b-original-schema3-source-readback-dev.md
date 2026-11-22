@@ -38,3 +38,19 @@ Old legacy typed generations without original FULL Schema3 and pre-login
 source files fail closed. CI tests construct **synthetic original
 World/Native/Paper receipt stand-ins**, including forged SHA readbacks.
 They are not evidence from the user's WSL, GPU or Minecraft world.
+
+### Strict original A/B first-login binding
+
+The reader now also requires a **fourth independent supplied SHA pin** for
+`initial-native-paper-source.json`: `--initial-source-sha256`. It requires
+the complete original `InitialSourceReceipt` field inventory for each Self,
+recomputes its Native and Paper revisions from raw JSON fields and binds:
+- resident epoch=1 / World epoch=0, exact original Self root and original
+  A/B native sessions (never the reJOIN session);
+- one shared Paper boot, PID, tick ACK source, source log digest, and two
+  distinct, correctly matched actor UUIDs;
+- initial Native/Paper fields against the later joined producer's original
+  report and the typed generation's World/branch.
+Re-hashing the receipt and report together does **not** bypass these
+semantic checks; adversarial tests explicitly perform that re-hashing.
+Neither the revision nor the SHA is an independent real-World signature.

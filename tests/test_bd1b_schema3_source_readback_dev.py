@@ -274,3 +274,100 @@ def test_original_source_crosscheck_rejects_hostile_correlated_inputs(
         args["expected_committed_sha256"] = "f" * 64
     with pytest.raises((BD1bSchema3ReadbackHold, ValueError, RuntimeError)):
         audit_schema3_original_source_bytes(**args)
+
+@pytest.mark.parametrize("variant", [
+    "native-foreign-session", "native-foreign-owner", "native-rejoin-epoch",
+    "native-foreign-world", "native-sequence-boolean",
+    "native-bad-revision", "native-duplicate-self",
+    "paper-other-boot", "paper-boot-mismatch", "paper-other-pid",
+    "paper-boolean-pid", "paper-other-actor", "paper-other-log",
+    "paper-other-tick", "paper-nonce-source", "paper-bad-revision",
+    "paper-extra-field", "report-other-actor", "initial-wrong-independent-pin",
+])
+def test_original_initial_receipt_recomputed_revisions_and_cross_source_fence(
+    tmp_path, monkeypatch, variant,
+):
+    """A fresh SHA/JSON checksum by the same mutable producer grants no trust."""
+    args = _bundle(tmp_path, monkeypatch)
+    evidence = args["evidence_dir"]
+    source = evidence / "initial-native-paper-source.json"
+    report = evidence / "resident-presence-result.json"
+    rows = json.loads(source.read_bytes())
+    manifest = json.loads(report.read_bytes())
+
+    native_fields = (
+        "self_id", "owner_identity", "resident_epoch", "world_id",
+        "branch_id", "world_epoch", "native_session_id", "native_request_id",
+        "native_sequence", "native_source_ref", "native_world_time",
+    )
+    paper_fields = (
+        "paper_session_id", "paper_pid", "paper_boot_id", "presence_boot_id",
+        "paper_tick", "paper_tick_ref", "paper_actor_uuid", "paper_log_sha256",
+    )
+
+    if variant == "native-foreign-session":
+        rows[0]["native_session_id"] = "post-reJOIN-A"
+    elif variant == "native-foreign-owner":
+        rows[0]["owner_identity"] = "/unowned/Self-A"
+    elif variant == "native-rejoin-epoch":
+        rows[0]["resident_epoch"] = 2
+    elif variant == "native-foreign-world":
+        rows[0]["world_id"] = "other-world"
+    elif variant == "native-sequence-boolean":
+        rows[0]["native_sequence"] = True
+    elif variant == "native-bad-revision":
+        rows[0]["native_revision"] = "sha256:" + "0" * 64
+    elif variant == "native-duplicate-self":
+        rows[1]["self_id"] = "A"
+    elif variant == "paper-other-boot":
+        rows[0]["paper_boot_id"] = "other-boot"
+    elif variant == "paper-boot-mismatch":
+        rows[0]["presence_boot_id"] = "other-boot"
+    elif variant == "paper-other-pid":
+        rows[1]["paper_pid"] = 2222
+    elif variant == "paper-boolean-pid":
+        rows[0]["paper_pid"] = True
+    elif variant == "paper-other-actor":
+        rows[1]["paper_actor_uuid"] = "uuid-A"
+    elif variant == "paper-other-log":
+        rows[0]["paper_log_sha256"] = "f" * 64
+    elif variant == "paper-other-tick":
+        rows[1]["paper_tick"] = 1008
+    elif variant == "paper-nonce-source":
+        rows[0]["paper_tick_ref"] = (
+            "paper-main-thread:p0d:other-boot:nonce-1:sha256:" + "a" * 64
+        )
+    elif variant == "paper-bad-revision":
+        rows[0]["paper_revision"] = "sha256:" + "0" * 64
+    elif variant == "paper-extra-field":
+        rows[0]["extra-model-permission"] = True
+    elif variant == "report-other-actor":
+        manifest["steps"][0]["a_actor_uuid"] = "other-actor"
+    else:
+        args["expected_initial_source_sha256"] = "f" * 64
+
+    def revision(fields):
+        return "sha256:" + hashlib.sha256(
+            json.dumps(fields, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    # Recalculate model-supplied inner revisions, source body and all
+    # dependent report SHA values. They still cannot bypass source fences.
+    if variant not in ("native-bad-revision", "native-duplicate-self"):
+        rows[0]["native_revision"] = revision({
+            key: rows[0][key] for key in native_fields
+        })
+    if variant not in ("paper-bad-revision", "paper-extra-field"):
+        for row in rows:
+            row["paper_revision"] = revision({
+                key: row[key] for key in paper_fields
+            })
+    if variant not in ("initial-wrong-independent-pin", "report-other-actor"):
+        _write(source, rows)
+        manifest["steps"][0]["initial_native_paper_source"] = rows
+        args["expected_initial_source_sha256"] = _sha(source)
+    _write(report, manifest)
+    args["expected_producer_report_sha256"] = _sha(report)
+
+    with pytest.raises((BD1bSchema3ReadbackHold, ValueError, RuntimeError)):
+        audit_schema3_original_source_bytes(**args)
