@@ -538,3 +538,36 @@ def test_survival_observation_kinds_are_explicit(kind: str) -> None:
     message = parse_mineflayer_line(observation_line(kind=kind))
     assert isinstance(message, MineflayerObservation)
     assert message.kind == kind
+
+
+def test_native_correlated_probe_round_trip_and_legacy_compatibility() -> None:
+    assert json.loads(encode_observe()) == {"type": "observe"}
+    assert json.loads(encode_observe("cognitive-123")) == {
+        "type": "observe", "request_id": "cognitive-123",
+    }
+    payload = json.loads(observation_line(kind="probe"))
+    payload["request_id"] = "cognitive-123"
+    decoded = parse_mineflayer_line(json.dumps(payload))
+    assert isinstance(decoded, MineflayerObservation)
+    assert decoded.kind == "probe" and decoded.request_id == "cognitive-123"
+    assert decoded.provenance.reference == "session-1:1"
+    assert parse_mineflayer_line(observation_line(kind="probe")).request_id is None
+
+
+@pytest.mark.parametrize(
+    "value", ["", "bad space", "bad/sep", "-bad", "☃", "a" * 129],
+)
+def test_correlated_probe_rejects_invalid_request_id(value: str) -> None:
+    with pytest.raises(MineflayerAdapterProtocolError, match="request_id"):
+        encode_observe(value)
+    payload = json.loads(observation_line(kind="probe"))
+    payload["request_id"] = value
+    with pytest.raises(MineflayerAdapterProtocolError, match="request_id"):
+        parse_mineflayer_line(json.dumps(payload))
+
+
+def test_only_probe_may_report_correlated_request_id() -> None:
+    payload = json.loads(observation_line(kind="health"))
+    payload["request_id"] = "cognitive-123"
+    with pytest.raises(MineflayerAdapterProtocolError, match="only supported"):
+        parse_mineflayer_line(json.dumps(payload))

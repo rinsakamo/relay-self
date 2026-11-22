@@ -36,8 +36,8 @@ class FakeResponse:
     def __exit__(self, *args: object) -> bool:
         return False
 
-    def read(self) -> bytes:
-        return self._body
+    def read(self, size: int | None = None) -> bytes:
+        return self._body if size is None else self._body[:size]
 
 
 def bounded_request(*, think_allowed: bool = True) -> BoundedChoiceRequest:

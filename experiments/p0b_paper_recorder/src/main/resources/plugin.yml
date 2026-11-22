@@ -1,0 +1,4 @@
+name: P0BRecorder
+version: 0.1-dev
+main: io.github.rinsakamo.p0b.Recorder
+api-version: '1.21.8'

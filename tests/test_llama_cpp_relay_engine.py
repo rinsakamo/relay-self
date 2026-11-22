@@ -79,8 +79,8 @@ class FakeResponse:
     def __exit__(self, *_args) -> None:
         return None
 
-    def read(self) -> bytes:
-        return self._payload
+    def read(self, size: int | None = None) -> bytes:
+        return self._payload if size is None else self._payload[:size]
 
 
 def chat_response(

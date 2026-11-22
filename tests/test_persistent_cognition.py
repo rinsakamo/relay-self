@@ -192,6 +192,7 @@ def test_legacy_v1_snapshot_loads_with_no_appraisal_dispositions(tmp_path) -> No
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["schema_version"] = 1
     del payload["appraisal_dispositions"]
+    del payload["pattern_registry"]
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     restored = load_persistent_cognition(path)
