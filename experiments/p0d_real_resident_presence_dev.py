@@ -62,6 +62,9 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
 )
 from relay_self.cognitive_minimal_dev import initial_patterns
 from relay_self.common_io import ScopeRef
+from relay_self.i_lane_i2g_real_origin_schema_dev import (
+    register_i2g_born_original_empty_schemas,
+)
 from relay_self.intent import IntentCommitment
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import (
@@ -71,6 +74,7 @@ from relay_self.paper_tick_witness_dev import PaperMainThreadTickReader
 from relay_self.persistent_cognition import (
     IdentitySpecification,
     PersistentCognition,
+    save_persistent_cognition,
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import (
@@ -392,6 +396,7 @@ async def _owned_resident_trial(
     b_autonomous_l1_dev: bool = False,
     real_llm_granted: bool = False,
     typed_owner_cut_dev: bool = False,
+    i2g_original_v3_source: bool = False,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -409,6 +414,12 @@ async def _owned_resident_trial(
     assert paper_session is not None
     original_a = await bridge.login("A")
     original_b = await bridge.login("B")
+    # Original actor's initial native probe must survive A's later relogin;
+    # last_login_evidence["A"] alone is overwritten by the new epoch.
+    i2g_first_logins = (
+        {sid: asdict(bridge.last_login_evidence[sid]) for sid in ("A", "B")}
+        if i2g_original_v3_source else None
+    )
     old_a = bridge.sessions["A"].started.session_id
     a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
@@ -565,6 +576,10 @@ async def _owned_resident_trial(
         "real_l1_l2_gpu_executed": b_move is not None and b_autonomous_l1_dev,
         "real_peer_transport_executed": False,
     }
+    if i2g_original_v3_source:
+        result_data["i2g_original_first_login_evidence"] = i2g_first_logins
+        result_data["i2g_initial_exploration_pattern_learned"] = False
+        result_data["i2g_initial_physical_action_issued"] = False
     final_a = await bridge.logout("A")
     final_b = await bridge.logout("B")
     result_data["final_a_logout_receipt_file"] = _immutable_receipt(
@@ -846,6 +861,7 @@ async def run_real_resident_presence(
     model_name: str | None = None,
     stage24g_model_receipt: Stage24gModelGateReceipt | None = None,
     typed_owner_cut_dev: bool = False,
+    i2g_original_v3_source: bool = False,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
     if real_world_dev_grant is not True:
@@ -883,6 +899,15 @@ async def run_real_resident_presence(
     ):
         raise RealResidentPresenceRefusal(
             "Stage28b typed offline source cut requires passive A/B, no LLM or MOVE"
+        )
+    if i2g_original_v3_source and (
+        type(i2g_original_v3_source) is not bool
+        or not typed_owner_cut_dev or world_only or b_selected_move_dev
+        or b_autonomous_l1_dev or real_llm_grant
+        or stage24g_model_receipt is not None
+    ):
+        raise RealResidentPresenceRefusal(
+            "I2g born original source requires typed passive no-LLM/no-Action World"
         )
     if stage24g_model_receipt is not None and (
         not isinstance(stage24g_model_receipt, Stage24gModelGateReceipt)
@@ -939,7 +964,10 @@ async def run_real_resident_presence(
         "real_gpu": None if b_autonomous_l1_dev else False,
         "autonomous_l1_skill_selection": None if b_autonomous_l1_dev else False,
         "steps": [],
+        **({"i2g_original_v3_source": True, "i2g_initial_source_verified": False}
+           if i2g_original_v3_source else {}),
     }
+    i2g_native_sessions = []
     owner = None
     bridge = None
     physical = None
@@ -1002,15 +1030,18 @@ async def run_real_resident_presence(
                         "unresolved": False,
                     }, sort_keys=True) + "\n").encode(),
                 )
+            registry = initial_patterns()
+            original_identity = IdentitySpecification(
+                sid, ("World-independent retained identity",),
+                Provenance("p0d-real-resident", sid),
+            )
             originals[sid] = CheckpointedCognitiveOwner(
                 retained=PersistentCognition(
-                    IdentitySpecification(
-                        sid, ("World-independent retained identity",),
-                        Provenance("p0d-real-resident", sid),
-                    )
+                    original_identity,
+                    pattern_registry=registry if i2g_original_v3_source else None,
                 ),
                 intent=IntentCommitment(),
-                pattern_registry=initial_patterns(),
+                pattern_registry=registry,
                 native_session_id=initial_native[sid],
                 last_observed_tick=0,
                 files=CognitiveOwnerFiles(
@@ -1018,7 +1049,17 @@ async def run_real_resident_presence(
                 ),
                 physical_supervisor=ActionSupervisor(),
             )
+            if i2g_original_v3_source:
+                # Save the *same* original born Registry before any Native JOIN.
+                # This is an innate initial state, NOT Self learning/adoption.
+                save_persistent_cognition(
+                    originals[sid].files.cognition_file, originals[sid].retained,
+                )
         cognition = ResidentCognitiveWorkOwner(originals)
+        if i2g_original_v3_source:
+            initial = register_i2g_born_original_empty_schemas(cognition)
+            report["i2g_initial_schema_receipt"] = asdict(initial)
+            report["i2g_initial_source_verified"] = True
         lane = None
         if b_autonomous_l1_dev:
             assert llama_endpoint is not None and systemone_endpoint is not None
@@ -1049,10 +1090,24 @@ async def run_real_resident_presence(
         )
 
         async def native_factory(config: MineflayerLaunchConfig):
-            return await MineflayerProcessSession.launch(
+            session = await MineflayerProcessSession.launch(
                 config, node_executable=node,
                 startup_timeout_s=min(30.0, timeout_s / 3),
             )
+            if i2g_original_v3_source:
+                # Launch's adapter_started line is consumed before these
+                # journals start. They cover EVERY subsequent original stdin
+                # and stdout, including the initial login probe.
+                i2g_native_sessions.append((config.username, session))
+                session.start_raw_source_audit(
+                    evidence / (f"i2g-native-{config.username}-"
+                                f"{session.started.session_id}.jsonl"),
+                )
+                session.start_raw_command_audit(
+                    evidence / (f"i2g-commands-{config.username}-"
+                                f"{session.started.session_id}.jsonl"),
+                )
+            return session
 
         bridge = OwnedResidentPhysicalBridge(
             lifecycle=lifecycle, physical=physical, paper=owner,
@@ -1071,6 +1126,7 @@ async def run_real_resident_presence(
             b_autonomous_l1_dev=b_autonomous_l1_dev,
             real_llm_granted=real_llm_grant,
             typed_owner_cut_dev=typed_owner_cut_dev,
+            i2g_original_v3_source=i2g_original_v3_source,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1093,6 +1149,44 @@ async def run_real_resident_presence(
                 "typed_world_self_saved_tick"
             ]
             report["real_60_second_autosave_attested"] = False
+        if i2g_original_v3_source:
+            first = trial["i2g_original_first_login_evidence"]
+            rejoined = trial["a_relogin_evidence"]
+            expected_native = {
+                first["A"]["native_session_id"],
+                first["B"]["native_session_id"],
+                rejoined["native_session_id"],
+            }
+            if (len(i2g_native_sessions) != 3 or len(expected_native) != 3
+                    or {sess.started.session_id
+                        for _, sess in i2g_native_sessions} != expected_native):
+                raise RealResidentPresenceRefusal(
+                    "I2g original initial/rejoined three Native sources incomplete"
+                )
+            raw = []
+            for username, sess in i2g_native_sessions:
+                sess.finish_raw_source_audit()
+                sess.finish_raw_command_audit()
+                source_path = evidence / (
+                    f"i2g-native-{username}-{sess.started.session_id}.jsonl"
+                )
+                commands_path = evidence / (
+                    f"i2g-commands-{username}-{sess.started.session_id}.jsonl"
+                )
+                raw.append({
+                    "username": username,
+                    "native_session_id": sess.started.session_id,
+                    "pid": sess.owned_child_pid,
+                    "raw_stdout_sha256": file_sha256(source_path),
+                    "raw_stdin_sha256": file_sha256(commands_path),
+                    "raw_stdout_bytes": source_path.stat().st_size,
+                    "raw_stdin_bytes": commands_path.stat().st_size,
+                })
+            report["i2g_original_raw_native"] = raw
+            report["i2g_source_manifest_independent_verified"] = False
+            report["classification"] = (
+                "I2G_REAL_ORIGINAL_V3_TYPED_A_B_CAPTURED_AUDIT_PENDING"
+            )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
         if physical is not None:
@@ -1107,6 +1201,20 @@ async def run_real_resident_presence(
                 except BaseException:
                     report["cleanup_uncertain"] = True
                     report["classification"] = "HOLD"
+        if i2g_original_v3_source:
+            # Preserve partial native source bytes on HOLD; never retry or
+            # pretend a truncated original Native source is a complete cut.
+            for _, sess in i2g_native_sessions:
+                for attr, method in (
+                    ("_raw_source_audit_fd", sess.finish_raw_source_audit),
+                    ("_raw_command_audit_fd", sess.finish_raw_command_audit),
+                ):
+                    if getattr(sess, attr) is not None:
+                        try:
+                            method()
+                        except BaseException:
+                            report["cleanup_uncertain"] = True
+                            report["classification"] = "HOLD"
         if owner is not None and owner.owned_session_id is not None and not owner.held_uncertain:
             try:
                 owner.stop_and_save()
@@ -1135,6 +1243,7 @@ async def run_real_resident_presence(
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_DEV",
         "REAL_PAPER_B_SELECTED_NO_NET_DISPLACEMENT_WORLD_ONLY_DEV",
         "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
+        "I2G_REAL_ORIGINAL_V3_TYPED_A_B_CAPTURED_AUDIT_PENDING",
     ):
         raise RealResidentPresenceRefusal("resident Paper evidence unqualified")
     return report_path
