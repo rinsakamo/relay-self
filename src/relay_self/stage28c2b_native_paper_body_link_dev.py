@@ -91,6 +91,25 @@ def verify_paper_a_b_presence(*, bridge, paper_session_id, world_id, tick, log, 
     return digest, trace, found
 
 
+def i1_complete_owned_paper_prefix(raw: bytes, *, ack_marker: bytes) -> bytes:
+    """Accept only complete original Paper stdout lines ending in a full ACK.
+
+    Projection does not alter the native/Paper source or fabricate a newline.
+    Incomplete final lines are never evidence, even with a matching substring.
+    """
+    if type(raw) is not bytes or type(ack_marker) is not bytes or not ack_marker:
+        raise Stage28NativePaperLinkHold("original Paper bytes and ACK required")
+    if len(raw) > 64 * 1024 * 1024:
+        raise Stage28NativePaperLinkHold("original Paper source unbounded")
+    last = raw.rfind(b"\n")
+    if last < 0:
+        raise Stage28NativePaperLinkHold("no complete original Paper line")
+    prefix = raw[:last + 1]
+    if ack_marker not in prefix:
+        raise Stage28NativePaperLinkHold("complete original Paper ACK absent")
+    return prefix
+
+
 def link_recovered_a_b_native_paper_body(
     *,
     bridge: OwnedResidentPhysicalBridge,
