@@ -34,3 +34,45 @@ tests prove real actor identity, timestamp, Paper native state, GPU,
 or true model inference. There is no automatic real World launch from
 GitHub Actions. DEV only; `SELF_ADOPT_ISSUER_NOT_ATTESTED`,
 BD1b/BD1 and QUAL/SCIENCE remain HOLD.
+
+### One opt-in execution on the owner's WSL (not GitHub Actions)
+
+The following commands are an **operator-local** recipe, not a report that
+the run happened. First verify the exact pinned Paper/Plugin binaries and
+the WSL Java/Node/Paper preflight. Use only one new isolated World run, and
+never replay a HOLD or uncertainty in the same source.
+
+```bash
+PYTHONPATH=src:. python -m experiments.stage28b_pinned_typed_cut_launch_dev \
+  --paper-jar "$PAPER_JAR" --plugin-jar "$PLUGIN_JAR" \
+  --scratch-parent "$SCRATCH_PARENT" --eula-accepted \
+  --execute-once --real-world-dev-grant \
+  --record-exploration-schema3
+```
+
+The runner prints the real path of the output report. If and only if the
+run finishes without HOLD, identify its unique `evidence/` folder and
+new `typed-world-self-generations/g-*/` path. Independently archive
+the original logs, four source files and SHA pins BEFORE invoking the
+separate-process readback:
+
+```bash
+sha256sum \
+  "$GENERATION/COMMITTED.json" \
+  "$EVIDENCE/resident-presence-result.json" \
+  "$EVIDENCE/stage28b-schema3-prelogin.json" \
+  "$EVIDENCE/initial-native-paper-source.json"
+PYTHONPATH=src:. python -m experiments.bd1b_schema3_source_audit_dev \
+  --evidence-dir "$EVIDENCE" --generation "$GENERATION" \
+  --committed-sha256 "$COMMITTED_SHA" --report-sha256 "$REPORT_SHA" \
+  --prelogin-sha256 "$PRELOGIN_SHA" \
+  --initial-source-sha256 "$INITIAL_SHA"
+```
+
+All variable paths and hashes must come from the actual just-finished
+isolated run; NEVER fill them from CI fixtures, old Stage28b generations,
+or another Actor's files. The second command checks **internal raw
+consistency**, not independent real-World authenticity: ensure a separate
+trusted witness retains source identity/time/custody before any claim of
+verified original Paper/Native. A successful local readback does not
+authorize Gemma L1, ADOPT, physical Actions, QUAL or SCIENCE.

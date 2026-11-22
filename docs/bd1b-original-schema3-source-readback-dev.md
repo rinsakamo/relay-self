@@ -2,9 +2,10 @@
 
 `experiments.bd1b_schema3_source_audit_dev` reads existing frozen files
 in a **separate Python process** with no Paper, Native, GPU or model
-connection. It requires three explicitly supplied lowercase SHA256 pins:
+connection. It requires four explicitly supplied lowercase SHA256 pins:
 the exact original generation `COMMITTED.json`, the producer's result
-report, and its prelogin original Schema3 manifest. These are **claims
+report, its prelogin original Schema3 manifest, and
+`initial-native-paper-source.json`. These are **claims
 supplied to the reader**, not an external trusted source or timestamp.
 
 It validates the existing typed World/Self generation, FULL original A/B
@@ -23,7 +24,8 @@ PYTHONPATH=src:. python -m experiments.bd1b_schema3_source_audit_dev \
   --generation /path/to/evidence/typed-world-self-generations/g-000000000000 \
   --committed-sha256 <verified-sha> \
   --report-sha256 <verified-sha> \
-  --prelogin-sha256 <verified-sha>
+  --prelogin-sha256 <verified-sha> \
+  --initial-source-sha256 <verified-sha>
 ```
 
 The program returns `BD1B_SCHEMA3_SOURCE_BYTES_CROSSCHECK_CPU_ONLY`
