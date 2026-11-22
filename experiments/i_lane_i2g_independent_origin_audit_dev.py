@@ -306,6 +306,35 @@ def independently_read_i2g_original(
             != first["B"]["native_session_id"]
         ):
             raise I2gIndependentOriginHold("original A/B Native actor/session lineage wrong")
+        saved_native = {cut.self_id: cut.former_native_session_id for cut in cuts}
+        if (saved_native != {
+            "A": second_a["native_session_id"],
+            "B": first["B"]["native_session_id"],
+        }):
+            raise I2gIndependentOriginHold(
+                "recorded v3 Original Owner does not match last actual Native A/B"
+            )
+        for idx, (sid, login) in enumerate((
+            ("A", first["A"]), ("B", first["B"]), ("A", second_a),
+        )):
+            if (
+                login.get("self_id") != sid
+                or login.get("native_session_id") not in expected
+                or login.get("paper_session_id") != session
+                or login.get("world_id") != world_id
+                or login.get("branch_id") != branch_id
+                or login.get("world_epoch") != 0
+                or login.get("login_seq") != (2 if idx == 2 else 1)
+                or any(login.get(key) is not True for key in (
+                    "old_native_invalidated", "physical_wal_clear",
+                    "stale_gpu_fenced", "stale_transport_fenced",
+                    "new_native_source_verified",
+                ))
+                or login.get("action_issue_authorized") is not False
+            ):
+                raise I2gIndependentOriginHold(
+                    "Original A/B native identity, issuer and born epoch not fully witnessed"
+                )
         captured = {}
         for item in report["i2g_original_raw_native"]:
             uid, name = item["native_session_id"], item["username"]
@@ -358,6 +387,19 @@ def independently_read_i2g_original(
                 last_seq = msg.seq
                 if isinstance(msg, MineflayerObservation) and msg.kind == "probe":
                     probes.append(msg)
+            # For this passive birth trial the entire outbound command
+            # census is fixed: A's two separate sessions each LOGIN probe,
+            # and B's single continuous native session LOGIN + one observe.
+            expected_count = 2 if uid == first["B"]["native_session_id"] else 1
+            if (
+                len(requests) != expected_count
+                or len(probes) != expected_count
+                or {p.request_id for p in probes} != set(requests)
+                or any(requests.count(p.request_id) != 1 for p in probes)
+            ):
+                raise I2gIndependentOriginHold(
+                    "unpaired or excess passive Native stdin/stdout observation"
+                )
             native_login = expected[uid][1]
             matched = [p for p in probes if p.request_id == native_login["observation_ref"]]
             if (
