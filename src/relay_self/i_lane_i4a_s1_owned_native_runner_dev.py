@@ -142,6 +142,7 @@ async def issue_original_s1_place_on_owned_native_dev(
     loop = Stage27hBoundedMoveLoop(
         prepared, handoff, owner=owner, physical=physical,
         world_epoch=prepared.world_epoch, start_ns=at_ns,
+        q4_single_action_dev=True,
     )
     status = loop.pre_action(current, now_ns=time.monotonic_ns())
     if status.status != "L0_CONTINUE_MOVE":
@@ -158,7 +159,7 @@ async def issue_original_s1_place_on_owned_native_dev(
     )
     # Pessimistically reserve actual STOP observation budget before WAL
     # PREPARED. An uncertain action can never release these slots or retry.
-    loop.reserve_settling_observations(source_probe=current)
+    settlement_cap = loop.reserve_settling_observations(source_probe=current)
     grants = grant_for_action(l0.proposal.binding)
     if (
         type(grants) is not tuple or len(grants) != 2
@@ -197,7 +198,7 @@ async def issue_original_s1_place_on_owned_native_dev(
                 evidence_timeout_s=12.0, pulse_seconds=0.15,
                 bind_native_children=bind_children,
                 allow_prior_terminal_place_actions=False,
-                settlement_probe_limit=60, precision_gait="WALK",
+                settlement_probe_limit=settlement_cap, precision_gait="WALK",
                 motor_boundary=motor,
             )
             start_stop_ms.append(motor.original_motor_times_ms())
