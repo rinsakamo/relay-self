@@ -160,3 +160,43 @@ events, other Git repositories, uncommitted source files, rewritten
 independently controlled histories and the physical time of actual S1/S2
 events remain outside Q's attestation. No origin/World classification is
 promoted.
+
+
+## Q1f — distinguish append-only WAL structure from S2 physical outcome
+
+Independent review of Q1b found that its old test only demanded a distinct
+S2 Action ID after the frozen S1 row prefix. An added row with a **missing
+status, arbitrary nonterminal status, no Native session or unrelated
+session** was therefore structurally accepted as a Q1b positive. The coupled
+Q1e result could inherit that false impression if both Git and local WAL
+contained exactly the same forged bytes.
+
+Q1f constrains the minimal S1→S2 evidence claim to **exactly one** newly
+appended Action, with nonblank Intent and Skill Execution IDs, a Native
+session matching the pinned S1→S2 source scope and a recognized terminal
+*status label*. Unknown/missing statuses, previous-session S2, and an
+unexamined third Action fail closed. Accepted terminal labels include
+NATIVE_PLACE_MOVE_NO_PROGRESS and NATIVE_MOVE_NO_NET_DISPLACEMENT, because
+a finished physical outcome **is not necessarily a successful Skill**.
+
+Q1e passes the label through unaltered, while explicitly preserving
+s2_outcome_original_native_paper_attested=false and
+s2_skill_success_attested=false. A plausible status string is never a
+substitute for Native ACK, settling, Paper tick, Owner lock or the actual
+PhysicalActionJournal schema.
+
+Adversarial cases show that even if a synthetic Git archive and local
+S2 WAL agree byte-for-byte on a forged nonterminal row or extra phantom
+Action, Q1f rejects the shared source rather than considering it a
+positive S1→S2 result.
+
+**Scope limitation:** requiring exactly one new S2 Action and a matching
+Native session qualifies only this narrow same-session two-step evidence
+slice. It is NOT an assertion about all future legitimate multi-Action
+SkillRuns, reboot/reJOIN or independently proven new native-session
+transitions. Those require a different explicitly bounded verification
+contract; never loosen this one to force real-World admission.
+
+No real Paper/Native archive, actual checkpoint source, authenticated
+S1 witness or World event was verified by these tests. All real source and
+QUAL/SCIENCE statuses remain HOLD/NO_GO/NOT_RUN.
