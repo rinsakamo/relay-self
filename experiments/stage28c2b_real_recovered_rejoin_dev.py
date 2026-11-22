@@ -34,14 +34,6 @@ from experiments.p0d_real_two_native_smoke_dev import (
 from experiments.stage24g_pinned_assets_launch_dev import (
     check_stage24g_pinned_assets,
 )
-from relay_self.i_lane_i2c_original_schema_restore_dev import (
-    bootstrap_original_recorded_a_b_schemas,
-)
-from relay_self.i_lane_i2f_future_source_pins_dev import (
-    I2fFutureSourcePins,
-    inspect_i2f_future_original_sources,
-    verify_i2f_original_source_unchanged,
-)
 from relay_self.i_lane_i1_native_preflight_dev import (
     require_i1_native_preflight,
 )
@@ -49,6 +41,14 @@ from relay_self.i_lane_i1_normal_runtime_dev import (
     install_i1_original_schema_bootstrap,
     prepare_i1_original_schema_bootstrap,
     sample_i1_original_cpu_epochs,
+)
+from relay_self.i_lane_i2c_original_schema_restore_dev import (
+    bootstrap_original_recorded_a_b_schemas,
+)
+from relay_self.i_lane_i2f_future_source_pins_dev import (
+    I2fFutureSourcePins,
+    inspect_i2f_future_original_sources,
+    verify_i2f_original_source_unchanged,
 )
 from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
