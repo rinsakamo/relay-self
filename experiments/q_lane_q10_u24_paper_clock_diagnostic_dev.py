@@ -153,6 +153,7 @@ def audit_u24_two_source_clock_progress(
         else:
             classification = "NATIVE_ADVANCED_BUT_NO_SETTLED_8_PLUS_8"
         result["native"] = {
+            "stop_clock_basis": q9["native_clock_basis"],
             "stop_probe_count": q9["probes"],
             "native_stop_tick_span": native_span,
             "native_distinct_stop_ticks": q9["distinct_native_world_ticks"],
