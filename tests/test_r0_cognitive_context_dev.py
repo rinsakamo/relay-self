@@ -160,7 +160,11 @@ def test_source_and_coverage_cannot_claim_more_than_original_schema(tmp_path, mo
     case = _configured(tmp_path, monkeypatch, need=True)
     frame = _read(case, signals=(_project(case).exploration_need.signal,))
     bad = replace(frame.source, native_probe_seq=frame.source.native_probe_seq + 1)
-    assert not _live(case, CognitiveContext(replace(frame, source=bad)))
+    # Bound Schema signal is rejected at construction; unbound CURRENT is
+    # rejected by the independent original-source reread at consumption.
+    with pytest.raises(R0ContextHold, match="unqualified Schema signal"):
+        replace(frame, source=bad)
+    assert not _live(case, CognitiveContext(replace(_read(case), source=bad)))
     with pytest.raises(R0ContextHold):
         replace(frame, coverage=EpistemicStatus.OBSERVED)
     signal = frame.signals[0]
