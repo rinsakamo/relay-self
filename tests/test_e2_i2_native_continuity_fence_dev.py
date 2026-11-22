@@ -65,6 +65,36 @@ def test_i2_original_a_sense_cannot_outlive_a_native_receive_continuity(
     assert _files(bridge) == initial_files
 
 
+
+def test_i2_native_queue_holds_if_pressure_arrives_mid_present_projection(
+    tmp_path, monkeypatch,
+):
+    import relay_self.bd1b_owner_present_dev as projection
+    from relay_self.bd1b_owner_present_dev import BD1bPresentHold
+
+    case = _configured(tmp_path, monkeypatch, need=True)
+    bridge, world = case[1], case[3]
+    _inject(bridge, world, "A")
+    original_files = _files(bridge)
+    original_project = projection.project_present_frame
+    session = bridge.sessions["A"]
+
+    def pressure_during_projection(**kwargs):
+        result = original_project(**kwargs)
+        session.native_continuity_hold = NativeReceiveContinuityHold(
+            session.started.session_id, 5,
+            "OWNER_QUEUE_FULL_UNKNOWN_PIPE_DELAY", time.monotonic(),
+        )
+        return result
+
+    monkeypatch.setattr(projection, "project_present_frame",
+                        pressure_during_projection)
+    with pytest.raises(BD1bPresentHold, match="source changed"):
+        bridge.cognitive_work.read_present_cpu(**_args(case))
+    assert bridge.current_sense("A") is None
+    assert _files(bridge) == original_files
+
+
 @pytest.mark.parametrize("compact", [True, False])
 def test_one_original_decoder_latches_queue_pressure_without_losing_effect_ack(compact):
     """Reader delay is UNKNOWN even when no passive row was replaced."""
