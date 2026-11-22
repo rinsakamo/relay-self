@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -47,12 +48,30 @@ def _run(root: Path, *args: str) -> bytes:
         result = subprocess.run(
             ["git", "-C", str(root), *args],
             check=False, capture_output=True, timeout=20,
+            env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise QGitCustodyHold("Git read-only inspection unavailable") from exc
     if result.returncode != 0:
         raise QGitCustodyHold("requested immutable Git object/ancestry unavailable")
     return result.stdout
+
+
+def _assert_unmodified_parent_graph(root: Path) -> None:
+    """Fail closed on Git grafts; ignore object replacement in all reads.
+
+    GIT_NO_REPLACE_OBJECTS blocks refs/replace, including environment-selected
+    replacement namespaces. Legacy info/grafts rewrites parent history too,
+    even with replacement disabled, so any nonempty graft file is a HOLD.
+    This is only a local DAG integrity gate, not Git producer authentication.
+    """
+    try:
+        path = _run(root, "rev-parse", "--path-format=absolute", "--git-path", "info/grafts")
+        graft = Path(path.decode("utf-8").strip())
+        if graft.is_symlink() or (graft.is_file() and graft.stat().st_size):
+            raise QGitCustodyHold("legacy Git grafts can rewrite historical parent custody")
+    except (UnicodeError, OSError) as exc:
+        raise QGitCustodyHold("Git graft path cannot be independently inspected") from exc
 
 
 def _entries(root: Path, commit: str) -> dict[str, tuple[str, str]]:
@@ -143,6 +162,7 @@ def inspect_git_pre_s2_custody(
     """
     if not isinstance(repo_root, Path) or not repo_root.is_dir():
         raise QGitCustodyHold("Git repository root unavailable")
+    _assert_unmodified_parent_graph(repo_root)
     root = _commit_id(trusted_root_sha)
     pre = _commit_id(pre_s2_anchor_commit)
     post = _commit_id(post_s2_evidence_commit)
