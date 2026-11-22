@@ -9,12 +9,14 @@ import hashlib
 import json
 import urllib.request
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from experiments.i_unified_u20_original_b_world_launch_dev import (
     U20OriginalWorldHold,
     _require_isolated_u20_paths,
+    require_u20_stop_fault_original_archive,
     run_u20_original_b_world_once,
 )
 from experiments.i_unified_u20_stage26_raw_provider_dev import (
@@ -155,3 +157,69 @@ def test_u20_provider_refuses_non_stage26_requests_without_network(tmp_path):
         provider(object(), mode=CognitionMode.OPEN)
     assert provider.attempted == 0
     assert list(source.iterdir()) == []
+
+
+def test_u21_original_stop_fault_capture_needs_unaltered_all_seven_files(tmp_path):
+    """Synthetic archive: no actual World/STOP; requires 7-role readback."""
+    file_names = {
+        "native_stdout": "original-native-stdout.jsonl",
+        "native_stdin": "original-native-stdin.jsonl",
+        "paper_ticks": "original-paper-process.log",
+        "owner_wal": "original-owner-wal.json",
+        "owner_cognition": "original-owner-persistent-cognition.json",
+        "host_monotonic": "original-host-monotonic.json",
+        "process_exit": "original-node-process-exit.json",
+    }
+    fake = SimpleNamespace(
+        process_returncode=-15, _q4_stop_failure_used=True,
+        owned_child_pid=12345,
+        started=SimpleNamespace(session_id="fake-native-session"),
+    )
+    node = {
+        "native_session": fake.started.session_id,
+        "owned_pid": fake.owned_child_pid,
+        "returncode": fake.process_returncode,
+        "trial_mode": "stop_failure",
+        "stop_fault_injection_consumed": True,
+        "wal_unresolved": True,
+        "s1_action_id": None, "s2_action_id": None,
+        "s2_terminal": False, "real_world_dev_pass": False,
+    }
+    # A spoofed manifest alone must NOT suffice, even for the narrow
+    # CAPTURED_UNAUDITED diagnostic; every original role must exist.
+    evidence = {}
+    for role, name in file_names.items():
+        raw = (
+            (json.dumps(node) + "\n").encode()
+            if role == "process_exit" else (role + "-synthetic\n").encode()
+        )
+        (tmp_path / name).write_bytes(raw)
+        evidence[role] = {
+            "path": name, "size_bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+    manifest = {
+        "trial": "stop_failure",
+        "status": "RAW_EVIDENCE_MANIFEST_SEALED_NOT_VERIFIED",
+        "real_world_dev_pass": False,
+        "independent_q_audited": False,
+        "evidence": evidence,
+    }
+    (tmp_path / "original-u17-stop-failure-manifest.json").write_text(
+        json.dumps(manifest),
+    )
+    require_u20_stop_fault_original_archive(tmp_path, fake)
+    changed = tmp_path / file_names["native_stdout"]
+    changed.write_bytes(b"not-the-original-source\n")
+    with pytest.raises(U20OriginalWorldHold, match="changed after sealing"):
+        require_u20_stop_fault_original_archive(tmp_path, fake)
+    changed.write_bytes(b"native_stdout-synthetic\n")
+    (tmp_path / file_names["paper_ticks"]).unlink()
+    with pytest.raises(U20OriginalWorldHold, match="missing/replaced"):
+        require_u20_stop_fault_original_archive(tmp_path, fake)
+    (tmp_path / file_names["paper_ticks"]).write_bytes(
+        b"paper_ticks-synthetic\n",
+    )
+    fake._q4_stop_failure_used = False
+    with pytest.raises(U20OriginalWorldHold, match="not qualified"):
+        require_u20_stop_fault_original_archive(tmp_path, fake)
