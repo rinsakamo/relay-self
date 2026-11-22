@@ -11,7 +11,6 @@ import pytest
 
 from experiments.q_lane_q9_u24_s1_stop_diagnostic_dev import Q9U24Hold, audit_u24_failed_s1
 
-
 ACTION = "stage27c-B-7"
 SESSION = "native-original-s1"
 ROLES = {
