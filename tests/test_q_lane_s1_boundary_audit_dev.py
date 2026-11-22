@@ -4,10 +4,15 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from experiments.q_lane_coupled_custody_dev import (
+    QCoupledCustodyHold,
+    verify_coupled_s1_s2_custody,
+)
 from experiments.q_lane_s1_boundary_audit_dev import (
     QS1BoundaryHold,
     verify_s1_s2_anchor,
@@ -227,3 +232,174 @@ def test_q1b_both_modified_pin_and_wal_can_pass_but_is_not_authenticated(tmp_pat
     receipt = _verify(root, forged_anchor, args)
     assert receipt["trusted_external_anchor_origin_verified"] is False
     assert receipt["pre_s2_temporal_order_verified"] is False
+
+
+def _coupled_git_fixture(tmp_path: Path, *, anchor_bytes: bytes, s2_wal: bytes):
+    """Disposable Git evidence repo: separate from original read-only source."""
+    git_repo = tmp_path / "evidence-git"
+    git_repo.mkdir(parents=True)
+    subprocess.run(["git", "-C", str(git_repo), "init", "-q"], check=True)
+    subprocess.run(
+        ["git", "-C", str(git_repo), "config", "user.name", "Q Synthetic"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(git_repo), "config", "user.email", "q@example.invalid"],
+        check=True,
+    )
+
+    def _commit(message: str) -> str:
+        subprocess.run(["git", "-C", str(git_repo), "add", "-A"], check=True)
+        subprocess.run(
+            ["git", "-C", str(git_repo), "commit", "-qm", message], check=True,
+        )
+        return subprocess.check_output(
+            ["git", "-C", str(git_repo), "rev-parse", "HEAD"], text=True,
+        ).strip()
+
+    (git_repo / "README.txt").write_text("untrusted fixture, not real source\n")
+    root_commit = _commit("fixture root")
+    proof = git_repo / "proof"
+    proof.mkdir()
+    (proof / "s1-anchor.json").write_bytes(anchor_bytes)
+    before_commit = _commit("pre S2 committed anchor")
+    (proof / "s2-wal.json").write_bytes(s2_wal)
+    after_commit = _commit("post S2 committed WAL")
+    git_claims = {
+        "trusted_root_sha": root_commit,
+        "pre_s2_anchor_commit": before_commit,
+        "post_s2_evidence_commit": after_commit,
+        "anchor_path": "proof/s1-anchor.json",
+        "s2_path": "proof/s2-wal.json",
+    }
+    return git_repo, git_claims
+
+
+def _run_coupled(root, repo, anchor, source, git):
+    return verify_coupled_s1_s2_custody(
+        evidence_dir=root, git_repo_root=repo, anchor_bytes=anchor,
+        source_claims=source, git_claims=git,
+    )
+
+
+def test_q1e_matches_actual_s1_anchor_and_s2_wal_in_both_readers(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    before = {x.name: (x.read_bytes(), x.stat().st_mtime_ns)
+              for x in original.iterdir()}
+    git_head = subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    receipt = _run_coupled(original, repo, anchor, claims, git)
+    assert receipt["classification"] == (
+        "Q1E_GIT_S1_ANCHOR_S2_WAL_COUPLED_CPU_OFFLINE_DEV"
+    )
+    assert receipt["source_bytes_coupled_at_readback"] is True
+    assert receipt["history_first_appearance_consistent"] is True
+    assert receipt["execution_code_head"] == HEAD
+    assert receipt["evidence_git_s1_commit"] == git["pre_s2_anchor_commit"]
+    assert receipt["evidence_git_s2_commit"] == git["post_s2_evidence_commit"]
+    assert receipt["s2_wal_sha256"] == _sha((original / "s2-wal.json").read_bytes())
+    assert receipt["external_git_root_origin_authenticated"] is False
+    assert receipt["external_anchor_producer_authenticated"] is False
+    assert receipt["actual_pre_s2_runtime_capture_verified"] is False
+    assert receipt["real_world_attested"] is False
+    assert receipt["qual_go"] is False and receipt["science_run"] is False
+    assert before == {x.name: (x.read_bytes(), x.stat().st_mtime_ns)
+                      for x in original.iterdir()}
+    assert subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True,
+    ).strip() == git_head
+
+
+def test_q1e_two_separately_valid_sources_with_wrong_s2_bytes_are_rejected(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    bad_wal = (original / "s2-wal.json").read_bytes().replace(
+        b"NATIVE_PLACE_MOVE_NO_PROGRESS", b"NATIVE_MOVE_SETTLED",
+    )
+    assert bad_wal != (original / "s2-wal.json").read_bytes()
+    repo, git = _coupled_git_fixture(tmp_path, anchor_bytes=anchor, s2_wal=bad_wal)
+    # Q1b verifies original local S2; Git may verify the unrelated later
+    # WAL against its own independently supplied digest. The composite
+    # MUST reject the incompatible two-source evidence splice.
+    assert _verify(original, anchor, claims)["s2_wal_sha256"] != _sha(bad_wal)
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+
+
+def test_q1e_rejects_git_committed_foreign_anchor(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor.replace(b"intent-s1", b"foreign-s1"),
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+
+
+@pytest.mark.parametrize(("key", "new"), [
+    ("expected_owner_id", "wrong-owner"),
+    ("expected_self_id", "B"),
+    ("expected_native_session_id", "old-session"),
+    ("expected_checkpoint_generation", 12),
+    ("expected_pre_s2_anchor_sha256", "0" * 64),
+])
+def test_q1e_rejects_scope_and_preanchor_pin_changes(tmp_path, key, new):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    claims[key] = new
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+
+
+def test_q1e_original_s2_wal_changed_after_git_commit_fails(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    s2 = original / "s2-wal.json"
+    new_bytes = s2.read_bytes().replace(
+        b"NATIVE_PLACE_MOVE_NO_PROGRESS", b"NATIVE_MOVE_SETTLED",
+    )
+    assert new_bytes != s2.read_bytes()
+    s2.write_bytes(new_bytes)
+    # The new synthetic S2 state remains terminal and Q1b accepts the same
+    # S1 history, but committed S2 blob does not match changed original bytes.
+    assert _verify(original, anchor, claims)["s2_wal_sha256"] == _sha(new_bytes)
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+
+
+def test_q1e_rejects_supplied_or_preverified_receipt_without_raw_source(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    claims["supplied_receipt"] = {
+        "classification": "Q1B_PINNED_S1_S2_WAL_PREFIX_CPU_OFFLINE_DEV",
+    }
+    with pytest.raises(QCoupledCustodyHold, match="exact"):
+        _run_coupled(original, repo, anchor, claims, git)
+
+
+def test_q1e_rejects_duplicate_git_sha_claim_or_missing_file(tmp_path):
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    git["s2_path"] = git["anchor_path"]
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+    git["s2_path"] = "proof/s2-wal.json"
+    (original / "s1-checkpoint.json").unlink()
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
