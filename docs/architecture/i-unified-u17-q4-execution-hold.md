@@ -1,0 +1,9 @@
+# U17 Q4 execution-path inspection — HOLD
+
+Inspected I `f1d0258eef83acc134645a1f20c721e2e0f60122` and independent Q `d89347e65299f7a1e9e5f43208d0122f51b91216`. I exact-HEAD CI #45022943095 completed 5/5 successfully; Q exact-HEAD CI #45019928466 also succeeded. These are CPU/contract checks, not World evidence.
+
+The U15 original owned-process S2 entry exists, but no production or experiment caller invokes it, and `rearm_original_place_after_q4_settled` has only test callers. No complete real S1 PLACE → terminal source verification → real L1 new Intent/Skill/Action → S2 rearm → same-session S2 entry exists. `experiments/stage24b_real_l1_move_dev.py` selects a real L1 MOVE, issues the ordinary MOVE path and closes its stdout audit in `finally`; it cannot serve as the required continuous two-PLACE harness unchanged. The process adapter captures stdout but `_send` has no original stdin capture. Paper position correlation, host START/STOP timing evidence and owned-process exit evidence also need to be collected by the actual harness. The U16 manifest inventories existing files; it does not create or authenticate those producer records. Q's separate auditor has not been run on World originals because none were produced.
+
+No World was launched, no action or fault was injected, and no raw World evidence or manifest was created in U17. The remaining implementation must preserve original Owner and physical issuer, continuous same-process stdout capture, original WAL and new Action identity, the separate motor and settling deadlines, and a distinct isolated fault World. The synthetic-only S2 rejection remains unchanged. Do not regard the existing CPU checks or Q `CPU_STRUCTURE_PASS` as World PASS.
+
+Local focused pytest, Ruff and repository contracts were run against the inspected source. **PRE_WORLD_HOLD / QUAL_NO_GO / SCIENCE_NOT_RUN**; both two-MOVE and STOP-fault outcomes remain unverified, and independent Q World audit remains outstanding.
