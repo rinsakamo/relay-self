@@ -121,9 +121,22 @@ def _build_window(
         or len({e.actor_uuid for e in people}) != 1
     ):
         raise Q4OriginalPaperHold("one continuously owned Paper actor required")
-    origin = _position(people[0])
-    # A Paper position must be independently different from the login body,
-    # but this temporal correlation alone does not authenticate motor cause.
+    # For S1 compare against login; for S2 compare against the last original
+    # Paper position BEFORE its frozen pre-motor prefix. A valid S2 may
+    # return towards the login position, so login-based displacement is wrong.
+    baseline = people[0]
+    if after_log_prefix is not None:
+        prior = [
+            event for event in people
+            if event.line <= after_line
+            and event.event in {"JOIN", "PRESENT", "MOVE"}
+        ]
+        if not prior:
+            raise Q4OriginalPaperHold("pre-S2 Paper actor baseline absent")
+        baseline = prior[-1]
+    origin = _position(baseline)
+    # A Paper position must differ from the S1/S2 pre-motion baseline,
+    # but this temporal correlation never authenticates motor cause.
     visible = [
         e for e in people[1:]
         if e.event in {"PRESENT", "MOVE"}
