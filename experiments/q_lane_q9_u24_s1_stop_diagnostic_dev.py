@@ -95,6 +95,13 @@ def _stop_probe_diagnosis(
                for p in observations)
            and all(b["seq"] > a["seq"] for a, b in zip(observations, observations[1:])),
            "STOP samples not newer than actual STOP ACK")
+    clock_kinds = {
+        "world_age_ticks" in p["snapshot"]["time"]
+        for p in observations if isinstance(p["snapshot"].get("time"), dict)
+    }
+    _check(len(clock_kinds) == 1 and len([
+        p for p in observations if isinstance(p["snapshot"].get("time"), dict)
+    ]) == len(observations), "STOP clock source changed or missing")
     ticks = [_time(p["snapshot"]) for p in observations]
     positions = [_position(p["snapshot"].get("position")) for p in observations]
     _check(all(b >= a for a, b in zip(ticks, ticks[1:]))
@@ -124,6 +131,9 @@ def _stop_probe_diagnosis(
         "native_world_first_tick": ticks[0],
         "native_world_last_tick": ticks[-1],
         "native_world_tick_span": span,
+        "native_clock_basis": (
+            "SERVER_WORLD_AGE" if True in clock_kinds else "LEGACY_DAYLIGHT_TIME"
+        ),
         "distinct_native_world_ticks": len(set(ticks)),
         "position_span_m": round(math.dist(positions[0], positions[-1]), 6),
         "native_8_plus_8_stability_observed": False,
