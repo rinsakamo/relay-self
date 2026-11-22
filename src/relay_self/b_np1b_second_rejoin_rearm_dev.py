@@ -550,8 +550,10 @@ async def rearm_second_rejoin_normal_cpu(
             or new._tasks["A"] is old._tasks["A"]
             or new._tasks["B"] is old._tasks["B"]
         ):
-            awaitable = new.stop()
-            awaitable.close()
+            new._stopped = True
+            new._current.clear()
+            for task in new._tasks.values():
+                task.cancel()
             raise SecondRejoinHold("rearmed original CPU epochs disagree")
         proof = SecondRejoinRearm(
             first_pair_revision=anchor.pair_revision,
