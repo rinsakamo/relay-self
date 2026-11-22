@@ -134,6 +134,7 @@ async def _probe(
 async def _settled(
     session: MineflayerProcessSession, *,
     native: str, stop_seq: int, timeout_s: float,
+    max_probe_requests: int | None = None,
 ) -> tuple[
     MineflayerObservation,
     MineflayerObservation,
@@ -145,6 +146,10 @@ async def _settled(
     A drifting body shifts only its reference, never commits without a
     stable 8-tick window. This STOP tolerance is not a target accuracy.
     """
+    if max_probe_requests is not None and (
+        type(max_probe_requests) is not int or not 3 <= max_probe_requests <= 4096
+    ):
+        raise PhysicalMoveRefusal("invalid bounded STOP probe request limit")
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
     initial = await _probe(
@@ -155,6 +160,8 @@ async def _settled(
     all_probes = [initial]
     reached_first = False
     while loop.time() < deadline:
+        if max_probe_requests is not None and len(all_probes) >= max_probe_requests:
+            raise PhysicalMoveRefusal("MOVE STOP probe reservation exhausted")
         await asyncio.sleep(0.05)
         later = await _probe(
             session, native=native, after_seq=last.seq,
