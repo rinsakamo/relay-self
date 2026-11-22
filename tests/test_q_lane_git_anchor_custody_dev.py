@@ -330,3 +330,47 @@ def test_q1d_head_ref_changes_during_inspection_fail_closed(tmp_path, monkeypatc
     with pytest.raises(QGitCustodyHold, match="HEAD changed during"):
         _verify(root, kwargs)
     assert observations == 2
+
+
+def test_q1d_hidden_anchor_blob_alias_before_declared_birth_is_rejected(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    anchor_data = b'{"self":"A","s1":"terminal","world":"fixture"}\n'
+    _write(root, "hidden/prior-anchor-bytes.data", anchor_data)
+    _commit(root, "prior byte-identical S1 source using other path")
+    _write(root, ANCHOR, anchor_data)
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "later claimed S1 birth")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "later S2")
+    with pytest.raises(QGitCustodyHold, match="anchor existed before selected"):
+        _verify(root, kwargs)
+
+
+def test_q1d_hidden_s2_bytes_at_pre_anchor_are_rejected(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    anchor_data = b'{"self":"A","s1":"terminal","world":"fixture"}\n'
+    s2_data = b'{"self":"A","s2":"new action","world":"fixture"}\n'
+    _write(root, ANCHOR, anchor_data)
+    _write(root, "hidden/s2-under-other-name.data", s2_data)
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "pre stage hides later S2")
+    (root / "hidden/s2-under-other-name.data").unlink()
+    _commit(root, "drop hidden S2")
+    _write(root, S2, s2_data)
+    kwargs["post_s2_evidence_commit"] = _commit(root, "visible later S2")
+    with pytest.raises(QGitCustodyHold, match="source bytes existed in earlier"):
+        _verify(root, kwargs)
+
+
+def test_q1d_transient_renamed_s2_blob_after_anchor_is_rejected(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["pre_s2_anchor_commit"])
+    s2_data = b'{"self":"A","s2":"new action","world":"fixture"}\n'
+    _write(root, "hidden/pre-final-s2.data", s2_data)
+    _commit(root, "S2 data existed under different path")
+    (root / "hidden/pre-final-s2.data").unlink()
+    _commit(root, "remove previous S2 alias")
+    _write(root, S2, s2_data)
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2 at final asserted path")
+    with pytest.raises(QGitCustodyHold, match="S2 evidence existed before final"):
+        _verify(root, kwargs)
