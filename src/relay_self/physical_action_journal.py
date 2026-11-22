@@ -101,7 +101,7 @@ def _move_pos(value: object) -> tuple[float, float, float]:
 
 def _validate(value: object) -> dict[str, Any]:
     body = _exact(value, {"schema", "self_id", "actions"})
-    if body["schema"] not in (1, 2) or type(body["actions"]) is not list:
+    if type(body["schema"]) is not int or body["schema"] not in (1, 2) or type(body["actions"]) is not list:
         raise PhysicalJournalError("unsupported journal schema")
     _text(body["self_id"])
     seen: set[str] = set()
@@ -178,6 +178,8 @@ def _validate(value: object) -> dict[str, Any]:
             ):
                 raise PhysicalJournalError("PLACE MOVE original Invocation/budget invalid")
             _move_pos(row["target_position"])
+            if ("gait_mode" in row) != ("gait_ack_seq" in row):
+                raise PhysicalJournalError("partial MOVE gait evidence fields")
             if "gait_mode" in row and (
                 row["gait_mode"] not in ("WALK", "SNEAK")
                 or ("gait_ack_seq" not in row)
