@@ -15,6 +15,7 @@ from relay_self.cognitive_minimal_dev import (
     initial_patterns,
     initial_patterns_with_relative_move,
 )
+from relay_self.coordinated_checkpoint_dev import CoordinatedCheckpointError
 from relay_self.exploration_schema_record_dev import (
     RecordedSchemaHold,
     canonical_exploration_snapshot,
@@ -129,7 +130,7 @@ def test_schema3_cannot_upgrade_unregistered_pattern():
         ))
 
 
-def _retired_v3_source(tmp_path, monkeypatch):
+def _retired_v3_source(tmp_path, monkeypatch, *, mode=SchemaMode.FULL):
     bridge, paper, store, evidence = _setup(tmp_path, monkeypatch)
     for name in ("world_nether", "world_the_end"):
         dim = tmp_path / name
@@ -148,7 +149,7 @@ def _retired_v3_source(tmp_path, monkeypatch):
     for sid in ("A", "B"):
         snapshot = canonical_exploration_snapshot(
             self_id=sid, registry=resident.owners[sid].pattern_registry,
-            mode=SchemaMode.FULL,
+            mode=mode,
         )
         resident.register_present_schema(sid, snapshot)
         resident.bind_login(
@@ -162,8 +163,8 @@ def _retired_v3_source(tmp_path, monkeypatch):
     return bridge, paper, store, evidence
 
 
-def _generation(tmp_path, monkeypatch):
-    bridge, paper, store, evidence = _retired_v3_source(tmp_path, monkeypatch)
+def _generation(tmp_path, monkeypatch, *, mode=SchemaMode.FULL):
+    bridge, paper, store, evidence = _retired_v3_source(tmp_path, monkeypatch, mode=mode)
     generation = capture_retired_resident_typed_world(
         bridge=bridge, paper=paper, store=store, evidence_dir=evidence,
     ).generation
@@ -253,3 +254,55 @@ def test_retired_schema_cut_refuses_forged_or_partial_original(
         )
     assert paper.stop_count == 0
     assert not list(store.glob("g-*/COMMITTED.json"))
+
+def test_explicit_off_remains_off_after_source_recorded_restore(
+    tmp_path, monkeypatch,
+):
+    generation, _, _ = _generation(tmp_path, monkeypatch, mode=SchemaMode.OFF)
+    result = _recover(generation, tmp_path / "off-source", enabled=False)
+    assert all(
+        result.cognitive_work._present_schemas[sid][0]
+        .get("exploratory").mode is SchemaMode.OFF
+        for sid in ("A", "B")
+    )
+    with pytest.raises(Stage28c2OwnerHold, match="activation differs"):
+        _recover(generation, tmp_path / "off-upgrade-denied", enabled=True)
+
+
+def _resign_owner_only(path, *, mode="OFF"):
+    from relay_self.self_owner_checkpoint_dev import _bytes
+
+    envelope = json.loads(path.read_bytes())
+    envelope["payload"]["exploration_schema"]["mode"] = mode
+    envelope["sha256"] = hashlib.sha256(_bytes(envelope["payload"])).hexdigest()
+    path.write_bytes(_bytes(envelope))
+
+
+def test_resigned_original_owner_activation_fails_committed_generation(
+    tmp_path, monkeypatch,
+):
+    generation, _, _ = _generation(tmp_path, monkeypatch)
+    original = generation / "selves" / "A" / "owner-state.json"
+    _resign_owner_only(original)
+    # Inner JSON integrity is valid, but original COMMITTED generation byte
+    # manifest is not: retagging after the cut cannot change past activation.
+    assert load_self_owner_cut(original).schema_snapshot.get("exploratory").mode is SchemaMode.OFF
+    with pytest.raises(CoordinatedCheckpointError):
+        verify_typed_generation(generation)
+
+
+def test_restored_copy_resigned_inner_owner_rejected_against_original(
+    tmp_path, monkeypatch,
+):
+    generation, _, _ = _generation(tmp_path, monkeypatch)
+    destination = tmp_path / "forged-restored"
+    prepared = _prepare(generation, destination)
+    _resign_owner_only(destination / "selves" / "B" / "owner-state.json")
+    with pytest.raises(Stage28c2OwnerHold):
+        prepare_recovered_a_b_resident_owners(
+            generation, destination, expected_world_id="world-1",
+            expected_source_branch_id="source",
+            expected_committed_sha256=prepared.source_commit_sha256,
+            expected_fork_branch_id=prepared.restored_branch_id,
+            observation_only=True,
+        )

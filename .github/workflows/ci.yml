@@ -83,6 +83,9 @@ jobs:
           python -m pytest tests/test_bd1b_real_issuer_preflight_dev.py \
             tests/test_bd1b_real_original_capture_dev.py
 
+      - name: Verify original B+D Schema3 typed source and inert restore offline
+        run: python -m pytest tests/test_bd1b_schema3_typed_restore_dev.py
+
       - name: Run deterministic tests
         run: python -m pytest
 
