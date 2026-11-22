@@ -7,19 +7,16 @@ independent. This grants no GPU, physical Action or memory adoption.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import re
 from dataclasses import asdict, dataclass
 
 from relay_self.b_np1b_continuing_b_composite_dev import ContinuingCompositeSourceReceipt
-from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
 from relay_self.b_np1b_fresh_native_update_dev import (
     read_continuing_b_native_revision,
     read_rejoined_native_revision,
 )
 from relay_self.b_np1b_initial_source_dev import _revision
-from relay_self.b_np1b_normal_present_poll_dev import NormalPresentCpuPoll
 from relay_self.b_np1b_normal_present_scheduler_dev import (
     NormalResidentPresentCpuScheduler,
     ScheduledPresentCpu,
