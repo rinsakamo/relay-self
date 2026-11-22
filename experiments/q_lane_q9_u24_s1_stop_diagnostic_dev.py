@@ -70,11 +70,17 @@ def _stop_probe_diagnosis(
     commands: list[dict], native: list[dict], stop_seq: int,
     *, expected_probes: int,
 ) -> dict:
-    requests = [x["request_id"] for x in commands
-                if x["type"] == "observe" and "request_id" in x
-                and x["request_id"].startswith("p0d-move-stop-")]
-    _check(len(requests) == expected_probes and len(set(requests)) == len(requests),
-           "original STOP observation reservation not fully accounted")
+    stop_indices = [i for i, row in enumerate(commands)
+                    if row["type"] == "effect"
+                    and row["effect"] == "clear_controls"]
+    request_rows = [(i, row["request_id"]) for i, row in enumerate(commands)
+                    if row["type"] == "observe" and "request_id" in row
+                    and row["request_id"].startswith("p0d-move-stop-")]
+    requests = [request_id for _, request_id in request_rows]
+    _check(len(stop_indices) == 1 and len(requests) == expected_probes
+           and len(set(requests)) == len(requests)
+           and all(index > stop_indices[0] for index, _ in request_rows),
+           "STOP probes not all requested after original STOP command")
     by_request: dict[str, dict] = {}
     for row in native:
         if row.get("type") == "observation" and row.get("kind") == "probe":
@@ -218,8 +224,11 @@ def audit_u24_failed_s1(
         _check(node.get("stop_fault_injection_consumed") is True
                and node.get("returncode") != 0,
                "STOP failure was not consumed with nonzero original Node exit")
-        _check(not any(c.get("effect") == "clear_controls" for c in commands),
-               "STOP was sent despite claimed pre-STOP failure")
+        _check(not any(c.get("effect") == "clear_controls" for c in commands)
+               and not any(c.get("type") == "observe"
+                           and str(c.get("request_id", "")).startswith("p0d-move-stop-")
+                           for c in commands),
+               "STOP command/probes exist despite claimed pre-STOP failure")
         result.update(stop_sent=False, stop_applied=False,
                       fault_report_consistent=True)
     return result
