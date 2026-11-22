@@ -330,9 +330,6 @@ class MineflayerProcessSession:
                 received_at = time.monotonic()
                 self._observer_received_monotonic = received_at
                 batch += 1
-                if batch == 64:
-                    batch = 0
-                    await asyncio.sleep(0)
                 if self._dispatch_queue.full():
                     # Fence BEFORE any observer can publish the just-read
                     # frame; another CPU consumer may run in another thread.
@@ -345,6 +342,11 @@ class MineflayerProcessSession:
                             reason="OWNER_QUEUE_FULL_UNKNOWN_PIPE_DELAY",
                             received_monotonic=received_at,
                         )
+                # Even at the periodic fairness yield boundary, the HOLD
+                # must already be visible to every original CPU consumer.
+                if batch == 64:
+                    batch = 0
+                    await asyncio.sleep(0)
                 try:
                     self._dispatch_observer(message)
                 except Exception as exc:
