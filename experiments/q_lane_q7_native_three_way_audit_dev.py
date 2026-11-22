@@ -130,6 +130,16 @@ def audit_two_moves_three_way(
             effects[(j + 1) * 3][0] if j + 1 < len(rows)
             else len(commands)
         )
+        before_seq = row["probe_seq"]
+        original_before = out.get(before_seq)
+        _check(
+            type(original_before) is dict
+            and original_before.get("type") == "observation"
+            and original_before.get("kind") == "probe"
+            and original_before.get("request_id") == before_request
+            and original_before.get("session_id") == session,
+            "original S1/S2 WAL source probe not present in Native stdout",
+        )
         _check(before_request in observe_index
                and observe_index[before_request] < look_index,
                "original S1/S2 pre-LOOK source probe not sent")
