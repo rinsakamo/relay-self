@@ -72,6 +72,10 @@ class MineflayerProcessSession:
         self._raw_stdin_audit_path: Path | None = None
         self._raw_stdin_audit_finished = False
         self._raw_stdin_audit_size = 0
+        # Q4 fault injection is a strictly local one-use withholding of an
+        # *original* STOP command, never an alternate effect/Native sender.
+        self._q4_forced_stop_failure: str | None = None
+        self._q4_stop_failure_used = False
 
     @classmethod
     async def launch(
@@ -368,7 +372,38 @@ class MineflayerProcessSession:
             )
         )
 
+    def arm_q4_stop_failure_once_dev(self, stop_child_action_id: str) -> None:
+        """Isolated DEV STOP-failure test; only an actually owned Node child.
+
+        A genuine START/ACK still has to happen in the original executor;
+        this merely forces the subsequent one-shot STOP attempt to fail.
+        Host watchdog must then quarantine and terminate this same process.
+        """
+        if (
+            type(self) is not MineflayerProcessSession
+            or not self._bounded_place_dev_mode
+            or self.owned_child_pid is None
+            or self.process_returncode is not None
+            or not isinstance(stop_child_action_id, str)
+            or not stop_child_action_id.endswith("-stop")
+            or not callable(self._atomic_effect_sender)
+            or self._raw_source_audit_fd is None
+            or self._raw_stdin_audit_fd is None
+            or self._q4_forced_stop_failure is not None
+            or self._q4_stop_failure_used
+        ):
+            raise MineflayerProcessIOError("real Q4 isolated one-shot STOP fault required")
+        self._q4_forced_stop_failure = stop_child_action_id
+
     async def send_clear_controls(self, action_id: str) -> None:
+        if action_id == self._q4_forced_stop_failure:
+            self._q4_forced_stop_failure = None
+            self._q4_stop_failure_used = True
+            # Explicitly no stdin attempt or fake STOP ACK is produced.
+            raise MineflayerProcessIOError("Q4 DEV injected STOP failure after START")
+        if self._q4_stop_failure_used and action_id.endswith("-stop"):
+            # No reuse of a withheld STOP child from this fault trial.
+            raise MineflayerProcessIOError("Q4 faulted STOP child cannot be replayed")
         await self._send(encode_clear_controls(action_id))
 
     async def send_equip_item(
