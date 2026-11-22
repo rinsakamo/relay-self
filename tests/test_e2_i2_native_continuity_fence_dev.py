@@ -172,3 +172,51 @@ def test_one_original_decoder_latches_queue_pressure_without_losing_effect_ack(c
         await session.terminate()
 
     asyncio.run(scenario())
+
+
+def test_dispatcher_batch_yield_cannot_expose_unfenced_64th_native_row():
+    """The original event loop yields at 64; HOLD must precede that yield."""
+    class QueueStdout:
+        def __init__(self):
+            self.queue = asyncio.Queue()
+
+        async def readline(self):
+            return await self.queue.get()
+
+    def line(raw):
+        return (json.dumps(raw) + "\n").encode("utf-8")
+
+    async def scenario():
+        process = FakeProcess([])
+        process.stdout = QueueStdout()
+        process.stdout.queue.put_nowait(line({
+            "type": "adapter_started", "session_id": "native-batch", "seq": 0,
+            "mineflayer_version": MINEFLAYER_VERSION,
+            "config": {"host": "127.0.0.1", "port": 25565,
+                       "username": "Self", "version": None},
+        }))
+        session = MineflayerProcessSession(process)
+        session._started = await session.receive()
+        witnessed = []
+
+        def observer(msg):
+            witnessed.append((msg.seq, session.native_continuity_hold))
+
+        session.start_dispatcher(observer, capacity=63,
+                                 compact_safe=lambda: True)
+        template = json.loads(observation_line())
+        for seq in range(1, 65):
+            item = dict(template, session_id="native-batch",
+                        seq=seq, kind="move")
+            process.stdout.queue.put_nowait(line(item))
+        async with asyncio.timeout(2):
+            while len(witnessed) < 64:
+                await asyncio.sleep(0)
+        assert all(hold is None for _, hold in witnessed[:63])
+        assert witnessed[63][0] == 64
+        assert session.native_continuity_hold is witnessed[63][1]
+        assert session.native_continuity_hold.first_seq == 64
+        assert session.passive_aggregation.replaced_count == 1
+        await session.terminate()
+
+    asyncio.run(scenario())
