@@ -57,16 +57,18 @@ def _fake_original(tmp_path, monkeypatch):
         folder = tmp_path / dim / "region"
         folder.mkdir(parents=True)
         (folder / "r.0.0.mca").write_bytes(b"test-only-dimension")
+    synthetic_world_uuid = "11111111-2222-4333-8444-555555555555"
+    paper.world_id = synthetic_world_uuid
     paper.branch_id = "p0d-real-resident-presence"
     bridge.lifecycle.world = WorldLifetime(
-        "world-1", "p0d-real-resident-presence",
+        synthetic_world_uuid, "p0d-real-resident-presence",
         "paper-owned-original", 0, 100,
     )
     def stop_paper():
         paper.stop_count += 1
         paper.owned_session_id = None
         return StoppedWorldReceipt(
-            "world-1", "p0d-real-resident-presence",
+            synthetic_world_uuid, "p0d-real-resident-presence",
             "paper-owned-original", 110,
             "paper:main-thread-tick:110",
             "paper:owned-process-exit:0", 0, True,
@@ -98,7 +100,7 @@ def _fake_original(tmp_path, monkeypatch):
     generation = evidence / "typed-world-self-generations" / prepared.generation.name
     generation.parent.mkdir()
     shutil.copytree(prepared.generation, generation)
-    world_id = "world-1"
+    world_id = synthetic_world_uuid
     paper_session = "paper-owned-i2g-fixture"
     boot = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
     actors = {
@@ -248,7 +250,9 @@ def test_i2g_full_raw_origin_to_sealed_manifest_to_inert_fork_CPU_only(
         manifest_files=count, destination=fork,
         restore_id="i2g-fixture-only", pins_output=pins_file,
     )
-    assert json.loads(pins_file.read_bytes())["source_world_id"] == "world-1"
+    assert json.loads(pins_file.read_bytes())["source_world_id"] == (
+        "11111111-2222-4333-8444-555555555555"
+    )
     assert pins.source_committed_sha256 == review.source_committed_sha256
     assert pins.original_manifest_sha256 == manifest_sha
     assert pins.original_manifest_files == count
