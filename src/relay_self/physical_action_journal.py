@@ -27,7 +27,6 @@ from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.physical_action_port import PhysicalActionBinding
 
-
 if TYPE_CHECKING:
     from relay_self.p0d_stage27b_place_motion_dev import Stage27PlaceMotionPlan
     from relay_self.skill_invocation import SkillInvocation
