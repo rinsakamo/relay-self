@@ -47,7 +47,8 @@ def _distinct_runs(s1: tuple[dict, ...], s2: tuple[dict, ...], session: str) -> 
         return False
     for rows in (s1, s2):
         if (
-            len({r.get("intent_id") for r in rows}) != 1
+            len({r.get("action_id") for r in rows}) != len(rows)
+            or len({r.get("intent_id") for r in rows}) != 1
             or len({r.get("skill_execution_id") for r in rows}) != 1
             or any(
                 not isinstance(r.get(k), str) or not r[k]
@@ -86,7 +87,7 @@ class IUnifiedS2Readback:
     s2_intent_id: str
     s2_skill_execution_id: str
     s2_action_ids: tuple[str, ...]
-    original_wal_readback: bool = True
+    local_wal_format_readback: bool = True
     original_source_authenticated: bool = False
     real_physical_s2_attested: bool = False
     c1_memory_adopted: bool = False

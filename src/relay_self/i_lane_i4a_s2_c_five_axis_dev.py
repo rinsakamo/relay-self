@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
+
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.c_lane_l1_evaluation_engine_dev import (
     EvaluationSourceStale,

@@ -39,6 +39,7 @@ def test_s1_s2_distinct_terminal_intent_skill_action():
     ):
         assert not _distinct_runs(s1, altered, "native-A")
     assert not _distinct_runs(s1, (), "native-A")
+    assert not _distinct_runs(s1, (s2[0], s2[0]), "native-A")
 
 
 def test_original_b_wal_empty_and_foreign_are_never_s2_admitted(tmp_path):

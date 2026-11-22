@@ -7,13 +7,14 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 
-from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerObservation
-from experiments.cognitive_physical_executor_dev import PhysicalDevGrant
 from experiments.cognitive_physical_place_move_issue_dev import (
     Stage27PlaceMoveReceipt,
     complete_prepared_place_move_dev,
 )
+
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerObservation
+from experiments.cognitive_physical_executor_dev import PhysicalDevGrant
 from relay_self.i_lane_i4a_s2_first_move_proposal_dev import I4AS2FirstMoveProposal
 from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
     I4AS2FirstReservationHold,

@@ -10,6 +10,7 @@ import math
 from dataclasses import dataclass
 
 from experiments.cognitive_physical_place_move_issue_dev import Stage27PlaceMoveReceipt
+
 from relay_self.action import ActionState
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.initial_skill_ir import SkillCursor
