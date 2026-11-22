@@ -44,14 +44,14 @@ def _case(monkeypatch, *, settled_tick=130, foreign_actor=False):
     )
     # Local source-shaped Paper transcript, not a launched Paper process.
     raw = (
-        f"P0D_RESIDENT_READY boot={BOOT} source=PAPER_MAIN_THREAD version=1\\n"
+        f"P0D_RESIDENT_READY boot={BOOT} source=PAPER_MAIN_THREAD version=1\n"
         + "".join(
             f"P0D_RESIDENT event={e.event} boot={e.boot_id} tick={e.tick} "
             f"world={e.world_uuid} actor={e.actor_uuid} name={e.name} "
-            f"x={e.x} y={e.y} z={e.z} source=PAPER_MAIN_THREAD\\n"
+            f"x={e.x} y={e.y} z={e.z} source=PAPER_MAIN_THREAD\n"
             for e in events
         )
-    ).replace("\\\\n", "\\n").encode()
+    ).encode()
     trace = parse_owned_paper_resident_trace(
         owned_paper_session_id=PAPER, expected_world_uuid=WORLD,
         owned_paper_log=raw, log_ref="synthetic-test-only",
