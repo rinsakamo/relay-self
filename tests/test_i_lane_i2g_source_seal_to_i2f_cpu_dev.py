@@ -123,7 +123,9 @@ def _fake_original(tmp_path, monkeypatch):
             f"world={world_id} actor={actors[sid]} name=Relay{sid} "
             "x=0 y=64 z=0 source=PAPER_MAIN_THREAD\n"
         )
+    paper.extend(["Saved the game\\n", "Stopping server\\n"])
     (evidence / (paper_session + ".log")).write_bytes("".join(paper).encode())
+    (evidence / (paper_session + ".pid")).write_text("130\\n")
     # Final IDs MUST equal the original committed A/B Owner cuts.
     # A's first Native belongs to an older, now retired session.
     original_ids = {
@@ -179,6 +181,11 @@ def _fake_original(tmp_path, monkeypatch):
         "real_l1_l2_gpu_executed": False,
         "i2g_initial_exploration_pattern_learned": False,
         "i2g_initial_physical_action_issued": False,
+        "a_actor_uuid": actors["A"],
+        "b_actor_uuid": actors["B"],
+        "a_paper_quit_tick": 9,
+        "b_paper_continuation_tick": 10,
+        "a_paper_rejoin_tick": 11,
         "a_original_native_session": original_ids["A0"],
         "b_original_native_session": original_ids["B0"],
         "i2g_original_first_login_evidence": {
@@ -273,6 +280,9 @@ def test_i2g_full_raw_origin_to_sealed_manifest_to_inert_fork_CPU_only(
     "foreign-native", "stale-a-probe", "move-command",
     "paper-actor", "paper-present", "tampered-owner",
     "learned-pattern-claim", "corrupt-stdout",
+    "paper-cross-actor", "paper-duplicate-epoch", "paper-b-quit-first",
+    "paper-false-b-receipt", "paper-tampered-pid", "paper-no-save",
+    "paper-native-pid-collision",
 ])
 def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
     tmp_path, monkeypatch, fault,
@@ -302,6 +312,36 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
     elif fault == "paper-present":
         paper = evidence / "paper-owned-i2g-fixture.log"
         paper.write_text(paper.read_text().replace("event=PRESENT", "event=ABSENT"))
+    elif fault == "paper-cross-actor":
+        paper = evidence / "paper-owned-i2g-fixture.log"
+        paper.write_text(paper.read_text().replace(
+            "actor=" + "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
+            + " name=RelayA x=0 y=64 z=0 source=PAPER_MAIN_THREAD",
+            "actor=" + "cccccccc-cccc-4ccc-cccc-cccccccccccc"
+            + " name=RelayA x=0 y=64 z=0 source=PAPER_MAIN_THREAD",
+            1,
+        ))
+    elif fault == "paper-duplicate-epoch":
+        paper = evidence / "paper-owned-i2g-fixture.log"
+        text = paper.read_text()
+        paper.write_text(text.replace(
+            "event=QUIT boot=", "event=JOIN boot=", 1,
+        ))
+    elif fault == "paper-b-quit-first":
+        paper = evidence / "paper-owned-i2g-fixture.log"
+        text = paper.read_text()
+        paper.write_text(text.replace(
+            "event=PRESENT boot=", "event=QUIT boot=", 1,
+        ))
+    elif fault == "paper-false-b-receipt":
+        report["steps"][0]["b_paper_continuation_tick"] = 8888
+    elif fault == "paper-tampered-pid":
+        (evidence / "paper-owned-i2g-fixture.pid").write_text("not-pid\\n")
+    elif fault == "paper-no-save":
+        paper = evidence / "paper-owned-i2g-fixture.log"
+        paper.write_text(paper.read_text().replace("Saved the game", "NO SAVE"))
+    elif fault == "paper-native-pid-collision":
+        report["i2g_original_raw_native"][0]["pid"] = 130
     elif fault == "tampered-owner":
         owner = generation / "selves" / "A" / "cognition.json"
         owner.write_bytes(b"changed cognition")
@@ -312,6 +352,7 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
         source.write_bytes(b"forged Native stdout\n")
     if fault in {
         "foreign-native", "stale-a-probe", "move-command", "learned-pattern-claim",
+        "paper-false-b-receipt", "paper-native-pid-collision",
     }:
         path.write_bytes(_bytes(report))
     with pytest.raises(I2gIndependentOriginHold):
