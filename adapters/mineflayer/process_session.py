@@ -344,6 +344,37 @@ class MineflayerProcessSession:
 
         return await _terminate_child(self._process)
 
+    async def force_terminate_owned(self, *, timeout_s: float = 0.5) -> int:
+        """Q4 host kill switch: bounded TERM→KILL of this owned Node process.
+
+        No new session and no claim of STOP ACK, World settling or WAL
+        resolution. A timeout or unconfirmed exit is an explicit HOLD.
+        """
+        if type(timeout_s) not in (int, float) or not 0 < timeout_s <= 1.0:
+            raise MineflayerProcessIOError("Q4 termination timeout is invalid")
+        if self._process.returncode is not None:
+            return self._process.returncode
+        self._process.terminate()
+        try:
+            result = await asyncio.wait_for(
+                self._process.wait(), timeout=timeout_s,
+            )
+        except TimeoutError:
+            self._process.kill()
+            try:
+                result = await asyncio.wait_for(
+                    self._process.wait(), timeout=timeout_s,
+                )
+            except TimeoutError as exc:
+                raise MineflayerProcessIOError(
+                    "owned Q4 Native termination not confirmed after KILL"
+                ) from exc
+        if self._process.returncode is None:
+            raise MineflayerProcessIOError(
+                "owned Q4 Native process has no exit readback"
+            )
+        return result
+
     async def _send(self, line: str) -> None:
         # The original Native adapter serializes full frames including drains.
         # The opt-in atomic callback is the existing B issuer, never a second
