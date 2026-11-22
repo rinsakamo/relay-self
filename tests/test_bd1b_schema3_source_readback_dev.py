@@ -403,7 +403,7 @@ def test_schema3_original_readback_refuses_duplicate_json_even_if_rehashed(
         claim = "expected_producer_report_sha256"
     elif role == "prelogin":
         path = evidence / "stage28b-schema3-prelogin.json"
-        needle = b'"schema_modes": ["FULL", "FULL"]'
+        needle = b'"schema_modes": ['
         injected = b'"schema_modes": ["OFF", "OFF"], ' + needle
         claim = "expected_prelogin_manifest_sha256"
     elif role == "initial":
