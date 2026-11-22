@@ -152,8 +152,10 @@ def verify_s1_s2_anchor(
     prior, after = old.get("actions"), new.get("actions")
     if type(prior) is not list or type(after) is not list:
         raise QS1BoundaryHold("Original WAL Action history absent")
-    if len(prior) != anchor["s1_action_count"] or len(after) <= len(prior):
-        raise QS1BoundaryHold("S1 history length or later S2 Action missing")
+    if len(prior) != anchor["s1_action_count"] or len(after) != len(prior) + 1:
+        raise QS1BoundaryHold(
+            "exactly one new S2 Action must follow the frozen S1 prefix"
+        )
     if after[:len(prior)] != prior:
         raise QS1BoundaryHold("Historical S1 WAL row was altered/reordered")
     if any(type(row) is not dict for row in after):
@@ -171,17 +173,37 @@ def verify_s1_s2_anchor(
         or final_s1.get("status") != anchor["s1_status"]
     ):
         raise QS1BoundaryHold("Anchored S1 original Intent/Skill/Action does not match")
+    s2 = after[len(prior)]
     if (
-        after[len(prior)]["action_id"] != expected_s2_action_id
+        s2["action_id"] != expected_s2_action_id
         or expected_s2_action_id == anchor["s1_action_id"]
     ):
         raise QS1BoundaryHold("S2 new Action does not follow anchored S1")
+    # Q1f: historical append-only identity alone is not an outcome. It
+    # previously accepted arbitrary/missing S2 states as a positive receipt,
+    # including PREPARED-like unknowns other than PREPARED_UNRESOLVED.
+    # Accept only the narrow set of terminal physical result *labels*.
+    # Original physical WAL validation/Native+Paper causality remain HOLD.
+    if type(s2.get("status")) is not str or s2["status"] not in _TERMINAL:
+        raise QS1BoundaryHold("S2 Action has no qualified terminal status label")
+    for field in ("intent_id", "skill_execution_id", "session_id"):
+        if type(s2.get(field)) is not str:
+            raise QS1BoundaryHold("S2 original Intent/Skill/Native session missing")
+        _identity(s2[field], field)
+    if s2["session_id"] != expected_native_session_id:
+        raise QS1BoundaryHold("S2 native session differs from original boundary")
     return {
         "classification": "Q1B_PINNED_S1_S2_WAL_PREFIX_CPU_OFFLINE_DEV",
         "head": expected_head,
         "self_id": expected_self_id,
         "s1_action_id": anchor["s1_action_id"],
         "s2_action_id": expected_s2_action_id,
+        "s2_terminal_status_label": s2["status"],
+        "s2_native_session_claim": s2["session_id"],
+        "one_s2_action_appended": True,
+        "s2_status_label_recognized": True,
+        "s2_outcome_original_native_paper_attested": False,
+        "s2_skill_success_attested": False,
         "s1_wal_sha256": _sha(old_raw),
         "s2_wal_sha256": _sha(new_raw),
         "s1_checkpoint_sha256": _sha(checkpoint_raw),
