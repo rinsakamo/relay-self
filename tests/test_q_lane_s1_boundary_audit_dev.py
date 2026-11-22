@@ -43,7 +43,7 @@ def _setup(tmp_path: Path) -> tuple[Path, bytes, dict, dict]:
     }
     s2 = {
         "action_id": "action-s2", "intent_id": "intent-s2",
-        "skill_execution_id": "skill-s2",
+        "skill_execution_id": "skill-s2", "session_id": SESSION,
         "status": "NATIVE_PLACE_MOVE_NO_PROGRESS",
     }
     before = {"schema": 2, "self_id": SELF, "actions": [s1]}
@@ -87,6 +87,11 @@ def test_q1b_synthetic_preanchor_and_wal_continuity_read_only(tmp_path):
     assert verdict["classification"] == "Q1B_PINNED_S1_S2_WAL_PREFIX_CPU_OFFLINE_DEV"
     assert verdict["s1_action_count"] == 1
     assert verdict["s2_total_action_count"] == 2
+    assert verdict["s2_terminal_status_label"] == "NATIVE_PLACE_MOVE_NO_PROGRESS"
+    assert verdict["s2_native_session_claim"] == SESSION
+    assert verdict["one_s2_action_appended"] is True
+    assert verdict["s2_outcome_original_native_paper_attested"] is False
+    assert verdict["s2_skill_success_attested"] is False
     assert verdict["trusted_external_anchor_origin_verified"] is False
     assert verdict["pre_s2_temporal_order_verified"] is False
     assert verdict["original_stage28_checkpoint_restored"] is False
@@ -164,10 +169,16 @@ def test_q1b_s1_raw_bytes_cannot_be_modified_and_rehashed_locally(
     ("s1-intent", "Historical S1 WAL row"),
     ("reordered", "Historical S1 WAL row"),
     ("duplicate-id", "Duplicate/replayed"),
-    ("no-s2", "later S2 Action missing"),
+    ("no-s2", "exactly one new S2 Action"),
     ("prepared-s2", "Unresolved PREPARED"),
     ("foreign-self", "schema or Self mismatch"),
     ("wrong-s2-id", "S2 new Action"),
+    ("nonterminal-s2", "no qualified terminal status"),
+    ("foreign-s2-session", "native session differs"),
+    ("missing-s2-session", "Native session missing"),
+    ("missing-s2-status", "no qualified terminal status"),
+    ("nonblank-s2-skill", "Intent/Skill/Native session missing"),
+    ("extra-s2-row", "exactly one new S2 Action"),
 ])
 def test_q1b_rejects_s2_history_replay_or_reinterpretation(
     tmp_path, change, expected,
@@ -195,6 +206,20 @@ def test_q1b_rejects_s2_history_replay_or_reinterpretation(
         body["self_id"] = "B"
     elif change == "wrong-s2-id":
         args["expected_s2_action_id"] = "stale-action"
+    elif change == "nonterminal-s2":
+        next_row["status"] = "PREPARED_BUT_NO_OUTCOME"
+    elif change == "foreign-s2-session":
+        next_row["session_id"] = "foreign-session"
+    elif change == "missing-s2-session":
+        del next_row["session_id"]
+    elif change == "missing-s2-status":
+        del next_row["status"]
+    elif change == "nonblank-s2-skill":
+        next_row["skill_execution_id"] = None
+    elif change == "extra-s2-row":
+        body["actions"].append({
+            "action_id": "action-s3", "status": "NATIVE_PLACE_MOVE_SETTLED",
+        })
     path.write_bytes(_bytes(body))
     with pytest.raises(QS1BoundaryHold, match=expected):
         _verify(root, anchor, args)
