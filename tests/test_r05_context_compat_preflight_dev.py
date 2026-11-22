@@ -174,6 +174,7 @@ def test_r05_recent_foreign_world_paper_cannot_mix_into_current(
         ScopeRef("A", "old-world-paper-session"), Lens.SELF_WORLD,
         "prior-world-probe", EpistemicStatus.HYPOTHETICAL,
         (Provenance("cognition", "old-inference"),),
+        value_ref="prior-world-subjective-hypothesis",
     )
     recent = Recent3SelfView("A", current.owner_epoch, (
         RecentCognitionEntry(
