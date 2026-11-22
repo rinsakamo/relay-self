@@ -220,6 +220,9 @@ class PhysicalIssueAdmission:
         self._original_place_s1: dict[str, _OriginalPlaceS1Anchor] = {}
         self._original_place_bound: dict[str, _OriginalPlaceNativeBinding] = {}
         self._original_place_consumed: set[str] = set()
+        # Q4: retain the previous ORIGINAL bound parent across the lease's
+        # finally, so only that exact settled WAL suffix can re-arm a new S1.
+        self._original_place_last_bound: dict[str, _OriginalPlaceNativeBinding] = {}
 
     @property
     def resident_mode(self) -> bool:
@@ -647,12 +650,147 @@ class PhysicalIssueAdmission:
                     )
                 )
                 self._original_place_consumed.add(self_id)
+                self._original_place_last_bound[self_id] = (
+                    self._original_place_bound[self_id]
+                )
         except PhysicalIssueFenceError:
             raise
         except (AttributeError, KeyError, OSError, TypeError, ValueError,
                 RuntimeError) as exc:
             raise PhysicalIssueFenceError(
                 "PLACE original owner-bound child admission unavailable"
+            ) from exc
+
+    def rearm_original_place_after_q4_settled(
+        self, *, bridge: Any, self_id: str, evidence: Any,
+    ) -> str:
+        """One NEW original PLACE lease after a genuinely terminal prior WAL.
+
+        The ORIGINAL resident, physical issuer and canonical journal are the
+        only state owners. Prior S1 prefix and consumed parent must remain
+        unchanged, a single new row must be fully settled, and the supplied
+        exact Native/Paper typed readbacks must corroborate it. This CPU check
+        cannot authenticate raw producers, certify a real World or create an
+        extra Action issuance authority.
+        """
+        from relay_self.i_unified_physical_source_dev import (
+            IUnifiedPhysicalHold,
+            capture_i_unified_s1_cpu,
+        )
+        from relay_self.physical_action_journal import (
+            PhysicalActionJournal,
+            PhysicalJournalError,
+        )
+        from relay_self.q4_place_repeat_source_dev import (
+            Q4PlaceRepeatHold,
+            verify_q4_previous_place_terminal_cpu,
+        )
+
+        try:
+            resident = bridge.cognitive_work
+            with resident.lock, self._lock:
+                anchor = self._original_place_s1.get(self_id)
+                previous = self._original_place_last_bound.get(self_id)
+                owner = bridge.owners[self_id]
+                if (
+                    anchor is None or previous is None
+                    or previous.anchor is not anchor
+                    or resident is not anchor.resident
+                    or resident.owners[self_id] is not owner
+                    or anchor.owner is not owner
+                    or bridge.physical is not self
+                    or self_id not in self._original_place_consumed
+                    or self_id in self._original_place_bound
+                    or self_id in self._active
+                    or self._native_child_ids.get(self_id) is not None
+                    or self._used_native_children.get(self_id) is not None
+                    or self._closed or self._poisoned or self._observation_only
+                    or not self._allow_resident_place_move
+                    or self._resident_states.get(self_id) != "ONLINE"
+                    or self._sessions.get(self_id)
+                    != anchor.witness.native_session_id
+                    or owner.native_session_id != anchor.witness.native_session_id
+                    or self._resident_epochs.get(self_id) != anchor.physical_epoch
+                    or self._generation != anchor.gate_generation
+                    or resident.current_scope(self_id) != (
+                        anchor.witness.resident_epoch,
+                        anchor.witness.native_session_id,
+                        anchor.witness.world_epoch,
+                    )
+                    or owner.supervisor.open_actions
+                    or owner.files.physical_wal_file
+                    != Path(anchor.witness.canonical_wal_path)
+                    or bridge.paper.owned_session_id
+                    != bridge.lifecycle.world.paper_session_id
+                ):
+                    raise PhysicalIssueFenceError(
+                        "Q4 original previous PLACE owner, lease or session stale"
+                    )
+                bridge._check_world()
+                path = owner.files.physical_wal_file
+                inode_before = _place_wal_identity(path)
+                journal = PhysicalActionJournal.restore(path, self_id=self_id)
+                inode_after = _place_wal_identity(path)
+                rows = journal.records
+                old = anchor.witness
+                prefix_len = len(old.s1_rows)
+                if (
+                    inode_before != inode_after
+                    or journal.unresolved
+                    or journal.schema_version != 2
+                    or len(rows) != prefix_len + 1
+                    or rows[:prefix_len] != old.s1_rows
+                    or journal.certified_prefix_digest(
+                        prefix_len, source_schema=old.canonical_schema,
+                    ) != old.canonical_prefix_sha256
+                    or rows[-1]["action_id"] != previous.action_id
+                    or rows[-1]["session_id"] != old.native_session_id
+                    or rows[-1]["intent_id"] in {
+                        x["intent_id"] for x in old.s1_rows
+                    }
+                    or rows[-1]["skill_execution_id"] in {
+                        x["skill_execution_id"] for x in old.s1_rows
+                    }
+                ):
+                    raise PhysicalIssueFenceError(
+                        "Q4 previous original S1 prefix or terminal suffix invalid"
+                    )
+                verify_q4_previous_place_terminal_cpu(
+                    row=rows[-1], action_id=previous.action_id,
+                    native_session_id=old.native_session_id,
+                    paper_session_id=bridge.paper.owned_session_id,
+                    evidence=evidence,
+                )
+                # Freeze a fresh original B terminal WAL prefix and source
+                # BEFORE clearing the old one-shot admission. No guest WAL
+                # or newly created Owner is introduced.
+                fresh = capture_i_unified_s1_cpu(
+                    bridge=bridge, self_id=self_id, journal=journal,
+                )
+                if (
+                    fresh.owner is not owner
+                    or fresh.native_session_id != old.native_session_id
+                    or fresh.resident_epoch != old.resident_epoch
+                    or fresh.world_epoch != old.world_epoch
+                    or fresh.s1_rows != rows
+                ):
+                    raise PhysicalIssueFenceError(
+                        "Q4 rearmed original source changed during capture"
+                    )
+                self._original_place_s1[self_id] = _OriginalPlaceS1Anchor(
+                    bridge, resident, owner, fresh,
+                    self._resident_epochs[self_id], self._generation,
+                )
+                self._original_place_last_bound.pop(self_id)
+                self._original_place_consumed.remove(self_id)
+                return fresh.canonical_prefix_sha256
+        except PhysicalIssueFenceError:
+            raise
+        except (IUnifiedPhysicalHold, Q4PlaceRepeatHold, PhysicalJournalError,
+                AttributeError, KeyError, TypeError, ValueError, OSError,
+                RuntimeError) as exc:
+            raise PhysicalIssueFenceError(
+                "Q4 previous PLACE not proven terminal; no new Action lease"
             ) from exc
 
     def _is_quarantined_place_stop_locked(
