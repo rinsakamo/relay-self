@@ -153,7 +153,7 @@ def _original_raw(directory: Path, label: str, ordinal: int,
 def independently_audit_i2e_model_bundle(directory: Path) -> dict:
     """Read-only; the separate Native/Paper/World admission still must HOLD."""
     if (
-        type(directory) is not Path or directory.is_symlink()
+        not isinstance(directory, Path) or directory.is_symlink()
         or not directory.is_dir()
     ):
         raise I2eIndependentAuditHold("original evidence directory not available")
