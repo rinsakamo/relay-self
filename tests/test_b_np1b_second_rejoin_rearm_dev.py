@@ -20,7 +20,6 @@ from relay_self.b_np1b_second_rejoin_rearm_dev import (
     rearm_second_rejoin_normal_cpu,
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
-from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_initial_source_dev import BOOT, WORLD
 from test_b_np1b_normal_present_poll_dev import current_fixture as current_fixture
 from test_b_np1b_normal_present_poll_dev import pair as pair
@@ -96,7 +95,10 @@ def _unchanged_cognition(f):
 
 def test_second_original_logout_rejoin_rearms_pair_and_fences_old_tasks(pair, monkeypatch):
     f = _bind(pair)
-    memory_before = files(f)
+    wal_before = {
+        sid: owner.files.physical_wal_file.read_bytes()
+        for sid, owner in f.owners.items()
+    }
     cognition_before = _unchanged_cognition(f)
     b_session = f.bridge.sessions["B"]
     b_scope = f.cognitive.current_scope("B")
@@ -119,7 +121,6 @@ def test_second_original_logout_rejoin_rearms_pair_and_fences_old_tasks(pair, mo
         assert ra.paper_quit_line > anchor.a.paper_present_line
         assert ra.paper_rejoin_line > ra.paper_quit_line
         assert ra.paper_present_line > ra.paper_rejoin_line
-        assert rb.b_present_line if False else True
         assert rb.b_post_rejoin_present_line > ra.paper_rejoin_line
         assert ra.b_continuity_revision == rb.b_continuity_revision
         assert f.bridge.sessions["B"] is b_session
@@ -180,9 +181,10 @@ def test_second_original_logout_rejoin_rearms_pair_and_fences_old_tasks(pair, mo
             await fresh.stop()
 
     asyncio.run(run())
-    assert files(f) == memory_before or all(
-        p.endswith("cognition.json") for p in set(files(f)) if files(f)[p] != memory_before.get(p)
-    )
+    assert {
+        sid: owner.files.physical_wal_file.read_bytes()
+        for sid, owner in f.owners.items()
+    } == wal_before
     assert _unchanged_cognition(f) == cognition_before
     assert not f.bridge.physical.active_action_ids
 
