@@ -231,3 +231,48 @@ def test_foreign_native_session_cannot_revoke_another_self(tmp_path, monkeypatch
     asyncio.run(scenario())
     assert gate.resident_states["A"] == "ONLINE"
     assert native.kill_attempts == 0
+
+
+def test_q4_permit_replay_or_foreign_native_is_rejected():
+    permit = Q4DevOperatorPermit("A", "native-original")
+    permit.consume(self_id="A", native_session_id="native-original")
+    with pytest.raises(Q4PlaceAbortHold, match="reused or foreign"):
+        permit.consume(self_id="A", native_session_id="native-original")
+    other = Q4DevOperatorPermit("A", "native-old")
+    with pytest.raises(Q4PlaceAbortHold, match="reused or foreign"):
+        other.consume(self_id="A", native_session_id="native-new")
+
+
+def test_q4_dev_watchdog_rejects_unguarded_native_or_second_live_self(
+    tmp_path, monkeypatch,
+):
+    _bridge, owner, gate, _journal, typed = _setup(tmp_path, monkeypatch)
+    native = FakeOwnedNative(owner.native_session_id, gate)
+    host = _host(gate, native)
+    invoked = []
+
+    async def issue():
+        invoked.append(True)
+
+    async def run():
+        native.bounded_place_dev_mode = False
+        with pytest.raises(Q4PlaceAbortHold, match="explicitly bounded"):
+            await run_q4_dev_place_with_watchdog(
+                bridge=host, self_id="A",
+                stop_action_id=typed[0].action_id + "-stop",
+                issue_original=issue,
+                operator_permit=Q4DevOperatorPermit("A", owner.native_session_id),
+            )
+        native.bounded_place_dev_mode = True
+        host.sessions["B"] = FakeOwnedNative("other-live-native", gate)
+        with pytest.raises(Q4PlaceAbortHold, match="isolated single Self"):
+            await run_q4_dev_place_with_watchdog(
+                bridge=host, self_id="A",
+                stop_action_id=typed[0].action_id + "-stop",
+                issue_original=issue,
+                operator_permit=Q4DevOperatorPermit("A", owner.native_session_id),
+            )
+
+    asyncio.run(run())
+    assert invoked == []
+    assert gate.resident_states["A"] == "ONLINE"
