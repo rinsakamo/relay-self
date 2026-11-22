@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 import threading
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -223,6 +223,11 @@ class PhysicalIssueAdmission:
         # Q4: retain the previous ORIGINAL bound parent across the lease's
         # finally, so only that exact settled WAL suffix can re-arm a new S1.
         self._original_place_last_bound: dict[str, _OriginalPlaceNativeBinding] = {}
+        # I4a S2: in the same original physical gate, not a second issuer.
+        # The synchronous window only preconsumes the selected parent and
+        # reserves original canonical WAL PREPARED; never mints Native children.
+        self._i4a_s2_issue_window: tuple[Any, Any, str] | None = None
+        self._i4a_s2_consumed_action_ids: set[str] = set()
 
     @contextmanager
     def quiescent_wal_history_window(
@@ -249,6 +254,109 @@ class PhysicalIssueAdmission:
                     "original I4a quiescent WAL source not currently available"
                 )
             yield
+
+    @contextmanager
+    def original_i4a_s2_first_wal_window(
+        self, *, owner: Any, boundary: Any, lane: Any,
+        action_id: str, retained_lease_stack: ExitStack | None = None,
+    ) -> Iterator[None]:
+        """Original Owner→physical lease→WAL synchronous *CPU* reservation.
+
+        No await, Native control, or replay of an old PREPARED is allowed.
+        Historical I4a scripted CPU fixture uses this original B authority;
+        this method does not authorize a process-backed Native runner.
+        """
+        from relay_self.checkpointed_cognitive_runtime_dev import (
+            CheckpointedCognitiveOwner,
+        )
+        from relay_self.i_lane_i4a_s2_run_boundary_dev import (
+            I4AS2EmptyRunBoundary,
+            verify_i4a_s2_empty_run_boundary,
+        )
+        from relay_self.resident_llama_inference_lane_dev import (
+            ResidentLlamaInferenceLane,
+        )
+
+        if (
+            not isinstance(owner, CheckpointedCognitiveOwner)
+            or owner.cohort is None
+            or not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(lane, ResidentLlamaInferenceLane)
+            or boundary.owner is not owner
+            or type(action_id) is not str or not action_id
+            or (
+                retained_lease_stack is not None
+                and not isinstance(retained_lease_stack, ExitStack)
+            )
+        ):
+            raise PhysicalIssueFenceError("original I4a S2 Owner/window required")
+        # Original lock order, and no cross-task await within the window.
+        with owner.cohort.lock:
+            with self.quiescent_wal_history_window(
+                self_id=owner.self_id, native_session_id=boundary.native_session_id,
+            ):
+                verify_i4a_s2_empty_run_boundary(
+                    boundary, physical=self, lane=lane,
+                )
+                if (
+                    self._i4a_s2_issue_window is not None
+                    or action_id in self._i4a_s2_consumed_action_ids
+                    or not self._allow_resident_place_move
+                ):
+                    raise PhysicalIssueFenceError(
+                        "original I4a S2 window already consumed or unavailable"
+                    )
+                lease = self.lease(
+                    self_id=owner.self_id,
+                    native_session_id=boundary.native_session_id,
+                    action_id=action_id, effect_family="MOVE_PLACE",
+                )
+                if retained_lease_stack is not None:
+                    retained_lease_stack.enter_context(lease)
+                with nullcontext() if retained_lease_stack is not None else lease:
+                    if self._i4a_s2_issue_window is not None:
+                        raise PhysicalIssueFenceError(
+                            "nested original I4a S2 issue window refused"
+                        )
+                    self._i4a_s2_issue_window = (owner, boundary, action_id)
+                    try:
+                        yield
+                    finally:
+                        self._i4a_s2_issue_window = None
+
+    def require_original_i4a_s2_wal_window(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Require the same ACTIVE original parent/window, not an external claim."""
+        with self._lock:
+            window = self._i4a_s2_issue_window
+            lease = self._active.get(getattr(owner, "self_id", ""))
+            if (
+                window is None or window[0] is not owner
+                or window[1] is not boundary or window[2] != action_id
+                or lease is None or lease.action_id != action_id
+                or lease.effect_family != "MOVE_PLACE"
+                or lease.native_session_id != boundary.native_session_id
+                or self._closed or self._poisoned or self._observation_only
+                or self._resident_states.get(owner.self_id) != "ONLINE"
+            ):
+                raise PhysicalIssueFenceError(
+                    "original I4a S2 active issuer/window not certified"
+                )
+
+    def consume_original_i4a_s2_action_once(
+        self, *, owner: Any, boundary: Any, action_id: str,
+    ) -> None:
+        """Preconsume selected parent BEFORE original WAL CAS; never retry it."""
+        self.require_original_i4a_s2_wal_window(
+            owner=owner, boundary=boundary, action_id=action_id,
+        )
+        with self._lock:
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError(
+                    "original I4a S2 Action parent already consumed"
+                )
+            self._i4a_s2_consumed_action_ids.add(action_id)
 
     @property
     def resident_mode(self) -> bool:
@@ -386,6 +494,10 @@ class PhysicalIssueAdmission:
                 raise PhysicalIssueFenceError("stale or foreign physical native session")
             if type(action_id) is not str or not action_id.strip():
                 raise PhysicalIssueFenceError("physical Action ID required")
+            if action_id in self._i4a_s2_consumed_action_ids:
+                raise PhysicalIssueFenceError(
+                    "original I4a S2 Action already reserved; replay refused"
+                )
             if effect_family not in _EFFECT_FAMILIES:
                 raise PhysicalIssueFenceError("unsupported physical effect family")
             if effect_family == "MOVE" and not (
