@@ -29,12 +29,14 @@ class IUnifiedSourceHold(RuntimeError):
 def _same_original_source(
     source: BD1bOwnerSource, handoff: I2OriginalGoalHandoff, self_id: str,
 ) -> bool:
-    """Compare original B and I2 receipts, never reinterpret recent cognition."""
+    """Bind original owner session/epoch; later I2 SENSE has its own seq/request.
+
+    The bounded I2 request validates its later source separately. The initial
+    B login probe and later qualified SENSE are never asserted identical.
+    """
     return (
         source.self_id == self_id == handoff.self_id
         and source.native_session_id == handoff.native_session_id
-        and source.native_probe_seq == handoff.native_seq
-        and source.native_probe_ref == handoff.native_request_id
         and source.paper_session_id == handoff.paper_session_id
         and source.paper_log_sha256 == handoff.paper_log_sha256
         and source.resident_epoch == handoff.resident_epoch
@@ -90,9 +92,9 @@ def prepare_i_unified_original_ingress(
     """
     try:
         owner = _owner(bridge, self_id)
-        context = read_original_owner_current(
+        context = CognitiveContext(read_original_owner_current(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
-        )
+        ))
         handoff = prepare_i2_original_goal_handoff(
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i2b_read_attached_lane=i2b_read_attached_lane,
@@ -125,7 +127,7 @@ def verify_i_unified_original_ingress(
             bridge=bridge, boot=boot, world=world, links=links,
             self_id=receipt.self_id,
         )
-        if current != receipt.context:
+        if current != receipt.context.current:
             raise IUnifiedSourceHold("R0 CURRENT changed")
         verify_i2_original_goal_handoff(
             bridge=bridge, boot=boot, world=world, links=links,
@@ -133,10 +135,10 @@ def verify_i_unified_original_ingress(
             i2b_read_attached_lane=i2b_read_attached_lane,
         )
         if not _same_original_source(
-            current.current.source, receipt.handoff, receipt.self_id,
+            current.source, receipt.handoff, receipt.self_id,
         ):
             raise IUnifiedSourceHold("I2 and B describe different source")
-        if current.current.source_revision_refs != receipt.handoff.source_revision_refs:
+        if current.source_revision_refs != receipt.handoff.source_revision_refs:
             raise IUnifiedSourceHold("I2 and B source revisions differ")
     except (RuntimeError, ValueError, KeyError, AttributeError, TypeError) as exc:
         raise IUnifiedSourceHold("shared original B/I2 readback unqualified") from exc
