@@ -37,10 +37,26 @@ export class Q4BoundedPlaceMotionGuard {
     const origin = horizontalPosition(this.bot)
     const startedMs = this.now()
     if (!Number.isFinite(startedMs)) throw new Error('bounded_place_bad_clock')
-    this.bot.clearControlStates()
-    this.bot.setControlState('forward', true)
+    // Arm the only Native watchdog BEFORE touching motor control. Even if
+    // setControlState applies forward then throws, the emergency trip keeps
+    // this session permanently non-restartable and asks the bot to quit.
     this.active = { actionId, origin, startedMs }
-    this.timer = this.interval(() => this.check(), 20)
+    try {
+      const timer = this.interval(() => this.check(), 20)
+      if (timer === null || timer === undefined) {
+        throw new Error('bounded_place_native_timer_not_armed')
+      }
+      this.timer = timer
+      if (this.tripped) throw new Error('bounded_place_native_start_tripped')
+      this.bot.clearControlStates()
+      if (this.tripped) throw new Error('bounded_place_native_start_tripped')
+      this.bot.setControlState('forward', true)
+      if (this.tripped) throw new Error('bounded_place_native_start_tripped')
+      this.check() // recheck source/clock after START, not only at next tick
+    } catch (error) {
+      this.trip('bounded_place_native_start_failed')
+      throw error
+    }
   }
 
   check () {
@@ -62,26 +78,41 @@ export class Q4BoundedPlaceMotionGuard {
 
   trip (reason) {
     if (this.tripped) return
-    this.tripped = true
-    this.clearTimer()
-    this.active = null
+    this.tripped = true // irreversible, before any fallible Native API call
     try {
-      this.bot.clearControlStates()
+      try {
+        this.clearTimer()
+      } finally {
+        // Failed timer cancellation must not suppress the STOP attempt.
+        this.active = null
+        this.bot.clearControlStates()
+      }
     } finally {
+      // Including when clearControlStates or clearInterval itself throws.
+      // The bridge callback disconnects this native bot; a callback failure
+      // cannot turn this tripped session back into an issuing session.
       this.onTrip(reason)
     }
   }
 
   stop () {
-    this.clearTimer()
-    this.active = null
-    this.bot.clearControlStates()
+    // Already tripped means disconnect underway; do not retry a broken
+    // Native STOP or reopen this session from an 'end' handler.
+    if (this.tripped) return
+    try {
+      // Native clear must SUCCEED before the last watchdog is disarmed.
+      this.bot.clearControlStates()
+      this.clearTimer()
+      this.active = null
+    } catch (error) {
+      this.trip('bounded_place_native_stop_failed')
+      throw error
+    }
   }
 
   clearTimer () {
-    if (this.timer !== null) {
-      this.cancel(this.timer)
-      this.timer = null
-    }
+    const timer = this.timer
+    this.timer = null
+    if (timer !== null) this.cancel(timer)
   }
 }
