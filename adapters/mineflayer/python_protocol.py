@@ -126,11 +126,18 @@ class MineflayerTime:
     time_of_day: int
     day: int
     is_day: bool
+    world_age_ticks: int | None = None
 
     def __post_init__(self) -> None:
         _require_non_negative_int("time_of_day", self.time_of_day)
         _require_non_negative_int("day", self.day)
         _require_bool("is_day", self.is_day)
+        if self.world_age_ticks is not None:
+            _require_non_negative_int("world_age_ticks", self.world_age_ticks)
+            if self.world_age_ticks > 2**53 - 1:
+                raise MineflayerAdapterProtocolError(
+                    "world_age_ticks exceeds JavaScript safe integer range"
+                )
 
 
 @dataclass(frozen=True, slots=True)
@@ -829,11 +836,12 @@ def _decode_position(name: str, value: object) -> MineflayerPosition:
 
 def _decode_time(value: object) -> MineflayerTime:
     payload = _require_mapping("time", value)
-    _require_exact_keys(
-        "time",
-        payload,
+    keys = set(payload)
+    if keys not in (
         {"time_of_day", "day", "is_day"},
-    )
+        {"time_of_day", "day", "is_day", "world_age_ticks"},
+    ):
+        raise MineflayerAdapterProtocolError("time fields are invalid")
     return MineflayerTime(
         time_of_day=_decoded_non_negative_int(
             "time_of_day",
@@ -841,6 +849,10 @@ def _decode_time(value: object) -> MineflayerTime:
         ),
         day=_decoded_non_negative_int("day", payload["day"]),
         is_day=_decoded_bool("is_day", payload["is_day"]),
+        world_age_ticks=(
+            _decoded_non_negative_int("world_age_ticks", payload["world_age_ticks"])
+            if "world_age_ticks" in payload else None
+        ),
     )
 
 
