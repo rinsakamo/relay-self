@@ -42,6 +42,9 @@ from relay_self.i_lane_i4a_s2_first_move_proposal_dev import (
     I4AS2FirstMoveProposal,
     propose_s2_first_original_place_move,
 )
+from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
+    I4AS2FirstReservationHold,
+)
 from relay_self.i_lane_i4a_s2_owner_handoff_dev import (
     begin_live_s2_owner_handoff,
     finish_live_s2_l1,
@@ -51,24 +54,21 @@ from relay_self.i_lane_i4a_s2_owner_handoff_dev import (
 from relay_self.i_lane_i4a_s2_run_boundary_dev import (
     attest_i4a_s2_empty_run_boundary,
 )
-from relay_self.i_lane_i4a_s2_first_physical_reservation_dev import (
-    I4AS2FirstReservationHold,
-)
+from relay_self.owned_paper_world_dev import PaperTickReceipt
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
-from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
-from relay_self.owned_paper_world_dev import PaperTickReceipt
-from relay_self.physical_action_port import PhysicalCapability
-from relay_self.q4_place_repeat_source_dev import Q4PlaceTerminalReadback
-from relay_self.skill import SkillState
 from relay_self.p0d_stage27c_l0_place_proposal_dev import Stage27L0PlaceProposal
+from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_port import PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.q4_place_abort_dev import (
     Q4DevMotorBoundary,
     Q4DevOperatorPermit,
     run_q4_dev_place_with_motor_deadline,
 )
+from relay_self.q4_place_repeat_source_dev import Q4PlaceTerminalReadback
+from relay_self.skill import SkillState
 
 
 class I4AS2OwnedNativeHold(RuntimeError):
