@@ -132,6 +132,7 @@ async def run_original_u17_two_place_trial_dev(
     first = None
     second = None
     first_metrics = None
+    s2_motor_metrics: list[tuple[float, float]] = []
     failure: BaseException | None = None
     try:
         # Sole original gate snapshots the empty canonical WAL after the
@@ -183,7 +184,12 @@ async def run_original_u17_two_place_trial_dev(
             operator_permit=s2_operator_permit, provenance=provenance,
             s1_forward_ms=original.forward_ms,
             s1_host_ms=original.host_ms,
+            s2_motor_metrics_out=s2_motor_metrics,
         )
+        if len(s2_motor_metrics) != 1:
+            raise I4AS2OwnedNativeHold(
+                "S2 original START/STOP host metrics not captured once"
+            )
         s2_paper_window = await await_original_q4_paper_position_window(
             bridge, self_id, second, after_log_prefix=s2_paper_prefix,
         )
@@ -252,6 +258,11 @@ async def run_original_u17_two_place_trial_dev(
                     "s1_forward_ms": first_metrics[0] if first_metrics else None,
                     "s1_start_stop_host_ms": first_metrics[1]
                     if first_metrics else None,
+                    "s2_forward_ms": s2_motor_metrics[0][0]
+                    if len(s2_motor_metrics) == 1 else None,
+                    "s2_start_stop_host_ms": s2_motor_metrics[0][1]
+                    if len(s2_motor_metrics) == 1 else None,
+                    "s2_original_metrics_count": len(s2_motor_metrics),
                     "no_real_world_pass_claim": True,
                 }, sort_keys=True) + "\n").encode(),
             )
