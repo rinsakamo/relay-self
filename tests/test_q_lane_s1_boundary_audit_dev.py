@@ -403,3 +403,71 @@ def test_q1e_rejects_duplicate_git_sha_claim_or_missing_file(tmp_path):
     (original / "s1-checkpoint.json").unlink()
     with pytest.raises(QCoupledCustodyHold):
         _run_coupled(original, repo, anchor, claims, git)
+
+
+def test_q1e_rejects_original_wal_mutated_mid_composite_inspection(
+    tmp_path, monkeypatch,
+):
+    from experiments import q_lane_coupled_custody_dev as coupled
+
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    old_git = coupled.inspect_git_pre_s2_custody
+    calls = 0
+
+    def mutate_source_after_git_read(*args, **kwargs):
+        nonlocal calls
+        receipt = old_git(*args, **kwargs)
+        calls += 1
+        if calls == 1:
+            path = original / "s2-wal.json"
+            path.write_bytes(path.read_bytes().replace(
+                b"NATIVE_PLACE_MOVE_NO_PROGRESS", b"NATIVE_MOVE_SETTLED",
+            ))
+        return receipt
+
+    monkeypatch.setattr(
+        coupled, "inspect_git_pre_s2_custody", mutate_source_after_git_read,
+    )
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+    assert calls == 1
+
+
+def test_q1e_rejects_git_head_drift_during_final_wal_readback(
+    tmp_path, monkeypatch,
+):
+    from experiments import q_lane_coupled_custody_dev as coupled
+
+    original, anchor, _row, claims = _setup(tmp_path)
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor,
+        s2_wal=(original / "s2-wal.json").read_bytes(),
+    )
+    original_verify = coupled.verify_s1_s2_anchor
+    calls = 0
+
+    def advance_head_on_second_original_read(*args, **kwargs):
+        nonlocal calls
+        receipt = original_verify(*args, **kwargs)
+        calls += 1
+        if calls == 2:
+            (repo / "unrelated.txt").write_text("new Git HEAD\n")
+            subprocess.run(
+                ["git", "-C", str(repo), "add", "unrelated.txt"], check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-qm", "change HEAD mid-audit"],
+                check=True,
+            )
+        return receipt
+
+    monkeypatch.setattr(
+        coupled, "verify_s1_s2_anchor", advance_head_on_second_original_read,
+    )
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
+    assert calls == 2
