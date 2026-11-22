@@ -12,7 +12,10 @@ from dataclasses import replace
 import pytest
 
 from relay_self.b_np1b_fresh_native_update_dev import update_fresh_native
-from relay_self.b_np1b_normal_present_scheduler_dev import NormalCpuScheduleHold
+from relay_self.b_np1b_normal_present_scheduler_dev import (
+    NormalCpuScheduleHold,
+    start_normal_resident_present_cpu,
+)
 from relay_self.b_np1b_second_rejoin_rearm_dev import (
     SecondRejoinHold,
     build_second_rejoin_cpu_pair,
@@ -20,6 +23,7 @@ from relay_self.b_np1b_second_rejoin_rearm_dev import (
     rearm_second_rejoin_normal_cpu,
 )
 from relay_self.owned_paper_world_dev import PaperTickReceipt
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from test_b_np1b_initial_source_dev import BOOT, WORLD
 from test_b_np1b_normal_present_poll_dev import current_fixture as current_fixture
 from test_b_np1b_normal_present_poll_dev import pair as pair
@@ -134,6 +138,13 @@ def test_second_original_logout_rejoin_rearms_pair_and_fences_old_tasks(pair, mo
             assert fresh is not old
             assert fresh._tasks["A"] is not old._tasks["A"]
             assert fresh._tasks["B"] is not old._tasks["B"]
+            assert fresh._tokens["A"].task_ref == "normal-present-cpu:g2:A"
+            assert fresh._tokens["B"].task_ref == "normal-present-cpu:g2:B"
+            assert anchor.b_task.token.task_ref != fresh._tokens["B"].task_ref
+            assert "normal-present-cpu:B" not in f.cognitive._state("B").tasks
+            assert f.cognitive._state("B").tasks["normal-present-cpu:g2:B"] is (
+                fresh._tasks["B"]
+            )
             assert proof.generation == 2
             assert proof.first_pair_revision == anchor.pair_revision
             assert proof.second_pair_revision != anchor.pair_revision
@@ -179,6 +190,10 @@ def test_second_original_logout_rejoin_rearms_pair_and_fences_old_tasks(pair, mo
             assert f.bridge.sessions["B"] is b_session
         finally:
             await fresh.stop()
+        # Old B never changed native epoch, so unique *task references*
+        # are mandatory to prevent adopting a stale old-B work token.
+        with pytest.raises(ResidentCognitiveWorkError, match="late/unqualified"):
+            f.cognitive.commit_memory_from_work(anchor.b_task.token, object())
 
     asyncio.run(run())
     assert {
@@ -344,5 +359,60 @@ def test_second_rejoin_rearm_rejects_unbounded_interval(pair, monkeypatch, inter
             assert not old._stopped
         finally:
             await old.stop()
+
+    asyncio.run(run())
+
+
+def test_second_generation_refuses_default_or_forged_cpu_task_refs(pair):
+    f = _bind(pair)
+
+    async def run():
+        scheduler, _ = await _first(f)
+        try:
+            with pytest.raises(NormalCpuScheduleHold):
+                start_normal_resident_present_cpu(
+                    bridge=f.bridge, interval_s=0.02,
+                    task_refs={"A": "normal-present-cpu:g2:A", "B": "normal-present-cpu:g2:B"},
+                )
+            with pytest.raises(NormalCpuScheduleHold):
+                start_normal_resident_present_cpu(
+                    bridge=f.bridge, interval_s=0.02,
+                    task_refs={"A": "normal-present-cpu:A", "B": "normal-present-cpu:B"},
+                )
+            assert f.cognitive._normal_present_scheduler is scheduler
+            assert set(f.cognitive._state("B").tasks) == {"normal-present-cpu:B"}
+        finally:
+            await scheduler.stop()
+
+    asyncio.run(run())
+
+
+def test_third_a_rejoin_cannot_reuse_second_generation_source_or_rearm(pair, monkeypatch):
+    f = _bind(pair)
+
+    async def run():
+        old, anchor = await _first(f)
+        await _second(f, monkeypatch)
+        fresh, proof = await rearm_second_rejoin_normal_cpu(
+            bridge=f.bridge, interval_s=0.02,
+        )
+        await _current(f, "A")
+        await _current(f, "B")
+        logout = await f.bridge.logout("A")
+        assert logout.native_session_id == proof.second_a_native
+        assert fresh._tasks["A"].done()
+        await f.bridge.login("A")
+        assert f.cognitive.current_scope("A")[0] == anchor.a_scope[0] + 4
+        with pytest.raises(SecondRejoinHold):
+            build_second_rejoin_cpu_pair(bridge=f.bridge)
+        with pytest.raises(SecondRejoinHold):
+            await rearm_second_rejoin_normal_cpu(bridge=f.bridge, interval_s=0.02)
+        with pytest.raises(NormalCpuScheduleHold):
+            f.bridge.require_scheduled_present_cpu("A")
+        with pytest.raises(NormalCpuScheduleHold):
+            f.bridge.require_scheduled_present_cpu("B")
+        await fresh.stop()
+        assert all(t.done() for t in old._tasks.values())
+        assert all(t.done() for t in fresh._tasks.values())
 
     asyncio.run(run())
