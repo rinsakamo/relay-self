@@ -200,6 +200,10 @@ def test_scheduler_rejects_paper_growth_then_uses_new_owned_ack(pair, monkeypatc
             assert repaired.poll.a_present.source.paper_tick_source_ref == tick.source_ref
             assert repaired.poll.b_present.source.paper_tick_source_ref == tick.source_ref
             assert repaired.poll.b_present.source.composite_receipt.b_post_rejoin_present_tick == 26
+            recovered_b = await _eventually_current(
+                f, "B", different_ref=initial.source_pair_revision,
+            )
+            assert recovered_b.source_pair_revision == repaired.source_pair_revision
             assert scheduler.status("A")[0] == "CURRENT"
             assert scheduler.status("B")[0] == "CURRENT"
         finally:
