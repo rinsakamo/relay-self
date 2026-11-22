@@ -61,6 +61,21 @@ class PassiveAggregation:
     latest_received_monotonic: float
 
 
+@dataclass(frozen=True, slots=True)
+class NativeReceiveContinuityHold:
+    """Original stream's first unbounded receive-queue pressure witness.
+
+    This receipt records a local receive boundary, not any Native/Paper
+    acquisition timestamp. Requalification requires an original new session,
+    not a consumer clearing this record.
+    """
+
+    source: str
+    first_seq: int
+    reason: str
+    received_monotonic: float
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -87,6 +102,7 @@ class MineflayerProcessSession:
         self._preserve_all = False
         self.backpressure_hold = False
         self.passive_aggregation: PassiveAggregation | None = None
+        self.native_continuity_hold: NativeReceiveContinuityHold | None = None
         self._tail_received_monotonic = 0.0
 
     @classmethod
@@ -321,6 +337,18 @@ class MineflayerProcessSession:
                     self._dispatch_observer(message)
                 except Exception as exc:
                     self.observer_error = exc
+                if self._dispatch_queue.full():
+                    # A full queue means residence in the original native pipe
+                    # cannot be bounded by Python receipt time. Even if a
+                    # concurrent consumer immediately relieves pressure,
+                    # current perception must HOLD until original reJOIN.
+                    if self.native_continuity_hold is None:
+                        self.native_continuity_hold = NativeReceiveContinuityHold(
+                            source=message.session_id,
+                            first_seq=message.seq,
+                            reason="OWNER_QUEUE_FULL_UNKNOWN_PIPE_DELAY",
+                            received_monotonic=received_at,
+                        )
                 if self._dispatch_queue.full() and self._can_compact(message):
                     tail = self._dispatch_queue._queue[-1]
                     if self._passive(tail):

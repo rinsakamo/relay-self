@@ -106,6 +106,9 @@ class FakeNativeResident:
     def __init__(self, config, session_id, *, bad_probe=False):
         self.started = SimpleNamespace(session_id=session_id, config=config)
         self.process_returncode = None
+        self.passive_aggregation = None
+        self.native_continuity_hold = None
+        self.backpressure_hold = False
         self.events = []
         self.effect_gate = None
         self.seq = 1
