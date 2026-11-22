@@ -155,10 +155,20 @@ async def run_q4_dev_place_with_watchdog(
     operator_permit.consume(
         self_id=self_id, native_session_id=session.started.session_id,
     )
+    work = asyncio.create_task(issue_original())
     try:
-        return await asyncio.wait_for(issue_original(), timeout=watchdog_s)
+        # wait_for() may wait arbitrarily long for a task that suppresses
+        # cancellation, defeating a host motor watchdog. asyncio.wait() gives
+        # the host its own deadline, independently of Skill cleanup.
+        done, _ = await asyncio.wait({work}, timeout=watchdog_s)
+        if work not in done:
+            raise TimeoutError("Q4 original PLACE host watchdog elapsed")
+        return await work
     except BaseException:
-        # wait_for cancels the run/lease; abort MUST operate without the lease.
+        if not work.done():
+            work.cancel()
+        # The revoked physical gate and owned bot termination do NOT depend
+        # on the still-running coroutine reaching its old lease finally.
         await abort_original_place_after_start(
             bridge=bridge, self_id=self_id, stop_action_id=stop_action_id,
         )
