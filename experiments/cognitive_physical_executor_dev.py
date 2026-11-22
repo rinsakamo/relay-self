@@ -175,6 +175,9 @@ def begin_physical_issue_dev(
     place_invocation: object | None = None,
     place_motion: object | None = None,
     place_gait_mode: str | None = None,
+    i4a_s2_boundary: object | None = None,
+    i4a_s2_owner: object | None = None,
+    i4a_s2_physical: object | None = None,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -184,8 +187,15 @@ def begin_physical_issue_dev(
     """
     if capability not in {"EAT", "ATTACK", "MOVE"}:
         raise refusal("unregistered physical issuer capability")
+    s2_requested = any(x is not None for x in (
+        i4a_s2_boundary, i4a_s2_owner, i4a_s2_physical,
+    ))
     if (
-        (place_invocation is None) != (place_motion is None)
+        s2_requested and (
+            i4a_s2_boundary is None or i4a_s2_owner is None
+            or i4a_s2_physical is None or place_invocation is None
+        )
+        or (place_invocation is None) != (place_motion is None)
         or (place_invocation is not None and capability != "MOVE")
         or (place_gait_mode is not None and place_invocation is None)
         or place_gait_mode not in (None, "WALK", "SNEAK")
@@ -212,12 +222,63 @@ def begin_physical_issue_dev(
         or skill_execution.skill_id != b.skill_id
         or skill_execution.skill_id != capability
         or skill_execution.intent_id != b.intent_id
-        or supervisor.open_actions or supervisor.recorded_actions
+        or supervisor.open_actions
+        or (supervisor.recorded_actions and not s2_requested)
         or proposal.proposal.action_id != b.action_id
         or not proposal.proposal.is_current_snapshot
     ):
         raise refusal("physical owner/Skill/Intent no longer eligible")
     journal.require_clear()
+    if s2_requested:
+        # S2 may follow old terminal Actions ONLY inside the original
+        # Owner->Physical lease->WAL window. This path never binds Native
+        # children and is not a process-backed Real World runner.
+        from relay_self.i_lane_i4a_s2_run_boundary_dev import I4AS2EmptyRunBoundary
+        from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
+
+        boundary = i4a_s2_boundary
+        original_owner = i4a_s2_owner
+        original_physical = i4a_s2_physical
+        if (
+            not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(original_physical, PhysicalIssueAdmission)
+            or boundary.owner is not original_owner
+            or original_owner.intent is not intent_owner
+            or original_owner.supervisor is not supervisor
+            or original_owner.skills.get(boundary.new_skill_id) is not skill_execution
+            or original_owner.files.physical_wal_file != journal.path
+            or boundary.native_session_id != session.started.session_id
+            or boundary.post_model_probe_id != current_probe.request_id
+            or boundary.post_model_probe_seq != current_probe.seq
+            or boundary.new_intent_id != b.intent_id
+            or boundary.new_skill_id != b.skill_execution_id
+            or boundary.self_id != b.scope.self_id
+            or boundary.prefix_count != len(journal.records)
+            or boundary.prefix_digest != journal.digest
+            or tuple(x["action_id"] for x in journal.records)
+            != boundary.prefix_action_ids
+            or any(
+                x["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+                or x["intent_id"] != boundary.old_intent_id
+                or x["skill_execution_id"] != boundary.old_skill_id
+                or x["session_id"] != boundary.native_session_id
+                for x in journal.records
+            )
+            or len(supervisor.recorded_actions) != boundary.prefix_count
+            or {x.action_id for x in supervisor.recorded_actions}
+            != set(boundary.prefix_action_ids)
+            or any(
+                x.state is not ActionState.OUTCOME
+                or x.intent_id != boundary.old_intent_id
+                or x.skill_execution_id != boundary.old_skill_id
+                for x in supervisor.recorded_actions
+            )
+            or b.action_id not in original_physical._i4a_s2_consumed_action_ids
+        ):
+            raise refusal("original I4a S2 historical Owner/WAL scope invalid")
+        original_physical.require_original_i4a_s2_wal_window(
+            owner=original_owner, boundary=boundary, action_id=b.action_id,
+        )
     if (
         journal.records
         and journal.records[-1]["session_id"] == current_probe.session_id
