@@ -12,6 +12,7 @@ import {
 } from './bridge_hooks.mjs'
 import { inspectInstalled } from './oxygen_owner_patch.mjs'
 import { OwnedOxygenWitness } from './oxygen_owner_witness.mjs'
+import { Q4BoundedPlaceMotionGuard } from './bounded_place_guard.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -124,6 +125,17 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+const q4BoundedDev = process.env.RELAY_Q4_BOUNDED_PLACE_DEV === '1'
+const q4PlaceGuard = q4BoundedDev
+  ? new Q4BoundedPlaceMotionGuard(bot, {
+      onTrip: (reason) => {
+        // Native guard, not an ACK/settling receipt. Fail closed by ending
+        // this bot generation when a time/distance/sample cap trips.
+        emitAdapterError(new Error('Q4_NATIVE_PLACE_TRIP_' + reason))
+        bot.quit('RelaySelf Q4 bounded motion trip')
+      }
+    })
+  : null
 
 attachHealthSynchronizedSpawnListeners(
   bot,
@@ -200,6 +212,7 @@ bot.on('forcedMove', () => {
 })
 
 bot.on('death', () => {
+  if (q4PlaceGuard !== null) q4PlaceGuard.trip('native_death')
   if (spawned) emitObservation('death')
   ownedOxygen.invalidate()
   spawned = false
@@ -216,6 +229,7 @@ bot.on('error', (error) => {
 })
 
 bot.on('end', (reason) => {
+  if (q4PlaceGuard !== null) q4PlaceGuard.stop()
   ownedOxygen.invalidate()
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
@@ -246,14 +260,28 @@ async function handleEffect (command) {
 
   try {
     if (command.effect === 'set_control') {
-      bot.setControlState(command.control, command.state)
+      if (q4PlaceGuard !== null) {
+        if (command.control !== 'forward' || command.state !== true) {
+          emitEffectResult(command, 'rejected', 'q4_walk_only')
+          return
+        }
+        q4PlaceGuard.start(command.action_id)
+      } else {
+        bot.setControlState(command.control, command.state)
+      }
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
-      bot.clearControlStates()
+      if (q4PlaceGuard !== null) q4PlaceGuard.stop()
+      else bot.clearControlStates()
       emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (q4BoundedDev && command.effect !== 'look') {
+      emitEffectResult(command, 'rejected', 'q4_only_place_look_start_stop')
       return
     }
 
@@ -305,6 +333,7 @@ async function handleEffect (command) {
 
 function handleShutdown () {
   closing = true
+  if (q4PlaceGuard !== null) q4PlaceGuard.stop()
   if (spawned) {
     bot.clearControlStates()
   }
