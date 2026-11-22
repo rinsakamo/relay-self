@@ -42,6 +42,7 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalActionProposalReceipt
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
+from relay_self.q4_place_abort_dev import Q4DevMotorBoundary
 from relay_self.skill_invocation import SkillInvocation
 
 
@@ -101,6 +102,7 @@ async def issue_selected_place_move_dev(
     allow_prior_terminal_place_actions: bool = False,
     settlement_probe_limit: int | None = None,
     precision_gait: str | None = None,
+    motor_boundary: Q4DevMotorBoundary | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Only call through PhysicalIssueAdmission.issue_place_move and its lease."""
     if (
@@ -222,6 +224,7 @@ async def issue_selected_place_move_dev(
         pre_native_evidence=pre_native_evidence,
         settlement_probe_limit=settlement_probe_limit,
         precision_gait=precision_gait,
+        motor_boundary=motor_boundary,
     )
 
 
@@ -242,6 +245,7 @@ async def complete_prepared_place_move_dev(
     pre_native_evidence: Callable[[PhysicalActionJournal, str], None] | None,
     settlement_probe_limit: int | None,
     precision_gait: str | None,
+    motor_boundary: Q4DevMotorBoundary | None = None,
 ) -> Stage27PlaceMoveReceipt:
     """Shared original LOOK/forward/STOP/settle/terminal WAL implementation.
 
@@ -253,6 +257,18 @@ async def complete_prepared_place_move_dev(
 
     parent = proposal.binding.action_id
     rows = journal.records
+    if (
+        motor_boundary is not None and (
+            not isinstance(motor_boundary, Q4DevMotorBoundary)
+            or motor_boundary.self_id != owner.self_id
+            or motor_boundary.session_id != session.started.session_id
+            or motor_boundary.action_id != parent
+            or precision_gait == "SNEAK"
+        )
+    ):
+        raise Stage27PlaceMoveRefusal(
+            "Q4 motor boundary requires same original WALK parent/session"
+        )
     if (
         not rows or not journal.unresolved
         or rows[-1]["action_id"] != parent
@@ -302,6 +318,10 @@ async def complete_prepared_place_move_dev(
             )
             assert isinstance(gait_result, MineflayerEffectResult)
             gait_ack = gait_result
+        if motor_boundary is not None:
+            motor_boundary.before_native_start(
+                action_id=start_id, session_id=session.started.session_id,
+            )
         await session.send_set_control(start_id, control="forward", state=True)
         start = await _native(
             session, session_id=current_probe.session_id,
@@ -310,6 +330,8 @@ async def complete_prepared_place_move_dev(
             effect="set_control", request_id=None, timeout_s=evidence_timeout_s,
         )
         assert isinstance(start, MineflayerEffectResult)
+        if motor_boundary is not None:
+            motor_boundary.accept_start_ack(start)
         await asyncio.sleep(pulse_seconds)
         attempted_stop = True
         await session.send_clear_controls(stop_id)
@@ -319,6 +341,10 @@ async def complete_prepared_place_move_dev(
             effect="clear_controls", request_id=None, timeout_s=evidence_timeout_s,
         )
         assert isinstance(stop, MineflayerEffectResult)
+        if motor_boundary is not None:
+            # Host's 2s motor deadline ends only on this original, strict,
+            # applied STOP ACK. Native/Paper settling continues separately.
+            motor_boundary.accept_stop_ack(stop)
         initial, first, settled, all_stop = await _settled(
             session, native=current_probe.session_id,
             stop_seq=stop.seq, timeout_s=evidence_timeout_s,
