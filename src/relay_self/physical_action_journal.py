@@ -461,7 +461,14 @@ class PhysicalActionJournal:
         that the digest was known BEFORE this journal changed. Neither form
         authorizes a physical Action or automatically resolves PREPARED.
         """
-        if type(count) is not int or not 0 < count <= len(self._body["actions"]):
+        # A captured original *empty initial* Q4 DEV WAL needs a zero-row
+        # comparison AFTER the first v2 PLACE append. Only a previously
+        # supplied source_schema can request count=0; this is a digest, not
+        # a historical Action/physical authorization.
+        if (
+            type(count) is not int or not 0 <= count <= len(self._body["actions"])
+            or count == 0 and source_schema is None
+        ):
             raise PhysicalJournalError("nonempty canonical WAL prefix required")
         schema = self._body["schema"] if source_schema is None else source_schema
         if (
