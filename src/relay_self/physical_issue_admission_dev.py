@@ -765,13 +765,11 @@ class PhysicalIssueAdmission:
         """Final-stdin check; PLACE must revalidate original S1 and WAL inode."""
         with self._lock:
             lease = self._active.get(self_id)
-            binding = self._original_place_bound.get(self_id)
-            if lease is not None and lease.effect_family == "MOVE_PLACE" and (
-                binding is None
-            ):
+            if lease is not None and lease.effect_family == "MOVE_PLACE":
                 raise PhysicalIssueFenceError(
-                    "PLACE native effect requires original S1-bound child admission"
+                    "PLACE native effects require atomic final stdin submission"
                 )
+            binding = self._original_place_bound.get(self_id)
         if binding is not None:
             # Fixed lock order: original cognition -> original physical -> WAL.
             # Do not await while holding these locks.
