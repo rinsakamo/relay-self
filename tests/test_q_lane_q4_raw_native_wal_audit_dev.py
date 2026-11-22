@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from copy import deepcopy
 
 import pytest
 
 from experiments.q_lane_q4_raw_native_wal_audit_dev import (
-    Q4EvidenceHold, audit_two_nominal_moves,
+    Q4EvidenceHold,
+    audit_two_nominal_moves,
 )
 
 
