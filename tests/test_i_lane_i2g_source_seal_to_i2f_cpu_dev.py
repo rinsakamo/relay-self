@@ -5,9 +5,11 @@ The positive outcome only validates audit contracts, never real World.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import shutil
+from dataclasses import replace
 
 import pytest
 
@@ -18,10 +20,18 @@ from experiments.i_lane_i2g_independent_origin_audit_dev import (
     prepare_i2g_inert_fork_and_pins_once,
     seal_i2g_original_manifest_once,
 )
+from relay_self.coordinated_autosave_runtime_dev import StoppedWorldReceipt
 from relay_self.i_lane_i2f_future_source_pins_dev import (
     inspect_i2f_future_original_sources,
 )
-from test_i_lane_i2e_future_original_preflight_dev import _future
+from relay_self.innate_schema import SchemaSnapshot
+from relay_self.persistent_cognition import save_persistent_cognition
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.stage28b_retired_resident_typed_cut_dev import (
+    capture_retired_resident_typed_world,
+)
+from relay_self.world_resident_lifecycle_dev import WorldLifetime
+from test_stage28b_retired_typed_cut_dev import _setup
 from test_mineflayer_process_session import observation_line
 
 
@@ -40,14 +50,55 @@ def _frozen_native(req: str, native: str, seq: int):
 
 
 def _fake_original(tmp_path, monkeypatch):
-    # The staged A/B v3 typed cut comes from existing synthetic FakePaper.
-    args = _future(tmp_path, monkeypatch)
+    # Re-capture a complete ORIGINAL typed generation at the NEW I2g branch.
+    # Never rewrite a committed generation's branch or relax the auditor.
+    bridge, paper, store, staging = _setup(tmp_path, monkeypatch)
+    for dim in ("world_nether", "world_the_end"):
+        folder = tmp_path / dim / "region"
+        folder.mkdir(parents=True)
+        (folder / "r.0.0.mca").write_bytes(b"test-only-dimension")
+    paper.branch_id = "p0d-real-resident-presence"
+    bridge.lifecycle.world = WorldLifetime(
+        "world-1", "p0d-real-resident-presence",
+        "paper-owned-original", 0, 100,
+    )
+    def stop_paper():
+        paper.stop_count += 1
+        paper.owned_session_id = None
+        return StoppedWorldReceipt(
+            "world-1", "p0d-real-resident-presence",
+            "paper-owned-original", 110,
+            "paper:main-thread-tick:110",
+            "paper:owned-process-exit:0", 0, True,
+        )
+    paper.stop_and_save = stop_paper
+    for sid in ("A", "B"):
+        owner = bridge.owners[sid]
+        owner.retained = replace(
+            owner.retained, pattern_registry=owner.pattern_registry,
+        )
+        save_persistent_cognition(owner.files.cognition_file, owner.retained)
+    resident = ResidentCognitiveWorkOwner(bridge.owners)
+    bridge.cognitive_work = resident
+    for sid in ("A", "B"):
+        resident.register_present_schema(sid, SchemaSnapshot(sid, 0, ()))
+        resident.bind_login(
+            self_id=sid, native_session_id=bridge.owners[sid].native_session_id,
+            world_epoch=0, world_tick=105,
+        )
+    for sid in ("A", "B"):
+        resident.fence_self(sid)
+        finished = asyncio.run(resident.retire_self(sid))
+        resident.mark_offline(finished)
+    prepared = capture_retired_resident_typed_world(
+        bridge=bridge, paper=paper, store=store, evidence_dir=staging,
+    )
     evidence = tmp_path / "i2g-original-source-fixture"
     evidence.mkdir()
-    generation = evidence / "typed-world-self-generations" / args["generation"].name
+    generation = evidence / "typed-world-self-generations" / prepared.generation.name
     generation.parent.mkdir()
-    shutil.copytree(args["generation"], generation)
-    world_id = args["expected_world_id"]
+    shutil.copytree(prepared.generation, generation)
+    world_id = "world-1"
     paper_session = "paper-owned-i2g-fixture"
     boot = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
     actors = {
