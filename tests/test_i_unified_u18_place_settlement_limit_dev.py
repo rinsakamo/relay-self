@@ -8,10 +8,13 @@ import asyncio
 
 import pytest
 
-from relay_self.physical_action_journal import (PhysicalActionJournal, PhysicalJournalError)
 from experiments.cognitive_physical_move_issue_dev import (
     PhysicalMoveRefusal,
     _settled,
+)
+from relay_self.physical_action_journal import (
+    PhysicalActionJournal,
+    PhysicalJournalError,
 )
 from test_p0d_resident_move_issuer_dev import ScriptedNative
 
