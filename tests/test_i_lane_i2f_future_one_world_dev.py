@@ -174,6 +174,10 @@ def test_i2f_one_world_no_runner_model_or_paper_without_real_gate(
     tmp_path, monkeypatch,
 ):
     args = _future(tmp_path, monkeypatch)
+    # _future itself creates synthetic source evidence at this directory.
+    # Compare to that baseline; a refused runner must create nothing new.
+    existing = sorted(p.relative_to(tmp_path).as_posix()
+                      for p in tmp_path.rglob("*"))
     with pytest.raises(real.I2fOriginalWorldHold):
         asyncio.run(real.run_i2f_one_original_world(
             generation=args["generation"],
@@ -189,4 +193,5 @@ def test_i2f_one_world_no_runner_model_or_paper_without_real_gate(
             model_alias="unknown", gate=object(),
         ))
     assert not (tmp_path / "exec").exists()
-    assert not (tmp_path / "evidence").exists()
+    assert sorted(p.relative_to(tmp_path).as_posix()
+                  for p in tmp_path.rglob("*")) == existing
