@@ -213,3 +213,84 @@ a future stage before any real opt-in is considered. Explicit
 
 Historical I2/I4a test discovery is still incomplete: scoped U4 CI
 cannot imply blanket legacy regressions or real S2 source certification.
+
+
+## U5 — B original S1 physical custody gate (2026-11-22)
+
+U5 adds an **in-process, volatile** S1 history anchor to the **existing**
+`PhysicalIssueAdmission` object, and a dedicated
+`arm_original_place_s1`→`bind_original_place_children` path. This
+does **not** create another Owner, external WAL, process or native issuer.
+
+The anchor is created only from the current Original B
+`bridge.cognitive_work`/ `bridge.owners[self_id]` identity, the
+owner's exact canonical `physical_wal_file`, a nonempty terminal
+S1 `PhysicalActionJournal` readback, and original live
+resident/native/World epoch. It stores original `IUnifiedS1Witness`
+under the existing physical gate, not a caller-provided SHA or
+persistent/new file. The anchor may be armed only once in the original
+resident session; restart loses it and must fail closed.
+
+The generic `bind_native_children` intentionally **rejects**
+`MOVE_PLACE`; otherwise the U4 path could bypass custody binding.
+The dedicated path needs a current original PLACE lease, same
+PhysicalIssueAdmission, Owner, Self/Native/World/physical epochs, the
+same exact canonical original WAL path, and a **single new v2
+PREPARED_UNRESOLVED** with distinct Action/Intent/Skill following the
+unchanged S1 historical prefix. It verifies the S1 canonical digest
+under the historical schema (including v1→v2), the caller journal's
+current digest, and WAL file metadata. S1 is never silently rearmed,
+and one action's child binding may not be reused.
+
+At each `require_native_effect` under a bound PLACE lease,
+`resident.lock → physical._lock → canonical WAL restore` rechecks
+original scope, saved S1 prefix digest, PREPARED row and the
+`(device,inode,size,ctime_ns)` of the bound canonical WAL file
+**before** consuming an exact native child ID. A byte-identical
+file replacement after binding is refused even when its checksum
+still matches; independently rewritten old S1 history, action
+substitution, symlink swap and stale or fenced epochs are also
+rejected. No awaiting occurs while these locks are held, and the
+same original gate remains the sole consumer of child IDs.
+
+The U4 typed `prepare_place_move`→`close_place_move` CPU test now
+uses this U5 anchored binding path (on an isolated explicit-opt-in
+`PhysicalIssueAdmission` instance injected into a **synthetic** B
+bridge). New U5 adversarial tests cover cloned WAL path, stale
+histories with recomputed checksums, duplicate S1 arm, stale/foreign
+scope and Owner, pre-Native inode replacement and rejoin fences,
+and one consumed child before later WAL replacement. No actual
+Mineflayer/Paper/GPU/World process was run.
+
+**Unqualified boundary and safety caveats (HOLD):**
+
+- The S1 anchor is **volatile within the same process** and captures
+  the currently visible canonical data; it is **not a cryptographic or
+  independent Native/Paper source-custody root**. A malicious
+  replacement of the canonical path *before the first S1 capture*,
+  or a valid but forged PREPARED row written before the first binding,
+  cannot be attributed solely from checksums or inode inspection.
+- The WAL check and native IO are not one indivisible cross-process
+  transaction: the current code checks immediately before
+  `require_native_effect` consumes a child ID, **not** through a
+  complete Native/Paper roundtrip. A host process or external writer
+  can still race between child admission and the actual stdin write.
+  Q and a fresh original-source/issuer transport verifier are needed.
+- Live `MOVE_PLACE` emergency STOP after quarantine is **not
+  qualified**: the U5 fail-closed source fence refuses post-quarantine
+  child admissions, including an ordinary STOP. Before any real
+  PLACE motion can be enabled, the original Physical issuer must
+  provide a separately audited emergency STOP/settling path that
+  cannot be blocked by this custody guard.
+- Original B restored `PhysicalIssueAdmission` still has
+  `observation_only=True`, `allow_resident_move=False`, and
+  `allow_resident_place_move=False`; U5 positive tests use a distinct
+  *synthetic* opt-in instance of the original class and forged
+  native ACK/probes. They are not real action qualification.
+- This U5 pass does not qualify old I2/I4a historical runner tests
+  omitted from the integrated branch, L2/Gemma, Memory adoption,
+  independent Q Source, C3 or World. Maintain
+  **PRE_WORLD_HOLD / QUAL_NO_GO / SCIENCE_NOT_RUN**.
+
+The next gate for R0.5 is exact-head compatibility and Q read-only
+shadow audit, not R2 runtime migration or enabling physical PLACE.
