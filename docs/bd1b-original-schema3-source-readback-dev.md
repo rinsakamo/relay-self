@@ -56,3 +56,26 @@ recomputes its Native and Paper revisions from raw JSON fields and binds:
 Re-hashing the receipt and report together does **not** bypass these
 semantic checks; adversarial tests explicitly perform that re-hashing.
 Neither the revision nor the SHA is an independent real-World signature.
+
+### Two distinct Paper boot namespaces, one retained original log
+
+The tick main-thread witness has its **own** `paper_boot_id`. The
+P0D_RESIDENT presence stream has `presence_boot_id`. These MUST NOT be
+blindly equated. The original first-login receipts bind `paper_tick_ref`
+to the Tick witness boot and the later original source's `paper_boot`
+to the resident presence boot; both A/B still share the SAME two boots,
+Paper PID, session and actual raw log SHA.
+
+For the opt-in Schema3 path, the original runner additionally freezes
+`initial-native-paper-owned.log` bytes across B's original first-login
+Paper/Native receipt (before any logout), and checks those original
+bytes' SHA against each actual first-login receipt. The independent
+readback requires those exact bytes to remain present and unmodified,
+and checks the archived log SHA against both the saved report and the
+initial receipts. A Paper log changing while the first receipt is
+assembled causes HOLD before the A first logout. No log is generated
+or reconstructed from a JSON report.
+
+The raw logger is still the SAME owned producer process; preserving
+its bytes **does not** independently attest that a real Paper process
+made them. Separate trusted external custody remains necessary.

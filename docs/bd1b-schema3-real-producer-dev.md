@@ -76,3 +76,20 @@ consistency**, not independent real-World authenticity: ensure a separate
 trusted witness retains source identity/time/custody before any claim of
 verified original Paper/Native. A successful local readback does not
 authorize Gemma L1, ADOPT, physical Actions, QUAL or SCIENCE.
+
+### Raw initial Paper stdout retained by Schema3
+
+The same opt-in producer also writes original
+`evidence/initial-native-paper-owned.log` from the existing owned
+Paper process at the A/B first-login Native/Paper source boundary,
+and requires two byte-identical log reads across receipt creation.
+It binds the raw SHA to both `paper_log_sha256` receipt fields and to
+the typed trial's retained `initial_paper_log_sha256` field. If the
+Paper log appends while this one-shot capture runs, it HOLDS rather than
+inventing an immutable snapshot, suppressing later qualification.
+
+The Tick witness boot and resident presence boot are **different**
+plugin namespaces; only matching *within* the respective source
+namespace is valid. The separate-process auditor verifies both source
+identities and the archived raw bytes but cannot prove process
+authenticity or independent real-time ordering.
