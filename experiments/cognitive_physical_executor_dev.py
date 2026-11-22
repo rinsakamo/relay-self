@@ -175,6 +175,7 @@ def begin_physical_issue_dev(
     place_invocation: object | None = None,
     place_motion: object | None = None,
     place_gait_mode: str | None = None,
+    allow_prior_original_place_terminals: bool = False,
     i4a_s2_boundary: object | None = None,
     i4a_s2_owner: object | None = None,
     i4a_s2_physical: object | None = None,
@@ -191,7 +192,9 @@ def begin_physical_issue_dev(
         i4a_s2_boundary, i4a_s2_owner, i4a_s2_physical,
     ))
     if (
-        s2_requested and (
+        type(allow_prior_original_place_terminals) is not bool
+        or allow_prior_original_place_terminals != s2_requested
+        or s2_requested and (
             i4a_s2_boundary is None or i4a_s2_owner is None
             or i4a_s2_physical is None or place_invocation is None
         )
@@ -233,6 +236,9 @@ def begin_physical_issue_dev(
         # S2 may follow old terminal Actions ONLY inside the original
         # Owner->Physical lease->WAL window. This path never binds Native
         # children and is not a process-backed Real World runner.
+        from relay_self.checkpointed_cognitive_runtime_dev import (
+            CheckpointedCognitiveOwner,
+        )
         from relay_self.i_lane_i4a_s2_run_boundary_dev import I4AS2EmptyRunBoundary
         from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 
@@ -241,6 +247,7 @@ def begin_physical_issue_dev(
         original_physical = i4a_s2_physical
         if (
             not isinstance(boundary, I4AS2EmptyRunBoundary)
+            or not isinstance(original_owner, CheckpointedCognitiveOwner)
             or not isinstance(original_physical, PhysicalIssueAdmission)
             or boundary.owner is not original_owner
             or original_owner.intent is not intent_owner
