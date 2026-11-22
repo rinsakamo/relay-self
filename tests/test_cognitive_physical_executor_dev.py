@@ -119,6 +119,27 @@ def test_shared_issue_cannot_switch_selected_eat_to_attack(tmp_path):
     assert session.sent == []
 
 
+@pytest.mark.parametrize("extra", [
+    {"place_invocation": object()},
+    {"place_motion": object()},
+    {"place_invocation": object(), "place_motion": object()},
+    {"place_gait_mode": "WALK"},
+])
+def test_place_parameters_cannot_change_eat_or_leave_partial_reservation(tmp_path, extra):
+    kw, session, _, _ = setup(tmp_path)
+    with pytest.raises(ValueError, match="PLACE reservation parameters"):
+        begin_physical_issue_dev(
+            session, capability="EAT", proposal=kw["proposal"],
+            current_probe=kw["current_probe"], propose_grant=kw["propose_grant"],
+            issue_grant=kw["issue_grant"], intent_owner=kw["intent_owner"],
+            skill_execution=kw["skill_execution"], supervisor=kw["supervisor"],
+            journal=kw["journal"], at_ns=kw["at_ns"], **extra,
+        )
+    assert kw["journal"].records == ()
+    assert kw["supervisor"].recorded_actions == ()
+    assert session.sent == []
+
+
 def test_shared_begin_fsync_prepared_before_supervisor_issue_and_no_native_io(
     tmp_path,
 ):

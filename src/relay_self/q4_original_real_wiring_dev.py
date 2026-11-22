@@ -49,6 +49,12 @@ def audit_q4_original_live_wiring_cpu() -> Q4OriginalRealWiringAudit:
     wal_parameters = inspect.signature(begin_physical_issue_dev).parameters
     if not {"place_invocation", "place_motion"}.issubset(wal_parameters):
         missing += ("original_place_wal_reservation",)
+    # A first-action PLACE reservation does not implement the S1-prefix
+    # transaction or Stage27's prior-terminal option.
+    if "i4a_s2_boundary" not in wal_parameters:
+        missing += ("original_place_s2_wal_reservation",)
+    if "allow_prior_original_place_terminals" not in wal_parameters:
+        missing += ("original_place_prior_terminal_reservation",)
     if not callable(getattr(physical, "quiescent_wal_history_window", None)):
         missing += ("quiescent_wal_history_window",)
     # These are deliberate no-positive-result fixtures. The original

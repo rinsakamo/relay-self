@@ -22,7 +22,8 @@ def test_q4_live_wiring_advertises_remaining_exact_issuer_blockers():
         "original_i4a_s2_first_wal_window",
         "require_original_i4a_s2_wal_window",
         "consume_original_i4a_s2_action_once",
-        "original_place_wal_reservation",
+        "original_place_s2_wal_reservation",
+        "original_place_prior_terminal_reservation",
     }
     assert "quiescent_wal_history_window" not in (
         report.missing_original_interfaces

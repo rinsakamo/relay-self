@@ -172,6 +172,9 @@ def begin_physical_issue_dev(
     journal: PhysicalActionJournal,
     at_ns: int,
     refusal: type[ValueError] = ValueError,
+    place_invocation: object | None = None,
+    place_motion: object | None = None,
+    place_gait_mode: str | None = None,
 ) -> None:
     """One owner, scoped grants, WAL-before-ISSUE; never sends native IO.
 
@@ -181,6 +184,13 @@ def begin_physical_issue_dev(
     """
     if capability not in {"EAT", "ATTACK", "MOVE"}:
         raise refusal("unregistered physical issuer capability")
+    if (
+        (place_invocation is None) != (place_motion is None)
+        or (place_invocation is not None and capability != "MOVE")
+        or (place_gait_mode is not None and place_invocation is None)
+        or place_gait_mode not in (None, "WALK", "SNEAK")
+    ):
+        raise refusal("invalid PLACE reservation parameters")
     journal.require_clear()
     b = proposal.binding
     if (
@@ -227,6 +237,11 @@ def begin_physical_issue_dev(
         journal.prepare_eat(b, current_probe)
     elif capability == "ATTACK":
         journal.prepare_attack(b, current_probe)
+    elif place_invocation is not None:
+        journal.prepare_place_move(
+            b, current_probe, place_invocation, place_motion,
+            precision_gait=place_gait_mode,
+        )
     else:
         journal.prepare_move(b, current_probe)
     issued = supervisor.issue(
