@@ -3,6 +3,8 @@
  * Explicit process launch opt-in is required. This is not a World-motion PASS;
  * sampling latency and momentum can exceed the early-stop threshold.
  */
+import { performance } from 'node:perf_hooks'
+
 export const Q4_MAX_FORWARD_MS = 800
 export const Q4_ACCEPTANCE_DISTANCE_M = 1.0
 export const Q4_EARLY_STOP_DISTANCE_M = 0.7
@@ -16,7 +18,7 @@ function horizontalPosition (bot) {
 }
 
 export class Q4BoundedPlaceMotionGuard {
-  constructor (bot, { onTrip, now = () => Date.now(), interval = setInterval, cancel = clearInterval } = {}) {
+  constructor (bot, { onTrip, now = () => performance.now(), interval = setInterval, cancel = clearInterval } = {}) {
     if (typeof onTrip !== 'function') throw new Error('Q4 onTrip required')
     this.bot = bot
     this.onTrip = onTrip
