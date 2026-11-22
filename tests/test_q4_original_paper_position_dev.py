@@ -1,7 +1,6 @@
 """U18 Paper position readback CPU fixtures; never an actual World claim."""
 from __future__ import annotations
 
-import hashlib
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -14,8 +13,8 @@ from relay_self.q4_original_paper_position_dev import (
     verify_original_q4_paper_position_window,
 )
 from relay_self.resident_paper_presence_join_dev import (
-    OwnedPaperResidentTrace,
     PaperResidentEvent,
+    parse_owned_paper_resident_trace,
 )
 from test_i_unified_i4a_place_lease_dev import _acks, _probes
 
@@ -38,15 +37,24 @@ def _case(monkeypatch, *, settled_tick=130, foreign_actor=False):
         )
 
     events = (
-        point("JOIN", 100, 1.0, 1),
-        point("MOVE", 110, 1.5, 2),
-        point("PRESENT", 120, 1.5, 3),
-        point("PRESENT", settled_tick, 1.5, 4),
+        point("JOIN", 100, 1.0, 2),
+        point("MOVE", 110, 1.5, 3),
+        point("PRESENT", 120, 1.5, 4),
+        point("PRESENT", settled_tick, 1.5, 5),
     )
-    raw = b"synthetic-original-Paper-source-fixture\n"
-    trace = OwnedPaperResidentTrace(
-        PAPER, BOOT, WORLD, hashlib.sha256(raw).hexdigest(),
-        events, "synthetic-test-only",
+    # Local source-shaped Paper transcript, not a launched Paper process.
+    raw = (
+        f"P0D_RESIDENT_READY boot={BOOT} source=PAPER_MAIN_THREAD version=1\\n"
+        + "".join(
+            f"P0D_RESIDENT event={e.event} boot={e.boot_id} tick={e.tick} "
+            f"world={e.world_uuid} actor={e.actor_uuid} name={e.name} "
+            f"x={e.x} y={e.y} z={e.z} source=PAPER_MAIN_THREAD\\n"
+            for e in events
+        )
+    ).replace("\\\\n", "\\n").encode()
+    trace = parse_owned_paper_resident_trace(
+        owned_paper_session_id=PAPER, expected_world_uuid=WORLD,
+        owned_paper_log=raw, log_ref="synthetic-test-only",
     )
     monkeypatch.setattr(module, "_owned_log_source", lambda *_args: (trace, raw))
     bridge = SimpleNamespace(
