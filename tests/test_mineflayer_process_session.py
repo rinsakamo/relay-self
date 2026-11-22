@@ -704,3 +704,54 @@ def test_u17_stdout_source_contains_exact_startup_prefix_and_continuous_probes(
             session.start_raw_source_audit(tmp_path / "replayed.jsonl")
 
     asyncio.run(scenario())
+
+
+def test_u18_owned_q4_injected_stop_failure_is_one_use_and_no_native_stop_bytes(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """CPU native stand-in ONLY; not real Node termination evidence."""
+    from adapters.mineflayer.process_session import MineflayerProcessIOError
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+    proc.pid = 42424
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+            enable_q4_bounded_place_dev=True,
+        )
+        session.start_raw_source_audit(tmp_path / "stdout.jsonl")
+        session.start_raw_stdin_audit(tmp_path / "stdin.jsonl")
+        session.install_effect_admission(lambda *_: None)
+        session.install_atomic_effect_sender(
+            lambda _native, _effect, _action, write: write(),
+        )
+        session.arm_q4_stop_failure_once_dev("original-a-stop")
+        await session.send_set_control(
+            "original-a-start", control="forward", state=True,
+        )
+        with pytest.raises(MineflayerProcessIOError, match="injected STOP failure"):
+            await session.send_clear_controls("original-a-stop")
+        assert session._q4_stop_failure_used
+        with pytest.raises(MineflayerProcessIOError, match="cannot be replayed"):
+            await session.send_clear_controls("original-a-stop")
+        with pytest.raises(MineflayerProcessIOError, match="one-shot"):
+            session.arm_q4_stop_failure_once_dev("other-stop")
+        assert [json.loads(w)["action_id"] for w in proc.stdin.writes] == [
+            "original-a-start",
+        ]
+        # Real Q4 wrapper independently requires process exit; this mock
+        # only tests adapter withholding and local error propagation.
+        assert await session.force_terminate_owned(timeout_s=0.5) == -15
+        assert session.process_returncode == -15
+        session.finish_raw_stdin_audit()
+        session.finish_raw_source_audit()
+
+    asyncio.run(scenario())
