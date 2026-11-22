@@ -6,6 +6,7 @@ The existing owner must separately authenticate native/World association.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
 
 from adapters.mineflayer.python_protocol import (
@@ -13,6 +14,8 @@ from adapters.mineflayer.python_protocol import (
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
+    MineflayerTerrainCell,
+    MineflayerTerrainObservation,
 )
 from relay_self.common_io import ScopeRef
 from relay_self.provenance import Provenance
@@ -206,3 +209,137 @@ def sense_for_composite_source(
     ))
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class SenseTerrainFrame:
+    """Native terrain in an already owner-bound scope, not server truth."""
+
+    scope: ScopeRef
+    observation: MineflayerTerrainObservation
+    source_revision_ref: str
+
+    @property
+    def terrain(self):
+        return self.observation.terrain
+
+
+def sense_terrain_from_native(
+    observation: MineflayerTerrainObservation,
+    *,
+    scope: ScopeRef,
+    expected_native_session: str,
+    expected_request_id: str,
+    previous_seq: int,
+) -> SenseTerrainFrame:
+    """Check stream correlation; original Owner must bind World generation."""
+    if (
+        not isinstance(observation, MineflayerTerrainObservation)
+        or not isinstance(scope, ScopeRef)
+        or scope.world_session_id is None
+        or type(expected_native_session) is not str
+        or not expected_native_session
+        or observation.session_id != expected_native_session
+        or type(expected_request_id) is not str
+        or not expected_request_id
+        or observation.request_id != expected_request_id
+        or type(previous_seq) is not int
+        or previous_seq < 0
+        or observation.seq <= previous_seq
+    ):
+        raise SenseRefusal("SENSE terrain source/request/session is unqualified")
+    return SenseTerrainFrame(
+        scope=scope,
+        observation=observation,
+        source_revision_ref=f"mineflayer:{observation.session_id}:{observation.seq}",
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class SenseTerrainMoveInput:
+    """Readonly geometry for original L0 MOVE, never physical clearance."""
+
+    scope: ScopeRef
+    source_revision_ref: str
+    position: MineflayerPosition
+    body_aabb: tuple[float, float, float, float, float, float] | None
+    cells: tuple[MineflayerTerrainCell, ...]
+    complete: bool
+    route_status: str = "UNKNOWN"
+
+    def __post_init__(self) -> None:
+        if self.route_status != "UNKNOWN":
+            raise SenseRefusal("SENSE cannot grant route clearance")
+
+
+def sense_terrain_for_l0_move(frame: SenseTerrainFrame) -> SenseTerrainMoveInput:
+    if not isinstance(frame, SenseTerrainFrame):
+        raise SenseRefusal("SENSE terrain frame required")
+    terrain = frame.terrain
+    return SenseTerrainMoveInput(
+        scope=frame.scope,
+        source_revision_ref=frame.source_revision_ref,
+        position=terrain.position,
+        body_aabb=terrain.body_aabb,
+        cells=terrain.cells,
+        complete=terrain.complete,
+    )
+
+
+def sense_terrain_obstacle_hint(
+    frame: SenseTerrainFrame, target: MineflayerPosition,
+) -> str:
+    """Report POTENTIAL_COLLISION or UNKNOWN, never route CLEAR/authorization.
+
+    Conservative swept envelope for <=1m level segment from the *current*
+    native position. Cannot diagnose dynamic entities, motion, pose, support,
+    timing, Paper source truth, or all possible paths.
+    """
+    if not isinstance(frame, SenseTerrainFrame) or not isinstance(target, MineflayerPosition):
+        raise SenseRefusal("invalid SENSE terrain/target")
+    origin = frame.terrain.position
+    body = frame.terrain.body_aabb
+    dx, dy, dz = target.x - origin.x, target.y - origin.y, target.z - origin.z
+    if (
+        body is None or frame.terrain.body_pose is None
+        or dy != 0 or not 0 < math.hypot(dx, dz) <= 1
+    ):
+        return "UNKNOWN"
+    bounds = (
+        min(body[0], body[0] + dx),
+        body[1],
+        min(body[2], body[2] + dz),
+        max(body[3], body[3] + dx),
+        body[4],
+        max(body[5], body[5] + dz),
+    )
+    for cell in frame.terrain.cells:
+        if cell.shapes is None:
+            continue
+        for box in cell.shapes:
+            if (
+                box[0] < bounds[3] and box[3] > bounds[0]
+                and box[1] < bounds[4] and box[4] > bounds[1]
+                and box[2] < bounds[5] and box[5] > bounds[2]
+            ):
+                return "POTENTIAL_COLLISION"
+    return "UNKNOWN"
+
+
+def sense_terrain_for_self_world(frame: SenseTerrainFrame) -> tuple[LensClaim, ...]:
+    """SelfWorld read-only reference to observed local terrain, not raw LLM text."""
+    if not isinstance(frame, SenseTerrainFrame):
+        raise SenseRefusal("SENSE terrain frame required")
+    if frame.terrain.known_cells == 0:
+        return (LensClaim(
+            scope=frame.scope, lens=Lens.SELF_WORLD,
+            claim_key="sense.terrain.local", status=EpistemicStatus.UNKNOWN,
+        ),)
+    return (LensClaim(
+        scope=frame.scope, lens=Lens.SELF_WORLD,
+        claim_key="sense.terrain.local", status=EpistemicStatus.OBSERVED,
+        source_refs=(frame.observation.provenance,),
+        source_revision_refs=(frame.source_revision_ref,),
+        value_ref=f"{frame.source_revision_ref}:terrain",
+        coverage_ref=f"{frame.source_revision_ref}:terrain-coverage",
+    ),)

@@ -7,18 +7,27 @@ scheduler or model backend is attested by the inert boundary.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
+from adapters.mineflayer.python_protocol import (
+    MineflayerLaunchConfig,
+    MineflayerObservation,
+    MineflayerTerrainObservation,
+)
 from adapters.mineflayer.sense_projection import (
     SenseFrame,
     SenseRefusal,
+    SenseTerrainFrame,
     sense_for_self_world,
     sense_from_native,
+    sense_terrain_for_l0_move,
+    sense_terrain_for_self_world,
+    sense_terrain_from_native,
 )
 from relay_self.checkpointed_cognitive_runtime_dev import CheckpointedCognitiveOwner
 from relay_self.common_io import ScopeRef
@@ -176,6 +185,8 @@ class OwnedResidentPhysicalBridge:
         self._sense: dict[str, SenseFrame] = {}
         self._sense_received_at: dict[str, float] = {}
         self._sense_refreshing: set[str] = set()
+        self._e1_terrain: dict[str, SenseTerrainFrame] = {}
+        self._e1_terrain_received_at: dict[str, float] = {}
         # Exactly matched I1 observe replies; separate from the normal
         # passive Native SENSE stream. Both live under the same original
         # resident lock and Native process, not a second owner.
@@ -422,6 +433,12 @@ class OwnedResidentPhysicalBridge:
                     or view.status is not Presence.ONLINE
                     or session.process_returncode is not None
                     or session.observer_error is not None or session._dispatch_error is not None
+                    # Original receive stream has no trustworthy native-to-Python
+                    # clock mapping. Compacted or saturated source data cannot
+                    # become CURRENT merely because it was recently received.
+                    or session.passive_aggregation is not None
+                    or session.native_continuity_hold is not None
+                    or session.backpressure_hold
                     or frame.scope != ScopeRef(self_id, world.paper_session_id)
                     or evidence.self_id != self_id
                     or evidence.native_session_id != session.started.session_id
@@ -552,6 +569,129 @@ class OwnedResidentPhysicalBridge:
                 self._i1_correlated_sense[self_id] = frame
                 self._i1_correlated_received_at[self_id] = now
                 return frame
+        finally:
+            with self.cognitive_work.lock:
+                self._sense_refreshing.discard(self_id)
+
+    def current_e1_terrain(self, self_id: str, *, max_age_s: float = 2.0) -> SenseTerrainFrame | None:
+        """Original-source-correlated local terrain only; NOT Paper-authenticated clearance.
+
+        The read-time clock is Native monotonic without a trusted Python clock
+        mapping. Python receipt TTL alone does not prove acquisition age.
+        A returned frame is an attributed, bounded observation, never MOVE
+        permission, traversability, or proof of full World/Entity absence.
+        """
+        if self.cognitive_work is None or not self.enable_sense:
+            return None
+        with self.cognitive_work.lock:
+            passive = self.current_sense(self_id, max_age_s=max_age_s)
+            terrain = self._e1_terrain.get(self_id)
+            received = self._e1_terrain_received_at.get(self_id, 0)
+            if (passive is None or terrain is None
+                    or type(max_age_s) not in (float, int)
+                    or isinstance(max_age_s, bool)
+                    or not 0 < max_age_s <= 60
+                    or not 0 <= time.monotonic() - received <= max_age_s
+                    or terrain.scope != passive.scope
+                    or terrain.observation.session_id != passive.observation.session_id
+                    or terrain.source_revision_ref != (
+                        f"mineflayer:{terrain.observation.session_id}:"
+                        f"{terrain.observation.seq}"
+                    )):
+                self._e1_terrain.pop(self_id, None)
+                self._e1_terrain_received_at.pop(self_id, None)
+                return None
+            return terrain
+
+    def current_e1_terrain_for_l0(self, self_id: str):
+        """Readonly bounded sensor input; route status is ALWAYS UNKNOWN."""
+        source = self.current_e1_terrain(self_id)
+        return None if source is None else sense_terrain_for_l0_move(source)
+
+    def current_e1_terrain_self_world_claims(self, self_id: str):
+        """Only references for original Owner to optionally project."""
+        source = self.current_e1_terrain(self_id)
+        return () if source is None else sense_terrain_for_self_world(source)
+
+    async def refresh_e1_read_only_terrain(
+        self, self_id: str, *, timeout_s: float = 2.0,
+    ) -> SenseTerrainFrame:
+        """Read 100 Native cells with one original Owner/decoder/request ID.
+
+        Physical Action, Paper authority, a second receive task and automatic
+        B Present adoption are deliberately out of scope. An ACK or foreign
+        probe while waiting is an unresolved stream error, not terrain.
+        """
+        if (self.cognitive_work is None or not self.enable_sense
+                or not self.physical.observation_only
+                or self.physical.active_action_ids
+                or type(timeout_s) not in (int, float)
+                or isinstance(timeout_s, bool) or not 0 < timeout_s <= 5):
+            raise OwnedResidentBridgeError("E1 needs the original observation-only Owner")
+        with self.cognitive_work.lock:
+            session = self.sessions.get(self_id)
+            evidence = self.last_login_evidence.get(self_id)
+            original = self.current_sense(self_id)
+            if (session is None or evidence is None or original is None
+                    or self_id in self._sense_refreshing
+                    or self.cognitive_work.current_scope(self_id)[1:]
+                    != (evidence.native_session_id, evidence.world_epoch)
+                    or self.lifecycle.view(self_id).status is not Presence.ONLINE):
+                raise OwnedResidentBridgeError("E1 missing current original Native source")
+            self._check_world()
+            self._sense_refreshing.add(self_id)
+            previous_seq = original.observation.seq
+        request_id = "e1-original-terrain-" + uuid.uuid4().hex
+        try:
+            await session.send_sense_terrain(request_id)
+            deadline = asyncio.get_running_loop().time() + timeout_s
+            matched = None
+            for _ in range(512):
+                remaining = deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    break
+                try:
+                    entry = await asyncio.wait_for(session.receive(), timeout=remaining)
+                except (TimeoutError, OSError, EOFError) as exc:
+                    raise OwnedResidentBridgeError("E1 Native terrain response missing") from exc
+                if getattr(entry, "session_id", None) != evidence.native_session_id:
+                    raise OwnedResidentBridgeError("E1 foreign Native response")
+                if isinstance(entry, MineflayerTerrainObservation):
+                    if entry.request_id != request_id:
+                        raise OwnedResidentBridgeError("E1 terrain request ID mismatch")
+                    matched = entry
+                    break
+                if (not isinstance(entry, MineflayerObservation)
+                        or entry.kind == "probe" or entry.request_id is not None):
+                    # STOP ACK / physical effect / unknown / competing probe:
+                    # do not consume it as an E1 observation.
+                    raise OwnedResidentBridgeError("E1 conflicting Native response")
+            if matched is None:
+                raise OwnedResidentBridgeError("E1 terrain bounded response horizon exhausted")
+            with self.cognitive_work.lock:
+                if (self.sessions.get(self_id) is not session
+                        or self.cognitive_work.current_scope(self_id)[1:]
+                        != (evidence.native_session_id, evidence.world_epoch)
+                        or self.last_login_evidence.get(self_id) is not evidence
+                        or self.current_sense(self_id) is None):
+                    raise OwnedResidentBridgeError("E1 source changed before admission")
+                self._check_world()
+                try:
+                    frame = sense_terrain_from_native(
+                        matched, scope=ScopeRef(self_id, evidence.paper_session_id),
+                        expected_native_session=evidence.native_session_id,
+                        expected_request_id=request_id, previous_seq=previous_seq,
+                    )
+                except SenseRefusal as exc:
+                    raise OwnedResidentBridgeError("E1 unqualified Native terrain") from exc
+                self._e1_terrain[self_id] = frame
+                self._e1_terrain_received_at[self_id] = time.monotonic()
+                return frame
+        except BaseException:
+            with self.cognitive_work.lock:
+                self._e1_terrain.pop(self_id, None)
+                self._e1_terrain_received_at.pop(self_id, None)
+            raise
         finally:
             with self.cognitive_work.lock:
                 self._sense_refreshing.discard(self_id)

@@ -131,6 +131,10 @@ def _clock_context(tmp_path, monkeypatch, *, native_time=0, two=True):
         bridge.sessions[sid] = SimpleNamespace(
             started=SimpleNamespace(session_id=native),
             process_returncode=None, owned_child_pid=7000 + (sid == "B"),
+            # Original ProcessSession receive-state contract. The synthetic
+            # source starts loss-free until each adversarial test changes it.
+            passive_aggregation=None, native_continuity_hold=None,
+            backpressure_hold=False,
         )
     return copy, paper, world, boot, bridge
 

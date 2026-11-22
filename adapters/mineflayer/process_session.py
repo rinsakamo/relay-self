@@ -20,6 +20,7 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_look,
     encode_observe,
+    encode_sense_terrain,
     encode_set_control,
     encode_shutdown,
 )
@@ -61,6 +62,21 @@ class PassiveAggregation:
     latest_received_monotonic: float
 
 
+@dataclass(frozen=True, slots=True)
+class NativeReceiveContinuityHold:
+    """Original stream's first unbounded receive-queue pressure witness.
+
+    This receipt records a local receive boundary, not any Native/Paper
+    acquisition timestamp. Requalification requires an original new session,
+    not a consumer clearing this record.
+    """
+
+    source: str
+    first_seq: int
+    reason: str
+    received_monotonic: float
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -87,6 +103,7 @@ class MineflayerProcessSession:
         self._preserve_all = False
         self.backpressure_hold = False
         self.passive_aggregation: PassiveAggregation | None = None
+        self.native_continuity_hold: NativeReceiveContinuityHold | None = None
         self._tail_received_monotonic = 0.0
 
     @classmethod
@@ -314,6 +331,20 @@ class MineflayerProcessSession:
                 received_at = time.monotonic()
                 self._observer_received_monotonic = received_at
                 batch += 1
+                if self._dispatch_queue.full():
+                    # Fence BEFORE any observer can publish the just-read
+                    # frame; another CPU consumer may run in another thread.
+                    # Local receipt time cannot bound time spent in Native
+                    # stdout/pipe even when no passive record was replaced.
+                    if self.native_continuity_hold is None:
+                        self.native_continuity_hold = NativeReceiveContinuityHold(
+                            source=message.session_id,
+                            first_seq=message.seq,
+                            reason="OWNER_QUEUE_FULL_UNKNOWN_PIPE_DELAY",
+                            received_monotonic=received_at,
+                        )
+                # Even at the periodic fairness yield boundary, the HOLD
+                # must already be visible to every original CPU consumer.
                 if batch == 64:
                     batch = 0
                     await asyncio.sleep(0)
@@ -456,6 +487,10 @@ class MineflayerProcessSession:
         """Backwards-compatible native probe, optionally correlated by ID."""
         await self._send(encode_observe(request_id))
 
+    async def send_sense_terrain(self, request_id: str) -> None:
+        """Read-only bounded SENSE on the one original Owned Native stream."""
+        await self._send(encode_sense_terrain(request_id))
+
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
 
@@ -517,7 +552,7 @@ class MineflayerProcessSession:
                 gate(self.started.session_id, effect, action_id)
                 # Keep every subsequent observation, including delayed settling.
                 self._preserve_all = True
-            elif command_type not in {"observe", "shutdown"}:
+            elif command_type not in {"observe", "sense_terrain", "shutdown"}:
                 raise MineflayerEffectAdmissionError(
                     "unknown native command during coordinated checkpoint mode"
                 )

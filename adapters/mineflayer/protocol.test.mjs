@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { captureSenseTerrain, SENSE_EXPECTED_CELLS } from './sense_terrain.mjs'
 
 import {
   admitProbeRequestId,
@@ -587,4 +588,140 @@ test('envelope preserves target-local session and monotonic sequence fields', ()
       kind: 'health'
     }
   )
+})
+
+test('E1 sense_terrain is a read-only correlated command, not physical LOOK', () => {
+  assert.deepEqual(parseCommand({ type: 'sense_terrain', request_id: 'sense-7' }), {
+    type: 'sense_terrain', request_id: 'sense-7'
+  })
+  assert.throws(() => parseCommand({ type: 'sense_terrain' }), /fields are invalid|request_id/)
+  assert.throws(() => parseCommand({
+    type: 'sense_terrain', request_id: 'sense-7', action_id: 'a'
+  }), /fields are invalid/)
+  assert.throws(() => parseCommand({
+    type: 'sense_terrain', request_id: 'bad space'
+  }), /request_id/)
+})
+
+test('E1 SENSE returns 100 bounded cells without inventing an AABB', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
+    offset (dx, dy, dz) {
+      return new Position(this.x + dx, this.y + dy, this.z + dz)
+    }
+  }
+  const calls = []
+  const bot = {
+    entity: { position: new Position(0.5, 64, 0.5), width: 0.6, height: 1.8 },
+    game: { dimension: 'minecraft:overworld' },
+    blockAt: (pos, extraInfos) => {
+      calls.push({ pos, extraInfos })
+      if (pos.x === 2 && pos.y === 65 && pos.z === 2) return null
+      if (pos.x === 1 && pos.y === 64 && pos.z === 0) {
+        return { name: 'stone', shapes: [[0, 0, 0, 1, 1, 1]] }
+      }
+      return { name: 'air', shapes: [] }
+    }
+  }
+  const t = captureSenseTerrain(bot)
+  assert.equal(t.source_scope, 'mineflayer_loaded_blocks')
+  assert.equal(t.expected_cells, SENSE_EXPECTED_CELLS)
+  assert.equal(t.cells.length, 100)
+  assert.equal(calls.length, 100)
+  assert(calls.every(c => c.extraInfos === false))
+  assert.equal(t.known_cells, 99)
+  assert.equal(t.complete, false)
+  assert.equal(t.body_aabb, null)
+  const wall = t.cells.find(c => c.position.join(',') === '1,64,0')
+  assert.deepEqual(wall.shapes, [[1, 64, 0, 2, 65, 1]])
+  const missing = t.cells.find(c => c.position.join(',') === '2,65,2')
+  assert.equal(missing.name, null)
+  assert.equal(missing.shapes, null)
+})
+
+test('E1 invalid shapes and missing body are explicit UNKNOWN, never air/CLEAR', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return this }
+    offset (x, y, z) { return new Position(this.x + x, this.y + y, this.z + z) }
+  }
+  const bot = {
+    entity: { position: new Position(0, 64, 0) },
+    blockAt: () => ({ name: 'fence', shapes: [[0, 0, 0, 3, 1, 1]] })
+  }
+  const t = captureSenseTerrain(bot)
+  assert.equal(t.body_aabb, null)
+  assert.equal(t.known_cells, 0)
+  assert.equal(t.complete, false)
+  assert(t.cells.every(c => c.shapes === null))
+  assert.throws(() => captureSenseTerrain({}), /live entity/)
+})
+
+test('E1 overhanging fence collision geometry survives instead of becoming air', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return this }
+    offset (dx, dy, dz) { return new Position(this.x + dx, this.y + dy, this.z + dz) }
+  }
+  const bot = {
+    entity: { position: new Position(0, 64, 0), width: 0.6, height: 1.8 },
+    blockAt: (pos) => pos.x === 1 && pos.y === 64 && pos.z === 0
+      ? { name: 'oak_fence', shapes: [[0.375, 0, 0.375, 0.625, 1.5, 0.625]] }
+      : { name: 'air', shapes: [] }
+  }
+  const terrain = captureSenseTerrain(bot)
+  assert.equal(terrain.complete, true)
+  const fence = terrain.cells.find(c => c.position.join(',') === '1,64,0')
+  assert.deepEqual(fence.shapes, [[1.375, 64, 0.375, 1.625, 65.5, 0.625]])
+})
+
+test('E1 body motion, pose changes and world swaps during bounded scan all invalidate coverage', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
+    offset (x, y, z) { return new Position(this.x + x, this.y + y, this.z + z) }
+  }
+  for (const mutation of ['pose', 'position', 'world', 'entity']) {
+    const entity = { position: new Position(0.5, 64, 0.5), pose: 'standing' }
+    let reads = 0
+    const bot = {
+      entity,
+      game: { dimension: 'minecraft:overworld' },
+      blockAt: () => {
+        reads += 1
+        if (reads === 50) {
+          if (mutation === 'pose') entity.pose = 'sneaking'
+          if (mutation === 'position') entity.position.x += 0.25
+          if (mutation === 'world') bot.game.dimension = 'minecraft:the_nether'
+          if (mutation === 'entity') bot.entity = { position: entity.position, pose: 'standing' }
+        }
+        return { name: 'air', shapes: [] }
+      }
+    }
+    const sample = captureSenseTerrain(bot)
+    assert.equal(reads, 100)
+    assert.equal(sample.complete, false, mutation)
+    assert.equal(sample.known_cells, 0, mutation)
+    assert.equal(sample.body_aabb, null, mutation)
+    assert(sample.cells.every(cell => cell.name === null && cell.shapes === null), mutation)
+  }
+})
+
+test('E1 unchanged synchronous block read does not hallucinate body dimensions', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
+    offset (x, y, z) { return new Position(this.x + x, this.y + y, this.z + z) }
+  }
+  const bot = {
+    entity: { position: new Position(0.5, 64, 0.5), pose: 'sneaking', width: 0.6, height: 1.5 },
+    game: { dimension: 'minecraft:overworld' },
+    blockAt: () => ({ name: 'air', shapes: [] })
+  }
+  const sample = captureSenseTerrain(bot)
+  assert.equal(sample.complete, true)
+  assert.equal(sample.known_cells, 100)
+  assert.equal(sample.body_pose, 'sneaking')
+  assert.equal(sample.body_aabb, null)
 })
