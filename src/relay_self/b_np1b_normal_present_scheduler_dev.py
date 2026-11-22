@@ -40,12 +40,22 @@ class NormalResidentPresentCpuScheduler:
     """Two independent original-Owner tasks sampling the same verified source cut."""
 
     _TASK_REFS = {"A": "normal-present-cpu:A", "B": "normal-present-cpu:B"}
+    _SECOND_TASK_REFS = {
+        "A": "normal-present-cpu:g2:A",
+        "B": "normal-present-cpu:g2:B",
+    }
 
     def __init__(
         self, *, bridge: OwnedResidentPhysicalBridge,
         resident: ResidentCognitiveWorkOwner,
         interval_s: float,
+        task_refs: dict[str, str] | None = None,
     ) -> None:
+        # Unique generation task identities prevent a stale old-B work token
+        # from matching a new task when B's original native epoch is unchanged.
+        self._TASK_REFS = dict(
+            type(self)._TASK_REFS if task_refs is None else task_refs
+        )
         self.bridge = bridge
         self.resident = resident
         self.interval_s = interval_s
@@ -169,6 +179,7 @@ class NormalResidentPresentCpuScheduler:
 
 def start_normal_resident_present_cpu(
     *, bridge: OwnedResidentPhysicalBridge, interval_s: float = 0.05,
+    task_refs: dict[str, str] | None = None,
 ) -> NormalResidentPresentCpuScheduler:
     """Install *original* A/B CPU owner tasks after source qualification.
 
@@ -189,10 +200,26 @@ def start_normal_resident_present_cpu(
     try:
         asyncio.get_running_loop()
         with resident.lock:
+            second = getattr(resident, "_normal_second_rejoin_cut", None)
+            if task_refs is None:
+                if second is not None:
+                    raise NormalCpuScheduleHold(
+                        "second reJOIN requires a distinct generation task reference"
+                    )
+                refs = dict(NormalResidentPresentCpuScheduler._TASK_REFS)
+            else:
+                if (
+                    type(task_refs) is not dict
+                    or task_refs != NormalResidentPresentCpuScheduler._SECOND_TASK_REFS
+                    or second is None
+                    or getattr(second, "bridge", None) is not bridge
+                ):
+                    raise NormalCpuScheduleHold("unowned CPU task-generation selector")
+                refs = dict(task_refs)
             if getattr(resident, "_normal_present_scheduler", None) is not None:
                 raise NormalCpuScheduleHold("original CPU schedule already installed")
             bridge.poll_normal_present_cpu()
-            for sid, task_ref in NormalResidentPresentCpuScheduler._TASK_REFS.items():
+            for sid, task_ref in refs.items():
                 state = resident._state(sid)
                 if (
                     state.mode != "ONLINE"
@@ -204,6 +231,7 @@ def start_normal_resident_present_cpu(
                     raise NormalCpuScheduleHold("A/B original CPU task admission unavailable")
             scheduler = NormalResidentPresentCpuScheduler(
                 bridge=bridge, resident=resident, interval_s=float(interval_s),
+                task_refs=refs,
             )
             try:
                 for sid, task_ref in scheduler._TASK_REFS.items():
