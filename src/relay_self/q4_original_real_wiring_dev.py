@@ -26,17 +26,17 @@ class Q4OriginalRealWiringAudit:
     implemented_shared_executor: bool
     missing_original_interfaces: tuple[str, ...]
     synthetic_only_s2_api: bool = True
+    original_s2_cpu_reservation_wired: bool = False
+    independent_source_authenticated: bool = False
     real_world_authorized: bool = False
 
 
 def audit_q4_original_live_wiring_cpu() -> Q4OriginalRealWiringAudit:
     """Identify concrete missing links without constructing an Action.
 
-    The historical Stage27 executor and read-only WAL window have been
-    restored to the unified tree. Original I4a's synthesis-only reservation
-    still depends on historical physical/transaction methods not present in
-    the unified B authority, plus a PLACE-specific WAL reservation contract.
-    Never infer that importability or CI permits real motor execution.
+    The restored Stage27 executor and original CPU-only I4a S2 reservation
+    still reject live process-backed Native. Interface presence and CI alone
+    never permit real motor execution, source custody or World approval.
     """
     physical = PhysicalIssueAdmission
     missing = tuple(
@@ -51,7 +51,9 @@ def audit_q4_original_live_wiring_cpu() -> Q4OriginalRealWiringAudit:
         missing += ("original_place_wal_reservation",)
     # A first-action PLACE reservation does not implement the S1-prefix
     # transaction or Stage27's prior-terminal option.
-    if "i4a_s2_boundary" not in wal_parameters:
+    if not {
+        "i4a_s2_boundary", "i4a_s2_owner", "i4a_s2_physical",
+    }.issubset(wal_parameters):
         missing += ("original_place_s2_wal_reservation",)
     if "allow_prior_original_place_terminals" not in wal_parameters:
         missing += ("original_place_prior_terminal_reservation",)
@@ -67,4 +69,5 @@ def audit_q4_original_live_wiring_cpu() -> Q4OriginalRealWiringAudit:
             complete_prepared_place_move_dev,
         ),
         missing_original_interfaces=missing,
+        original_s2_cpu_reservation_wired=not missing,
     )
