@@ -289,3 +289,46 @@ def test_real_python_native_send_uses_atomic_callback_and_emergency_stop(
         "look", "set_control", "clear_controls",
     ]
     assert proc.stdin.drain_count == 3
+
+
+def test_check_only_place_bypass_denied_even_if_bound(tmp_path, monkeypatch):
+    bridge, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    parent = typed[0].action_id
+    with _lease(gate, owner, typed):
+        _prepare(journal, typed)
+        _bind(gate, bridge, owner, journal, typed)
+        with pytest.raises(PhysicalIssueFenceError, match="atomic final stdin"):
+            gate.require_native_effect(
+                self_id="A", native_session_id=owner.native_session_id,
+                effect="look", action_id=parent + "-look",
+            )
+        emitted = []
+        _submit(gate, owner, parent + "-look",
+                write=lambda: emitted.append("look"))
+        assert emitted == ["look"]
+
+
+def test_adapter_without_atomic_hook_fails_closed_for_place(tmp_path, monkeypatch):
+    bridge, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    proc = FakeProcess([started_line()])
+    session = MineflayerProcessSession(proc)
+    session._started = SimpleNamespace(session_id=owner.native_session_id)
+    session.install_effect_admission(
+        lambda sid, effect, action_id: gate.require_native_effect(
+            self_id="A", native_session_id=sid,
+            effect=effect, action_id=action_id,
+        )
+    )
+
+    async def run():
+        with _lease(gate, owner, typed):
+            _prepare(journal, typed)
+            _bind(gate, bridge, owner, journal, typed)
+            with pytest.raises(PhysicalIssueFenceError, match="atomic final stdin"):
+                await session.send_look(
+                    typed[0].action_id + "-look", yaw=0.0, pitch=0.0,
+                )
+
+    asyncio.run(run())
+    assert proc.stdin.writes == []
+    assert proc.stdin.drain_count == 0
