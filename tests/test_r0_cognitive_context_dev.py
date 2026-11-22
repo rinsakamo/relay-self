@@ -4,19 +4,33 @@ from dataclasses import replace
 import pytest
 
 from relay_self.common_io import (
-    Clock, ClockStamp, CognitiveTask, CognitionResultReceipt,
-    CommonEnvelope, PreemptionEvent, PreemptionPhase, PreemptionTrace,
-    Profile, ScopeRef, TaskRequirement, select_profile,
+    Clock,
+    ClockStamp,
+    CognitionResultReceipt,
+    CognitiveTask,
+    CommonEnvelope,
+    PreemptionEvent,
+    PreemptionPhase,
+    PreemptionTrace,
+    Profile,
+    ScopeRef,
+    TaskRequirement,
+    select_profile,
 )
 from relay_self.persistent_cognition import Memory
 from relay_self.provenance import Provenance
-from relay_self.relay_engine import BoundedChoice
 from relay_self.r0_cognitive_context_dev import (
-    CognitiveContext, CurrentSchemaFrame, R0ContextHold,
-    Recent3SelfView, RecentCognitionEntry, RetrievedMemoryBundle,
-    RetrievedMemoryRef, context_is_live, read_original_owner_current,
-    recent_result_eligible, retrieve_original_owner_memory,
+    CognitiveContext,
+    R0ContextHold,
+    Recent3SelfView,
+    RecentCognitionEntry,
+    RetrievedMemoryBundle,
+    context_is_live,
+    read_original_owner_current,
+    recent_result_eligible,
+    retrieve_original_owner_memory,
 )
+from relay_self.relay_engine import BoundedChoice
 from relay_self.three_self_present import EpistemicStatus, Lens, LensClaim
 from test_bd1b_owner_present_dev import _configured, _project
 from test_bd1b_owner_source_dev import _files
