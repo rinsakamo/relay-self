@@ -224,6 +224,32 @@ class PhysicalIssueAdmission:
         # finally, so only that exact settled WAL suffix can re-arm a new S1.
         self._original_place_last_bound: dict[str, _OriginalPlaceNativeBinding] = {}
 
+    @contextmanager
+    def quiescent_wal_history_window(
+        self, *, self_id: str, native_session_id: str,
+    ) -> Iterator[None]:
+        """I4a read-only Original B Owner→Physical→canonical WAL witness.
+
+        The caller must hold the original ResidentCognitiveWorkOwner lock;
+        this original physical admission lock is retained through the WAL
+        readback. Does NOT issue, reserve, allow a PLACE child, or reopen
+        observation-only B. This is not independently authenticated custody.
+        """
+        with self._lock:
+            if (
+                not self._resident_mode or not self._allow_resident_move
+                or self._observation_only or self._closed or self._poisoned
+                or self._neutralizing
+                or self._sessions.get(self_id) != native_session_id
+                or self._resident_states.get(self_id) != "ONLINE"
+                or self._active or self._native_child_ids
+                or self_id in self._original_place_bound
+            ):
+                raise PhysicalIssueFenceError(
+                    "original I4a quiescent WAL source not currently available"
+                )
+            yield
+
     @property
     def resident_mode(self) -> bool:
         return self._resident_mode
