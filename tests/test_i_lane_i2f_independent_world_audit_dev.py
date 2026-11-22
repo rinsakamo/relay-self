@@ -27,10 +27,13 @@ from test_i_lane_i1_independent_cpu_audit_dev import (
 
 
 def _synthetic_model_world(tmp_path):
-    evidence, executable, report, owners, records = _fixture(tmp_path)
+    report, evidence, executable, owners = _fixture(tmp_path)
     report["paper_boot"]["paper_session_id"] = _SESSION
     report["paper_boot"]["source_world_id"] = _SOURCE_WORLD
-    ref = records[("A", 2)]
+    ref = next(
+        row for row in report["i1_cpu_epochs"]["epochs"]
+        if row["self_id"] == "A" and row["native_seq"] == 3
+    )
     native = "native-A"
     request = "i1-original-sense-" + "f" * 32
     raw = evidence / "native-RelayA-native-A.jsonl"
