@@ -95,10 +95,6 @@ def test_u18_original_paper_log_prefix_change_denies_rearm(monkeypatch):
     window = _build_window(bridge, "A", receipt)
     from relay_self import q4_original_paper_position_dev as module
 
-    def altered(*_):
-        trace, raw = _case_source
-        return trace, raw + b"append-safe\n"
-
     _case_source = module._owned_log_source(bridge, "A")
     monkeypatch.setattr(
         module, "_owned_log_source",
