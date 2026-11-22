@@ -16,7 +16,7 @@ from pathlib import Path
 from relay_self.exploration_schema_record_dev import encode_recorded_schema
 from relay_self.innate_schema import SchemaMode
 from relay_self.persistent_cognition import load_persistent_cognition
-from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.physical_action_journal import _read as _read_physical_wal
 from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 
 
@@ -60,6 +60,20 @@ def _json(raw: bytes):
         return json.loads(raw)
     except (ValueError, UnicodeError) as exc:
         raise BD1bSchema3ReadbackHold("original source JSON unreadable") from exc
+
+
+def _require_passive_wal_readonly(path: Path, *, self_id: str) -> None:
+    """Validate canonical WAL without acquiring its writer lock.
+
+    PhysicalActionJournal.restore() creates a .lock sibling. A saved typed
+    generation has a sealed exact file inventory: even that lock is a
+    mutation that invalidates the generation. Reuse the existing canonical
+    parser directly instead, and require NO Actions for this passive trial.
+    """
+    _file(path)
+    original, _ = _read_physical_wal(path)
+    if original["self_id"] != self_id or original["actions"]:
+        raise BD1bSchema3ReadbackHold("passive original Self WAL is not empty")
 
 
 def _pair(rows, *, key: str):
@@ -137,10 +151,10 @@ def audit_schema3_original_source_bytes(
             raise BD1bSchema3ReadbackHold("prelogin original cognition/registry changed")
         wal = evidence / f"stage28b-schema3-{sid}-prelogin-wal.json"
         _pinned(_file(wal), wals[sid])
-        PhysicalActionJournal.restore(wal, self_id=sid).require_clear()
-        PhysicalActionJournal.restore(
+        _require_passive_wal_readonly(wal, self_id=sid)
+        _require_passive_wal_readonly(
             generation / "selves" / sid / "physical-wal.json", self_id=sid,
-        ).require_clear()
+        )
     if type(report) is not dict:
         raise BD1bSchema3ReadbackHold("producer source report must be an object")
     step = report.get("steps")

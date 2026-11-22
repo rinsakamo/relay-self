@@ -161,6 +161,8 @@ def test_cpu_original_schema3_source_crosscheck_and_separate_process(
     assert receipt.original_paper_provenance_attested is False
     assert receipt.original_native_provenance_attested is False
     assert receipt.original_model_post_attested is False
+    assert before == {p.relative_to(root): p.read_bytes()
+                      for p in root.rglob("*") if p.is_file()}
     source_root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()
     env["PYTHONPATH"] = (
