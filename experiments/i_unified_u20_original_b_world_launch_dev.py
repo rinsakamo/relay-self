@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import shutil
 import subprocess
@@ -283,6 +284,36 @@ def require_u20_stop_fault_original_archive(
         raise U20OriginalWorldHold(
             "STOP fault consumed but original raw archive/Node/WAL not qualified",
         )
+    # The manifest is NOT an external signature; recheck its *actual* source
+    # files before giving even the limited CAPTURED_UNAUDITED label.
+    original_files = {
+        "native_stdout": "original-native-stdout.jsonl",
+        "native_stdin": "original-native-stdin.jsonl",
+        "paper_ticks": "original-paper-process.log",
+        "owner_wal": "original-owner-wal.json",
+        "owner_cognition": "original-owner-persistent-cognition.json",
+        "host_monotonic": "original-host-monotonic.json",
+        "process_exit": "original-node-process-exit.json",
+    }
+    for role, basename in original_files.items():
+        entry = manifest["evidence"][role]
+        source = evidence_dir / basename
+        if (
+            type(entry) is not dict
+            or entry.get("path") != basename
+            or source.is_symlink() or not source.is_file()
+        ):
+            raise U20OriginalWorldHold("STOP fault raw archive file missing/replaced")
+        try:
+            raw = source.read_bytes()
+        except OSError as exc:
+            raise U20OriginalWorldHold("STOP fault archive file not readable") from exc
+        if (
+            not 0 < len(raw) <= 32 * 1024 * 1024
+            or entry.get("size_bytes") != len(raw)
+            or entry.get("sha256") != hashlib.sha256(raw).hexdigest()
+        ):
+            raise U20OriginalWorldHold("STOP fault original evidence changed after sealing")
 
 
 async def run_u20_original_b_world_once(
