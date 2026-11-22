@@ -58,8 +58,10 @@ Real defects were API incompatibilities, not merely missing fixture imports:
   match (\`i2b_read_attached_lane\` and follow-on SENSE).
 - Old I4a Stage27 fixture \`allow_resident_move\` and provider
   \`enable_stage26_raw_audit\` are not B original interfaces (216+ fails).
-- Old I4a Journal \`certified_prefix_digest\` is absent from B; do NOT
-  invent a trust root or backfill a fake certified digest.
+- At U0, B Journal lacked I4a's \`certified_prefix_digest\`. U2 adds
+  **only the read-only v1 canonical prefix function**. A digest is not an
+  original-custody trust root, and I4a's **v2 MOVE_PLACE schema is still
+  incompatible** with B's v1 EAT/ATTACK/relative-MOVE writer.
 - E2 Native receive-queue pressure fence assumes a different dispatcher
   than B's existing original Mineflayer session. It is NOT transplanted.
 - Older Option/target/registry assumptions conflict with present B Schema3.
@@ -85,3 +87,39 @@ DEV modules, and uses **new compatibility tests** around B Original Owner:
 The final exact HEAD's CI verdict must be recorded independently after this
 change. No claim of complete I2/I4a runtime integration is permitted merely
 because B-only regression and the newly scoped negative tests pass.
+
+
+## U1/U2 follow-on (2026-11-22)
+
+U1 source-qualified B original exploration is now wired to the actual B
+registered CoverageAdoptionTurn and B original bounded-L1 issuer. The
+U1 exact HEAD `23461613a4d051c225b887b9c2357fecdb4fdd50` passed
+2,739 scoped tests and all 5 CI jobs. Only **B** can issue the Question
+ADOPT and persist it to its original cognition file. This path neither
+activates legacy I2 L2 Intent/Goal/Skill issuance nor runs real Gemma.
+
+U2 adds `PhysicalActionJournal.certified_prefix_digest(count)` in B v1,
+with no schema/writer/physical grant changes. It allows a previously
+retained S1 digest to be compared against the *canonical v1* prefix after
+S2 appended. The `i_unified_physical_source_dev.py` CPU-only adapters
+now pair the original Owner's own WAL path, original resident/native/World
+epoch, and saved prefix SHA with a reread of B's canonical WAL. The
+positive synthetic test appends valid v1 EAT outcome-shaped rows, **not**
+a genuine Native/Paper/Physical Action, and verifies a distinct second
+Intent/Skill/Action is read back. The negative tests reject an S1 action
+rewrite with recalculated full checksum, a foreign cloned WAL file,
+replaced Owner/epoch/session, replay, drifting journal and unresolved
+PREPARED. Test fixtures directly write canonical *synthetic* rows; this
+cannot qualify their provenance or ActionSupervisor.
+
+This U2 comparison **does not lock the original physical admission lease**
+through Native/World operations or establish an independently authenticated
+S1 anchor across restart. I4a's original source branch uses WAL schema 2
+(`MOVE_PLACE`, `NATIVE_PLACE_MOVE_SETTLED`) while current integrated B
+WAL supports schema 1 only; those paths must not be invoked or treated as
+qualified by this v1 read-only prefix helper. To reach real I4a S1→S2,
+a future scoped migration/compatibility implementation must retain v1
+reader/writer behavior, add v2 support with adversarial tests, reconcile
+B's original physical lease and Q's independently held original evidence,
+then perform new PRE_WORLD and DEV qualification. No actual real World,
+GPU/model, S2 Native effect, C1 experience or Q audit was run here.
