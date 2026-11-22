@@ -59,6 +59,7 @@ class MineflayerProcessSession:
         ) = None
         # No two coroutine writes can interleave Native frames or drains.
         self._send_lock = asyncio.Lock()
+        self._bounded_place_dev_mode = False
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
 
@@ -128,6 +129,7 @@ class MineflayerProcessSession:
             )
 
         session._started = started
+        session._bounded_place_dev_mode = enable_q4_bounded_place_dev
         return session
 
     @property
@@ -137,6 +139,11 @@ class MineflayerProcessSession:
                 "Mineflayer session startup has not completed"
             )
         return self._started
+
+    @property
+    def bounded_place_dev_mode(self) -> bool:
+        """Local launch option only, never a Native/Paper producer receipt."""
+        return self._bounded_place_dev_mode
 
     def install_effect_admission(
         self, check_effect: Callable[[str, str], None],
