@@ -6,6 +6,7 @@ source authenticity or native ACK. Host must use the ORIGINAL owned bridge.
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable, TypeVar
 
@@ -277,7 +278,7 @@ async def run_q4_dev_place_with_motor_deadline(
     quarantines the original Self and force-terminates its owned Native.
     """
     def valid(value: object, cap: float) -> bool:
-        return type(value) in (int, float) and 0 < value <= cap
+        return type(value) in (int, float) and math.isfinite(value) and 0 < value <= cap
 
     if (
         not isinstance(operator_permit, Q4DevOperatorPermit)
@@ -318,12 +319,11 @@ async def run_q4_dev_place_with_motor_deadline(
             timeout=pre_start_s,
             return_when=asyncio.FIRST_COMPLETED,
         )
-        if work in done:
-            # Propagate the original failure, if any. Completing successfully
-            # before its true START is NEVER a qualified physical result.
+        if work in done and not boundary.started.is_set():
+            # Propagate original failure or reject fake early success.
             await work
             raise Q4PlaceAbortHold("original PLACE returned without START")
-        if start_signal not in done or boundary.started_at is None:
+        if not boundary.started.is_set() or boundary.started_at is None:
             raise TimeoutError("Q4 pre-START host watchdog elapsed")
 
         stop_signal = asyncio.create_task(boundary.stopped.wait())
@@ -334,11 +334,11 @@ async def run_q4_dev_place_with_motor_deadline(
             timeout=max(0.0, deadline - asyncio.get_running_loop().time()),
             return_when=asyncio.FIRST_COMPLETED,
         )
-        if work in done and stop_signal not in done:
+        if work in done and not boundary.stopped.is_set():
             await work
             raise Q4PlaceAbortHold("original PLACE returned before STOP ACK")
         if (
-            stop_signal not in done or boundary.stopped_at is None
+            not boundary.stopped.is_set() or boundary.stopped_at is None
             or boundary.stopped_at > deadline
         ):
             raise TimeoutError("Q4 START-to-STOP host motor watchdog elapsed")
@@ -349,7 +349,45 @@ async def run_q4_dev_place_with_motor_deadline(
         done, _ = await asyncio.wait({work}, timeout=settlement_s)
         if work not in done:
             raise TimeoutError("Q4 post-STOP settlement watchdog elapsed")
-        return await work
+        receipt = await work
+        # A typed ACK/phase callback alone can never turn a PREPARED WAL into
+        # terminal evidence. Verify the ORIGINAL owner-owned journal from disk
+        # before this wrapper returns its result to any caller.
+        from experiments.cognitive_physical_place_move_issue_dev import (
+            Stage27PlaceMoveReceipt,
+        )
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        owner = bridge.owners[self_id]
+        journal = PhysicalActionJournal.restore(
+            owner.files.physical_wal_file, self_id=self_id,
+        )
+        rows = journal.records
+        if (
+            not isinstance(receipt, Stage27PlaceMoveReceipt)
+            or receipt.action_id != action_id
+            or receipt.native_session_id != session.started.session_id
+            or receipt.start_ack.action_id != action_id + "-start"
+            or receipt.stop_ack.action_id != action_id + "-stop"
+            or receipt.start_ack.seq != boundary._start_seq
+            or receipt.stop_ack.result != "applied"
+            or not 0.1 <= receipt.displacement_m <= Q4_MAX_DISPLACEMENT_M
+            or journal.unresolved
+            or not rows or rows[-1]["action_id"] != action_id
+            or rows[-1]["session_id"] != session.started.session_id
+            or rows[-1]["status"] != "NATIVE_PLACE_MOVE_SETTLED"
+            or rows[-1]["displacement_m"] != receipt.displacement_m
+            or journal.digest != receipt.journal_sha256
+            or bridge.physical.current_native_sessions.get(self_id)
+            != session.started.session_id
+            or bridge.physical.resident_states.get(self_id) != "ONLINE"
+            or bridge.physical.active_action_ids
+            or session.process_returncode is not None
+        ):
+            raise Q4PlaceAbortHold(
+                "Q4 original terminal WAL/Native source absent after STOP"
+            )
+        return receipt
     except BaseException:
         if not work.done():
             work.cancel()
