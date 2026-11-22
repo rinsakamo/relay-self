@@ -13,12 +13,13 @@ from relay_self.i_lane_i4a_live_wal_anchor_dev import (
     finish_and_anchor_live_stage27_run,
     qualify_live_s2_readiness,
 )
+from relay_self.i_lane_i4a_s1_source_capture_dev import (
+    audit_s1_prefix_after_s2,
+    freeze_original_s1_wal,
+)
 from relay_self.i_lane_i4a_s2_c_five_axis_dev import (
     execute_i4a_s2_c_five_axis,
     prepare_i4a_s2_c_review,
-)
-from relay_self.i_lane_i4a_s1_source_capture_dev import (
-    freeze_original_s1_wal, audit_s1_prefix_after_s2,
 )
 from relay_self.i_lane_i4a_s2_first_move_proposal_dev import (
     propose_s2_first_original_place_move,
