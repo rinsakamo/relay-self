@@ -496,3 +496,30 @@ def test_q1e_rejects_git_head_drift_during_final_wal_readback(
     with pytest.raises(QCoupledCustodyHold):
         _run_coupled(original, repo, anchor, claims, git)
     assert calls == 2
+
+
+@pytest.mark.parametrize("forgery", [
+    "nonterminal-s2", "status-absent", "phantom-s3",
+])
+def test_q1f_coupled_git_consistency_cannot_promote_nonterminal_s2(
+    tmp_path, forgery,
+):
+    """Both Git and local WAL can agree on forged S2; Q1b must still HOLD."""
+    original, anchor, _row, claims = _setup(tmp_path)
+    s2_path = original / "s2-wal.json"
+    body = json.loads(s2_path.read_bytes())
+    if forgery == "nonterminal-s2":
+        body["actions"][-1]["status"] = "STAGED_UNKNOWN"
+    elif forgery == "status-absent":
+        del body["actions"][-1]["status"]
+    else:
+        body["actions"].append({
+            "action_id": "phantom-s3", "status": "NATIVE_MOVE_SETTLED",
+        })
+    s2_path.write_bytes(_bytes(body))
+    repo, git = _coupled_git_fixture(
+        tmp_path, anchor_bytes=anchor, s2_wal=s2_path.read_bytes(),
+    )
+    # Git stores exactly this altered WAL. It is *not* physical evidence.
+    with pytest.raises(QCoupledCustodyHold):
+        _run_coupled(original, repo, anchor, claims, git)
