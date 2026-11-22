@@ -37,9 +37,10 @@ class FakeOwnedNative:
         self.stop_attempts.append(action_id)
         if self.fail_stop:
             raise BrokenPipeError("STOP native bytes rejected")
-        self.physical.require_native_effect(
+        self.physical.submit_native_effect(
             self_id="A", native_session_id=self.started.session_id,
             effect="clear_controls", action_id=action_id,
+            write=lambda: None,  # synthetic original Native stdin
         )
 
     async def force_terminate_owned(self, *, timeout_s):
