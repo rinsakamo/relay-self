@@ -69,6 +69,7 @@ class MineflayerProcessSession:
         # U17: optional, one-use transcript of bytes buffered by THIS owned
         # child's existing final stdin writer. Not a delivery/ACK receipt.
         self._raw_stdin_audit_fd: int | None = None
+        self._raw_stdin_audit_path: Path | None = None
         self._raw_stdin_audit_finished = False
         self._raw_stdin_audit_size = 0
 
@@ -277,6 +278,7 @@ class MineflayerProcessSession:
             os.close(fd)
             raise
         self._raw_stdin_audit_fd = fd
+        self._raw_stdin_audit_path = location
 
     def finish_raw_stdin_audit(self) -> None:
         """Freeze buffered-stdin original exactly once, even after host abort."""
