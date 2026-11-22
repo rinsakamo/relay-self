@@ -264,7 +264,9 @@ def test_restored_original_b_self_cannot_acquire_place_lease(tmp_path, monkeypat
     assert bridge.physical.current_native_sessions["A"] == owner.native_session_id
     assert not bridge.physical.closed
     assert bridge.physical.active_action_ids == ()
-    with pytest.raises(PhysicalIssueFenceError, match="PLACE requires"):
+    # B restored recovery is observation-only: it rejects before PLACE opt-in.
+    assert bridge.physical.observation_only
+    with pytest.raises(PhysicalIssueFenceError, match="observation-only"):
         with bridge.physical.lease(
             self_id="A", native_session_id=owner.native_session_id,
             action_id="unqualified-s2", effect_family="MOVE_PLACE",
