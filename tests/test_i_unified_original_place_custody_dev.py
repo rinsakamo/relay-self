@@ -8,8 +8,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
-
 import pytest
 
 from relay_self.physical_action_journal import PhysicalActionJournal
@@ -100,7 +98,7 @@ def test_original_s1_pin_is_not_rearmable_with_same_epoch(tmp_path, monkeypatch)
             bridge=bridge, self_id="A", journal=journal,
         )
     with _lease(gate, owner, typed):
-        with pytest.raises(PhysicalIssueFenceError, match="source"):
+        with pytest.raises(PhysicalIssueFenceError, match="requires original S1-bound"):
             _allow(gate, owner, typed[0].action_id + "-look")
         _prepare(journal, typed)
         with pytest.raises(PhysicalIssueFenceError, match="original Owner-held"):
@@ -197,7 +195,9 @@ def test_original_scope_custody_drift_before_bind_denied(
         elif change == "physical_session":
             gate._sessions["A"] = "foreign-native"
         elif change == "owner_path":
-            owner.files.physical_wal_file = tmp_path / "foreign-wal.json"
+            object.__setattr__(
+                owner.files, "physical_wal_file", tmp_path / "foreign-wal.json",
+            )
         with pytest.raises((PhysicalIssueFenceError, AttributeError)):
             _bind(gate, bridge, owner, journal, typed)
         assert gate._native_child_ids["A"] == {}
