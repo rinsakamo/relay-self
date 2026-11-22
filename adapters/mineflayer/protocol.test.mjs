@@ -676,3 +676,53 @@ test('E1 overhanging fence collision geometry survives instead of becoming air',
   const fence = terrain.cells.find(c => c.position.join(',') === '1,64,0')
   assert.deepEqual(fence.shapes, [[1.375, 64, 0.375, 1.625, 65.5, 0.625]])
 })
+
+test('E1 body motion, pose changes and world swaps during bounded scan all invalidate coverage', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
+    offset (x, y, z) { return new Position(this.x + x, this.y + y, this.z + z) }
+  }
+  for (const mutation of ['pose', 'position', 'world', 'entity']) {
+    const entity = { position: new Position(0.5, 64, 0.5), pose: 'standing' }
+    let reads = 0
+    const bot = {
+      entity,
+      game: { dimension: 'minecraft:overworld' },
+      blockAt: () => {
+        reads += 1
+        if (reads === 50) {
+          if (mutation === 'pose') entity.pose = 'sneaking'
+          if (mutation === 'position') entity.position.x += 0.25
+          if (mutation === 'world') bot.game.dimension = 'minecraft:the_nether'
+          if (mutation === 'entity') bot.entity = { position: entity.position, pose: 'standing' }
+        }
+        return { name: 'air', shapes: [] }
+      }
+    }
+    const sample = captureSenseTerrain(bot)
+    assert.equal(reads, 100)
+    assert.equal(sample.complete, false, mutation)
+    assert.equal(sample.known_cells, 0, mutation)
+    assert.equal(sample.body_aabb, null, mutation)
+    assert(sample.cells.every(cell => cell.name === null && cell.shapes === null), mutation)
+  }
+})
+
+test('E1 unchanged synchronous block read does not hallucinate body dimensions', () => {
+  class Position {
+    constructor (x, y, z) { this.x = x; this.y = y; this.z = z }
+    floored () { return new Position(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z)) }
+    offset (x, y, z) { return new Position(this.x + x, this.y + y, this.z + z) }
+  }
+  const bot = {
+    entity: { position: new Position(0.5, 64, 0.5), pose: 'sneaking', width: 0.6, height: 1.5 },
+    game: { dimension: 'minecraft:overworld' },
+    blockAt: () => ({ name: 'air', shapes: [] })
+  }
+  const sample = captureSenseTerrain(bot)
+  assert.equal(sample.complete, true)
+  assert.equal(sample.known_cells, 100)
+  assert.equal(sample.body_pose, 'sneaking')
+  assert.equal(sample.body_aabb, null)
+})
