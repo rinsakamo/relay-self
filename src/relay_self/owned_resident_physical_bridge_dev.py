@@ -218,6 +218,20 @@ class OwnedResidentPhysicalBridge:
                 )
 
             launched.install_effect_admission(effect)
+            # Only this actual adapter-owned child can submit the final effect
+            # bytes. Synthetic injected Native fixtures keep their existing
+            # observable gate; no extra issuer or sender is introduced.
+            if isinstance(launched, MineflayerProcessSession):
+                def submit_effect(
+                    native_id: str, effect_kind: str, action_id: str,
+                    write: Callable[[], None],
+                ) -> None:
+                    self.physical.submit_native_effect(
+                        self_id=self_id, native_session_id=native_id,
+                        effect=effect_kind, action_id=action_id, write=write,
+                    )
+
+                launched.install_atomic_effect_sender(submit_effect)
             observations: list[MineflayerObservation] = []
             _, _, request_id, observed_tick = await verify_native_spawn_probe(
                 launched, timeout_s=self.probe_timeout_s, probe_sink=observations.append,
