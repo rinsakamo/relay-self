@@ -8,9 +8,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from dataclasses import replace
-from pathlib import Path
-
 import pytest
 
 from experiments.p0d_real_resident_presence_dev import (
@@ -30,13 +27,12 @@ from relay_self.b_np1b_normal_cpu_world_runner_dev import (
     start_original_normal_cpu_runtime,
     update_original_b_after_a_logout,
 )
-from relay_self.owned_paper_world_dev import PaperTickReceipt
 from test_b_np1b_current_composite_source_dev import current as current
+from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import current_fixture as current_fixture
 from test_b_np1b_normal_present_poll_dev import pair as pair
 from test_b_np1b_normal_present_poll_dev import rejoined as rejoined
 from test_b_np1b_normal_present_poll_dev import rejoined_present as rejoined_present
-from test_b_np1b_fresh_native_update_dev import files
 
 
 def _history(pair):
@@ -116,7 +112,6 @@ def test_runner_witness_frozen_and_independently_read_back(pair, tmp_path):
         b_original_native_session=pair[1][1].native_session_id,
     )
     _verify_original_normal_cpu_world_report(trial)
-    return trial, path
 
 
 @pytest.mark.parametrize("fault", [
