@@ -89,6 +89,9 @@ jobs:
       - name: Verify BD1b original pre-login Schema3 producer admission offline
         run: python -m pytest tests/test_bd1b_schema3_prelogin_producer_dev.py
 
+      - name: Verify BD1b original Schema3 source raw readback offline
+        run: python -m pytest tests/test_bd1b_schema3_source_readback_dev.py
+
       - name: Run deterministic tests
         run: python -m pytest
 
