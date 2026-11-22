@@ -930,8 +930,18 @@ class PhysicalActionJournal:
             raise PhysicalJournalError("MOVE PLACE original Action/native source mismatch")
         def to_tick(item: MineflayerObservation) -> int:
             assert item.snapshot.time is not None
-            return item.snapshot.time.day * 24000 + item.snapshot.time.time_of_day
+            time = item.snapshot.time
+            return (
+                time.world_age_ticks if time.world_age_ticks is not None
+                else time.day * 24000 + time.time_of_day
+            )
 
+        clock_kinds = {
+            item.snapshot.time.world_age_ticks is not None
+            for item in (initial_stop, first_stable, settled)
+        }
+        if len(clock_kinds) != 1:
+            raise PhysicalJournalError("PLACE MOVE STOP clock source changed")
         t0, t1, t2 = map(to_tick, (initial_stop, first_stable, settled))
         p0, p1 = first_stable.snapshot.position, settled.snapshot.position
         if (
