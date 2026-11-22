@@ -603,6 +603,7 @@ class PhysicalIssueAdmission:
 
     def arm_original_place_s1(
         self, *, bridge: Any, self_id: str, journal: Any,
+        allow_empty_q4_initial_dev: bool = False,
     ) -> str:
         """Pin terminal S1 at the ORIGINAL physical gate before any PLACE lease.
 
@@ -610,8 +611,11 @@ class PhysicalIssueAdmission:
         This provides volatile local source continuity, not external custody.
         Never re-arm in the same resident epoch or from caller-supplied hashes.
         """
+        from adapters.mineflayer.process_session import MineflayerProcessSession
         from relay_self.i_unified_physical_source_dev import (
             IUnifiedPhysicalHold,
+            IUnifiedS1Witness,
+            _digest,
             capture_i_unified_s1_cpu,
         )
         from relay_self.physical_action_journal import PhysicalActionJournal
@@ -633,9 +637,60 @@ class PhysicalIssueAdmission:
                     raise PhysicalIssueFenceError(
                         "original B S1 anchor or physical admission unavailable"
                     )
-                witness = capture_i_unified_s1_cpu(
-                    bridge=bridge, self_id=self_id, journal=journal,
-                )
+                if type(allow_empty_q4_initial_dev) is not bool:
+                    raise PhysicalIssueFenceError("Q4 original initial opt-in must be boolean")
+                if allow_empty_q4_initial_dev:
+                    # The *first* isolated Action has NO prior S1 history.
+                    # Record only a canonical EMPTY original WAL baseline.
+                    # Never invent an Outcome row or pretend this is S1 history.
+                    session = bridge.sessions.get(self_id)
+                    if (
+                        self_id != "B"
+                        or tuple(bridge.lifecycle.self_roster) != ("B",)
+                        or type(session) is not MineflayerProcessSession
+                        or session.process_returncode is not None
+                        or session.owned_child_pid is None
+                        or not session.bounded_place_dev_mode
+                        or not callable(session._atomic_effect_sender)
+                        or not callable(session._effect_admission)
+                        or session.started.session_id != owner.native_session_id
+                        or self._sessions.get(self_id) != owner.native_session_id
+                        or bridge.paper.owned_session_id is None
+                        or bridge.paper.held_uncertain
+                        or owner.supervisor.recorded_actions
+                        or owner.supervisor.open_actions
+                        or owner.intent.current_intent is not None
+                        or owner.skills
+                    ):
+                        raise PhysicalIssueFenceError(
+                            "only one fresh, owned real B Q4 initial WAL can be armed"
+                        )
+                    bridge._check_world()
+                    original = PhysicalActionJournal.restore(
+                        journal.path, self_id=self_id,
+                    )
+                    epoch, native_id, world_epoch = resident.current_scope(self_id)
+                    if (
+                        original.schema_version != 1
+                        or original.records or original.unresolved
+                        or original.digest != journal.digest
+                        or original.path != owner.files.physical_wal_file
+                        or native_id != owner.native_session_id
+                        or owner.cohort is not resident
+                        or owner.fresh_native_observation_required
+                    ):
+                        raise PhysicalIssueFenceError(
+                            "original Q4 initial empty canonical WAL not owned"
+                        )
+                    witness = IUnifiedS1Witness(
+                        self_id, owner, epoch, native_id, world_epoch,
+                        str(original.path), original.schema_version,
+                        original.digest, (), _digest(()),
+                    )
+                else:
+                    witness = capture_i_unified_s1_cpu(
+                        bridge=bridge, self_id=self_id, journal=journal,
+                    )
                 if self._sessions.get(self_id) != witness.native_session_id:
                     raise PhysicalIssueFenceError("original S1 native source mismatch")
                 self._original_place_s1[self_id] = _OriginalPlaceS1Anchor(
