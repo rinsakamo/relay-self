@@ -799,6 +799,82 @@ class PhysicalIssueAdmission:
                 "PLACE original owner-bound child admission unavailable"
             ) from exc
 
+    def rearm_original_place_after_q4_owned_native_dev(
+        self, *, bridge: Any, self_id: str, evidence: Any,
+        native_stdout_path: Path,
+    ) -> str:
+        """Source-bound Q4 DEV adapter to the SAME original physical rearm.
+
+        A fabricated typed receipt is insufficient here: the actual owned
+        Native stdin writes, Native stdout applied ACK/probes and original
+        Paper process log must be available. No new Owner, motor or lease is
+        created. Paper log presence is not itself Paper movement causality;
+        this remains a bounded pre-S2 DEV integrity check.
+        """
+        from adapters.mineflayer.process_session import MineflayerProcessSession
+        from relay_self.owned_resident_physical_bridge_dev import (
+            OwnedResidentPhysicalBridge,
+        )
+        from relay_self.q4_place_repeat_source_dev import (
+            Q4PlaceRepeatHold,
+            Q4PlaceTerminalReadback,
+            verify_q4_owned_native_source_for_rearm,
+        )
+
+        if (
+            type(bridge) is not OwnedResidentPhysicalBridge
+            or bridge.physical is not self
+            or type(self_id) is not str
+            or not isinstance(evidence, Q4PlaceTerminalReadback)
+            or not isinstance(native_stdout_path, Path)
+            or bridge.cognitive_work is None
+        ):
+            raise PhysicalIssueFenceError("real Original B Q4 source adapter required")
+        resident = bridge.cognitive_work
+        try:
+            with resident.lock, self._lock:
+                bridge._check_world()
+                owner = bridge.owners[self_id]
+                session = bridge.sessions[self_id]
+                if (
+                    resident.owners[self_id] is not owner
+                    or type(session) is not MineflayerProcessSession
+                    or session.started.session_id != owner.native_session_id
+                    or self._sessions.get(self_id) != owner.native_session_id
+                    or evidence.paper_stop.server_session_id
+                    != bridge.paper.owned_session_id
+                    or bridge.paper.held_uncertain
+                ):
+                    raise PhysicalIssueFenceError(
+                        "original B Owner, Native and Paper source disagree"
+                    )
+                # Read the log tied to the existing explicitly owned Paper
+                # subprocess, not an arbitrary server.log or caller receipt.
+                paper_raw = bridge.paper.read_owned_log(
+                    bridge.paper.owned_session_id,
+                )
+                if not paper_raw or len(paper_raw) > 32 * 1024 * 1024:
+                    raise PhysicalIssueFenceError(
+                        "owned Paper process source unavailable or unbounded"
+                    )
+                verify_q4_owned_native_source_for_rearm(
+                    session=session, native_stdout_path=native_stdout_path,
+                    evidence=evidence,
+                )
+                # Re-enter this same original RLock/owner lock; unchanged
+                # terminal WAL, no duplicate Action and one-use gate rules
+                # remain fully authoritative.
+                return self.rearm_original_place_after_q4_settled(
+                    bridge=bridge, self_id=self_id, evidence=evidence,
+                )
+        except PhysicalIssueFenceError:
+            raise
+        except (Q4PlaceRepeatHold, AttributeError, KeyError, ValueError,
+                TypeError, OSError, RuntimeError) as exc:
+            raise PhysicalIssueFenceError(
+                "Q4 original Native/Paper raw source unverified; no rearm"
+            ) from exc
+
     def rearm_original_place_after_q4_settled(
         self, *, bridge: Any, self_id: str, evidence: Any,
     ) -> str:
