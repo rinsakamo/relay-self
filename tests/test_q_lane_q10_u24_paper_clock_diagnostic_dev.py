@@ -9,7 +9,7 @@ from experiments.q_lane_q10_u24_paper_clock_diagnostic_dev import (
     Q10ClockHold,
     audit_u24_two_source_clock_progress,
 )
-from test_q_lane_q9_u24_s1_stop_diagnostic_dev import _make_source, _seal, ROLES
+from test_q_lane_q9_u24_s1_stop_diagnostic_dev import ROLES, _make_source, _seal
 
 BOOT = "00a4cb1e-c9c5-445c-b987-d437e7c89aa8"
 WORLD = "7b5eb607-a25c-4e64-af1c-2d82dfab29f4"
