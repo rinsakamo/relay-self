@@ -70,6 +70,7 @@ class Stage27hBoundedMoveLoop:
         physical: PhysicalIssueAdmission,
         world_epoch: int,
         start_ns: int,
+        q4_single_action_dev: bool = False,
     ) -> None:
         if (
             not isinstance(prepared, PreparedStage26L1)
@@ -77,6 +78,7 @@ class Stage27hBoundedMoveLoop:
             or not isinstance(owner, CheckpointedCognitiveOwner)
             or not isinstance(physical, PhysicalIssueAdmission)
             or type(start_ns) is not int or start_ns < 0
+            or type(q4_single_action_dev) is not bool
             or type(world_epoch) is not int or world_epoch != prepared.world_epoch
             or handoff.world_epoch != world_epoch
             or len(prepared.round.frame.options) != 1
@@ -90,10 +92,15 @@ class Stage27hBoundedMoveLoop:
             or inv.parameter_preset_ref is None
             or inv.invocation_ref != handoff.invocation_ref
             or inv.parameter_preset_ref != handoff.preset_ref
-            or inv.budget.max_actions not in (2, 3, 4)
+            or inv.budget.max_actions not in (
+                (1, 2, 3, 4) if q4_single_action_dev else (2, 3, 4)
+            )
             or inv.budget.max_distance_m is None
-            or inv.budget.max_observations < inv.budget.max_actions * (
-                1 + STAGE27H_SETTLING_PROBE_RESERVATION
+            or inv.budget.max_observations < (
+                1 + 24 if q4_single_action_dev
+                else inv.budget.max_actions * (
+                    1 + STAGE27H_SETTLING_PROBE_RESERVATION
+                )
             )
         ):
             raise Stage27hLoopRefusal(
@@ -106,6 +113,13 @@ class Stage27hBoundedMoveLoop:
         self.invocation = inv
         self.world_epoch = world_epoch
         self.start_ns = start_ns
+        # One 24-probe reservation fits the existing 32-probe Preset and
+        # bounds 8+8 stopped ticks; a slow World still fails closed/HOLD.
+        # Historical multi-Action semantics remain unchanged by default.
+        self._q4_single_action_dev = q4_single_action_dev
+        self._settlement_probe_limit = (
+            24 if q4_single_action_dev else STAGE27H_SETTLING_PROBE_RESERVATION
+        )
         self.action_count = 0
         self.observation_count = 0
         self.cumulative_distance_m = 0.0
@@ -225,7 +239,7 @@ class Stage27hBoundedMoveLoop:
             # Reserve the full STOP settlement quota before any next MOVE.
             # After a terminal Action, an additional *preflight* native probe
             # will be needed before a new reservation.
-            or self.observation_count + STAGE27H_SETTLING_PROBE_RESERVATION
+            or self.observation_count + self._settlement_probe_limit
             + int(next_preflight_required) > limit.max_observations
             or self.cumulative_distance_m >= limit.max_distance_m
             or timed_out
@@ -276,7 +290,7 @@ class Stage27hBoundedMoveLoop:
         Only verified terminal receipt may refund the unused probe slots.
         """
         self._validate_owner_and_journal()
-        cap = STAGE27H_SETTLING_PROBE_RESERVATION
+        cap = self._settlement_probe_limit
         if (
             self.terminal_status is not None
             or self._settlement_reserved != 0
@@ -340,7 +354,7 @@ class Stage27hBoundedMoveLoop:
             or now_ns < self.start_ns
             or self.action_count >= self.invocation.budget.max_actions
             or receipt.action_id in self._seen_action_ids
-            or self._settlement_reserved != STAGE27H_SETTLING_PROBE_RESERVATION
+            or self._settlement_reserved != self._settlement_probe_limit
             or self._reserved_source_seq != source_probe.seq
             or receipt.native_session_id != self.prepared.native_session
             or receipt.original_invocation_ref != self.invocation.invocation_ref
