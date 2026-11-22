@@ -1,7 +1,6 @@
 """Source-shaped synthetic fixture: independent S1 Native stdout vs WAL."""
 import hashlib
 import json
-from dataclasses import asdict
 
 import pytest
 
@@ -16,7 +15,7 @@ from test_c_lane_stage27hi_multi_action_review_dev import _fixture, _run_multi
 from test_i4a_live_wal_anchor_dev import _close_original_s1
 
 
-def _stream(rows, native):
+def _stream(rows):
     """Only a synthetic protocol fixture; never a genuine native witness."""
     session = rows[0]["session_id"]
     started = {
@@ -118,7 +117,7 @@ def test_s1_raw_native_matches_all_original_wal_probes_and_child_acks(tmp_path):
             loop.owner.files.physical_wal_file, self_id=loop.owner.self_id,
         ).records
         original = tmp_path / "native-original.jsonl"
-        events = _stream(rows, loop.owner.native_session_id)
+        events = _stream(rows)
         digest = _write_raw(original, events)
         verified = audit_i4a_original_s1_native_stdout(
             receipt, native_stdout=original,
