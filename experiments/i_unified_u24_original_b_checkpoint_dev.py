@@ -158,7 +158,7 @@ async def generate_checkpoint(args: argparse.Namespace) -> Path:
         definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
         proposal = SkillParameterPreset(
             initial_move_pattern().pattern_id, "Walk", 1, definition.definition_ref,
-            SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
+            SkillConstraints(), SkillBudget(1, 1500, 2.0, 32),
             Provenance("u24-preset-proposal", "initial-exploration"),
         )
         decision = work.decide_initial_move_preset(proposal)

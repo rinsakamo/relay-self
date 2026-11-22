@@ -172,7 +172,7 @@ class ResidentCognitiveWorkOwner:
                 or owner.intent.events or owner.skills or owner.supervisor.recorded_actions
                 or owner.pattern_registry.accepted_presets
                 or not isinstance(preset, SkillParameterPreset)
-                or preset.budget != SkillBudget(1, 1500, 2.0, 4)
+                or preset.budget != SkillBudget(1, 1500, 2.0, 32)
                 or preset.constraints.requirements or preset.arguments
                 or preset.expected_cost is not None
                 or PhysicalActionJournal.read_snapshot(

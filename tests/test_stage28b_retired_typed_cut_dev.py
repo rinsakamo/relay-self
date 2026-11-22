@@ -231,7 +231,7 @@ def test_single_b_cpu_preset_survives_typed_cut_and_builds_stage26_l1(tmp_path, 
             )
     preset = SkillParameterPreset(
         "exploration-move", "Walk", 1, definition.definition_ref,
-        SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
+        SkillConstraints(), SkillBudget(1, 1500, 2.0, 32),
         Provenance("test-fixture", "proposed"),
     )
     with pytest.raises(ResidentCognitiveWorkError, match="policy declined"):
@@ -239,7 +239,7 @@ def test_single_b_cpu_preset_survives_typed_cut_and_builds_stage26_l1(tmp_path, 
     body = probe(5, native="native-original", request_id="login-B")
     owner.accept_rejoined_worldbody(body, request_id="login-B")
     with pytest.raises(ResidentCognitiveWorkError, match="policy declined"):
-        resident.decide_initial_move_preset(replace(preset, budget=SkillBudget(2, 1500, 2.0, 4)))
+        resident.decide_initial_move_preset(replace(preset, budget=SkillBudget(2, 1500, 2.0, 32)))
     receipt = resident.decide_initial_move_preset(preset)
     assert receipt.provenance == Provenance(
         "original-b-initial-move-policy-v1", body.provenance.reference,
