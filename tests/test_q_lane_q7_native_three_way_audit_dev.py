@@ -128,7 +128,7 @@ def test_forged_or_incomplete_three_way_sources_hold(tmp_path, fault):
     elif fault == "foreign_seq":
         messages[-1]["session_id"] = "foreign-Node"
     elif fault == "rejected_stop":
-        messages[5]["result"] = "rejected"
+        messages[4]["result"] = "rejected"
     elif fault == "extra_native_ack":
         messages.append({
             "type": "effect_result", "session_id": "native-A",
