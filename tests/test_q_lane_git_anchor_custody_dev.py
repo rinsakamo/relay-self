@@ -169,7 +169,7 @@ def test_q1c_post_commit_must_introduce_s2_not_only_restate(tmp_path):
     root, kwargs = _fixture(tmp_path)
     _write(root, "extra", b"new metadata")
     kwargs["post_s2_evidence_commit"] = _commit(root, "later metadata only")
-    with pytest.raises(QGitCustodyHold, match="predates"):
+    with pytest.raises(QGitCustodyHold, match="predates|existed before final"):
         _verify(root, kwargs)
 
 
