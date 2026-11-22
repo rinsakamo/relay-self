@@ -61,6 +61,7 @@ from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.physical_action_port import PhysicalActionBinding
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.provenance import Provenance
+from relay_self.q4_place_abort_dev import Q4DevOperatorPermit
 from relay_self.resident_cognitive_work_owner_dev import (
     ResidentCognitiveWorkOwner,
 )
@@ -81,7 +82,6 @@ from relay_self.world_resident_lifecycle_dev import (
     WorldLifetime,
     WorldResidentLifecycle,
 )
-from relay_self.q4_place_abort_dev import Q4DevOperatorPermit
 
 
 class U20OriginalWorldHold(RuntimeError):
