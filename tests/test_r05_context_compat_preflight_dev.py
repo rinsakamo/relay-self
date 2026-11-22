@@ -16,8 +16,8 @@ from relay_self.r0_cognitive_context_dev import (
     read_original_owner_current,
 )
 from relay_self.r05_context_compat_preflight_dev import (
-    R05CompatibilityAudit,
     R1_EXTERNAL_HOLDS,
+    R05CompatibilityAudit,
     audit_r05_initial_owner_context,
 )
 from relay_self.three_self_present import EpistemicStatus, Lens, LensClaim
