@@ -128,6 +128,8 @@ def audit_q1h_original_move_place_git_custody(
         "s1_original_wal_sha256": before["s1_wal_raw_sha256"],
         "s1_checkpoint_sha256": _sha(checkpoint_raw),
         "s2_original_wal_sha256": before["s2_wal_raw_sha256"],
+        "s1_intent_id": before["s1_intent_id"],
+        "s1_skill_execution_id": before["s1_skill_execution_id"],
         "s1_last_action_id": before["s1_last_action_id"],
         "s2_action_id": before["s2_action_id"],
         "s2_terminal_status_label": before["s2_terminal_status_label"],
