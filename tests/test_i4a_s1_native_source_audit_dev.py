@@ -169,3 +169,50 @@ def test_s1_raw_native_matches_all_original_wal_probes_and_child_acks(tmp_path):
                 expected_native_stdout_sha256=bad_sha,
             )
     _fixture(tmp_path, scenario)
+
+
+def test_s1_command_capture_rejects_missing_duplicate_and_replaced_effects(tmp_path):
+    from relay_self.i_lane_i4a_s1_native_command_audit_dev import audit_i4a_s1_native_commands
+
+    async def scenario(f, lane, server):
+        loop, _, _, _, _ = await _run_multi(f, lane, server)
+        _close_original_s1(loop)
+        anchor = capture_live_wal_history_anchor(loop, lane=lane)
+        directory = tmp_path / "capture"
+        directory.mkdir()
+        captured = freeze_original_s1_wal(
+            loop.owner, physical=f.physical, lane=lane, anchor=anchor, evidence_dir=directory,
+        )
+        rows = PhysicalActionJournal.restore(
+            loop.owner.files.physical_wal_file, self_id=loop.owner.self_id,
+        ).records
+        stdout = tmp_path / "stdout"
+        stdout_sha = _write_raw(stdout, _stream(rows))
+        commands = []
+        for row in rows:
+            parent = row["action_id"]
+            commands.extend([
+                (row["effect_seqs"][0], {"type": "effect", "action_id": parent + "-look",
+                                          "effect": "look", "yaw": 0, "pitch": 0}),
+                (row["effect_seqs"][1], {"type": "effect", "action_id": parent + "-start",
+                                          "effect": "set_control", "control": "forward", "state": True}),
+                (row["effect_seqs"][2], {"type": "effect", "action_id": parent + "-stop",
+                                          "effect": "clear_controls"}),
+            ])
+            if row.get("gait_ack_seq") is not None:
+                commands.append((row["gait_ack_seq"], {"type": "effect", "action_id": parent + "-sneak",
+                                  "effect": "set_control", "control": "sneak", "state": True}))
+        commands = [command for _, command in sorted(commands)]
+        stdin = tmp_path / "stdin"
+        def audit(items):
+            sha = _write_raw(stdin, items)
+            return audit_i4a_s1_native_commands(
+                captured, native_stdout=stdout, expected_native_stdout_sha256=stdout_sha,
+                native_stdin=stdin, expected_native_stdin_sha256=sha,
+            )
+        assert audit(commands).child_commands == len(commands)
+        for broken in (commands[1:], commands + commands[:1],
+                       [dict(commands[0], action_id="foreign")] + commands[1:]):
+            with pytest.raises(I4AS1NativeSourceHold, match="stdin correlation"):
+                audit(broken)
+    _fixture(tmp_path, scenario)
