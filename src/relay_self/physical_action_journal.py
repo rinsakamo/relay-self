@@ -443,6 +443,11 @@ class PhysicalActionJournal:
     def records(self) -> tuple[dict[str, Any], ...]:
         return tuple(dict(x) for x in self._body["actions"])
 
+    @property
+    def schema_version(self) -> int:
+        """Current on-disk canonical WAL schema; never a physical capability."""
+        return self._body["schema"]
+
     def certified_prefix_digest(
         self, count: int, *, source_schema: int | None = None,
     ) -> str:
