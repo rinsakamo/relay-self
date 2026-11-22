@@ -13,6 +13,7 @@ import weakref
 from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
@@ -27,7 +28,8 @@ from relay_self.cognitive_minimal_dev import (
 from relay_self.common_io import ScopeRef
 from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
 from relay_self.persistent_cognition import Memory
-from relay_self.skill_invocation import SkillDefinition, SkillParameterPreset
+from relay_self.provenance import Provenance
+from relay_self.skill_invocation import SkillBudget, SkillDefinition, SkillParameterPreset
 
 
 class ResidentCognitiveWorkError(RuntimeError):
@@ -147,6 +149,46 @@ class ResidentCognitiveWorkOwner:
                         current_registry_revision=registry.revision).allowed))):
                 raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
             self._present_schemas[self_id] = (snapshot, registry)
+
+    def decide_initial_move_preset(
+        self, preset: SkillParameterPreset,
+    ) -> PresetAcceptanceReceipt:
+        """Apply B's initial exploration preset policy to its adopted live Body."""
+        from relay_self.initial_skill_ir import initial_skill_definitions
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        with self.lock:
+            scope = self.current_scope("B")
+            owner = self.owners["B"]
+            owner._eligible()
+            body = owner.current_worldbody_observation
+            definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
+            if (
+                tuple(self.owners) != ("B",) or scope[0] != 1
+                or body is None or body.session_id != scope[1]
+                or body.snapshot.health <= 0 or body.snapshot.time is None
+                or body.snapshot.time.day * 24000 + body.snapshot.time.time_of_day
+                != owner.last_observed_tick
+                or owner.intent.events or owner.skills or owner.supervisor.recorded_actions
+                or owner.pattern_registry.accepted_presets
+                or not isinstance(preset, SkillParameterPreset)
+                or preset.budget != SkillBudget(1, 1500, 2.0, 4)
+                or preset.constraints.requirements or preset.arguments
+                or preset.expected_cost is not None
+                or PhysicalActionJournal.read_snapshot(
+                    owner.files.physical_wal_file, self_id="B", require_clear=True,
+                )
+            ):
+                raise ResidentCognitiveWorkError("initial B exploration policy declined MOVE preset")
+            receipt = PresetAcceptanceReceipt(
+                "B", "initial-move-" + uuid4().hex, preset.preset_ref,
+                Provenance("original-b-initial-move-policy-v1", body.provenance.reference),
+            )
+            self.publish_accepted_move_preset(
+                preset=preset, definition=definition, receipt=receipt, scope=scope,
+                expected_revision=owner.pattern_registry.revision,
+            )
+            return receipt
 
     def publish_accepted_move_preset(
         self, *, preset: SkillParameterPreset, definition: SkillDefinition,

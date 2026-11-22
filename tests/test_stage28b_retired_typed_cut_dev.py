@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -13,7 +14,6 @@ from relay_self.checkpointed_cognitive_runtime_dev import (
     CognitiveOwnerFiles,
 )
 from relay_self.cognitive_minimal_dev import (
-    PresetAcceptanceReceipt,
     initial_patterns,
     initial_patterns_with_relative_move,
 )
@@ -29,7 +29,10 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.physical_action_journal import PhysicalActionJournal
 from relay_self.provenance import Provenance
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
+from relay_self.resident_cognitive_work_owner_dev import (
+    ResidentCognitiveWorkError,
+    ResidentCognitiveWorkOwner,
+)
 from relay_self.schema_bootstrap_dev import (
     SchemaBootstrapConfig,
     bootstrap_fresh_schemas,
@@ -215,7 +218,8 @@ def test_single_b_cpu_preset_survives_typed_cut_and_builds_stage26_l1(tmp_path, 
     bridge.cognitive_work = resident
     bootstrap_fresh_schemas(resident, config)
     resident.bind_login(self_id="B", native_session_id="native-original", world_epoch=0,
-                        world_tick=105)
+                        world_tick=6000)
+    paper.logical_tick = 6005
 
     definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
     first = probe(10, native="native-fresh")
@@ -230,13 +234,18 @@ def test_single_b_cpu_preset_survives_typed_cut_and_builds_stage26_l1(tmp_path, 
         SkillConstraints(), SkillBudget(1, 1500, 2.0, 4),
         Provenance("test-fixture", "proposed"),
     )
-    receipt = PresetAcceptanceReceipt(
-        "B", "test-acceptance", preset.preset_ref, Provenance("test-fixture", "accepted"),
+    with pytest.raises(ResidentCognitiveWorkError, match="policy declined"):
+        resident.decide_initial_move_preset(preset)
+    body = probe(5, native="native-original", request_id="login-B")
+    owner.accept_rejoined_worldbody(body, request_id="login-B")
+    with pytest.raises(ResidentCognitiveWorkError, match="policy declined"):
+        resident.decide_initial_move_preset(replace(preset, budget=SkillBudget(2, 1500, 2.0, 4)))
+    receipt = resident.decide_initial_move_preset(preset)
+    assert receipt.provenance == Provenance(
+        "original-b-initial-move-policy-v1", body.provenance.reference,
     )
-    resident.publish_accepted_move_preset(
-        preset=preset, definition=definition, receipt=receipt,
-        scope=resident.current_scope("B"), expected_revision=owner.pattern_registry.revision,
-    )
+    with pytest.raises(ResidentCognitiveWorkError, match="policy declined"):
+        resident.decide_initial_move_preset(preset)
     resident.fence_self("B")
     retired = asyncio.run(resident.retire_self("B"))
     save_persistent_cognition(owner.files.cognition_file, owner.retained)

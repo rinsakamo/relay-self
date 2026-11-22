@@ -406,9 +406,14 @@ async def run_u20_original_b_world_once(
         two_native_server_properties(port).encode(),
     )
 
+    # A restored World contains no server plugin state. Prepare empty transport
+    # directories before constructing the reader. Paper supplies boot and ACKs.
+    tick_spool = plugin_dir / "P0BRecorder" / "p0d-ticks"
+    (tick_spool / "requests").mkdir(mode=0o700, parents=True)
+    (tick_spool / "acks").mkdir(mode=0o700)
     paper_holder: dict[str, OwnedPaperWorld] = {}
     tick_reader = PaperMainThreadTickReader(
-        spool_dir=plugin_dir / "P0BRecorder" / "p0d-ticks",
+        spool_dir=tick_spool,
         expected_world_uuid=plan.source_world_id,
         read_owned_log=lambda sid: paper_holder["world"].read_owned_log(sid),
         timeout_seconds=15.0, allow_repeated_same_boot=True,
