@@ -81,6 +81,40 @@ def _owner(bridge: Any, sid: str) -> Any:
     return owners[sid]
 
 
+@dataclass(frozen=True, slots=True)
+class IUnifiedOwnerCurrent:
+    """Only B's original read-only CURRENT; not a model or physical ticket."""
+
+    self_id: str
+    original_owner: Any
+    context: CognitiveContext
+    physical_authorized: bool = False
+    memory_adopted: bool = False
+
+
+def read_i_unified_b_current(
+    *, bridge: Any, boot: Any, world: Any, links: Any, self_id: str,
+) -> IUnifiedOwnerCurrent:
+    """Separate qualified B CURRENT from still-unqualified I2 candidate."""
+    try:
+        owner = _owner(bridge, self_id)
+        current = read_original_owner_current(
+            bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
+        )
+        context = CognitiveContext(current)
+        if (
+            _owner(bridge, self_id) is not owner
+            or context.current.scope.self_id != self_id
+            or not context_is_live(
+                context, bridge=bridge, boot=boot, world=world, links=links,
+            )
+        ):
+            raise IUnifiedSourceHold("B Original R0 CURRENT changed or retired")
+        return IUnifiedOwnerCurrent(self_id, owner, context)
+    except (RuntimeError, ValueError, TypeError, AttributeError, KeyError) as exc:
+        raise IUnifiedSourceHold("B Original CURRENT is not qualified") from exc
+
+
 def prepare_i_unified_original_ingress(
     *, bridge: Any, boot: Any, world: Any, links: Any, self_id: str,
     i2b_read_attached_lane: bool = False,
