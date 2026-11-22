@@ -404,6 +404,9 @@ async def _owned_resident_trial(
         or not 2 <= b_heartbeat_s <= 12
         or bridge.lifecycle is not lifecycle
         or bridge.physical is not physical
+        or (i2g_original_v3_source and (
+            not physical.observation_only or bridge.inference_lane is not None
+        ))
         or tuple(sorted(bridge.owners)) != ("A", "B")
         or not physical.resident_mode
         or not physical.all_residents_offline
@@ -580,6 +583,7 @@ async def _owned_resident_trial(
         result_data["i2g_original_first_login_evidence"] = i2g_first_logins
         result_data["i2g_initial_exploration_pattern_learned"] = False
         result_data["i2g_initial_physical_action_issued"] = False
+        result_data["i2g_original_issuer_observation_only"] = physical.observation_only
     final_a = await bridge.logout("A")
     final_b = await bridge.logout("B")
     result_data["final_a_logout_receipt_file"] = _immutable_receipt(
