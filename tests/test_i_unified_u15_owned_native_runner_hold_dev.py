@@ -80,7 +80,6 @@ def test_real_runner_never_reaches_native_on_unqualified_owner(
 ):
     arguments, journal = _kwargs(tmp_path, monkeypatch)
     original = journal.path.read_bytes()
-    owner = arguments["bridge"].owners["A"]
     if mutation == "grant_off":
         arguments["grant_real_world"] = False
     elif mutation == "no_operator":
