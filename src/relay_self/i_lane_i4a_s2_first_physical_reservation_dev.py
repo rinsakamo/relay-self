@@ -193,6 +193,7 @@ def reserve_s2_first_original_move_synthetic_dev(
             refusal=I4AS2FirstReservationHold,
             place_invocation=candidate.ir.invocation,
             place_motion=candidate.motion,
+            allow_prior_original_place_terminals=True,
             i4a_s2_boundary=boundary, i4a_s2_owner=owner,
             i4a_s2_physical=physical,
         )
