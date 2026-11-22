@@ -204,6 +204,27 @@ def initial_patterns() -> PatternRegistry:
                       None, None, None, Origin.INNATE, provenance),
     ))
 
+
+def initial_move_pattern() -> SchemaPattern:
+    """Opt-in destination MOVE Goal. Never grants physical MOVE capability."""
+    return SchemaPattern(
+        "exploration-move", 1, "exploration", PatternKind.GOAL,
+        Predicate.EXPLORE, "EXPLORE_WORLD", "MOVE", 1, "DESTINATION",
+        Origin.INNATE, Provenance("innate-schema", "cognitive-v0.1"),
+    )
+
+
+def initial_patterns_with_move() -> PatternRegistry:
+    """Preserve B's default oxygen/defense/food patterns; add MOVE only opt-in.
+
+    Destination remains an unresolved candidate until independently qualified.
+    This function does not add MOVE to issuer capabilities or PatternRegistry
+    of a running owner without its explicit adoption.
+    """
+    base = initial_patterns()
+    return PatternRegistry(base.revision + 1, base.patterns + (initial_move_pattern(),))
+
+
 def initial_patterns_with_relative_move() -> PatternRegistry:
     """Opt-in Stage24a Goal/Skill pair for existing native relative controls.
 
