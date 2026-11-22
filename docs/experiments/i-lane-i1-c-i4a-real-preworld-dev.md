@@ -2,7 +2,7 @@
 
 Stage: `I1_C_I4A_PRE_WORLD_HOLD`. This is a read-only code-provenance
 inventory, **not** an executing real-World or real-Gemma runner. Its one
-CLI mode performs a Git exact-HEAD check and hashes fourteen original code files;
+CLI mode performs a Git exact-HEAD check and hashes fifteen original code files;
 it returns exit 2 **even when EULA and real-World DEV grant are provided**.
 The optional World directory is never touched.
 
@@ -48,3 +48,23 @@ failure **before** a physical lease or canonical WAL mutation. Adversarial
 tests exercise rejection with untouched WAL/Supervisor/lease. Python objects
 that deliberately forge their own runtime identity remain out of scope;
 a real runner must use the separately qualified original Native source.
+
+
+## S1→S2 original WAL raw-source capture (offline only)
+
+`freeze_original_s1_wal` writes the original canonical S1 WAL bytes once,
+under the original Owner cohort lock and original physical/WAL quiescence.
+It requires the already established volatile Owner-held S1 anchor. An
+independent `audit_s1_prefix_after_s2` reuses the canonical journal parser
+and `certified_prefix_digest` to compare those bytes with the complete S2
+WAL, accepting exactly one new S2 suffix (including PREPARED_UNRESOLVED,
+which **never** authorizes a retry) and rejecting rewritten S1 history,
+changed Intent/Skill/session or replayed IDs. The integrated S1→S2→T2
+synthetic regression now exercises the sealed-prefix readback after S2.
+
+Both receipts explicitly say **SOURCE CAPTURE / READBACK ONLY**, not
+cross-restart authentication. SHA-256 is integrity evidence only when the
+capture receipt has independent custody; a mutable manifest cannot authenticate
+itself. Genuine native/Paper/Gemma/Target/T1/T2 source witnesses and an
+original real S2 issuer/runner remain HOLD. No real World, GPU or Physical
+runtime is executed or enabled by this slice.

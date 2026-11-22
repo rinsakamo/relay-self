@@ -17,6 +17,9 @@ from relay_self.i_lane_i4a_s2_c_five_axis_dev import (
     execute_i4a_s2_c_five_axis,
     prepare_i4a_s2_c_review,
 )
+from relay_self.i_lane_i4a_s1_source_capture_dev import (
+    freeze_original_s1_wal, audit_s1_prefix_after_s2,
+)
 from relay_self.i_lane_i4a_s2_first_move_proposal_dev import (
     propose_s2_first_original_place_move,
 )
@@ -72,6 +75,12 @@ def test_t1_historical_after_s1_cancel_t2_five_axes_independent(tmp_path):
             loop, lane=lane, outcome=SkillState.CANCELLED,
             reason="explicit synthetic non-success S1 terminal",
             at_ns=100000, provenance=P,
+        )
+        archive_dir = tmp_path / "s1-original-evidence"
+        archive_dir.mkdir()
+        s1_capture = freeze_original_s1_wal(
+            owner, physical=f.physical, lane=lane,
+            anchor=anchor, evidence_dir=archive_dir,
         )
         peer_before = (
             peer.retained, peer.intent.events, dict(peer.skills),
@@ -143,6 +152,14 @@ def test_t1_historical_after_s1_cancel_t2_five_axes_independent(tmp_path):
             owner.files.physical_wal_file, self_id=owner.self_id,
         )
         assert len(wal.records) == 4
+        prefix_receipt = audit_s1_prefix_after_s2(
+            s1_capture, current_wal=owner.files.physical_wal_file,
+            new_action_id=candidate.action_id,
+            new_skill_id=boundary.new_skill_id,
+            new_intent_id=boundary.new_intent_id,
+        )
+        assert prefix_receipt.s2_status == "NATIVE_PLACE_MOVE_SETTLED"
+        assert not prefix_receipt.restart_authenticated
         assert tuple(r["action_id"] for r in wal.records[:3]) == t1.readout.action_ids
         assert wal.records[3]["action_id"] == candidate.action_id
         assert owner.retained.memories == ()
