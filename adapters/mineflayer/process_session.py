@@ -54,6 +54,11 @@ class MineflayerProcessSession:
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
         self._effect_admission: Callable[[str, str, str], None] | None = None
+        self._atomic_effect_sender: (
+            Callable[[str, str, str, Callable[[], None]], None] | None
+        ) = None
+        # No two coroutine writes can interleave Native frames or drains.
+        self._send_lock = asyncio.Lock()
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
 
@@ -140,6 +145,26 @@ class MineflayerProcessSession:
                 "native effect admission can only be installed once after startup"
             )
         self._effect_admission = check_effect
+
+    def install_atomic_effect_sender(
+        self,
+        submit_effect: Callable[[str, str, str, Callable[[], None]], None],
+    ) -> None:
+        """One-way issuer-bound synchronous effect check + stdin.write callback.
+
+        The callback is owned by the original physical gate and invokes the
+        supplied writer under its source/lease locks without awaiting.
+        """
+        if (
+            not callable(submit_effect)
+            or self._started is None
+            or self._effect_admission is None
+            or self._atomic_effect_sender is not None
+        ):
+            raise MineflayerEffectAdmissionError(
+                "atomic native effect sender requires one existing admission"
+            )
+        self._atomic_effect_sender = submit_effect
 
     def start_raw_source_audit(self, path: str | Path) -> None:
         """Capture exact native stdout JSONL bytes from THIS owned Node process.
@@ -310,45 +335,66 @@ class MineflayerProcessSession:
         return await _terminate_child(self._process)
 
     async def _send(self, line: str) -> None:
-        gate = getattr(self, "_effect_admission", None)
-        if gate is not None:
-            # Check at final native stdin, not only at send_* wrappers.
-            try:
-                command = json.loads(line)
-            except (TypeError, ValueError) as exc:
-                raise MineflayerEffectAdmissionError(
-                    "invalid command under native checkpoint admission"
-                ) from exc
-            if type(command) is not dict:
-                raise MineflayerEffectAdmissionError("invalid native command body")
-            command_type = command.get("type")
-            if command_type == "effect":
-                effect = command.get("effect")
-                if type(effect) is not str or not effect:
-                    raise MineflayerEffectAdmissionError("untyped physical effect")
-                action_id = command.get("action_id")
-                if type(action_id) is not str or not action_id:
-                    raise MineflayerEffectAdmissionError("missing physical action ID")
-                gate(self.started.session_id, effect, action_id)
-            elif command_type not in {"observe", "shutdown"}:
-                raise MineflayerEffectAdmissionError(
-                    "unknown native command during coordinated checkpoint mode"
+        # The original Native adapter serializes full frames including drains.
+        # The opt-in atomic callback is the existing B issuer, never a second
+        # selector; it holds owner/physical/WAL locks through stdin.write().
+        async with self._send_lock:
+            gate = getattr(self, "_effect_admission", None)
+            command = None
+            if gate is not None:
+                try:
+                    command = json.loads(line)
+                except (TypeError, ValueError) as exc:
+                    raise MineflayerEffectAdmissionError(
+                        "invalid command under native checkpoint admission"
+                    ) from exc
+                if type(command) is not dict:
+                    raise MineflayerEffectAdmissionError("invalid native command body")
+                command_type = command.get("type")
+                if command_type == "effect":
+                    effect = command.get("effect")
+                    if type(effect) is not str or not effect:
+                        raise MineflayerEffectAdmissionError("untyped physical effect")
+                    action_id = command.get("action_id")
+                    if type(action_id) is not str or not action_id:
+                        raise MineflayerEffectAdmissionError("missing physical action ID")
+                elif command_type not in {"observe", "shutdown"}:
+                    raise MineflayerEffectAdmissionError(
+                        "unknown native command during coordinated checkpoint mode"
+                    )
+            if self._process.returncode is not None:
+                raise MineflayerProcessEnded(
+                    "cannot send to ended Mineflayer bridge; "
+                    f"returncode={self._process.returncode}"
                 )
-        if self._process.returncode is not None:
-            raise MineflayerProcessEnded(
-                "cannot send to ended Mineflayer bridge; "
-                f"returncode={self._process.returncode}"
-            )
 
-        assert self._process.stdin is not None
-        try:
-            self._process.stdin.write(line.encode("utf-8"))
-            await self._process.stdin.drain()
-        except (BrokenPipeError, ConnectionResetError) as exc:
-            raise MineflayerProcessIOError(
-                "could not write to Mineflayer bridge stdin"
-            ) from exc
-
+            assert self._process.stdin is not None
+            data = line.encode("utf-8")
+            try:
+                if gate is not None and command["type"] == "effect":
+                    sender = self._atomic_effect_sender
+                    if sender is None:
+                        # Legacy non-PLACE sessions use their prior guard.
+                        # The owned physical bridge installs atomic submission
+                        # for genuine process-backed resident sessions.
+                        gate(self.started.session_id, effect, action_id)
+                        self._process.stdin.write(data)
+                    else:
+                        # No await between original lock-bound final admission
+                        # and the synchronous final Native stdin buffer write.
+                        sender(
+                            self.started.session_id, effect, action_id,
+                            lambda: self._process.stdin.write(data),
+                        )
+                else:
+                    self._process.stdin.write(data)
+                # Drain, ACK and Paper readback remain separate qualifications.
+                # A write/drain error cannot be retried with this one-shot ID.
+                await self._process.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError) as exc:
+                raise MineflayerProcessIOError(
+                    "could not write to Mineflayer bridge stdin"
+                ) from exc
 
 async def _terminate_child(process: asyncio.subprocess.Process) -> int:
     if process.returncode is None:
