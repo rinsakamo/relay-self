@@ -10,19 +10,25 @@ import asyncio
 from dataclasses import dataclass
 
 from relay_self.b_np1b_current_composite_source_dev import (
-    CompositeSourceReceipt, build_current_composite_source,
+    CompositeSourceReceipt,
+    build_current_composite_source,
 )
 from relay_self.b_np1b_fresh_native_update_dev import (
-    NativeRevision, update_fresh_native,
+    NativeRevision,
+    update_fresh_native,
 )
 from relay_self.b_np1b_initial_source_dev import (
-    InitialSourceReceipt, build_initial_source_receipts,
+    InitialSourceReceipt,
+    build_initial_source_receipts,
 )
 from relay_self.b_np1b_normal_present_scheduler_dev import (
-    NormalCpuScheduleHold, NormalResidentPresentCpuScheduler, ScheduledPresentCpu,
+    NormalCpuScheduleHold,
+    NormalResidentPresentCpuScheduler,
+    ScheduledPresentCpu,
 )
 from relay_self.b_np1b_rejoin_composite_source_dev import (
-    RejoinedCompositeSourceReceipt, build_rejoined_composite_source,
+    RejoinedCompositeSourceReceipt,
+    build_rejoined_composite_source,
 )
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.world_resident_lifecycle_dev import Presence
