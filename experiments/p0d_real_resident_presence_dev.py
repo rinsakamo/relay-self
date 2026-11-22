@@ -1133,8 +1133,8 @@ async def run_real_resident_presence(
             ]
             report["real_60_second_autosave_attested"] = False
             if exploration_schema_dev:
-                from relay_self.self_owner_checkpoint_dev import verify_typed_generation
                 from relay_self.innate_schema import SchemaMode
+                from relay_self.self_owner_checkpoint_dev import verify_typed_generation
 
                 cut_generation = Path(trial["typed_world_self_generation"])
                 source_cuts = verify_typed_generation(cut_generation)
