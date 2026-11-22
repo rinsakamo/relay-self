@@ -81,6 +81,8 @@ _EFFECT_FAMILIES: dict[str, frozenset[str]] = {
     "ATTACK": frozenset({"attack_entity"}),
     # MOVE is only opted into resident mode with an original canonical WAL.
     "MOVE": frozenset({"set_control", "clear_controls"}),
+    # I U4 explicit opt-in only; default restored B owner cannot acquire.
+    "MOVE_PLACE": frozenset({"look", "set_control", "clear_controls"}),
 }
 
 
@@ -95,6 +97,12 @@ def _native_children(family: str, parent_action_id: str) -> dict[str, str]:
         return {"attack_entity": parent_action_id + "-attack"}
     if family == "MOVE":
         return {
+            "set_control": parent_action_id + "-start",
+            "clear_controls": parent_action_id + "-stop",
+        }
+    if family == "MOVE_PLACE":
+        return {
+            "look": parent_action_id + "-look",
             "set_control": parent_action_id + "-start",
             "clear_controls": parent_action_id + "-stop",
         }
@@ -116,6 +124,7 @@ class PhysicalIssueAdmission:
         resident_mode: bool = False,
         initially_offline: bool = False,
         allow_resident_move: bool = False,
+        allow_resident_place_move: bool = False,
         observation_only: bool = False,
     ) -> None:
         if type(observation_only) is not bool or (observation_only and not resident_mode):
@@ -126,6 +135,15 @@ class PhysicalIssueAdmission:
             raise PhysicalIssueFenceError("initially offline requires resident mode")
         if type(allow_resident_move) is not bool or (allow_resident_move and not resident_mode):
             raise PhysicalIssueFenceError("resident MOVE requires explicit opt-in")
+        if (
+            type(allow_resident_place_move) is not bool
+            or (allow_resident_place_move and not (
+                resident_mode and allow_resident_move
+            ))
+        ):
+            raise PhysicalIssueFenceError(
+                "PLACE requires independent original resident MOVE opt-in"
+            )
         if type(require_neutral_stop) is not bool:
             raise PhysicalIssueFenceError("neutral STOP policy must be bool")
         self._require_neutral_stop = require_neutral_stop
@@ -142,6 +160,7 @@ class PhysicalIssueAdmission:
         self._resident_mode = resident_mode
         self._observation_only = observation_only
         self._allow_resident_move = allow_resident_move
+        self._allow_resident_place_move = allow_resident_place_move
         # Ordinary all-N checkpoint remains unchanged unless opted in.
         # Offline session tokens are stale birth refs, NEVER issue grants.
         self._resident_states = {
@@ -262,6 +281,13 @@ class PhysicalIssueAdmission:
                 self._resident_mode and self._allow_resident_move
             ):
                 raise PhysicalIssueFenceError("MOVE requires original resident opt-in")
+            if effect_family == "MOVE_PLACE" and not (
+                self._resident_mode and self._allow_resident_move
+                and self._allow_resident_place_move
+            ):
+                raise PhysicalIssueFenceError(
+                    "PLACE requires explicit original resident opt-in"
+                )
             if type(defer_selected_children) is not bool or (
                 defer_selected_children and effect_family not in ("EAT", "ATTACK")
             ):
@@ -280,7 +306,8 @@ class PhysicalIssueAdmission:
             # literal Action ID. Real selected issuers explicitly bind their
             # parent-child IDs after original PREPARED WAL reservation.
             self._native_child_ids[self_id] = (
-                {} if defer_selected_children or effect_family == "MOVE"
+                {} if defer_selected_children
+                or effect_family in ("MOVE", "MOVE_PLACE")
                 else _native_children(effect_family, action_id)
                 if not self._resident_mode and effect_family in ("EAT", "ATTACK")
                 else {effect: action_id for effect in _EFFECT_FAMILIES[effect_family]}
@@ -317,6 +344,10 @@ class PhysicalIssueAdmission:
             or rows[-1]["action_id"] != parent_action_id
             or rows[-1]["capability"] != family
             or rows[-1]["session_id"] != native_session_id
+            or (family == "MOVE_PLACE" and (
+                readback.schema_version != 2
+                or rows[-1].get("gait_mode") == "SNEAK"
+            ))
         ):
             raise PhysicalIssueFenceError("selected child does not match PREPARED WAL")
         with self._lock:
@@ -329,7 +360,8 @@ class PhysicalIssueAdmission:
                 or lease.effect_family != family
                 or self._native_child_ids.get(self_id) is None
                 or (
-                    family == "MOVE" and lease.action_id != parent_action_id
+                    family in ("MOVE", "MOVE_PLACE")
+                    and lease.action_id != parent_action_id
                 )
             ):
                 raise PhysicalIssueFenceError("original selected lease no longer current")
