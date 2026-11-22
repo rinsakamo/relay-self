@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+
 import pytest
 
 from relay_self.physical_action_journal import PhysicalActionJournal
