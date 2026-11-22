@@ -7,23 +7,23 @@ physical issuer, WAL writer, checkpoint writer or World qualification tool.
 ## Source and scope
 
 Q1g's independent subset was checked against the actual
-\`src/relay_self/physical_action_journal.py\` in the then-current I
+`src/relay_self/physical_action_journal.py` in the then-current I
 integration branch at exact HEAD
-\`0e7a29565853dd8cf044bb81f5a19dace81dce64\`
-(original source blob \`7bffab89740f0b90701cf0f12612a29c8b9cad86\`).
+`0e7a29565853dd8cf044bb81f5a19dace81dce64`
+(original source blob `7bffab89740f0b90701cf0f12612a29c8b9cad86`).
 
 That source writes a canonical UTF-8 JSON + LF envelope:
-\`{"body":{"schema":2,"self_id":"...","actions":[...]},"sha256":"..."}\`.
+`{"body":{"schema":2,"self_id":"...","actions":[...]},"sha256":"..."}`.
 The SHA is over canonical JSON encoding of **body**, not the whole file;
-\`PhysicalActionJournal.restore\` checks this digest and row schema.
+`PhysicalActionJournal.restore` checks this digest and row schema.
 
 Previous Q1b/Q1f were *deliberately synthetic*, using flat
-\`{"schema":2,"self_id":"...","actions":[...]}\`. They cannot be
+`{"schema":2,"self_id":"...","actions":[...]}`. They cannot be
 relabelled a test of production journal format, even after all old
 offline pytest pass.
 
 Q1g implements **a separate conservative reader** at
-\`experiments/q_lane_original_move_place_wal_dev.py\`, covering ONLY:
+`experiments/q_lane_original_move_place_wal_dev.py`, covering ONLY:
 
 - Original schema v2, nonempty history of MOVE_PLACE rows, one Self and
   one unchanged Native session, and one newly appended S2 Action.
@@ -39,17 +39,17 @@ Q1g implements **a separate conservative reader** at
   a distinct new S2 Intent, SkillExecution, Action and later native sequence.
   An external exact S1 raw file SHA256 must be supplied separately.
 - Symlink/path traversal/changed-file protection is inherited from the
-  Q original-source \`_raw_file\` reader.
+  Q original-source `_raw_file` reader.
 
 Q1g is NOT an exact reproduction of every original
-\`PhysicalActionJournal._validate\` branch. It rejects other legitimately
+`PhysicalActionJournal._validate` branch. It rejects other legitimately
 possible histories (EAT, ATTACK, relative MOVE, schema v1, multiple
 S2 Actions, reJOIN, mixed session history) by design. It must never be
 used as a generic proof that every version of original journal is valid.
 
 ## Q1h: bind actual canonical WAL to external anchor, checkpoint, Git
 
-\`experiments/q_lane_original_move_place_git_custody_dev.py\` adds a
+`experiments/q_lane_original_move_place_git_custody_dev.py` adds a
 separate strict Q1h source join:
 
 1. Read a separately pinned, raw S1 pre-S2 anchor (the Q1b anchor shape).
@@ -70,8 +70,8 @@ separate strict Q1h source join:
    identical results and rejecting source drift during inspection.
 
 Outputs remain strictly:
-\`Q1G_CANONICAL_MOVE_PLACE_WAL_SHAPE_CPU_OFFLINE_DEV\` and
-\`Q1H_ORIGINAL_MOVE_PLACE_GIT_WAL_COUPLED_CPU_OFFLINE_DEV\`.
+`Q1G_CANONICAL_MOVE_PLACE_WAL_SHAPE_CPU_OFFLINE_DEV` and
+`Q1H_ORIGINAL_MOVE_PLACE_GIT_WAL_COUPLED_CPU_OFFLINE_DEV`.
 
 Both receipts ALWAYS return false for original Owner trust,
 source-qualifying Native/Paper, prior independent witness authenticity,
@@ -101,7 +101,7 @@ Q1g is called as a pure function:
         expected_s2_action_id=ORIGINAL_S2_ACTION,
     )
 
-Q1h is called via \`audit_q1h_original_move_place_git_custody\` with
+Q1h is called via `audit_q1h_original_move_place_git_custody` with
 the separate original archive path, Git repository clone, exact scoped
 Owner/World/Session/Checkpoint identity, raw external S1 anchor bytes,
 independently held anchor SHA256 and Git root/anchor/post commits. It
