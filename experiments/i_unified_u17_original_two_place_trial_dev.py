@@ -7,6 +7,7 @@ synthetic S1 callback, alternate issuer, WAL, Paper event or model choice.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from collections.abc import Callable
@@ -160,6 +161,20 @@ async def run_original_u17_two_place_trial_dev(
             initial.loop, first, paper_window,
             initial.forward_ms, initial.host_ms,
         )
+        # Freeze S1-era Paper bytes BEFORE S2 can start. The S2 position
+        # window must come from newly appended original Paper records.
+        s2_paper_prefix = bridge.paper.read_owned_log(
+            bridge.paper.owned_session_id,
+        )
+        if (
+            type(s2_paper_prefix) is not bytes
+            or not s2_paper_prefix.endswith(b"\n")
+            or len(s2_paper_prefix) < original.paper_window.log_prefix_size
+            or hashlib.sha256(
+                s2_paper_prefix[:original.paper_window.log_prefix_size],
+            ).hexdigest() != original.paper_window.log_prefix_sha256
+        ):
+            raise I4AS2OwnedNativeHold("pre-S2 original Paper log not append-only")
         _, second = await continue_original_s1_to_s2_owned_native_dev(
             bridge=bridge, s1_loop=original.loop, s1_receipt=original.receipt,
             paper_window=original.paper_window,
@@ -169,6 +184,18 @@ async def run_original_u17_two_place_trial_dev(
             s1_forward_ms=original.forward_ms,
             s1_host_ms=original.host_ms,
         )
+        s2_paper_window = await await_original_q4_paper_position_window(
+            bridge, self_id, second, after_log_prefix=s2_paper_prefix,
+        )
+        if (
+            s2_paper_window.paper_session_id != original.paper_window.paper_session_id
+            or s2_paper_window.actor_uuid != original.paper_window.actor_uuid
+            or s2_paper_window.points[0].line
+            <= original.paper_window.points[-1].line
+        ):
+            raise I4AS2OwnedNativeHold(
+                "S2 Paper samples not newer than original S1 window"
+            )
         PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id=self_id,
         ).require_clear()
