@@ -718,6 +718,112 @@ async def _owned_resident_trial(
     return result_data
 
 
+def _verify_original_normal_cpu_world_report(trial: dict[str, object]) -> None:
+    """Re-read frozen source receipts; reject invented A/B CPU runtime success.
+
+    Checks full composite revision linkage, original two native sessions and
+    independently advanced B Native plus both original Owner CPU task epochs.
+    This does not qualify a new Physical Action, L1, or cross-clock simultaneity.
+    """
+    from relay_self.b_np1b_initial_source_dev import _revision
+
+    if (
+        type(trial) is not dict
+        or trial.get("normal_cpu_present_opt_in") is not True
+        or trial.get("b_actual_physical_action") is not False
+        or trial.get("real_l1_l2_gpu_executed") is not False
+    ):
+        raise RealResidentPresenceRefusal("original CPU World mode not exclusively passive")
+    path = trial.get("normal_cpu_present_source_file")
+    digest = trial.get("normal_cpu_present_source_sha256")
+    if (
+        type(path) is not str or not path.endswith("/normal-cpu-world-source-readback.json")
+        or type(digest) is not str or len(digest) != 64
+    ):
+        raise RealResidentPresenceRefusal("frozen normal CPU readback path or digest missing")
+    try:
+        data = Path(path).read_bytes()
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise RealResidentPresenceRefusal("normal CPU readback SHA mismatch")
+        witness = json.loads(data)
+    except (OSError, ValueError, TypeError) as exc:
+        raise RealResidentPresenceRefusal("normal CPU readback bytes invalid") from exc
+    if (
+        type(witness) is not dict
+        or witness.get("classification") != "ORIGINAL_WORLD_NORMAL_CPU_SOURCE_READBACK_DEV"
+        or witness.get("world_id") != trial.get("world_uuid")
+        or witness.get("paper_session_id") != trial.get("paper_session_id")
+        or witness.get("original_a_native_session") != trial.get("a_original_native_session")
+        or witness.get("original_b_native_session") != trial.get("b_original_native_session")
+        or witness.get("no_gpu_or_physical_action") is not True
+        or witness.get("a_cpu_task_ref") != "normal-present-cpu:A"
+        or witness.get("b_cpu_task_ref") != "normal-present-cpu:B"
+        or any(type(witness.get(k)) is not int or witness[k] <= 0 for k in (
+            "first_a_iteration", "first_b_iteration",
+            "later_a_iteration", "later_b_iteration",
+            "a_cpu_epoch", "b_cpu_epoch",
+        ))
+        or witness["later_a_iteration"] <= witness["first_a_iteration"]
+        or witness["later_b_iteration"] <= witness["first_b_iteration"]
+    ):
+        raise RealResidentPresenceRefusal("original A/B CPU task continuity not demonstrated")
+    a0, b0, a1, b1 = (
+        witness.get("first_a"), witness.get("first_b"),
+        witness.get("later_a"), witness.get("later_b"),
+    )
+    b_native = witness.get("adopted_b_native")
+    if any(type(x) is not dict for x in (a0, b0, a1, b1, b_native)):
+        raise RealResidentPresenceRefusal("typed Native and composite source records missing")
+    try:
+        if (
+            a0["self_id"] != a1["self_id"] or a0["self_id"] != "A"
+            or b0["self_id"] != b1["self_id"] or b0["self_id"] != "B"
+            or a0["native_session_id"] != a1["native_session_id"]
+            or a0["native_session_id"] == witness["original_a_native_session"]
+            or b0["native_session_id"] != witness["original_b_native_session"]
+            or b1["native_session_id"] != witness["original_b_native_session"]
+            or b_native["native_session_id"] != witness["original_b_native_session"]
+            or a0["native_revision"] != a1["native_revision"]
+            or b0["native_revision"] == b1["native_revision"]
+            or b_native["native_revision"] != b1["native_revision"]
+            or b_native["native_request_id"] != b1["native_request_id"]
+            or b_native["native_sequence"] != b1["native_sequence"]
+            or b1["native_sequence"] <= b0["native_sequence"]
+            or a0["resident_epoch"] != witness["a_cpu_epoch"]
+            or a1["resident_epoch"] != witness["a_cpu_epoch"]
+            or b0["resident_epoch"] != witness["b_cpu_epoch"]
+            or b1["resident_epoch"] != witness["b_cpu_epoch"]
+        ):
+            raise RealResidentPresenceRefusal("original Native owner/session or B update diverged")
+        for a, b, pair in (
+            (a0, b0, witness["first_pair_revision"]),
+            (a1, b1, witness["later_pair_revision"]),
+        ):
+            if (
+                a["world_id"] != witness["world_id"]
+                or b["world_id"] != witness["world_id"]
+                or a["paper_session_id"] != witness["paper_session_id"]
+                or b["paper_session_id"] != witness["paper_session_id"]
+                or a["paper_log_sha256"] != b["paper_log_sha256"]
+                or a["paper_tick_ref"] != b["paper_tick_ref"]
+                or a["paper_tick"] != b["paper_tick"]
+                or a["b_continuity_revision"] != b["b_continuity_revision"]
+                or b["a_rejoin_composite_ref"] != _revision(a)
+                or _revision(dict(
+                    a_composite=a["composite_revision"],
+                    b_composite=b["composite_revision"],
+                    a_native=a["native_revision"],
+                    b_native=b["native_revision"],
+                    paper_sha256=a["paper_log_sha256"],
+                )) != pair
+            ):
+                raise RealResidentPresenceRefusal("A/B original source pair not qualified")
+        if witness["first_pair_revision"] == witness["later_pair_revision"]:
+            raise RealResidentPresenceRefusal("no real B Native update reached scheduled CPU")
+    except (KeyError, ValueError, TypeError) as exc:
+        raise RealResidentPresenceRefusal("frozen A/B CPU source structure incomplete") from exc
+
+
 def _adopt_verified_trial_report(
     report: dict[str, object],
     trial: dict[str, object],
