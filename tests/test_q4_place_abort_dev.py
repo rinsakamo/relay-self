@@ -5,6 +5,7 @@ Synthetic physical WAL/Native only. Termination is not an ACK/settle proof.
 from __future__ import annotations
 
 import asyncio
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -276,3 +277,45 @@ def test_q4_dev_watchdog_rejects_unguarded_native_or_second_live_self(
     asyncio.run(run())
     assert invoked == []
     assert gate.resident_states["A"] == "ONLINE"
+
+
+def test_q4_watchdog_does_not_wait_for_ignored_cancellation(
+    tmp_path, monkeypatch,
+):
+    """A stuck Skill task cannot hold the host timeout or keep Native alive."""
+    original, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    native = FakeOwnedNative(owner.native_session_id, gate)
+    host = _host(gate, native)
+
+    async def ignore_cancel_temporarily():
+        with _lease(gate, owner, typed):
+            _prepare(journal, typed)
+            _bind(gate, original, owner, journal, typed)
+            _start(gate, owner, typed)
+            try:
+                await asyncio.sleep(30)
+            except asyncio.CancelledError:
+                # A broken coroutine resists cleanup well past the 2s-class
+                # host deadline. The host still must revoke and terminate.
+                await asyncio.sleep(0.3)
+                raise
+
+    async def scenario():
+        start = time.perf_counter()
+        with pytest.raises(TimeoutError, match="host watchdog"):
+            await run_q4_dev_place_with_watchdog(
+                bridge=host, self_id="A",
+                stop_action_id=typed[0].action_id + "-stop",
+                issue_original=ignore_cancel_temporarily,
+                operator_permit=Q4DevOperatorPermit("A", owner.native_session_id),
+                watchdog_s=0.01,
+            )
+        # The Task may still be unwinding, but its Native child is gone.
+        assert time.perf_counter() - start < 0.19
+        assert native.process_returncode is not None
+        assert gate.resident_states["A"] == "QUARANTINED"
+        await asyncio.sleep(0.31)  # allow old task's finally to drain
+        assert gate.active_action_ids == ()
+
+    asyncio.run(scenario())
+    assert journal.unresolved
