@@ -82,6 +82,15 @@ def _regular(entries: dict[str, tuple[str, str]], path: str) -> str:
     return blob
 
 
+def _any_path_has_blob(entries: dict[str, tuple[str, str]], blob: str) -> bool:
+    """Detect an earlier byte-identical evidence object hidden under any path.
+
+    Git object hashes identify the same byte sequence even after moving or
+    copying it to a different file. Path-only birth checks are insufficient.
+    """
+    return any(seen_blob == blob for _mode, seen_blob in entries.values())
+
+
 def _object(root: Path, sha: str) -> bytes:
     length = _run(root, "cat-file", "-s", sha)
     try:
@@ -158,6 +167,12 @@ def inspect_git_pre_s2_custody(
         raise QGitCustodyHold("trusted root/pre-S2 commit already contains later evidence")
     anchor_blob = _regular(initial, anchor_name)
     s2_blob = _regular(final, s2_name)
+    if (
+        _any_path_has_blob(original, anchor_blob)
+        or _any_path_has_blob(original, s2_blob)
+        or _any_path_has_blob(initial, s2_blob)
+    ):
+        raise QGitCustodyHold("source bytes existed in earlier root/pre-anchor tree")
     if _regular(final, anchor_name) != anchor_blob:
         raise QGitCustodyHold("historical anchor blob changed in S2 evidence commit")
     # The selected PRE commit must INTRODUCE the anchor, not simply contain
@@ -168,9 +183,9 @@ def inspect_git_pre_s2_custody(
     )
     for sha in before_chain[:-1]:
         old = _entries(repo_root, sha)
-        if anchor_name in old:
+        if anchor_name in old or _any_path_has_blob(old, anchor_blob):
             raise QGitCustodyHold("pre-S2 anchor existed before selected anchor commit")
-        if s2_name in old:
+        if s2_name in old or _any_path_has_blob(old, s2_blob):
             raise QGitCustodyHold("S2 evidence appeared before S1 anchor commit")
     # Preserve the exact anchor blob through EVERY commit after capture.
     # Reject an S2 file added, removed, and re-added at the final commit.
@@ -179,7 +194,9 @@ def inspect_git_pre_s2_custody(
         current = _entries(repo_root, sha)
         if _regular(current, anchor_name) != anchor_blob:
             raise QGitCustodyHold("pre-S2 anchor disappeared or changed in custody chain")
-        if sha != post and s2_name in current:
+        if sha != post and (
+            s2_name in current or _any_path_has_blob(current, s2_blob)
+        ):
             raise QGitCustodyHold("S2 evidence existed before final evidence commit")
     previous = _entries(repo_root, _single_parent(repo_root, post))
     if s2_name in previous:
@@ -203,6 +220,7 @@ def inspect_git_pre_s2_custody(
         "post_anchor_commit_count": len(chain),
         "anchor_first_introduced_at_selected_commit": True,
         "s2_first_introduced_at_selected_commit": True,
+        "byte_identical_aliases_before_selected_commits_absent": True,
         "committed_ancestor_order_verified": True,
         "git_object_sha256_consistent": True,
         "external_root_origin_authenticated": False,
