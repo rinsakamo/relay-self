@@ -294,6 +294,51 @@ class PhysicalIssueAdmission:
         with self._lock:
             return tuple(sorted(x.action_id for x in self._active.values()))
 
+    def _require_original_place_s1_before_lease(self, self_id: str) -> None:
+        """Fail closed when a previous PLACE lease left PREPARED behind.
+
+        Called under the existing physical gate lock before acquiring a new
+        PLACE lease. This checks only original B's volatile S1 snapshot and
+        canonical WAL state. It is NOT an independently authenticated source.
+        The later resident->physical->WAL binding check still owns epoch and
+        scope admission; no Native IO is authorized here.
+        """
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        anchor = self._original_place_s1.get(self_id)
+        if anchor is None:
+            # Synthetic standalone gates may lease, but cannot bind any PLACE
+            # child without an original B S1 anchor.
+            return
+        witness = anchor.witness
+        try:
+            path = anchor.owner.files.physical_wal_file
+            before_identity = _place_wal_identity(path)
+            current = PhysicalActionJournal.restore(path, self_id=self_id)
+            after_identity = _place_wal_identity(path)
+            if (
+                anchor.bridge.physical is not self
+                or path != Path(witness.canonical_wal_path)
+                or before_identity != after_identity
+                or current.unresolved
+                or current.schema_version != witness.canonical_schema
+                or current.records != witness.s1_rows
+                or current.digest != witness.canonical_prefix_sha256
+                or self._resident_epochs.get(self_id) != anchor.physical_epoch
+                or self._generation != anchor.gate_generation
+                or self._sessions.get(self_id) != witness.native_session_id
+            ):
+                raise PhysicalIssueFenceError(
+                    "PLACE lease requires unchanged terminal original S1 WAL"
+                )
+        except PhysicalIssueFenceError:
+            raise
+        except (AttributeError, KeyError, OSError, TypeError, ValueError,
+                RuntimeError) as exc:
+            raise PhysicalIssueFenceError(
+                "PLACE lease original S1 WAL cannot be verified"
+            ) from exc
+
     @contextmanager
     def lease(
         self, *, self_id: str, native_session_id: str, action_id: str,
@@ -334,6 +379,8 @@ class PhysicalIssueAdmission:
                 x.action_id == action_id for x in self._active.values()
             ):
                 raise PhysicalIssueFenceError("physical Action already in flight")
+            if effect_family == "MOVE_PLACE":
+                self._require_original_place_s1_before_lease(self_id)
             record = IssueLease(
                 self_id, native_session_id, action_id, self._generation,
                 effect_family,
