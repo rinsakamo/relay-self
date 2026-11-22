@@ -112,3 +112,113 @@ test('only one bounded start at a time; no timer remains after stop', () => {
   assert.equal(f.trips.length, 0)
   assert.equal(f.timerActive(), false)
 })
+
+
+test('Q4 hostile START partial-apply exception always trips and requests bot quit', () => {
+  let forward = false
+  let tick = null
+  const quits = []
+  const bot = {
+    entity: { position: { x: 0, z: 0 } },
+    clearControlStates () { forward = false },
+    setControlState () {
+      forward = true
+      throw new Error('fault-injected native start-after-apply failure')
+    }
+  }
+  const guard = new Q4BoundedPlaceMotionGuard(bot, {
+    now: () => 0,
+    interval: (cb) => { tick = cb; return 1 },
+    cancel: () => { tick = null },
+    onTrip: (reason) => quits.push(reason)
+  })
+  assert.throws(() => guard.start('place-start'), /fault-injected/)
+  assert.ok(!forward || quits.length === 1, 'partial START cannot silently run')
+  assert.equal(quits.length, 1)
+  assert.match(quits[0], /start_failed/)
+  assert.equal(guard.tripped, true)
+  assert.equal(guard.active, null)
+  assert.equal(tick, null)
+  assert.throws(() => guard.start('later-start'), /tripped/)
+})
+
+test('Q4 hostile STOP clear failure forces bot quit before watchdog can disappear', () => {
+  let forward = false
+  let tick = null
+  let clearFails = false
+  const quits = []
+  const bot = {
+    entity: { position: { x: 0, z: 0 } },
+    clearControlStates () {
+      if (clearFails) throw new Error('fault-injected native STOP clear failure')
+      forward = false
+    },
+    setControlState () { forward = true }
+  }
+  const guard = new Q4BoundedPlaceMotionGuard(bot, {
+    now: () => 0,
+    interval: (cb) => { tick = cb; return 1 },
+    cancel: () => { tick = null },
+    onTrip: (reason) => quits.push(reason)
+  })
+  guard.start('place-start')
+  assert.equal(forward, true)
+  clearFails = true
+  assert.throws(() => guard.stop(), /fault-injected/)
+  assert.ok(!forward || quits.length === 1, 'failed STOP cannot silently run')
+  assert.deepEqual(quits, ['bounded_place_native_stop_failed'])
+  assert.equal(guard.tripped, true)
+  assert.equal(tick, null)
+  assert.throws(() => guard.start('replay-start'), /tripped/)
+})
+
+test('Q4 hostile timer registration exception never leaves motor unwatched', () => {
+  let forward = false
+  let clears = 0
+  const quits = []
+  const bot = {
+    entity: { position: { x: 0, z: 0 } },
+    clearControlStates () { forward = false; clears++ },
+    setControlState () { forward = true }
+  }
+  const guard = new Q4BoundedPlaceMotionGuard(bot, {
+    now: () => 0,
+    interval: () => { throw new Error('fault-injected timer failure') },
+    onTrip: (reason) => quits.push(reason)
+  })
+  assert.throws(() => guard.start('place-start'), /fault-injected/)
+  assert.equal(forward, false)
+  assert.ok(clears >= 1)
+  assert.deepEqual(quits, ['bounded_place_native_start_failed'])
+  assert.equal(guard.tripped, true)
+  assert.throws(() => guard.start('later-start'), /tripped/)
+})
+
+test('Q4 hostile watchdog cancellation and repeated clear failure cannot skip quit', () => {
+  let forward = false
+  let clearFails = false
+  const quits = []
+  const bot = {
+    entity: { position: { x: 0, z: 0 } },
+    clearControlStates () {
+      if (clearFails) throw new Error('fault-injected clear failure')
+      forward = false
+    },
+    setControlState () { forward = true }
+  }
+  const guard = new Q4BoundedPlaceMotionGuard(bot, {
+    now: () => 0,
+    interval: () => 7,
+    cancel: () => { throw new Error('fault-injected timer cancel failure') },
+    onTrip: (reason) => quits.push(reason)
+  })
+  guard.start('place-start')
+  clearFails = true
+  assert.throws(() => guard.stop(), /fault-injected/)
+  assert.equal(guard.tripped, true)
+  assert.deepEqual(quits, ['bounded_place_native_stop_failed'])
+  assert.throws(() => guard.start('forged-second'), /tripped/)
+  // Already-tripped shutdown cannot silently revive motion or throw again.
+  guard.stop()
+  assert.equal(forward, true) // motor was NOT proven off; bot quit is mandatory
+})
