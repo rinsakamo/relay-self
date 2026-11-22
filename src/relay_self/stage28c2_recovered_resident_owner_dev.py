@@ -181,8 +181,13 @@ def prepare_recovered_a_b_resident_owners(
         ):
             raise Stage28c2OwnerHold("full unique original A/B session roster required")
         work = ResidentCognitiveWorkOwner(owners)
-        if schema_bootstrap is not None:
-            bootstrap_restored_schemas(work, schema_bootstrap)
+        saved_cuts = tuple(candidate.semantic.cut for candidate in plan.candidates)
+        if schema_bootstrap is not None or any(
+            cut.schema_snapshot is not None for cut in saved_cuts
+        ):
+            bootstrap_restored_schemas(
+                work, schema_bootstrap, source_cuts=saved_cuts,
+            )
         physical = PhysicalIssueAdmission(
             old_ids,
             resident_mode=True, initially_offline=True,
