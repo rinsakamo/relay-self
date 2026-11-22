@@ -70,65 +70,74 @@ def test_b_original_gateway_refuses_stale_or_foreign(
     receipt = prepare_i_unified_exploration_turn(**_args(case))
     bridge = case[1]
     before = snapshot(case)
-    if alteration == "foreign_owner":
-        receipt = replace(receipt, original_owner=bridge.owners["B"])
-    elif alteration == "foreign_self":
-        receipt = replace(receipt, self_id="B")
-    elif alteration == "forged_source":
-        receipt = replace(
-            receipt, context=replace(
-                receipt.context,
-                current=replace(
-                    receipt.context.current,
-                    source=replace(receipt.context.current.source, resident_epoch=999),
+    try:
+        if alteration == "foreign_owner":
+            receipt = replace(receipt, original_owner=bridge.owners["B"])
+        elif alteration == "foreign_self":
+            receipt = replace(receipt, self_id="B")
+        elif alteration == "forged_source":
+            receipt = replace(
+                receipt, context=replace(
+                    receipt.context,
+                    current=replace(
+                        receipt.context.current,
+                        source=replace(receipt.context.current.source, resident_epoch=999),
+                    ),
                 ),
-            ),
-        )
-    elif alteration == "forged_need":
-        receipt = replace(
-            receipt, original_turn=replace(
-                receipt.original_turn,
-                inquiry=replace(receipt.original_turn.inquiry, need_signal_ref="forged"),
-            ),
-        )
-    elif alteration == "reversed_choices":
-        receipt = replace(
-            receipt, original_turn=replace(
-                receipt.original_turn,
-                request=replace(
-                    receipt.original_turn.request,
-                    choices=tuple(reversed(receipt.original_turn.request.choices)),
+            )
+        elif alteration == "forged_need":
+            receipt = replace(
+                receipt, original_turn=replace(
+                    receipt.original_turn,
+                    inquiry=replace(receipt.original_turn.inquiry, need_signal_ref="forged"),
                 ),
-            ),
+            )
+        elif alteration == "reversed_choices":
+            receipt = replace(
+                receipt, original_turn=replace(
+                    receipt.original_turn,
+                    request=replace(
+                        receipt.original_turn.request,
+                        choices=tuple(reversed(receipt.original_turn.request.choices)),
+                    ),
+                ),
+            )
+        elif alteration == "fake_question":
+            receipt = replace(
+                receipt, original_turn=replace(
+                    receipt.original_turn,
+                    inquiry=replace(receipt.original_turn.inquiry, question_ref="not-candidate"),
+                ),
+            )
+        elif alteration == "old_generation":
+            bridge.cognitive_work._states["A"].epoch += 1
+        elif alteration == "paper":
+            bridge.paper._session_id = "new-paper"
+        elif alteration == "native":
+            bridge.owners["A"].current_worldbody_observation = replace(
+                bridge.owners["A"].current_worldbody_observation,
+            )
+        elif alteration == "registry":
+            bridge.owners["A"].pattern_registry = replace(
+                bridge.owners["A"].pattern_registry,
+                revision=bridge.owners["A"].pattern_registry.revision + 1,
+            )
+        elif alteration == "intent":
+            from relay_self.provenance import Provenance
+    
+            bridge.owners["A"].intent.commit(
+                "new-intent", objective="test", at_ns=100, provenance=Provenance("test", "i"),
+            )
+        else:
+            bridge.cognitive_work.fence_self("A")
+    except IUnifiedExplorationHold:
+        # Forged typed receipts fail in __post_init__, before any verifier call.
+        assert alteration in (
+            "foreign_owner", "foreign_self", "forged_source",
+            "forged_need", "reversed_choices", "fake_question",
         )
-    elif alteration == "fake_question":
-        receipt = replace(
-            receipt, original_turn=replace(
-                receipt.original_turn,
-                inquiry=replace(receipt.original_turn.inquiry, question_ref="not-candidate"),
-            ),
-        )
-    elif alteration == "old_generation":
-        bridge.cognitive_work._states["A"].epoch += 1
-    elif alteration == "paper":
-        bridge.paper._session_id = "new-paper"
-    elif alteration == "native":
-        bridge.owners["A"].current_worldbody_observation = replace(
-            bridge.owners["A"].current_worldbody_observation,
-        )
-    elif alteration == "registry":
-        bridge.owners["A"].pattern_registry = replace(
-            bridge.owners["A"].pattern_registry,
-            revision=bridge.owners["A"].pattern_registry.revision + 1,
-        )
-    elif alteration == "intent":
-        from relay_self.provenance import Provenance
-
-        bridge.owners["A"].intent.commit(
-            "new-intent", objective="test", at_ns=100, provenance=Provenance("test", "i"),
-        )
-    else:
-        bridge.cognitive_work.fence_self("A")
+        assert snapshot(case) == before
+        return
     with pytest.raises((IUnifiedExplorationHold, RuntimeError, ValueError)):
         _check(case, receipt)
     if alteration in (
