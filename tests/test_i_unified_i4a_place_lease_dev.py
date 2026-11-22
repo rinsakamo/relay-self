@@ -204,14 +204,16 @@ def test_original_place_lease_typed_wal_prepare_native_id_gate_and_close(tmp_pat
             ("look", "-look"), ("set_control", "-start"),
             ("clear_controls", "-stop"),
         ):
-            gate.require_native_effect(
+            gate.submit_native_effect(
                 self_id="A", native_session_id=native,
                 effect=effect, action_id=binding.action_id + suffix,
+                write=lambda: None,  # CPU-only synthetic Native
             )
             with pytest.raises(PhysicalIssueFenceError):
-                gate.require_native_effect(
+                gate.submit_native_effect(
                     self_id="A", native_session_id=native,
                     effect=effect, action_id=binding.action_id + suffix,
+                    write=lambda: None,
                 )
         # The simulated EffectResult objects below did not come from IO.
         terminal, supervisor = _terminal(binding)
