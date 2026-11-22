@@ -318,9 +318,9 @@ async def run_u20_original_b_world_once(
         server_dir=execution_dir, world_dir=execution_dir / "world",
         evidence_dir=evidence_dir,
         command=(
-            java, "-Xms512M", "-Xmx1536M", "-jar",
+            java, "-Xms512M", "-Xmx1536M",
+            "-Drelay.q4.paper.fine_samples=true", "-jar",
             str(execution_dir / "paper.jar"), "--nogui",
-            "-Drelay.q4.paper.fine_samples=true",
         ),
         world_id=plan.source_world_id, branch_id=plan.fork_branch_id,
         tick_readback=tick_reader, timeout_seconds=90.0,
