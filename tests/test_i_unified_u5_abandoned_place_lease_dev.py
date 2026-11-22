@@ -137,21 +137,28 @@ def test_real_thread_contention_one_original_place_lease_only(
     assert not failures
 
 
-def test_quarantine_after_start_is_a_stop_safety_hold(
+def test_quarantine_after_start_permits_only_same_original_one_shot_stop(
     tmp_path, monkeypatch,
 ):
     bridge, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    parent = typed[0].action_id
     with _lease(gate, owner, typed):
         _prepare(journal, typed)
         _bind(gate, bridge, owner, journal, typed)
-        _allow(gate, owner, typed[0].action_id + "-look")
-        _allow(gate, owner, typed[0].action_id + "-start", effect="set_control")
+        _allow(gate, owner, parent + "-look")
+        _allow(gate, owner, parent + "-start", effect="set_control")
         gate.quarantine_resident(
             self_id="A", native_session_id=owner.native_session_id,
         )
-        # Regression evidence: MOVE_PLACE STOP currently denied after a
-        # quarantine, unlike legacy MOVE. This is PRE_WORLD_HOLD, not PASS.
+        # Quarantine fences cognition before STOP. A pre-bound STOP remains
+        # eligible only after its original same-lease START was consumed.
+        for effect, action in (("look", parent + "-look"),
+                               ("set_control", parent + "-start"),
+                               ("clear_controls", "forged-stop")):
+            with pytest.raises(PhysicalIssueFenceError):
+                _allow(gate, owner, action, effect=effect)
+        _allow(gate, owner, parent + "-stop", effect="clear_controls")
         with pytest.raises(PhysicalIssueFenceError):
-            _allow(gate, owner, typed[0].action_id + "-stop",
-                   effect="clear_controls")
+            _allow(gate, owner, parent + "-stop", effect="clear_controls")
+    # ACK/settling were never observed; STOP submission is not WAL resolution.
     assert journal.unresolved
