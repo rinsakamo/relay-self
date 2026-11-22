@@ -423,7 +423,7 @@ class CheckpointedCognitiveOwner:
             raise LiveCognitionCheckpointError("invalid native session/clock")
         if not files.self_root.is_dir() or not files.physical_wal_file.is_file():
             raise LiveCognitionCheckpointError("canonical Self file or WAL missing")
-        PhysicalActionJournal.restore(
+        PhysicalActionJournal.read_snapshot(
             files.physical_wal_file, self_id=retained.identity.self_id,
         )
         if len({x.execution_id for x in skills}) != len(skills):
@@ -550,7 +550,7 @@ def staged_recover_cognition_cohort(
         if retained.identity.self_id != sid:
             raise LiveCognitionCheckpointError("foreign restored Self identity")
         journal_path = files / "physical-wal.json"
-        PhysicalActionJournal.read_clear_snapshot(journal_path, self_id=sid)
+        PhysicalActionJournal.read_snapshot(journal_path, self_id=sid, require_clear=True)
         result.append(StagedRecoveredCognition(
             sid, retained, owner, journal_path,
         ))

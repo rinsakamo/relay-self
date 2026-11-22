@@ -129,8 +129,8 @@ def inspect_u20_original_b_source(
             "empty Intent and no replayable Skill required"
         )
     candidate = plan.candidates[0]
-    if PhysicalActionJournal.read_clear_snapshot(
-        candidate.physical_wal_path, self_id="B",
+    if PhysicalActionJournal.read_snapshot(
+        candidate.physical_wal_path, self_id="B", require_clear=True,
     ):
         raise U20OriginalWorldHold("Q4 first original S1 WAL must start empty")
     check_stage24g_pinned_assets(

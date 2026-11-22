@@ -445,10 +445,13 @@ class PhysicalActionJournal:
         return cls(path, body, digest)
 
     @classmethod
-    def read_clear_snapshot(cls, path: str | Path, *, self_id: str) -> tuple[dict[str, Any], ...]:
-        """Verify a quiescent checkpoint WAL without creating a lock or a writer."""
+    def read_snapshot(
+        cls, path: str | Path, *, self_id: str, require_clear: bool = False,
+    ) -> tuple[dict[str, Any], ...]:
+        """Verify one atomically published WAL image without creating a lock or a writer."""
         journal = cls._load_snapshot(Path(path), self_id=self_id)
-        journal.require_clear()
+        if require_clear:
+            journal.require_clear()
         return journal.records
 
     @property
