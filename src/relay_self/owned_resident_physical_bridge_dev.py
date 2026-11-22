@@ -418,6 +418,21 @@ class OwnedResidentPhysicalBridge:
             self.inference_lane.fence_self(self_id)
         self.lifecycle.fail_self(self_id)
 
+    async def abort_place_after_start_dev(
+        self, *, self_id: str, stop_action_id: str,
+    ):
+        """Q4 host-owned kill switch; independent of a canceled PLACE lease.
+
+        The existing original physical issuer is revoked before first await,
+        then the owned Native bot is disconnected if STOP/ACK is uncertain.
+        Neither this method nor disconnection resolves a PREPARED WAL.
+        """
+        from relay_self.q4_place_abort_dev import abort_original_place_after_start
+
+        return await abort_original_place_after_start(
+            bridge=self, self_id=self_id, stop_action_id=stop_action_id,
+        )
+
     async def logout(self, self_id: str) -> LogoutFenceEvidence:
         """Independent physical, journal, native process and cognition checks."""
         self._check_world()
