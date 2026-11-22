@@ -233,6 +233,58 @@ def _u20_scoped_original_grants(
     return one(PhysicalGrantStage.PROPOSE), one(PhysicalGrantStage.ISSUE)
 
 
+def require_u20_stop_fault_original_archive(
+    evidence_dir: Path, native: MineflayerProcessSession,
+) -> None:
+    """STOP fault is CAPTURED only if original U17 wrote its seven files.
+
+    This is merely same-parent inventory/identity readback. The Q lane must
+    independently authenticate raw Native/Paper/START and WAL causation.
+    Cancellation, missing raw files, unconfirmed Node exit or settled WAL
+    MUST NOT be turned into a captured STOP-fault diagnostic.
+    """
+    try:
+        node = json.loads(
+            (evidence_dir / "original-node-process-exit.json").read_bytes(),
+        )
+        manifest = json.loads(
+            (evidence_dir / "original-u17-stop-failure-manifest.json").read_bytes(),
+        )
+    except (OSError, UnicodeError, ValueError, TypeError) as exc:
+        raise U20OriginalWorldHold(
+            "STOP fault original process exit and 7-file manifest missing",
+        ) from exc
+    required = {
+        "native_stdout", "native_stdin", "paper_ticks", "owner_wal",
+        "owner_cognition", "host_monotonic", "process_exit",
+    }
+    if (
+        type(node) is not dict or type(manifest) is not dict
+        or native.process_returncode is None
+        or not native._q4_stop_failure_used
+        or node.get("native_session") != native.started.session_id
+        or node.get("owned_pid") != native.owned_child_pid
+        or node.get("returncode") != native.process_returncode
+        or node.get("trial_mode") != "stop_failure"
+        or node.get("stop_fault_injection_consumed") is not True
+        or node.get("wal_unresolved") is not True
+        or node.get("s1_action_id") is not None
+        or node.get("s2_action_id") is not None
+        or node.get("s2_terminal") is not False
+        or node.get("real_world_dev_pass") is not False
+        or manifest.get("trial") != "stop_failure"
+        or manifest.get("status")
+        != "RAW_EVIDENCE_MANIFEST_SEALED_NOT_VERIFIED"
+        or manifest.get("real_world_dev_pass") is not False
+        or manifest.get("independent_q_audited") is not False
+        or type(manifest.get("evidence")) is not dict
+        or set(manifest["evidence"]) != required
+    ):
+        raise U20OriginalWorldHold(
+            "STOP fault consumed but original raw archive/Node/WAL not qualified",
+        )
+
+
 async def run_u20_original_b_world_once(
     *, generation: Path, restored: Path, execution_dir: Path,
     evidence_dir: Path, paper_jar: Path, plugin_jar: Path,
@@ -411,16 +463,13 @@ async def run_u20_original_b_world_once(
                 ),
                 real_world_granted=True, trial_mode=trial_mode,
             )
-        except BaseException:
+        except Exception:
             if trial_mode != "stop_failure":
                 raise
-            if (
-                not actual_native._q4_stop_failure_used
-                or actual_native.process_returncode is None
-            ):
-                raise U20OriginalWorldHold(
-                    "STOP fault not consumed or original Native still alive"
-                )
+            # A cancellation or interrupt is never a successful fault trial.
+            # The original child must have exited and U17 must have sealed
+            # its immutable source inventory; otherwise report HOLD.
+            require_u20_stop_fault_original_archive(evidence_dir, actual_native)
             report["classification"] = "U20_STOP_FAULT_CAPTURED_UNAUDITED"
             report["fault_node_exit_confirmed"] = True
         else:
