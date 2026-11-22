@@ -83,6 +83,8 @@ class _Job:
     future: Future[ProviderDecision | ProviderExpression] | None = None
     terminal_slot_idle: bool = False
     result_adopted: bool = False
+    question_adoption_state: str = "unused"
+    question_adoption_binding: tuple | None = None
 
 
 def _request_sha256(
