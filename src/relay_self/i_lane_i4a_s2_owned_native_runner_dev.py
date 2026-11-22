@@ -10,6 +10,8 @@ operator DEV opt-in and a live, bounded bridge-owned MineflayerProcessSession.
 from __future__ import annotations
 
 import math
+import os
+import stat
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -45,6 +47,43 @@ class I4AS2OwnedNativeHold(RuntimeError):
     """Original S2 / WAL / Native is not qualified for Q4 DEV movement."""
 
 
+def require_i4a_s2_owned_native_source_audit(
+    session: MineflayerProcessSession, path: Path,
+) -> None:
+    """Confirm the SINGLE original raw stdout capture spans all Q4 Actions.
+
+    The parent isolated-World runner starts this capture once before first
+    S2 Action and freezes it after the *second* Action (or emergency abort).
+    Refuse missing/symlink/swapped files and detached child FD. No data from
+    a caller-supplied JSON/receipt is sufficient for this check.
+    """
+    if (
+        type(session) is not MineflayerProcessSession
+        or type(path) is not Path or not path.is_absolute()
+        or path.is_symlink() or not path.is_file()
+        or not path.parent.is_dir() or path.parent.is_symlink()
+        or session._raw_source_audit_finished
+        or type(session._raw_source_audit_fd) is not int
+    ):
+        raise I4AS2OwnedNativeHold("one original active Native stdout audit required")
+    try:
+        descriptor = os.fstat(session._raw_source_audit_fd)
+        original = path.stat(follow_symlinks=False)
+    except (OSError, ValueError) as exc:
+        raise I4AS2OwnedNativeHold("original Native stdout file descriptor lost") from exc
+    if (
+        not stat.S_ISREG(descriptor.st_mode)
+        or descriptor.st_dev != original.st_dev
+        or descriptor.st_ino != original.st_ino
+        or descriptor.st_nlink != 1
+        or original.st_nlink != 1
+        or descriptor.st_mode & 0o777 != 0o600
+    ):
+        raise I4AS2OwnedNativeHold(
+            "Native stdout audit file swapped or no longer exclusive"
+        )
+
+
 async def issue_i4a_s2_place_on_original_owned_native_dev(
     *,
     bridge: OwnedResidentPhysicalBridge,
@@ -64,12 +103,13 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
 ) -> Stage27PlaceMoveReceipt:
     """Run exactly one original S2 PLACE under the existing physical issuer.
 
-    The explicit native_stdout_path is an exclusive original Native JSONL
-    capture. Its readback alone is not an authenticated Paper source. The
-    caller is responsible for separately preserving original Paper events,
-    host stdin and process exit, and must obtain an independent Q audit before
-    claiming real Q4 World pass. Any exception after work creation is handled
-    by the original bridge's Q4 stop/owned-process termination path.
+    The parent World harness MUST start one exclusive original Native stdout
+    audit before the first Action and keep that SAME capture active through
+    both Q4 Actions; this runner checks its actual OS file descriptor.
+    The harness freezes/fsyncs the audit after both Actions or an abort.
+    Original Native output alone cannot authenticate Paper source. Native
+    stdin/Paper/process exit/manifest remain caller-owned evidence tasks.
+    Any exception after work creation enters original owned abort.
     """
     if (
         not isinstance(bridge, OwnedResidentPhysicalBridge)
@@ -145,15 +185,9 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
     except (AttributeError, RuntimeError, ValueError) as exc:
         raise I4AS2OwnedNativeHold("original live World/Native state unqualified") from exc
 
-    if not isinstance(native_stdout_path, Path):
-        raise I4AS2OwnedNativeHold("explicit new Native JSONL evidence path required")
-    if (
-        not native_stdout_path.is_absolute()
-        or native_stdout_path.is_symlink()
-        or not native_stdout_path.parent.is_dir()
-        or native_stdout_path.parent.is_symlink()
-    ):
-        raise I4AS2OwnedNativeHold("fresh original Native evidence directory required")
+    require_i4a_s2_owned_native_source_audit(
+        session, native_stdout_path,
+    )
 
     async def original_issue(motor: Q4DevMotorBoundary) -> Stage27PlaceMoveReceipt:
         with ExitStack() as retained_lease:
@@ -269,16 +303,12 @@ async def issue_i4a_s2_place_on_original_owned_native_dev(
                 motor_boundary=motor,
             )
 
-    # Source custody starts before ANY original S2 Native effects, never
-    # claims custody of earlier S1 or independently trusted Paper observations.
-    session.start_raw_source_audit(native_stdout_path)
-    try:
-        return await run_q4_dev_place_with_motor_deadline(
-            bridge=bridge, self_id=self_id, action_id=candidate.action_id,
-            issue_original=original_issue,
-            operator_permit=operator_permit,
-        )
-    finally:
-        # Even a failed original issue retains raw Native stdout bytes.
-        # If this fsync fails, the result is HOLD, never a certified PASS.
-        session.finish_raw_source_audit()
+    # The OUTER same-World harness owns open/finalize of this single stdout
+    # transcript; do NOT end it after Action 1, since Action 2 must reuse
+    # this exact original Node/Paper session. If the Action aborts, the outer
+    # harness must finally close/fsync + hash this unchanged raw capture.
+    return await run_q4_dev_place_with_motor_deadline(
+        bridge=bridge, self_id=self_id, action_id=candidate.action_id,
+        issue_original=original_issue,
+        operator_permit=operator_permit,
+    )
