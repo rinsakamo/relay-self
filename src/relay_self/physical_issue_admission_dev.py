@@ -801,7 +801,8 @@ class PhysicalIssueAdmission:
 
     def rearm_original_place_after_q4_owned_native_dev(
         self, *, bridge: Any, self_id: str, evidence: Any,
-        native_stdout_path: Path,
+        native_stdout_path: Path, native_receipt: Any = None,
+        paper_window: Any = None,
     ) -> str:
         """Source-bound Q4 DEV adapter to the SAME original physical rearm.
 
@@ -815,6 +816,14 @@ class PhysicalIssueAdmission:
         from relay_self.owned_resident_physical_bridge_dev import (
             OwnedResidentPhysicalBridge,
         )
+        from experiments.cognitive_physical_place_move_issue_dev import (
+            Stage27PlaceMoveReceipt,
+        )
+        from relay_self.q4_original_paper_position_dev import (
+            Q4OriginalPaperHold,
+            Q4OriginalPaperPositionWindow,
+            verify_original_q4_paper_position_window,
+        )
         from relay_self.q4_place_repeat_source_dev import (
             Q4PlaceRepeatHold,
             Q4PlaceTerminalReadback,
@@ -827,6 +836,8 @@ class PhysicalIssueAdmission:
             or type(self_id) is not str
             or not isinstance(evidence, Q4PlaceTerminalReadback)
             or not isinstance(native_stdout_path, Path)
+            or not isinstance(native_receipt, Stage27PlaceMoveReceipt)
+            or not isinstance(paper_window, Q4OriginalPaperPositionWindow)
             or bridge.cognitive_work is None
         ):
             raise PhysicalIssueFenceError("real Original B Q4 source adapter required")
@@ -848,15 +859,24 @@ class PhysicalIssueAdmission:
                     raise PhysicalIssueFenceError(
                         "original B Owner, Native and Paper source disagree"
                     )
-                # Read the log tied to the existing explicitly owned Paper
-                # subprocess, not an arbitrary server.log or caller receipt.
-                paper_raw = bridge.paper.read_owned_log(
-                    bridge.paper.owned_session_id,
-                )
-                if not paper_raw or len(paper_raw) > 32 * 1024 * 1024:
+                # Paper position/ticks are reparsed from the existing
+                # owned Popen log prefix, not caller-authored tick refs.
+                if (
+                    evidence.look != native_receipt.look_ack
+                    or evidence.start != native_receipt.start_ack
+                    or evidence.stop != native_receipt.stop_ack
+                    or evidence.initial_stop != native_receipt.initial_stop_probe
+                    or evidence.first_stable != native_receipt.first_stable_probe
+                    or evidence.settled != native_receipt.settled_probe
+                    or (evidence.paper_stop, evidence.paper_first,
+                        evidence.paper_settled) != paper_window.receipts
+                ):
                     raise PhysicalIssueFenceError(
-                        "owned Paper process source unavailable or unbounded"
+                        "original Native/Paper typed and captured sources differ"
                     )
+                verify_original_q4_paper_position_window(
+                    bridge, self_id, native_receipt, paper_window,
+                )
                 verify_q4_owned_native_source_for_rearm(
                     session=session, native_stdout_path=native_stdout_path,
                     evidence=evidence,
@@ -869,7 +889,8 @@ class PhysicalIssueAdmission:
                 )
         except PhysicalIssueFenceError:
             raise
-        except (Q4PlaceRepeatHold, AttributeError, KeyError, ValueError,
+        except (Q4PlaceRepeatHold, Q4OriginalPaperHold,
+                AttributeError, KeyError, ValueError,
                 TypeError, OSError, RuntimeError) as exc:
             raise PhysicalIssueFenceError(
                 "Q4 original Native/Paper raw source unverified; no rearm"
