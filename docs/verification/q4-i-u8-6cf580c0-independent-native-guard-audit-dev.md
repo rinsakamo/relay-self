@@ -3,7 +3,7 @@
 **2026-11-22 / Q independent branch / read-only adversarial review.**
 
 - Unified I Draft #1124 exact immutable U8 HEAD: `6cf580c056a35b55750de533223350c05b0bdc22` (confirmed current branch identical at audit).
-- Q3 prior I U7: `38c989472dcdf6ed5f75740f27eb7d91b9aa7920`. GitHub compare: 20 forward commits, 10 changed files (five new files: native guard, native guard test, Q4 host abort, two Python tests, plus Q4 docs = six new; four modified adapter/bridge/manifest paths; inspect compare for exact list); original B WAL/Owner not directly edited.
+- Q3 prior I U7: `38c989472dcdf6ed5f75740f27eb7d91b9aa7920`. GitHub compare: 20 forward commits, 10 changed files: six additions (native guard/test, host abort, two Python tests, one doc) and four modified files (Native bridge, package manifest, process session, original owned bridge); original B WAL/Owner not directly edited.
 - Original native guard **Git blob SHA** `27bdd70639b205a03079bbd03b5950109bdb12f1`, path `adapters/mineflayer/bounded_place_guard.mjs`.
 - U8 exact-head Actions [#45003534215](https://github.com/rinsakamo/relay-self/actions/runs/45003534215) completed SUCCESS; independently enumerated 5/5 job conclusions: pytest, lint, repository-contracts, mineflayer-adapter, paper-tick-witness. PR reports 2,887 scoped pytest PASS; **count is not independently read from job log in this Q pass**. The I positive tests are synthetic CPU/Node, not World.
 - Q4 requested smaller DEV success criterion: measured real move, same-session Native START/STOP receipt, 8+8 post-stop tick stability, fresh second action, and a separate deliberate failure test proving neutralization/termination with no replay. Q does not request full historical cryptographic source custody as a precondition of this narrow DEV.
@@ -17,12 +17,12 @@
 
 ## Reproducible, pinned Native fail-open failures (Q4_BLOCKER)
 
-The independently authored, **read-only** [Q hostile audit harness](../..//experiments/q_lane_q4_native_fail_closed_audit_dev.mjs) accepts an explicit source file and Git blob SHA; it never launches Minecraft/Native or issues actions.
+The independently authored, **read-only** [Q hostile audit harness](https://github.com/rinsakamo/relay-self/blob/dev/q-lane-q0-q1-independent-evidence-20261122/experiments/q_lane_q4_native_fail_closed_audit_dev.mjs) accepts an explicit source file and Git blob SHA; it never launches Minecraft/Native or issues actions.
 
-Command from a checkout of the I HEAD containing the exact guard:
+Command using the Q harness and an I checkout containing the exact guard:
 
 ```bash
-node experiments/q_lane_q4_native_fail_closed_audit_dev.mjs \
+node /path/to/q-checkout/experiments/q_lane_q4_native_fail_closed_audit_dev.mjs \
   /path/to/i-checkout/adapters/mineflayer/bounded_place_guard.mjs \
   27bdd70639b205a03079bbd03b5950109bdb12f1
 ```
