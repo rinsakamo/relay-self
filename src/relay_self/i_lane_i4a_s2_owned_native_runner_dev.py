@@ -15,6 +15,7 @@ import os
 import stat
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -60,7 +61,7 @@ from relay_self.p0d_stage27_owned_move_intent_dev import Stage27OwnedMoveIntent
 from relay_self.p0d_stage27c_l0_place_proposal_dev import Stage27L0PlaceProposal
 from relay_self.p0d_stage27h_bounded_l0_move_dev import Stage27hBoundedMoveLoop
 from relay_self.physical_action_journal import PhysicalActionJournal
-from relay_self.physical_action_port import PhysicalCapability
+from relay_self.physical_action_port import PhysicalActionBinding, PhysicalCapability
 from relay_self.provenance import Provenance
 from relay_self.q4_place_abort_dev import (
     Q4DevMotorBoundary,
@@ -396,8 +397,9 @@ async def continue_original_s1_to_s2_owned_native_dev(
     paper_settled: PaperTickReceipt,
     native_stdout_path: Path,
     evidence_dir: Path,
-    propose_grant: PhysicalDevGrant,
-    issue_grant: PhysicalDevGrant,
+    grant_for_action: Callable[
+        [PhysicalActionBinding], tuple[PhysicalDevGrant, PhysicalDevGrant],
+    ],
     operator_permit: Q4DevOperatorPermit,
     provenance: Provenance,
     s1_forward_ms: float,
@@ -425,8 +427,7 @@ async def continue_original_s1_to_s2_owned_native_dev(
         or not isinstance(native_stdout_path, Path)
         or not isinstance(evidence_dir, Path)
         or not evidence_dir.is_absolute() or not evidence_dir.is_dir()
-        or not isinstance(propose_grant, PhysicalDevGrant)
-        or not isinstance(issue_grant, PhysicalDevGrant)
+        or not callable(grant_for_action)
         or not isinstance(operator_permit, Q4DevOperatorPermit)
         or not isinstance(provenance, Provenance)
         or type(s1_forward_ms) not in (int, float)
@@ -509,13 +510,20 @@ async def continue_original_s1_to_s2_owned_native_dev(
         capability=PhysicalCapability("MOVE", 1, "locomotion", "DESTINATION", True),
         at_ns=time.monotonic_ns(), provenance=provenance,
     )
+    grants = grant_for_action(candidate.proposal.binding)
+    if (
+        type(grants) is not tuple or len(grants) != 2
+        or not all(isinstance(g, PhysicalDevGrant) for g in grants)
+    ):
+        raise I4AS2OwnedNativeHold("original S2 action-specific grant pair missing")
     s2_receipt = await issue_i4a_s2_place_on_original_owned_native_dev(
         bridge=bridge, candidate=candidate, previous_probe=first,
-        propose_grant=propose_grant, issue_grant=issue_grant,
+        propose_grant=grants[0], issue_grant=grants[1],
         operator_permit=operator_permit, native_stdout_path=native_stdout_path,
         at_ns=time.monotonic_ns(), provenance=provenance,
         grant_real_world=True,
         acknowledge_dev_unverified_principal=True,
-        pulse_seconds=0.15, settlement_probe_limit=60,
+        evidence_timeout_s=12.0, pulse_seconds=0.15,
+        settlement_probe_limit=60,
     )
     return capture, s2_receipt
