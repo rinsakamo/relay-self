@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
@@ -22,7 +21,9 @@ from relay_self.i_lane_i2g_real_origin_schema_dev import (
     register_i2g_born_original_empty_schemas,
 )
 from relay_self.persistent_cognition import (
-    IdentitySpecification, PersistentCognition, load_persistent_cognition,
+    IdentitySpecification,
+    PersistentCognition,
+    load_persistent_cognition,
     save_persistent_cognition,
 )
 from relay_self.provenance import Provenance
