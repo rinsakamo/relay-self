@@ -338,6 +338,21 @@ class PhysicalActionJournal:
     def records(self) -> tuple[dict[str, Any], ...]:
         return tuple(dict(x) for x in self._body["actions"])
 
+    def certified_prefix_digest(self, count: int) -> str:
+        """Revalidate a historical prefix against the current canonical WAL.
+
+        A digest is not custody authentication: only comparison with a
+        separately retained, earlier ORIGINAL-Owner witness detects a changed
+        prefix after the full envelope checksum has been recomputed. This is
+        read-only, never an issuer, WAL migration or physical permission.
+        """
+        if type(count) is not int or not 0 < count <= len(self._body["actions"]):
+            raise PhysicalJournalError("nonempty canonical WAL prefix required")
+        prefix = _validate({
+            **self._body, "actions": self._body["actions"][:count],
+        })
+        return _digest(prefix)
+
     @property
     def unresolved(self) -> bool:
         return bool(
