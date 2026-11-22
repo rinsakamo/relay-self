@@ -17,10 +17,7 @@ from experiments.q_lane_git_anchor_custody_dev import (
     QGitCustodyHold,
     inspect_git_pre_s2_custody,
 )
-from experiments.q_lane_s1_boundary_audit_dev import (
-    QS1BoundaryHold,
-    verify_s1_s2_anchor,
-)
+from experiments.q_lane_s1_boundary_audit_dev import verify_s1_s2_anchor
 
 
 class QCoupledCustodyHold(ValueError):
