@@ -32,6 +32,10 @@ def test_i2_original_a_sense_cannot_outlive_a_native_receive_continuity(
     initial_files = _files(bridge)
     _inject(bridge, world, "A")
     b_sense = _inject(bridge, world, "B")
+    # This synthetic bridge is built without __init__; normal original
+    # runtime initializes these under the resident Owner during login.
+    bridge._i1_correlated_sense = {}
+    bridge._i1_correlated_received_at = {}
     matched, _ = _matched_with_passive_after(bridge, world, "A", 1)
     assert bridge.current_i1_correlated_sense("A") is matched
     assert bridge.current_sense("B") is b_sense
