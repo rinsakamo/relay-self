@@ -8,7 +8,6 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
@@ -18,7 +17,6 @@ from experiments.i_lane_i2e_independent_dual_model_audit_dev import (
     independently_audit_i2e_model_bundle,
 )
 from relay_self.persistent_cognition import save_persistent_cognition
-from relay_self.relay_engine import CognitionMode
 from test_i_lane_i2_original_exploration_handoff_dev import _args
 from test_i_lane_i2b_original_shared_l1_dev import _fixture
 
