@@ -89,6 +89,11 @@ def audit_q1h_original_move_place_git_custody(
             "expected_s2_action_id": expected_s2_action_id,
         }
         before = audit_q1g_original_move_place_wal(**local_scope)
+        if (
+            before["s1_intent_id"] != anchor["s1_intent_id"]
+            or before["s1_skill_execution_id"] != anchor["s1_skill_execution_id"]
+        ):
+            raise QOriginalMovePlaceGitHold("S1 Intent/Skill do not match sealed anchor")
         checkpoint_raw = _raw_file(evidence_dir, s1_checkpoint_file)
         if _sha(checkpoint_raw) != anchor["s1_checkpoint_sha256"]:
             raise QOriginalMovePlaceGitHold("original S1 checkpoint bytes differ from anchor")
