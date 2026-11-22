@@ -6,7 +6,7 @@ source authenticity or native ACK. Host must use the ORIGINAL owned bridge.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Awaitable, Callable, TypeVar
 
 Q4_MAX_FORWARD_MS = 800
@@ -18,6 +18,26 @@ _T = TypeVar("_T")
 
 class Q4PlaceAbortHold(RuntimeError):
     """The original process was not proved disconnected after a dirty cut."""
+
+
+@dataclass(slots=True)
+class Q4DevOperatorPermit:
+    """One-use LOCAL DEV intent, not an authenticated operator identity."""
+
+    self_id: str
+    native_session_id: str
+    _consumed: bool = field(default=False, init=False, repr=False)
+
+    def consume(self, *, self_id: str, native_session_id: str) -> None:
+        if (
+            self._consumed or type(self.self_id) is not str
+            or type(self.native_session_id) is not str
+            or not self.self_id or not self.native_session_id
+            or self.self_id != self_id
+            or self.native_session_id != native_session_id
+        ):
+            raise Q4PlaceAbortHold("missing, reused or foreign Q4 DEV operator permit")
+        self._consumed = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,7 +125,7 @@ async def abort_original_place_after_start(
 async def run_q4_dev_place_with_watchdog(
     *, bridge: object, self_id: str, stop_action_id: str,
     issue_original: Callable[[], Awaitable[_T]],
-    operator_one_shot_opt_in: bool,
+    operator_permit: Q4DevOperatorPermit,
     watchdog_s: float = Q4_MAX_HOST_WATCHDOG_S,
 ) -> _T:
     """DEV orchestrator wrapper around the EXISTING original Skill issuer.
@@ -115,12 +135,26 @@ async def run_q4_dev_place_with_watchdog(
     Passing this wrapper alone can never authorize a real physical issue.
     """
     if (
-        operator_one_shot_opt_in is not True
+        not isinstance(operator_permit, Q4DevOperatorPermit)
         or type(watchdog_s) not in (int, float)
         or not 0 < watchdog_s <= Q4_MAX_HOST_WATCHDOG_S
         or not callable(issue_original)
     ):
         raise Q4PlaceAbortHold("explicit one-time DEV opt-in and bounded run required")
+    session = bridge.sessions.get(self_id)
+    if (
+        session is None
+        or getattr(session, "bounded_place_dev_mode", False) is not True
+        or sum(
+            x.process_returncode is None for x in bridge.sessions.values()
+        ) != 1
+    ):
+        raise Q4PlaceAbortHold(
+            "isolated single Self with explicitly bounded Native launch required"
+        )
+    operator_permit.consume(
+        self_id=self_id, native_session_id=session.started.session_id,
+    )
     try:
         return await asyncio.wait_for(issue_original(), timeout=watchdog_s)
     except BaseException:
