@@ -329,6 +329,123 @@ class MineflayerObservation(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerTerrainCell:
+    """One loaded BlockState's collision shapes, or explicit UNKNOWN."""
+
+    position: tuple[int, int, int]
+    name: str | None
+    shapes: tuple[tuple[float, float, float, float, float, float], ...] | None
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.position, tuple) or len(self.position) != 3
+            or any(type(v) is not int for v in self.position)
+        ):
+            raise MineflayerAdapterProtocolError("invalid SENSE cell coordinate")
+        if (self.name is None) != (self.shapes is None):
+            raise MineflayerAdapterProtocolError("unknown SENSE cells must have null name/shapes")
+        if self.name is None:
+            return
+        _require_text("SENSE block name", self.name)
+        if not isinstance(self.shapes, tuple) or len(self.shapes) > 16:
+            raise MineflayerAdapterProtocolError("invalid SENSE collision shape count")
+        x, y, z = self.position
+        for box in self.shapes:
+            if (
+                not isinstance(box, tuple) or len(box) != 6
+                or any(type(v) not in (int, float) or not math.isfinite(v) for v in box)
+                or not (x - 1 <= box[0] < box[3] <= x + 2)
+                or not (y - 1 <= box[1] < box[4] <= y + 2)
+                or not (z - 1 <= box[2] < box[5] <= z + 2)
+            ):
+                raise MineflayerAdapterProtocolError("invalid SENSE collision box")
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerTerrainSnapshot:
+    """Finite native sensor region, not a Paper/World generation attestation."""
+
+    position: MineflayerPosition
+    dimension: str | None
+    body_pose: str | None
+    body_aabb: tuple[float, float, float, float, float, float] | None
+    sample_monotonic_ns: str
+    cells: tuple[MineflayerTerrainCell, ...]
+    known_cells: int
+    complete: bool
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.position, MineflayerPosition):
+            raise MineflayerAdapterProtocolError("SENSE origin required")
+        for name in ("dimension", "body_pose"):
+            value = getattr(self, name)
+            if value is not None:
+                _require_text(name, value)
+        if (
+            type(self.sample_monotonic_ns) is not str
+            or not 1 <= len(self.sample_monotonic_ns) <= 24
+            or not self.sample_monotonic_ns.isascii()
+            or not self.sample_monotonic_ns.isdecimal()
+        ):
+            raise MineflayerAdapterProtocolError("invalid SENSE local clock")
+        if self.body_aabb is not None:
+            # The shape cannot be treated as this body's current envelope
+            # without the simultaneous Native pose. Never infer standing.
+            if self.body_pose is None:
+                raise MineflayerAdapterProtocolError(
+                    "SENSE body AABB requires a simultaneously observed pose"
+                )
+            box = self.body_aabb
+            x, y, z = self.position.x, self.position.y, self.position.z
+            if (
+                not isinstance(box, tuple) or len(box) != 6
+                or any(type(v) not in (int, float) or not math.isfinite(v) for v in box)
+                or not (box[0] < x < box[3] and box[2] < z < box[5])
+                or box[1] != y or not (0 < box[3] - box[0] <= 4)
+                or not (0 < box[5] - box[2] <= 4)
+                or not (0 < box[4] - box[1] <= 4)
+            ):
+                raise MineflayerAdapterProtocolError("invalid SENSE body AABB")
+        if not isinstance(self.cells, tuple) or len(self.cells) != 100:
+            raise MineflayerAdapterProtocolError("SENSE expects exactly 100 bounded cells")
+        center = (
+            math.floor(self.position.x),
+            math.floor(self.position.y),
+            math.floor(self.position.z),
+        )
+        expected = {
+            (center[0] + dx, center[1] + dy, center[2] + dz)
+            for dx in range(-2, 3)
+            for dz in range(-2, 3)
+            for dy in range(-1, 3)
+        }
+        if any(not isinstance(cell, MineflayerTerrainCell) for cell in self.cells):
+            raise MineflayerAdapterProtocolError("invalid SENSE cell")
+        if {cell.position for cell in self.cells} != expected:
+            raise MineflayerAdapterProtocolError("SENSE cell coverage mismatch")
+        known = sum(cell.shapes is not None for cell in self.cells)
+        if (
+            type(self.known_cells) is not int or self.known_cells != known
+            or type(self.complete) is not bool or self.complete != (known == 100)
+        ):
+            raise MineflayerAdapterProtocolError("SENSE coverage claim mismatch")
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerTerrainObservation(MineflayerMessage):
+    """Correlated original-bridge terrain response, no physical Action effect."""
+
+    request_id: str
+    terrain: MineflayerTerrainSnapshot
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        _require_probe_request_id(self.request_id)
+        if not isinstance(self.terrain, MineflayerTerrainSnapshot):
+            raise MineflayerAdapterProtocolError("invalid SENSE terrain observation")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerEntityHurt(MineflayerMessage):
     entity_id: int
     source_entity_id: int | None
@@ -413,6 +530,7 @@ class MineflayerShutdownAck(MineflayerMessage):
 MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
+    MineflayerTerrainObservation,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -518,6 +636,18 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
             request_id=payload.get("request_id"),
+        )
+
+    if message_type == "terrain_observation":
+        _require_exact_keys(
+            "terrain_observation", payload,
+            {"type", "session_id", "seq", "request_id", "terrain"},
+        )
+        _require_probe_request_id(payload["request_id"])
+        return MineflayerTerrainObservation(
+            session_id=session_id, seq=seq,
+            request_id=payload["request_id"],
+            terrain=_decode_sense_terrain(payload["terrain"]),
         )
 
     if message_type == "entity_hurt":
@@ -729,6 +859,12 @@ def encode_observe(request_id: str | None = None) -> str:
     return _encode_command({"type": "observe", "request_id": request_id})
 
 
+def encode_sense_terrain(request_id: str) -> str:
+    """Native read-only bounded terrain command (not physical LOOK)."""
+    _require_probe_request_id(request_id)
+    return _encode_command({"type": "sense_terrain", "request_id": request_id})
+
+
 def encode_shutdown() -> str:
     return _encode_command({"type": "shutdown"})
 
@@ -757,6 +893,56 @@ def _decode_launch_config(value: object) -> MineflayerLaunchConfig:
         port=_decoded_port(payload["port"]),
         username=_decoded_text("username", payload["username"]),
         version=version,
+    )
+
+
+def _decode_sense_terrain(value: object) -> MineflayerTerrainSnapshot:
+    payload = _require_mapping("terrain", value)
+    _require_exact_keys("terrain", payload, {
+        "source_scope", "sample_monotonic_ns", "position", "dimension",
+        "body_pose", "body_aabb", "radius", "dy_min", "dy_max",
+        "expected_cells", "known_cells", "complete", "cells",
+    })
+    if (
+        payload["source_scope"] != "mineflayer_loaded_blocks"
+        or type(payload["radius"]) is not int or payload["radius"] != 2
+        or type(payload["dy_min"]) is not int or payload["dy_min"] != -1
+        or type(payload["dy_max"]) is not int or payload["dy_max"] != 2
+        or type(payload["expected_cells"]) is not int or payload["expected_cells"] != 100
+    ):
+        raise MineflayerAdapterProtocolError("invalid SENSE source scope or bounds")
+    raw_cells = _require_list("SENSE cells", payload["cells"])
+    if len(raw_cells) != 100:
+        raise MineflayerAdapterProtocolError("unbounded SENSE cells")
+    cells = []
+    for raw in raw_cells:
+        cell = _require_mapping("SENSE cell", raw)
+        _require_exact_keys("SENSE cell", cell, {"position", "name", "shapes"})
+        pos = _require_list("SENSE cell position", cell["position"])
+        if len(pos) != 3 or any(type(v) is not int for v in pos):
+            raise MineflayerAdapterProtocolError("invalid SENSE cell position")
+        raw_shapes = cell["shapes"]
+        if raw_shapes is None:
+            shapes = None
+        else:
+            shape_list = _require_list("SENSE shapes", raw_shapes)
+            if len(shape_list) > 16:
+                raise MineflayerAdapterProtocolError("too many SENSE shapes")
+            shapes = tuple(tuple(_require_list("SENSE box", b)) for b in shape_list)
+        cells.append(MineflayerTerrainCell(
+            position=tuple(pos), name=cell["name"], shapes=shapes,
+        ))
+    raw_body = payload["body_aabb"]
+    if raw_body is None:
+        body = None
+    else:
+        body = tuple(_require_list("SENSE body AABB", raw_body))
+    return MineflayerTerrainSnapshot(
+        position=_decode_position("SENSE origin", payload["position"]),
+        dimension=payload["dimension"], body_pose=payload["body_pose"],
+        body_aabb=body, sample_monotonic_ns=payload["sample_monotonic_ns"],
+        cells=tuple(cells), known_cells=payload["known_cells"],
+        complete=payload["complete"],
     )
 
 
