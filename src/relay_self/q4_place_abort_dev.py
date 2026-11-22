@@ -198,6 +198,8 @@ class Q4DevMotorBoundary:
         self._runner: asyncio.Task | None = None
         self._start_seq: int | None = None
         self._stop_seq: int | None = None
+        self._start_ack_at: float | None = None
+        self._stop_send_at: float | None = None
 
     def bind_runner(self, runner: asyncio.Task) -> None:
         if self._runner is not None or not isinstance(runner, asyncio.Task):
@@ -231,6 +233,33 @@ class Q4DevMotorBoundary:
         ):
             raise Q4PlaceAbortHold("Q4 original START ACK missing or invalid")
         self._start_seq = ack.seq
+        self._start_ack_at = asyncio.get_running_loop().time()
+
+    def before_native_stop(self, *, action_id: str, session_id: str) -> None:
+        """Record bounded forward-on time before original STOP submission."""
+        self._require_runner()
+        if (
+            self._start_ack_at is None or self._stop_send_at is not None
+            or action_id != self.action_id + "-stop"
+            or session_id != self.session_id or self.stopped.is_set()
+        ):
+            raise Q4PlaceAbortHold("Q4 original STOP attempt phase unqualified")
+        self._stop_send_at = asyncio.get_running_loop().time()
+
+    def original_motor_times_ms(self) -> tuple[float, float]:
+        """From the live original motor task, not fabricated typed ACK timing."""
+        if (
+            self.started_at is None or self._start_ack_at is None
+            or self._stop_send_at is None or self.stopped_at is None
+            or not self.stopped.is_set()
+            or not self.started_at <= self._start_ack_at
+            <= self._stop_send_at <= self.stopped_at
+        ):
+            raise Q4PlaceAbortHold("Q4 original START/STOP monotonic source missing")
+        return (
+            (self._stop_send_at - self._start_ack_at) * 1000,
+            (self.stopped_at - self.started_at) * 1000,
+        )
 
     def accept_stop_ack(self, ack: object) -> None:
         self._require_runner()
