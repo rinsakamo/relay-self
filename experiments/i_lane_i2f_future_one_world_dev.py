@@ -59,11 +59,13 @@ async def run_i2f_one_original_world(
     timeout_s: float = 180, presence_timeout_s: float = 12,
     model_wait_s: float = 60,
     model_post_grant: bool = False,
+    real_world_dev_grant: bool = False,
 ) -> Path:
     """Exactly one future v3 World run; model chooses, NOT runner flags."""
     if (
         not isinstance(pins, I2fFutureSourcePins)
         or model_post_grant is not True
+        or real_world_dev_grant is not True
         or not isinstance(gate, Stage24gModelGateReceipt)
         or gate.model_alias != model_alias
         or gate.llama_pid <= 1 or gate.slot_count != 1 or gate.slot_id != 0
@@ -183,6 +185,7 @@ async def run_i2f_one_original_world(
         on_reconnected=on_reconnected,
         i1_original_cpu_sense=True,
         future_pins=pins,
+        future_world_grant=True,
     )
 
 
@@ -266,6 +269,7 @@ def main() -> int:
             presence_timeout_s=args.presence_timeout_s,
             model_wait_s=args.model_wait_s,
             model_post_grant=True,
+            real_world_dev_grant=True,
         ))
         print("I2F_CAPTURED_INDEPENDENT_AUDIT_PENDING=" + str(result), flush=True)
         return 0
