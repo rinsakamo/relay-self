@@ -666,3 +666,41 @@ def test_u17_stdin_capture_does_not_record_denied_or_foreign_commands(
         session.finish_raw_source_audit()
 
     asyncio.run(scenario())
+
+
+def test_u17_stdout_source_contains_exact_startup_prefix_and_continuous_probes(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """Independent decoder can replay original seq=0 after late audit start."""
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line(), observation_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        # This actual observation precedes opening the raw stdout audit.
+        await session.receive()
+        path = tmp_path / "complete-original-stdout.jsonl"
+        session.start_raw_source_audit(path)
+        assert path.read_bytes() == started_line() + observation_line()
+        session.finish_raw_source_audit()
+        decoder = MineflayerStreamDecoder()
+        decoded = [
+            decoder.decode(raw.decode("utf-8"))
+            for raw in path.read_bytes().splitlines()
+        ]
+        assert decoder.session_id == session.started.session_id
+        assert [item.seq for item in decoded] == [0, 1]
+        with pytest.raises(Exception, match="already used"):
+            session.start_raw_source_audit(tmp_path / "replayed.jsonl")
+
+    asyncio.run(scenario())
