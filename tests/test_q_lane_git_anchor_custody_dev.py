@@ -227,3 +227,106 @@ def test_q1c_overlarge_anchor_object_is_not_loaded(tmp_path):
     kwargs["post_s2_evidence_commit"] = _commit(root, "later S2")
     with pytest.raises(QGitCustodyHold, match="oversized"):
         _verify(root, kwargs)
+
+
+def test_q1d_anchor_was_committed_earlier_than_declared_capture(tmp_path):
+    """Earlier anchor byte history must not be relabeled as a later S1 cut."""
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    _write(root, ANCHOR, b'{"self":"A","s1":"terminal","world":"fixture"}\n')
+    _commit(root, "first actual anchor")
+    _write(root, "middle.txt", b"unrelated git activity\n")
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "later falsely claimed S1 cut")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2 later")
+    with pytest.raises(QGitCustodyHold, match="anchor existed before selected"):
+        _verify(root, kwargs)
+
+
+def test_q1d_s2_appeared_and_disappeared_before_declared_s1(tmp_path):
+    """Root -> pre history must exclude ANY earlier S2 presence."""
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    _commit(root, "earlier S2, attacker would like to hide this")
+    (root / S2).unlink()
+    _commit(root, "delete earlier S2")
+    _write(root, ANCHOR, b'{"self":"A","s1":"terminal","world":"fixture"}\n')
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "later S1 anchor")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2 reintroduced")
+    with pytest.raises(QGitCustodyHold, match="S2 evidence appeared before S1"):
+        _verify(root, kwargs)
+
+
+def test_q1d_s2_appeared_and_disappeared_between_pre_and_post(tmp_path):
+    """Checking only the immediately preceding commit misses an earlier S2."""
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["pre_s2_anchor_commit"])
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    _commit(root, "previously committed S2 before declared post")
+    (root / S2).unlink()
+    _commit(root, "hide S2 evidence in intermediate commit")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "re-introduced late S2")
+    with pytest.raises(QGitCustodyHold, match="S2 evidence existed before final"):
+        _verify(root, kwargs)
+
+
+def test_q1d_merge_history_before_anchor_cannot_be_laundered(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    original_root = kwargs["trusted_root_sha"]
+    _cmd(root, "checkout", "-q", "-b", "branch-with-untrusted-history", original_root)
+    _write(root, "alien.txt", b"branch A\n")
+    _commit(root, "branch A")
+    _cmd(root, "checkout", "-q", "-b", "root-to-pre", original_root)
+    _write(root, "local.txt", b"branch B\n")
+    _commit(root, "branch B")
+    subprocess.run(
+        ["git", "-C", str(root), "merge", "--no-ff", "-m", "merge B and A",
+         "branch-with-untrusted-history"],
+        check=True, capture_output=True,
+    )
+    _write(root, ANCHOR, b'{"self":"A","s1":"terminal","world":"fixture"}\n')
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "S1 after multi-parent history")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "later S2")
+    with pytest.raises(QGitCustodyHold, match="linear non-merge"):
+        _verify(root, kwargs)
+
+
+def test_q1d_pre_anchor_history_is_bounded(tmp_path, monkeypatch):
+    from experiments import q_lane_git_anchor_custody_dev as custody
+
+    root, kwargs = _fixture(tmp_path)
+    _cmd(root, "reset", "--hard", kwargs["trusted_root_sha"])
+    _write(root, "first.txt", b"intermediate\n")
+    _commit(root, "root-to-pre intermediate")
+    _write(root, ANCHOR, b'{"self":"A","s1":"terminal","world":"fixture"}\n')
+    kwargs["pre_s2_anchor_commit"] = _commit(root, "S1 anchor")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2")
+    monkeypatch.setattr(custody, "_MAX_COMMITS", 1)
+    with pytest.raises(QGitCustodyHold, match="bounded linear source custody"):
+        _verify(root, kwargs)
+
+
+def test_q1d_head_ref_changes_during_inspection_fail_closed(tmp_path, monkeypatch):
+    from experiments import q_lane_git_anchor_custody_dev as custody
+
+    root, kwargs = _fixture(tmp_path)
+    original_run = custody._run
+    observations = 0
+
+    def reroute_head(*args):
+        nonlocal observations
+        if len(args) >= 3 and args[1:] == ("rev-parse", "HEAD"):
+            observations += 1
+            if observations == 2:
+                return b"f" * 40 + b"\n"
+        return original_run(*args)
+
+    monkeypatch.setattr(custody, "_run", reroute_head)
+    with pytest.raises(QGitCustodyHold, match="HEAD changed during"):
+        _verify(root, kwargs)
+    assert observations == 2
