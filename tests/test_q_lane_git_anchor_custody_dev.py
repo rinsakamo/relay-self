@@ -374,3 +374,63 @@ def test_q1d_transient_renamed_s2_blob_after_anchor_is_rejected(tmp_path):
     kwargs["post_s2_evidence_commit"] = _commit(root, "S2 at final asserted path")
     with pytest.raises(QGitCustodyHold, match="S2 evidence existed before final"):
         _verify(root, kwargs)
+
+
+def test_q1k_replacement_ref_cannot_launder_git_parent_history(tmp_path, monkeypatch):
+    """Replacing an original merge parent with an invented linear history
+    cannot cause the Q verifier to admit the forged replacement graph."""
+    root, kwargs = _fixture(tmp_path)
+    pre = kwargs["pre_s2_anchor_commit"]
+    _cmd(root, "checkout", "-q", "-b", "q1k-side", pre)
+    _write(root, "side.txt", b"side history\n")
+    _commit(root, "side")
+    _cmd(root, "checkout", "-q", "-b", "q1k-main", pre)
+    _write(root, "main.txt", b"main history\n")
+    _commit(root, "main")
+    subprocess.run(
+        ["git", "-C", str(root), "merge", "--no-ff", "-m", "merge", "q1k-side"],
+        check=True, capture_output=True,
+    )
+    merge = _cmd(root, "rev-parse", "HEAD")
+    _write(root, S2, b'{"self":"A","s2":"new action","world":"fixture"}\n')
+    kwargs["post_s2_evidence_commit"] = _commit(root, "S2 after real merge")
+    # An attacker can create a refs/replace object that conceals the merge
+    # and makes ordinary rev-list report a single parent for its same SHA.
+    _cmd(root, "replace", "--graft", merge, pre)
+    assert len(_cmd(root, "rev-list", "--parents", "-n", "1", merge).split()) == 2
+    monkeypatch.setenv("GIT_REPLACE_REF_BASE", "refs/replace")
+    with pytest.raises(QGitCustodyHold, match="linear non-merge"):
+        _verify(root, kwargs)
+
+
+def test_q1k_legacy_info_grafts_always_hold(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    git_dir = Path(_cmd(root, "rev-parse", "--absolute-git-dir"))
+    graft = git_dir / "info" / "grafts"
+    graft.parent.mkdir(exist_ok=True)
+    graft.write_text(
+        f"{kwargs['post_s2_evidence_commit']} {kwargs['pre_s2_anchor_commit']}\n",
+    )
+    with pytest.raises(QGitCustodyHold, match="grafts"):
+        _verify(root, kwargs)
+
+
+def test_q1k_empty_graft_file_is_not_a_parent_rewrite(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    git_dir = Path(_cmd(root, "rev-parse", "--absolute-git-dir"))
+    graft = git_dir / "info" / "grafts"
+    graft.parent.mkdir(exist_ok=True)
+    graft.write_bytes(b"")
+    assert _verify(root, kwargs)["committed_ancestor_order_verified"] is True
+
+
+def test_q1k_symlinked_graft_path_hold(tmp_path):
+    root, kwargs = _fixture(tmp_path)
+    git_dir = Path(_cmd(root, "rev-parse", "--absolute-git-dir"))
+    graft = git_dir / "info" / "grafts"
+    graft.parent.mkdir(exist_ok=True)
+    target = tmp_path / "forged-grafts"
+    target.write_text("")
+    graft.symlink_to(target)
+    with pytest.raises(QGitCustodyHold, match="grafts"):
+        _verify(root, kwargs)
