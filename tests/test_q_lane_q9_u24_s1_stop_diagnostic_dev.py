@@ -1,4 +1,7 @@
-"""Q9 hostile CPU fixtures: no actual Minecraft/Node/llama or source authentication."""
+"""Q9 hostile checks: U24 failed S1 STOP source diagnostics.
+
+All test evidence is synthetic and never a real World or Native/OS witness.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -6,10 +9,7 @@ import json
 
 import pytest
 
-from experiments.q_lane_q9_u24_s1_stop_diagnostic_dev import (
-    Q9U24Hold,
-    audit_u24_failed_s1,
-)
+from experiments.q_lane_q9_u24_s1_stop_diagnostic_dev import Q9U24Hold, audit_u24_failed_s1
 
 
 ACTION = "stage27c-B-7"
