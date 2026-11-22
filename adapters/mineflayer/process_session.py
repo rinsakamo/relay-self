@@ -62,6 +62,10 @@ class MineflayerProcessSession:
         self._bounded_place_dev_mode = False
         self._raw_source_audit_fd: int | None = None
         self._raw_source_audit_finished = False
+        # Retain original startup/probe bytes until the once-only stdout
+        # capture is opened. Q's decoder needs the actual seq=0 handshake.
+        # Overflow denies a late audit, but never changes normal observation.
+        self._raw_source_before_audit: bytearray | None = bytearray()
         # U17: optional, one-use transcript of bytes buffered by THIS owned
         # child's existing final stdin writer. Not a delivery/ACK receipt.
         self._raw_stdin_audit_fd: int | None = None
@@ -199,11 +203,23 @@ class MineflayerProcessSession:
             self._started is None
             or self._raw_source_audit_fd is not None
             or self._raw_source_audit_finished
+            or self._raw_source_before_audit is None
         ):
             raise MineflayerProcessIOError("native source audit already used/not started")
         location = Path(path)
         fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
+            # Exact startup+login probe bytes, not a reconstructed JSON
+            # adapter_started record. This makes the one stream parseable
+            # from seq=0 even if audit starts after original Bridge.login.
+            prior = self._raw_source_before_audit
+            assert prior is not None
+            view = memoryview(prior)
+            while view:
+                n = os.write(fd, view)
+                if n <= 0:
+                    raise MineflayerProcessIOError("preaudit Native source incomplete")
+                view = view[n:]
             os.fsync(fd)
             dir_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
             try:
@@ -214,6 +230,7 @@ class MineflayerProcessSession:
             os.close(fd)
             raise
         self._raw_source_audit_fd = fd
+        self._raw_source_before_audit = None
 
     def finish_raw_source_audit(self) -> None:
         """Freeze a completed source transcript before checksum readback."""
@@ -309,6 +326,11 @@ class MineflayerProcessSession:
                 f"returncode={self._process.returncode}"
             )
         fd = self._raw_source_audit_fd
+        if fd is None and self._raw_source_before_audit is not None:
+            if len(self._raw_source_before_audit) + len(line) <= 8 * 1024 * 1024:
+                self._raw_source_before_audit.extend(line)
+            else:
+                self._raw_source_before_audit = None
         if fd is not None:
             # Persist ORIGINAL bytes, including malformed/foreign stream
             # messages. A failed write is fatal, never silently drops proof.
