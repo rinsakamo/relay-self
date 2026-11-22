@@ -112,6 +112,67 @@ def _root_files(
     return entries
 
 
+def _require_i2h_original_paper_continuity(*, trace, trial: dict) -> None:
+    """Check original A/B real Paper actor and epoch sequence, not just counts.
+
+    This is a source-stream-only condition. It does not authenticate a Popen,
+    nor does it bridge the Paper main-thread clock to Native day time.
+    """
+    events = trace.events
+    if (
+        any(x.name not in ("RelayA", "RelayB") for x in events)
+        or not events
+    ):
+        raise I2gIndependentOriginHold("foreign Paper player in original isolated World")
+    a = [x for x in events if x.name == "RelayA"]
+    b = [x for x in events if x.name == "RelayB"]
+    a_joins = [x for x in a if x.event == "JOIN"]
+    a_quits = [x for x in a if x.event == "QUIT"]
+    b_joins = [x for x in b if x.event == "JOIN"]
+    b_quits = [x for x in b if x.event == "QUIT"]
+    if (
+        len(a_joins) != 2 or len(a_quits) != 2
+        or len(b_joins) != 1 or len(b_quits) != 1
+        or len({x.actor_uuid for x in a}) != 1
+        or len({x.actor_uuid for x in b}) != 1
+        or a[0].actor_uuid == b[0].actor_uuid
+        or trial.get("a_actor_uuid") != a[0].actor_uuid
+        or trial.get("b_actor_uuid") != b[0].actor_uuid
+        or trial.get("a_paper_quit_tick") != a_quits[0].tick
+        or trial.get("a_paper_rejoin_tick") != a_joins[1].tick
+        or trial.get("b_paper_continuation_tick") is None
+        or type(trial["b_paper_continuation_tick"]) is not int
+        or a[0].line != a_joins[0].line
+        or a[-1].line != a_quits[1].line
+        or b[0].line != b_joins[0].line
+        or b[-1].line != b_quits[0].line
+    ):
+        raise I2gIndependentOriginHold("Paper A/B actor identity and original receipts differ")
+    if not (
+        a_joins[0].line < b_joins[0].line < a_quits[0].line
+        < a_joins[1].line < a_quits[1].line < b_quits[0].line
+    ):
+        raise I2gIndependentOriginHold("Paper A/B original logout-reJOIN epoch order wrong")
+    # In the full original _owned_resident_trial, B has to remain online
+    # (PRESENT or MOVE) strictly between A's first QUIT and next JOIN.
+    between = [
+        x for x in b if a_quits[0].line < x.line < a_joins[1].line
+        and x.event in ("PRESENT", "MOVE")
+    ]
+    before = [
+        x for x in b if b_joins[0].line <= x.line < a_quits[0].line
+    ]
+    if (
+        not between or not before
+        or trial["b_paper_continuation_tick"] != between[-1].tick
+        or not any(x.event in ("PRESENT", "MOVE") for x in a
+                if a_joins[0].line < x.line < a_quits[0].line)
+        or not any(x.event in ("PRESENT", "MOVE") for x in a
+                if a_joins[1].line < x.line < a_quits[1].line)
+    ):
+        raise I2gIndependentOriginHold("Paper B continuation or A two resident epochs absent")
+
+
 def independently_read_i2g_original(
     *, evidence: Path, generation: Path,
 ) -> I2gOriginalSourceReview:
@@ -211,16 +272,22 @@ def independently_read_i2g_original(
             owned_paper_log=raw_paper,
             log_ref="i2g-original-paper:" + session + ":sha256:" + _sha(paper_stdout),
         )
-        for sid, joins in (("A", 2), ("B", 1)):
-            rows = [x for x in trace.events if x.name == "Relay" + sid]
-            if (
-                len([x for x in rows if x.event == "JOIN"]) != joins
-                or len([x for x in rows if x.event == "QUIT"]) != joins
-                or not any(x.event == "PRESENT" for x in rows)
-                or not rows or rows[0].event != "JOIN"
-                or rows[-1].event != "QUIT"
-            ):
-                raise I2gIndependentOriginHold("original Paper A/B JOIN/PRESENT/QUIT absent")
+        _require_i2h_original_paper_continuity(trace=trace, trial=trial)
+        # OwnedPaperWorld writes a PID file for the exact Popen instance.
+        # PID is supporting attribution only (never process authentication).
+        pid_source = root / (session + ".pid")
+        pid_raw = pid_source.read_text(encoding="utf-8")
+        if (
+            re.fullmatch(r"[1-9][0-9]{0,9}\\n", pid_raw) is None
+            or b"Saved the game" not in raw_paper
+            or b"Stopping server" not in raw_paper
+            or raw_paper.rfind(b"Saved the game")
+            > raw_paper.rfind(b"Stopping server")
+        ):
+            raise I2gIndependentOriginHold(
+                "original Paper owned PID/flush/terminal stdout missing"
+            )
+        paper_pid = int(pid_raw.strip())
         # The B first Native must remain identical through A's logout/reJOIN.
         first = trial["i2g_original_first_login_evidence"]
         second_a = trial["a_relogin_evidence"]
@@ -250,6 +317,7 @@ def independently_read_i2g_original(
                 or uid not in expected or uid in captured
                 or name != "Relay" + expected[uid][0]
                 or type(item["pid"]) is not int or item["pid"] <= 0
+                or item["pid"] == paper_pid
             ):
                 raise I2gIndependentOriginHold("missing or foreign actual Native child process")
             out = root / f"i2g-native-{name}-{uid}.jsonl"
