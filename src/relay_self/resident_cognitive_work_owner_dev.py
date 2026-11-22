@@ -150,6 +150,26 @@ class ResidentCognitiveWorkOwner:
                 raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
             self._present_schemas[self_id] = (snapshot, registry)
 
+    def recorded_retired_schema(self, self_id: str) -> SchemaSnapshot | None:
+        """Read only the actual registered original Schema after full retirement.
+
+        No inference from retained registry: missing registration stays absent.
+        This is only input to a NEW typed committed Stage28 generation.
+        """
+        with self.lock:
+            if not self.retired_clean(self_id):
+                raise ResidentCognitiveWorkError("original Schema not retired")
+            registration = self._present_schemas.get(self_id)
+            if registration is None:
+                return None
+            snapshot, registry = registration
+            if (self.owners[self_id].cohort is not self
+                    or snapshot.self_id != self_id
+                    or registry != self.owners[self_id].pattern_registry
+                    or snapshot.revision != registry.revision):
+                raise ResidentCognitiveWorkError("retired Schema/Registry mismatched")
+            return snapshot
+
     def present_schema(self, self_id: str) -> SchemaSnapshot:
         """Return only a current registration, under the resident lock."""
         with self.lock:
@@ -161,7 +181,8 @@ class ResidentCognitiveWorkOwner:
 
     def read_present_cpu(self, *, bridge, boot, world, links, self_id,
                          i1_complete_paper_prefix: bool = False,
-                         i1_require_correlated_sense: bool = False):
+                         i1_require_correlated_sense: bool = False,
+                         i2b_read_attached_lane: bool = False):
         """Project current qualified evidence on the original resident CPU path.
 
         The result is ephemeral; a later consumer must revalidate it under this
@@ -176,6 +197,7 @@ class ResidentCognitiveWorkOwner:
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
                 i1_complete_paper_prefix=i1_complete_paper_prefix,
                 i1_require_correlated_sense=i1_require_correlated_sense,
+                i2b_read_attached_lane=i2b_read_attached_lane,
             )
 
     def read_coverage_inquiry_cpu(self, *, bridge, boot, world, links, self_id):

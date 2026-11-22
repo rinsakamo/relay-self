@@ -48,6 +48,9 @@ def inspect_original_stage28b_native_sessions(
     evidence_root: Path, generation: Path, *,
     expected_manifest_sha256: str,
     expected_files: int = 285,
+    expected_report_classification: str = (
+        "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV"
+    ),
 ) -> HistoricalNativeSessionReceipt:
     """Verify every original file, then recover the complete real A/B history.
 
@@ -61,6 +64,10 @@ def inspect_original_stage28b_native_sessions(
         or type(expected_manifest_sha256) is not str
         or re.fullmatch(r"[a-f0-9]{64}", expected_manifest_sha256) is None
         or type(expected_files) is not int or expected_files < 1
+        or expected_report_classification not in (
+            "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV",
+            "I2G_REAL_ORIGINAL_V3_TYPED_A_B_CAPTURED_AUDIT_PENDING",
+        )
     ):
         raise HistoricalSessionHold("original Stage28b evidence pins required")
     manifest = root / "SHA256SUMS"
@@ -127,8 +134,14 @@ def inspect_original_stage28b_native_sessions(
         report_file = root / candidates[0]
         report = json.loads(report_file.read_bytes())
         if (
-            report.get("classification")
-            != "REAL_PAPER_TWO_SELF_TYPED_STOPPED_WORLD_CUT_DEV"
+            report.get("classification") != expected_report_classification
+            or (expected_report_classification.startswith("I2G_") and (
+                report.get("i2g_original_v3_source") is not True
+                or report.get("i2g_initial_source_verified") is not True
+                or type(report.get("i2g_original_raw_native")) is not list
+                or len(report["i2g_original_raw_native"]) != 3
+                or report.get("i2g_source_manifest_independent_verified") is not False
+            ))
             or type(report.get("steps")) is not list
             or len(report["steps"]) != 1
         ):

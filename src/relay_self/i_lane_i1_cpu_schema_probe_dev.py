@@ -43,7 +43,8 @@ def _exact_food(value: object) -> int | None:
 
 
 def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str,
-                                i1_require_correlated_sense: bool = False) -> I1CPUProbe:
+                                i1_require_correlated_sense: bool = False,
+                                i2b_read_attached_lane: bool = False) -> I1CPUProbe:
     """Current original native probe -> CPU Schema -> *unissued* L1 options.
 
     A missing qualified Action catalog intentionally yields no executable
@@ -58,6 +59,7 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str,
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=True,
             i1_require_correlated_sense=i1_require_correlated_sense,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         owner = bridge.owners[self_id]
         original_probe = owner.current_worldbody_observation
@@ -111,6 +113,7 @@ def prepare_i1_cpu_schema_probe(*, bridge, boot, world, links, self_id: str,
             bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             i1_complete_paper_prefix=True,
             i1_require_correlated_sense=i1_require_correlated_sense,
+            i2b_read_attached_lane=i2b_read_attached_lane,
         )
         if (after != original
                 or owner.current_worldbody_observation is not original_probe

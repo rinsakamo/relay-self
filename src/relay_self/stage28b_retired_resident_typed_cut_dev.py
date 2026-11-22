@@ -6,6 +6,7 @@ and does NOT revive old physical Actions or resume L1 work.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from relay_self.owned_paper_world_dev import OwnedPaperWorld
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.physical_action_journal import PhysicalActionJournal
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkOwner
 from relay_self.self_owner_checkpoint_dev import (
     SelfOwnerCut,
     capture_typed_generation,
@@ -53,6 +55,7 @@ def _retired_owner_snapshots(
     *, owners: dict[str, CheckpointedCognitiveOwner],
     root: Path, generation_id: str,
     world_id: str, branch_id: str,
+    resident: ResidentCognitiveWorkOwner | None = None,
 ) -> tuple[SelfSnapshotSource, ...]:
     """Serialize canonical original owners, never parallel shadow owners."""
     if tuple(sorted(owners)) != ("A", "B"):
@@ -70,6 +73,19 @@ def _retired_owner_snapshots(
             raise Stage28bRetiredCutHold(
                 "original retired cognition source absent or unflushed"
             )
+        recorded_schema = None
+        if resident is not None:
+            if (type(resident) is not ResidentCognitiveWorkOwner
+                    or resident.owners.get(self_id) is not owner):
+                raise Stage28bRetiredCutHold("foreign original resident Schema source")
+            recorded_schema = resident.recorded_retired_schema(self_id)
+            if recorded_schema is not None and (
+                owner.retained.pattern_registry is None
+                or owner.retained.pattern_registry != owner.pattern_registry
+            ):
+                raise Stage28bRetiredCutHold(
+                    "recorded Schema requires same-Self persisted registry"
+                )
         wal = PhysicalActionJournal.restore(
             owner.files.physical_wal_file, self_id=self_id,
         )
@@ -86,6 +102,11 @@ def _retired_owner_snapshots(
                 owner.peer_deliveries[key] for key in sorted(owner.peer_deliveries)
             ),
             pending_question_refs=tuple(sorted(owner.pending_questions)),
+            recorded_schema=recorded_schema,
+            cognition_sha256=(
+                hashlib.sha256(owner.files.cognition_file.read_bytes()).hexdigest()
+                if recorded_schema is not None else None
+            ),
         )
         destination = root / self_id
         destination.mkdir(mode=0o700)
@@ -158,6 +179,7 @@ def capture_retired_resident_typed_world(
     sources = _retired_owner_snapshots(
         owners=bridge.owners, root=prepared, generation_id=generation_id,
         world_id=world.world_id, branch_id=world.branch_id,
+        resident=getattr(bridge, "cognitive_work", None),
     )
     # Recheck source lease immediately before stopping Paper. A second
     # concurrent native login/action must force HOLD instead of a mixed cut.

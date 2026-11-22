@@ -27,6 +27,7 @@ from relay_self.coordinated_checkpoint_dev import (
     capture_generation,
     verify_generation,
 )
+from relay_self.innate_schema import SchemaSnapshot
 from relay_self.intent import (
     IntentCommitment,
     IntentEvent,
@@ -106,6 +107,8 @@ class SelfOwnerCut:
     peer_deliveries: tuple[PeerDelivery, ...] = ()
     pending_question_refs: tuple[str, ...] = ()
     cognition_sha256: str | None = None
+    # Optional FUTURE committed cut only; absent in all historical generations.
+    recorded_schema: SchemaSnapshot | None = None
 
     def __post_init__(self) -> None:
         for name in ("generation_id", "self_id", "world_id", "branch_id",
@@ -123,6 +126,13 @@ class SelfOwnerCut:
             raise SelfOwnerCheckpointError("only current Skill histories may be saved")
         if type(self.pattern_registry) is not PatternRegistry:
             raise SelfOwnerCheckpointError("typed learned Schema registry required")
+        if self.recorded_schema is not None:
+            from relay_self.innate_schema import SchemaSnapshot
+
+            if (type(self.recorded_schema) is not SchemaSnapshot
+                    or self.recorded_schema.self_id != self.self_id
+                    or self.recorded_schema.revision != self.pattern_registry.revision):
+                raise SelfOwnerCheckpointError("foreign/stale recorded original Schema")
         if (type(self.peer_deliveries) is not tuple
                 or any(type(m) is not PeerDelivery for m in self.peer_deliveries)):
             raise SelfOwnerCheckpointError("typed peer delivery receipts required")
@@ -196,8 +206,17 @@ def _encode_accepted_registry(cut: SelfOwnerCut) -> dict[str, Any]:
         raise SelfOwnerCheckpointError("cannot encode accepted Presets") from exc
 
 
+def _encode_recorded_schema_for_cut(cut: SelfOwnerCut) -> dict[str, Any]:
+    from relay_self.i_lane_i2c_recorded_schema_dev import encode_recorded_schema
+
+    if cut.recorded_schema is None:
+        raise SelfOwnerCheckpointError("recorded original Schema absent")
+    return encode_recorded_schema(cut.recorded_schema)
+
+
 def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
-    schema2 = cut.cognition_sha256 is not None or bool(cut.pattern_registry.accepted_presets)
+    schema3 = cut.recorded_schema is not None
+    schema2 = schema3 or cut.cognition_sha256 is not None or bool(cut.pattern_registry.accepted_presets)
     if schema2 and (
         type(cut.cognition_sha256) is not str
         or re.fullmatch(r"[0-9a-f]{64}", cut.cognition_sha256) is None
@@ -205,7 +224,8 @@ def _serialize(cut: SelfOwnerCut) -> dict[str, Any]:
         raise SelfOwnerCheckpointError("cannot encode accepted Presets without cognition digest")
     return {
         **({"cognition_sha256": cut.cognition_sha256} if schema2 else {}),
-        "schema": 2 if schema2 else 1,
+        "schema": 3 if schema3 else (2 if schema2 else 1),
+        **({"recorded_schema": _encode_recorded_schema_for_cut(cut)} if schema3 else {}),
         "generation_id": cut.generation_id, "self_id": cut.self_id,
         "world_id": cut.world_id, "branch_id": cut.branch_id,
         "former_native_session_id": cut.former_native_session_id,
@@ -290,18 +310,29 @@ def _read_skill(value: object) -> SkillExecution:
     return result
 
 
+def _decode_recorded_schema_from_cut(payload: dict[str, Any], registry: PatternRegistry):
+    from relay_self.i_lane_i2c_recorded_schema_dev import decode_recorded_schema
+
+    return decode_recorded_schema(
+        payload["recorded_schema"], expected_self_id=payload["self_id"],
+        expected_registry_revision=registry.revision,
+    )
+
+
 def _deserialize(value: object) -> SelfOwnerCut:
     keys = {
         "schema", "generation_id", "self_id", "world_id", "branch_id",
         "former_native_session_id", "last_observed_world_tick", "intent_events",
         "skills", "pattern_registry", "peer_deliveries", "pending_question_refs",
     }
-    if type(value) is dict and value.get("schema") == 2:
+    if type(value) is dict and value.get("schema") in (2, 3):
         keys.add("cognition_sha256")
+    if type(value) is dict and value.get("schema") == 3:
+        keys.add("recorded_schema")
     payload = _exact(value, keys, "owner snapshot")
-    if type(payload["schema"]) is not int or payload["schema"] not in (1, 2):
+    if type(payload["schema"]) is not int or payload["schema"] not in (1, 2, 3):
         raise SelfOwnerCheckpointError("unsupported owner checkpoint schema")
-    if payload["schema"] == 2 and (
+    if payload["schema"] in (2, 3) and (
         type(payload["cognition_sha256"]) is not str
         or re.fullmatch(r"[0-9a-f]{64}", payload["cognition_sha256"]) is None
     ):
@@ -321,7 +352,7 @@ def _deserialize(value: object) -> SelfOwnerCut:
                 _nat(e["at_ns"], "Intent time"), _read_provenance(e["provenance"]),
                 e["objective"], e["reason"],
             ))
-        if payload["schema"] == 2:
+        if payload["schema"] in (2, 3):
             from relay_self.preset_registry_checkpoint import (
                 PresetCheckpointRefusal,
                 decode_pattern_registry,
@@ -382,6 +413,10 @@ def _deserialize(value: object) -> SelfOwnerCut:
             peer_deliveries=tuple(peers),
             pending_question_refs=tuple(payload["pending_question_refs"]),
             cognition_sha256=payload.get("cognition_sha256"),
+            recorded_schema=(
+                _decode_recorded_schema_from_cut(payload, pattern_registry)
+                if payload["schema"] == 3 else None
+            ),
         )
     except (TypeError, ValueError, KeyError, AttributeError) as exc:
         if isinstance(exc, SelfOwnerCheckpointError):

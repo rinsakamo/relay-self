@@ -113,6 +113,7 @@ def _require_live_original(
     *, bridge: OwnedResidentPhysicalBridge, sid: str,
     boot: Stage28ForkPaperEpoch,
     world: WorldLifetime,
+    i2b_read_attached_lane: bool = False,
 ) -> tuple[tuple[int, str, int], MineflayerObservation]:
     if (
         not isinstance(bridge, OwnedResidentPhysicalBridge)
@@ -120,7 +121,13 @@ def _require_live_original(
         or not isinstance(boot, Stage28ForkPaperEpoch)
         or not isinstance(world, WorldLifetime)
         or bridge.cognitive_work is None
-        or bridge.inference_lane is not None  # this is CPU preflight
+        or type(i2b_read_attached_lane) is not bool
+        or (bridge.inference_lane is not None and not (
+            i2b_read_attached_lane
+            and isinstance(bridge.inference_lane, ResidentLlamaInferenceLane)
+            and bridge.inference_lane.cognitive_work is bridge.cognitive_work
+            and not bridge.inference_lane.uncertain
+        ))  # explicit I2b read only; CPU preflight still rejects
         or not bridge.physical.observation_only
         or bridge.physical.active_action_ids
         or tuple(sorted(bridge.owners)) != ("A", "B")

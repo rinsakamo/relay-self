@@ -47,7 +47,8 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
                             boot: Stage28ForkPaperEpoch, world: WorldLifetime,
                             links: tuple[Stage28NativePaperBodyLink, ...],
                             self_id: str,
-                            i1_complete_paper_prefix: bool = False) -> BD1bOwnerSource:
+                            i1_complete_paper_prefix: bool = False,
+                            i2b_read_attached_lane: bool = False) -> BD1bOwnerSource:
     """Reconcile both sources under the existing resident lock, without writes.
 
     Normal B requires the full owned log's SHA, unchanged. Explicit I1-only
@@ -64,6 +65,7 @@ def build_bd1b_owner_source(*, bridge: OwnedResidentPhysicalBridge,
         try:
             scope, probe = _require_live_original(
                 bridge=bridge, sid=self_id, boot=boot, world=world,
+                i2b_read_attached_lane=i2b_read_attached_lane,
             )
             if (type(links) is not tuple or len(links) != 2
                 or any(type(link) is not Stage28NativePaperBodyLink for link in links)
