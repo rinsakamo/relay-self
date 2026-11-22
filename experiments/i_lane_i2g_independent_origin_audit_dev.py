@@ -76,10 +76,19 @@ def _sha(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _root_files(evidence: Path, *, manifest_exists: bool) -> dict[str, str]:
-    """Exact exclusive root inventory, with only typed World nested checksums."""
-    if evidence.is_symlink() or not evidence.is_dir():
+def _root_files(
+    evidence: Path, *, generation: Path, manifest_exists: bool,
+) -> dict[str, str]:
+    """Exact exclusive root inventory, with only three typed World hashes."""
+    if evidence.is_symlink() or not evidence.is_dir() or generation.is_symlink():
         raise I2gIndependentOriginHold("original real Native/Paper evidence root required")
+    source_root = evidence.resolve(strict=True)
+    gen = generation.resolve(strict=True)
+    if (gen.parent.parent != source_root
+            or gen.parent.name != "typed-world-self-generations"):
+        raise I2gIndependentOriginHold("only actual original typed generation checksum files")
+    prefix = gen.relative_to(source_root).as_posix() + "/"
+    expected_nested = {prefix + p for p in _NESTED_HASHES}
     entries = {}
     nested = set()
     for p in sorted(evidence.rglob("*")):
@@ -98,7 +107,7 @@ def _root_files(evidence: Path, *, manifest_exists: bool) -> dict[str, str]:
             nested.add(name)
             continue
         entries[name] = _sha(p)
-    if nested != _NESTED_HASHES or not entries:
+    if nested != expected_nested or not entries:
         raise I2gIndependentOriginHold("three typed Paper original checksum sources required")
     return entries
 
@@ -328,7 +337,7 @@ def seal_i2g_original_manifest_once(
     root = Path(evidence)
     if (root / "SHA256SUMS").exists() or (root / "SHA256SUMS").is_symlink():
         raise I2gIndependentOriginHold("original source already sealed")
-    inventory = _root_files(root, manifest_exists=False)
+    inventory = _root_files(root, generation=generation, manifest_exists=False)
     manifest_bytes = "".join(
         f"{digest}  {path}\n" for path, digest in sorted(inventory.items())
     ).encode()
