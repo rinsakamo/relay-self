@@ -25,6 +25,7 @@ from relay_self.b_np1b_rejoin_composite_source_dev import (
     RejoinedCompositeSourceReceipt, build_rejoined_composite_source,
 )
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
+from relay_self.world_resident_lifecycle_dev import Presence
 
 
 class OriginalNormalCpuWorldHold(RuntimeError):
@@ -114,16 +115,44 @@ async def update_original_b_after_a_logout(
     """Adopt B's actual uninterrupted Native probe after A original logout."""
     if type(history) is not NormalCpuOriginalHistory:
         raise OriginalNormalCpuWorldHold("original immutable history missing")
+    if not isinstance(bridge, OwnedResidentPhysicalBridge) or bridge.cognitive_work is None:
+        raise OriginalNormalCpuWorldHold("original resident unavailable")
     try:
+        with bridge.cognitive_work.lock:
+            retired = bridge._b_np1b_retired_login.get("A")
+            if (
+                bridge.lifecycle.view("A").status is not Presence.OFFLINE
+                or bridge.lifecycle.view("B").status is not Presence.ONLINE
+                or "A" in bridge.sessions
+                or "A" in bridge.last_login_evidence
+                or type(retired) is not tuple or len(retired) != 5
+                or retired[0].native_session_id != history.initial[0].native_session_id
+                or retired[1] != (
+                    history.initial[0].resident_epoch,
+                    history.initial[0].native_session_id,
+                    history.initial[0].world_epoch,
+                )
+                or "A" in getattr(bridge, "_fresh_native_pending", {})
+                or bridge.physical.active_action_ids
+            ):
+                raise OriginalNormalCpuWorldHold(
+                    "B continuation must follow original verified A logout"
+                )
         b = await update_fresh_native(
             bridge=bridge, self_id="B", initial_receipt=history.initial[1],
         )
-        if (
-            b.native_session_id != history.initial[1].native_session_id
-            or b.native_revision == history.initial[1].native_revision
-            or b.native_sequence <= history.initial[1].native_sequence
-        ):
-            raise OriginalNormalCpuWorldHold("B original Native did not advance")
+        with bridge.cognitive_work.lock:
+            if (
+                bridge.lifecycle.view("A").status is not Presence.OFFLINE
+                or bridge.lifecycle.view("B").status is not Presence.ONLINE
+                or bridge._b_np1b_retired_login.get("A") != retired
+                or b.native_session_id != history.initial[1].native_session_id
+                or b.native_revision == history.initial[1].native_revision
+                or b.native_sequence <= history.initial[1].native_sequence
+            ):
+                raise OriginalNormalCpuWorldHold(
+                    "B Native advanced outside original A logout window"
+                )
         return b
     except OriginalNormalCpuWorldHold:
         raise
@@ -143,7 +172,10 @@ def start_original_normal_cpu_runtime(
     """
     if type(history) is not NormalCpuOriginalHistory:
         raise OriginalNormalCpuWorldHold("historical source is not typed")
+    if type(interval_s) not in (int, float) or not 0.01 <= interval_s <= 30.0:
+        raise OriginalNormalCpuWorldHold("bounded original CPU poll interval required")
     try:
+        asyncio.get_running_loop()
         qualified = build_rejoined_composite_source(
             bridge=bridge, initial_receipts=history.initial,
             historical_composite=history.a_historical_composite,
