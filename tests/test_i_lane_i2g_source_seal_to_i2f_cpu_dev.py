@@ -149,9 +149,21 @@ def _fake_original(tmp_path, monkeypatch):
                 "type": "observe", "request_id": manual_req,
             }))
         login_ref = {
+            "self_id": sid,
+            "login_seq": 2 if key == "A1" else 1,
+            "world_id": world_id,
+            "branch_id": "p0d-real-resident-presence",
+            "paper_session_id": paper_session,
+            "world_epoch": 0,
             "native_session_id": native,
             "observation_ref": login_req,
             "observed_world_tick": tick,
+            "old_native_invalidated": True,
+            "physical_wal_clear": True,
+            "stale_gpu_fenced": True,
+            "stale_transport_fenced": True,
+            "new_native_source_verified": True,
+            "action_issue_authorized": False,
         }
         originals[key] = login_ref
         name = "Relay" + sid
@@ -282,7 +294,9 @@ def test_i2g_full_raw_origin_to_sealed_manifest_to_inert_fork_CPU_only(
     "learned-pattern-claim", "corrupt-stdout",
     "paper-cross-actor", "paper-duplicate-epoch", "paper-b-quit-first",
     "paper-false-b-receipt", "paper-tampered-pid", "paper-no-save",
-    "paper-native-pid-collision",
+    "paper-native-pid-collision", "native-foreign-boot",
+    "native-unretired-issuer", "native-extra-observe",
+    "native-probe-without-stdin",
 ])
 def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
     tmp_path, monkeypatch, fault,
@@ -342,6 +356,33 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
         paper.write_text(paper.read_text().replace("Saved the game", "NO SAVE"))
     elif fault == "paper-native-pid-collision":
         report["i2g_original_raw_native"][0]["pid"] = 130
+    elif fault == "native-foreign-boot":
+        report["steps"][0]["i2g_original_first_login_evidence"]["A"][
+            "paper_session_id"
+        ] = "paper-owned-foreign"
+    elif fault == "native-unretired-issuer":
+        report["steps"][0]["a_relogin_evidence"]["action_issue_authorized"] = True
+    elif fault == "native-extra-observe":
+        commands = evidence / "i2g-commands-RelayA-native-born-A-first.jsonl"
+        with commands.open("ab") as output:
+            output.write(_bytes({
+                "type": "observe", "request_id": "unanswered-extra-observation",
+            }))
+        row = report["i2g_original_raw_native"][0]
+        row["raw_stdin_sha256"] = hashlib.sha256(
+            commands.read_bytes()
+        ).hexdigest()
+        row["raw_stdin_bytes"] = commands.stat().st_size
+    elif fault == "native-probe-without-stdin":
+        commands = evidence / "i2g-commands-RelayA-native-born-A-first.jsonl"
+        commands.write_bytes(_bytes({
+            "type": "observe", "request_id": "wrong-request",
+        }))
+        row = report["i2g_original_raw_native"][0]
+        row["raw_stdin_sha256"] = hashlib.sha256(
+            commands.read_bytes()
+        ).hexdigest()
+        row["raw_stdin_bytes"] = commands.stat().st_size
     elif fault == "tampered-owner":
         owner = generation / "selves" / "A" / "cognition.json"
         owner.write_bytes(b"changed cognition")
@@ -353,6 +394,8 @@ def test_i2g_source_seal_rejects_hostile_original_evidence_CPU_only(
     if fault in {
         "foreign-native", "stale-a-probe", "move-command", "learned-pattern-claim",
         "paper-false-b-receipt", "paper-native-pid-collision",
+        "native-foreign-boot", "native-unretired-issuer",
+        "native-extra-observe", "native-probe-without-stdin",
     }:
         path.write_bytes(_bytes(report))
     with pytest.raises(I2gIndependentOriginHold):
