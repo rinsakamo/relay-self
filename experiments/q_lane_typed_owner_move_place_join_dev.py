@@ -74,6 +74,10 @@ def audit_q1j_typed_owner_move_place_git_join(
             or skill["intent_id"] != wal["s1_intent_id"]
             or skill["last_state"] not in ("failed", "cancelled")
             or intent["final_kind"] != "completed"
+            or any(record["last_state"] == "started"
+                   for record in cut["skills"].values())
+            or any(record["final_kind"] == "active"
+                   for record in cut["intents"].values())
         ):
             raise QTypedOriginalSourceJoinHold(
                 "original S1 Skill and Intent were not reviewed and released in saved cut"
