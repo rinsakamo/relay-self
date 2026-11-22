@@ -162,9 +162,28 @@ async def issue_i_unified_question_once(
     """
     if type(receipt) is not IUnifiedExplorationTurn:
         raise IUnifiedExplorationHold("exact original turn required")
-    verify_i_unified_exploration_turn(
-        receipt=receipt, bridge=bridge, boot=boot, world=world, links=links,
-    )
+    # CPU Stage28 Source cannot be reread with the GPU lane attached: B deliberately
+    # changes its qualification boundary once connected. Recheck the immutable
+    # adapter fields and B's registered turn, then let B's *post-GPU* verifier
+    # own all live source/ticket validation under the original resident lock.
+    try:
+        checked = IUnifiedExplorationTurn(
+            receipt.self_id, receipt.original_owner, receipt.context,
+            receipt.original_turn, receipt.question_adopted,
+            receipt.physical_issue_authorized, receipt.memory_writer,
+        )
+        resident = bridge.cognitive_work
+        with resident.lock:
+            if (
+                checked != receipt
+                or _owner(bridge, receipt.self_id) is not receipt.original_owner
+                or resident._coverage_adoption_turns.get(
+                    receipt.original_turn.work_ref,
+                ) is not receipt.original_turn
+            ):
+                raise IUnifiedExplorationHold("B original issuer registration changed")
+    except (RuntimeError, ValueError, AttributeError, KeyError, TypeError) as exc:
+        raise IUnifiedExplorationHold("B original issuer identity unqualified") from exc
     # B locks, requalifies and submits atomically, and fences on uncertainty.
     return await issue_original_adoption_once(
         bridge=bridge, boot=boot, world=world, links=links, lane=lane,
