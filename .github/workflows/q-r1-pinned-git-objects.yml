@@ -1,0 +1,72 @@
+name: Q R1 pinned U31 Git objects
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: q-r1-pinned-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  q-r1-pinned-original-objects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact Q audit head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: true
+
+      - name: Refuse a different Q audit branch or head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          Q_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$Q_BRANCH" = "audit/q-r1-u31-git-shadow-compat-20261123"
+          test -z "$(git status --porcelain)"
+
+      - name: Install Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Fetch exact pre-existing I U31 and R1 branch objects
+        run: |
+          set -euo pipefail
+          git -c protocol.version=2 fetch --no-tags --no-recurse-submodules --depth=64 origin \
+            '+refs/heads/dev/i-unified-b-i2-i4a-20261122:refs/q-r1-audit/i-u31' \
+            '+refs/heads/dev/r-lane-r1-u31-owner-shadow-20261123:refs/q-r1-audit/r1'
+          test "$(git rev-parse refs/q-r1-audit/i-u31)" = "d3034026a8eea3d2d4927527f5bc0d6ad0455457"
+          test "$(git rev-parse refs/q-r1-audit/r1)" = "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
+          test -z "$(git status --porcelain)"
+
+      - name: Execute Q independent real Git-object ancestry and AST checker
+        run: |
+          set -euo pipefail
+          python -m experiments.q_lane_r1_u31_git_static_compat_dev --repo-root "$PWD" | tee /tmp/q-r1-pinned-result.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("/tmp/q-r1-pinned-result.json").read_text())
+          assert report["classification"] == "Q_R1_U31_GIT_STATIC_COMPAT_CPU_OFFLINE_DEV"
+          assert report["u31_i_commit"] == "d3034026a8eea3d2d4927527f5bc0d6ad0455457"
+          assert report["r1_commit"] == "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
+          assert report["original_owner_physical_wal_code_unchanged"] is True
+          assert report["intermediate_git_source_drift_absent"] is True
+          assert report["r1_report_grant_defaults_false"] is True
+          assert report["original_wsl_u31_raw_evidence_read"] is False
+          assert report["independent_original_native_paper_custody_verified"] is False
+          assert report["q_r1_real_world_attested"] is False
+          assert report["r2_migration_approved"] is False
+          assert report["qual_go"] is False and report["science_run"] is False
+          print("Q_R1_ACTUAL_PINNED_GIT_OBJECTS_CPU_STATIC_PASS")
+          PY
+          test -z "$(git status --porcelain)"
