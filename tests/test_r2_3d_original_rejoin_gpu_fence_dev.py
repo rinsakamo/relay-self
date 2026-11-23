@@ -45,6 +45,7 @@ def pair(request, monkeypatch):
     We must never mutate a running Physical gate or bypass the real original
     bridge's observation-only requirement to call a CPU test a GPU result.
     """
+    assert original_pair is not None
     original_init = PhysicalIssueAdmission.__init__
 
     def init_observation_only(self, *args, **kwargs):
