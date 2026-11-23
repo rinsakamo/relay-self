@@ -186,15 +186,31 @@ async def run_r23h_original_real_question_once(
         or not isinstance(evidence_dir, Path)
         or evidence_dir.exists() or evidence_dir.is_symlink()
         or not evidence_dir.parent.is_dir()
+        or any(p.is_symlink() for p in (evidence_dir.parent, *evidence_dir.parent.parents))
     ):
         raise R23HOriginalRealModelHold(
             "explicit one-shot model grant and fresh evidence root required"
+        )
+    resident = bridge.cognitive_work
+    # Evidence must never be nested in a live Owner's checkpoint or
+    # existing original World/Paper execution root. It only captures bytes.
+    target = evidence_dir.absolute()
+    forbidden = [
+        bridge.owners[sid].files.self_root.resolve(strict=True)
+        for sid in ("A", "B")
+    ]
+    forbidden.append(bridge.paper.server_dir.resolve(strict=True))
+    if any(
+        target == root or root in target.parents or target in root.parents
+        for root in forbidden
+    ):
+        raise R23HOriginalRealModelHold(
+            "raw model evidence root overlaps original Owner or Paper World"
         )
     source, gate = inspect_r23h_original_real_model(
         bridge=bridge, self_id=self_id, gguf=gguf,
         llama_pid=llama_pid, model_alias=model_alias, endpoint=endpoint,
     )
-    resident = bridge.cognitive_work
     with resident.lock:
         # Freeze genuine Original Owner work ONLY before GPU attachment.
         turn = resident.prepare_rejoined_original_l1_request_cpu(
