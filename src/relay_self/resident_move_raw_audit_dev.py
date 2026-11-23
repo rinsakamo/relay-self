@@ -29,7 +29,10 @@ def _tick(probe: MineflayerObservation) -> int:
     clock = probe.snapshot.time
     if clock is None:
         raise ResidentMoveRawAuditError("raw MOVE probe World tick missing")
-    return clock.day * 24000 + clock.time_of_day
+    return (
+        clock.world_age_ticks if clock.world_age_ticks is not None
+        else clock.day * 24000 + clock.time_of_day
+    )
 
 
 def _place(probe: MineflayerObservation) -> dict[str, float]:
@@ -124,7 +127,8 @@ def readback_owned_move_native_source(
     if not current_probe.seq < start.seq < stop.seq < stops[0].seq:
         raise ResidentMoveRawAuditError("source start/STOP/probe order incorrect")
     if (
-        len({x.request_id for x in stops}) != len(stops)
+        len({x.snapshot.time.world_age_ticks is not None for x in stops}) != 1
+        or len({x.request_id for x in stops}) != len(stops)
         or any(
             not a.seq < b.seq or not _tick(a) <= _tick(b)
             for a, b in zip(stops, stops[1:])
