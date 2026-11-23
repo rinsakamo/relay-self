@@ -50,6 +50,19 @@ jobs:
           test "$(git rev-parse refs/q-r1-audit/r1)" = "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
           test -z "$(git status --porcelain)"
 
+
+      - name: Independently run Q Owner/Present/Memory probes on exact R1 target
+        run: |
+          set -euo pipefail
+          TARGET="$RUNNER_TEMP/q-r1-original-target"
+          git worktree add --detach "$TARGET" refs/q-r1-audit/r1
+          test "$(git -C "$TARGET" rev-parse HEAD)" = "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
+          python -m pip install --disable-pip-version-check "pytest==9.1.1"
+          export PYTHONPATH="$TARGET/src:$TARGET/tests:$TARGET:$GITHUB_WORKSPACE"
+          cd "$TARGET"
+          python -m pytest -q "$GITHUB_WORKSPACE/experiments/q_lane_r1_original_owner_runtime_probe_dev.py"
+          test -z "$(git status --porcelain)"
+
       - name: Execute Q independent real Git-object ancestry and AST checker
         run: |
           set -euo pipefail
