@@ -160,7 +160,9 @@ def test_r23e_unqualified_before_submission_creates_no_job_or_fence(
         elif failure == "missing_turn":
             turn = None
         elif failure == "wrong_owner":
-            turn = replace(turn, owner=f.owners["B"])
+            # Corrupt original Bridge identity rather than constructing a
+            # forged frozen turn, which its own constructor must reject.
+            f.bridge.owners["A"] = f.owners["B"]
         elif failure == "stale_paper":
             with f.paper._log_path.open("a") as stream:
                 stream.write("R23E_PRE_SEND_PAPER_GROWTH\n")
