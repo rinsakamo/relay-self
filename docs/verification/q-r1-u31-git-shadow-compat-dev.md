@@ -46,3 +46,22 @@ This distinct job must succeed for an *actual* target-Git-object Q audit
 claim; the earlier Q pytest synthetic fixtures alone are not sufficient.
 Its positive result still cannot authenticate the WSL original producer or
 supply permission to switch R2 or run another World.
+
+## Independent Q runtime semantic probes (separate worktree)
+
+The dedicated pinned-object Actions workflow also creates a disposable
+**exact R1 commit worktree** under runner temporary storage. It runs Q-owned
+`experiments/q_lane_r1_original_owner_runtime_probe_dev.py` against the
+real R1 module and the *original* I/B synthetic Owner fixtures via the
+read-only comparison API, without adding any test file to the R1 branch.
+
+Independent Q assertions include A/B owner state+canonical file no-mutation,
+Source/Schema signal coherence, Memory as remembered digest only, foreign
+Self/Paper/retired Owner rejection, non-adopted model output exclusion,
+and **cached MATCH revocation** if old Present's Need, Attention,
+frame revision or registry revision differs after the initial comparison.
+
+No actual WSL U31 original evidence or real inference/movement is available
+to the runner. A successful Q runtime run means synthetic Original Owner
+API compatibility on the pinned R1 code only; it is not a real World
+post-S2 Shadow proof or R2 authorization.
