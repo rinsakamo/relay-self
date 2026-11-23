@@ -80,6 +80,8 @@ def _attached(*, bridge, lane, turn) -> object:
         or resident is None
         or lane.cognitive_work is not resident
         or getattr(bridge, "inference_lane", None) is not lane
+        or not getattr(bridge.physical, "observation_only", False)
+        or bridge.physical.active_action_ids
         or getattr(bridge, "owners", {}).get(turn.self_id) is not turn.owner
         or resident.owners.get(turn.self_id) is not turn.owner
         or getattr(lane.witness, "backend_ref", None) != lane.backend_ref
