@@ -132,6 +132,9 @@ async def issue_r23e_original_rejoin_question_once_dev(
                 work_ref=turn.work_ref,
                 request=turn.request,
                 mode=CognitionMode.BOUNDED,
+                # Reserve Question-only purpose in the same atomic lane
+                # submit that creates the immutable ticket and job.
+                purpose="original_rejoin_question",
             )
 
         # Do not wait for the single-slot worker under the Owner's RLock.
