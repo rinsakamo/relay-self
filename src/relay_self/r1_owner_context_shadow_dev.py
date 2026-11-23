@@ -22,6 +22,7 @@ from relay_self.r0_cognitive_context_dev import (
     read_original_owner_current,
     retrieve_original_owner_memory,
 )
+from relay_self.r2_present_responsibility_boundary_dev import legacy_current_mismatch_codes
 from relay_self.three_self_present import EpistemicStatus, Lens, LensClaim
 
 
@@ -202,25 +203,9 @@ def compare_original_owner_r1_shadow(
                 current=current, memory_ids=memory_ids,
             )
             context = CognitiveContext(current, recent=recent, retrieved=retrieved)
-            mismatches = []
-            if legacy.source != current.source:
-                mismatches.append("LEGACY_SOURCE_DIFFERS_FROM_R1_CURRENT")
-            if legacy.schema != current.schema:
-                mismatches.append("LEGACY_SCHEMA_DIFFERS_FROM_R1_CURRENT")
-            if legacy.present.three_self.scope != current.scope:
-                mismatches.append("LEGACY_SELF_OR_WORLD_SCOPE_MISMATCH")
-            if legacy.present.three_self.source_revision_refs != current.source_revision_refs:
-                mismatches.append("LEGACY_NATIVE_PAPER_REVISION_MISMATCH")
-            if legacy.present.frame_revision != current.owner_epoch:
-                mismatches.append("LEGACY_OWNER_EPOCH_MISMATCH")
-            if legacy.present.registry_revision != current.schema.revision:
-                mismatches.append("LEGACY_REGISTRY_REVISION_MISMATCH")
-            if legacy.present.signals != current.signals:
-                mismatches.append("LEGACY_SCHEMA_SIGNAL_MISMATCH")
-            if legacy.present.need_refs != current.need_refs:
-                mismatches.append("LEGACY_NEED_REFERENCE_MISMATCH")
-            if legacy.present.attention_refs != current.attention_refs:
-                mismatches.append("LEGACY_ATTENTION_REFERENCE_MISMATCH")
+            # R2-0: one pure diagnostic predicate for both the initial read
+            # and later cached validity checks; it never grants admission.
+            mismatches = list(legacy_current_mismatch_codes(legacy, current))
             # Expected: legacy 3Self can have original OBSERVED Body claims.
             # Those observations are not copied into schema CURRENT/RECENT.
             if any(
@@ -303,15 +288,7 @@ def r1_shadow_is_live(
             if (
                 fresh != report.context.current
                 or fresh.owner_epoch != 1
-                or legacy.source != fresh.source
-                or legacy.schema != fresh.schema
-                or legacy.present.three_self.scope != fresh.scope
-                or legacy.present.three_self.source_revision_refs != fresh.source_revision_refs
-                or legacy.present.frame_revision != fresh.owner_epoch
-                or legacy.present.registry_revision != fresh.schema.revision
-                or legacy.present.signals != fresh.signals
-                or legacy.present.need_refs != fresh.need_refs
-                or legacy.present.attention_refs != fresh.attention_refs
+                or legacy_current_mismatch_codes(legacy, fresh)
             ):
                 return False
             reread_recent = _accepted_original_questions(
