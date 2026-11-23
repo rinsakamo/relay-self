@@ -53,6 +53,21 @@ class U17OriginalS1Settled:
     host_ms: float
 
 
+def _verified_pre_s2_paper_prefix(
+    raw: bytes, s1_window: Q4OriginalPaperPositionWindow,
+) -> bytes:
+    if (
+        type(raw) is not bytes
+        or not raw.endswith((b"\n", b"\n> "))
+        or len(raw) < s1_window.log_prefix_size
+        or hashlib.sha256(raw[:s1_window.log_prefix_size]).hexdigest()
+        != s1_window.log_prefix_sha256
+    ):
+        raise I4AS2OwnedNativeHold("pre-S2 original Paper log not append-only")
+    # The prompt can be redrawn on the next line. Freeze complete records.
+    return raw.removesuffix(b"> ")
+
+
 async def run_original_u17_two_place_trial_dev(
     *, bridge: OwnedResidentPhysicalBridge,
     self_id: str,
@@ -167,15 +182,9 @@ async def run_original_u17_two_place_trial_dev(
         s2_paper_prefix = bridge.paper.read_owned_log(
             bridge.paper.owned_session_id,
         )
-        if (
-            type(s2_paper_prefix) is not bytes
-            or not s2_paper_prefix.endswith(b"\n")
-            or len(s2_paper_prefix) < original.paper_window.log_prefix_size
-            or hashlib.sha256(
-                s2_paper_prefix[:original.paper_window.log_prefix_size],
-            ).hexdigest() != original.paper_window.log_prefix_sha256
-        ):
-            raise I4AS2OwnedNativeHold("pre-S2 original Paper log not append-only")
+        s2_paper_prefix = _verified_pre_s2_paper_prefix(
+            s2_paper_prefix, original.paper_window,
+        )
         _, second = await continue_original_s1_to_s2_owned_native_dev(
             bridge=bridge, s1_loop=original.loop, s1_receipt=original.receipt,
             paper_window=original.paper_window,
