@@ -266,7 +266,7 @@ def test_r23d_terminal_job_rejects_forged_or_uncertain_source(
 @pytest.mark.parametrize("case", (
     "native_session", "other_epoch", "paper", "second_rejoin",
     "registry", "original_owner", "replaced_intent", "registration",
-    "other_probe", "lane_detached", "gpu_fenced",
+    "other_probe", "lane_detached", "gpu_fenced", "physical_enabled",
 ))
 def test_r23d_post_attach_preflight_fails_closed_on_source_mutation(
     pair, monkeypatch, case,
@@ -306,6 +306,10 @@ def test_r23d_post_attach_preflight_fails_closed_on_source_mutation(
             )
         elif case == "lane_detached":
             f.bridge.inference_lane = None
+        elif case == "physical_enabled":
+            # Negative-only adversarial gate flip: an already attached CPU
+            # read may not continue if observation-only protection is lost.
+            f.bridge.physical._observation_only = False
         else:
             lane.fence_self("A")
         with pytest.raises(R23DOriginalRejoinSourceHold):
