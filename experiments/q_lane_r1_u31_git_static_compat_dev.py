@@ -153,7 +153,7 @@ def inspect_r1_git_compatibility(
     them against independently trusted GitHub/worktree identities. A PASS
     does not prove who produced the commits or when real events occurred.
     """
-    if type(repo_root) is not Path or not repo_root.is_dir():
+    if not isinstance(repo_root, Path) or not repo_root.is_dir():
         raise QR1SourceHold("original Git object directory unavailable")
     original = _commit_id(trusted_u31_i_sha)
     shadow = _commit_id(r1_head_sha)
