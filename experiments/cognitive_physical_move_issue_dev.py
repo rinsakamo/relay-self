@@ -166,10 +166,15 @@ async def _settled(
     reached_first = False
     assert initial.snapshot.time is not None
     using_world_age = initial.snapshot.time.world_age_ticks is not None
+    # A bounded Q4 reservation may have only 24 probes. Mineflayer time/age
+    # arrives on server update_time packets, not every observe request;
+    # pacing avoids spending the entire reservation between clock updates.
+    # The same deadline, 8+8 ticks and 0.06m stability remain mandatory.
+    probe_interval_s = 0.15 if max_probe_requests is not None else 0.05
     while loop.time() < deadline:
         if max_probe_requests is not None and len(all_probes) >= max_probe_requests:
             raise PhysicalMoveRefusal("MOVE STOP probe reservation exhausted")
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(probe_interval_s)
         later = await _probe(
             session, native=native, after_seq=last.seq,
             timeout_s=max(0.001, deadline - loop.time()),
