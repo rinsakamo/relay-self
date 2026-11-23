@@ -1,0 +1,81 @@
+name: Q R2-3g independent original ticket boundary
+
+on:
+  push:
+    branches:
+      - audit/q-r2-3g-question-purpose-independent-20261123
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: q-r23g-independent-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  q-r23g-independent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Checkout exact Q review head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 85
+
+      - name: Check original R2-3f and fixed R2-3g source objects
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags --depth=85 origin \
+            '+refs/heads/dev/r-lane-r2-3f-original-rejoin-question-adoption-20261123:refs/q-original/r23f' \
+            '+refs/heads/dev/r-lane-r2-3g-question-ticket-purpose-20261123:refs/q-fixed/r23g'
+          test "$(git rev-parse refs/q-original/r23f)" = "d129d6a37f8a23f7915f5c31b6662408904020a9"
+          test "$(git rev-parse refs/q-fixed/r23g)" = "2deb27e7bb92529c9efbe447d39523c47d965c30"
+          python - <<'PY'
+          import subprocess
+          def git(*args):
+              return subprocess.check_output(["git", *args], text=True).strip()
+          original = "d129d6a37f8a23f7915f5c31b6662408904020a9"
+          fixed = "2deb27e7bb92529c9efbe447d39523c47d965c30"
+          assert git("merge-base", original, fixed) == original
+          assert git("merge-base", fixed, "HEAD") == fixed
+          changed_product = set(git(
+              "diff", "--name-only", original, fixed,
+          ).splitlines())
+          assert changed_product == {
+              "src/relay_self/resident_llama_inference_lane_dev.py",
+              "src/relay_self/r2_3e_original_rejoin_question_issuer_dev.py",
+              "src/relay_self/r2_3f_original_rejoin_question_adoption_dev.py",
+              "tests/test_r2_3g_original_question_purpose_dev.py",
+              ".github/workflows/r2-3g-question-purpose.yml",
+          }, changed_product
+          changed_q = set(git("diff", "--name-only", fixed, "HEAD").splitlines())
+          assert changed_q == {
+              "tests/test_q_r23g_question_ticket_independent_dev.py",
+              ".github/workflows/q-r23g-question-purpose-independent.yml",
+          }, changed_q
+          print("Q_R23G_EXACT_FIXED_CODE_AND_Q_ONLY_DELTA_PASS")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Pinned tooling
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1" "ruff==0.16.7"
+
+      - name: Execute independent Q and inherited original CPU issuer/storage tests
+        run: |
+          python -m pytest -q -s \
+            tests/test_q_r23g_question_ticket_independent_dev.py \
+            tests/test_r2_3g_original_question_purpose_dev.py \
+            tests/test_r2_3e_original_rejoin_question_issuer_dev.py \
+            tests/test_r2_3f_original_rejoin_question_adoption_dev.py
+          ruff check src tests experiments adapters observability
+          python tools/check_repository.py
+          test -z "$(git status --porcelain)"
