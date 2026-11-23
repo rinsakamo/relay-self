@@ -16,7 +16,6 @@ from relay_self.r2_3d_original_rejoin_gpu_fence_dev import R23DOriginalRejoinSou
 from relay_self.r2_3e_original_rejoin_question_issuer_dev import (
     R23EOriginalRejoinIssueHold,
     R23EOriginalRejoinQuestionOutcome,
-    issue_r23e_original_rejoin_question_once_dev,
 )
 from relay_self.relay_engine import ProviderDecision
 from relay_self.resident_llama_inference_lane_dev import ResidentGpuLaneError
@@ -25,8 +24,9 @@ from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import pair as original_pair
 from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
 from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
-from test_r2_3d_original_rejoin_gpu_fence_dev import _setup, pair as pair
 from test_r2_3c_original_rejoin_frozen_l1_dev import _state
+from test_r2_3d_original_rejoin_gpu_fence_dev import _setup
+from test_r2_3d_original_rejoin_gpu_fence_dev import pair as pair
 
 
 async def _issue(f, lane, turn, *, timeout_s=2.0):
