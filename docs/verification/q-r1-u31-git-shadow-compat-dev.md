@@ -5,7 +5,7 @@
 ## Pinned identities
 
 - Original I U31 [#1124](https://github.com/rinsakamo/relay-self/pull/1124): `d3034026a8eea3d2d4927527f5bc0d6ad0455457`.
-- R1 Shadow [#1129](https://github.com/rinsakamo/relay-self/pull/1129): `c4917e21a496107638b98f8b98c49bc60aa6d9aa`.
+- R1 Shadow [#1129](https://github.com/rinsakamo/relay-self/pull/1129): `06349c7a216b042511a90e05ad0196f4a7164378`.
 - Independent Q [#1089](https://github.com/rinsakamo/relay-self/pull/1089): `450734c54e1432ec70a8206952779b5ad82796d8`. Q branch itself is **not** rebased onto R1.
 - Original Q6/Q7/Q8/Q11 WSL audit of U31 remains the historical separately grounded DEV evidence only. No Q-R1 original source byte reinspection has occurred here.
 
@@ -76,7 +76,7 @@ frame revision and registry revision (with original Native/Paper unchanged).
 R1 implemented the bounded fail-closed fix in its own read-only
 `r1_shadow_is_live` revalidator and added matching R1 regression tests.
 Q preserves its own independent test file and pins the exact updated R1
-`c4917e21a496107638b98f8b98c49bc60aa6d9aa`.
+`06349c7a216b042511a90e05ad0196f4a7164378`.
 
 The Q probe must independently assert all four cases become stale on
 that updated R1 code, while the complete R1 Owner/Physical/WAL suite and
