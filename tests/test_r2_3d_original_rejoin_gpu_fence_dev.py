@@ -10,6 +10,8 @@ from dataclasses import replace
 import pytest
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
+from relay_self.owned_resident_physical_bridge_dev import OwnedResidentBridgeError
+from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
     R23COriginalRejoinRequestHold,
     compare_r23c_registered_l1_context,
@@ -21,7 +23,6 @@ from relay_self.r2_3d_original_rejoin_gpu_fence_dev import (
     preflight_r23d_original_rejoin_cpu,
     read_r23d_original_rejoin_result_cpu,
 )
-from relay_self.owned_resident_physical_bridge_dev import OwnedResidentBridgeError
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 from relay_self.resident_llama_inference_lane_dev import (
     LlamaCppSingleSlotWitness,
@@ -30,10 +31,31 @@ from relay_self.resident_llama_inference_lane_dev import (
 )
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
-from test_b_np1b_normal_present_poll_dev import pair as pair
+from test_b_np1b_normal_present_poll_dev import pair as original_pair
 from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
 from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 from test_r2_3c_original_rejoin_frozen_l1_dev import _bind, _state
+
+
+@pytest.fixture
+def pair(request, monkeypatch):
+    """Boot original A/B in *actual observation-only mode* from creation.
+
+    The other B/Native fixture normally uses a physical-capable gate.
+    We must never mutate a running Physical gate or bypass the real original
+    bridge's observation-only requirement to call a CPU test a GPU result.
+    """
+    original_init = PhysicalIssueAdmission.__init__
+
+    def init_observation_only(self, *args, **kwargs):
+        assert kwargs.get("resident_mode") is True
+        assert kwargs.get("observation_only", False) is False
+        return original_init(
+            self, *args, **{**kwargs, "observation_only": True},
+        )
+
+    monkeypatch.setattr(PhysicalIssueAdmission, "__init__", init_observation_only)
+    return request.getfixturevalue("original_pair")
 
 
 def _setup(pair, monkeypatch, *, decision=None):
