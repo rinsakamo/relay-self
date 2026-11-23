@@ -12,7 +12,7 @@ from dataclasses import replace
 
 import pytest
 
-from relay_self.persistent_cognition import load_persistent_cognition
+from relay_self.persistent_cognition import load_persistent_cognition, save_persistent_cognition
 from relay_self.r2_3d_original_rejoin_gpu_fence_dev import (
     read_r23d_original_rejoin_result_cpu,
 )
@@ -64,6 +64,16 @@ def test_r23f_real_original_adopt_persists_once_and_not_a_skill(
     f, lane, turns = _setup(pair, monkeypatch, decision=ProviderDecision.resolved("1"))
     turn = turns[sid]
     try:
+        if sid == "B":
+            # This Native reJOIN source fixture legitimately has no
+            # persisted B cognition file. Give the positive B path a
+            # source-equivalent pre-existing canonical checkpoint.
+            # The production Question writer must NEVER create this
+            # missing file on its own; a separate negative test checks HOLD.
+            owner = f.owners[sid]
+            assert not owner.files.cognition_file.exists()
+            save_persistent_cognition(owner.files.cognition_file, owner.retained)
+            assert load_persistent_cognition(owner.files.cognition_file) == owner.retained
         before_files = files(f)
         other = "B" if sid == "A" else "A"
         before_peer = (
