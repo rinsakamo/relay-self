@@ -204,8 +204,16 @@ def test_q_r2_1_cached_return_is_not_an_admission_token(
     assert not r1_shadow_is_live(
         report, bridge=bridge, boot=case[2], world=case[3], links=case[4],
     )
-    with pytest.raises(ResidentCognitiveWorkError):
-        bridge.cognitive_work.read_context_shadow_cpu(**args)
+    if change == "owner-question":
+        # The old cached report is stale, but a NEW qualified read is allowed
+        # after the original owner has closed its accepted Question.
+        refreshed = bridge.cognitive_work.read_context_shadow_cpu(**args)
+        assert refreshed.status is R1ShadowStatus.MATCH
+        assert refreshed.context.recent.entries == ()
+        assert qref not in refreshed.accepted_question_refs
+    else:
+        with pytest.raises(ResidentCognitiveWorkError):
+            bridge.cognitive_work.read_context_shadow_cpu(**args)
     if change == "paper":
         assert _files(bridge) == baseline
     for field in ("physical_authorized", "l1_input_switched", "memory_adopted"):
