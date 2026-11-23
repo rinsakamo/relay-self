@@ -240,6 +240,7 @@ def test_existing_a_b_cognitive_owners_snapshot_and_whole_rollback(tmp_path):
     restored_dir = tmp_path / "new-world-branch"
     receipt = restore_generation(first.generation, restored_dir, restore_id="rollback-A-B")
     recovered = staged_recover_cognition_cohort(first.generation, restored_dir)
+    assert not list(restored_dir.rglob("physical-wal.json.lock"))
     assert receipt["replay_performed"] is False
     assert receipt["physical_action_issue_authorized"] is False
     assert (restored_dir / "world" / "entities" / "r.0.0.mca").read_bytes() == (

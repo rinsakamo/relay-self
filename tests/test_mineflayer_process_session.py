@@ -576,3 +576,182 @@ def test_real_python_native_send_allows_exact_precheckpoint_stop_only(
         assert physical.closed
 
     asyncio.run(exercise())
+
+
+def test_u17_same_owned_stdin_audit_spans_two_actions_without_restarting(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """Buffer records are not fabricated Native ACK or process exit evidence."""
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        stdout = tmp_path / "native-stdout.jsonl"
+        stdin = tmp_path / "native-stdin.jsonl"
+        session.start_raw_source_audit(stdout)
+        session.start_raw_stdin_audit(stdin)
+        session.install_effect_admission(lambda *_: None)
+        session.install_atomic_effect_sender(lambda _sid, _effect, _aid, write: write())
+        for parent in ("first-fresh", "second-fresh"):
+            await session.send_look(parent + "-look", yaw=0.0, pitch=0.0)
+            await session.send_set_control(
+                parent + "-start", control="forward", state=True,
+            )
+            await session.send_clear_controls(parent + "-stop")
+        # One continuous byte sequence; no source restart between parents.
+        assert stdin.read_bytes() == b"".join(proc.stdin.writes)
+        assert len(stdin.read_bytes().splitlines()) == 6
+        assert [json.loads(v)["action_id"] for v in proc.stdin.writes] == [
+            suffix for parent in ("first-fresh", "second-fresh")
+            for suffix in (parent + "-look", parent + "-start", parent + "-stop")
+        ]
+        session.finish_raw_stdin_audit()
+        session.finish_raw_source_audit()
+        assert stdin.read_bytes() == b"".join(proc.stdin.writes)
+        with pytest.raises(Exception, match="stdin audit"):
+            session.start_raw_stdin_audit(tmp_path / "replayed.jsonl")
+        with pytest.raises(Exception, match="not active"):
+            session.finish_raw_stdin_audit()
+
+    asyncio.run(scenario())
+
+
+def test_u17_stdin_capture_does_not_record_denied_or_foreign_commands(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        with pytest.raises(Exception, match="stdout"):
+            session.start_raw_stdin_audit(tmp_path / "premature.jsonl")
+        session.start_raw_source_audit(tmp_path / "stdout.jsonl")
+        (tmp_path / "symlink").symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(Exception, match="stdout"):
+            session.start_raw_stdin_audit(tmp_path / "symlink" / "bad.jsonl")
+        target = tmp_path / "stdin.jsonl"
+        session.start_raw_stdin_audit(target)
+
+        def deny(_sid, _effect, _action_id):
+            raise MineflayerEffectAdmissionError("original physical gate denied")
+
+        session.install_effect_admission(deny)
+        with pytest.raises(MineflayerEffectAdmissionError, match="denied"):
+            await session.send_set_control(
+                "reused-start", control="forward", state=True,
+            )
+        assert target.read_bytes() == b""
+        assert proc.stdin.writes == []
+        await session.send_observe("safe-read")
+        assert target.read_bytes() == b"".join(proc.stdin.writes)
+        session.finish_raw_stdin_audit()
+        session.finish_raw_source_audit()
+
+    asyncio.run(scenario())
+
+
+def test_u17_stdout_source_contains_exact_startup_prefix_and_continuous_probes(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """Independent decoder can replay original seq=0 after late audit start."""
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line(), observation_line()])
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        # This actual observation precedes opening the raw stdout audit.
+        await session.receive()
+        path = tmp_path / "complete-original-stdout.jsonl"
+        session.start_raw_source_audit(path)
+        assert path.read_bytes() == started_line() + observation_line()
+        session.finish_raw_source_audit()
+        decoder = MineflayerStreamDecoder()
+        decoded = [
+            decoder.decode(raw.decode("utf-8"))
+            for raw in path.read_bytes().splitlines()
+        ]
+        assert decoder.session_id == session.started.session_id
+        assert [item.seq for item in decoded] == [0, 1]
+        with pytest.raises(Exception, match="already used"):
+            session.start_raw_source_audit(tmp_path / "replayed.jsonl")
+
+    asyncio.run(scenario())
+
+
+def test_u18_owned_q4_injected_stop_failure_is_one_use_and_no_native_stop_bytes(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """CPU native stand-in ONLY; not real Node termination evidence."""
+    from adapters.mineflayer.process_session import MineflayerProcessIOError
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// fixture", encoding="utf-8")
+    proc = FakeProcess([started_line()])
+    proc.pid = 42424
+
+    async def fake_create(*_args, **_kwargs):
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
+
+    async def scenario() -> None:
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+            enable_q4_bounded_place_dev=True,
+        )
+        session.start_raw_source_audit(tmp_path / "stdout.jsonl")
+        session.start_raw_stdin_audit(tmp_path / "stdin.jsonl")
+        session.install_effect_admission(lambda *_: None)
+        session.install_atomic_effect_sender(
+            lambda _native, _effect, _action, write: write(),
+        )
+        session.arm_q4_stop_failure_once_dev("original-a-stop")
+        await session.send_set_control(
+            "original-a-start", control="forward", state=True,
+        )
+        with pytest.raises(MineflayerProcessIOError, match="injected STOP failure"):
+            await session.send_clear_controls("original-a-stop")
+        assert session._q4_stop_failure_used
+        with pytest.raises(MineflayerProcessIOError, match="cannot be replayed"):
+            await session.send_clear_controls("original-a-stop")
+        with pytest.raises(MineflayerProcessIOError, match="one-shot"):
+            session.arm_q4_stop_failure_once_dev("other-stop")
+        assert [json.loads(w)["action_id"] for w in proc.stdin.writes] == [
+            "original-a-start",
+        ]
+        # Real Q4 wrapper independently requires process exit; this mock
+        # only tests adapter withholding and local error propagation.
+        assert await session.force_terminate_owned(timeout_s=0.5) == -15
+        assert session.process_returncode == -15
+        session.finish_raw_stdin_audit()
+        session.finish_raw_source_audit()
+
+    asyncio.run(scenario())

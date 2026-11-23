@@ -242,13 +242,22 @@ function timeSnapshot (bot) {
   ) {
     return null
   }
+  // Daylight time is a presentation clock and can be frozen by gamerules.
+  // Mineflayer's independent server world-age remains tick based. Publish it
+  // as an optional source field, never infer it from host or Paper time.
+  const age = bot.time.age
+  if (age !== undefined && age !== null &&
+      (!Number.isSafeInteger(age) || age < 0)) {
+    throw new Error('bot.time.age must be a non-negative safe integer')
+  }
   return {
     time_of_day: requireNonNegativeInteger(
       'bot.time.timeOfDay',
       bot.time.timeOfDay
     ),
     day: requireNonNegativeInteger('bot.time.day', bot.time.day),
-    is_day: bot.time.isDay
+    is_day: bot.time.isDay,
+    ...(age === undefined || age === null ? {} : { world_age_ticks: age })
   }
 }
 

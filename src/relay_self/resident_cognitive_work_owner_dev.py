@@ -13,15 +13,23 @@ import weakref
 from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 from relay_self.checkpointed_cognitive_runtime_dev import (
     CheckpointedCognitiveOwner,
     LiveCognitionCheckpointError,
 )
-from relay_self.cognitive_minimal_dev import initial_patterns_with_relative_move
+from relay_self.cognitive_minimal_dev import (
+    PresetAcceptanceReceipt,
+    accept_skill_parameter_preset,
+    initial_move_pattern,
+    initial_patterns_with_relative_move,
+)
 from relay_self.common_io import ScopeRef
 from relay_self.innate_schema import SchemaMode, SchemaSnapshot, check_schema_eligibility
 from relay_self.persistent_cognition import Memory
+from relay_self.provenance import Provenance
+from relay_self.skill_invocation import SkillBudget, SkillDefinition, SkillParameterPreset
 
 
 class ResidentCognitiveWorkError(RuntimeError):
@@ -130,14 +138,104 @@ class ResidentCognitiveWorkOwner:
             # Explicit mapping: D module exploratory v1 -> B exploration pattern v1.
             expected_pattern = initial_patterns_with_relative_move().patterns[-1]
             patterns = [p for p in registry.patterns if p.schema_id == "exploration"]
+            allowed = ([expected_pattern],)
+            if tuple(self.owners) == ("B",):
+                allowed += ([initial_move_pattern()],)
             if (activation is None or activation.spec.version != 1
                 or "QUESTION_CANDIDATE" not in activation.spec.signal_kinds
-                or (activation.mode is not SchemaMode.OFF and (patterns != [expected_pattern]
+                or (activation.mode is not SchemaMode.OFF and (patterns not in allowed
                     or not check_schema_eligibility(snapshot, scope=ScopeRef(self_id, None),
                         schema_id="exploratory", requested_mode=activation.mode,
                         current_registry_revision=registry.revision).allowed))):
                 raise ResidentCognitiveWorkError("exploration mapping or activation invalid")
             self._present_schemas[self_id] = (snapshot, registry)
+
+    def decide_initial_move_preset(
+        self, preset: SkillParameterPreset,
+    ) -> PresetAcceptanceReceipt:
+        """Apply B's initial exploration preset policy to its adopted live Body."""
+        from relay_self.initial_skill_ir import initial_skill_definitions
+        from relay_self.physical_action_journal import PhysicalActionJournal
+
+        with self.lock:
+            scope = self.current_scope("B")
+            owner = self.owners["B"]
+            owner._eligible()
+            body = owner.current_worldbody_observation
+            definition = next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
+            if (
+                tuple(self.owners) != ("B",) or scope[0] != 1
+                or body is None or body.session_id != scope[1]
+                or body.snapshot.health <= 0 or body.snapshot.time is None
+                or body.snapshot.time.day * 24000 + body.snapshot.time.time_of_day
+                != owner.last_observed_tick
+                or owner.intent.events or owner.skills or owner.supervisor.recorded_actions
+                or owner.pattern_registry.accepted_presets
+                or not isinstance(preset, SkillParameterPreset)
+                or preset.budget != SkillBudget(1, 1500, 2.0, 32)
+                or preset.constraints.requirements or preset.arguments
+                or preset.expected_cost is not None
+                or PhysicalActionJournal.read_snapshot(
+                    owner.files.physical_wal_file, self_id="B", require_clear=True,
+                )
+            ):
+                raise ResidentCognitiveWorkError("initial B exploration policy declined MOVE preset")
+            receipt = PresetAcceptanceReceipt(
+                "B", "initial-move-" + uuid4().hex, preset.preset_ref,
+                Provenance("original-b-initial-move-policy-v1", body.provenance.reference),
+            )
+            self.publish_accepted_move_preset(
+                preset=preset, definition=definition, receipt=receipt, scope=scope,
+                expected_revision=owner.pattern_registry.revision,
+            )
+            return receipt
+
+    def publish_accepted_move_preset(
+        self, *, preset: SkillParameterPreset, definition: SkillDefinition,
+        receipt: PresetAcceptanceReceipt, scope: tuple[int, str, int],
+        expected_revision: int,
+    ) -> None:
+        """Publish a decision already authenticated by the original Self caller."""
+        from relay_self.exploration_schema_record_dev import (
+            canonical_exploration_snapshot,
+            require_recorded_schema,
+        )
+        from relay_self.initial_skill_ir import initial_skill_definitions
+
+        with self.lock:
+            if (
+                tuple(self.owners) != ("B",)
+                or not isinstance(receipt, PresetAcceptanceReceipt)
+                or receipt.self_id != "B"
+                or scope != self.current_scope("B")
+                or not isinstance(preset, SkillParameterPreset)
+                or preset.pattern_id != initial_move_pattern().pattern_id
+                or definition != next(d for d in initial_skill_definitions() if d.skill_id == "MOVE")
+            ):
+                raise ResidentCognitiveWorkError("current original B MOVE acceptance required")
+            owner = self.owners["B"]
+            owner._eligible()
+            snapshot = self.present_schema("B")
+            if (
+                snapshot.get("exploratory").mode is not SchemaMode.FULL
+                or owner.retained.pattern_registry != owner.pattern_registry
+            ):
+                raise ResidentCognitiveWorkError("current retained exploration registry required")
+            registry = accept_skill_parameter_preset(
+                owner.pattern_registry, preset, definition=definition, receipt=receipt,
+                accepted_by_self=True, expected_revision=expected_revision,
+                available_skills=frozenset({("MOVE", 1)}),
+            )
+            retained = owner.retained.retain_schema_registry(
+                registry, expected_revision=expected_revision,
+            )
+            revision = canonical_exploration_snapshot(
+                self_id="B", registry=registry, mode=SchemaMode.FULL,
+            )
+            require_recorded_schema(revision, self_id="B", registry=registry)
+            owner.retained = retained
+            owner.pattern_registry = registry
+            self._present_schemas["B"] = (revision, registry)
 
     def present_schema(self, self_id: str) -> SchemaSnapshot:
         """Return only a current registration, under the resident lock."""

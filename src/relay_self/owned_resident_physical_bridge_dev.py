@@ -218,6 +218,20 @@ class OwnedResidentPhysicalBridge:
                 )
 
             launched.install_effect_admission(effect)
+            # Only this actual adapter-owned child can submit the final effect
+            # bytes. Synthetic injected Native fixtures keep their existing
+            # observable gate; no extra issuer or sender is introduced.
+            if isinstance(launched, MineflayerProcessSession):
+                def submit_effect(
+                    native_id: str, effect_kind: str, action_id: str,
+                    write: Callable[[], None],
+                ) -> None:
+                    self.physical.submit_native_effect(
+                        self_id=self_id, native_session_id=native_id,
+                        effect=effect_kind, action_id=action_id, write=write,
+                    )
+
+                launched.install_atomic_effect_sender(submit_effect)
             observations: list[MineflayerObservation] = []
             _, _, request_id, observed_tick = await verify_native_spawn_probe(
                 launched, timeout_s=self.probe_timeout_s, probe_sink=observations.append,
@@ -403,6 +417,21 @@ class OwnedResidentPhysicalBridge:
         if self.inference_lane is not None:
             self.inference_lane.fence_self(self_id)
         self.lifecycle.fail_self(self_id)
+
+    async def abort_place_after_start_dev(
+        self, *, self_id: str, stop_action_id: str,
+    ):
+        """Q4 host-owned kill switch; independent of a canceled PLACE lease.
+
+        The existing original physical issuer is revoked before first await,
+        then the owned Native bot is disconnected if STOP/ACK is uncertain.
+        Neither this method nor disconnection resolves a PREPARED WAL.
+        """
+        from relay_self.q4_place_abort_dev import abort_original_place_after_start
+
+        return await abort_original_place_after_start(
+            bridge=self, self_id=self_id, stop_action_id=stop_action_id,
+        )
 
     async def logout(self, self_id: str) -> LogoutFenceEvidence:
         """Independent physical, journal, native process and cognition checks."""

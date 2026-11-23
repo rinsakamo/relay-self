@@ -114,6 +114,11 @@ def _tick(observation: MineflayerObservation) -> int:
     time = observation.snapshot.time
     if time is None:
         raise PhysicalMoveRefusal("MOVE World clock unavailable")
+    # Server world age advances independently of doDaylightCycle; daylight
+    # time can stay frozen while physics ticks continue. Legacy source samples
+    # have no age and keep their original (less strong) interpretation.
+    if time.world_age_ticks is not None:
+        return time.world_age_ticks
     return time.day * 24000 + time.time_of_day
 
 
@@ -134,6 +139,7 @@ async def _probe(
 async def _settled(
     session: MineflayerProcessSession, *,
     native: str, stop_seq: int, timeout_s: float,
+    max_probe_requests: int | None = None,
 ) -> tuple[
     MineflayerObservation,
     MineflayerObservation,
@@ -145,6 +151,10 @@ async def _settled(
     A drifting body shifts only its reference, never commits without a
     stable 8-tick window. This STOP tolerance is not a target accuracy.
     """
+    if max_probe_requests is not None and (
+        type(max_probe_requests) is not int or not 3 <= max_probe_requests <= 4096
+    ):
+        raise PhysicalMoveRefusal("invalid bounded STOP probe request limit")
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
     initial = await _probe(
@@ -154,14 +164,27 @@ async def _settled(
     last = initial
     all_probes = [initial]
     reached_first = False
+    assert initial.snapshot.time is not None
+    using_world_age = initial.snapshot.time.world_age_ticks is not None
+    # A bounded Q4 reservation may have only 24 probes. Mineflayer time/age
+    # arrives on server update_time packets, not every observe request;
+    # pacing avoids spending the entire reservation between clock updates.
+    # The same deadline, 8+8 ticks and 0.06m stability remain mandatory.
+    probe_interval_s = 0.15 if max_probe_requests is not None else 0.05
     while loop.time() < deadline:
-        await asyncio.sleep(0.05)
+        if max_probe_requests is not None and len(all_probes) >= max_probe_requests:
+            raise PhysicalMoveRefusal("MOVE STOP probe reservation exhausted")
+        await asyncio.sleep(probe_interval_s)
         later = await _probe(
             session, native=native, after_seq=last.seq,
             timeout_s=max(0.001, deadline - loop.time()),
         )
         last = later
         all_probes.append(later)
+        if (later.snapshot.time is None
+                or (later.snapshot.time.world_age_ticks is not None)
+                != using_world_age):
+            raise PhysicalMoveRefusal("MOVE STOP World clock source changed")
         if _tick(later) < _tick(initial) or _tick(later) - _tick(initial) > 200:
             raise PhysicalMoveRefusal("MOVE STOP World clock regression/horizon")
         if not reached_first:

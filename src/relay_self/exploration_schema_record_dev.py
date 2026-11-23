@@ -7,7 +7,11 @@ external authorship or a true timeline before a physical event.
 """
 from __future__ import annotations
 
-from relay_self.cognitive_minimal_dev import PatternRegistry, initial_patterns_with_relative_move
+from relay_self.cognitive_minimal_dev import (
+    PatternRegistry,
+    initial_move_pattern,
+    initial_patterns_with_relative_move,
+)
 from relay_self.innate_schema import (
     SchemaActivation,
     SchemaMode,
@@ -53,7 +57,8 @@ def require_recorded_schema(snapshot: SchemaSnapshot, *, self_id: str,
     if module.mode is SchemaMode.FULL:
         expected_pattern = initial_patterns_with_relative_move().patterns[-1]
         matching = [p for p in registry.patterns if p.schema_id == "exploration"]
-        if matching != [expected_pattern]:
+        allowed = ([expected_pattern], [initial_move_pattern()]) if self_id == "B" else ([expected_pattern],)
+        if matching not in allowed:
             raise RecordedSchemaHold("exploration activation lacks exact original pattern")
     return snapshot
 

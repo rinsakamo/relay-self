@@ -378,7 +378,9 @@ def test_exact_mineflayer_native_process_raw_source_bytes_fsynced_once(
         entry = await session.receive()
         assert isinstance(entry, MineflayerObservation)
         session.finish_raw_source_audit()
-        assert raw.read_bytes() == observation_line()
+        # U17: original startup seq=0 is now retained before the audit
+        # begins; the whole stream must be replayable, not just seq=1+.
+        assert raw.read_bytes() == started_line() + observation_line()
         with pytest.raises(MineflayerProcessIOError, match="not active"):
             session.finish_raw_source_audit()
         with pytest.raises(MineflayerProcessIOError, match="already used"):

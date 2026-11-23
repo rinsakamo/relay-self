@@ -234,6 +234,19 @@ class CognitiveContext:
                 or view.owner_epoch != self.current.owner_epoch
             ):
                 raise R0ContextHold("foreign or retired original owner epoch")
+        # R0 read-only RECENT can only be associated with its own Paper world.
+        # Historical cross-World replay needs a separate original Owner receipt.
+        if self.recent is not None and any(
+            entry.claim.scope != self.current.scope for entry in self.recent.entries
+        ):
+            raise R0ContextHold("RECENT claim crosses original Paper world scope")
+        # A retrieved reference may not relabel a different Schema Need as the
+        # reason for recall. There is no C3 applicability decision in R0.
+        if (
+            self.retrieved is not None
+            and self.retrieved.query_need_refs != self.current.need_refs
+        ):
+            raise R0ContextHold("RETRIEVED Need refs differ from qualified CURRENT")
 
 
 def read_original_owner_current(*, bridge, boot, world, links, self_id, signals=()):
