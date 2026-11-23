@@ -58,6 +58,8 @@ class ResidentInferenceTicket:
     world_epoch: int
     backend_ref: str
     action_issue_authorized: bool = False
+    # Immutable deny-only job purpose; never grants model or Action authority.
+    purpose: str = "general"
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,14 +233,18 @@ class ResidentLlamaInferenceLane:
         self, self_id: str, *, work_ref: str,
         request: BoundedChoiceRequest | OpenCognitionRequest,
         mode: CognitionMode,
+        purpose: str = "general",
     ) -> ResidentInferenceTicket:
         if (
             type(work_ref) is not str or not work_ref.strip()
             or not isinstance(mode, CognitionMode)
             or not isinstance(request, (BoundedChoiceRequest, OpenCognitionRequest))
             or (mode is CognitionMode.OPEN) != isinstance(request, OpenCognitionRequest)
+            or type(purpose) is not str
+            or purpose not in ("general", "original_rejoin_question")
+            or (purpose == "original_rejoin_question" and mode is not CognitionMode.BOUNDED)
         ):
-            raise ResidentGpuLaneError("typed L1/L2 request and work reference required")
+            raise ResidentGpuLaneError("typed L1/L2 request, purpose and work reference required")
         with self.cognitive_work.lock, self._lock:
             scope = self.cognitive_work.current_scope(self_id)
             if self_id in self._fenced or self._uncertain:
@@ -249,6 +255,7 @@ class ResidentLlamaInferenceLane:
             ticket = ResidentInferenceTicket(
                 self_id, work_ref, request.request_id, mode,
                 scope[0], scope[1], scope[2], self.backend_ref,
+                purpose=purpose,
             )
             job = _Job(ticket, request, _request_sha256(request, mode))
             self._jobs[key] = job
@@ -329,7 +336,13 @@ class ResidentLlamaInferenceLane:
         with self.cognitive_work.lock, self._lock:
             job = self._require_current_job(ticket)
             if (
-                job.result_adopted or job.future is None
+                # The original Question issuer marks this immutable purpose
+                # atomically at submit. ADOPT/HOLD/DECLINE/UNRESOLVED can
+                # never be reinterpreted as a generic Memory result.
+                job.ticket.purpose != "general"
+                or job.question_adoption_state != "unused"
+                or job.question_adoption_binding is not None
+                or job.result_adopted or job.future is None
                 or not job.future.done() or not job.terminal_slot_idle
                 or job.future.cancelled() or self._uncertain
             ):

@@ -118,6 +118,7 @@ def commit_r23f_original_rejoin_question_dev(
         job = lane._require_current_job(ticket)
         if (
             job.ticket is not ticket
+            or job.ticket.purpose != "original_rejoin_question"
             or job.question_adoption_state != "unused"
             or job.question_adoption_binding is not None
             or job.result_adopted
