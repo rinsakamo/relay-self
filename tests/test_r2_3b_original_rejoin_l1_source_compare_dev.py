@@ -105,8 +105,14 @@ def test_r23b_unregistered_or_stale_original_rejoin_source_holds(
     elif failure == "resident_epoch":
         f.cognitive._states["A"].epoch += 1
     elif failure == "paper_drift":
-        with f.paper._log_path.open("a") as stream:
-            stream.write("R23B_EXTERNAL_PAPER_DRIFT\n")
+        # Log growth may yield a freshly qualified source; corrupt the attested
+        # Paper ACK rather than treating benign new history as a failure.
+        log = f.paper._log_path.read_text()
+        assert "P0D_TICK_ACK nonce=88888888" in log
+        f.paper._log_path.write_text(log.replace(
+            "P0D_TICK_ACK nonce=88888888",
+            "P0D_TICK_ACK nonce=00000000", 1,
+        ))
     elif failure == "composite_drift":
         cut = f.cognitive._normal_rejoin_source_cut
         f.cognitive._normal_rejoin_source_cut = replace(
