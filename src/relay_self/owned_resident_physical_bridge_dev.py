@@ -404,6 +404,96 @@ class OwnedResidentPhysicalBridge:
             raise
         self.inference_lane = lane
 
+    def attach_original_first_rejoin_question_l1_dev(
+        self, lane: ResidentLlamaInferenceLane, *, a_turn, b_turn,
+    ) -> None:
+        """Attach EXISTING bounded lane after qualified original A reJOIN/B stay.
+
+        Stage28's login-only attach requires Owner's latest accepted WorldBody
+        probe to be exactly the initial login probe. That is intentionally NOT
+        assumed after continuing Native observations and A reJOIN. The original
+        Resident Owner must have independently frozen *both* currently
+        qualified reJOIN Question requests before this opt-in attachment.
+        No model call, ticket or new action issuer is created here.
+        """
+        from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
+            R23CFrozenOriginalRejoinL1,
+            compare_r23c_registered_l1_context,
+        )
+
+        resident = self.cognitive_work
+        if resident is None:
+            raise OwnedResidentBridgeError("original resident required")
+        with resident.lock:
+            if (
+                self.inference_lane is not None
+                or type(lane) is not ResidentLlamaInferenceLane
+                or lane.cognitive_work is not resident
+                or lane.uncertain
+                or type(a_turn) is not R23CFrozenOriginalRejoinL1
+                or type(b_turn) is not R23CFrozenOriginalRejoinL1
+                or a_turn.self_id != "A" or b_turn.self_id != "B"
+                or not self.physical.observation_only
+                or self.physical.active_action_ids
+                or self._pending_login
+                or tuple(sorted(self.sessions)) != ("A", "B")
+                or self.lifecycle.self_roster != ("A", "B")
+            ):
+                raise OwnedResidentBridgeError(
+                    "unqualified original post-reJOIN bounded lane attachment"
+                )
+
+            def require_current():
+                self._check_world()
+                reports = tuple(
+                    compare_r23c_registered_l1_context(
+                        bridge=self, turn=turn,
+                    )
+                    for turn in (a_turn, b_turn)
+                )
+                if (
+                    a_turn.source.source_pair_revision
+                    != b_turn.source.source_pair_revision
+                    or any(
+                        self.lifecycle.view(sid).status is not Presence.ONLINE
+                        or self.sessions[sid].process_returncode is not None
+                        or self.owners[sid] is not resident.owners[sid]
+                        or self.owners[sid].fresh_native_observation_required
+                        or self.owners[sid].supervisor.open_actions
+                        or self.owners[sid].current_worldbody_observation
+                        is not (a_turn, b_turn)[i].cohort_probes[i]
+                        or self.physical.current_native_sessions[sid]
+                        != resident.current_scope(sid)[1]
+                        or self.sessions[sid].started.session_id
+                        != resident.current_scope(sid)[1]
+                        or reports[i].original_owner is not self.owners[sid]
+                        for i, sid in enumerate(("A", "B"))
+                    )
+                ):
+                    raise OwnedResidentBridgeError(
+                        "original post-reJOIN A/B Native/Owner/Physical mismatch"
+                    )
+                for sid in ("A", "B"):
+                    self.work.require_clean(sid)
+                return reports
+
+            original = require_current()
+            lane.witness.require_idle()
+            if require_current() != original:
+                raise OwnedResidentBridgeError(
+                    "original post-reJOIN source changed before attachment"
+                )
+            try:
+                for sid in ("A", "B"):
+                    lane.bind_login(sid)
+            except BaseException:
+                for sid in ("A", "B"):
+                    lane.fence_self(sid)
+                raise
+            # Original Bridge is the only owner of lane attachment.
+            # The existing logout/fence/retire logic remains authoritative.
+            self.inference_lane = lane
+
     def quarantine(self, self_id: str) -> None:
         """Synchronous, per-Self immediate issue block before any async wait."""
         if self_id not in self.sessions:
