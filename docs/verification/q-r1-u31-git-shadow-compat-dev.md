@@ -28,3 +28,21 @@ A separately authorized LocalCodex/Q worktree with `/home/rinsa/evidence/i-u31/`
 Because the checker can only prove what the local Git objects contain, an attacker-controlled Git directory or caller-supplied commit hashes do not establish an authenticated producer. Confirm checkout provenance outside this tool.
 
 **Explicit status:** `Q_R1_GIT_STATIC_CPU_OFFLINE` may become PASS after its CI and the pinned SHA audit; `Q_R1_REAL_ORIGINAL_SOURCE_REINSPECTION_PENDING / R2_HOLD / QUAL_NO_GO / SCIENCE_NOT_RUN` remain.
+
+
+## Dedicated pinned-object GitHub Actions transaction (Q-only)
+
+The standalone `.github/workflows/q-r1-pinned-git-objects.yml` job checks out the
+exact Q audit PR head, fetches **only the immutable original I U31 and R1
+branch refs** into separate audit-only Git refs, then asserts both Git refs
+resolve to the explicit 40-character expected SHA before calling the Q
+read-only inspector. The extra fetch writes only runner-local Git objects,
+**never World, LLM, native, source evidence or actual R1 runtime state**.
+It checks that the tracked checkout remains clean and records a clear
+`Q_R1_ACTUAL_PINNED_GIT_OBJECTS_CPU_STATIC_PASS` marker only after audit.
+If the I/R branches move, the pinned commit check fails closed.
+
+This distinct job must succeed for an *actual* target-Git-object Q audit
+claim; the earlier Q pytest synthetic fixtures alone are not sufficient.
+Its positive result still cannot authenticate the WSL original producer or
+supply permission to switch R2 or run another World.
