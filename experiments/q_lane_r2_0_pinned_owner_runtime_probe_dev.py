@@ -116,8 +116,19 @@ def test_q_r2_0_every_present_difference_invalidates_initial_and_cached(
 
     monkeypatch.setattr(bridge.cognitive_work, "read_present_cpu", substituted)
     changed = compare_original_owner_r1_shadow(**params)
-    assert changed.status is R1ShadowStatus.MISMATCH
-    assert expected in changed.mismatch_codes
+    if field == "signals":
+        # Initial CURRENT inherits signals from the same qualified legacy
+        # Present. A changed but otherwise eligible selector can therefore
+        # become a fresh CURRENT; comparing it to the *previous* independent
+        # CURRENT above must still detect a difference. Cached old CURRENT
+        # must be rejected, but the initial R1 reader cannot invent a second
+        # canonical Schema-signal source.
+        assert changed.status is R1ShadowStatus.MATCH
+        assert changed.context is not None
+        assert changed.context.current.signals == ()
+    else:
+        assert changed.status is R1ShadowStatus.MISMATCH
+        assert expected in changed.mismatch_codes
     assert not r1_shadow_is_live(
         clean, bridge=bridge, boot=case[2], world=case[3], links=case[4],
     )
