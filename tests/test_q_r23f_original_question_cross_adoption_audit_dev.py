@@ -19,8 +19,8 @@ from relay_self.r2_3f_original_rejoin_question_adoption_dev import (
 from relay_self.relay_engine import ProviderDecision
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_normal_present_poll_dev import pair as original_pair
-from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined_fixture
-from test_b_np1b_rejoin_present_dev import rejoined_present as present_fixture
+from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
+from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 from test_r2_3e_original_rejoin_question_issuer_dev import _issue, _setup
 from test_r2_3e_original_rejoin_question_issuer_dev import pair as pair
 
@@ -35,7 +35,7 @@ def _memory(tag: str) -> Memory:
 
 def _start(pair, monkeypatch, choice: str):
     assert all(x is not None for x in (
-        current_fixture, original_pair, rejoined_fixture, present_fixture,
+        current_fixture, original_pair, rejoined, rejoined_present,
     ))
     return _setup(pair, monkeypatch, decision=ProviderDecision.resolved(choice))
 
