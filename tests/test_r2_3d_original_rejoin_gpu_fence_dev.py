@@ -21,14 +21,18 @@ from relay_self.r2_3d_original_rejoin_gpu_fence_dev import (
     preflight_r23d_original_rejoin_cpu,
     read_r23d_original_rejoin_result_cpu,
 )
+from relay_self.owned_resident_physical_bridge_dev import OwnedResidentBridgeError
 from relay_self.relay_engine import CognitionMode, ProviderDecision
-from relay_self.resident_llama_inference_lane_dev import _request_sha256
+from relay_self.resident_llama_inference_lane_dev import (
+    LlamaCppSingleSlotWitness,
+    ResidentLlamaInferenceLane,
+    _request_sha256,
+)
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import pair as pair
 from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
 from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
-from test_bd1b_post_gpu_source_dev import attach
 from test_r2_3c_original_rejoin_frozen_l1_dev import _bind, _state
 
 
@@ -47,7 +51,25 @@ def _setup(pair, monkeypatch, *, decision=None):
             ProviderDecision.resolved("2") if decision is None else decision
         ),
     )
-    lane = attach(f.bridge, monkeypatch)
+    provider = LlamaCppRelayProvider(
+        endpoint="http://127.0.0.1:8080", model="fixture", timeout=4.0,
+    )
+    witness = LlamaCppSingleSlotWitness(provider=provider, backend_ref="fixture")
+    monkeypatch.setattr(witness, "require_idle", lambda: None)
+    lane = ResidentLlamaInferenceLane(
+        provider=provider, cognitive_work=f.cognitive, witness=witness,
+    )
+    try:
+        # Real Stage28 initial-login-only attachment MUST refuse an A-reJOIN
+        # / B-continuing Source; do not alter last_login_observations to bypass it.
+        with pytest.raises(OwnedResidentBridgeError):
+            f.bridge.attach_observation_only_bounded_l1(lane)
+        f.bridge.attach_original_first_rejoin_question_l1_dev(
+            lane, a_turn=turn_a, b_turn=turn_b,
+        )
+    except BaseException:
+        lane._pool.shutdown(wait=True)
+        raise
     return f, lane, {"A": turn_a, "B": turn_b}
 
 
