@@ -189,6 +189,11 @@ def compare_original_owner_r1_shadow(
                 bridge=bridge, boot=boot, world=world, links=links,
                 self_id=self_id, signals=legacy.present.signals,
             )
+            # This adapter is restricted to original first-login Stage28.
+            # A changed epoch with the old boot/links is not a fresh reJOIN
+            # Composite receipt, even if the legacy source reader accepts it.
+            if current.owner_epoch != 1:
+                raise ValueError("old Stage28 source cannot certify a new owner epoch")
             recent = _accepted_original_questions(
                 owner=owner, current=current, limit=recent_limit,
             )
@@ -256,3 +261,69 @@ def compare_original_owner_r1_shadow(
             )
         except (RuntimeError, ValueError, TypeError, AttributeError, KeyError, OSError):
             return _hold(self_id, "UNQUALIFIED_OR_CHANGED_ORIGINAL_SOURCE")
+
+
+def r1_shadow_is_live(
+    report: R1ShadowComparison, *, bridge, boot, world, links,
+) -> bool:
+    """Negative-only recheck before using any cached R1 RECENT/Memory view.
+
+    R0's context_is_live rechecks CURRENT and retrieved Memory digests, but
+    *not* a later Owner Question revision. This guard also re-reads the
+    canonical original cognition and owner-held accepted Question provenance.
+    Passing is NEVER an R1 runtime/physical/GPU admission credential.
+    """
+    if (
+        type(report) is not R1ShadowComparison
+        or report.status is not R1ShadowStatus.MATCH
+        or report.context is None
+    ):
+        return False
+    sid = report.self_id
+    resident = getattr(bridge, "cognitive_work", None)
+    owners = getattr(bridge, "owners", None)
+    if (
+        resident is None or not isinstance(owners, dict)
+        or owners.get(sid) is None
+        or owners[sid] is not resident.owners.get(sid)
+    ):
+        return False
+    with resident.lock:
+        try:
+            owner = owners[sid]
+            if load_persistent_cognition(owner.files.cognition_file) != owner.retained:
+                return False
+            legacy = resident.read_present_cpu(
+                bridge=bridge, boot=boot, world=world, links=links, self_id=sid,
+            )
+            fresh = read_original_owner_current(
+                bridge=bridge, boot=boot, world=world, links=links,
+                self_id=sid, signals=legacy.present.signals,
+            )
+            if (
+                fresh != report.context.current
+                or fresh.owner_epoch != 1
+                or legacy.source != fresh.source
+                or legacy.schema != fresh.schema
+                or legacy.present.three_self.scope != fresh.scope
+                or legacy.present.three_self.source_revision_refs != fresh.source_revision_refs
+                or legacy.present.signals != fresh.signals
+            ):
+                return False
+            reread_recent = _accepted_original_questions(
+                owner=owner, current=fresh,
+                limit=max(1, len(report.context.recent.entries)),
+            )
+            if (
+                reread_recent != report.context.recent
+                or tuple(e.claim.value_ref for e in reread_recent.entries)
+                != report.accepted_question_refs
+                or tuple(ref.memory_id for ref in report.context.retrieved.references)
+                != report.selected_memory_refs
+            ):
+                return False
+            return context_is_live(
+                report.context, bridge=bridge, boot=boot, world=world, links=links,
+            ) and owner is owners.get(sid)
+        except (RuntimeError, ValueError, AttributeError, TypeError, KeyError, OSError):
+            return False
