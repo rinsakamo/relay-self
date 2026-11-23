@@ -53,7 +53,9 @@ class R23BOriginalL1SourceComparison:
             != self.current.source_revision_refs
             or self.original_inquiry.schema_revision != self.current.schema.revision
             or self.original_inquiry.resident_epoch != self.current.owner_epoch
-            or self.original_inquiry.need_signal_ref not in self.current.need_refs
+            or self.original_inquiry.need_signal_ref not in (
+                signal.envelope.event_id for signal in self.current.signals
+            )
             or not self.source_pair_revision
             or self.original_l1_request_id is not None
             or self.original_choice_ids != ()
@@ -125,7 +127,9 @@ def compare_r23b_original_rejoin_inquiry_context(
                 or current.need_refs != present.present.need_refs
                 or current.attention_refs != present.present.attention_refs
                 or present.exploration_need is None
-                or current.need_refs != (inquiry.need_signal_ref,)
+                or inquiry.need_signal_ref not in (
+                    signal.envelope.event_id for signal in current.signals
+                )
                 or present.exploration_need.signal.envelope.event_id
                 != inquiry.need_signal_ref
                 or inquiry.source_revision_refs != current.source_revision_refs
