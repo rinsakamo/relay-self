@@ -333,6 +333,32 @@ class ResidentCognitiveWorkOwner:
                 )
             return report
 
+    def read_rejoined_context_shadow_cpu(
+        self, *, bridge, self_id: str, initial_receipts, historical_composite,
+    ):
+        """Opt-in first reJOIN Composite CURRENT through this original Owner.
+
+        No Stage28 boot/link reuse, no second Owner or store, and no L1/physical
+        admission. A later consumer must revalidate the returned diagnostic.
+        """
+        from relay_self.r2_3_rejoin_composite_context_dev import (
+            read_r23_original_rejoin_context,
+        )
+
+        with self.lock:
+            if (
+                getattr(bridge, "cognitive_work", None) is not self
+                or not isinstance(getattr(bridge, "owners", None), dict)
+                or self_id not in self.owners
+                or bridge.owners.get(self_id) is not self.owners[self_id]
+            ):
+                raise ResidentCognitiveWorkError("foreign original reJOIN Context reader")
+            return read_r23_original_rejoin_context(
+                bridge=bridge, self_id=self_id,
+                initial_receipts=initial_receipts,
+                historical_composite=historical_composite,
+            )
+
     def read_coverage_inquiry_cpu(
         self, *, bridge, self_id, boot=None, world=None, links=None,
         initial_receipts=None, historical_composite=None,
