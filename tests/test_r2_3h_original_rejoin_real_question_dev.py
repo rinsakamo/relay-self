@@ -8,15 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import urllib.error
 import urllib.request
-from dataclasses import asdict
 
 import pytest
 
 from experiments import r2_3h_original_rejoin_real_question_dev as live
 from experiments.stage24g_model_gate_dev import Stage24gModelGateReceipt
-from relay_self.persistent_cognition import load_persistent_cognition
 from relay_self.resident_llama_inference_lane_dev import LlamaSlotIdleReceipt
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
@@ -114,7 +111,7 @@ def _args(tmp_path, f, **overrides):
 
 def _cleanup(f):
     lane = f.bridge.inference_lane
-    if lane is not None:
+    if hasattr(lane, "_pool"):
         lane._pool.shutdown(wait=True)
 
 
@@ -180,7 +177,7 @@ def test_r23h_real_seam_raw_http_one_post_no_question_write(
         assert files(f) == before_files
         assert f.owners["A"].retained.exploration_continuity is None
         assert f.owners["B"].retained.exploration_continuity is None
-        assert f.bridge.physical.active_action_ids == ()
+        assert not f.bridge.physical.active_action_ids
         assert f.cognitive._state("A").mode == "ONLINE"
         assert f.cognitive._state("B").mode == "ONLINE"
     finally:
@@ -227,7 +224,7 @@ def test_r23h_unqualified_before_post_creates_no_model_evidence_or_job(
         assert files(f) == before
         assert f.bridge.inference_lane is None or case == "foreign_lane"
         assert f.owners["A"].retained.exploration_continuity is None
-        assert "A" not in f.cognitive._states["A"].mode.lower() or True
+        assert f.cognitive._state("A").mode == "ONLINE"
     finally:
         _cleanup(f)
 
