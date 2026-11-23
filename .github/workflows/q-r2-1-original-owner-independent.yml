@@ -1,0 +1,106 @@
+name: Q R2-1 exact Original Owner Context review
+
+on:
+  push:
+    branches:
+      - dev/q-lane-r2-1-original-owner-context-review-20261123
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: q-r2-1-owner-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  q-r2-1-cpu-and-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Checkout exact Q test commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 80
+
+      - name: Verify immutable R2-0 and R2-1 source ancestry
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags --depth=80 origin \
+            '+refs/heads/dev/r-lane-r2-0-present-responsibility-20261123:refs/q-pinned/r2-0' \
+            '+refs/heads/dev/r-lane-r2-1-original-owner-context-read-20261123:refs/q-pinned/r2-1'
+          test "$(git rev-parse refs/q-pinned/r2-0)" = "a8d1492a1e54f3f647109da183cf71179c7b5932"
+          test "$(git rev-parse refs/q-pinned/r2-1)" = "c9a3eec3172af17c8dc87bbb1aaf9ec1a455be81"
+          test "$(git merge-base refs/q-pinned/r2-1 HEAD)" = "c9a3eec3172af17c8dc87bbb1aaf9ec1a455be81"
+          python - <<'PY'
+          import ast
+          import subprocess
+
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+          before = "a8d1492a1e54f3f647109da183cf71179c7b5932"
+          after = "c9a3eec3172af17c8dc87bbb1aaf9ec1a455be81"
+          changed = set(git("diff", "--name-only", before, after).decode().splitlines())
+          expected = {
+              "src/relay_self/resident_cognitive_work_owner_dev.py",
+              "tests/test_r2_1_original_owner_context_read_dev.py",
+              "docs/architecture/r2-1-original-owner-read-only-context-dev.md",
+          }
+          assert changed == expected, (changed, expected)
+          path = "src/relay_self/resident_cognitive_work_owner_dev.py"
+          old = ast.parse(git("show", f"{before}:{path}"))
+          new = ast.parse(git("show", f"{after}:{path}"))
+          def extract(tree):
+              cls = next(n for n in tree.body if isinstance(n, ast.ClassDef)
+                         and n.name == "ResidentCognitiveWorkOwner")
+              return cls, {n.name: n for n in cls.body if isinstance(n, ast.FunctionDef)}
+          old_cls, old_defs = extract(old)
+          new_cls, new_defs = extract(new)
+          assert set(new_defs) - set(old_defs) == {"read_context_shadow_cpu"}
+          assert set(old_defs) <= set(new_defs)
+          assert len(new_cls.body) == len(old_cls.body) + 1
+          for name, previous in old_defs.items():
+              assert ast.dump(previous) == ast.dump(new_defs[name]), name
+          new_method = new_defs["read_context_shadow_cpu"]
+          assert not isinstance(new_method, ast.AsyncFunctionDef)
+          assert sum(isinstance(n, ast.With) for n in ast.walk(new_method)) == 1
+          assert not any(isinstance(n, (ast.Await, ast.Yield, ast.YieldFrom,
+                                        ast.Global, ast.Nonlocal))
+                         for n in ast.walk(new_method))
+          assert not any(isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign))
+                         and any(isinstance(t, ast.Attribute)
+                                 for t in (n.targets if isinstance(n, ast.Assign)
+                                           else [n.target]))
+                         for n in ast.walk(new_method))
+          assert not any(isinstance(n, ast.Call)
+                         and isinstance(n.func, ast.Attribute)
+                         and n.func.attr in {
+                             "write_bytes", "write_text", "retain_memory",
+                             "commit_memory_from_work", "issue_action",
+                             "submit_native_effect", "save_persistent_cognition",
+                             "complete_intent",
+                         } for n in ast.walk(new_method))
+          print("Q_R2_1_PINNED_SOURCE_ONLY_ONE_ORIGINAL_OWNER_READ_METHOD_PASS")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install exact CPU test and lint tools
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1" "ruff==0.16.7"
+
+      - name: Run independent Q attacks on pinned real R2-1 Owner code
+        run: python -m pytest -q tests/test_q_r2_1_original_owner_independent_dev.py
+
+      - name: Run full repository CPU regression and lint
+        run: |
+          python -m pytest -q
+          ruff check src tests experiments adapters observability
+          python tools/check_repository.py
+          test -z "$(git status --porcelain)"
