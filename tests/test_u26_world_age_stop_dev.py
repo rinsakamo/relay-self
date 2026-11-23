@@ -4,12 +4,13 @@ Synthetic snapshots, not real World, Node/Paper or a native-action authorization
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerTime
-from experiments.cognitive_physical_move_issue_dev import _tick
+from experiments.cognitive_physical_move_issue_dev import _settled, _tick
 from relay_self.physical_action_journal import PhysicalActionJournal, PhysicalJournalError
 from test_i_unified_i4a_place_lease_dev import _acks, _probes, _terminal, _typed_place
 from test_p0d_resident_move_issuer_dev import _probe
@@ -69,3 +70,39 @@ def test_original_place_wal_refuses_mixed_server_age_and_daylight(tmp_path):
             initial, first, old[2], terminal, supervisor,
         )
     assert journal.unresolved
+
+@pytest.mark.parametrize(
+    ("cap", "interval"),
+    [(None, 0.05), (24, 0.15), (60, 0.15)],
+)
+def test_bounded_stop_probes_are_paced_without_raising_quota(monkeypatch, cap, interval):
+    """CPU-only Native response script; STOP/settlement thresholds unchanged."""
+    delays = []
+
+    async def fake_sleep(seconds):
+        delays.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    class Native:
+        def __init__(self):
+            self.seq = 5
+            self.tick = 101
+            self.events = []
+
+        async def send_observe(self, request_id):
+            self.seq += 1
+            self.tick += 9
+            self.events.append(
+                _probe("native-A", self.seq, request_id, self.tick, 1.0),
+            )
+
+        async def receive(self):
+            return self.events.pop(0)
+
+    _, _, _, probes = asyncio.run(_settled(
+        Native(), native="native-A", stop_seq=5,
+        timeout_s=1, max_probe_requests=cap,
+    ))
+    assert len(probes) == 3
+    assert delays == [interval, interval]
