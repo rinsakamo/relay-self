@@ -383,6 +383,40 @@ class ResidentCognitiveWorkOwner:
                 bridge=bridge, self_id=self_id,
             )
 
+    def prepare_rejoined_original_l1_request_cpu(self, *, bridge, self_id: str):
+        """CPU-only first-reJOIN Question request, registered on this Owner.
+
+        Uses already-owned Source and existing B ADOPT/HOLD/DECLINE choices.
+        This does NOT connect the GPU issuer, change input, or adopt a Question.
+        """
+        from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
+            prepare_r23c_original_rejoin_l1_cpu,
+        )
+
+        with self.lock:
+            if (
+                getattr(bridge, "cognitive_work", None) is not self
+                or self_id not in self.owners
+                or getattr(bridge, "owners", {}).get(self_id) is not self.owners[self_id]
+            ):
+                raise ResidentCognitiveWorkError("foreign original reJOIN L1 request")
+            return prepare_r23c_original_rejoin_l1_cpu(
+                bridge=bridge, self_id=self_id,
+            )
+
+    def compare_rejoined_original_l1_request_cpu(self, *, bridge, turn):
+        """Original Owner's registered frozen Request vs revalidated Context."""
+        from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
+            compare_r23c_registered_l1_context,
+        )
+
+        with self.lock:
+            if getattr(bridge, "cognitive_work", None) is not self:
+                raise ResidentCognitiveWorkError("foreign original L1 comparison")
+            return compare_r23c_registered_l1_context(
+                bridge=bridge, turn=turn,
+            )
+
     def read_coverage_inquiry_cpu(
         self, *, bridge, self_id, boot=None, world=None, links=None,
         initial_receipts=None, historical_composite=None,
