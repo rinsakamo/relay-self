@@ -538,3 +538,74 @@ def test_survival_observation_kinds_are_explicit(kind: str) -> None:
     message = parse_mineflayer_line(observation_line(kind=kind))
     assert isinstance(message, MineflayerObservation)
     assert message.kind == kind
+
+
+def test_native_correlated_probe_round_trip_and_legacy_compatibility() -> None:
+    assert json.loads(encode_observe()) == {"type": "observe"}
+    assert json.loads(encode_observe("cognitive-123")) == {
+        "type": "observe", "request_id": "cognitive-123",
+    }
+    payload = json.loads(observation_line(kind="probe"))
+    payload["request_id"] = "cognitive-123"
+    decoded = parse_mineflayer_line(json.dumps(payload))
+    assert isinstance(decoded, MineflayerObservation)
+    assert decoded.kind == "probe" and decoded.request_id == "cognitive-123"
+    assert decoded.provenance.reference == "session-1:1"
+    assert parse_mineflayer_line(observation_line(kind="probe")).request_id is None
+
+
+@pytest.mark.parametrize(
+    "value", ["", "bad space", "bad/sep", "-bad", "☃", "a" * 129],
+)
+def test_correlated_probe_rejects_invalid_request_id(value: str) -> None:
+    with pytest.raises(MineflayerAdapterProtocolError, match="request_id"):
+        encode_observe(value)
+    payload = json.loads(observation_line(kind="probe"))
+    payload["request_id"] = value
+    with pytest.raises(MineflayerAdapterProtocolError, match="request_id"):
+        parse_mineflayer_line(json.dumps(payload))
+
+
+def test_only_probe_may_report_correlated_request_id() -> None:
+    payload = json.loads(observation_line(kind="health"))
+    payload["request_id"] = "cognitive-123"
+    with pytest.raises(MineflayerAdapterProtocolError, match="only supported"):
+        parse_mineflayer_line(json.dumps(payload))
+
+def test_native_world_age_decodes_independently_of_frozen_daylight_clock() -> None:
+    time1 = {"time_of_day": 6000, "day": 0, "is_day": True,
+             "world_age_ticks": 120}
+    time2 = {**time1, "world_age_ticks": 140}
+    first = parse_mineflayer_line(observation_line(time=time1))
+    second = parse_mineflayer_line(observation_line(time=time2))
+    assert first.snapshot.time is not None
+    assert second.snapshot.time is not None
+    assert first.snapshot.time.time_of_day == second.snapshot.time.time_of_day
+    assert second.snapshot.time.world_age_ticks - first.snapshot.time.world_age_ticks == 20
+    assert parse_mineflayer_line(observation_line()).snapshot.time.world_age_ticks is None
+
+
+@pytest.mark.parametrize("bad_age", [-1, True, 1.5, "150", 2**53])
+def test_native_world_age_rejects_noncanonical_field(bad_age: object) -> None:
+    with pytest.raises(MineflayerAdapterProtocolError):
+        parse_mineflayer_line(observation_line(time={
+            "time_of_day": 6000, "day": 0, "is_day": True,
+            "world_age_ticks": bad_age,
+        }))
+
+
+def test_native_world_age_null_matches_legacy_unavailable_clock() -> None:
+    record = parse_mineflayer_line(observation_line(time={
+        "time_of_day": 6000, "day": 0, "is_day": True,
+        "world_age_ticks": None,
+    }))
+    assert record.snapshot.time is not None
+    assert record.snapshot.time.world_age_ticks is None
+
+
+def test_native_time_rejects_unknown_extra_field() -> None:
+    with pytest.raises(MineflayerAdapterProtocolError):
+        parse_mineflayer_line(observation_line(time={
+            "time_of_day": 6000, "day": 0, "is_day": True,
+            "world_age_ticks": 140, "unsafe_clock": 140,
+        }))

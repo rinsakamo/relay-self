@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from pathlib import Path
+from typing import Callable
 
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
@@ -35,6 +38,10 @@ class MineflayerProcessIOError(MineflayerProcessError):
     """Raised when JSONL input cannot be delivered to the child process."""
 
 
+class MineflayerEffectAdmissionError(MineflayerProcessIOError):
+    """A physical effect was refused before sending to the native bridge."""
+
+
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
@@ -46,6 +53,29 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
+        self._effect_admission: Callable[[str, str, str], None] | None = None
+        self._atomic_effect_sender: (
+            Callable[[str, str, str, Callable[[], None]], None] | None
+        ) = None
+        # No two coroutine writes can interleave Native frames or drains.
+        self._send_lock = asyncio.Lock()
+        self._bounded_place_dev_mode = False
+        self._raw_source_audit_fd: int | None = None
+        self._raw_source_audit_finished = False
+        # Retain original startup/probe bytes until the once-only stdout
+        # capture is opened. Q's decoder needs the actual seq=0 handshake.
+        # Overflow denies a late audit, but never changes normal observation.
+        self._raw_source_before_audit: bytearray | None = bytearray()
+        # U17: optional, one-use transcript of bytes buffered by THIS owned
+        # child's existing final stdin writer. Not a delivery/ACK receipt.
+        self._raw_stdin_audit_fd: int | None = None
+        self._raw_stdin_audit_path: Path | None = None
+        self._raw_stdin_audit_finished = False
+        self._raw_stdin_audit_size = 0
+        # Q4 fault injection is a strictly local one-use withholding of an
+        # *original* STOP command, never an alternate effect/Native sender.
+        self._q4_forced_stop_failure: str | None = None
+        self._q4_stop_failure_used = False
 
     @classmethod
     async def launch(
@@ -55,10 +85,19 @@ class MineflayerProcessSession:
         bridge_path: str | Path | None = None,
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
+        enable_q4_bounded_place_dev: bool = False,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
         _require_positive_timeout("startup_timeout_s", startup_timeout_s)
+        if type(enable_q4_bounded_place_dev) is not bool:
+            raise MineflayerProcessStartError("Q4 DEV mode must be an explicit boolean")
+        # Never accept ambient Q4 authorization inherited from a shell.
+        # Only this one native process launch can receive an explicit guard.
+        child_env = dict(os.environ)
+        child_env.pop("RELAY_Q4_BOUNDED_PLACE_DEV", None)
+        if enable_q4_bounded_place_dev:
+            child_env["RELAY_Q4_BOUNDED_PLACE_DEV"] = "1"
         bridge = (
             Path(__file__).with_name("bridge.mjs")
             if bridge_path is None
@@ -75,6 +114,7 @@ class MineflayerProcessSession:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=None,
+                env=child_env,
             )
         except OSError as exc:
             raise MineflayerProcessStartError(
@@ -103,6 +143,7 @@ class MineflayerProcessSession:
             )
 
         session._started = started
+        session._bounded_place_dev_mode = enable_q4_bounded_place_dev
         return session
 
     @property
@@ -112,6 +153,169 @@ class MineflayerProcessSession:
                 "Mineflayer session startup has not completed"
             )
         return self._started
+
+    @property
+    def bounded_place_dev_mode(self) -> bool:
+        """Local launch option only, never a Native/Paper producer receipt."""
+        return self._bounded_place_dev_mode
+
+    def install_effect_admission(
+        self, check_effect: Callable[[str, str], None],
+    ) -> None:
+        """One-way opt-in gate for ALL native effect commands on this session.
+
+        check_effect(session_id, effect, action_id) must be owned by the shared checkpoint
+        issuer. Observation and shutdown remain allowed. No gate removal API.
+        """
+        if (
+            not callable(check_effect)
+            or self._started is None
+            or getattr(self, "_effect_admission", None) is not None
+        ):
+            raise MineflayerEffectAdmissionError(
+                "native effect admission can only be installed once after startup"
+            )
+        self._effect_admission = check_effect
+
+    def install_atomic_effect_sender(
+        self,
+        submit_effect: Callable[[str, str, str, Callable[[], None]], None],
+    ) -> None:
+        """One-way issuer-bound synchronous effect check + stdin.write callback.
+
+        The callback is owned by the original physical gate and invokes the
+        supplied writer under its source/lease locks without awaiting.
+        """
+        if (
+            not callable(submit_effect)
+            or self._started is None
+            or self._effect_admission is None
+            or self._atomic_effect_sender is not None
+        ):
+            raise MineflayerEffectAdmissionError(
+                "atomic native effect sender requires one existing admission"
+            )
+        self._atomic_effect_sender = submit_effect
+
+    def start_raw_source_audit(self, path: str | Path) -> None:
+        """Capture exact native stdout JSONL bytes from THIS owned Node process.
+
+        This is a source transcript, not independent Minecraft/Paper evidence.
+        Exclusive creation and per-line fsync ensure an ACK or settle sample
+        cannot disappear behind a success-only post-hoc JSON report.
+        """
+        if (
+            self._started is None
+            or self._raw_source_audit_fd is not None
+            or self._raw_source_audit_finished
+            or self._raw_source_before_audit is None
+        ):
+            raise MineflayerProcessIOError("native source audit already used/not started")
+        location = Path(path)
+        fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            # Exact startup+login probe bytes, not a reconstructed JSON
+            # adapter_started record. This makes the one stream parseable
+            # from seq=0 even if audit starts after original Bridge.login.
+            prior = self._raw_source_before_audit
+            assert prior is not None
+            view = memoryview(prior)
+            while view:
+                n = os.write(fd, view)
+                if n <= 0:
+                    raise MineflayerProcessIOError("preaudit Native source incomplete")
+                view = view[n:]
+            os.fsync(fd)
+            dir_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_source_audit_fd = fd
+        self._raw_source_before_audit = None
+
+    def finish_raw_source_audit(self) -> None:
+        """Freeze a completed source transcript before checksum readback."""
+        fd = self._raw_source_audit_fd
+        if fd is None or self._raw_source_audit_finished:
+            raise MineflayerProcessIOError("native source audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_source_audit_fd = None
+        self._raw_source_audit_finished = True
+
+    def start_raw_stdin_audit(self, path: str | Path) -> None:
+        """One continuous original stdin transcript for both Q4 PLACE Actions.
+
+        The stdout capture must already be open on this same session. The
+        transcript records buffer-write attempts, not Native ACK or Paper
+        causality; neither grants a physical issue. Keep it active through S2.
+        """
+        location = Path(path)
+        if (
+            self._started is None
+            or self._raw_source_audit_fd is None
+            or self._raw_source_audit_finished
+            or self._raw_stdin_audit_fd is not None
+            or self._raw_stdin_audit_finished
+            or not location.is_absolute()
+            or not location.parent.is_dir()
+            or any(part.is_symlink() for part in location.parents)
+        ):
+            raise MineflayerProcessIOError(
+                "one active owned stdout and fresh absolute stdin audit required"
+            )
+        fd = os.open(
+            location, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
+        )
+        try:
+            os.fsync(fd)
+            parent_fd = os.open(location.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(parent_fd)
+            finally:
+                os.close(parent_fd)
+        except BaseException:
+            os.close(fd)
+            raise
+        self._raw_stdin_audit_fd = fd
+        self._raw_stdin_audit_path = location
+
+    def finish_raw_stdin_audit(self) -> None:
+        """Freeze buffered-stdin original exactly once, even after host abort."""
+        fd = self._raw_stdin_audit_fd
+        if fd is None or self._raw_stdin_audit_finished:
+            raise MineflayerProcessIOError("owned stdin audit not active")
+        os.fsync(fd)
+        os.close(fd)
+        self._raw_stdin_audit_fd = None
+        self._raw_stdin_audit_finished = True
+
+    def _write_owned_stdin(self, data: bytes) -> None:
+        """Called only by the existing _send path within its atomic issuer."""
+        fd = self._raw_stdin_audit_fd
+        if fd is not None and self._raw_stdin_audit_size + len(data) > 32 * 1024 * 1024:
+            raise MineflayerProcessIOError("bounded original stdin archive exhausted")
+        assert self._process.stdin is not None
+        self._process.stdin.write(data)
+        if fd is not None:
+            view = memoryview(data)
+            while view:
+                written = os.write(fd, view)
+                if written <= 0:
+                    raise MineflayerProcessIOError("owned stdin source write incomplete")
+                view = view[written:]
+            self._raw_stdin_audit_size += len(data)
+            os.fsync(fd)
+
+    @property
+    def owned_child_pid(self) -> int | None:
+        """OS PID of THIS adapter-owned native process (not source authentication)."""
+        pid = getattr(self._process, "pid", None)
+        return pid if type(pid) is int and pid > 0 else None
 
     @property
     def process_returncode(self) -> int | None:
@@ -127,6 +331,24 @@ class MineflayerProcessSession:
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        fd = self._raw_source_audit_fd
+        if fd is None and self._raw_source_before_audit is not None:
+            if len(self._raw_source_before_audit) + len(line) <= 8 * 1024 * 1024:
+                self._raw_source_before_audit.extend(line)
+            else:
+                self._raw_source_before_audit = None
+        if fd is not None:
+            # Persist ORIGINAL bytes, including malformed/foreign stream
+            # messages. A failed write is fatal, never silently drops proof.
+            try:
+                written = os.write(fd, line)
+                if written != len(line):
+                    raise OSError("partial native source audit write")
+                os.fsync(fd)
+            except OSError as exc:
+                raise MineflayerProcessIOError(
+                    "native stdout evidence write failed; source held"
+                ) from exc
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError as exc:
@@ -150,7 +372,38 @@ class MineflayerProcessSession:
             )
         )
 
+    def arm_q4_stop_failure_once_dev(self, stop_child_action_id: str) -> None:
+        """Isolated DEV STOP-failure test; only an actually owned Node child.
+
+        A genuine START/ACK still has to happen in the original executor;
+        this merely forces the subsequent one-shot STOP attempt to fail.
+        Host watchdog must then quarantine and terminate this same process.
+        """
+        if (
+            type(self) is not MineflayerProcessSession
+            or not self._bounded_place_dev_mode
+            or self.owned_child_pid is None
+            or self.process_returncode is not None
+            or not isinstance(stop_child_action_id, str)
+            or not stop_child_action_id.endswith("-stop")
+            or not callable(self._atomic_effect_sender)
+            or self._raw_source_audit_fd is None
+            or self._raw_stdin_audit_fd is None
+            or self._q4_forced_stop_failure is not None
+            or self._q4_stop_failure_used
+        ):
+            raise MineflayerProcessIOError("real Q4 isolated one-shot STOP fault required")
+        self._q4_forced_stop_failure = stop_child_action_id
+
     async def send_clear_controls(self, action_id: str) -> None:
+        if action_id == self._q4_forced_stop_failure:
+            self._q4_forced_stop_failure = None
+            self._q4_stop_failure_used = True
+            # Explicitly no stdin attempt or fake STOP ACK is produced.
+            raise MineflayerProcessIOError("Q4 DEV injected STOP failure after START")
+        if self._q4_stop_failure_used and action_id.endswith("-stop"):
+            # No reuse of a withheld STOP child from this fault trial.
+            raise MineflayerProcessIOError("Q4 faulted STOP child cannot be replayed")
         await self._send(encode_clear_controls(action_id))
 
     async def send_equip_item(
@@ -197,8 +450,9 @@ class MineflayerProcessSession:
             )
         )
 
-    async def send_observe(self) -> None:
-        await self._send(encode_observe())
+    async def send_observe(self, request_id: str | None = None) -> None:
+        """Backwards-compatible native probe, optionally correlated by ID."""
+        await self._send(encode_observe(request_id))
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
@@ -224,22 +478,98 @@ class MineflayerProcessSession:
 
         return await _terminate_child(self._process)
 
-    async def _send(self, line: str) -> None:
+    async def force_terminate_owned(self, *, timeout_s: float = 0.5) -> int:
+        """Q4 host kill switch: bounded TERM→KILL of this owned Node process.
+
+        No new session and no claim of STOP ACK, World settling or WAL
+        resolution. A timeout or unconfirmed exit is an explicit HOLD.
+        """
+        if type(timeout_s) not in (int, float) or not 0 < timeout_s <= 1.0:
+            raise MineflayerProcessIOError("Q4 termination timeout is invalid")
         if self._process.returncode is not None:
-            raise MineflayerProcessEnded(
-                "cannot send to ended Mineflayer bridge; "
-                f"returncode={self._process.returncode}"
-            )
-
-        assert self._process.stdin is not None
+            return self._process.returncode
+        self._process.terminate()
         try:
-            self._process.stdin.write(line.encode("utf-8"))
-            await self._process.stdin.drain()
-        except (BrokenPipeError, ConnectionResetError) as exc:
+            result = await asyncio.wait_for(
+                self._process.wait(), timeout=timeout_s,
+            )
+        except TimeoutError:
+            self._process.kill()
+            try:
+                result = await asyncio.wait_for(
+                    self._process.wait(), timeout=timeout_s,
+                )
+            except TimeoutError as exc:
+                raise MineflayerProcessIOError(
+                    "owned Q4 Native termination not confirmed after KILL"
+                ) from exc
+        if self._process.returncode is None:
             raise MineflayerProcessIOError(
-                "could not write to Mineflayer bridge stdin"
-            ) from exc
+                "owned Q4 Native process has no exit readback"
+            )
+        return result
 
+    async def _send(self, line: str) -> None:
+        # The original Native adapter serializes full frames including drains.
+        # The opt-in atomic callback is the existing B issuer, never a second
+        # selector; it holds owner/physical/WAL locks through stdin.write().
+        async with self._send_lock:
+            gate = getattr(self, "_effect_admission", None)
+            command = None
+            if gate is not None:
+                try:
+                    command = json.loads(line)
+                except (TypeError, ValueError) as exc:
+                    raise MineflayerEffectAdmissionError(
+                        "invalid command under native checkpoint admission"
+                    ) from exc
+                if type(command) is not dict:
+                    raise MineflayerEffectAdmissionError("invalid native command body")
+                command_type = command.get("type")
+                if command_type == "effect":
+                    effect = command.get("effect")
+                    if type(effect) is not str or not effect:
+                        raise MineflayerEffectAdmissionError("untyped physical effect")
+                    action_id = command.get("action_id")
+                    if type(action_id) is not str or not action_id:
+                        raise MineflayerEffectAdmissionError("missing physical action ID")
+                elif command_type not in {"observe", "shutdown"}:
+                    raise MineflayerEffectAdmissionError(
+                        "unknown native command during coordinated checkpoint mode"
+                    )
+            if self._process.returncode is not None:
+                raise MineflayerProcessEnded(
+                    "cannot send to ended Mineflayer bridge; "
+                    f"returncode={self._process.returncode}"
+                )
+
+            assert self._process.stdin is not None
+            data = line.encode("utf-8")
+            try:
+                if gate is not None and command["type"] == "effect":
+                    sender = self._atomic_effect_sender
+                    if sender is None:
+                        # Legacy non-PLACE sessions use their prior guard.
+                        # The owned physical bridge installs atomic submission
+                        # for genuine process-backed resident sessions.
+                        gate(self.started.session_id, effect, action_id)
+                        self._write_owned_stdin(data)
+                    else:
+                        # No await between original lock-bound final admission
+                        # and the synchronous final Native stdin buffer write.
+                        sender(
+                            self.started.session_id, effect, action_id,
+                            lambda: self._write_owned_stdin(data),
+                        )
+                else:
+                    self._write_owned_stdin(data)
+                # Drain, ACK and Paper readback remain separate qualifications.
+                # A write/drain error cannot be retried with this one-shot ID.
+                await self._process.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError) as exc:
+                raise MineflayerProcessIOError(
+                    "could not write to Mineflayer bridge stdin"
+                ) from exc
 
 async def _terminate_child(process: asyncio.subprocess.Process) -> int:
     if process.returncode is None:

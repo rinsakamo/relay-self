@@ -1,15 +1,22 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { appendFileSync } from 'node:fs'
 import readline from 'node:readline'
 
 import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
   entityHurtPayload,
+  probeIdentityWitness,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { inspectInstalled } from './oxygen_owner_patch.mjs'
+import { OwnedOxygenWitness } from './oxygen_owner_witness.mjs'
+import { Q4BoundedPlaceMotionGuard } from './bounded_place_guard.mjs'
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -18,6 +25,17 @@ import {
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
 const require = createRequire(import.meta.url)
+// Refuse unowned oxygen metadata BEFORE spawning a real native bot.
+let oxygenPatch
+try {
+  oxygenPatch = inspectInstalled()
+  if (oxygenPatch.status !== 'PATCHED') {
+    throw new Error('explicit Mineflayer oxygen owner backport missing')
+  }
+} catch (error) {
+  process.stderr.write('STAGE24D_OXYGEN_SOURCE_HOLD=' + String(error.message || error) + '\n')
+  process.exit(2)
+}
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 
@@ -38,6 +56,7 @@ try {
 }
 
 const sessionId = randomUUID()
+const ownedOxygen = new OwnedOxygenWitness({ sessionId })
 let seq = 0
 let spawned = false
 let closing = false
@@ -45,6 +64,7 @@ let inputReader = null
 let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
+const seenProbeRequestIds = new Set()
 
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
@@ -58,12 +78,30 @@ function emitAdapterError (error) {
   emit('adapter_error', { message })
 }
 
-function emitObservation (kind) {
+function emitObservation (kind, requestId = undefined) {
   try {
-    emit('observation', {
-      kind,
-      snapshot: snapshotFromBot(bot)
-    })
+    const receipt = ownedOxygen.read(bot.entity?.id)
+    const snapshot = snapshotFromBot(bot, receipt)
+    if (kind === 'probe') {
+      // A passive witness is a separate source audit, not an added field to
+      // the original strict native protocol or a physical action authority.
+      if (process.env.RELAY_P0B_OXYGEN_WITNESS_PATH) {
+        appendFileSync(process.env.RELAY_P0B_OXYGEN_WITNESS_PATH, JSON.stringify({
+          ...receipt,
+          native_session_id: sessionId,
+          native_seq: seq,
+          native_request_id: requestId ?? null
+        }) + '\n')
+      }
+      if (process.env.RELAY_P0B_IDENTITY_WITNESS_PATH) {
+        appendFileSync(process.env.RELAY_P0B_IDENTITY_WITNESS_PATH, JSON.stringify(
+          probeIdentityWitness(bot, snapshot, sessionId, seq)
+        ) + '\n')
+      }
+      emit('observation', makeProbePayload(snapshot, requestId))
+    } else {
+      emit('observation', { kind, snapshot })
+    }
   } catch (error) {
     emitAdapterError(error)
   }
@@ -87,10 +125,22 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+const q4BoundedDev = process.env.RELAY_Q4_BOUNDED_PLACE_DEV === '1'
+const q4PlaceGuard = q4BoundedDev
+  ? new Q4BoundedPlaceMotionGuard(bot, {
+      onTrip: (reason) => {
+        // Native guard, not an ACK/settling receipt. Fail closed by ending
+        // this bot generation when a time/distance/sample cap trips.
+        emitAdapterError(new Error('Q4_NATIVE_PLACE_TRIP_' + reason))
+        bot.quit('RelaySelf Q4 bounded motion trip')
+      }
+    })
+  : null
 
 attachHealthSynchronizedSpawnListeners(
   bot,
   () => {
+    ownedOxygen.bindSelf(bot.entity?.id)
     spawned = true
     emitObservation('spawn')
   },
@@ -98,6 +148,17 @@ attachHealthSynchronizedSpawnListeners(
     if (spawned) emitObservation('health')
   }
 )
+
+// Source is the *patched* self-only metadata 'breath' event. The witness
+// resets at each body generation and has an explicit finite freshness window.
+bot.on('breath', () => {
+  if (spawned) {
+    ownedOxygen.acceptBreath({
+      entityId: bot.entity?.id,
+      oxygenLevel: bot.oxygenLevel
+    })
+  }
+})
 
 bot.on('time', () => {
   if (!spawned) return
@@ -151,11 +212,14 @@ bot.on('forcedMove', () => {
 })
 
 bot.on('death', () => {
+  if (q4PlaceGuard !== null) q4PlaceGuard.trip('native_death')
   if (spawned) emitObservation('death')
+  ownedOxygen.invalidate()
   spawned = false
 })
 
 bot.on('respawn', () => {
+  ownedOxygen.bindSelf(bot.entity?.id)
   spawned = true
   emitObservation('respawn')
 })
@@ -165,6 +229,8 @@ bot.on('error', (error) => {
 })
 
 bot.on('end', (reason) => {
+  if (q4PlaceGuard !== null) q4PlaceGuard.stop()
+  ownedOxygen.invalidate()
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
   if (inputReader !== null) inputReader.close()
@@ -194,14 +260,28 @@ async function handleEffect (command) {
 
   try {
     if (command.effect === 'set_control') {
-      bot.setControlState(command.control, command.state)
+      if (q4PlaceGuard !== null) {
+        if (command.control !== 'forward' || command.state !== true) {
+          emitEffectResult(command, 'rejected', 'q4_walk_only')
+          return
+        }
+        q4PlaceGuard.start(command.action_id)
+      } else {
+        bot.setControlState(command.control, command.state)
+      }
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
-      bot.clearControlStates()
+      if (q4PlaceGuard !== null) q4PlaceGuard.stop()
+      else bot.clearControlStates()
       emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (q4BoundedDev && command.effect !== 'look') {
+      emitEffectResult(command, 'rejected', 'q4_only_place_look_start_stop')
       return
     }
 
@@ -253,6 +333,7 @@ async function handleEffect (command) {
 
 function handleShutdown () {
   closing = true
+  if (q4PlaceGuard !== null) q4PlaceGuard.stop()
   if (spawned) {
     bot.clearControlStates()
   }
@@ -290,7 +371,13 @@ async function handleLine (line) {
       emit('command_error', { message: 'observe_before_spawn' })
       return
     }
-    emitObservation('probe')
+    if (command.request_id !== undefined) {
+      if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+        emit('command_error', { message: 'duplicate_probe_request_id' })
+        return
+      }
+    }
+    emitObservation('probe', command.request_id)
     return
   }
 

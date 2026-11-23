@@ -46,6 +46,13 @@ function requireText (name, value) {
   return value
 }
 
+export function requireProbeRequestId (value) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value)) {
+    throw new Error('probe request_id must be 1..128 ASCII identifier characters')
+  }
+  return value
+}
+
 function requireFiniteNumber (name, value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(name + ' must be a finite number')
@@ -193,6 +200,13 @@ export function parseCommand (raw) {
   }
 
   if (value.type === 'observe') {
+    if (Object.hasOwn(value, 'request_id')) {
+      requireExactKeys('correlated observe command', value, ['type', 'request_id'])
+      return Object.freeze({
+        type: 'observe',
+        request_id: requireProbeRequestId(value.request_id)
+      })
+    }
     requireExactKeys('observe command', value, ['type'])
     return Object.freeze({ type: 'observe' })
   }
@@ -228,13 +242,22 @@ function timeSnapshot (bot) {
   ) {
     return null
   }
+  // Daylight time is a presentation clock and can be frozen by gamerules.
+  // Mineflayer's independent server world-age remains tick based. Publish it
+  // as an optional source field, never infer it from host or Paper time.
+  const age = bot.time.age
+  if (age !== undefined && age !== null &&
+      (!Number.isSafeInteger(age) || age < 0)) {
+    throw new Error('bot.time.age must be a non-negative safe integer')
+  }
   return {
     time_of_day: requireNonNegativeInteger(
       'bot.time.timeOfDay',
       bot.time.timeOfDay
     ),
     day: requireNonNegativeInteger('bot.time.day', bot.time.day),
-    is_day: bot.time.isDay
+    is_day: bot.time.isDay,
+    ...(age === undefined || age === null ? {} : { world_age_ticks: age })
   }
 }
 
@@ -300,7 +323,7 @@ function nearbyEntityObservation (bot) {
   }
 }
 
-export function snapshotFromBot (bot) {
+export function snapshotFromBot (bot, ownedOxygenReceipt = undefined) {
   if (!bot || !bot.entity || !bot.entity.position) {
     throw new Error('bot position is unavailable before spawn')
   }
@@ -313,7 +336,13 @@ export function snapshotFromBot (bot) {
       'bot.foodSaturation',
       bot.foodSaturation
     ),
-    oxygen_level: optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel),
+    oxygen_level: (
+      ownedOxygenReceipt === undefined
+        ? optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel)
+        : ownedOxygenReceipt?.epistemic_status === 'FRESH_OWNED'
+          ? optionalFiniteNumber('owned oxygen witness', ownedOxygenReceipt.level)
+          : null
+    ),
     position: {
       x: requireFiniteNumber('position.x', bot.entity.position.x),
       y: requireFiniteNumber('position.y', bot.entity.position.y),
@@ -323,6 +352,26 @@ export function snapshotFromBot (bot) {
     inventory: inventorySnapshot(bot),
     nearby_entities: nearby.entities,
     nearby_entities_coverage: nearby.coverage
+  }
+}
+
+export function admitProbeRequestId (seen, requestId) {
+  if (!(seen instanceof Set)) {
+    throw new Error('probe request ledger must be a Set')
+  }
+  requireProbeRequestId(requestId)
+  if (seen.has(requestId)) return false
+  seen.add(requestId)
+  return true
+}
+
+export function makeProbePayload (snapshot, requestId = undefined) {
+  requireObject('probe snapshot', snapshot)
+  if (requestId === undefined) return { kind: 'probe', snapshot }
+  return {
+    kind: 'probe',
+    snapshot,
+    request_id: requireProbeRequestId(requestId)
   }
 }
 

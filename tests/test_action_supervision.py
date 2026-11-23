@@ -370,3 +370,17 @@ def test_supervised_issue_delegates_authorization_legality() -> None:
     with pytest.raises(UnknownSupervisedAction):
         supervisor.get("action-1")
     assert supervisor.last_at_ns is None
+
+
+def test_recorded_actions_includes_terminal_and_issued_without_reissuing() -> None:
+    supervisor = ActionSupervisor()
+    first = issue(supervisor, "action-a", at_ns=30, deadline_ns=90)
+    second = issue(supervisor, "action-b", at_ns=40, deadline_ns=90)
+    terminal = supervisor.record_outcome(
+        "action-a", at_ns=50, provenance=provenance("applied-a"),
+    )
+    assert terminal.state is ActionState.OUTCOME
+    assert supervisor.recorded_actions == (terminal, second)
+    assert supervisor.open_actions == (second,)
+    assert supervisor.get("action-a") is terminal
+    assert first.action_id == terminal.action_id

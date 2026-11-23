@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -98,6 +100,30 @@ test('observe is a target-local snapshot probe, not an effect', () => {
     () => parseCommand({ type: 'observe', action_id: 'not-an-action' }),
     /fields are invalid/
   )
+})
+
+test('correlated probe request IDs follow original S49 read-only contract', () => {
+  const seen = new Set()
+  assert.deepEqual(parseCommand({ type: 'observe', request_id: 'cognitive-01' }), {
+    type: 'observe', request_id: 'cognitive-01'
+  })
+  assert.equal(admitProbeRequestId(seen, 'cognitive-01'), true)
+  assert.equal(admitProbeRequestId(seen, 'cognitive-01'), false)
+  assert.equal(admitProbeRequestId(seen, 'cognitive-02'), true)
+  assert.deepEqual(makeProbePayload({ health: 20 }, 'cognitive-02'), {
+    kind: 'probe', snapshot: { health: 20 }, request_id: 'cognitive-02'
+  })
+  assert.deepEqual(makeProbePayload({ health: 20 }), {
+    kind: 'probe', snapshot: { health: 20 }
+  })
+  for (const requestId of ['', 'bad space', '☃', '-bad', 'a'.repeat(129)]) {
+    assert.throws(() => parseCommand({ type: 'observe', request_id: requestId }), /request_id/)
+    assert.throws(() => makeProbePayload({}, requestId), /request_id/)
+  }
+  assert.throws(() => parseCommand({
+    type: 'observe', request_id: 'probe-1', action_id: 'invalid'
+  }), /fields are invalid/)
+  assert.throws(() => admitProbeRequestId([], 'probe-1'), /Set/)
 })
 
 test('clear_controls remains a primitive effect without hidden duration', () => {
@@ -561,4 +587,34 @@ test('envelope preserves target-local session and monotonic sequence fields', ()
       kind: 'health'
     }
   )
+})
+
+test('world age remains distinct from frozen daylight time and rejects invalid ages', () => {
+  const bot = {
+    health: 20,
+    food: 20,
+    foodSaturation: 5,
+    oxygenLevel: 20,
+    time: { timeOfDay: 6000, day: 0, isDay: true, age: 120 },
+    entity: { id: 1, position: { x: 0, y: 64, z: 0 } },
+    inventory: { items: () => [] },
+    entities: {}
+  }
+  const first = snapshotFromBot(bot)
+  assert.deepEqual(first.time, {
+    time_of_day: 6000, day: 0, is_day: true, world_age_ticks: 120
+  })
+  bot.time.age = 140
+  const next = snapshotFromBot(bot)
+  assert.equal(next.time.time_of_day, first.time.time_of_day)
+  assert.equal(next.time.world_age_ticks - first.time.world_age_ticks, 20)
+
+  delete bot.time.age
+  assert.deepEqual(snapshotFromBot(bot).time, {
+    time_of_day: 6000, day: 0, is_day: true
+  })
+  for (const bad of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, '120']) {
+    bot.time.age = bad
+    assert.throws(() => snapshotFromBot(bot), /bot.time.age/)
+  }
 })

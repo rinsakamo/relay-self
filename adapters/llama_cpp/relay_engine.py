@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from relay_self.provenance import Provenance
@@ -589,6 +592,7 @@ class LlamaCppRelayProvider:
         model: str,
         timeout: float = 60.0,
         systemone_endpoint: str | None = None,
+        systemone_raw_dir: Path | None = None,
     ) -> None:
         self._endpoint = _validate_endpoint(endpoint)
         self._systemone_endpoint = (
@@ -605,6 +609,18 @@ class LlamaCppRelayProvider:
             raise ValueError("timeout must be a positive number")
         self._model = model
         self._timeout = float(timeout)
+        if systemone_raw_dir is not None:
+            if (
+                self._systemone_endpoint is None
+                or not isinstance(systemone_raw_dir, Path)
+                or systemone_raw_dir.is_symlink()
+                or not systemone_raw_dir.is_dir()
+                or any(systemone_raw_dir.iterdir())
+            ):
+                raise ValueError(
+                    "systemone raw capture requires a new empty owned evidence directory"
+                )
+        self._systemone_raw_dir = systemone_raw_dir
 
     @property
     def endpoint(self) -> str:
@@ -694,42 +710,107 @@ class LlamaCppRelayProvider:
         endpoint: str | None = None,
     ) -> dict[str, Any]:
         target_endpoint = self._endpoint if endpoint is None else endpoint
+        payload = json.dumps(
+            request_body, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        # Raw HTTP *entity body* bytes, not a reconstructed JSON payload or
+        # packet-level wire capture. Capture exactly the data handed to urllib
+        # and the bytes read from the one actual response; no second POST.
+        capture = (
+            self._systemone_raw_dir
+            if target_endpoint == self._systemone_endpoint
+            else None
+        )
+        if capture is not None:
+            _write_model_raw_once(capture / "systemone-request-body.bin", payload)
         request = urllib.request.Request(
             target_endpoint,
-            data=json.dumps(
-                request_body,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8"),
+            data=payload,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             },
             method="POST",
         )
+        status: int | None = None
+        raw: bytes | None = None
         try:
             with urllib.request.urlopen(
-                request,
-                timeout=self._timeout,
+                request, timeout=self._timeout,
             ) as response:
-                body = json.loads(response.read().decode("utf-8"))
-        except (
-            urllib.error.URLError,
-            TimeoutError,
-            UnicodeDecodeError,
-            json.JSONDecodeError,
-        ) as exc:
+                # Production urllib responses expose status. Legacy unit
+                # fakes without it are allowed only when capture is disabled.
+                status = getattr(response, "status", None if capture else 200)
+                raw = response.read()
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            raw = exc.read()
+            if capture is not None:
+                _write_model_response_capture(capture, payload, raw, status)
+            raise LlamaCppProviderError(
+                f"llama.cpp model HTTP status {status}"
+            ) from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            # A request may already be in flight: do not retry or create
+            # synthetic response bytes. The request file remains original.
             raise LlamaCppProviderError(
                 f"llama.cpp model call failed: {type(exc).__name__}: {exc}"
             ) from exc
 
+        if capture is not None:
+            _write_model_response_capture(capture, payload, raw, status)
+        if status != 200:
+            raise LlamaCppProviderError(
+                f"llama.cpp model HTTP status {status}"
+            )
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise LlamaCppProviderError(
+                f"llama.cpp model response malformed: {type(exc).__name__}"
+            ) from exc
         if not isinstance(body, dict):
             raise LlamaCppProviderProtocolError(
                 "llama.cpp response body must be a JSON object"
             )
         return body
 
+
+def _write_model_raw_once(path: Path, payload: bytes) -> None:
+    """Exclusive, fsynced original bytes; no clobber or silent replay."""
+    if path.parent.is_symlink() or not path.parent.is_dir():
+        raise LlamaCppProviderError("owned model evidence directory missing")
+    try:
+        with path.open("xb") as output:
+            os.chmod(path, 0o600)
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+    except OSError as exc:
+        raise LlamaCppProviderError("model raw evidence write failed") from exc
+
+
+def _write_model_response_capture(
+    evidence: Path, request_bytes: bytes,
+    response_bytes: bytes, status: int,
+) -> None:
+    if type(status) is not int or not 100 <= status <= 599:
+        raise LlamaCppProviderError("real model HTTP status unavailable")
+    _write_model_raw_once(evidence / "systemone-response-body.bin", response_bytes)
+    manifest = {
+        "schema": 1,
+        "capture_type": "urllib_http_entity_bodies_not_wire_headers",
+        "http_status": status,
+        "request_body_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "response_body_sha256": hashlib.sha256(response_bytes).hexdigest(),
+        "request_body_bytes": len(request_bytes),
+        "response_body_bytes": len(response_bytes),
+    }
+    _write_model_raw_once(
+        evidence / "systemone-http-evidence.json",
+        (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode(),
+    )
 
 def _extract_completion(
     body: dict[str, Any],

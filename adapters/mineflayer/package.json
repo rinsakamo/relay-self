@@ -8,8 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test protocol.test.mjs bridge_hooks.test.mjs",
-    "check": "node --check protocol.mjs && node --check bridge_hooks.mjs && node --check bridge.mjs && node --test protocol.test.mjs bridge_hooks.test.mjs"
+    "test": "node --test protocol.test.mjs bridge_hooks.test.mjs oxygen_owner_contract.test.mjs bounded_place_guard.test.mjs",
+    "check": "node --check protocol.mjs && node --check bridge_hooks.mjs && node --check bridge.mjs && node --check bounded_place_guard.mjs && node --check oxygen_owner_patch.mjs && node --check oxygen_owner_witness.mjs && node --test protocol.test.mjs bridge_hooks.test.mjs oxygen_owner_contract.test.mjs bounded_place_guard.test.mjs"
   },
   "dependencies": {
     "mineflayer": "4.39.0"

@@ -1,0 +1,9 @@
+# U12 Q4 partial PLACE reservation — HOLD
+
+Starting point: U11 `b8dc3a80a0e8136509c9d8b7d8dfb1c979f2e1ba`. This is a partial CPU change, not an execution permit or World evidence.
+
+The existing common issuer now accepts an invocation and motion together for a first MOVE and delegates durable reservation to the existing `prepare_place_move` v2 contract before supervisor ISSUE. Partial parameters, non-MOVE use, and unpaired gait are rejected before any mutation. Its existing empty-supervisor restriction remains: this does not implement S2 or waive the S1 history checks. The diagnostic explicitly reports missing S2 and prior-terminal contracts; signature presence alone is not a complete live wiring test. No original admission APIs or live runner were added. The synthetic runner still rejects process-backed Native.
+
+The current host watchdog bounds the whole coroutine, including post-STOP settlement; it is not yet a correct START-to-STOP-only watchdog. Do not use it to certify the requested 8+8 tick live sequence. U10 accepts synthetic typed receipts and is not a real-source authenticator. The first-PLACE dispatch has hostile parameter coverage but no end-to-end positive Original Owner execution test yet. Its scope requires independent review before live use.
+
+No World was launched, no Native or Paper evidence collected, and no real action, STOP, second action or failure injection is claimed. Remaining work includes original S1-bound reservation and one-use action consumption, real owned-process runner, correct phased watchdog and abort, source-authenticated repeat rearm, adversarial tests and real disposable-World evidence. `Q4_REAL_WORLD_MOVE_STOP_REPEAT_HOLD / Q4_REAL_ABORT_FAIL_SAFE_HOLD / PRE_WORLD_HOLD / QUAL_NO_GO / SCIENCE_NOT_RUN` remain. Full historical cryptographic provenance and R1/R2 remain separate from the minimal DEV gate.
