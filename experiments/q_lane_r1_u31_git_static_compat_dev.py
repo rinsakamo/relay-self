@@ -104,8 +104,16 @@ def _inspect_static_shadow_source(content: bytes) -> dict[str, object]:
             # Owner/Resident/Bridge/provenance attributes or array indexes.
             targets = (node.targets if isinstance(node, ast.Assign)
                        else [node.target])
-            if any(isinstance(t, (ast.Attribute, ast.Subscript)) for t in targets):
-                raise QR1SourceHold("R1 writes an object field or indexed state")
+            for t in targets:
+                if isinstance(t, ast.Attribute):
+                    raise QR1SourceHold("R1 assigns an owner/bridge or object field")
+                # A local dictionary parser may fill its own fresh result.
+                # An arbitrary indexed state write (e.g. bridge.owners[x])
+                # remains forbidden by this negative-only static check.
+                if isinstance(t, ast.Subscript) and not (
+                    isinstance(t.value, ast.Name) and t.value.id == "result"
+                ):
+                    raise QR1SourceHold("R1 assigns indexed foreign state")
         elif isinstance(node, (ast.Delete, ast.Global, ast.Nonlocal, ast.ImportFrom)):
             if isinstance(node, (ast.Delete, ast.Global, ast.Nonlocal)):
                 raise QR1SourceHold("R1 modifies external/global state")
