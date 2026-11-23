@@ -25,6 +25,7 @@ from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 
 
 def _args(pair, sid="A"):
+    assert current_fixture is not None and rejoined is not None and rejoined_present is not None
     f, initials, _, historical, *_ = pair
     return dict(
         bridge=f.bridge, self_id=sid, initial_receipts=initials,
@@ -181,7 +182,7 @@ def test_r23_rejoin_external_paper_change_during_second_read_fails_closed(
         nonlocal calls
         reading = original(**kwargs)
         calls += 1
-        if calls == 2:
+        if calls == 1:
             with f.paper._log_path.open("a") as stream:
                 stream.write("R23_RACE_PAPER_ADVANCED\n")
         return reading
