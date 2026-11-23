@@ -23,9 +23,9 @@ from relay_self.r2_3d_original_rejoin_gpu_fence_dev import (
 )
 from relay_self.relay_engine import CognitionMode, ProviderDecision
 from relay_self.resident_llama_inference_lane_dev import _request_sha256
-from test_bd1b_post_gpu_source_dev import attach
 from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import pair as pair
+from test_bd1b_post_gpu_source_dev import attach
 from test_r2_3c_original_rejoin_frozen_l1_dev import _bind, _state
 
 
