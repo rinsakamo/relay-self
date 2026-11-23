@@ -17,6 +17,8 @@ jobs:
   q-r1-pinned-original-objects:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Check out exact Q audit head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -69,4 +71,8 @@ jobs:
           assert report["qual_go"] is False and report["science_run"] is False
           print("Q_R1_ACTUAL_PINNED_GIT_OBJECTS_CPU_STATIC_PASS")
           PY
-          test -z "$(git status --porcelain)"
+          DIRTY="$(git status --porcelain)"
+          if test -n "$DIRTY"; then
+            printf "Q R1 source checkout changed during inspection:\\n%s\\n" "$DIRTY"
+            exit 1
+          fi
