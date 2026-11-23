@@ -131,3 +131,14 @@ R1 and Q exact-head CI must both pass after the repair, with the separately
 pinned Q run additionally exercising the real R1 Git objects and the
 Q runtime negatives. This note does not qualify reJOIN/World original
 producer custody or R2 migration.
+
+## Independent Q runtime retest result on repaired R1
+
+Q-owned pinned-target runtime tests at repaired R1 `c4917e21a496107638b98f8b98c49bc60aa6d9aa`
+completed **12/12 PASS** in [independent Actions #45118615273](https://github.com/rinsakamo/relay-self/actions/runs/45118615273)
+after the original pre-fix 4/12 failures. The Q job fetched actual I U31
+and R1 immutable Git objects and kept its synthetic Original B/Present
+fixtures in a separate worktree, with no user WSL original evidence read.
+The resulting R1 source still requires exact-HEAD full R1 regression and
+the final Q pinned-head retest; neither semantic runtime PASS nor the Git
+object scan is a general U31 World Shadow qualification.
