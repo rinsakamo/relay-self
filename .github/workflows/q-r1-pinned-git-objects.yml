@@ -58,9 +58,20 @@ jobs:
           git worktree add --detach "$TARGET" refs/q-r1-audit/r1
           test "$(git -C "$TARGET" rev-parse HEAD)" = "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
           python -m pip install --disable-pip-version-check "pytest==9.1.1"
-          export PYTHONPATH="$TARGET/src:$TARGET/tests:$TARGET:$GITHUB_WORKSPACE"
+          export PYTHONPATH="$TARGET/src:$TARGET/tests:$TARGET"
+          export R1_TARGET="$TARGET"
+          cp "$GITHUB_WORKSPACE/experiments/q_lane_r1_original_owner_runtime_probe_dev.py" "$RUNNER_TEMP/q-r1-runtime-probe.py"
           cd "$TARGET"
-          python -m pytest -q "$GITHUB_WORKSPACE/experiments/q_lane_r1_original_owner_runtime_probe_dev.py"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import relay_self.r1_owner_context_shadow_dev as shadow
+          assert Path(shadow.__file__).resolve().is_relative_to(
+              Path(os.environ["R1_TARGET"]).resolve()
+          ), "independent Q imported the wrong RelaySelf code version"
+          print("Q_R1_EXACT_RUNTIME_IMPORT_VERIFIED")
+          PY
+          python -m pytest -q "$RUNNER_TEMP/q-r1-runtime-probe.py"
           test -z "$(git status --porcelain)"
 
       - name: Execute Q independent real Git-object ancestry and AST checker
