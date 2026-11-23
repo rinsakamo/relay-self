@@ -32,7 +32,10 @@ jobs:
           Q_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test "$Q_BRANCH" = "audit/q-r1-u31-git-shadow-compat-20261123"
+          case "$Q_BRANCH" in
+            audit/q-r1-u31-git-shadow-compat-20261123|audit/q-r2-0-present-boundary-20261123) ;;
+            *) echo "Q_R1_UNAUTHORIZED_AUDIT_BRANCH"; exit 1 ;;
+          esac
           test -z "$(git status --porcelain)"
 
       - name: Install Python 3.12

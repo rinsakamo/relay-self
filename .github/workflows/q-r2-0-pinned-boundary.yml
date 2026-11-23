@@ -1,0 +1,96 @@
+name: Q R2-0 pinned Git and Original Owner boundary
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: q-r2-0-pinned-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  q-r2-0-independent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out exact Q independent audit head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Refuse different Q audit branch or dirty checkout
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          Q_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$Q_BRANCH" = "audit/q-r2-0-present-boundary-20261123"
+          test -z "$(git status --porcelain)"
+
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Fetch and pin original R1 and R2-0 Git object ancestry
+        run: |
+          set -euo pipefail
+          git -c protocol.version=2 fetch --no-tags --no-recurse-submodules --depth=64 origin \
+            '+refs/heads/dev/r-lane-r1-u31-owner-shadow-20261123:refs/q-r2-audit/r1' \
+            '+refs/heads/dev/r-lane-r2-0-present-responsibility-20261123:refs/q-r2-audit/r2'
+          test "$(git rev-parse refs/q-r2-audit/r1)" = "06349c7a216b042511a90e05ad0196f4a7164378"
+          test "$(git rev-parse refs/q-r2-audit/r2)" = "a8d1492a1e54f3f647109da183cf71179c7b5932"
+          test -z "$(git status --porcelain)"
+
+      - name: Independently execute original Owner CPU probes against pinned R2-0
+        run: |
+          set -euo pipefail
+          TARGET="$RUNNER_TEMP/q-r2-0-target"
+          git worktree add --detach "$TARGET" refs/q-r2-audit/r2
+          test "$(git -C "$TARGET" rev-parse HEAD)" = "a8d1492a1e54f3f647109da183cf71179c7b5932"
+          python -m pip install --disable-pip-version-check "pytest==9.1.1"
+          cp experiments/q_lane_r2_0_pinned_owner_runtime_probe_dev.py "$RUNNER_TEMP/q-r2-0-qa.py"
+          cp experiments/q_lane_r1_original_owner_runtime_probe_dev.py "$RUNNER_TEMP/q-r1-compat-qa.py"
+          export PYTHONPATH="$TARGET/src:$TARGET/tests:$TARGET"
+          export R2_TARGET="$TARGET"
+          cd "$TARGET"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import relay_self.r1_owner_context_shadow_dev as shadow
+          import relay_self.r2_present_responsibility_boundary_dev as boundary
+          t = Path(os.environ["R2_TARGET"]).resolve()
+          assert Path(shadow.__file__).resolve().is_relative_to(t)
+          assert Path(boundary.__file__).resolve().is_relative_to(t)
+          print("Q_R2_0_EXACT_TARGET_IMPORT_VERIFIED")
+          PY
+          python -m pytest -q "$RUNNER_TEMP/q-r1-compat-qa.py" "$RUNNER_TEMP/q-r2-0-qa.py"
+          test -z "$(git status --porcelain)"
+
+      - name: Independently check real R1 to R2-0 Git source custody
+        run: |
+          set -euo pipefail
+          python -m experiments.q_lane_r2_0_pinned_git_boundary_dev --repo-root "$PWD" | tee /tmp/q-r2-0-result.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("/tmp/q-r2-0-result.json").read_text())
+          assert r["classification"] == "Q_R2_0_ACTUAL_PINNED_GIT_AND_STATIC_CPU_PASS"
+          assert r["r1_commit"] == "06349c7a216b042511a90e05ad0196f4a7164378"
+          assert r["r2_0_commit"] == "a8d1492a1e54f3f647109da183cf71179c7b5932"
+          assert r["original_owner_native_physical_wal_source_unchanged"] is True
+          assert r["initial_and_cached_legacy_checks_shared"] is True
+          assert r["original_u31_wsl_raw_readback_repeated"] is False
+          assert r["r2_l1_input_switched"] is False
+          assert r["physical_authorized"] is False
+          assert r["qual_go"] is False and r["science_run"] is False
+          print("Q_R2_0_PINNED_GIT_AND_RUNTIME_CPU_DEV_PASS")
+          PY
+          test -z "$(git status --porcelain)"
