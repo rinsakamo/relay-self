@@ -63,6 +63,15 @@ calls are original B resident `read_present_cpu`, existing
   legacy Present stability, retained owner pointer/data and context current
   source+Memory readback. Unexpected differences are collected as stable
   mismatch codes in immutable `R1ShadowComparison`.
+- **Cached RECENT/RETRIEVED recheck**: `r1_shadow_is_live` rereads the original
+  cognition file and current Owner-retained Questions, recreates subjective
+  RECENT, and verifies the original Context/Memory digests. Closing or changing
+  an accepted Question invalidates a prior Shadow even if the Native/Paper
+  Source revision stays unchanged. It can only return a negative/positive
+  read-only *freshness* answer, not an L1/physical permission.
+- The Stage28-only adapter requires the original **first-login resident epoch
+  1**. Artificially advancing epoch with old Native/Paper boot/links must HOLD;
+  reJOIN has an independent composite/revision and is outside this comparison.
 - EXPECTED semantic differences: legacy `OBSERVED` SelfBody claims are not
   imported to Schema CURRENT; subjective accepted Question stays HYPOTHETICAL;
   old Memory stays REMEMBERED with UNKNOWN applicability. These do not become
