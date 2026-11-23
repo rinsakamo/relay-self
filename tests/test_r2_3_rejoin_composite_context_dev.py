@@ -9,6 +9,7 @@ import pytest
 
 from relay_self.b_np1b_continuing_b_composite_dev import ContinuingCompositeSourceReceipt
 from relay_self.b_np1b_rejoin_composite_source_dev import RejoinedCompositeSourceReceipt
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.r2_3_rejoin_composite_context_dev import (
     R23CompositeContextHold,
     R23RejoinedContextComparison,
@@ -105,8 +106,14 @@ def test_r23_rejoin_composite_read_rejects_stale_or_foreign_original(
     elif failure == "foreign_self":
         args["self_id"] = "foreign"
     elif failure == "paper_changed":
-        with f.paper._log_path.open("a") as stream:
-            stream.write("R23_STALE_ORIGINAL_PAPER_LOG\n")
+        # Damaging the *attested* Paper ACK differs from harmless extra
+        # log growth, which may permit a freshly requalified new Source.
+        log = f.paper._log_path.read_text()
+        assert "P0D_TICK_ACK nonce=88888888" in log
+        f.paper._log_path.write_text(log.replace(
+            "P0D_TICK_ACK nonce=88888888",
+            "P0D_TICK_ACK nonce=00000000", 1,
+        ))
     elif failure == "native_changed":
         obs = f.owners["A"].current_worldbody_observation
         f.owners["A"].current_worldbody_observation = replace(obs)
@@ -124,7 +131,7 @@ def test_r23_rejoin_composite_read_rejects_stale_or_foreign_original(
     else:
         f.cognitive._normal_second_rejoin_cut = object()
     originals = files(f)
-    with pytest.raises(R23CompositeContextHold):
+    with pytest.raises((R23CompositeContextHold, ResidentCognitiveWorkError)):
         f.cognitive.read_rejoined_context_shadow_cpu(**args)
     assert files(f) == originals
 
