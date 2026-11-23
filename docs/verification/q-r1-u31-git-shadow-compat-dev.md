@@ -5,7 +5,7 @@
 ## Pinned identities
 
 - Original I U31 [#1124](https://github.com/rinsakamo/relay-self/pull/1124): `d3034026a8eea3d2d4927527f5bc0d6ad0455457`.
-- R1 Shadow [#1129](https://github.com/rinsakamo/relay-self/pull/1129): `fd2c6862fcb1a7e71211a96d89c287ab3c689677`.
+- R1 Shadow [#1129](https://github.com/rinsakamo/relay-self/pull/1129): `c4917e21a496107638b98f8b98c49bc60aa6d9aa`.
 - Independent Q [#1089](https://github.com/rinsakamo/relay-self/pull/1089): `450734c54e1432ec70a8206952779b5ad82796d8`. Q branch itself is **not** rebased onto R1.
 - Original Q6/Q7/Q8/Q11 WSL audit of U31 remains the historical separately grounded DEV evidence only. No Q-R1 original source byte reinspection has occurred here.
 
@@ -65,3 +65,20 @@ No actual WSL U31 original evidence or real inference/movement is available
 to the runner. A successful Q runtime run means synthetic Original Owner
 API compatibility on the pinned R1 code only; it is not a real World
 post-S2 Shadow proof or R2 authorization.
+
+## Q runtime adversarial discovery and repair handoff
+
+Q pinned-R1 dynamic probes at earlier R1 SHA
+`fd2c6862fcb1a7e71211a96d89c287ab3c689677`
+independently reproduced **4 failures / 8 passes**: cached R1 MATCH
+stayed live after modifying legacy Present's Need refs, Attention refs,
+frame revision and registry revision (with original Native/Paper unchanged).
+R1 implemented the bounded fail-closed fix in its own read-only
+`r1_shadow_is_live` revalidator and added matching R1 regression tests.
+Q preserves its own independent test file and pins the exact updated R1
+`c4917e21a496107638b98f8b98c49bc60aa6d9aa`.
+
+The Q probe must independently assert all four cases become stale on
+that updated R1 code, while the complete R1 Owner/Physical/WAL suite and
+Q's own Git/static auditor both stay green. A synthetic negative case does
+not substitute for original U31 World/Gemma provenance.
