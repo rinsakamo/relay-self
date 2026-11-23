@@ -72,6 +72,19 @@ post-save check fails, the file may contain new bytes while
 claim rollback or full transactional crash durability; it quarantines
 the affected Self and requires a separate recovery qualification.
 
+### Original B checkpoint prerequisite
+
+The imported A-first-reJOIN/B-continuing CPU fixture does not always
+create a **canonical B `cognition.json`**. The existing original
+`_store_current_inquiry` must **refuse** to create a missing file,
+rather than silently fabricating a recovered checkpoint. A positive
+synthetic B ADOPT test therefore creates a matching, canonical initial
+B cognition checkpoint as part of test setup **before original GPU
+submission**, and verifies its exact readback. A separate explicit
+negative B case leaves that file absent: it must HOLD, fence B, keep
+A online and **not** write a new cognition file. The production
+Question writer is not changed.
+
 ### CPU synthetic tests
 
 Original Owner/Bridge/Resident GPU lane classes, original A-first-reJOIN
