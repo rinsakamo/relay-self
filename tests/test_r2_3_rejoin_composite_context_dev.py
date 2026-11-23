@@ -9,7 +9,6 @@ import pytest
 
 from relay_self.b_np1b_continuing_b_composite_dev import ContinuingCompositeSourceReceipt
 from relay_self.b_np1b_rejoin_composite_source_dev import RejoinedCompositeSourceReceipt
-from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.r2_3_rejoin_composite_context_dev import (
     R23CompositeContextHold,
     R23RejoinedContextComparison,
@@ -17,6 +16,7 @@ from relay_self.r2_3_rejoin_composite_context_dev import (
     r23_rejoined_context_is_live,
     read_r23_original_rejoin_context,
 )
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.three_self_present import EpistemicStatus
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
