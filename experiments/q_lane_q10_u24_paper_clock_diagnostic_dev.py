@@ -44,7 +44,9 @@ def _uuid(value: str) -> str:
 
 def _paper_timeline(path: Path) -> dict:
     raw = path.read_bytes()
-    _require(0 < len(raw) <= 32 * 1024 * 1024 and raw.endswith(b"\n"),
+    # Paper’s console may redraw its prompt after the last complete log line.
+    _require(0 < len(raw) <= 32 * 1024 * 1024
+             and raw.endswith((b"\n", b"\n> ")),
              "original Paper stream empty, truncated or oversized")
     try:
         source = raw.decode("utf-8")

@@ -68,6 +68,15 @@ def test_original_paper_ticks_advance_while_native_stop_ticks_stall(tmp_path):
     assert not result["real_world_dev_pass"]
 
 
+def test_complete_paper_line_followed_by_console_prompt(tmp_path):
+    _fixtures(tmp_path)
+    paper = tmp_path / ROLES["paper_ticks"]
+    with paper.open("ab") as stream:
+        stream.write(b"> ")
+    result = _audit(tmp_path, _seal(tmp_path, "two_moves"))
+    assert result["paper"]["paper_player_quit_recorded"]
+
+
 def test_paper_and_native_both_short_not_called_clock_frozen(tmp_path):
     manifest, _ = _fixtures(tmp_path, short_paper=True)
     result = _audit(tmp_path, manifest)
