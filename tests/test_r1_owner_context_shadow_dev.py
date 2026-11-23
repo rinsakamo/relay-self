@@ -343,3 +343,30 @@ def test_r1_shadow_rejects_invalid_or_foreign_cached_report(
     assert not r1_shadow_is_live(
         replace(original, self_id="B"), **kw,
     )
+
+@pytest.mark.parametrize(("field", "replacement"), (
+    ("need_refs", ("revoked-original-need",)),
+    ("attention_refs", ("revoked-original-attention",)),
+    ("frame_revision", 440),
+    ("registry_revision", 441),
+))
+def test_cached_match_revalidates_legacy_present_semantics(
+    tmp_path, monkeypatch, field, replacement,
+):
+    """Q independent probe found source-stable legacy Present cache staleness."""
+    case = _configured(tmp_path, monkeypatch, need=True)
+    resident = case[1].cognitive_work
+    prior = compare_original_owner_r1_shadow(**_args(case))
+    assert prior.status is R1ShadowStatus.MATCH
+    kw = dict(bridge=case[1], boot=case[2], world=case[3], links=case[4])
+    assert r1_shadow_is_live(prior, **kw)
+    original = resident.read_present_cpu
+
+    def changed(**kwargs):
+        legacy = original(**kwargs)
+        return replace(legacy, present=replace(
+            legacy.present, **{field: replacement},
+        ))
+
+    monkeypatch.setattr(resident, "read_present_cpu", changed)
+    assert not r1_shadow_is_live(prior, **kw)
