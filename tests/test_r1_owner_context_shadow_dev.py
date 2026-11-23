@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError, replace
 import pytest
 
 from relay_self.bd1b_question_store_dev import _store_current_inquiry
-from relay_self.persistent_cognition import Memory
+from relay_self.persistent_cognition import Memory, save_persistent_cognition
 from relay_self.provenance import Provenance
 from relay_self.r0_cognitive_context_dev import context_is_live
 from relay_self.r1_owner_context_shadow_dev import (
@@ -13,6 +13,7 @@ from relay_self.r1_owner_context_shadow_dev import (
     R1ShadowComparison,
     R1ShadowStatus,
     compare_original_owner_r1_shadow,
+    r1_shadow_is_live,
 )
 from relay_self.three_self_present import EpistemicStatus, Lens
 from test_bd1b_owner_present_dev import _configured
@@ -72,6 +73,9 @@ def test_r1_shadow_compares_original_present_without_side_effect(
     assert report.legacy_body_claim_count >= 1
     assert report.context.recent.entries == ()
     assert report.context.retrieved.references == ()
+    assert r1_shadow_is_live(
+        report, bridge=bridge, boot=case[2], world=case[3], links=case[4],
+    )
     assert report.expected_differences == EXPECTED_SEMANTIC_DIFFERENCES
     assert report.l1_input_switched is False
     assert report.physical_authorized is False
@@ -149,6 +153,10 @@ def test_r1_shadow_existing_owner_memory_remembered_not_observed(
         Provenance("original-owner", "retained"),
     )
     case[1].owners["A"].retain_memory(memory)
+    # In the fixture the original owner has no active canonical save phase;
+    # qualify an actually persisted Memory before reading R1 RETRIEVED.
+    owner = case[1].owners["A"]
+    save_persistent_cognition(owner.files.cognition_file, owner.retained)
     before_files = _files(case[1])
     report = compare_original_owner_r1_shadow(
         **_args(case), memory_ids=("original-experience",),
@@ -285,3 +293,53 @@ def test_r1_shadow_frozen_result_cannot_be_grant(tmp_path, monkeypatch):
         replace(result, status=R1ShadowStatus.MATCH, mismatch_codes=("fake",))
     with pytest.raises(FrozenInstanceError):
         result.status = R1ShadowStatus.HOLD
+
+def test_r1_shadow_cached_recent_invalid_after_original_question_closure(
+    tmp_path, monkeypatch,
+):
+    case = _configured(tmp_path, monkeypatch, need=True)
+    qref = _seed_original_accepted_question(case)
+    original = compare_original_owner_r1_shadow(**_args(case))
+    assert original.status is R1ShadowStatus.MATCH
+    kw = dict(bridge=case[1], boot=case[2], world=case[3], links=case[4])
+    assert r1_shadow_is_live(original, **kw)
+
+    # Simulate *the original owner*, not the R1 shadow, retiring a Question.
+    owner = case[1].owners["A"]
+    continuity = owner.retained.exploration_continuity
+    updated = replace(continuity, revision=continuity.revision + 1,
+                      questions=(replace(continuity.questions[0], open=False),))
+    owner.retained = replace(owner.retained, exploration_continuity=updated)
+    owner.pending_questions.remove(qref)
+    save_persistent_cognition(owner.files.cognition_file, owner.retained)
+    assert not r1_shadow_is_live(original, **kw)
+    current = compare_original_owner_r1_shadow(**_args(case))
+    assert current.status is R1ShadowStatus.MATCH
+    assert current.context.recent.entries == ()
+
+
+def test_r1_shadow_live_recheck_fences_old_paper_or_retired_self(
+    tmp_path, monkeypatch,
+):
+    case = _configured(tmp_path, monkeypatch)
+    initial = compare_original_owner_r1_shadow(**_args(case))
+    kw = dict(bridge=case[1], boot=case[2], world=case[3], links=case[4])
+    assert r1_shadow_is_live(initial, **kw)
+    case[1].paper._session_id = "different-paper"
+    assert not r1_shadow_is_live(initial, **kw)
+    assert not r1_shadow_is_live(
+        replace(initial, status=R1ShadowStatus.MISMATCH,
+                mismatch_codes=("STALE",)), **kw,
+    )
+
+
+def test_r1_shadow_rejects_invalid_or_foreign_cached_report(
+    tmp_path, monkeypatch,
+):
+    case = _configured(tmp_path, monkeypatch)
+    original = compare_original_owner_r1_shadow(**_args(case))
+    kw = dict(bridge=case[1], boot=case[2], world=case[3], links=case[4])
+    assert not r1_shadow_is_live(object(), **kw)
+    assert not r1_shadow_is_live(
+        replace(original, self_id="B"), **kw,
+    )
