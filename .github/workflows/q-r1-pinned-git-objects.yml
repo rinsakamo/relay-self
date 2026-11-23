@@ -47,7 +47,7 @@ jobs:
             '+refs/heads/dev/i-unified-b-i2-i4a-20261122:refs/q-r1-audit/i-u31' \
             '+refs/heads/dev/r-lane-r1-u31-owner-shadow-20261123:refs/q-r1-audit/r1'
           test "$(git rev-parse refs/q-r1-audit/i-u31)" = "d3034026a8eea3d2d4927527f5bc0d6ad0455457"
-          test "$(git rev-parse refs/q-r1-audit/r1)" = "c4917e21a496107638b98f8b98c49bc60aa6d9aa"
+          test "$(git rev-parse refs/q-r1-audit/r1)" = "06349c7a216b042511a90e05ad0196f4a7164378"
           test -z "$(git status --porcelain)"
 
 
@@ -56,7 +56,7 @@ jobs:
           set -euo pipefail
           TARGET="$RUNNER_TEMP/q-r1-original-target"
           git worktree add --detach "$TARGET" refs/q-r1-audit/r1
-          test "$(git -C "$TARGET" rev-parse HEAD)" = "c4917e21a496107638b98f8b98c49bc60aa6d9aa"
+          test "$(git -C "$TARGET" rev-parse HEAD)" = "06349c7a216b042511a90e05ad0196f4a7164378"
           python -m pip install --disable-pip-version-check "pytest==9.1.1"
           export PYTHONPATH="$TARGET/src:$TARGET/tests:$TARGET"
           export R1_TARGET="$TARGET"
@@ -84,7 +84,7 @@ jobs:
           report = json.loads(Path("/tmp/q-r1-pinned-result.json").read_text())
           assert report["classification"] == "Q_R1_U31_GIT_STATIC_COMPAT_CPU_OFFLINE_DEV"
           assert report["u31_i_commit"] == "d3034026a8eea3d2d4927527f5bc0d6ad0455457"
-          assert report["r1_commit"] == "c4917e21a496107638b98f8b98c49bc60aa6d9aa"
+          assert report["r1_commit"] == "06349c7a216b042511a90e05ad0196f4a7164378"
           assert report["original_owner_physical_wal_code_unchanged"] is True
           assert report["intermediate_git_source_drift_absent"] is True
           assert report["r1_report_grant_defaults_false"] is True
