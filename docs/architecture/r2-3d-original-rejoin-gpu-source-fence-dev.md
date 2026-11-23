@@ -16,6 +16,32 @@ job readback *after* the one existing Original `ResidentLlamaInferenceLane`
 has been attached, without pretending Stage28's original first-login Source
 remains valid on reJOIN.
 
+## New original Bridge attachment seam
+
+The previous Stage28 `attach_observation_only_bounded_l1` requires current
+WorldBody observations to be the **same object as the initial login probe**.
+The original A-first-reJOIN/B-continuing fixture legitimately has newer
+original Native observations; Stage28's method rejects it. This is
+**not a failure of the reJOIN source**, nor should the test overwrite
+`last_login_observations` or assign `bridge.inference_lane` directly.
+
+An explicitly separate original method,
+`OwnedResidentPhysicalBridge.attach_original_first_rejoin_question_l1_dev`,
+accepts only **two already-registered Original Owner frozen R2-3c A+B
+Question turns**, under the same Original Resident lock. It rechecks
+A/B original source, Paper, Native/Physical session match, owner identity,
+Native probe, active action absence, lifecycle, no login in flight and
+current original GPU lane emptiness, verifies the backend single slot
+idle, rechecks both frozen requests/source, then binds the **same existing
+lane** and attaches via the original Bridge. The old Stage28 attach remains
+unchanged and still rejects this reJOIN source. No direct GPU submit or
+physical issuance takes place.
+
+A current Paper/Native source can change outside the lock: this does not
+constitute a durable capability or proof of permanent external source
+stability. Future real issuer must still bracket submit and result readback
+under the original Owner and fence after failure.
+
 ## Implementation
 
 - R2-3c original `_original_source` and registered comparison accept an
