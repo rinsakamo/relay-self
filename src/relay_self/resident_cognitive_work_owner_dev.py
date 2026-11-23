@@ -289,6 +289,50 @@ class ResidentCognitiveWorkOwner:
                 bridge=bridge, boot=boot, world=world, links=links, self_id=self_id,
             )
 
+    def read_context_shadow_cpu(
+        self, *, bridge, self_id: str, boot, world, links,
+        memory_ids: tuple[str, ...] = (), recent_limit: int = 8,
+    ):
+        """Opt-in read-only R1 Context through the *existing* Original Owner.
+
+        The original resident lock, persisted Owner, Stage28 source and
+        read-only Shadow comparison remain the only providers. This is NOT
+        a second Owner, reJOIN admission, L1 prompt input, GPU lease or
+        Physical issuer. The result retains R1's original provenance and
+        explicit freshness recheck contract; callers must revalidate it
+        before later use, as Paper may advance outside this lock.
+        """
+        from relay_self.r1_owner_context_shadow_dev import (
+            R1ShadowStatus,
+            compare_original_owner_r1_shadow,
+            r1_shadow_is_live,
+        )
+
+        with self.lock:
+            if (
+                getattr(bridge, "cognitive_work", None) is not self
+                or not isinstance(getattr(bridge, "owners", None), dict)
+                or self_id not in self.owners
+                or bridge.owners.get(self_id) is not self.owners[self_id]
+            ):
+                raise ResidentCognitiveWorkError("foreign original Context reader")
+            report = compare_original_owner_r1_shadow(
+                bridge=bridge, boot=boot, world=world, links=links,
+                self_id=self_id, memory_ids=memory_ids,
+                recent_limit=recent_limit,
+            )
+            if (
+                report.status is not R1ShadowStatus.MATCH
+                or report.context is None
+                or not r1_shadow_is_live(
+                    report, bridge=bridge, boot=boot, world=world, links=links,
+                )
+            ):
+                raise ResidentCognitiveWorkError(
+                    "original read-only Context source unavailable or stale"
+                )
+            return report
+
     def read_coverage_inquiry_cpu(
         self, *, bridge, self_id, boot=None, world=None, links=None,
         initial_receipts=None, historical_composite=None,
