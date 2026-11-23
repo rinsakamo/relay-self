@@ -128,6 +128,31 @@ def test_r23f_real_original_adopt_persists_once_and_not_a_skill(
         lane._pool.shutdown(wait=True)
 
 
+def test_r23f_continuing_b_missing_canonical_checkpoint_holds(
+    pair, monkeypatch,
+):
+    from relay_self.bd1b_question_store_dev import QuestionStoreHold
+
+    f, lane, turns = _setup(pair, monkeypatch, decision=ProviderDecision.resolved("1"))
+    turn = turns["B"]
+    try:
+        owner = f.owners["B"]
+        assert not owner.files.cognition_file.exists()
+        before_files, previous = files(f), owner.retained
+        issued = asyncio.run(_issue(f, lane, turn))
+        assert issued.selection == "ADOPT"
+        with pytest.raises(QuestionStoreHold, match="invalid canonical cognition path"):
+            _commit(f, lane, turn, issued)
+        assert files(f) == before_files
+        assert owner.retained is previous
+        assert "B" in lane._fenced
+        assert f.cognitive._state("B").mode == "QUARANTINED"
+        assert f.cognitive.current_scope("A")
+        assert lane._jobs[("B", turn.work_ref)].question_adoption_state == "failed"
+    finally:
+        lane._pool.shutdown(wait=True)
+
+
 @pytest.mark.parametrize("sid,decision,selection", [
     ("A", ProviderDecision.resolved("2"), "HOLD"),
     ("B", ProviderDecision.resolved("3"), "DECLINE"),
