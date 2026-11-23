@@ -42,7 +42,9 @@ jobs:
 
   pytest:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Full deterministic suite now exceeds five minutes on slower hosted runners.
+    # Increase only the test job budget; commands and assertions stay unchanged.
+    timeout-minutes: 10
 
     steps:
       - name: Check out exact transaction head

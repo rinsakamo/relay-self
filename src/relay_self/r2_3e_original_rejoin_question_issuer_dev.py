@@ -35,7 +35,7 @@ class R23EOriginalRejoinIssueHold(RuntimeError):
     """Original reJOIN issuer unavailable before any submission."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class R23EOriginalRejoinQuestionOutcome:
     """One completed original job; no authority to persist/adopt a Question."""
 
@@ -155,10 +155,16 @@ async def issue_r23e_original_rejoin_question_once_dev(
                 raise R23DOriginalRejoinSourceHold(
                     "original pre-submit and terminal Source mismatch"
                 )
-            return R23EOriginalRejoinQuestionOutcome(
+            outcome = R23EOriginalRejoinQuestionOutcome(
                 ticket=ticket, readback=readback,
                 selection=readback.selection,
             )
+            if resident._rejoin_question_outcomes.get(turn.work_ref) is not None:
+                raise R23EOriginalRejoinIssueHold(
+                    "original reJOIN work already returned a decision"
+                )
+            resident._rejoin_question_outcomes[turn.work_ref] = outcome
+            return outcome
     except BaseException:
         if attempted_submit:
             # This does NOT cancel llama-server. The existing lane tracks

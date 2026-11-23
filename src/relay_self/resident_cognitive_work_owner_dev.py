@@ -118,6 +118,8 @@ class ResidentCognitiveWorkOwner:
         # Run configuration only: it is deliberately not part of checkpoint data.
         self._present_schemas = {}
         self._coverage_adoption_turns = weakref.WeakValueDictionary()
+        # R2-3f: weak original R2-3e outcome custody; never persistent cognition.
+        self._rejoin_question_outcomes = weakref.WeakValueDictionary()
         self._discarded: dict[str, list[LocalPeerDiscard]] = {
             sid: [] for sid in owners
         }
@@ -436,6 +438,32 @@ class ResidentCognitiveWorkOwner:
             raise ResidentCognitiveWorkError("foreign original reJOIN issuer")
         return await issue_r23e_original_rejoin_question_once_dev(
             bridge=bridge, lane=lane, turn=turn, timeout_s=timeout_s,
+        )
+
+    def commit_rejoined_original_question_dev(self, *, bridge, lane, turn, outcome):
+        """Original Owner consumes a source-verified R2-3e Question ADOPT once."""
+        from relay_self.r2_3f_original_rejoin_question_adoption_dev import (
+            commit_r23f_original_rejoin_question_dev,
+        )
+
+        if (
+            getattr(bridge, "cognitive_work", None) is not self
+            or getattr(lane, "cognitive_work", None) is not self
+        ):
+            raise ResidentCognitiveWorkError("foreign Original Question commit")
+        return commit_r23f_original_rejoin_question_dev(
+            bridge=bridge, lane=lane, turn=turn, outcome=outcome,
+        )
+
+    async def issue_and_commit_rejoined_original_question_dev(
+        self, *, bridge, lane, turn, timeout_s: float = 60.0,
+    ):
+        """Opt-in original inference followed by original Question adjudication."""
+        outcome = await self.issue_rejoined_original_question_once_dev(
+            bridge=bridge, lane=lane, turn=turn, timeout_s=timeout_s,
+        )
+        return self.commit_rejoined_original_question_dev(
+            bridge=bridge, lane=lane, turn=turn, outcome=outcome,
         )
 
     def read_coverage_inquiry_cpu(
