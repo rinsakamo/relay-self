@@ -179,10 +179,11 @@ def test_q_r1_symlink_shadow_file_refused(tmp_path):
 
 def test_q_r1_merge_ancestry_refused(tmp_path):
     root, baseline, _ = fixture(tmp_path)
+    primary = cmd(root, "symbolic-ref", "--short", "HEAD")
     cmd(root, "checkout", "-qb", "separate", baseline)
     write(root, "unrelated.txt", b"branch addition\n")
     commit(root, "side branch")
-    cmd(root, "checkout", "master")
+    cmd(root, "checkout", primary)
     subprocess.run(["git", "-C", str(root), "merge", "--no-ff", "-qm", "merge branch",
                     "separate"], check=True, capture_output=True)
     final = cmd(root, "rev-parse", "HEAD")
