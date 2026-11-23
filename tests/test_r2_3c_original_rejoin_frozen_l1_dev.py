@@ -236,7 +236,9 @@ def test_r23c_absent_or_unregistered_request_is_not_l1_admission(pair):
         f.cognitive.compare_rejoined_original_l1_request_cpu(
             bridge=f.bridge, turn=None,
         )
-    with pytest.raises(R23COriginalRejoinRequestHold):
+    # Existing Original Owner rejects a foreign Self before the R2-3c
+    # adapter is entered; this is the expected earlier fail-closed fence.
+    with pytest.raises((R23COriginalRejoinRequestHold, ResidentCognitiveWorkError)):
         f.cognitive.prepare_rejoined_original_l1_request_cpu(
             bridge=f.bridge, self_id="foreign",
         )
