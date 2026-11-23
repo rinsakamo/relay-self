@@ -1,0 +1,65 @@
+name: Q R2-3f original Question cross-adoption source audit
+
+on:
+  push:
+    branches:
+      - audit/q-r2-3f-question-memory-consumption-20261123
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: q-r23f-cross-adoption-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  q-r23f-independent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out exact Q audit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 70
+
+      - name: Recheck immutable Original R2-3f and Q-only delta
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags --depth=90 origin \
+            '+refs/heads/dev/r-lane-r2-3f-original-rejoin-question-adoption-20261123:refs/q-r23f/target'
+          PIN=d129d6a37f8a23f7915f5c31b6662408904020a9
+          test "$(git rev-parse refs/q-r23f/target)" = "$PIN"
+          test "$(git merge-base HEAD "$PIN")" = "$PIN"
+          python - <<'PY'
+          import subprocess
+          pin = "d129d6a37f8a23f7915f5c31b6662408904020a9"
+          changed = set(subprocess.check_output(
+              ["git", "diff", "--name-only", pin, "HEAD"], text=True,
+          ).splitlines())
+          assert changed == {
+              ".github/workflows/q-r23f-cross-adoption-audit.yml",
+              "tests/test_q_r23f_original_question_cross_adoption_audit_dev.py",
+          }, changed
+          print("Q_R23F_EXACT_PIN_AND_ONLY_Q_AUDIT_FILES_PASS")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned CPU test and lint
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1" "ruff==0.16.7"
+
+      - name: Independently reproduce GPU Question cross-adoption
+        run: |
+          python -m pytest -q -s tests/test_q_r23f_original_question_cross_adoption_audit_dev.py
+          python -m pytest -q tests/test_r2_3f_original_rejoin_question_adoption_dev.py
+          ruff check tests/test_q_r23f_original_question_cross_adoption_audit_dev.py
+          python tools/check_repository.py
+          test -z "$(git status --porcelain)"
