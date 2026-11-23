@@ -15,11 +15,15 @@ from relay_self.r2_3b_original_rejoin_l1_source_compare_dev import (
     r23b_original_rejoin_inquiry_is_live,
 )
 from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
+from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import pair as pair
+from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
+from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 
 
 def _bind(pair):
+    assert current_fixture is not None and rejoined is not None and rejoined_present is not None
     f = pair[0]
     f.bridge.bind_normal_rejoin_present_cpu(
         initial_receipts=pair[1], historical_composite=pair[3],
