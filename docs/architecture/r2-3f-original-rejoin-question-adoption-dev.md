@@ -102,6 +102,22 @@ request changes, missing disk, simulated disk failure and post-save
 Source change; assert original job consumption, no unauthorized
 physical/memory writes and per-Self fencing.
 
+## Full-suite CI execution budget
+
+On the first R2-3f HEAD, the deterministic full pytest finished in
+approximately 224 seconds with **3,261 PASS / 1 FAIL** (the B fixture
+lacked its required canonical checkpoint). The corrected B fixture test
+passes a canonical baseline only for the positive test; a separate
+negative B test now requires missing-file HOLD. Two subsequent
+exact-HEAD full-suite runs were canceled at the workflow's pre-existing
+**five-minute pytest job timeout** while the suite was still running,
+without producing an assertion-failure summary. The single
+`.github/workflows/ci.yml` pytest job budget is therefore raised to
+**10 minutes** to permit the unchanged 3k+ case full suite on slower
+hosted runners. No pytest selection, skip, test commands, required
+checks, lint or artifact evidence criteria are relaxed. An exact-HEAD
+full pass is still required before granting DEV PASS.
+
 ## Status
 
 On exact-HEAD full CI success only:
