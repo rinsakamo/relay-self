@@ -24,7 +24,7 @@ from experiments.q_lane_git_anchor_custody_dev import (
 )
 
 U31_I_SHA = "d3034026a8eea3d2d4927527f5bc0d6ad0455457"
-R1_SHA = "fd2c6862fcb1a7e71211a96d89c287ab3c689677"
+R1_SHA = "c4917e21a496107638b98f8b98c49bc60aa6d9aa"
 Q_SHA = "450734c54e1432ec70a8206952779b5ad82796d8"
 
 NEW_PATHS = frozenset({
