@@ -109,3 +109,25 @@ state, disk bytes, old Present and physical/S1→S2 regression remain unchanged
 and new diagnostics/tests pass under one exact commit. This is **not** a
 general real-World Shadow certification or R2 migration; Product L1 remains
 wired to its existing Original Owner path. Hold R2 separately.
+
+## Q independent runtime finding: cached legacy Present coherence
+
+The independent Q pinned-R1 runtime probes detected four failures at original
+R1 SHA `fd2c6862fcb1a7e71211a96d89c287ab3c689677`:
+`r1_shadow_is_live` incorrectly returned True after a source-stable
+legacy Present `need_refs`, `attention_refs`, `frame_revision` or
+`registry_revision` mutation. Native/Paper and persisted Schema were
+unchanged in these synthetic negative tests. This is a **cached Shadow
+freshness** boundary, not an observed real World/U31 motor regression.
+
+The R1 repair changes **only its own read-only revalidation guard** to
+compare those four fields with the freshly derived Schema CURRENT and adds
+four parametrized regression cases in the R1 test file. The Q independent
+hostile probes are not imported into the R1 tree; Q executes them separately
+against the exact R1 target checkout. No Owner write path, L1 input,
+Memory store, GPU scheduler, Physical issuer or S1→S2 WAL code changes.
+
+R1 and Q exact-head CI must both pass after the repair, with the separately
+pinned Q run additionally exercising the real R1 Git objects and the
+Q runtime negatives. This note does not qualify reJOIN/World original
+producer custody or R2 migration.
