@@ -141,11 +141,11 @@ class R23COriginalRejoinL1Comparison:
             )
 
 
-def _original_source(*, bridge, self_id: str) -> R23BOriginalL1SourceComparison:
+def _original_source(*, bridge, self_id: str, lane=None) -> R23BOriginalL1SourceComparison:
     resident = getattr(bridge, "cognitive_work", None)
     if (
         resident is None
-        or getattr(bridge, "inference_lane", None) is not None
+        or getattr(bridge, "inference_lane", None) is not lane
         or not isinstance(getattr(bridge, "owners", None), dict)
         or self_id not in ("A", "B")
         or getattr(resident, "owners", {}).get(self_id)
@@ -252,9 +252,15 @@ def prepare_r23c_original_rejoin_l1_cpu(*, bridge, self_id: str) -> R23CFrozenOr
 
 
 def compare_r23c_registered_l1_context(*, bridge,
-                                      turn: R23CFrozenOriginalRejoinL1
+                                      turn: R23CFrozenOriginalRejoinL1,
+                                      lane=None,
                                       ) -> R23COriginalRejoinL1Comparison:
-    """Revalidate ORIGINAL CPU registration and frozen request, without GPU."""
+    """Revalidate original registration; an explicitly attached lane may be read.
+
+    R2-3c default still requires no lane. R2-3d checks the concrete original
+    lane type, identity and job before passing a non-None lane here.
+    No model inference is performed by this comparison.
+    """
     if type(turn) is not R23CFrozenOriginalRejoinL1:
         raise R23COriginalRejoinRequestHold("original typed registered request required")
     resident = getattr(bridge, "cognitive_work", None)
@@ -262,7 +268,7 @@ def compare_r23c_registered_l1_context(*, bridge,
         raise R23COriginalRejoinRequestHold("original Owner not found")
     with resident.lock:
         try:
-            source = _original_source(bridge=bridge, self_id=turn.self_id)
+            source = _original_source(bridge=bridge, self_id=turn.self_id, lane=lane)
             owner = resident.owners[turn.self_id]
             current_continuity = owner.retained.exploration_continuity
             current_revision = (
@@ -305,7 +311,7 @@ def compare_r23c_registered_l1_context(*, bridge,
                     "original Owner/request/Source or registration changed"
                 )
             if (
-                _original_source(bridge=bridge, self_id=turn.self_id) != source
+                _original_source(bridge=bridge, self_id=turn.self_id, lane=lane) != source
                 or resident._coverage_adoption_turns.get(turn.work_ref) is not turn
             ):
                 raise R23COriginalRejoinRequestHold(
