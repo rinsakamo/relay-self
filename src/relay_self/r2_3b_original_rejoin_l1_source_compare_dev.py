@@ -49,6 +49,11 @@ class R23BOriginalL1SourceComparison:
             or type(self.current) is not R23RejoinedCurrent
             or self.current.self_id != self.self_id
             or self.original_inquiry.self_id != self.self_id
+            or self.original_inquiry.source_revision_refs
+            != self.current.source_revision_refs
+            or self.original_inquiry.schema_revision != self.current.schema.revision
+            or self.original_inquiry.resident_epoch != self.current.owner_epoch
+            or self.original_inquiry.need_signal_ref not in self.current.need_refs
             or not self.source_pair_revision
             or self.original_l1_request_id is not None
             or self.original_choice_ids != ()
