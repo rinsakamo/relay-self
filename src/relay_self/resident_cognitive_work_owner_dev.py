@@ -359,6 +359,30 @@ class ResidentCognitiveWorkOwner:
                 historical_composite=historical_composite,
             )
 
+    def read_rejoined_l1_source_compatibility_cpu(
+        self, *, bridge, self_id: str,
+    ):
+        """R2-3b opt-in Inquiry/CURRENT comparison; no post-reJOIN L1 issuer.
+
+        Only reads the already-bound original A/B CPU source cut. It neither
+        registers a candidate nor changes L1 prompts, Memory, Intent or WAL.
+        """
+        from relay_self.r2_3b_original_rejoin_l1_source_compare_dev import (
+            compare_r23b_original_rejoin_inquiry_context,
+        )
+
+        with self.lock:
+            if (
+                getattr(bridge, "cognitive_work", None) is not self
+                or not isinstance(getattr(bridge, "owners", None), dict)
+                or self_id not in self.owners
+                or bridge.owners.get(self_id) is not self.owners[self_id]
+            ):
+                raise ResidentCognitiveWorkError("foreign original R2-3b Context reader")
+            return compare_r23b_original_rejoin_inquiry_context(
+                bridge=bridge, self_id=self_id,
+            )
+
     def read_coverage_inquiry_cpu(
         self, *, bridge, self_id, boot=None, world=None, links=None,
         initial_receipts=None, historical_composite=None,
