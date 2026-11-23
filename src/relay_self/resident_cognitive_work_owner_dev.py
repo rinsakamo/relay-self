@@ -417,6 +417,27 @@ class ResidentCognitiveWorkOwner:
                 bridge=bridge, turn=turn,
             )
 
+    async def issue_rejoined_original_question_once_dev(
+        self, *, bridge, lane, turn, timeout_s: float = 60.0,
+    ):
+        """Opt-in original reJOIN Question L1 issuer, no Question adoption.
+
+        The issuer checks original Source and ticket under this same Owner's
+        lock; it never gains independent memory/intent/physical authority.
+        """
+        from relay_self.r2_3e_original_rejoin_question_issuer_dev import (
+            issue_r23e_original_rejoin_question_once_dev,
+        )
+
+        if (
+            getattr(bridge, "cognitive_work", None) is not self
+            or getattr(lane, "cognitive_work", None) is not self
+        ):
+            raise ResidentCognitiveWorkError("foreign original reJOIN issuer")
+        return await issue_r23e_original_rejoin_question_once_dev(
+            bridge=bridge, lane=lane, turn=turn, timeout_s=timeout_s,
+        )
+
     def read_coverage_inquiry_cpu(
         self, *, bridge, self_id, boot=None, world=None, links=None,
         initial_receipts=None, historical_composite=None,
