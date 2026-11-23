@@ -84,6 +84,14 @@ the **synthetic** provider strictly to exercise the actual existing
 job/ticket/terminal readback contract. They do **not** launch a real model
 or real Minecraft World.
 
+The imported Original Native/Paper B fixture normally boots a **physical-enabled**
+resident gate. The R2-3d tests instead create their **original**
+`PhysicalIssueAdmission` with `observation_only=True` *at construction*,
+before any login or reJOIN; they do not mutate an in-flight gate or manually
+assign `bridge.inference_lane`. Physical-enabled post-reJOIN GPU attachment
+stays HOLD, and Stage28's initial-login-only gate still rejects continuing B
+Native updates.
+
 Positive A/B preflight; completed synthetic ADOPT/HOLD/DECLINE, unresolved and
 out-of-set choice readback; no file/Intent/Memory/Physical mutations.
 Negative tests cover duplicate submission, fake/copied/cross-Self/ticket,
