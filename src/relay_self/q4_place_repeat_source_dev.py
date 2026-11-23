@@ -112,9 +112,13 @@ def verify_q4_previous_place_terminal_cpu(
             or not evidence.forward_ms <= evidence.host_ms <= 2000
         ):
             raise Q4PlaceRepeatHold("Q4 native action or Paper source mismatch")
+        clocks = tuple(x.snapshot.time for x in probes)
+        if len({x.world_age_ticks is not None for x in clocks}) != 1:
+            raise Q4PlaceRepeatHold("Q4 original STOP clock basis changed")
         ticks = tuple(
-            x.snapshot.time.day * 24000 + x.snapshot.time.time_of_day
-            for x in probes
+            x.world_age_ticks if x.world_age_ticks is not None
+            else x.day * 24000 + x.time_of_day
+            for x in clocks
         )
         if (
             (row["initial_stop_tick"], row["first_stable_tick"],
