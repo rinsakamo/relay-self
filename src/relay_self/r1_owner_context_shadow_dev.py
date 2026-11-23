@@ -307,7 +307,11 @@ def r1_shadow_is_live(
                 or legacy.schema != fresh.schema
                 or legacy.present.three_self.scope != fresh.scope
                 or legacy.present.three_self.source_revision_refs != fresh.source_revision_refs
+                or legacy.present.frame_revision != fresh.owner_epoch
+                or legacy.present.registry_revision != fresh.schema.revision
                 or legacy.present.signals != fresh.signals
+                or legacy.present.need_refs != fresh.need_refs
+                or legacy.present.attention_refs != fresh.attention_refs
             ):
                 return False
             reread_recent = _accepted_original_questions(
