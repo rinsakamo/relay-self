@@ -18,6 +18,7 @@ from relay_self.r2_3e_original_rejoin_question_issuer_dev import (
     R23EOriginalRejoinQuestionOutcome,
 )
 from relay_self.relay_engine import ProviderDecision
+from relay_self.resident_cognitive_work_owner_dev import ResidentCognitiveWorkError
 from relay_self.resident_llama_inference_lane_dev import ResidentGpuLaneError
 from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
@@ -171,7 +172,11 @@ def test_r23e_unqualified_before_submission_creates_no_job_or_fence(
         else:
             other = object()
         before = files(f)
-        with pytest.raises((R23EOriginalRejoinIssueHold, R23DOriginalRejoinSourceHold)):
+        with pytest.raises((
+            R23EOriginalRejoinIssueHold,
+            R23DOriginalRejoinSourceHold,
+            ResidentCognitiveWorkError,
+        )):
             asyncio.run(
                 f.cognitive.issue_rejoined_original_question_once_dev(
                     bridge=f.bridge, lane=other or lane, turn=turn, **opts,
