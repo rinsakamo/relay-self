@@ -13,7 +13,6 @@ from __future__ import annotations
 from relay_self.bd1b_owner_present_dev import BD1bOwnerPresent
 from relay_self.r0_cognitive_context_dev import CurrentSchemaFrame
 
-
 # Stable diagnostic codes already returned by the original R1 comparison.
 # Do not turn an expected legacy OBSERVED SelfBody claim into Schema CURRENT.
 R2_LEGACY_CURRENT_DIAGNOSTIC_CODES = (
