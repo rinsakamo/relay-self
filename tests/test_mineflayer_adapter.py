@@ -585,13 +585,22 @@ def test_native_world_age_decodes_independently_of_frozen_daylight_clock() -> No
     assert parse_mineflayer_line(observation_line()).snapshot.time.world_age_ticks is None
 
 
-@pytest.mark.parametrize("bad_age", [-1, True, 1.5, "150", 2**53, None])
+@pytest.mark.parametrize("bad_age", [-1, True, 1.5, "150", 2**53])
 def test_native_world_age_rejects_noncanonical_field(bad_age: object) -> None:
     with pytest.raises(MineflayerAdapterProtocolError):
         parse_mineflayer_line(observation_line(time={
             "time_of_day": 6000, "day": 0, "is_day": True,
             "world_age_ticks": bad_age,
         }))
+
+
+def test_native_world_age_null_matches_legacy_unavailable_clock() -> None:
+    record = parse_mineflayer_line(observation_line(time={
+        "time_of_day": 6000, "day": 0, "is_day": True,
+        "world_age_ticks": None,
+    }))
+    assert record.snapshot.time is not None
+    assert record.snapshot.time.world_age_ticks is None
 
 
 def test_native_time_rejects_unknown_extra_field() -> None:
