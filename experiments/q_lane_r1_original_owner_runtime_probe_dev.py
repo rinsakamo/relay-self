@@ -4,6 +4,7 @@ This file is intentionally under experiments/, not collected by Q's normal
 pytest run: only the pinned-object Actions job runs it with R1's original
 source and original B synthetic fixtures on sys.path. No WSL/World/Gemma.
 """
+# ruff: noqa: I001 -- R1-only import is absent from this independent Q branch.
 from __future__ import annotations
 
 from dataclasses import replace
