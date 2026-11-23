@@ -62,7 +62,10 @@ def test_r23b_original_owner_source_inquiry_context_matches_without_l1_request(p
     assert result.current.source == present.source
     assert result.current.schema == present.schema
     assert result.current.source_revision_refs == inquiry.source_revision_refs
-    assert result.current.need_refs == (inquiry.need_signal_ref,)
+    assert result.current.need_refs == present.present.need_refs
+    assert inquiry.need_signal_ref in (
+        signal.envelope.event_id for signal in result.current.signals
+    )
     assert result.current.attention_refs == present.present.attention_refs
     assert result.original_inquiry == inquiry
     assert len(result.current.source_revision_refs) == 3
