@@ -106,7 +106,7 @@ def inspect_r23h_original_live_source(
                 or a.source_pair_revision != b.source_pair_revision
                 or a.current.source_revision_refs[0] == ""
                 or b.current.source_revision_refs[0] == ""
-                or resident._normal_second_rejoin_cut is not None
+                or getattr(resident, "_normal_second_rejoin_cut", None) is not None
                 or resident.owners["A"] is not bridge.owners["A"]
                 or resident.owners["B"] is not bridge.owners["B"]
             ):
