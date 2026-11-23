@@ -40,7 +40,7 @@ from relay_self.self_owner_checkpoint_dev import (
     prepare_typed_owner_restore,
     save_self_owner_cut,
 )
-from relay_self.skill import SkillExecution
+from relay_self.skill import SkillExecution, SkillState
 
 
 class LiveCognitionCheckpointError(RuntimeError):
@@ -520,6 +520,49 @@ class CheckpointedCognitiveOwner:
                 at_ns=at_ns, provenance=provenance,
             )
             self.skills[execution_id] = skill
+
+    def finish_reviewed_skill(
+        self, execution_id: str, *, outcome: SkillState,
+        reason: str, at_ns: int, provenance: Provenance,
+    ) -> SkillExecution:
+        """Apply an already reviewed terminal choice on the ORIGINAL owner.
+
+        The caller must separately authenticate the L1/L2 evaluation and
+        explicit Self adoption. No Action OUTCOME, target position or model
+        recommendation invokes this method automatically. No Intent/Goal
+        completion or physical issue is implied.
+        """
+        with self._mutating():
+            self._eligible()
+            skill = self.skills.get(execution_id)
+            current = self.intent.current_intent
+            if (
+                skill is None or skill.state is not SkillState.STARTED
+                or not skill.is_current_snapshot
+                or current is None or current.intent_id != skill.intent_id
+                or self.intent.pending_reconsideration is not None
+                or self.supervisor.open_actions
+                or outcome not in (
+                    SkillState.SUCCEEDED, SkillState.FAILED,
+                    SkillState.CANCELLED,
+                )
+                or type(reason) is not str or not reason.strip()
+                or type(at_ns) is not int
+                or at_ns < skill.events[-1].at_ns
+                or not isinstance(provenance, Provenance)
+            ):
+                raise LiveCognitionCheckpointError(
+                    "explicit current reviewed terminal Skill owner required"
+                )
+            next_skill = (
+                skill.succeed(reason=reason, at_ns=at_ns, provenance=provenance)
+                if outcome is SkillState.SUCCEEDED else
+                skill.fail(reason=reason, at_ns=at_ns, provenance=provenance)
+                if outcome is SkillState.FAILED else
+                skill.cancel(reason=reason, at_ns=at_ns, provenance=provenance)
+            )
+            self.skills[execution_id] = next_skill
+            return next_skill
 
     def accept_pattern(self, pattern: SchemaPattern, allowed_skills: frozenset[tuple[str, int]]) -> None:
         with self._mutating():
