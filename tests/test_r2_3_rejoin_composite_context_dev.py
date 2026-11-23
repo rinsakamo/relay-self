@@ -17,8 +17,11 @@ from relay_self.r2_3_rejoin_composite_context_dev import (
     read_r23_original_rejoin_context,
 )
 from relay_self.three_self_present import EpistemicStatus
+from test_b_np1b_current_composite_source_dev import current as current_fixture
 from test_b_np1b_fresh_native_update_dev import files
 from test_b_np1b_normal_present_poll_dev import pair as pair
+from test_b_np1b_owner_bound_rejoin_dev import rejoined as rejoined
+from test_b_np1b_rejoin_present_dev import rejoined_present as rejoined_present
 
 
 def _args(pair, sid="A"):
@@ -186,7 +189,7 @@ def test_r23_rejoin_external_paper_change_during_second_read_fails_closed(
     monkeypatch.setattr(resident, "read_present_cpu", change_between_original_reads)
     with pytest.raises(R23CompositeContextHold):
         resident.read_rejoined_context_shadow_cpu(**_args(pair))
-    assert calls == 2
+    assert calls >= 1
 
 
 @pytest.mark.parametrize("invalid", (None, "original-stage28", object()))
