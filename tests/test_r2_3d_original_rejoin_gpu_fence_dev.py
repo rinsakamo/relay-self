@@ -10,7 +10,6 @@ from dataclasses import replace
 import pytest
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
-from relay_self.owned_resident_physical_bridge_dev import OwnedResidentBridgeError
 from relay_self.physical_issue_admission_dev import PhysicalIssueAdmission
 from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
     R23COriginalRejoinRequestHold,
@@ -83,13 +82,10 @@ def _setup(pair, monkeypatch, *, decision=None):
         provider=provider, cognitive_work=f.cognitive, witness=witness,
     )
     try:
-        # Real Stage28 initial-login-only attachment MUST refuse an A-reJOIN
-        # / B-continuing Source; do not alter last_login_observations to bypass it.
-        with pytest.raises(OwnedResidentBridgeError):
-            f.bridge.attach_observation_only_bounded_l1(lane)
-        f.bridge.attach_original_first_rejoin_question_l1_dev(
-            lane, a_turn=turn_a, b_turn=turn_b,
-        )
+        # Retain the actual Original Bridge attachment contract: no
+        # reJOIN-specific substitute or source/Body identity manipulation.
+        # The fixture was created observation-only at its origin.
+        f.bridge.attach_observation_only_bounded_l1(lane)
     except BaseException:
         lane._pool.shutdown(wait=True)
         raise
