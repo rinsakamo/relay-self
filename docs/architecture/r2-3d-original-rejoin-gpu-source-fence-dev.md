@@ -16,31 +16,29 @@ job readback *after* the one existing Original `ResidentLlamaInferenceLane`
 has been attached, without pretending Stage28's original first-login Source
 remains valid on reJOIN.
 
-## New original Bridge attachment seam
+## Existing Original Bridge attachment (no replacement)
 
-The previous Stage28 `attach_observation_only_bounded_l1` requires current
-WorldBody observations to be the **same object as the initial login probe**.
-The original A-first-reJOIN/B-continuing fixture legitimately has newer
-original Native observations; Stage28's method rejects it. This is
-**not a failure of the reJOIN source**, nor should the test overwrite
-`last_login_observations` or assign `bridge.inference_lane` directly.
+The original Stage28 `attach_observation_only_bounded_l1` requires
+`PhysicalIssueAdmission.observation_only` and current Owner WorldBody probe
+identity to equal the original Bridge's last login observation. It does
+**not** inherently reject first A reJOIN; its checks must be satisfied by the
+current original runtime.
 
-An explicitly separate original method,
-`OwnedResidentPhysicalBridge.attach_original_first_rejoin_question_l1_dev`,
-accepts only **two already-registered Original Owner frozen R2-3c A+B
-Question turns**, under the same Original Resident lock. It rechecks
-A/B original source, Paper, Native/Physical session match, owner identity,
-Native probe, active action absence, lifecycle, no login in flight and
-current original GPU lane emptiness, verifies the backend single slot
-idle, rechecks both frozen requests/source, then binds the **same existing
-lane** and attaches via the original Bridge. The old Stage28 attach remains
-unchanged and still rejects this reJOIN source. No direct GPU submit or
-physical issuance takes place.
+The imported B reJOIN fixture normally constructs a **physical-enabled**
+resident gate. With that gate, the Original Bridge correctly refuses GPU
+attachment. The R2-3d synthetic fixture instead constructs its original
+Physical gate in `observation_only=True` **from boot**, prior to any
+login/reJOIN. The existing Original Bridge attachment succeeds unchanged
+when the correct current A/B login Body identity also holds. No new Bridge
+attach method, gate downgrade, direct assignment of `inference_lane`, or
+fake current/native source is used. In a live system with later Native
+WorldBody updates that break the original login-probe identity, original
+attachment **remains HOLD** until that distinct case is reviewed.
 
-A current Paper/Native source can change outside the lock: this does not
-constitute a durable capability or proof of permanent external source
-stability. Future real issuer must still bracket submit and result readback
-under the original Owner and fence after failure.
+Paper/Native source changes are outside the Python lock: attached Source
+preflight and readback do not constitute durable capabilities. A future real
+issuer must still bracket submit and result readback under Original Owner
+and fence on a submitted failure.
 
 ## Implementation
 
@@ -88,9 +86,7 @@ The imported Original Native/Paper B fixture normally boots a **physical-enabled
 resident gate. The R2-3d tests instead create their **original**
 `PhysicalIssueAdmission` with `observation_only=True` *at construction*,
 before any login or reJOIN; they do not mutate an in-flight gate or manually
-assign `bridge.inference_lane`. Physical-enabled post-reJOIN GPU attachment
-stays HOLD, and Stage28's initial-login-only gate still rejects continuing B
-Native updates.
+assign `bridge.inference_lane`. Physical-enabled post-reJOIN GPU attachment\nstays HOLD. The existing Stage28 method is reused unchanged after\nthe original observation-only qualification.
 
 Positive A/B preflight; completed synthetic ADOPT/HOLD/DECLINE, unresolved and
 out-of-set choice readback; no file/Intent/Memory/Physical mutations.
