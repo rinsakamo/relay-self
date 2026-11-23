@@ -192,3 +192,33 @@ def test_u17_source_bound_rearm_refuses_unowned_stdout_even_after_terminal_wal(
     assert journal.path.read_bytes() == original
     assert "A" in gate._original_place_consumed
     assert gate.active_action_ids == ()
+
+def test_q4_original_rearm_uses_server_age_with_frozen_daylight(
+    tmp_path, monkeypatch,
+):
+    """Synthetic Q4 age-based terminal/ream; never a native or Paper proof."""
+    from adapters.mineflayer.python_protocol import MineflayerTime
+
+    original_probes = _probes
+
+    def age_probes(native):
+        return tuple(
+            replace(
+                p, snapshot=replace(
+                    p.snapshot, time=MineflayerTime(100, 0, True, age),
+                ),
+            )
+            for p, age in zip(
+                original_probes(native), (110, 120, 130), strict=True,
+            )
+        )
+
+    monkeypatch.setattr("test_q4_original_place_repeat_dev._probes", age_probes)
+    bridge, owner, gate, journal, typed = _setup(tmp_path, monkeypatch)
+    proof = _settle(bridge, owner, gate, journal, typed)
+    assert [journal.records[-1][k] for k in (
+        "initial_stop_tick", "first_stable_tick", "settled_tick",
+    )] == [110, 120, 130]
+    assert gate.rearm_original_place_after_q4_settled(
+        bridge=bridge, self_id="A", evidence=proof,
+    )
