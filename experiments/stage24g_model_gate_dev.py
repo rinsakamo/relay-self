@@ -161,8 +161,8 @@ def verify_stage24g_model_gate(
         ).stdout
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         raise Stage24gModelGateError("GPU owner source unavailable") from exc
-    if str(llama_pid) not in {line.strip() for line in apps.splitlines()}:
-        raise Stage24gModelGateError("owned llama PID absent from active GPU compute apps")
+    if {line.strip() for line in apps.splitlines() if line.strip()} != {str(llama_pid)}:
+        raise Stage24gModelGateError("owned llama PID must be the only GPU compute app")
     gpu = next((line.strip() for line in names.splitlines() if "RTX 3060" in line), None)
     if gpu is None:
         raise Stage24gModelGateError("expected RTX 3060 GPU missing")

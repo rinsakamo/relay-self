@@ -24,6 +24,7 @@ from experiments.stage24g_model_gate_dev import (
 from experiments.stage28c2c_real_original_l1_dev import (
     OriginalRawBoundedLlamaProvider,
 )
+from relay_self.b_np1b_current_composite_source_dev import CompositeSourceReceipt
 from relay_self.owned_resident_physical_bridge_dev import OwnedResidentPhysicalBridge
 from relay_self.r2_3b_original_rejoin_l1_source_compare_dev import (
     R23BOriginalL1SourceComparison,
@@ -31,6 +32,7 @@ from relay_self.r2_3b_original_rejoin_l1_source_compare_dev import (
 from relay_self.r2_3c_original_rejoin_frozen_l1_dev import (
     R23CFrozenOriginalRejoinL1,
 )
+from relay_self.r2_3d_original_rejoin_gpu_fence_dev import R23DOriginalRejoinSourceHold
 from relay_self.resident_llama_inference_lane_dev import (
     LlamaCppSingleSlotWitness,
     ResidentLlamaInferenceLane,
@@ -52,6 +54,10 @@ class R23HOriginalRealSource:
     b_scope: tuple[int, str, int]
     source_pair_revision: str
     request_question_ref: str
+    a_composite: CompositeSourceReceipt
+    b_composite: CompositeSourceReceipt
+    a_source_refs: tuple[str, str, str]
+    b_source_refs: tuple[str, str, str]
     physical_issue_authorized: bool = False
     product_l1_input_switched: bool = False
 
@@ -137,6 +143,10 @@ def inspect_r23h_original_live_source(
                 b_scope=before[1],
                 source_pair_revision=a.source_pair_revision,
                 request_question_ref=(a if self_id == "A" else b).original_inquiry.question_ref,
+                a_composite=a.current.source.composite_receipt,
+                b_composite=b.current.source.composite_receipt,
+                a_source_refs=a.current.source_revision_refs,
+                b_source_refs=b.current.source_revision_refs,
             )
     except (RuntimeError, ValueError, KeyError, TypeError, AttributeError, OSError) as exc:
         raise R23HOriginalRealModelHold(
@@ -237,12 +247,17 @@ async def run_r23h_original_real_question_once(
         )
         provider = OriginalRawBoundedLlamaProvider(
             endpoint=endpoint, model=model_alias,
-            raw_dir=raw_dir, timeout=min(45.0, model_wait_s),
+            raw_dir=raw_dir, timeout=min(45.0, model_wait_s), max_posts=1,
         )
         witness = LlamaCppSingleSlotWitness(
             provider=provider, backend_ref=f"r23h-original-pid-{llama_pid}",
         )
-        witness.require_idle()
+        _write_bytes_new(
+            evidence_dir / "initial-idle.json",
+            (json.dumps(asdict(witness.require_idle()), sort_keys=True) + "\n").encode(),
+        )
+        if witness.last_idle_body is not None:
+            _write_bytes_new(evidence_dir / "initial-slots.bin", witness.last_idle_body)
         lane = ResidentLlamaInferenceLane(
             provider=provider, cognitive_work=resident, witness=witness,
         )
@@ -259,6 +274,9 @@ async def run_r23h_original_real_question_once(
         "model_pid": llama_pid,
         "model_alias": model_alias,
         "original_request_id": turn.request.request_id,
+        "original_request": asdict(turn.request),
+        "original_source_revision_refs": turn.source.current.source_revision_refs,
+        "original_frozen_request_sha256": turn.request_sha256,
         "original_work_ref": turn.work_ref,
         "real_world_created_by_this_call": False,
         "product_l1_input_switched": False,
@@ -281,17 +299,9 @@ async def run_r23h_original_real_question_once(
         idle = lane.require_world_idle()
         if idle.is_processing or idle.n_slots != 1:
             raise R23HOriginalRealModelHold("backend not terminal idle")
-        report["original_gpu_ticket"] = {
-            "self_id": outcome.ticket.self_id,
-            "work_ref": outcome.ticket.work_ref,
-            "request_id": outcome.ticket.request_id,
-            "purpose": outcome.ticket.purpose,
-            "self_epoch": outcome.ticket.self_epoch,
-            "native_session_id": outcome.ticket.native_session_id,
-            "world_epoch": outcome.ticket.world_epoch,
-            "backend_ref": outcome.ticket.backend_ref,
-        }
         report["selection"] = outcome.selection
+        report["terminal_source_revision_refs"] = outcome.readback.preflight.source_revision_refs
+        report["terminal_source_pair_revision"] = outcome.readback.preflight.source_pair_revision
         report["backend_terminal_idle"] = asdict(idle)
         report["classification"] = "R23H_REAL_MODEL_CAPTURED_INDEPENDENT_AUDIT_PENDING"
         return R23HOriginalRealModelReadback(
@@ -307,6 +317,20 @@ async def run_r23h_original_real_question_once(
         )
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
+        if isinstance(exc, R23DOriginalRejoinSourceHold) and provider.completed:
+            report["hold_reason_code"] = "SOURCE_RESULT_REVALIDATION_HOLD"
+            reason = exc
+            while reason is not None:
+                if "source" in str(reason).lower() and any(
+                    word in str(reason).lower() for word in ("stale", "changed", "moved")
+                ):
+                    report["hold_reason_code"] = "SOURCE_FRESHNESS_HOLD"
+                    break
+                reason = reason.__cause__
+        try:
+            report["backend_terminal_idle"] = asdict(lane.require_world_idle())
+        except (RuntimeError, ValueError, OSError):
+            report["backend_terminal_idle_unverified"] = True
         # The original issuer fences its submitted job on timeout/source
         # mismatch. If this runner fails after terminal read, keep the lane
         # blocked until operator retirement rather than reusing its ticket.
@@ -315,6 +339,11 @@ async def run_r23h_original_real_question_once(
             resident.fence_self(self_id)
         raise
     finally:
+        ticket = lane.submitted_ticket_for_audit(self_id, turn.work_ref)
+        if ticket is not None:
+            report["original_gpu_ticket"] = asdict(ticket)
+        if "backend_terminal_idle" in report and witness.last_idle_body is not None:
+            _write_bytes_new(evidence_dir / "terminal-slots.bin", witness.last_idle_body)
         report["model_post_attempted"] = provider.attempted
         report["model_post_completed"] = provider.completed
         report["raw_http_evidence_sha256"] = {
