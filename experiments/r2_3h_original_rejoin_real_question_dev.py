@@ -237,12 +237,15 @@ async def run_r23h_original_real_question_once(
         )
         provider = OriginalRawBoundedLlamaProvider(
             endpoint=endpoint, model=model_alias,
-            raw_dir=raw_dir, timeout=min(45.0, model_wait_s),
+            raw_dir=raw_dir, timeout=min(45.0, model_wait_s), max_posts=1,
         )
         witness = LlamaCppSingleSlotWitness(
             provider=provider, backend_ref=f"r23h-original-pid-{llama_pid}",
         )
-        witness.require_idle()
+        _write_bytes_new(
+            evidence_dir / "initial-idle.json",
+            (json.dumps(asdict(witness.require_idle()), sort_keys=True) + "\n").encode(),
+        )
         lane = ResidentLlamaInferenceLane(
             provider=provider, cognitive_work=resident, witness=witness,
         )
@@ -259,6 +262,9 @@ async def run_r23h_original_real_question_once(
         "model_pid": llama_pid,
         "model_alias": model_alias,
         "original_request_id": turn.request.request_id,
+        "original_request": asdict(turn.request),
+        "original_source_revision_refs": turn.source.current.source_revision_refs,
+        "original_frozen_request_sha256": turn.request_sha256,
         "original_work_ref": turn.work_ref,
         "real_world_created_by_this_call": False,
         "product_l1_input_switched": False,

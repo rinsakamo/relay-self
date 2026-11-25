@@ -60,7 +60,7 @@ class OriginalRawBoundedLlamaProvider(LlamaCppRelayProvider):
 
     def __init__(
         self, *, endpoint: str, model: str, raw_dir: Path,
-        timeout: float = 45,
+        timeout: float = 45, max_posts: int = 2,
     ) -> None:
         super().__init__(endpoint=endpoint, model=model, timeout=timeout)
         if (
@@ -68,6 +68,9 @@ class OriginalRawBoundedLlamaProvider(LlamaCppRelayProvider):
             or not raw_dir.is_dir() or any(raw_dir.iterdir())
         ):
             raise Stage28c2cRealL1Hold("fresh empty owned raw Gemma directory required")
+        if type(max_posts) is not int or max_posts not in (1, 2):
+            raise Stage28c2cRealL1Hold("bounded raw POST limit required")
+        self._max_posts = max_posts
         self.raw_dir = raw_dir
         self.attempted = 0
         self.completed = 0
@@ -77,7 +80,7 @@ class OriginalRawBoundedLlamaProvider(LlamaCppRelayProvider):
         self, request_body: dict[str, object], *,
         endpoint: str | None = None,
     ) -> dict:
-        if endpoint is not None or self.attempted >= 2:
+        if endpoint is not None or self.attempted >= self._max_posts:
             raise Stage28c2cRealL1Hold("JEV/THINK or repeated model POST forbidden")
         ordinal = self.attempted + 1
         raw_request = json.dumps(

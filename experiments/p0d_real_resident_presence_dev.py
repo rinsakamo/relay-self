@@ -46,6 +46,15 @@ from experiments.p0d_real_two_native_smoke_dev import (
     preflight_two_native,
     two_native_server_properties,
 )
+from experiments.r2_3i_real_original_rejoin_dev import (
+    OriginalQuestionModel,
+    capture_question,
+    git_head,
+    require_passive_original,
+    seal_evidence,
+    wait_for_paper_present,
+    write_record,
+)
 from experiments.stage24b_real_l1_move_dev import (
     require_frozen_stage24b_binding,
     require_frozen_stage24b_choice,
@@ -399,6 +408,8 @@ async def _owned_resident_trial(
     typed_owner_cut_dev: bool = False,
     initial_source_dev: bool = False,
     normal_cpu_present_dev: bool = False,
+    original_rejoin_dev: bool = False,
+    question_model: OriginalQuestionModel | None = None,
 ) -> dict[str, object]:
     """One native World trial; Stage24b is an explicit real-L1 opt-in."""
     if (
@@ -414,6 +425,8 @@ async def _owned_resident_trial(
 
     paper_session = paper.owned_session_id
     assert paper_session is not None
+    if original_rejoin_dev:
+        require_passive_original(bridge)
     original_a = await bridge.login("A")
     original_b = await bridge.login("B")
     old_a = bridge.sessions["A"].started.session_id
@@ -422,7 +435,14 @@ async def _owned_resident_trial(
     b_initial_pid = bridge.sessions["B"].owned_child_pid
     # The passive Paper sampler emits a PRESENT heartbeat per player each
     # 40 Bukkit ticks. No native effect is sent to produce that heartbeat.
-    await asyncio.sleep(float(b_heartbeat_s))
+    if original_rejoin_dev:
+        b_owner = bridge.owners["B"]
+        b_retained, b_intent = b_owner.retained, b_owner.intent
+        b_intent_events = tuple(b_intent.events)
+        b_scope = bridge.cognitive_work.current_scope("B")
+        await wait_for_paper_present(bridge, evidence_dir, "initial", b_heartbeat_s)
+    else:
+        await asyncio.sleep(float(b_heartbeat_s))
     normal_history = None
     if normal_cpu_present_dev:
         from relay_self.b_np1b_normal_cpu_world_runner_dev import (
@@ -432,7 +452,10 @@ async def _owned_resident_trial(
 
         original_receipts = capture_original_initial_cpu_sources(bridge=bridge)
         # A's historical Composite needs a later independent Paper heartbeat.
-        await asyncio.sleep(float(b_heartbeat_s))
+        if original_rejoin_dev:
+            await wait_for_paper_present(bridge, evidence_dir, "historical", b_heartbeat_s)
+        else:
+            await asyncio.sleep(float(b_heartbeat_s))
         normal_history = await capture_original_historical_cpu_source(
             bridge=bridge, initial_receipts=original_receipts,
         )
@@ -489,7 +512,13 @@ async def _owned_resident_trial(
         evidence_dir, "A-first-logout-cognition",
         bridge.owners["A"].files.cognition_file,
     )
-    await asyncio.sleep(float(b_heartbeat_s))
+    if original_rejoin_dev:
+        if old_a not in bridge.forbidden_native_sessions or "A" in bridge.sessions:
+            raise RealResidentPresenceRefusal("old A Native admission still live")
+        require_passive_original(bridge)
+        await wait_for_paper_present(bridge, evidence_dir, "offline", b_heartbeat_s)
+    else:
+        await asyncio.sleep(float(b_heartbeat_s))
     if normal_cpu_present_dev:
         from relay_self.b_np1b_normal_cpu_world_runner_dev import (
             update_original_b_after_a_logout,
@@ -562,7 +591,10 @@ async def _owned_resident_trial(
     a_relogin_pid = bridge.sessions["A"].owned_child_pid
     if a_relogin.native_session_id == old_a:
         raise RealResidentPresenceRefusal("A reused native process")
-    await asyncio.sleep(float(b_heartbeat_s) if normal_cpu_present_dev else 1.0)
+    if original_rejoin_dev:
+        await wait_for_paper_present(bridge, evidence_dir, "rejoin", b_heartbeat_s)
+    else:
+        await asyncio.sleep(float(b_heartbeat_s) if normal_cpu_present_dev else 1.0)
     normal_cpu_doc = None
     normal_cpu_sha = None
     if normal_cpu_present_dev:
@@ -671,6 +703,20 @@ async def _owned_resident_trial(
         ),
         "normal_cpu_present_source_sha256": normal_cpu_sha,
     }
+    if original_rejoin_dev:
+        current_b = bridge.owners["B"]
+        if (current_b is not b_owner or current_b.retained != b_retained
+                or current_b.intent is not b_intent
+                or tuple(current_b.intent.events) != b_intent_events
+                or bridge.cognitive_work.current_scope("B") != b_scope
+                or bridge.sessions["B"].owned_child_pid != b_initial_pid):
+            raise RealResidentPresenceRefusal("Original B continuity changed")
+        write_record(evidence_dir / "original-B-continuity.json", {
+            "scope": b_scope, "owned_child_pid": b_initial_pid,
+            "same_owner_retained_and_intent": True,
+        })
+        _write_bytes_new(evidence_dir / "paper-joined-cut.log", source)
+        await capture_question(bridge, evidence_dir, question_model)
     final_a = await bridge.logout("A")
     final_b = await bridge.logout("B")
     result_data["final_a_logout_receipt_file"] = _immutable_receipt(
@@ -1108,8 +1154,18 @@ async def run_real_resident_presence(
     exploration_schema_dev: bool = False,
     initial_source_dev: bool = False,
     normal_cpu_present_dev: bool = False,
+    original_rejoin_dev: bool = False,
+    question_model: OriginalQuestionModel | None = None,
 ) -> Path:
     """One genuine Paper/Mineflayer scenario, no implicit EULA/DEV grants."""
+    if type(original_rejoin_dev) is not bool or (
+        question_model is not None and (
+            not original_rejoin_dev or type(question_model) is not OriginalQuestionModel
+        )
+    ):
+        raise RealResidentPresenceRefusal("Original reJOIN model requires explicit trial")
+    if original_rejoin_dev:
+        normal_cpu_present_dev = True
     schema_config = SchemaBootstrapConfig(exploration_schema_dev)
     if type(normal_cpu_present_dev) is not bool:
         raise RealResidentPresenceRefusal("normal CPU runner opt-in must be boolean")
@@ -1219,6 +1275,11 @@ async def run_real_resident_presence(
         "autonomous_l1_skill_selection": None if b_autonomous_l1_dev else False,
         "steps": [],
     }
+    native_audits = {}
+    if original_rejoin_dev:
+        report["exact_git_head"] = git_head()
+        report["original_rejoin_dev"] = True
+        report["world_attempts"] = 1
     owner = None
     bridge = None
     physical = None
@@ -1250,6 +1311,7 @@ async def run_real_resident_presence(
         physical = PhysicalIssueAdmission(
             initial_native, resident_mode=True, initially_offline=True,
             allow_resident_move=(b_selected_move_dev or b_autonomous_l1_dev),
+            observation_only=original_rejoin_dev,
         )
         configs = {
             sid: MineflayerLaunchConfig(
@@ -1339,10 +1401,16 @@ async def run_real_resident_presence(
         )
 
         async def native_factory(config: MineflayerLaunchConfig):
-            return await MineflayerProcessSession.launch(
+            session = await MineflayerProcessSession.launch(
                 config, node_executable=node,
                 startup_timeout_s=min(30.0, timeout_s / 3),
             )
+            if original_rejoin_dev:
+                native_audits[session.started.session_id] = session
+                session.start_raw_source_audit(
+                    evidence / f"native-{config.username}-{len(native_audits)}.jsonl",
+                )
+            return session
 
         bridge = OwnedResidentPhysicalBridge(
             lifecycle=lifecycle, physical=physical, paper=owner,
@@ -1364,6 +1432,8 @@ async def run_real_resident_presence(
             typed_owner_cut_dev=typed_owner_cut_dev,
             initial_source_dev=initial_source_dev,
             normal_cpu_present_dev=normal_cpu_present_dev,
+            original_rejoin_dev=original_rejoin_dev,
+            question_model=question_model,
         )
         if stage24g_model_receipt is not None:
             report.update(_require_stage24g_systemone_capture(evidence))
@@ -1414,6 +1484,14 @@ async def run_real_resident_presence(
             physical.hold_for_operator()
         raise
     finally:
+        if original_rejoin_dev and bridge is not None:
+            for sid in tuple(bridge.sessions):
+                try:
+                    await asyncio.wait_for(bridge.logout(sid), timeout=15.0)
+                except BaseException as exc:
+                    report["cleanup_uncertain"] = True
+                    report["classification"] = "HOLD"
+                    report[f"{sid}_cleanup_error"] = str(exc)
         if bridge is not None:
             for session in {id(s): s for s in bridge.sessions.values()}.values():
                 try:
@@ -1422,15 +1500,42 @@ async def run_real_resident_presence(
                 except BaseException:
                     report["cleanup_uncertain"] = True
                     report["classification"] = "HOLD"
+        for sid, session in native_audits.items():
+            try:
+                if session.process_returncode is None:
+                    await asyncio.wait_for(session.terminate(), timeout=8.0)
+                session.finish_raw_source_audit()
+                report.setdefault("native_processes", {})[sid] = {
+                    "pid": session.owned_child_pid, "returncode": session.process_returncode,
+                }
+            except BaseException as exc:
+                report["cleanup_uncertain"] = True
+                report["classification"] = "HOLD"
+                report["native_cleanup_error"] = str(exc)
         if owner is not None and owner.owned_session_id is not None and not owner.held_uncertain:
             try:
-                owner.stop_and_save()
+                stopped = owner.stop_and_save()
+                if original_rejoin_dev:
+                    write_record(evidence / "paper-stopped.json", asdict(stopped))
             except BaseException:
                 report["cleanup_uncertain"] = True
                 report["classification"] = "HOLD"
+        if original_rejoin_dev:
+            if owner is not None and (owner.held_uncertain or owner.owned_session_id is not None):
+                report["cleanup_uncertain"] = True
+                report["classification"] = "HOLD"
+            if bridge is not None:
+                for sid, original in bridge.owners.items():
+                    _write_bytes_new(evidence / f"final-{sid}-wal.json",
+                                     original.files.physical_wal_file.read_bytes())
+            spool = plugins / "P0BRecorder" / "p0d-ticks"
+            if spool.is_dir():
+                shutil.copytree(spool, evidence / "paper-tick-spool")
         _write_bytes_new(
             report_path, (json.dumps(report, indent=2, sort_keys=True) + "\n").encode(),
         )
+        if original_rejoin_dev:
+            seal_evidence(evidence)
         print(f"P0D_RESIDENT_REAL_AUDIT={report_path}", file=sys.stderr, flush=True)
         if owner is not None and owner.owned_session_id is not None:
             print(
@@ -1482,7 +1587,21 @@ def main() -> int:
     parser.add_argument("--llama-endpoint")
     parser.add_argument("--systemone-endpoint")
     parser.add_argument("--model")
+    parser.add_argument("--original-rejoin-dev", action="store_true")
+    parser.add_argument("--question-gguf", type=Path)
+    parser.add_argument("--question-llama-pid", type=int)
+    parser.add_argument("--question-model-alias")
+    parser.add_argument("--question-endpoint")
+    parser.add_argument("--grant-real-question-post", action="store_true")
     args = parser.parse_args()
+    model_args = (args.question_gguf, args.question_llama_pid,
+                  args.question_model_alias, args.question_endpoint)
+    if args.grant_real_question_post or any(arg is not None for arg in model_args):
+        if not (args.original_rejoin_dev and args.grant_real_question_post and all(model_args)):
+            parser.error("Original reJOIN mode, explicit Question POST grant and all model pins required")
+        question_model = OriginalQuestionModel(*model_args)
+    else:
+        question_model = None
     try:
         result = asyncio.run(run_real_resident_presence(
             paper_jar=args.paper_jar, paper_sha256=args.paper_sha256,
@@ -1503,6 +1622,8 @@ def main() -> int:
             exploration_schema_dev=args.exploration_schema_dev,
             initial_source_dev=args.initial_source_dev,
             normal_cpu_present_dev=args.normal_cpu_present_dev,
+            original_rejoin_dev=args.original_rejoin_dev,
+            question_model=question_model,
         ))
     except Exception as exc:
         print(f"P0D_RESIDENT_HOLD={type(exc).__name__}:{exc}", file=sys.stderr)
