@@ -141,6 +141,7 @@ class LlamaCppSingleSlotWitness:
         self.backend_ref = backend_ref
         self.endpoint = f"http://{host}:{port}/slots"
         self.timeout_s = float(timeout_s)
+        self.last_idle_body: bytes | None = None
 
     def require_idle(self) -> LlamaSlotIdleReceipt:
         request = urllib.request.Request(
@@ -167,6 +168,7 @@ class LlamaCppSingleSlotWitness:
             raise ResidentGpuLaneError(
                 "exclusive backend n_parallel=1 idle slot unverified"
             )
+        self.last_idle_body = raw
         return LlamaSlotIdleReceipt(
             self.backend_ref, 0, 1, False,
             f"{self.backend_ref}:GET /slots:id=0:idle",
@@ -464,6 +466,14 @@ class ResidentLlamaInferenceLane:
             ):
                 raise ResidentGpuLaneError("outstanding llama work at World stop")
         return self.witness.require_idle()
+
+    def submitted_ticket_for_audit(
+        self, self_id: str, work_ref: str,
+    ) -> ResidentInferenceTicket | None:
+        """Read immutable submission metadata even after the job is fenced."""
+        with self._lock:
+            job = self._jobs.get((self_id, work_ref))
+            return job.ticket if job is not None else None
 
     def _require_current_job(self, ticket: ResidentInferenceTicket) -> _Job:
         if not isinstance(ticket, ResidentInferenceTicket):

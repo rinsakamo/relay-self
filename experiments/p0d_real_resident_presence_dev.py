@@ -429,6 +429,10 @@ async def _owned_resident_trial(
         require_passive_original(bridge)
     original_a = await bridge.login("A")
     original_b = await bridge.login("B")
+    if original_rejoin_dev:
+        for sid in ("A", "B"):
+            write_record(evidence_dir / f"{sid}-initial-login.json",
+                         asdict(bridge.last_login_evidence[sid]))
     old_a = bridge.sessions["A"].started.session_id
     a_initial_pid = bridge.sessions["A"].owned_child_pid
     original_b_native = bridge.sessions["B"].started.session_id
@@ -456,14 +460,14 @@ async def _owned_resident_trial(
             await wait_for_paper_present(bridge, evidence_dir, "historical", b_heartbeat_s)
         else:
             await asyncio.sleep(float(b_heartbeat_s))
-        normal_history = await capture_original_historical_cpu_source(
-            bridge=bridge, initial_receipts=original_receipts,
-        )
         _immutable_receipt(
             evidence_dir, "normal-cpu-original-A-initial", original_receipts[0],
         )
         _immutable_receipt(
             evidence_dir, "normal-cpu-original-B-initial", original_receipts[1],
+        )
+        normal_history = await capture_original_historical_cpu_source(
+            bridge=bridge, initial_receipts=original_receipts,
         )
         _immutable_receipt(
             evidence_dir, "normal-cpu-original-A-composite",
@@ -716,6 +720,7 @@ async def _owned_resident_trial(
             "same_owner_retained_and_intent": True,
         })
         _write_bytes_new(evidence_dir / "paper-joined-cut.log", source)
+        write_record(evidence_dir / "original-world-rejoin.json", result_data)
         await capture_question(bridge, evidence_dir, question_model)
     final_a = await bridge.logout("A")
     final_b = await bridge.logout("B")
@@ -1253,8 +1258,9 @@ async def run_real_resident_presence(
         root / "server.properties",
         two_native_server_properties(port).encode(),
     )
+    console_args = ("-Dterminal.jline=false", "-Dterminal.ansi=false") if original_rejoin_dev else ()
     launch_command = (
-        java, "-Xms512M", f"-Xmx{heap_mb}M",
+        java, *console_args, "-Xms512M", f"-Xmx{heap_mb}M",
         "-jar", str(root / "paper.jar"), "--nogui",
     )
     report_path = evidence / "resident-presence-result.json"
@@ -1480,18 +1486,27 @@ async def run_real_resident_presence(
                 report["schema3_original_independent_audit"] = False
     except BaseException as exc:
         report["reason"] = f"{type(exc).__name__}: {exc}"
-        if physical is not None:
+        if original_rejoin_dev:
+            report["reason_chain"] = [f"{type(exc).__name__}: {exc}"]
+            cause = exc.__cause__
+            while cause is not None:
+                report["reason_chain"].append(f"{type(cause).__name__}: {cause}")
+                cause = cause.__cause__
+        elif physical is not None:
             physical.hold_for_operator()
         raise
     finally:
         if original_rejoin_dev and bridge is not None:
             for sid in tuple(bridge.sessions):
                 try:
-                    await asyncio.wait_for(bridge.logout(sid), timeout=15.0)
+                    retired = await asyncio.wait_for(bridge.logout(sid), timeout=15.0)
+                    write_record(evidence / f"{sid}-failure-cleanup.json", asdict(retired))
                 except BaseException as exc:
                     report["cleanup_uncertain"] = True
                     report["classification"] = "HOLD"
                     report[f"{sid}_cleanup_error"] = str(exc)
+        if original_rejoin_dev and physical is not None and report.get("reason"):
+            physical.hold_for_operator()
         if bridge is not None:
             for session in {id(s): s for s in bridge.sessions.values()}.values():
                 try:
